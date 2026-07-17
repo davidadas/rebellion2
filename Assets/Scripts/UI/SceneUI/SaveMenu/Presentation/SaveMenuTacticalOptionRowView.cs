@@ -9,7 +9,7 @@ using UnityEngine.UI;
 public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
 {
     [SerializeField]
-    private SaveMenuTacticalOption option;
+    private UserTacticalOption option;
 
     [SerializeField]
     private Color enabledTextColor;
@@ -40,12 +40,12 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
     /// <summary>
     /// Gets the tactical option represented by this authored row.
     /// </summary>
-    public SaveMenuTacticalOption Option => option;
+    public UserTacticalOption Option => option;
 
     /// <summary>
     /// Occurs when the player requests toggling this row's configured option.
     /// </summary>
-    public event Action<SaveMenuTacticalOption> ToggleRequested;
+    public event Action<UserTacticalOption> ToggleRequested;
 
     /// <summary>
     /// Renders the current option state without changing authored geometry or text.

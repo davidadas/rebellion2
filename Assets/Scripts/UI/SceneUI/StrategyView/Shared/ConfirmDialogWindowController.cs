@@ -509,6 +509,7 @@ public sealed class ConfirmDialogWindowController
     /// <summary>
     /// Plays the configured prompt cue for destructive confirmation sessions.
     /// </summary>
+    /// <param name="kind">The confirmation kind whose prompt cue should play.</param>
     private void PlayPromptSound(ConfirmDialogKind kind)
     {
         ConfirmDialogTheme theme = GetUIContext().GetPlayerFactionTheme()?.ConfirmDialogTheme;

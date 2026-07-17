@@ -569,6 +569,11 @@ public sealed class FacilityWindowController
         return session.GetSelectedBuildings().Cast<ISceneNode>().ToList();
     }
 
+    /// <summary>
+    /// Gets queued or selected facility items whose construction can be stopped.
+    /// </summary>
+    /// <param name="view">The facility view.</param>
+    /// <returns>The construction items in their current display order.</returns>
     private List<ISceneNode> GetStopConstructionItems(FacilityWindowView view)
     {
         if (!TryGetSession(view, out FacilityWindowSession session))

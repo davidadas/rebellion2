@@ -334,7 +334,7 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour
     /// <returns>The normalized detail line.</returns>
     private static string TrimLine(string line)
     {
-        return (line ?? string.Empty).Trim().Trim('\0');
+        return (line ?? string.Empty).Trim('\0').Trim(' ', '\r', '\n', '\v', '\f');
     }
 
     /// <summary>

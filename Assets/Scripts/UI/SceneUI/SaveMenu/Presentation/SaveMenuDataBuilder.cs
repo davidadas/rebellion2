@@ -53,7 +53,7 @@ public sealed class SaveMenuDataBuilder
         bool canSave,
         float musicVolume,
         float sfxVolume,
-        IReadOnlyDictionary<SaveMenuTacticalOption, bool> tacticalOptions,
+        IReadOnlyDictionary<UserTacticalOption, bool> tacticalOptions,
         string confirmationMessage
     )
     {

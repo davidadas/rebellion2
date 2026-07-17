@@ -118,7 +118,10 @@ public sealed class SelectableListView<TRowView, TRowData>
             row.Selected -= HandleRowSelected;
             row.Activated -= HandleRowActivated;
             row.ContextRequested -= HandleRowContextRequested;
-            UnityEngine.Object.Destroy(row.gameObject);
+            if (Application.isPlaying)
+                UnityEngine.Object.Destroy(row.gameObject);
+            else
+                UnityEngine.Object.DestroyImmediate(row.gameObject);
         }
 
         rowViews.Clear();

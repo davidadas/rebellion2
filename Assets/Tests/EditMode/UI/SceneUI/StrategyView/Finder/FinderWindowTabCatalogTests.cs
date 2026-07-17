@@ -58,6 +58,56 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             );
         }
 
+        [Test]
+        public void Create_NullFactions_ReturnsOnlyModeSpecificTabs()
+        {
+            List<FinderWindowTab> tabs = FinderWindowTabCatalog.Create(
+                FinderMode.Systems,
+                null,
+                "player"
+            );
+
+            Assert.AreEqual(3, tabs.Count);
+            Assert.IsTrue(tabs[0].IsAll);
+            Assert.IsTrue(tabs[1].IsNeutral);
+            Assert.IsTrue(tabs[2].IsUnexplored);
+        }
+
+        [Test]
+        public void Create_InvalidFactions_ExcludesNullAndMissingIdentifiers()
+        {
+            List<Faction> factions = new List<Faction>
+            {
+                null,
+                new Faction { InstanceID = string.Empty, DisplayName = "Missing" },
+                new Faction { InstanceID = "player", DisplayName = "Player" },
+            };
+
+            List<FinderWindowTab> tabs = FinderWindowTabCatalog.Create(
+                FinderMode.Personnel,
+                factions,
+                "player"
+            );
+
+            Assert.AreEqual(1, tabs.Count);
+            Assert.AreEqual("player", tabs[0].FactionInstanceId);
+        }
+
+        [Test]
+        public void Create_PlayerFactionMissing_PreservesFactionSourceOrder()
+        {
+            List<FinderWindowTab> tabs = FinderWindowTabCatalog.Create(
+                FinderMode.Troops,
+                CreateFactions(),
+                "missing"
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "opponent", "player" },
+                tabs.Select(tab => tab.FactionInstanceId)
+            );
+        }
+
         private static IReadOnlyList<Faction> CreateFactions()
         {
             return new[]

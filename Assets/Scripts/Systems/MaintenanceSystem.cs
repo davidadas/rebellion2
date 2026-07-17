@@ -244,6 +244,10 @@ namespace Rebellion.Systems
                     or Building;
         }
 
+        /// <summary>
+        /// Removes an auto-scrapped manufacturable and any fleet left empty by its removal.
+        /// </summary>
+        /// <param name="item">The manufacturable to remove.</param>
         private void Scrap(IManufacturable item)
         {
             ISceneNode node = item as ISceneNode;

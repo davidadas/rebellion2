@@ -216,6 +216,13 @@ namespace Rebellion.Systems
             };
         }
 
+        /// <summary>
+        /// Attempts to resolve a pending combat decision by withdrawing one fleet.
+        /// </summary>
+        /// <param name="decision">The pending combat decision.</param>
+        /// <param name="retreatingFleetInstanceId">The fleet requested to withdraw.</param>
+        /// <param name="results">Receives the generated combat result.</param>
+        /// <returns>True when the fleet withdrew successfully.</returns>
         private bool TryResolveRetreat(
             CombatDecisionContext decision,
             string retreatingFleetInstanceId,
@@ -240,6 +247,15 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Builds the combat result emitted after a successful fleet withdrawal.
+        /// </summary>
+        /// <param name="decision">The resolved combat decision.</param>
+        /// <param name="retreatingFleetInstanceId">The fleet that withdrew.</param>
+        /// <param name="attacker">The attacking fleet.</param>
+        /// <param name="defender">The defending fleet.</param>
+        /// <param name="planet">The combat location.</param>
+        /// <returns>The withdrawal combat result.</returns>
         private SpaceCombatResult BuildRetreatResult(
             CombatDecisionContext decision,
             string retreatingFleetInstanceId,
@@ -384,6 +400,11 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Resolves the planet associated with a pending combat decision.
+        /// </summary>
+        /// <param name="decision">The pending combat decision.</param>
+        /// <returns>The recorded or fleet-hosting planet, or null.</returns>
         private Planet ResolveCombatPlanet(CombatDecisionContext decision)
         {
             Planet planet = _game.GetSceneNodeByInstanceID<Planet>(decision.PlanetInstanceID);
@@ -796,6 +817,10 @@ namespace Rebellion.Systems
             encounterResult.Events.AddRange(roundResult.Events);
         }
 
+        /// <summary>
+        /// Updates encounter outcomes from each fleet's final runtime state.
+        /// </summary>
+        /// <param name="result">The encounter result to update.</param>
         private static void UpdateCombatEncounterResultOutcomes(SpaceCombatResult result)
         {
             if (result == null)
@@ -813,6 +838,13 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Resolves a combat side's final encounter outcome.
+        /// </summary>
+        /// <param name="fleet">The participating fleet.</param>
+        /// <param name="battlePlanet">The encounter location.</param>
+        /// <param name="roundOutcome">The outcome recorded by the final combat round.</param>
+        /// <returns>The final encounter outcome.</returns>
         private static SpaceCombatSideOutcome GetCombatSideOutcome(
             Fleet fleet,
             Planet battlePlanet,
@@ -838,6 +870,11 @@ namespace Rebellion.Systems
             return SpaceCombatSideOutcome.Active;
         }
 
+        /// <summary>
+        /// Checks whether a fleet retains any active space units.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>True when the fleet has surviving space units.</returns>
         private static bool HasCombatSurvivors(Fleet fleet)
         {
             return HasActiveSpaceUnits(fleet);
@@ -1515,6 +1552,12 @@ namespace Rebellion.Systems
             return result;
         }
 
+        /// <summary>
+        /// Resolves a combat side's outcome from post-round unit snapshots.
+        /// </summary>
+        /// <param name="ships">The side's post-round ship snapshots.</param>
+        /// <param name="fighters">The side's post-round fighter snapshots.</param>
+        /// <returns>The side's round outcome.</returns>
         private static SpaceCombatSideOutcome GetCombatSideRoundOutcome(
             List<ShipSnap> ships,
             List<FighterSnap> fighters

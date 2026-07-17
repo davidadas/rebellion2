@@ -591,7 +591,9 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
         for (int i = 0; i < tabImages.Length; i++)
         {
             if (tabImages[i] == null)
-                throw new MissingReferenceException($"{name}/TabImage{i} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/{DefenseWindowRenderData.OrderedTabs[i]}TabButtonImage is missing."
+                );
             if (tabPressVisuals[i] == null)
                 throw new MissingReferenceException($"{name}/TabPressVisual{i} is missing.");
             if (tabButtons[i] == null)

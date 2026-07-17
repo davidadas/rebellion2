@@ -654,7 +654,9 @@ public sealed class MissionsWindowView : MonoBehaviour, IPointerClickHandler
         for (int index = 0; index < tabImages.Length; index++)
         {
             if (tabImages[index] == null)
-                throw new MissingReferenceException($"{name}/TabImage{index} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/{MissionsWindowRenderData.OrderedRoles[index]}TabButtonImage is missing."
+                );
             if (tabPressVisuals[index] == null)
                 throw new MissingReferenceException($"{name}/TabPressVisual{index} is missing.");
             if (tabButtons[index] == null)

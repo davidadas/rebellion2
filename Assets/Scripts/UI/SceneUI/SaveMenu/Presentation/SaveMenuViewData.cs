@@ -4,37 +4,6 @@ using System.Collections.ObjectModel;
 using UnityEngine;
 
 /// <summary>
-/// Identifies a tactical presentation option shown by the save menu.
-/// </summary>
-public enum SaveMenuTacticalOption
-{
-    /// <summary>
-    /// Controls starfield presentation.
-    /// </summary>
-    Starfield,
-
-    /// <summary>
-    /// Controls planet presentation.
-    /// </summary>
-    Planet,
-
-    /// <summary>
-    /// Controls pyrotechnic presentation.
-    /// </summary>
-    Pyro,
-
-    /// <summary>
-    /// Controls high-detail presentation.
-    /// </summary>
-    HighDetail,
-
-    /// <summary>
-    /// Controls holocube presentation.
-    /// </summary>
-    Holocube,
-}
-
-/// <summary>
 /// Contains the presentation data for the complete save menu window.
 /// </summary>
 public sealed class SaveMenuWindowRenderData
@@ -56,7 +25,7 @@ public sealed class SaveMenuWindowRenderData
         float musicVolume,
         float sfxVolume,
         string versionText,
-        IReadOnlyDictionary<SaveMenuTacticalOption, bool> tacticalOptions,
+        IReadOnlyDictionary<UserTacticalOption, bool> tacticalOptions,
         IReadOnlyList<SaveSlotRenderData> slots,
         string confirmationMessage
     )
@@ -71,8 +40,8 @@ public sealed class SaveMenuWindowRenderData
         if (slots == null)
             throw new ArgumentNullException(nameof(slots));
 
-        TacticalOptions = new ReadOnlyDictionary<SaveMenuTacticalOption, bool>(
-            new Dictionary<SaveMenuTacticalOption, bool>(tacticalOptions)
+        TacticalOptions = new ReadOnlyDictionary<UserTacticalOption, bool>(
+            new Dictionary<UserTacticalOption, bool>(tacticalOptions)
         );
         Slots = new List<SaveSlotRenderData>(slots).AsReadOnly();
         ConfirmationMessage = confirmationMessage;
@@ -106,7 +75,7 @@ public sealed class SaveMenuWindowRenderData
     /// <summary>
     /// Gets the tactical option states.
     /// </summary>
-    public IReadOnlyDictionary<SaveMenuTacticalOption, bool> TacticalOptions { get; }
+    public IReadOnlyDictionary<UserTacticalOption, bool> TacticalOptions { get; }
 
     /// <summary>
     /// Gets the ordered save-slot presentation data.

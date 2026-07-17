@@ -27,13 +27,13 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     private Button[] upperButtons = Array.Empty<Button>();
 
     [SerializeField]
-    private RawImage[] fourButtonImages = Array.Empty<RawImage>();
+    private RawImage[] lowerButtonImages = Array.Empty<RawImage>();
 
     [SerializeField]
-    private RawImagePressVisual[] fourButtonPressVisuals = Array.Empty<RawImagePressVisual>();
+    private RawImagePressVisual[] lowerButtonPressVisuals = Array.Empty<RawImagePressVisual>();
 
     [SerializeField]
-    private Button[] fourButtons = Array.Empty<Button>();
+    private Button[] lowerButtons = Array.Empty<Button>();
 
     [SerializeField]
     private EncyclopediaIndexPanelView indexPanel;
@@ -47,7 +47,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     private Texture defaultOverlayFrameTexture;
     private Texture defaultButtonStripTexture;
     private Texture[] defaultUpperButtonTextures = Array.Empty<Texture>();
-    private Texture[] defaultFourButtonTextures = Array.Empty<Texture>();
+    private Texture[] defaultLowerButtonTextures = Array.Empty<Texture>();
 
     /// <summary>
     /// Raised when an authored command button is pressed.
@@ -171,7 +171,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     private void BindControls()
     {
         BindDialogButtons(upperButtons);
-        BindDialogButtons(fourButtons);
+        BindDialogButtons(lowerButtons);
 
         indexPanel.ContextRequested += HandleContextRequested;
         indexPanel.RowActivated += HandleRowActivated;
@@ -377,7 +377,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         );
 
         HideButtonSlots(upperButtonImages);
-        HideButtonSlots(fourButtonImages);
+        HideButtonSlots(lowerButtonImages);
 
         RawImage[] buttonSlots = GetButtonSlots(frame);
         RawImagePressVisual[] pressVisuals = GetButtonPressVisuals(frame);
@@ -418,7 +418,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     /// <returns>The active command-button image slots.</returns>
     private RawImage[] GetButtonSlots(EncyclopediaWindowFrameRenderData frame)
     {
-        return frame.UseUpperButtonLayout ? upperButtonImages : fourButtonImages;
+        return frame.UseUpperButtonLayout ? upperButtonImages : lowerButtonImages;
     }
 
     /// <summary>
@@ -428,7 +428,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     /// <returns>The active command-button pressed-state visuals.</returns>
     private RawImagePressVisual[] GetButtonPressVisuals(EncyclopediaWindowFrameRenderData frame)
     {
-        return frame.UseUpperButtonLayout ? upperButtonPressVisuals : fourButtonPressVisuals;
+        return frame.UseUpperButtonLayout ? upperButtonPressVisuals : lowerButtonPressVisuals;
     }
 
     /// <summary>
@@ -438,7 +438,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     /// <returns>The active command-button controls.</returns>
     private Button[] GetButtonComponents(EncyclopediaWindowFrameRenderData frame)
     {
-        return frame.UseUpperButtonLayout ? upperButtons : fourButtons;
+        return frame.UseUpperButtonLayout ? upperButtons : lowerButtons;
     }
 
     /// <summary>
@@ -452,7 +452,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         Texture[] textures =
             buttonSlots == upperButtonImages
                 ? defaultUpperButtonTextures
-                : defaultFourButtonTextures;
+                : defaultLowerButtonTextures;
         return index >= 0 && index < textures.Length ? textures[index] : null;
     }
 
@@ -464,7 +464,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         defaultOverlayFrameTexture = overlayFrameImage.texture;
         defaultButtonStripTexture = buttonStripImage.texture;
         defaultUpperButtonTextures = CaptureDefaultTextures(upperButtonImages);
-        defaultFourButtonTextures = CaptureDefaultTextures(fourButtonImages);
+        defaultLowerButtonTextures = CaptureDefaultTextures(lowerButtonImages);
     }
 
     /// <summary>
@@ -573,9 +573,9 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         VerifyButtonSlotReferences("Upper", upperButtonImages);
         VerifyPressVisualReferences("Upper", upperButtonPressVisuals, upperButtonImages.Length);
         VerifyButtonReferences("Upper", upperButtons);
-        VerifyButtonSlotReferences("Four", fourButtonImages);
-        VerifyPressVisualReferences("Four", fourButtonPressVisuals, fourButtonImages.Length);
-        VerifyButtonReferences("Four", fourButtons);
+        VerifyButtonSlotReferences("Lower", lowerButtonImages);
+        VerifyPressVisualReferences("Lower", lowerButtonPressVisuals, lowerButtonImages.Length);
+        VerifyButtonReferences("Lower", lowerButtons);
         if (indexPanel == null)
             throw new MissingReferenceException($"{name}/IndexPanel is missing.");
         if (detailPanel == null)
@@ -595,7 +595,9 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         for (int i = 0; i < images.Length; i++)
         {
             if (images[i] == null)
-                throw new MissingReferenceException($"{name}/{label}ButtonImage{i} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/{label} command button image slot {i} is missing."
+                );
         }
     }
 
@@ -620,7 +622,7 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         {
             if (pressVisuals[i] == null)
                 throw new MissingReferenceException(
-                    $"{name}/{label}ButtonPressVisual{i} is missing."
+                    $"{name}/{label} command button press visual slot {i} is missing."
                 );
         }
     }
@@ -638,7 +640,9 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
         for (int i = 0; i < buttons.Length; i++)
         {
             if (buttons[i] == null)
-                throw new MissingReferenceException($"{name}/{label}Button{i} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/{label} command button slot {i} is missing."
+                );
         }
     }
 }

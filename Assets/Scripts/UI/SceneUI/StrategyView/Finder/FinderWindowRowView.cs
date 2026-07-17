@@ -93,7 +93,9 @@ public sealed class FinderWindowRowView : SelectableListRowView
         for (int i = 0; i < countTextFields.Length; i++)
         {
             if (countTextFields[i] == null)
-                throw new MissingReferenceException($"{name}/CountTextField{i} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/CountColumnSlot{i}TextField is missing."
+                );
         }
     }
 }

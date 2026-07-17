@@ -171,7 +171,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
-          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly;pathFilters:-**/Assets/Scripts/Game/Results/GameResults.cs,-**/Assets/Scripts/UI/**"
+          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
 
       - name: Check coverage threshold
         run: |

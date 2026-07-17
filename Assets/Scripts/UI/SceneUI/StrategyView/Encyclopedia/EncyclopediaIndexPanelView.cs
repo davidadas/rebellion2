@@ -428,7 +428,9 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
         for (int i = 0; i < EncyclopediaWindowTabCatalog.Count; i++)
         {
             if (tabImageSlots[i] == null)
-                throw new MissingReferenceException($"{name}/TabImage{i} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/{EncyclopediaWindowTabCatalog.GetTab(i)}TabButtonImage is missing."
+                );
             if (tabButtons[i] == null)
                 throw new MissingReferenceException($"{name}/TabButton{i} is missing.");
         }

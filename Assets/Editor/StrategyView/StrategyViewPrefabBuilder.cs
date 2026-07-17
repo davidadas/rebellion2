@@ -1181,7 +1181,7 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> buttonImages = new List<RawImage>
         {
             CreateRawImage(
-                "ButtonImage0",
+                "OpenSectorButtonImage",
                 buttons,
                 _windowOpenSectorPreviewPath,
                 3,
@@ -1190,7 +1190,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage1",
+                "MinimizeButtonImage",
                 buttons,
                 _windowMinimizePreviewPath,
                 windowWidth - 31,
@@ -1199,7 +1199,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage2",
+                "CloseButtonImage",
                 buttons,
                 _windowClosePreviewPath,
                 windowWidth - 17,
@@ -1227,7 +1227,7 @@ public static class StrategyViewPrefabBuilder
         for (int i = 0; i < 6; i++)
         {
             RawImage tabImage = CreateRawButton(
-                $"TabImage{i}",
+                $"{FacilityWindowRenderData.OrderedTabs[i]}TabButtonImage",
                 tabs,
                 _facilityWindowTabPreviewPath
             );
@@ -1251,9 +1251,24 @@ public static class StrategyViewPrefabBuilder
 
         List<ManufacturingLaneCardView> manufacturingCards = new List<ManufacturingLaneCardView>
         {
-            CreateManufacturingLaneCardView(window.transform, "ManufacturingLaneCard0", 56, 120),
-            CreateManufacturingLaneCardView(window.transform, "ManufacturingLaneCard1", 138, 201),
-            CreateManufacturingLaneCardView(window.transform, "ManufacturingLaneCard2", 220, 281),
+            CreateManufacturingLaneCardView(
+                window.transform,
+                "ShipyardsManufacturingLaneCard",
+                56,
+                120
+            ),
+            CreateManufacturingLaneCardView(
+                window.transform,
+                "TrainingManufacturingLaneCard",
+                138,
+                201
+            ),
+            CreateManufacturingLaneCardView(
+                window.transform,
+                "ConstructionManufacturingLaneCard",
+                220,
+                281
+            ),
         };
 
         RectTransform inventory = CreateSourceRectLayer(
@@ -1423,7 +1438,7 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> buttonImages = new List<RawImage>
         {
             CreateRawImage(
-                "ButtonImage0",
+                "CloseButtonImage",
                 buttons,
                 _windowClosePreviewPath,
                 windowWidth - 17,
@@ -1630,11 +1645,17 @@ public static class StrategyViewPrefabBuilder
         dropdownRight.color = Color.white;
         SetSourceRect(dropdownRight.rectTransform, 194, 0, 1, 142);
 
+        string[] dropdownBackgroundNames =
+        {
+            "TopDropdownBackgroundImage",
+            "MiddleDropdownBackgroundImage",
+            "BottomDropdownBackgroundImage",
+        };
         List<RawImage> dropdownBackgrounds = new List<RawImage>();
         for (int i = 0; i < 3; i++)
         {
             RawImage dropdownBackground = CreateRawImage(
-                $"DropdownBackground{i}Image",
+                dropdownBackgroundNames[i],
                 dropdown,
                 _constructionDropdownBackgroundPreviewPath,
                 0,
@@ -1860,7 +1881,7 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> buttonImages = new List<RawImage>
         {
             CreateRawImage(
-                "ButtonImage0",
+                "OpenSectorButtonImage",
                 buttons,
                 _windowOpenSectorPreviewPath,
                 3,
@@ -1869,7 +1890,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage1",
+                "MinimizeButtonImage",
                 buttons,
                 _windowMinimizePreviewPath,
                 windowWidth - 31,
@@ -1878,7 +1899,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage2",
+                "CloseButtonImage",
                 buttons,
                 _windowClosePreviewPath,
                 windowWidth - 17,
@@ -1904,7 +1925,11 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> tabImages = new List<RawImage>();
         for (int i = 0; i < DefenseWindowRenderData.TabCount; i++)
         {
-            RawImage tabImage = CreateRawButton($"TabImage{i}", tabs, _defenseWindowTabPreviewPath);
+            RawImage tabImage = CreateRawButton(
+                $"{DefenseWindowRenderData.OrderedTabs[i]}TabButtonImage",
+                tabs,
+                _defenseWindowTabPreviewPath
+            );
             SetSourceRect(tabImage.rectTransform, 27 + i * 36, 20, 36, 33);
             tabImages.Add(tabImage);
         }
@@ -2140,7 +2165,7 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> buttonImages = new List<RawImage>
         {
             CreateRawImage(
-                "ButtonImage0",
+                "OpenSectorButtonImage",
                 buttons,
                 _windowOpenSectorPreviewPath,
                 3,
@@ -2149,7 +2174,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage1",
+                "MinimizeButtonImage",
                 buttons,
                 _windowMinimizePreviewPath,
                 windowWidth - 31,
@@ -2158,7 +2183,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage2",
+                "CloseButtonImage",
                 buttons,
                 _windowClosePreviewPath,
                 windowWidth - 17,
@@ -2282,7 +2307,11 @@ public static class StrategyViewPrefabBuilder
         };
         for (int i = 0; i < 4; i++)
         {
-            RawImage tabImage = CreateRawButton($"TabImage{i}", tabs, defaultTabTexturePaths[i]);
+            RawImage tabImage = CreateRawButton(
+                $"{FleetWindowRenderData.OrderedTabs[i]}TabButtonImage",
+                tabs,
+                defaultTabTexturePaths[i]
+            );
             SetSourceRect(tabImage.rectTransform, 100 + i * 30, 96, 30, 29);
             tabImages.Add(tabImage);
         }
@@ -2639,7 +2668,7 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> buttonImages = new List<RawImage>
         {
             CreateRawImage(
-                "ButtonImage0",
+                "OpenSectorButtonImage",
                 buttons,
                 _windowOpenSectorPreviewPath,
                 3,
@@ -2648,7 +2677,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage1",
+                "MinimizeButtonImage",
                 buttons,
                 _windowMinimizePreviewPath,
                 windowWidth - 31,
@@ -2657,7 +2686,7 @@ public static class StrategyViewPrefabBuilder
                 _windowChromeButtonHeight
             ),
             CreateRawImage(
-                "ButtonImage2",
+                "CloseButtonImage",
                 buttons,
                 _windowClosePreviewPath,
                 windowWidth - 17,
@@ -2734,7 +2763,11 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> tabImages = new List<RawImage>();
         for (int i = 0; i < MissionsWindowRenderData.TabCount; i++)
         {
-            RawImage tab = CreateRawButton($"TabImage{i}", tabs, _missionsTabPreviewPath);
+            RawImage tab = CreateRawButton(
+                $"{MissionsWindowRenderData.OrderedRoles[i]}TabButtonImage",
+                tabs,
+                _missionsTabPreviewPath
+            );
             SetSourceRect(tab.rectTransform, 105 + i * 61, 127, 61, 16);
             tabImages.Add(tab);
         }
@@ -2829,14 +2862,14 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> titleImages = new List<RawImage>
         {
             CreateRawImage(
-                "TitleImage0",
+                "LeftTitleImage",
                 window.transform,
                 PreviewTheme?.StrategyWindows?.MissionCreate?.TitleImagePath,
                 2,
                 2
             ),
             CreateRawImage(
-                "TitleImage1",
+                "RightTitleImage",
                 window.transform,
                 PreviewTheme?.StrategyWindows?.MissionCreate?.TitleImagePath,
                 windowWidth - titleWidth - 2,
@@ -2874,7 +2907,7 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> buttonImages = new List<RawImage>
         {
             CreateRawImage(
-                "ButtonImage0",
+                "CloseButtonImage",
                 buttons,
                 _windowClosePreviewPath,
                 windowWidth - 17,
@@ -2910,7 +2943,7 @@ public static class StrategyViewPrefabBuilder
             ),
         };
         RawImage firstTab = CreateRawButton(
-            "Tab0Image",
+            "MissionTabButtonImage",
             tabs,
             PreviewTheme?.StrategyWindows?.MissionCreate?.MissionTab?.InactiveImagePath
         );
@@ -2918,7 +2951,7 @@ public static class StrategyViewPrefabBuilder
         Button firstTabButton = CreateButton(firstTab);
         tabImages.Add(firstTab);
         RawImage secondTab = CreateRawButton(
-            "Tab1Image",
+            "PersonnelTabButtonImage",
             tabs,
             PreviewTheme?.StrategyWindows?.MissionCreate?.PersonnelTab?.InactiveImagePath
         );
@@ -3056,10 +3089,15 @@ public static class StrategyViewPrefabBuilder
         dropdownRight.color = Color.white;
         SetSourceRect(dropdownRight.rectTransform, 196, 0, 1, 114);
 
+        string[] dropdownBackgroundNames =
+        {
+            "TopDropdownBackgroundImage",
+            "BottomDropdownBackgroundImage",
+        };
         for (int i = 0; i < 2; i++)
         {
             RawImage dropdownBackground = CreateRawImage(
-                $"DropdownBackground{i}Image",
+                dropdownBackgroundNames[i],
                 dropdown,
                 _constructionDropdownBackgroundPreviewPath,
                 0,
@@ -4145,7 +4183,7 @@ public static class StrategyViewPrefabBuilder
         RectTransform buttons = CreateSourceRectLayer("Buttons", window.transform, 470, 331);
         List<RawImage> upperButtonImages = CreateUtilityDialogButtonSlots(
             buttons,
-            "Upper",
+            "UpperLayout",
             true,
             true
         );
@@ -4159,7 +4197,7 @@ public static class StrategyViewPrefabBuilder
         }
         List<RawImage> twoButtonImages = CreateUtilityDialogButtonSlots(
             buttons,
-            "Two",
+            "TwoButtonLayout",
             false,
             false
         );
@@ -4171,7 +4209,7 @@ public static class StrategyViewPrefabBuilder
         }
         List<RawImage> fourButtonImages = CreateUtilityDialogButtonSlots(
             buttons,
-            "Four",
+            "FourButtonLayout",
             false,
             true
         );
@@ -4218,7 +4256,11 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> tabSlots = new List<RawImage>();
         for (int i = 0; i < finderTabPreviewPaths.Length; i++)
         {
-            RawImage image = CreateRawButton($"TabImage{i}", tabs, finderTabPreviewPaths[i]);
+            RawImage image = CreateRawButton(
+                $"TabSlot{i}ButtonImage",
+                tabs,
+                finderTabPreviewPaths[i]
+            );
             SetSourceRect(image.rectTransform, 36 + i * 52, 78, 49, 41);
             tabSlots.Add(image);
         }
@@ -4231,12 +4273,12 @@ public static class StrategyViewPrefabBuilder
         layoutTemplates.gameObject.SetActive(false);
         List<RectTransform> defaultTabSlotTemplates = CreateFinderTabSlotTemplates(
             layoutTemplates,
-            "DefaultTabSlotTemplate",
+            "Default",
             78
         );
         List<RectTransform> compactTabSlotTemplates = CreateFinderTabSlotTemplates(
             layoutTemplates,
-            "CompactTabSlotTemplate",
+            "Compact",
             72
         );
 
@@ -4413,19 +4455,19 @@ public static class StrategyViewPrefabBuilder
     /// Authors the fixed Finder faction-tab slots.
     /// </summary>
     /// <param name="parent">The Finder window transform.</param>
-    /// <param name="namePrefix">The tab-slot name prefix.</param>
+    /// <param name="layoutName">The tab layout name.</param>
     /// <param name="y">The source-space y-coordinate.</param>
     /// <returns>The authored tab slots.</returns>
     private static List<RectTransform> CreateFinderTabSlotTemplates(
         Transform parent,
-        string namePrefix,
+        string layoutName,
         int y
     )
     {
         List<RectTransform> slots = new List<RectTransform>();
         for (int i = 0; i < 2; i++)
         {
-            RectTransform slot = CreateChildLayer($"{namePrefix}{i}", parent);
+            RectTransform slot = CreateChildLayer($"{layoutName}TabSlot{i}Template", parent);
             SetSourceRect(slot, 36 + i * 52, y, 49, 41);
             slots.Add(slot);
         }
@@ -4472,7 +4514,10 @@ public static class StrategyViewPrefabBuilder
         List<TextMeshProUGUI> countTextFields = new List<TextMeshProUGUI>();
         for (int i = 0; i < 5; i++)
         {
-            TextMeshProUGUI countText = CreateTextLabel($"CountTextField{i}", hitArea.transform);
+            TextMeshProUGUI countText = CreateTextLabel(
+                $"CountColumnSlot{i}TextField",
+                hitArea.transform
+            );
             countText.text = "1";
             countText.color = Color.white;
             countText.fontSize = 11;
@@ -4654,7 +4699,11 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> tabSlots = new List<RawImage>();
         for (int i = 0; i < messageTabPreviewPaths.Length; i++)
         {
-            RawImage image = CreateRawButton($"TabImage{i}", tabs, messageTabPreviewPaths[i]);
+            RawImage image = CreateRawButton(
+                $"{(MessagesTab)i}TabButtonImage",
+                tabs,
+                messageTabPreviewPaths[i]
+            );
             SetSourceRect(
                 image.rectTransform,
                 22 + messageTabSourceX[i],
@@ -5034,7 +5083,7 @@ public static class StrategyViewPrefabBuilder
         RectTransform buttons = CreateSourceRectLayer("Buttons", window.transform, 470, 331);
         List<RawImage> upperButtonImages = CreateEncyclopediaDialogButtonSlots(
             buttons,
-            "Upper",
+            "UpperLayout",
             true
         );
         List<Button> upperButtons = CreateButtons(upperButtonImages);
@@ -5045,16 +5094,18 @@ public static class StrategyViewPrefabBuilder
                 upperButtonImages[index].GetComponent<RawImagePressVisual>()
             );
         }
-        List<RawImage> fourButtonImages = CreateEncyclopediaDialogButtonSlots(
+        List<RawImage> lowerButtonImages = CreateEncyclopediaDialogButtonSlots(
             buttons,
-            "Four",
+            "LowerLayout",
             false
         );
-        List<Button> fourButtons = CreateButtons(fourButtonImages);
-        List<RawImagePressVisual> fourButtonPressVisuals = new List<RawImagePressVisual>();
-        for (int index = 0; index < fourButtonImages.Count; index++)
+        List<Button> lowerButtons = CreateButtons(lowerButtonImages);
+        List<RawImagePressVisual> lowerButtonPressVisuals = new List<RawImagePressVisual>();
+        for (int index = 0; index < lowerButtonImages.Count; index++)
         {
-            fourButtonPressVisuals.Add(fourButtonImages[index].GetComponent<RawImagePressVisual>());
+            lowerButtonPressVisuals.Add(
+                lowerButtonImages[index].GetComponent<RawImagePressVisual>()
+            );
         }
 
         RectTransform indexPanelRoot = CreateSourceRectLayer(
@@ -5113,7 +5164,11 @@ public static class StrategyViewPrefabBuilder
         List<RawImage> tabSlots = new List<RawImage>();
         for (int i = 0; i < encyclopediaTabPreviewPaths.Length; i++)
         {
-            RawImage image = CreateRawButton($"TabImage{i}", tabs, encyclopediaTabPreviewPaths[i]);
+            RawImage image = CreateRawButton(
+                $"{EncyclopediaWindowTabCatalog.GetTab(i)}TabButtonImage",
+                tabs,
+                encyclopediaTabPreviewPaths[i]
+            );
             Texture upTexture = image.texture;
             Texture downTexture = LoadTexture(encyclopediaTabPreviewDownPaths[i]);
             int upWidth = GetTextureSourceWidthOrDefault(upTexture, 49);
@@ -5250,9 +5305,9 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(view, "upperButtonImages", upperButtonImages);
         AssignReferenceArray(view, "upperButtonPressVisuals", upperButtonPressVisuals);
         AssignReferenceArray(view, "upperButtons", upperButtons);
-        AssignReferenceArray(view, "fourButtonImages", fourButtonImages);
-        AssignReferenceArray(view, "fourButtonPressVisuals", fourButtonPressVisuals);
-        AssignReferenceArray(view, "fourButtons", fourButtons);
+        AssignReferenceArray(view, "lowerButtonImages", lowerButtonImages);
+        AssignReferenceArray(view, "lowerButtonPressVisuals", lowerButtonPressVisuals);
+        AssignReferenceArray(view, "lowerButtons", lowerButtons);
         AssignReference(view, "indexPanel", indexPanel);
         AssignReference(view, "detailPanel", detailPanel);
 
@@ -6725,27 +6780,28 @@ public static class StrategyViewPrefabBuilder
         for (int i = 0; i < theme.Categories.Count; i++)
         {
             GalacticInformationCategoryTheme category = theme.Categories[i];
+            string categoryName = category.Label.Replace(" ", string.Empty);
             RawImage arrow = CreateRawImage(
-                $"CategoryArrow{i}",
+                $"{categoryName}CategoryArrowImage",
                 selector.transform,
                 theme.SubmenuArrowInactiveImagePath,
                 0,
                 0
             );
             RawImage icon = CreateRawImage(
-                $"CategoryIcon{i}",
+                $"{categoryName}CategoryIconImage",
                 selector.transform,
                 category.IconImagePath,
                 0,
                 0
             );
             TextMeshProUGUI label = CreateGalacticInformationLabel(
-                $"CategoryText{i}",
+                $"{categoryName}CategoryTextField",
                 selector.transform,
                 category.Label
             );
             UIRaycastArea hitArea = CreateHudButtonView(
-                $"CategoryHitArea{i}",
+                $"{categoryName}CategoryHitArea",
                 selector.transform,
                 category.RowSourceLayout
             );
@@ -6753,7 +6809,7 @@ public static class StrategyViewPrefabBuilder
                 selector.transform,
                 theme,
                 category,
-                i
+                categoryName
             );
             categoryArrows.Add(arrow);
             categoryIcons.Add(icon);
@@ -6794,16 +6850,16 @@ public static class StrategyViewPrefabBuilder
     /// <param name="parent">The display host transform.</param>
     /// <param name="theme">The complete display theme.</param>
     /// <param name="category">The category theme.</param>
-    /// <param name="categoryIndex">The stable category index.</param>
+    /// <param name="categoryName">The category hierarchy name.</param>
     /// <returns>The configured submenu view.</returns>
     private static GalacticInformationSubmenuView CreateGalacticInformationSubmenuView(
         Transform parent,
         GalacticInformationDisplayTheme theme,
         GalacticInformationCategoryTheme category,
-        int categoryIndex
+        string categoryName
     )
     {
-        GameObject root = CreateLayer($"Submenu{categoryIndex}", parent);
+        GameObject root = CreateLayer($"{categoryName}Submenu", parent);
         GalacticInformationSubmenuView view = EnableRuntimeComponent(
             root.AddComponent<GalacticInformationSubmenuView>()
         );
@@ -6825,12 +6881,28 @@ public static class StrategyViewPrefabBuilder
         for (int i = 0; i < category.Filters.Count; i++)
         {
             GalacticInformationFilterTheme filter = category.Filters[i];
-            icons.Add(CreateRawImage($"FilterIcon{i}", root.transform, filter.IconImagePath, 0, 0));
+            icons.Add(
+                CreateRawImage(
+                    $"{filter.Mode}FilterIconImage",
+                    root.transform,
+                    filter.IconImagePath,
+                    0,
+                    0
+                )
+            );
             labels.Add(
-                CreateGalacticInformationLabel($"FilterText{i}", root.transform, filter.Label)
+                CreateGalacticInformationLabel(
+                    $"{filter.Mode}FilterTextField",
+                    root.transform,
+                    filter.Label
+                )
             );
             hitAreas.Add(
-                CreateHudButtonView($"FilterHitArea{i}", root.transform, filter.RowSourceLayout)
+                CreateHudButtonView(
+                    $"{filter.Mode}FilterHitArea",
+                    root.transform,
+                    filter.RowSourceLayout
+                )
             );
         }
 
@@ -7701,13 +7773,13 @@ public static class StrategyViewPrefabBuilder
     /// Authors the fixed utility-window command image slots.
     /// </summary>
     /// <param name="parent">The window transform.</param>
-    /// <param name="prefix">The button name prefix.</param>
+    /// <param name="layoutName">The command layout name.</param>
     /// <param name="useUpperLayout">Whether to use the upper command layout.</param>
     /// <param name="fourButtons">Whether to author four command slots.</param>
     /// <returns>The authored command images.</returns>
     private static List<RawImage> CreateUtilityDialogButtonSlots(
         Transform parent,
-        string prefix,
+        string layoutName,
         bool useUpperLayout,
         bool fourButtons
     )
@@ -7719,12 +7791,17 @@ public static class StrategyViewPrefabBuilder
             PreviewTheme?.StrategyWindows?.Finder?.ShipButton?.UpImagePath,
             PreviewTheme?.StrategyWindows?.Finder?.FleetButton?.UpImagePath,
         };
+        string[] commandNames = { "Close", "Target", "Ship", "Fleet" };
         int[] yPositions = useUpperLayout ? new[] { 21, 89, 143, 197 } : new[] { 25, 93, 147, 201 };
         int count = fourButtons ? 4 : 2;
         List<RawImage> images = new List<RawImage>();
         for (int i = 0; i < count; i++)
         {
-            RawImage image = CreateRawButton($"{prefix}ButtonImage{i}", parent, texturePaths[i]);
+            RawImage image = CreateRawButton(
+                $"{layoutName}{commandNames[i]}ButtonImage",
+                parent,
+                texturePaths[i]
+            );
             Texture texture = image.texture;
             int width = GetTextureSourceWidthOrDefault(texture, 44);
             int height = GetTextureSourceHeightOrDefault(texture, 41);
@@ -7749,12 +7826,12 @@ public static class StrategyViewPrefabBuilder
     /// Authors the fixed encyclopedia command image slots.
     /// </summary>
     /// <param name="parent">The encyclopedia window transform.</param>
-    /// <param name="prefix">The button name prefix.</param>
+    /// <param name="layoutName">The command layout name.</param>
     /// <param name="useUpperLayout">Whether to use the upper command layout.</param>
     /// <returns>The authored command images.</returns>
     private static List<RawImage> CreateEncyclopediaDialogButtonSlots(
         Transform parent,
-        string prefix,
+        string layoutName,
         bool useUpperLayout
     )
     {
@@ -7764,11 +7841,16 @@ public static class StrategyViewPrefabBuilder
             PreviewTheme?.StrategyWindows?.Encyclopedia?.TopicButton?.UpImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.IndexButton?.UpImagePath,
         };
+        string[] commandNames = { "Close", "Topic", "Index" };
         int[] yPositions = useUpperLayout ? new[] { 21, 89, 143 } : new[] { 25, 93, 147 };
         List<RawImage> images = new List<RawImage>();
         for (int i = 0; i < texturePaths.Length; i++)
         {
-            RawImage image = CreateRawButton($"{prefix}ButtonImage{i}", parent, texturePaths[i]);
+            RawImage image = CreateRawButton(
+                $"{layoutName}{commandNames[i]}ButtonImage",
+                parent,
+                texturePaths[i]
+            );
             Texture texture = image.texture;
             int width = GetTextureSourceWidthOrDefault(texture, 44);
             int height = GetTextureSourceHeightOrDefault(texture, 41);
@@ -7933,7 +8015,7 @@ public static class StrategyViewPrefabBuilder
         List<Image> cells = new List<Image>();
         for (int i = 0; i < cellCount; i++)
         {
-            Image cell = CreateImage($"Cell{i}Image", root);
+            Image cell = CreateImage($"Segment{i}Image", root);
             cell.color = i < 7 ? fillColor : emptyColor;
             SetSourceRect(cell.rectTransform, 1 + i * 3, 0, 2, 3);
             cells.Add(cell);

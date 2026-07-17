@@ -67,7 +67,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     private TextMeshProUGUI versionTextField;
 
     [SerializeField]
-    private ConfirmationDialogView confirmationDialog;
+    private SaveMenuConfirmDialogView confirmDialog;
 
     private bool bound;
 
@@ -104,7 +104,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     /// <summary>
     /// Occurs when the player requests toggling a tactical option.
     /// </summary>
-    public event Action<SaveMenuTacticalOption> TacticalOptionToggleRequested;
+    public event Action<UserTacticalOption> TacticalOptionToggleRequested;
 
     /// <summary>
     /// Occurs when the player requests a named save in a slot.
@@ -201,19 +201,19 @@ public sealed class SaveMenuWindowView : MonoBehaviour
         VerifySoundReferences();
         VerifyTextReferences();
 
-        if (confirmationDialog == null)
-            throw new MissingReferenceException("ConfirmationDialog is missing.");
-        confirmationDialog.VerifyReferences();
+        if (confirmDialog == null)
+            throw new MissingReferenceException("ConfirmDialog is missing.");
+        confirmDialog.VerifyReferences();
 
         if (
             tacticalOptionRows == null
-            || tacticalOptionRows.Length != Enum.GetValues(typeof(SaveMenuTacticalOption)).Length
+            || tacticalOptionRows.Length != Enum.GetValues(typeof(UserTacticalOption)).Length
         )
             throw new MissingReferenceException("TacticalOptionRows are incomplete.");
         for (int i = 0; i < tacticalOptionRows.Length; i++)
         {
             if (tacticalOptionRows[i] == null)
-                throw new MissingReferenceException($"TacticalOptionRow{i} is missing.");
+                throw new MissingReferenceException($"Tactical option row slot {i} is missing.");
             tacticalOptionRows[i].VerifyReferences();
         }
 
@@ -222,7 +222,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
         for (int i = 0; i < saveSlotRows.Length; i++)
         {
             if (saveSlotRows[i] == null)
-                throw new MissingReferenceException($"SaveSlotRow{i} is missing.");
+                throw new MissingReferenceException($"SaveSlot{i + 1}Row is missing.");
             saveSlotRows[i].VerifyReferences();
         }
     }
@@ -250,8 +250,8 @@ public sealed class SaveMenuWindowView : MonoBehaviour
         musicButton.onClick.RemoveListener(RequestMusicToggle);
         musicSlider.ValueChanged -= HandleMusicVolumeChanged;
         sfxSlider.ValueChanged -= HandleSfxVolumeChanged;
-        confirmationDialog.Confirmed -= HandleConfirmationAccepted;
-        confirmationDialog.Canceled -= HandleConfirmationCanceled;
+        confirmDialog.Confirmed -= HandleConfirmationAccepted;
+        confirmDialog.Canceled -= HandleConfirmationCanceled;
 
         for (int i = 0; i < tacticalOptionRows.Length; i++)
             tacticalOptionRows[i].ToggleRequested -= HandleTacticalOptionToggleRequested;
@@ -306,7 +306,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     {
         for (int i = 0; i < tacticalOptionRows.Length; i++)
         {
-            SaveMenuTacticalOption option = tacticalOptionRows[i].Option;
+            UserTacticalOption option = tacticalOptionRows[i].Option;
             if (!data.TacticalOptions.TryGetValue(option, out bool enabled))
                 throw new InvalidOperationException(
                     $"Tactical option {option} has no render state."
@@ -338,11 +338,11 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     {
         if (string.IsNullOrEmpty(message))
         {
-            confirmationDialog.Hide();
+            confirmDialog.Hide();
             return;
         }
 
-        confirmationDialog.Show(message);
+        confirmDialog.Show(message);
     }
 
     /// <summary>
@@ -359,8 +359,8 @@ public sealed class SaveMenuWindowView : MonoBehaviour
         musicButton.onClick.AddListener(RequestMusicToggle);
         musicSlider.ValueChanged += HandleMusicVolumeChanged;
         sfxSlider.ValueChanged += HandleSfxVolumeChanged;
-        confirmationDialog.Confirmed += HandleConfirmationAccepted;
-        confirmationDialog.Canceled += HandleConfirmationCanceled;
+        confirmDialog.Confirmed += HandleConfirmationAccepted;
+        confirmDialog.Canceled += HandleConfirmationCanceled;
 
         for (int i = 0; i < tacticalOptionRows.Length; i++)
             tacticalOptionRows[i].ToggleRequested += HandleTacticalOptionToggleRequested;
@@ -427,7 +427,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     /// Forwards a typed tactical-option request.
     /// </summary>
     /// <param name="option">The requested tactical option.</param>
-    private void HandleTacticalOptionToggleRequested(SaveMenuTacticalOption option)
+    private void HandleTacticalOptionToggleRequested(UserTacticalOption option)
     {
         TacticalOptionToggleRequested?.Invoke(option);
     }
@@ -552,7 +552,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
             || musicButtonDownTexture == null
             || musicSlider == null
             || sfxSlider == null
-            || confirmationDialog == null
+            || confirmDialog == null
             || playMusicTextField == null
             || playMusicStateTextField == null
             || versionTextField == null
@@ -563,7 +563,7 @@ public sealed class SaveMenuWindowView : MonoBehaviour
 
         if (
             tacticalOptionRows == null
-            || tacticalOptionRows.Length != Enum.GetValues(typeof(SaveMenuTacticalOption)).Length
+            || tacticalOptionRows.Length != Enum.GetValues(typeof(UserTacticalOption)).Length
             || saveSlotRows == null
             || saveSlotRows.Length == 0
         )

@@ -143,7 +143,7 @@ public sealed class CutscenePlayer : MonoBehaviour
     private void VerifyReferences()
     {
         if (screen == null)
-            throw new MissingReferenceException($"{name}/Screen is missing.");
+            throw new MissingReferenceException($"{name}/VideoScreenImage is missing.");
         if (videoPlayer == null)
             throw new MissingReferenceException($"{name}/VideoPlayer is missing.");
         if (audioSource == null)

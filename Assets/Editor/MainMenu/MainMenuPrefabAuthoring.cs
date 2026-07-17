@@ -94,7 +94,7 @@ public static class MainMenuPrefabAuthoring
             ?? FindButtonByControllerMethod(root, controller, "ToggleVictoryCondition");
         Image victoryConditionIcon =
             ReadReference<Image>(view, "victoryConditionIcon")
-            ?? FindRequiredComponent<Image>(root, "HeadquartersOnlyIcon");
+            ?? FindRequiredComponent<Image>(root, "VictoryConditionIcon");
         TMP_Text victoryConditionText =
             ReadReference<TMP_Text>(view, "victoryConditionText")
             ?? FindRequiredComponent<TMP_Text>(root, "VictoryConditionText");

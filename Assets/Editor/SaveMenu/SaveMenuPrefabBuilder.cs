@@ -12,7 +12,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class SaveMenuPrefabBuilder
 {
-    private const string _saveMenuWindowPrefabPath = "Assets/Prefabs/UI/SaveMenuWindow.prefab";
+    private const string _saveMenuWindowPrefabPath =
+        "Assets/Prefabs/UI/SaveMenu/SaveMenuWindow.prefab";
     private const string _saveMenuRootPrefabPath = "Assets/Prefabs/UI/SaveMenu/SaveMenuRoot.prefab";
     private const string _saveSlotRowPrefabPath = "Assets/Prefabs/UI/SaveMenu/SaveSlotRow.prefab";
     private const string _tacticalOptionRowPrefabPath =
@@ -52,7 +53,7 @@ public static class SaveMenuPrefabBuilder
         "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_load_button_disabled.png";
     private const string _sliderThumbTexturePath =
         "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_slider_thumb.png";
-    private const string _confirmationDialogTexturePath =
+    private const string _confirmDialogTexturePath =
         "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_dialog.png";
     private const string _confirmationYesTexturePath =
         "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_yes_button.png";
@@ -227,7 +228,7 @@ public static class SaveMenuPrefabBuilder
             TextAlignmentOptions.BaselineRight
         );
 
-        AssignInt(view, "option", (int)SaveMenuTacticalOption.Starfield);
+        AssignInt(view, "option", (int)UserTacticalOption.Starfield);
         AssignColor(view, "enabledTextColor", _enabledTextColor);
         AssignColor(view, "disabledTextColor", _disabledTextColor);
         AssignReference(view, "buttonPressVisual", buttonPressVisual);
@@ -470,7 +471,7 @@ public static class SaveMenuPrefabBuilder
         );
         version.color = _versionTextColor;
 
-        ConfirmationDialogView confirmationDialog = CreateConfirmationDialog(window.transform);
+        SaveMenuConfirmDialogView confirmDialog = CreateConfirmDialog(window.transform);
 
         AssignColor(view, "enabledTextColor", _enabledTextColor);
         AssignColor(view, "disabledTextColor", _disabledTextColor);
@@ -499,7 +500,7 @@ public static class SaveMenuPrefabBuilder
         AssignReference(view, "playMusicTextField", playMusic);
         AssignReference(view, "playMusicStateTextField", playMusicState);
         AssignReference(view, "versionTextField", version);
-        AssignReference(view, "confirmationDialog", confirmationDialog);
+        AssignReference(view, "confirmDialog", confirmDialog);
 
         return SavePrefab(window, _saveMenuWindowPrefabPath);
     }
@@ -554,7 +555,7 @@ public static class SaveMenuPrefabBuilder
             rows[index] = InstantiateNested<SaveMenuSlotRowView>(
                 rowPrefab,
                 parent,
-                $"SaveSlotRow{index}"
+                $"SaveSlot{index + 1}Row"
             );
             SetSourcePosition(rows[index].transform as RectTransform, 34, 81 + 42 * index);
         }
@@ -573,13 +574,13 @@ public static class SaveMenuPrefabBuilder
         Transform parent
     )
     {
-        SaveMenuTacticalOption[] options =
+        UserTacticalOption[] options =
         {
-            SaveMenuTacticalOption.Starfield,
-            SaveMenuTacticalOption.Planet,
-            SaveMenuTacticalOption.Pyro,
-            SaveMenuTacticalOption.HighDetail,
-            SaveMenuTacticalOption.Holocube,
+            UserTacticalOption.Starfield,
+            UserTacticalOption.Planet,
+            UserTacticalOption.Pyro,
+            UserTacticalOption.HighDetail,
+            UserTacticalOption.Holocube,
         };
         string[] labels =
         {
@@ -596,7 +597,7 @@ public static class SaveMenuPrefabBuilder
             rows[index] = InstantiateNested<SaveMenuTacticalOptionRowView>(
                 rowPrefab,
                 parent,
-                $"TacticalOptionRow{index}"
+                $"{options[index]}TacticalOptionRow"
             );
             SetSourcePosition(rows[index].transform as RectTransform, 357, 311 + 27 * index);
             AssignInt(rows[index], "option", (int)options[index]);
@@ -641,16 +642,16 @@ public static class SaveMenuPrefabBuilder
     /// </summary>
     /// <param name="parent">The Save Menu window transform.</param>
     /// <returns>The configured confirmation dialog view.</returns>
-    private static ConfirmationDialogView CreateConfirmationDialog(Transform parent)
+    private static SaveMenuConfirmDialogView CreateConfirmDialog(Transform parent)
     {
         GameObject root = new GameObject(
-            "ConfirmationDialog",
+            "ConfirmDialog",
             typeof(RectTransform),
-            typeof(ConfirmationDialogView)
+            typeof(SaveMenuConfirmDialogView)
         );
         root.transform.SetParent(parent, false);
         SetSourceRect(root.GetComponent<RectTransform>(), 0, 0, _windowWidth, _windowHeight);
-        ConfirmationDialogView view = root.GetComponent<ConfirmationDialogView>();
+        SaveMenuConfirmDialogView view = root.GetComponent<SaveMenuConfirmDialogView>();
         view.enabled = true;
 
         GameObject blockerObject = CreateRectObject("InputBlocker", root.transform);
@@ -663,7 +664,7 @@ public static class SaveMenuPrefabBuilder
         RawImage background = CreateRawImage(
             "BackgroundImage",
             root.transform,
-            _confirmationDialogTexturePath,
+            _confirmDialogTexturePath,
             114,
             150,
             412,

@@ -84,6 +84,14 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Persists the active user settings before application shutdown.
+    /// </summary>
+    private void OnApplicationQuit()
+    {
+        _userSettingsManager?.Save();
+    }
+
+    /// <summary>
     /// Creates the input manager under the bootstrap object.
     /// </summary>
     /// <returns>The created input manager.</returns>

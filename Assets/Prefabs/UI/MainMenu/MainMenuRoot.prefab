@@ -1,40 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &41197491446753854
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6436683952006541368}
-  m_Layer: 0
-  m_Name: OverlayRoot
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!224 &6436683952006541368
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 41197491446753854}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 8410598784622740092}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &58879257958071794
 GameObject:
   m_ObjectHideFlags: 0
@@ -49,7 +14,7 @@ GameObject:
   - component: {fileID: 4040292803788385695}
   - component: {fileID: 6133892355166534709}
   m_Layer: 0
-  m_Name: HeadquartersOnlyIcon
+  m_Name: VictoryConditionIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -187,7 +152,7 @@ GameObject:
   - component: {fileID: 6306909178163523039}
   - component: {fileID: 685034576820100796}
   m_Layer: 0
-  m_Name: GalaxyRegionSmall
+  m_Name: SmallGalaxyToggle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1091,7 +1056,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2519613312300466664}
   m_Layer: 0
-  m_Name: HUD
+  m_Name: MainMenuControls
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1136,7 +1101,7 @@ GameObject:
   - component: {fileID: 1502836940556885535}
   - component: {fileID: 496565184680347451}
   m_Layer: 0
-  m_Name: Controllers
+  m_Name: MainMenuController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1295,7 +1260,7 @@ GameObject:
   - component: {fileID: 9106249955804032500}
   - component: {fileID: 4524076129725238189}
   m_Layer: 0
-  m_Name: GalaxyRegionLarge
+  m_Name: LargeGalaxyToggle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1458,7 +1423,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2519613312300466664}
-  - {fileID: 6436683952006541368}
   m_Father: {fileID: 113109931631730524}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1963,7 +1927,7 @@ GameObject:
   - component: {fileID: 7544506347434392943}
   - component: {fileID: 1496371334736117905}
   m_Layer: 5
-  m_Name: ExitSelectIcon
+  m_Name: PressedImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2026,41 +1990,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!1 &2806308725144584199
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8023549418111927131}
-  m_Layer: 5
-  m_Name: ShowCreditsButtonSound
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &8023549418111927131
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2806308725144584199}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2636351214168030717}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &4104738376288181545
 GameObject:
   m_ObjectHideFlags: 0
@@ -2451,7 +2380,7 @@ GameObject:
   - component: {fileID: 5585195861621731183}
   - component: {fileID: 1493056046065846210}
   m_Layer: 0
-  m_Name: GalaxyRegionMedium
+  m_Name: MediumGalaxyToggle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2642,7 +2571,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4046813571664641935}
   m_Layer: 0
-  m_Name: VictoryConditionButtonContainer
+  m_Name: VictoryConditionControl
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2713,7 +2642,7 @@ GameObject:
   - component: {fileID: 2081153273890142692}
   - component: {fileID: 3762209737567910244}
   m_Layer: 5
-  m_Name: SelectedOverlay
+  m_Name: PressedImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2791,7 +2720,7 @@ GameObject:
   - component: {fileID: 4695173900618911208}
   - component: {fileID: 287535894737444482}
   m_Layer: 5
-  m_Name: StartEmpireButton
+  m_Name: LeftFactionLaunchButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3159,7 +3088,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1701284976738575961}
   m_Layer: 0
-  m_Name: VictoryConditionsGroup
+  m_Name: VictoryConditionGroup
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3275,7 +3204,7 @@ GameObject:
   - component: {fileID: 885846100628831479}
   - component: {fileID: 6728043342433523034}
   m_Layer: 5
-  m_Name: ShowCreditsButton
+  m_Name: CreditsButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3292,8 +3221,7 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 8023549418111927131}
+  m_Children: []
   m_Father: {fileID: 2519613312300466664}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.6708864, y: 0.44184244}
@@ -3460,7 +3388,7 @@ GameObject:
   - component: {fileID: 2322482946369043442}
   - component: {fileID: 8057016632890189982}
   m_Layer: 5
-  m_Name: StartRebelButton
+  m_Name: RightFactionLaunchButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

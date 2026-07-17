@@ -18,14 +18,14 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     [SerializeField]
     private SaveMenuWindowView saveMenuWindow;
 
-    private readonly Dictionary<SaveMenuTacticalOption, bool> tacticalOptions =
-        new Dictionary<SaveMenuTacticalOption, bool>();
-
     private SaveMenuDataBuilder dataBuilder;
     private SaveGameManager saveGameManager;
     private AudioManager audioManager;
     private GameRuntime runtime;
+    private UserSettingsManager userSettingsManager;
+    private UserVideoSettings videoSettings;
     private bool exitConfirmationPending;
+    private bool userSettingsDirty;
     private bool viewBound;
 
     /// <summary>
@@ -37,6 +37,8 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         runtime = bootstrap.GetRuntime();
         audioManager = bootstrap.GetAudioManager();
+        userSettingsManager = bootstrap.GetUserSettingsManager();
+        videoSettings = userSettingsManager.Settings.Video;
         saveGameManager = SaveGameManager.Instance;
         dataBuilder = new SaveMenuDataBuilder(
             new FactionThemeLibrary(),
@@ -44,7 +46,6 @@ public sealed class SaveMenuSceneController : MonoBehaviour
             ResourceManager.TryGetTexture,
             GetVersionText()
         );
-        InitializeTacticalOptions();
     }
 
     /// <summary>
@@ -69,6 +70,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     private void OnDisable()
     {
         UnbindView();
+        SaveUserSettings();
     }
 
     /// <summary>
@@ -77,16 +79,6 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     private void OnRectTransformDimensionsChange()
     {
         UpdateContentHostLayout();
-    }
-
-    /// <summary>
-    /// Initializes every configured tactical option to the menu's enabled default.
-    /// </summary>
-    private void InitializeTacticalOptions()
-    {
-        tacticalOptions.Clear();
-        foreach (SaveMenuTacticalOption option in Enum.GetValues(typeof(SaveMenuTacticalOption)))
-            tacticalOptions.Add(option, true);
     }
 
     /// <summary>
@@ -145,10 +137,23 @@ public sealed class SaveMenuSceneController : MonoBehaviour
                 IsSavingAvailable(),
                 audioManager.MusicVolume,
                 audioManager.SfxVolume,
-                tacticalOptions,
+                CreateTacticalOptionSnapshot(),
                 exitConfirmationPending ? _exitConfirmationMessage : null
             )
         );
+    }
+
+    /// <summary>
+    /// Captures the persisted tactical options for immutable menu presentation.
+    /// </summary>
+    /// <returns>The current tactical option states.</returns>
+    private IReadOnlyDictionary<UserTacticalOption, bool> CreateTacticalOptionSnapshot()
+    {
+        Dictionary<UserTacticalOption, bool> snapshot = new Dictionary<UserTacticalOption, bool>();
+        foreach (UserTacticalOption option in Enum.GetValues(typeof(UserTacticalOption)))
+            snapshot.Add(option, videoSettings.IsEnabled(option));
+
+        return snapshot;
     }
 
     /// <summary>
@@ -246,6 +251,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     private void ToggleMusicVolume()
     {
         audioManager.SetMusicVolume(audioManager.MusicVolume > 0f ? 0f : 1f);
+        userSettingsDirty = true;
         RefreshAudioPresentation();
     }
 
@@ -255,7 +261,12 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// <param name="value">The normalized music volume.</param>
     private void SetMusicVolume(float value)
     {
-        audioManager.SetMusicVolume(Mathf.Clamp01(value));
+        float volume = Mathf.Clamp01(value);
+        if (Mathf.Approximately(audioManager.MusicVolume, volume))
+            return;
+
+        audioManager.SetMusicVolume(volume);
+        userSettingsDirty = true;
         RefreshAudioPresentation();
     }
 
@@ -265,8 +276,25 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// <param name="value">The normalized sound-effect volume.</param>
     private void SetSfxVolume(float value)
     {
-        audioManager.SetSfxVolume(Mathf.Clamp01(value));
+        float volume = Mathf.Clamp01(value);
+        if (Mathf.Approximately(audioManager.SfxVolume, volume))
+            return;
+
+        audioManager.SetSfxVolume(volume);
+        userSettingsDirty = true;
         RefreshAudioPresentation();
+    }
+
+    /// <summary>
+    /// Persists changed user settings without writing on every slider update.
+    /// </summary>
+    private void SaveUserSettings()
+    {
+        if (!userSettingsDirty || userSettingsManager == null)
+            return;
+
+        userSettingsManager.Save();
+        userSettingsDirty = false;
     }
 
     /// <summary>
@@ -281,16 +309,10 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// Toggles one typed tactical presentation option and refreshes the menu.
     /// </summary>
     /// <param name="option">The tactical option to toggle.</param>
-    private void ToggleTacticalOption(SaveMenuTacticalOption option)
+    private void ToggleTacticalOption(UserTacticalOption option)
     {
-        if (!tacticalOptions.TryGetValue(option, out bool enabled))
-            throw new ArgumentOutOfRangeException(
-                nameof(option),
-                option,
-                "Unknown tactical option."
-            );
-
-        tacticalOptions[option] = !enabled;
+        videoSettings.SetEnabled(option, !videoSettings.IsEnabled(option));
+        userSettingsDirty = true;
         Render();
     }
 

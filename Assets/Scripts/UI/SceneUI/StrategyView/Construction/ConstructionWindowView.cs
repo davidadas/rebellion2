@@ -662,7 +662,9 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
         for (int i = 0; i < buttonImages.Length; i++)
         {
             if (buttonImages[i] == null || buttonPressVisuals[i] == null)
-                throw new MissingReferenceException($"{name}/ButtonImage{i} is missing.");
+                throw new MissingReferenceException(
+                    $"{name}/Window command button slot {i} is missing."
+                );
         }
         if (selectedItemImage == null)
             throw new MissingReferenceException($"{name}/SelectedItemImage is missing.");

@@ -561,6 +561,13 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates the narrative report for completed Dagobah training.
+        /// </summary>
+        /// <param name="faction">The faction receiving the report.</param>
+        /// <param name="result">The completed narrative result.</param>
+        /// <param name="game">The game state used to select officer audio.</param>
+        /// <returns>The completed narrative message, or null when no officer is present.</returns>
         private Message CreateDagobahCompleted(
             Faction faction,
             DagobahCompletedResult result,
@@ -591,6 +598,12 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Creates the narrative report for a revealed officer heritage.
+        /// </summary>
+        /// <param name="faction">The faction receiving the report.</param>
+        /// <param name="result">The revealed heritage result.</param>
+        /// <returns>The heritage message, or null when no officer is present.</returns>
         private Message CreateHeritageRevealed(Faction faction, HeritageRevealedResult result)
         {
             Officer officer = result?.Officer;
@@ -1547,6 +1560,13 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Adds narrative event reports to the pending message deliveries.
+        /// </summary>
+        /// <param name="dagobahResults">The completed Dagobah narrative results.</param>
+        /// <param name="heritageResults">The revealed heritage results.</param>
+        /// <param name="game">The game state used to resolve message recipients.</param>
+        /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddNarrativeMessages(
             IEnumerable<DagobahCompletedResult> dagobahResults,
             IEnumerable<HeritageRevealedResult> heritageResults,
@@ -1987,6 +2007,11 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Resolves the default advisor notification for a message result type.
+        /// </summary>
+        /// <param name="resultType">The message result type, or null.</param>
+        /// <returns>The matching advisor notification code.</returns>
         private static AdvisorNotificationCode GetDefaultAdvisorNotification(
             MessageResultType? resultType
         )
@@ -2012,6 +2037,12 @@ namespace Rebellion.Game.Messages
             };
         }
 
+        /// <summary>
+        /// Assigns an advisor notification code to a message.
+        /// </summary>
+        /// <param name="message">The message to update.</param>
+        /// <param name="notification">The advisor notification code.</param>
+        /// <returns>The updated message, or null when no message was supplied.</returns>
         private static Message WithAdvisorNotification(
             Message message,
             AdvisorNotificationCode notification
@@ -2023,6 +2054,13 @@ namespace Rebellion.Game.Messages
             return message;
         }
 
+        /// <summary>
+        /// Assigns an officer-specific advisor notification to a message.
+        /// </summary>
+        /// <param name="message">The message to update.</param>
+        /// <param name="notification">The officer notification kind.</param>
+        /// <param name="officer">The officer represented by the notification.</param>
+        /// <returns>The updated message.</returns>
         private static Message WithAdvisorSubject(
             Message message,
             AdvisorSubjectNotification notification,
@@ -2216,6 +2254,12 @@ namespace Rebellion.Game.Messages
             return name ?? string.Empty;
         }
 
+        /// <summary>
+        /// Finds the first mission participant with audio for the requested outcome.
+        /// </summary>
+        /// <param name="result">The completed mission result.</param>
+        /// <param name="voiceLineType">The requested officer voice line type.</param>
+        /// <returns>The matching officer, or null when none is available.</returns>
         private static Officer GetMissionParticipantOfficer(
             MissionCompletedResult result,
             OfficerVoiceLineType voiceLineType
@@ -2225,6 +2269,11 @@ namespace Rebellion.Game.Messages
                 ?? GetFirstParticipantOfficer(result?.Mission?.GetAllParticipants(), voiceLineType);
         }
 
+        /// <summary>
+        /// Resolves the scene node opened from a completed mission message.
+        /// </summary>
+        /// <param name="result">The completed mission result.</param>
+        /// <returns>The first participant scene node or the mission itself.</returns>
         private static ISceneNode GetMissionNavigationTarget(MissionCompletedResult result)
         {
             return (result?.Participants ?? Enumerable.Empty<IMissionParticipant>())
@@ -2238,6 +2287,13 @@ namespace Rebellion.Game.Messages
                 ?? result?.Mission;
         }
 
+        /// <summary>
+        /// Resolves officer audio for a personnel message result.
+        /// </summary>
+        /// <param name="resultType">The personnel message result type.</param>
+        /// <param name="officer">The officer represented by the message.</param>
+        /// <param name="game">The game state used to select officer audio.</param>
+        /// <returns>The matching voice path, or null when no line applies.</returns>
         private static string GetOfficerMessageVoicePath(
             MessageResultType resultType,
             Officer officer,
@@ -2678,6 +2734,12 @@ namespace Rebellion.Game.Messages
             return MessageResultOutcome.None;
         }
 
+        /// <summary>
+        /// Resolves the fleet belonging to one faction in a space battle result.
+        /// </summary>
+        /// <param name="faction">The faction whose fleet should be returned.</param>
+        /// <param name="result">The space battle result.</param>
+        /// <returns>The faction's participating fleet, or null.</returns>
         private static Fleet GetSpaceBattleFleet(Faction faction, SpaceCombatResult result)
         {
             if (faction?.InstanceID == result?.AttackerFleet?.GetOwnerInstanceID())
