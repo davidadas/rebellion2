@@ -2424,6 +2424,11 @@ namespace Rebellion.Game.Messages
             return result.DestroyedCapitalShips.Any() || result.AttackerShipDamage.Any();
         }
 
+        /// <summary>
+        /// Gets the planet ownership selector that applied before bombardment changed control.
+        /// </summary>
+        /// <param name="result">The bombardment result.</param>
+        /// <returns>The planet ownership selector for the bombardment message.</returns>
         private static MessagePlanetOwnership GetBombardmentPlanetOwnership(
             BombardmentResult result
         )

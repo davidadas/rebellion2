@@ -139,6 +139,12 @@ namespace Rebellion.Systems
             return result;
         }
 
+        /// <summary>
+        /// Reconciles control after bombardment changes the defending garrison.
+        /// </summary>
+        /// <param name="planet">The bombarded planet.</param>
+        /// <param name="previousOwnerId">The faction instance ID that controlled the planet before bombardment.</param>
+        /// <returns>The ownership changes caused by control reconciliation and support propagation.</returns>
         internal List<PlanetOwnershipChangedResult> ResolveBombardmentControl(
             Planet planet,
             string previousOwnerId
@@ -172,6 +178,13 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Applies bombardment-related support shifts and resolves resulting control changes.
+        /// </summary>
+        /// <param name="planets">The planets receiving the support shift.</param>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <returns>The ownership changes caused by the support shifts.</returns>
         internal List<PlanetOwnershipChangedResult> ShiftBombardmentSupport(
             IEnumerable<Planet> planets,
             Faction faction,
@@ -220,6 +233,12 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Adjusts one faction's popular support on a populated planet.
+        /// </summary>
+        /// <param name="planet">The planet whose support changes.</param>
+        /// <param name="faction">The faction whose support is adjusted.</param>
+        /// <param name="shift">The signed support adjustment.</param>
         internal void ShiftPopularSupport(Planet planet, Faction faction, int shift)
         {
             if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
@@ -248,6 +267,11 @@ namespace Rebellion.Systems
             planet.SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
         }
 
+        /// <summary>
+        /// Removes direct ownership while preserving the planet's current support values.
+        /// </summary>
+        /// <param name="planet">The planet returning to neutral control.</param>
+        /// <returns>The ownership-change result.</returns>
         private PlanetOwnershipChangedResult NeutralizePlanet(Planet planet)
         {
             string previousOwnerId = planet.GetOwnerInstanceID();
@@ -265,6 +289,12 @@ namespace Rebellion.Systems
             return CreateOwnershipChangedResult(planet, previousOwner, null);
         }
 
+        /// <summary>
+        /// Transfers or clears planet ownership when the resolved controller changes.
+        /// </summary>
+        /// <param name="planet">The planet whose control is changing.</param>
+        /// <param name="newOwner">The resolved owner, or null for neutral control.</param>
+        /// <returns>The ownership-change result, or null when ownership is unchanged.</returns>
         private PlanetOwnershipChangedResult ChangePlanetControl(Planet planet, Faction newOwner)
         {
             if (planet.GetOwnerInstanceID() == newOwner?.InstanceID)
@@ -273,6 +303,11 @@ namespace Rebellion.Systems
             return newOwner == null ? NeutralizePlanet(planet) : TransferPlanet(planet, newOwner);
         }
 
+        /// <summary>
+        /// Finds the faction whose support qualifies it to control a planet.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The qualifying faction with the greatest support, or null when none qualifies.</returns>
         private Faction GetSupportController(Planet planet)
         {
             int threshold = _game.Config.SupportShift.OwnershipTransferThreshold;
@@ -283,6 +318,11 @@ namespace Rebellion.Systems
                 .FirstOrDefault();
         }
 
+        /// <summary>
+        /// Resolves control from active regiments before falling back to popular support.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         private Faction GetPlanetController(Planet planet)
         {
             List<string> regimentOwners = planet
@@ -305,6 +345,11 @@ namespace Rebellion.Systems
             return GetSupportController(planet);
         }
 
+        /// <summary>
+        /// Limits propagated control-change support shifts to one per displaced faction each tick.
+        /// </summary>
+        /// <param name="previousController">The faction displaced by the control change.</param>
+        /// <returns>True when the support shift may be propagated.</returns>
         private bool CanApplyControlSupportShift(Faction previousController)
         {
             if (previousController == null)
@@ -319,6 +364,13 @@ namespace Rebellion.Systems
             return _controlShiftedOwners.Add(previousController.InstanceID);
         }
 
+        /// <summary>
+        /// Adds valid support-shift work items to the pending queue.
+        /// </summary>
+        /// <param name="pending">The queue receiving support shifts.</param>
+        /// <param name="planets">The planets to enqueue.</param>
+        /// <param name="faction">The faction whose support changes.</param>
+        /// <param name="shift">The signed support adjustment.</param>
         private static void EnqueueSupportShifts(
             Queue<(Planet planet, Faction faction, int shift)> pending,
             IEnumerable<Planet> planets,
@@ -333,6 +385,11 @@ namespace Rebellion.Systems
                 pending.Enqueue((planet, faction, shift));
         }
 
+        /// <summary>
+        /// Gets populated, intact planets affected by a system-level support shift.
+        /// </summary>
+        /// <param name="system">The planet system to inspect.</param>
+        /// <returns>The planets eligible for the support shift.</returns>
         private static IEnumerable<Planet> GetAffectedPlanets(PlanetSystem system)
         {
             return system?.Planets.Where(planet => planet.IsPopulated() && !planet.IsDestroyed)
@@ -383,6 +440,13 @@ namespace Rebellion.Systems
                 && planet.GetAllRegiments().Count == 0;
         }
 
+        /// <summary>
+        /// Creates the result describing a completed planet ownership change.
+        /// </summary>
+        /// <param name="planet">The planet whose ownership changed.</param>
+        /// <param name="previousOwner">The faction that previously controlled the planet.</param>
+        /// <param name="newOwner">The faction that now controls the planet.</param>
+        /// <returns>The populated ownership-change result.</returns>
         private PlanetOwnershipChangedResult CreateOwnershipChangedResult(
             Planet planet,
             Faction previousOwner,
