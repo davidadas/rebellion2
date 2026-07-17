@@ -81,6 +81,8 @@ namespace Rebellion.Game.Factions
         /// </summary>
         public SupportShiftCondition WeakSupportPenaltyTrigger { get; set; } =
             SupportShiftCondition.Positive;
+
+        public bool HeadquartersCanBeBombarded { get; set; }
     }
 
     /// <summary>

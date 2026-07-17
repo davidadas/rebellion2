@@ -13,7 +13,16 @@ namespace Rebellion.Tests.AI.Director
         [Test]
         public void AddProposal_WithNullProposal_DoesNotAddProposal()
         {
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
 
             context.AddProposal(null);
 
@@ -23,7 +32,16 @@ namespace Rebellion.Tests.AI.Director
         [Test]
         public void SetSelectedProposals_WithNewBatch_ReplacesExistingSelection()
         {
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
             TestAIProposal first = new TestAIProposal("first");
             TestAIProposal second = new TestAIProposal("second");
             context.SetSelectedProposals(new List<AIProposal> { first });
@@ -37,7 +55,16 @@ namespace Rebellion.Tests.AI.Director
         [Test]
         public void AddResult_WithNullResult_DoesNotAddResult()
         {
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
 
             context.AddResult(null);
 
@@ -47,7 +74,16 @@ namespace Rebellion.Tests.AI.Director
         [Test]
         public void AddResults_WithResultBatch_AddsNonNullResults()
         {
-            AITurnContext context = new AITurnContext(null, null, null, null, null, null, null);
+            AITurnContext context = new AITurnContext(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            );
             PlanetStatChangedResult result = new PlanetStatChangedResult();
 
             context.AddResults(new GameResult[] { null, result });

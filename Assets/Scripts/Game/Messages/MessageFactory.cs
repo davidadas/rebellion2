@@ -8,7 +8,6 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 
 namespace Rebellion.Game.Messages
 {
@@ -961,7 +960,7 @@ namespace Rebellion.Game.Messages
                     GetDefinition(
                         MessageResultType.Bombardment,
                         GetBombardmentOutcome(result),
-                        GetPlanetOwnership(result.Planet)
+                        GetBombardmentPlanetOwnership(result)
                     ),
                     faction,
                     new Dictionary<string, string>
@@ -1628,7 +1627,9 @@ namespace Rebellion.Game.Messages
 
             foreach (BombardmentResult result in bombardmentResults)
             {
-                Faction defender = GetFaction(game, result.Planet?.OwnerInstanceID);
+                Faction defender =
+                    result.OwnershipChange?.PreviousOwner
+                    ?? GetFaction(game, result.Planet?.OwnerInstanceID);
                 AddDelivery(
                     deliveries,
                     result.AttackingFaction,
@@ -2405,22 +2406,12 @@ namespace Rebellion.Game.Messages
         /// <returns>True when target-side assets were destroyed; otherwise false.</returns>
         private static bool HasBombardmentTargetLosses(BombardmentResult result)
         {
-            if (result.DestroyedBuildings.Any() || result.DestroyedStarfighters.Any())
-                return true;
-
-            if (
-                result.Strikes.Any(strike =>
-                    strike.Lane == BombardmentLaneType.CapitalShip
-                    || strike.Lane == BombardmentLaneType.Starfighter
-                    || strike.Lane == BombardmentLaneType.Building
-                )
-            )
-                return true;
-
-            string attackerID = result.AttackingFaction?.InstanceID;
-            return result.DestroyedRegiments.Any(regiment =>
-                regiment.GetOwnerInstanceID() != attackerID
-            );
+            return result.PlanetDestroyed
+                || result.HeadquartersDestroyed
+                || result.EnergyCapacityDamage > 0
+                || result.AllocatedEnergyDamage > 0
+                || result.DestroyedBuildings.Any()
+                || result.DestroyedRegiments.Any();
         }
 
         /// <summary>
@@ -2430,11 +2421,24 @@ namespace Rebellion.Game.Messages
         /// <returns>True when attacker-side regiments were destroyed; otherwise false.</returns>
         private static bool HasBombardmentAttackerLosses(BombardmentResult result)
         {
-            string attackerID = result.AttackingFaction?.InstanceID;
-            return !string.IsNullOrEmpty(attackerID)
-                && result.DestroyedRegiments.Any(regiment =>
-                    regiment.GetOwnerInstanceID() == attackerID
-                );
+            return result.DestroyedCapitalShips.Any() || result.AttackerShipDamage.Any();
+        }
+
+        /// <summary>
+        /// Gets the planet ownership selector that applied before bombardment changed control.
+        /// </summary>
+        /// <param name="result">The bombardment result.</param>
+        /// <returns>The planet ownership selector for the bombardment message.</returns>
+        private static MessagePlanetOwnership GetBombardmentPlanetOwnership(
+            BombardmentResult result
+        )
+        {
+            if (result?.OwnershipChange != null)
+                return result.OwnershipChange.PreviousOwner == null
+                    ? MessagePlanetOwnership.Neutral
+                    : MessagePlanetOwnership.Owned;
+
+            return GetPlanetOwnership(result?.Planet);
         }
 
         /// <summary>

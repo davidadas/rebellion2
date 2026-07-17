@@ -713,7 +713,7 @@ namespace Rebellion.Game.Results
 
     public class BombardmentStrikeEvent
     {
-        public BombardmentLaneType Lane { get; set; }
+        public BombardmentTargetType TargetType { get; set; }
         public IGameEntity Target { get; set; }
         public string TargetName { get; set; }
     }
@@ -725,19 +725,24 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
-        public int FleetBombardmentStrength { get; set; }
-        public int PlanetaryDefenseValue { get; set; }
-        public int NetStrikes { get; set; }
-        public bool ShieldBlocked { get; set; }
-        public int EnergyDamage { get; set; }
-        public int PopularSupportShift { get; set; }
+        public BombardmentType Type { get; set; }
+        public int BombardmentStrength { get; set; }
+        public int ShieldStrength { get; set; }
+        public int StrikeAttempts { get; set; }
+        public int SuccessfulStrikes { get; set; }
+        public int EnergyCapacityDamage { get; set; }
+        public int AllocatedEnergyDamage { get; set; }
+        public bool HeadquartersDestroyed { get; set; }
+        public bool PlanetDestroyed { get; set; }
         public List<BombardmentStrikeEvent> Strikes { get; set; } =
             new List<BombardmentStrikeEvent>();
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
-        public List<Starfighter> DestroyedStarfighters { get; set; } = new List<Starfighter>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
+        public List<CapitalShip> DestroyedCapitalShips { get; set; } = new List<CapitalShip>();
+        public List<ShipDamageResult> AttackerShipDamage { get; set; } =
+            new List<ShipDamageResult>();
+        public List<GameResult> Events { get; set; } = new List<GameResult>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
-        public int GarrisonRequirement { get; set; }
     }
 
     /// <summary>
@@ -747,14 +752,18 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
-        public int AssaultStrength { get; set; }
-        public int DefenseStrength { get; set; }
         public bool Success { get; set; }
-        public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
-        public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
-        public int EnergyDamage { get; set; }
-        public bool OwnershipChanged { get; set; }
-        public Faction NewOwner { get; set; }
+        public bool BlockedByShields { get; set; }
+        public int InitialAttackerRegimentCount { get; set; }
+        public int RemainingAttackerRegimentCount { get; set; }
+        public int InitialDefenderRegimentCount { get; set; }
+        public int RemainingDefenderRegimentCount { get; set; }
+        public int EnergyCapacityDamage { get; set; }
+        public int AllocatedEnergyDamage { get; set; }
+        public List<Regiment> DestroyedAttackerRegiments { get; set; } = new List<Regiment>();
+        public List<Regiment> DestroyedDefenderRegiments { get; set; } = new List<Regiment>();
+        public List<Building> CollateralDestroyedBuildings { get; set; } = new List<Building>();
+        public List<Regiment> LandedRegiments { get; set; } = new List<Regiment>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
     }
 

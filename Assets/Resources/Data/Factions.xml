@@ -15,6 +15,7 @@
       <UprisingResistance>1</UprisingResistance>
       <InvertSupportShift>false</InvertSupportShift>
       <WeakSupportPenaltyTrigger>Positive</WeakSupportPenaltyTrigger>
+      <HeadquartersCanBeBombarded>true</HeadquartersCanBeBombarded>
     </Settings>
   </Faction>
   <Faction>
@@ -30,6 +31,7 @@
       <UprisingResistance>2</UprisingResistance>
       <InvertSupportShift>true</InvertSupportShift>
       <WeakSupportPenaltyTrigger>Negative</WeakSupportPenaltyTrigger>
+      <HeadquartersCanBeBombarded>false</HeadquartersCanBeBombarded>
     </Settings>
   </Faction>
 </Factions>

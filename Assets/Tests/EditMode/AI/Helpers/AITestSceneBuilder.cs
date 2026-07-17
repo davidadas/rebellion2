@@ -146,7 +146,8 @@ namespace Rebellion.Tests.AI.Helpers
             MissionSystem missions = null,
             MovementSystem movement = null,
             ManufacturingSystem manufacturing = null,
-            CombatSystem combat = null,
+            BombardmentSystem bombardment = null,
+            PlanetaryAssaultSystem planetaryAssault = null,
             IRandomNumberProvider random = null
         )
         {
@@ -164,7 +165,8 @@ namespace Rebellion.Tests.AI.Helpers
                 missionSystem,
                 movementSystem,
                 manufacturingSystem,
-                combat,
+                bombardment,
+                planetaryAssault,
                 provider
             );
         }
