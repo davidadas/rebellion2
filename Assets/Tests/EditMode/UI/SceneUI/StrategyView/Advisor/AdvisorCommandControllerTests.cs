@@ -53,6 +53,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
             Assert.AreSame(farProducer, producer);
         }
 
+        [Test]
+        public void FindProducerPlanet_MissingFactionOrDestination_ReturnsNull()
+        {
+            Faction faction = new Faction { InstanceID = "faction" };
+            Planet destination = new Planet();
+
+            Planet missingFaction = AdvisorCommandController.FindProducerPlanet(
+                null,
+                ManufacturingType.Troop,
+                destination
+            );
+            Planet missingDestination = AdvisorCommandController.FindProducerPlanet(
+                faction,
+                ManufacturingType.Troop,
+                null
+            );
+
+            Assert.IsNull(missingFaction);
+            Assert.IsNull(missingDestination);
+        }
+
         private static Planet CreateProductionPlanet(
             string instanceId,
             string ownerInstanceId,

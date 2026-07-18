@@ -65,6 +65,30 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         }
 
         [Test]
+        public void VerifyReferences_AuthoredPrefab_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(_view.VerifyReferences);
+        }
+
+        [Test]
+        public void OnEnable_AuthoredRow_BindsButtonWithoutRender()
+        {
+            UserTacticalOption? requestedOption = null;
+            _view.ToggleRequested += option => requestedOption = option;
+
+            UIComponentTestHelper.InvokeLifecycle(_view, "OnEnable");
+            GetField<Button>("button").onClick.Invoke();
+
+            Assert.AreEqual(_view.Option, requestedOption);
+        }
+
+        [Test]
+        public void OnDisable_UnboundRow_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() => UIComponentTestHelper.InvokeLifecycle(_view, "OnDisable"));
+        }
+
+        [Test]
         public void OnDisable_BoundRow_UnbindsButton()
         {
             _view.Render(true);

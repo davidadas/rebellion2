@@ -219,6 +219,12 @@ public class SaveGameManager
         SaveSlotGameData(game, slot, null);
     }
 
+    /// <summary>
+    /// Saves game data to one numbered save slot with a display name.
+    /// </summary>
+    /// <param name="game">The game data to save.</param>
+    /// <param name="slot">The zero-based save slot index.</param>
+    /// <param name="displayName">The display name to store in save metadata.</param>
     public void SaveSlotGameData(GameRoot game, int slot, string displayName)
     {
         if (!IsValidSaveSlot(slot))

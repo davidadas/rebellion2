@@ -213,6 +213,74 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.AreEqual(oneRowHeight * 3, threeRowHeight);
         }
 
+        [Test]
+        public void Render_UnchangedOpenDropdown_PreservesScrollPosition()
+        {
+            StrategyDropdownItemRenderData[] items = CreateDropdownItems(20, "Item");
+            ScrollAreaView scrollArea = _viewObject
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single();
+            _view.Render(CreateRenderData(items, true, true));
+            scrollArea.RelayScroll(
+                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
+            );
+            float scrolledOffset = scrollArea.ContentRoot.anchoredPosition.y;
+
+            _view.Render(CreateRenderData(items, true, true));
+
+            Assert.Greater(scrolledOffset, 0f);
+            Assert.AreEqual(scrolledOffset, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+        }
+
+        [Test]
+        public void Render_ChangedOpenDropdown_ResetsScrollPosition()
+        {
+            ScrollAreaView scrollArea = _viewObject
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single();
+            _view.Render(CreateRenderData(CreateDropdownItems(20, "Item"), true, true));
+            scrollArea.RelayScroll(
+                new PointerEventData(null) { scrollDelta = new Vector2(0f, -1f) }
+            );
+
+            _view.Render(CreateRenderData(CreateDropdownItems(20, "Changed"), true, true));
+
+            Assert.AreEqual(0f, scrollArea.ContentRoot.anchoredPosition.y, 0.001f);
+        }
+
+        [Test]
+        public void AwakeThenOnDestroy_AuthoredControls_BindsThenUnbindsAndRaisesDestroyed()
+        {
+            int incrementCount = 0;
+            int itemSelectedCount = 0;
+            ConstructionWindowView destroyedView = null;
+            _view.IncrementRequested += _ => incrementCount++;
+            _view.ItemSelected += (_, _) => itemSelectedCount++;
+            _view.Destroyed += view => destroyedView = view;
+            Button incrementButton = FindComponent<Button>("IncrementButtonImage");
+
+            UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "Item", Color.white) },
+                    true,
+                    true
+                )
+            );
+            StrategyDropdownItemView row = _viewObject
+                .GetComponentsInChildren<StrategyDropdownItemView>(true)
+                .Single(item => item.name == "DropdownItemRow0");
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            incrementButton.onClick.Invoke();
+            UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            incrementButton.onClick.Invoke();
+            row.GetComponentInChildren<Button>(true).onClick.Invoke();
+
+            Assert.AreEqual(1, incrementCount);
+            Assert.AreEqual(0, itemSelectedCount);
+            Assert.AreSame(_view, destroyedView);
+        }
+
         private ConstructionWindowRenderData CreateRenderData(
             StrategyDropdownItemRenderData[] items,
             bool dropdownOpen,
@@ -236,6 +304,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 canStart,
                 items
             );
+        }
+
+        private StrategyDropdownItemRenderData[] CreateDropdownItems(int count, string prefix)
+        {
+            return Enumerable
+                .Range(0, count)
+                .Select(index => new StrategyDropdownItemRenderData(
+                    _texture,
+                    $"{prefix} {index}",
+                    Color.white
+                ))
+                .ToArray();
         }
 
         private T FindComponent<T>(string objectName)

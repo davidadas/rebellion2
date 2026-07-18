@@ -210,6 +210,119 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
+        public void OpenStopConstruction_BuildingItem_RendersPromptAndPlaysStopSound()
+        {
+            Building building = new Building
+            {
+                DisplayName = "Shield Generator",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                OwnerInstanceID = _playerFactionId,
+            };
+
+            _controller.OpenStopConstruction(_sourceWindow, new ISceneNode[] { building });
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindows();
+
+            string[] lines = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Where(text => text.gameObject.activeSelf)
+                .Select(text => text.text)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Are you sure you want to stop construction of the following?",
+                    "Shield Generator",
+                },
+                lines
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    _uiContext.GetPlayerFactionTheme().ConfirmDialogTheme.StopConstructionSoundPath,
+                },
+                _playedSounds
+            );
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void OpenRetire_EligibleOfficer_RendersPromptAndPlaysRetireSound()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer",
+                DisplayName = "General Veers",
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(officer, _sourceShip.GetParentOfType<Planet>());
+
+            _controller.OpenRetire(_sourceWindow, new ISceneNode[] { officer }, _playerFactionId);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindows();
+
+            string[] lines = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Where(text => text.gameObject.activeSelf)
+                .Select(text => text.text)
+                .ToArray();
+            CollectionAssert.AreEqual(new[] { "Retire these personnel?", "General Veers" }, lines);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    _uiContext.GetPlayerFactionTheme().ConfirmDialogTheme.ScrapRetireSoundPath,
+                },
+                _playedSounds
+            );
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
+        public void OpenMove_EligibleShip_RendersTransitPromptWithoutPromptSound()
+        {
+            GamePlanetSystem destinationSystem = new GamePlanetSystem
+            {
+                InstanceID = "destination-system",
+            };
+            _game.AttachNode(destinationSystem, _game.GetGalaxyMap());
+            Planet destinationPlanet = new Planet
+            {
+                InstanceID = "destination-planet",
+                OwnerInstanceID = _playerFactionId,
+                IsColonized = true,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            _game.AttachNode(destinationPlanet, destinationSystem);
+            StrategyMissionTarget target = new StrategyMissionTarget(
+                new GalaxyMapPlanet(destinationSystem, destinationPlanet, string.Empty),
+                null
+            );
+
+            _controller.OpenMove(
+                _sourceWindow,
+                target,
+                new ISceneNode[] { _sourceShip },
+                _playerFactionId
+            );
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindows();
+
+            string[] lines = view.GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Where(text => text.gameObject.activeSelf)
+                .Select(text => text.text)
+                .ToArray();
+            StringAssert.StartsWith("Transit Time in Days ", lines[0]);
+            Assert.AreEqual("Assault Frigate", lines[1]);
+            Assert.IsEmpty(_playedSounds);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesSessionState()
         {
             ConfirmDialogWindowView view = OpenScrapAndInitializeView(out UIWindow window);
@@ -281,6 +394,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 InstanceID = "ship",
                 DisplayName = "Assault Frigate",
                 OwnerInstanceID = _playerFactionId,
+                Hyperdrive = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(ship, fleet);

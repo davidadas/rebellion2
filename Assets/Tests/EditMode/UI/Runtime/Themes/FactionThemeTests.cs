@@ -27,6 +27,16 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
+        public void GetPrimaryColor_WhitespaceHex_ReturnsWhite()
+        {
+            FactionTheme theme = new FactionTheme { FactionPrimaryColorHex = "   " };
+
+            Color color = theme.GetPrimaryColor();
+
+            Assert.AreEqual(Color.white, color);
+        }
+
+        [Test]
         public void GetPrimaryColor_AfterFirstRead_ReturnsCachedColor()
         {
             FactionTheme theme = new FactionTheme { FactionPrimaryColorHex = "#123456" };

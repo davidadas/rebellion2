@@ -57,6 +57,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void VerifyReferences_AuthoredPrefab_DoesNotThrow()
+        {
+            Assert.DoesNotThrow(() =>
+                UIComponentTestHelper.InvokeLifecycle(_view, "VerifyReferences")
+            );
+        }
+
+        [Test]
         public void TryGetSelectedDifficulty_SelectedAuthoredToggle_ReturnsMappedDifficulty()
         {
             Array bindings = GetBindings("difficultyBindings");

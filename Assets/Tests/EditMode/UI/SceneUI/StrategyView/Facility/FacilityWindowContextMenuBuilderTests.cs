@@ -66,6 +66,84 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsFalse(stop.Enabled);
         }
 
+        [Test]
+        public void Build_InventoryItemUnderConstruction_ReturnsEnabledStopCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Building };
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Construction,
+                null,
+                building,
+                "owner"
+            );
+
+            StrategyMenuCommand command = commands.Single(item =>
+                item.Action == StrategyContextMenuActions.Stop
+            );
+            Assert.AreEqual("Stop", command.Text);
+            Assert.IsTrue(command.Enabled);
+        }
+
+        [Test]
+        public void Build_CompletedInventoryItem_ReturnsEnabledScrapCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Construction,
+                null,
+                building,
+                "owner"
+            );
+
+            StrategyMenuCommand command = commands.Single(item =>
+                item.Action == StrategyContextMenuActions.Scrap
+            );
+            Assert.AreEqual("Scrap", command.Text);
+            Assert.IsTrue(command.Enabled);
+        }
+
+        [Test]
+        public void Build_InventoryItemOwnedByAnotherFaction_DisablesDestructiveCommand()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+            Building building = new Building { ManufacturingStatus = ManufacturingStatus.Complete };
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Construction,
+                null,
+                building,
+                "other"
+            );
+
+            StrategyMenuCommand command = commands.Single(item =>
+                item.Action == StrategyContextMenuActions.Scrap
+            );
+            Assert.IsFalse(command.Enabled);
+        }
+
+        [Test]
+        public void Build_NoTarget_ReturnsNoCommands()
+        {
+            Planet planet = CreatePlanet(withBuildingQueue: false);
+
+            List<StrategyMenuCommand> commands = FacilityWindowContextMenuBuilder.Build(
+                planet,
+                FacilityWindowTab.Manufacturing,
+                null,
+                null,
+                "owner"
+            );
+
+            Assert.IsEmpty(commands);
+        }
+
         private static Planet CreatePlanet(bool withBuildingQueue)
         {
             Planet planet = new Planet { InstanceID = "planet", OwnerInstanceID = "owner" };

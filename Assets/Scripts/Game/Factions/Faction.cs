@@ -538,6 +538,11 @@ namespace Rebellion.Game.Factions
             messages.Add(message);
         }
 
+        /// <summary>
+        /// Returns whether advisor notifications are enabled for one message category.
+        /// </summary>
+        /// <param name="messageType">The message category to inspect.</param>
+        /// <returns>True when advisor notifications are enabled for the category.</returns>
         public bool IsAdvisorMessageNotificationEnabled(MessageType messageType)
         {
             return
@@ -547,6 +552,10 @@ namespace Rebellion.Game.Factions
                 : AdvisorMessageNotificationsEnabled;
         }
 
+        /// <summary>
+        /// Toggles advisor notifications for one message category.
+        /// </summary>
+        /// <param name="messageType">The message category to toggle.</param>
         public void ToggleAdvisorMessageNotification(MessageType messageType)
         {
             AdvisorMessageNotifications ??= new Dictionary<MessageType, bool>();
@@ -555,6 +564,9 @@ namespace Rebellion.Game.Factions
             );
         }
 
+        /// <summary>
+        /// Toggles the default advisor notification state for every message category.
+        /// </summary>
         public void ToggleAllAdvisorMessageNotifications()
         {
             AdvisorMessageNotificationsEnabled = !AdvisorMessageNotificationsEnabled;

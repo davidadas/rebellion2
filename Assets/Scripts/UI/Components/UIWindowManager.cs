@@ -148,7 +148,12 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         MonoBehaviour view = window.Content;
         Unregister(window);
         if (view != null)
-            Destroy(view.gameObject);
+        {
+            if (Application.isPlaying)
+                Destroy(view.gameObject);
+            else
+                DestroyImmediate(view.gameObject);
+        }
     }
 
     /// <summary>
