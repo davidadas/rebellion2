@@ -3,6 +3,7 @@ using Rebellion.AI.Director;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Systems;
 
 namespace Rebellion.AI.Proposals
 {
@@ -171,20 +172,22 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (context.Combat == null)
-                return;
-
             if (ShouldAssault(context))
             {
                 ExecuteAssault(context);
                 return;
             }
 
-            BombardmentResult bombardmentResult = context.Combat.ExecuteOrbitalBombardment(
+            if (context.Bombardment == null)
+                return;
+
+            BombardmentResult bombardmentResult = context.Bombardment.Execute(
                 new List<Fleet> { Fleet },
-                TargetPlanet
+                TargetPlanet,
+                BombardmentType.Military
             );
             context.AddResult(bombardmentResult);
+            context.AddResults(bombardmentResult.Events);
             context.AddResult(bombardmentResult.OwnershipChange);
 
             if (TryClearCompletedAttackOrder(context) || !CanExecute(context))
@@ -200,7 +203,10 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         private void ExecuteAssault(AITurnContext context)
         {
-            PlanetaryAssaultResult assaultResult = context.Combat.ExecutePlanetaryAssault(
+            if (context.PlanetaryAssault == null)
+                return;
+
+            PlanetaryAssaultResult assaultResult = context.PlanetaryAssault.Execute(
                 new List<Fleet> { Fleet },
                 TargetPlanet
             );
@@ -260,7 +266,7 @@ namespace Rebellion.AI.Proposals
             if (context.Game?.Config?.AI.EnablePlanetaryAssaults != true)
                 return false;
 
-            int assaultDivisor = context.Game.Config.Combat.AssaultPersonnelDivisor;
+            int assaultDivisor = context.Game.Config.Combat.PlanetaryAssault.PersonnelDivisor;
             int assaultStrength = Fleet.GetAssaultStrength(assaultDivisor);
             int minimumStrength = context.Game.Config.AI.FleetDeployment.MinimumAttackStrength;
             int defenseRequirement =

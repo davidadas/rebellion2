@@ -30,7 +30,6 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         [TearDown]
         public void TearDown()
         {
-            Time.timeScale = 1f;
             if (_manager != null)
             {
                 CutscenePlayer player = GetField<CutscenePlayer>("activePlayer");
@@ -46,6 +45,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             if (_secondaryObject != null)
                 UnityEngine.Object.DestroyImmediate(_secondaryObject);
+
+            Time.timeScale = 1f;
         }
 
         [Test]
@@ -100,6 +101,39 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsNotNull(player);
             Assert.AreEqual(0f, Time.timeScale);
             Assert.AreSame(_clip, player.GetComponent<VideoPlayer>().clip);
+        }
+
+        [Test]
+        public void OnDestroy_ActivePlayback_RestoresPreviousTimeScale()
+        {
+            Time.timeScale = 0.75f;
+            _manager.Play(_clip, null);
+
+            UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
+            UnityEngine.Object.DestroyImmediate(_manager.gameObject);
+            _manager = null;
+
+            Assert.AreEqual(0.75f, Time.timeScale);
+        }
+
+        [Test]
+        public void Play_ReplacementClip_PreservesInitialTimeScaleForRestoration()
+        {
+            Time.timeScale = 0.75f;
+            _manager.Play(_clip, null);
+            CutscenePlayer firstPlayer = GetField<CutscenePlayer>("activePlayer");
+
+            _manager.Play(_clip, null);
+            CutscenePlayer secondPlayer = GetField<CutscenePlayer>("activePlayer");
+
+            Assert.AreNotSame(firstPlayer, secondPlayer);
+            Assert.AreEqual(0f, Time.timeScale);
+
+            UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
+            UnityEngine.Object.DestroyImmediate(_manager.gameObject);
+            _manager = null;
+
+            Assert.AreEqual(0.75f, Time.timeScale);
         }
 
         [Test]

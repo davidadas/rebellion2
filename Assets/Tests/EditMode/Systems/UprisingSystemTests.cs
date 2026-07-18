@@ -58,11 +58,15 @@ namespace Rebellion.Tests.Systems
                 game.AttachNode(regiment, planet);
             }
 
-            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game),
+                new ManufacturingSystem(game, new FleetSystem(game)),
                 new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
@@ -288,11 +292,15 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game),
+                new ManufacturingSystem(game, new FleetSystem(game)),
                 new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
@@ -337,11 +345,15 @@ namespace Rebellion.Tests.Systems
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             game.AttachNode(regiment, planet);
 
-            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game),
+                new ManufacturingSystem(game, new FleetSystem(game)),
                 new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
@@ -389,11 +401,15 @@ namespace Rebellion.Tests.Systems
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             game.AttachNode(regiment, planet);
 
-            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game),
+                new ManufacturingSystem(game, new FleetSystem(game)),
                 new FogOfWarSystem(game)
             );
             UprisingSystem uprisingSystem = new UprisingSystem(
@@ -607,11 +623,15 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            MovementSystem movementSystem = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movementSystem = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             PlanetaryControlSystem controlSystem = new PlanetaryControlSystem(
                 game,
                 movementSystem,
-                new ManufacturingSystem(game),
+                new ManufacturingSystem(game, new FleetSystem(game)),
                 new FogOfWarSystem(game)
             );
             return (game, planet, empire, controlSystem);

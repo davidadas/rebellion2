@@ -8,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -55,11 +56,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _targetingController = new TargetingController();
             _fleetCommandController = new StrategyFleetCommandController(
                 () => _game,
+                () => new FleetSystem(_game),
                 (_, _) => null
             );
             _controller = CreateController();
             TestActions actions = new TestActions();
-            _controller.Initialize(actions, actions, (_, _, _) => { }, _ => { }, _ => { });
+            _controller.Initialize(actions, actions, actions, (_, _, _) => { }, _ => { }, _ => { });
         }
 
         [TearDown]
@@ -90,7 +92,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             TestActions actions = new TestActions();
 
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, actions, (_, _, _) => { }, _ => { }, _ => { })
+                _controller.Initialize(null, actions, actions, (_, _, _) => { }, _ => { }, _ => { })
             );
         }
 
@@ -322,8 +324,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             return view;
         }
 
-        private sealed class TestActions : IFleetWindowActions, IStrategyWindowCommandActions
+        private sealed class TestActions
+            : IFleetWindowActions,
+                IStrategyWindowCommandActions,
+                IStrategyConfirmationActions
         {
+            public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
             public void OpenFleetEncyclopediaWindow(IReadOnlyList<ISceneNode> items) { }
 
             public void OpenFleetStatusWindow(
@@ -331,17 +338,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void OpenFleetScrapConfirmWindow(
+            public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void OpenFleetStopConstructionConfirmWindow(
+            public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void OpenFleetRetireConfirmWindow(
+            public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }

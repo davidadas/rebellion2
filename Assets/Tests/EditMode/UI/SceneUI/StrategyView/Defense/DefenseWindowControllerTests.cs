@@ -49,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _targetingController = new TargetingController();
             _controller = CreateController();
             TestActions actions = new TestActions();
-            _controller.Initialize(actions, actions, (_, _, _) => { }, _ => { }, _ => { });
+            _controller.Initialize(actions, actions, actions, (_, _, _) => { }, _ => { }, _ => { });
         }
 
         [TearDown]
@@ -79,7 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             TestActions actions = new TestActions();
 
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, actions, (_, _, _) => { }, _ => { }, _ => { })
+                _controller.Initialize(null, actions, actions, (_, _, _) => { }, _ => { }, _ => { })
             );
         }
 
@@ -284,23 +284,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             return view;
         }
 
-        private sealed class TestActions : IDefenseWindowActions, IStrategyWindowCommandActions
+        private sealed class TestActions
+            : IDefenseWindowActions,
+                IStrategyWindowCommandActions,
+                IStrategyConfirmationActions
         {
+            public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
             public void OpenDefenseStatusWindow(StrategyStatusTarget target) { }
 
             public void OpenDefenseInfoWindow(StrategyStatusTarget target) { }
 
-            public void OpenDefenseScrapConfirmWindow(
+            public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void OpenDefenseStopConstructionConfirmWindow(
+            public void OpenStopConstructionConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void OpenDefenseRetireConfirmWindow(
+            public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }

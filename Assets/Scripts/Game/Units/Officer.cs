@@ -388,6 +388,11 @@ namespace Rebellion.Game.Units
             return paths?.Count > 0;
         }
 
+        /// <summary>
+        /// Gets the available voice paths for an officer event.
+        /// </summary>
+        /// <param name="voiceLineType">The officer event requesting a voice response.</param>
+        /// <returns>The matching voice paths, or null when the event has no configured paths.</returns>
         private IReadOnlyList<string> GetVoicePaths(OfficerVoiceLineType voiceLineType)
         {
             IReadOnlyList<string> advancedPaths = voiceLineType switch

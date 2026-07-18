@@ -77,7 +77,11 @@ namespace Rebellion.Tests.Systems
             captive.Loyalty = 80;
             game.AttachNode(captive, rebelPlanet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             return (game, rebelPlanet, captive, movement);
         }
 

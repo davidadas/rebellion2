@@ -281,7 +281,7 @@ namespace Rebellion.Game.Units
         /// Fleets without a General get a baseline strength equal to the combat value.
         /// </summary>
         /// <param name="assaultPersonnelDivisor">
-        /// Divisor from <see cref="GameConfig.CombatConfig.AssaultPersonnelDivisor"/>.
+        /// Divisor from <see cref="GameConfig.PlanetaryAssaultConfig.PersonnelDivisor"/>.
         /// </param>
         /// <returns>The fleet's assault strength.</returns>
         public int GetAssaultStrength(int assaultPersonnelDivisor)

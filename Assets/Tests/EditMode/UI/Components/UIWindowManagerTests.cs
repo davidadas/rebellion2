@@ -109,6 +109,32 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(firstWindow.ActiveWindow);
         }
 
+        [Test]
+        public void FindWindow_RegisteredContent_ReturnsOwningWindow()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            UIWindow expected = CreateWindow(windowManager, 2, modal: false, canFocus: true);
+            TestCancelableContent content =
+                expected.gameObject.AddComponent<TestCancelableContent>();
+            expected.SetContent(content);
+
+            UIWindow window = windowManager.FindWindow<TestCancelableContent>();
+
+            Assert.AreSame(expected, window);
+        }
+
+        [Test]
+        public void FindWindow_MissingContent_ReturnsNull()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            CreateWindow(windowManager, 1, modal: false, canFocus: true);
+
+            UIWindow window = windowManager.FindWindow<TestCancelableContent>();
+
+            Assert.IsNull(window);
+        }
+
         private UIWindowManager CreateWindowManager()
         {
             _windowManagerObject = new GameObject(

@@ -308,6 +308,74 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void GetSourceSize_AuthoredTransform_ReturnsPositiveDimensions()
+        {
+            _image.rectTransform.sizeDelta = new Vector2(640, 480);
+
+            Vector2Int size = UILayout.GetSourceSize(_image.rectTransform);
+
+            Assert.AreEqual(new Vector2Int(640, 480), size);
+        }
+
+        [Test]
+        public void GetSourceSize_MissingTransform_ReturnsZero()
+        {
+            Vector2Int size = UILayout.GetSourceSize(null);
+
+            Assert.AreEqual(Vector2Int.zero, size);
+        }
+
+        [Test]
+        public void TryGetSourcePosition_SurfaceCenter_ReturnsSourceCenter()
+        {
+            _image.rectTransform.sizeDelta = new Vector2(640, 480);
+            Vector2 screenPosition = RectTransformUtility.WorldToScreenPoint(
+                null,
+                _image.rectTransform.TransformPoint(Vector3.zero)
+            );
+
+            bool resolved = UILayout.TryGetSourcePosition(
+                _image.rectTransform,
+                screenPosition,
+                null,
+                out Vector2Int sourcePosition
+            );
+
+            Assert.IsTrue(resolved);
+            Assert.AreEqual(new Vector2Int(320, 240), sourcePosition);
+        }
+
+        [Test]
+        public void TryGetSourcePosition_MissingSurface_ReturnsFalse()
+        {
+            bool resolved = UILayout.TryGetSourcePosition(
+                null,
+                Vector2.zero,
+                null,
+                out Vector2Int sourcePosition
+            );
+
+            Assert.IsFalse(resolved);
+            Assert.AreEqual(Vector2Int.zero, sourcePosition);
+        }
+
+        [Test]
+        public void TryGetSourcePosition_ZeroSizeSurface_ReturnsFalse()
+        {
+            _image.rectTransform.sizeDelta = Vector2.zero;
+
+            bool resolved = UILayout.TryGetSourcePosition(
+                _image.rectTransform,
+                Vector2.zero,
+                null,
+                out Vector2Int sourcePosition
+            );
+
+            Assert.IsFalse(resolved);
+            Assert.AreEqual(Vector2Int.zero, sourcePosition);
+        }
+
+        [Test]
         public void GetFittedImageSize_InvalidInputs_ReturnsZero()
         {
             Assert.AreEqual(

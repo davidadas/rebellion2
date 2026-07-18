@@ -48,7 +48,7 @@ public class FixedRNG : IRandomNumberProvider
 
 /// <summary>
 /// Returns a fixed sequence of doubles, then falls back to 0.5.
-/// Replaces MockRNG in CombatSystemTests and UprisingSystemTests.
+/// Replaces MockRNG in SpaceCombatSystemTests and UprisingSystemTests.
 /// </summary>
 public class QueueRNG : IRandomNumberProvider
 {

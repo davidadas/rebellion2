@@ -146,17 +146,20 @@ namespace Rebellion.Tests.AI.Helpers
             MissionSystem missions = null,
             MovementSystem movement = null,
             ManufacturingSystem manufacturing = null,
-            CombatSystem combat = null,
+            BombardmentSystem bombardment = null,
+            PlanetaryAssaultSystem planetaryAssault = null,
             IRandomNumberProvider random = null
         )
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movementSystem = movement ?? new MovementSystem(game, fog);
+            MovementSystem movementSystem =
+                movement ?? new MovementSystem(game, fog, new FleetSystem(game));
             MissionSystem missionSystem =
                 missions ?? new MissionSystem(game, provider, movementSystem);
             ManufacturingSystem manufacturingSystem =
-                manufacturing ?? new ManufacturingSystem(game, provider, movementSystem);
+                manufacturing
+                ?? new ManufacturingSystem(game, new FleetSystem(game), provider, movementSystem);
 
             return new AITurnContext(
                 game,
@@ -164,7 +167,8 @@ namespace Rebellion.Tests.AI.Helpers
                 missionSystem,
                 movementSystem,
                 manufacturingSystem,
-                combat,
+                bombardment,
+                planetaryAssault,
                 provider
             );
         }

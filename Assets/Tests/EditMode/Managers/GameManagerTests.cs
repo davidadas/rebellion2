@@ -209,7 +209,7 @@ namespace Rebellion.Tests.Managers
             defendingFleet.CapitalShips[0].HasGravityWell = true;
 
             GameManager manager = new GameManager(game);
-            manager.RequestMove(new List<IMovable> { arrivingFleet }, destination);
+            manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);
 
             manager.ProcessTick();
 

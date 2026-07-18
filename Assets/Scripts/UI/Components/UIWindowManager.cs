@@ -285,6 +285,23 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Finds the first registered window hosting a requested authored view type.
+    /// </summary>
+    /// <typeparam name="TView">The requested authored view type.</typeparam>
+    /// <returns>The matching registered window, or null when none exists.</returns>
+    public UIWindow FindWindow<TView>()
+        where TView : class
+    {
+        foreach (UIWindow window in windows)
+        {
+            if (TryGetWindowView(window, out TView _))
+                return window;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Gives the active interactable window the opportunity to cancel its current operation.
     /// </summary>
     /// <returns>True when the active window handled cancellation.</returns>
@@ -380,30 +397,19 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         if (eventData == null)
             return false;
 
-        RectTransform rect = GetRectTransform();
-        if (rect == null)
-            return false;
-
-        Camera camera = eventData.pressEventCamera;
         if (
-            !RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                rect,
+            !UILayout.TryGetSourcePosition(
+                GetRectTransform(),
                 screenPosition,
-                camera,
-                out Vector2 local
+                eventData.pressEventCamera,
+                out Vector2Int position
             )
         )
-        {
-            return false;
-        }
-
-        Vector2Int managerSize = GetSize();
-        if (managerSize.x <= 0 || managerSize.y <= 0)
             return false;
 
-        x = Mathf.RoundToInt(local.x + managerSize.x / 2f);
-        y = Mathf.RoundToInt(managerSize.y / 2f - local.y);
-        return x >= 0 && x < managerSize.x && y >= 0 && y < managerSize.y;
+        x = position.x;
+        y = position.y;
+        return true;
     }
 
     /// <summary>
@@ -428,18 +434,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// <returns>The manager size.</returns>
     private Vector2Int GetSize()
     {
-        RectTransform rect = GetRectTransform();
-        if (rect == null)
-            return Vector2Int.zero;
-
-        int width = Mathf.RoundToInt(rect.sizeDelta.x);
-        int height = Mathf.RoundToInt(rect.sizeDelta.y);
-        if (width <= 0)
-            width = Mathf.RoundToInt(rect.rect.width);
-        if (height <= 0)
-            height = Mathf.RoundToInt(rect.rect.height);
-
-        return new Vector2Int(width, height);
+        return UILayout.GetSourceSize(GetRectTransform());
     }
 
     /// <summary>

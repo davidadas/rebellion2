@@ -60,7 +60,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             _constructionController = CreateConstructionController();
             _constructionController.Initialize(new ConstructionActions());
             _controller = CreateController();
-            _controller.Initialize(new FacilityActions());
+            FacilityActions actions = new FacilityActions();
+            _controller.Initialize(actions, actions);
         }
 
         [TearDown]
@@ -89,7 +90,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         [Test]
         public void Initialize_NullActions_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => _controller.Initialize(null));
+            Assert.Throws<ArgumentNullException>(() =>
+                _controller.Initialize(null, new FacilityActions())
+            );
         }
 
         [Test]
@@ -311,18 +314,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             public void RefreshAfterConstruction() { }
         }
 
-        private sealed class FacilityActions : IFacilityWindowActions
+        private sealed class FacilityActions : IFacilityWindowActions, IStrategyConfirmationActions
         {
+            public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
             public void OpenFacilityStatus(StrategyStatusTarget target) { }
 
             public void OpenFacilityInfo(StrategyStatusTarget target) { }
 
-            public void OpenFacilityScrapConfirmWindow(
+            public void OpenScrapConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void OpenFacilityStopConstructionConfirmWindow(
+            public void OpenStopConstructionConfirmWindow(
+                UIWindow sourceWindow,
+                IReadOnlyList<ISceneNode> items
+            ) { }
+
+            public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }

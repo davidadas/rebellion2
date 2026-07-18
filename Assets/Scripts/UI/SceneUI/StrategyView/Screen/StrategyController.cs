@@ -38,7 +38,6 @@ public sealed class StrategyController
         IMissionCreateWindowActions,
         IMessagesWindowActions,
         IStatusWindowActions,
-        IConfirmDialogWindowActions,
         IBattleAlertWindowActions
 {
     [SerializeField]
@@ -117,7 +116,6 @@ public sealed class StrategyController
     private StatusWindowController statusWindowController;
     private BattleAlertWindowController battleAlertWindowController;
     private MissionCreateWindowController missionCreateWindowController;
-    private StrategyConfirmActionController confirmActionController;
     private ConfirmDialogWindowController confirmDialogWindowController;
     private AdvisorCommandController advisorCommandController;
     private StrategyContextMenuRouter strategyContextMenuRouter;
@@ -126,12 +124,6 @@ public sealed class StrategyController
     private StrategyWindowPlacementController windowPlacementController;
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
-
-    /// <summary>
-    /// Gets the current strategy windows in focus order.
-    /// </summary>
-    private IReadOnlyList<UIWindow> Windows =>
-        strategyWindowManager?.Windows ?? Array.Empty<UIWindow>();
 
     /// <summary>
     /// Gets the sectors in the current visible galaxy snapshot.
@@ -164,18 +156,20 @@ public sealed class StrategyController
         if (gameManager != null)
             throw new InvalidOperationException("StrategyController.Initialize called twice.");
 
+        ValidateAuthoredViews();
         gameManager = manager;
+        uiContext = context;
+        cancelStack = AppBootstrap.Instance?.GetCancelStack();
+        strategyContextMenu.Initialize(uiContext);
         gameManager.GameSpeedChanged += MarkDirty;
         gameManager.GameReplaced += HandleGameReplaced;
         BindMessageSystem(gameManager.MessageSystem);
-        uiContext = context;
-        cancelStack = AppBootstrap.Instance?.GetCancelStack();
 
         InitializeScreenControllers();
         InitializeWindowControllers();
         InitializeInteractionControllers();
         BindWindowControllerActions();
-        SubscribeWindowEvents();
+        SubscribeViewEvents();
         initialized = true;
         RegisterCancelHandlers();
         OnGameReady();
@@ -217,7 +211,9 @@ public sealed class StrategyController
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
             () => gameManager.GetGame(),
-            (target, fleets) => gameManager.ExecuteOrbitalBombardment(fleets, target)
+            () => gameManager.FleetSystem,
+            (target, fleets) =>
+                gameManager.ExecuteOrbitalBombardment(fleets, target, BombardmentType.General)
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -228,7 +224,6 @@ public sealed class StrategyController
     /// </summary>
     private void InitializeWindowInfrastructure()
     {
-        EnsureWindowLayer();
         targetingController = new TargetingController(strategyOverlay);
         contextMenuController = new ContextMenuController();
         bookmarkController = new BookmarkController(uiContext);
@@ -357,7 +352,7 @@ public sealed class StrategyController
         );
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
-                gameManager.CombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
+                gameManager.SpaceCombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
                     ? pending
                     : null,
             () => gameManager.ResolveCombatRetreat(PlayerFactionId),
@@ -383,9 +378,7 @@ public sealed class StrategyController
             CloseWindow,
             MarkDirty
         );
-        confirmActionController = new StrategyConfirmActionController(gameManager, PlaySfx);
         confirmDialogWindowController = new ConfirmDialogWindowController(
-            confirmActionController,
             () => uiContext,
             PlaySfx,
             strategyWindowLayerView,
@@ -397,7 +390,7 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Creates the advisor and shared mission and movement command handlers.
+    /// Creates the advisor and shared strategy-window command handlers.
     /// </summary>
     private void InitializeSharedCommandControllers()
     {
@@ -409,9 +402,9 @@ public sealed class StrategyController
         );
         windowCommandController = new StrategyWindowCommandController(
             missionCreateWindowController,
-            confirmActionController,
             confirmDialogWindowController,
-            () => PlayerFactionId,
+            gameManager,
+            PlaySfx,
             ClearWindowSelection,
             RebuildSnapshot,
             MarkDirty
@@ -424,9 +417,10 @@ public sealed class StrategyController
     private void BindWindowControllerActions()
     {
         constructionWindowController.Initialize(this);
-        facilityWindowController.Initialize(this);
+        facilityWindowController.Initialize(this, windowCommandController);
         fleetWindowController.Initialize(
             this,
+            windowCommandController,
             windowCommandController,
             inputController.StartItemDrag,
             inputController.OnDrag,
@@ -435,12 +429,14 @@ public sealed class StrategyController
         defenseWindowController.Initialize(
             this,
             windowCommandController,
+            windowCommandController,
             inputController.StartItemDrag,
             inputController.OnDrag,
             inputController.OnPointerUp
         );
         planetSystemWindowController.Initialize(
             this,
+            windowCommandController,
             windowCommandController,
             inputController.StartItemDrag
         );
@@ -449,13 +445,12 @@ public sealed class StrategyController
         messagesWindowController.Initialize(this);
         statusWindowController.Initialize(this);
         battleAlertWindowController.Initialize(this);
-        confirmDialogWindowController.Initialize(this);
     }
 
     /// <summary>
-    /// Subscribes window lifecycle and interaction events used by the screen composition root.
+    /// Subscribes authored-view events used by the screen composition root.
     /// </summary>
-    private void SubscribeWindowEvents()
+    private void SubscribeViewEvents()
     {
         strategyWindowManager.WindowButtonRequested += HandleWindowShellButtonRequested;
         strategyWindowManager.WindowCloseRequested += HandleWindowCloseRequested;
@@ -466,6 +461,10 @@ public sealed class StrategyController
         strategyWindowManager.FocusChanged += HandleWindowFocusChanged;
         strategyWindowManager.ModalOpened += HandleWindowModalOpened;
         strategyWindowManager.WindowClosed += HandleAnyWindowClosed;
+        strategyContextMenu.CommandSelected += HandleContextMenuCommandSelected;
+        strategyContextMenu.DismissRequested += HandleContextMenuDismissRequested;
+        strategyOverlay.TargetingCancelRequested += HandleTargetingCancelRequested;
+        bookmarkBar.BookmarkRequested += HandleBookmarkRequested;
     }
 
     /// <summary>
@@ -527,8 +526,6 @@ public sealed class StrategyController
                 planetSystemWindowController,
             }
         );
-        strategyContextMenu.CommandSelected += HandleContextMenuCommandSelected;
-        strategyContextMenu.DismissRequested += HandleContextMenuDismissRequested;
         inputController = new StrategyScreenInputController(
             galaxyMapController,
             targetingController,
@@ -578,12 +575,11 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Starts strategy music, validates authored views, and performs the initial render.
+    /// Starts strategy music and performs the initial render.
     /// </summary>
     private void OnGameReady()
     {
         ResumeStrategyMusic();
-        EnsureStrategySurface();
         RebuildSnapshot();
         lastTick = gameManager.GetCurrentTick();
         Render();
@@ -710,9 +706,9 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Validates the authored strategy hierarchy and initializes view-owned dependencies.
+    /// Validates the authored strategy hierarchy before controller construction.
     /// </summary>
-    private void EnsureStrategySurface()
+    private void ValidateAuthoredViews()
     {
         if (GetComponentInParent<Canvas>() == null)
             throw new InvalidOperationException("StrategyController must be under a Canvas.");
@@ -720,7 +716,7 @@ public sealed class StrategyController
         if (transform is not RectTransform)
             throw new MissingReferenceException("StrategyController is missing RectTransform.");
 
-        EnsureHudLayer();
+        ValidateHudLayer();
 
         if (strategySurface == null)
             throw new MissingReferenceException("Viewport is missing RectTransform.");
@@ -728,18 +724,18 @@ public sealed class StrategyController
         if (strategySurfaceImage == null)
             throw new MissingReferenceException("Viewport is missing RawImage.");
 
-        EnsureWindowLayer();
-        EnsureOverlayLayer();
-        EnsureGalaxyMapLayer();
-        EnsureGalacticInformationLayer();
-        EnsureBookmarkLayer();
-        EnsureContextMenuLayer();
+        ValidateWindowLayer();
+        ValidateOverlayLayer();
+        ValidateGalaxyMapLayer();
+        ValidateGalacticInformationLayer();
+        ValidateBookmarkLayer();
+        ValidateContextMenuLayer();
     }
 
     /// <summary>
     /// Validates the authored HUD layer.
     /// </summary>
-    private void EnsureHudLayer()
+    private void ValidateHudLayer()
     {
         if (strategyHud == null)
             throw new MissingReferenceException("StrategyHud is missing StrategyHudView.");
@@ -748,9 +744,9 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Validates and initializes the authored context-menu layer.
+    /// Validates the authored context-menu layer.
     /// </summary>
-    private void EnsureContextMenuLayer()
+    private void ValidateContextMenuLayer()
     {
         if (strategyContextMenu == null)
             throw new MissingReferenceException(
@@ -758,14 +754,12 @@ public sealed class StrategyController
             );
 
         RequireRectTransform(strategyContextMenu, "ContextMenu");
-        if (uiContext != null)
-            strategyContextMenu.Initialize(uiContext);
     }
 
     /// <summary>
     /// Validates the authored strategy-window layer.
     /// </summary>
-    private void EnsureWindowLayer()
+    private void ValidateWindowLayer()
     {
         if (strategyWindowLayerView == null)
             throw new MissingReferenceException("Windows is missing StrategyWindowLayerView.");
@@ -780,22 +774,20 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Validates the authored overlay and binds its cancellation request.
+    /// Validates the authored overlay layer.
     /// </summary>
-    private void EnsureOverlayLayer()
+    private void ValidateOverlayLayer()
     {
         if (strategyOverlay == null)
             throw new MissingReferenceException("Overlay is missing StrategyOverlayView.");
 
         RequireRectTransform(strategyOverlay, "Overlay");
-        strategyOverlay.TargetingCancelRequested -= HandleTargetingCancelRequested;
-        strategyOverlay.TargetingCancelRequested += HandleTargetingCancelRequested;
     }
 
     /// <summary>
     /// Validates the authored galaxy-map layer.
     /// </summary>
-    private void EnsureGalaxyMapLayer()
+    private void ValidateGalaxyMapLayer()
     {
         if (galaxyMap == null)
             throw new MissingReferenceException("GalaxyMap is missing GalaxyMapView.");
@@ -804,22 +796,20 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Validates the authored bookmark bar and binds its semantic request.
+    /// Validates the authored bookmark bar.
     /// </summary>
-    private void EnsureBookmarkLayer()
+    private void ValidateBookmarkLayer()
     {
         if (bookmarkBar == null)
             throw new MissingReferenceException("Bookmarks is missing BookmarkBarView.");
 
         RequireRectTransform(bookmarkBar, "Bookmarks");
-        bookmarkBar.BookmarkRequested -= HandleBookmarkRequested;
-        bookmarkBar.BookmarkRequested += HandleBookmarkRequested;
     }
 
     /// <summary>
     /// Validates the authored galactic-information selector and legend layers.
     /// </summary>
-    private void EnsureGalacticInformationLayer()
+    private void ValidateGalacticInformationLayer()
     {
         if (galacticInformationDisplay == null)
             throw new MissingReferenceException(
@@ -845,25 +835,6 @@ public sealed class StrategyController
             return;
 
         throw new MissingReferenceException($"{label} is missing RectTransform.");
-    }
-
-    /// <summary>
-    /// Resolves the current strategy surface size in source-space pixels.
-    /// </summary>
-    /// <returns>The current source-space surface dimensions.</returns>
-    private Vector2Int GetStrategySurfaceSize()
-    {
-        if (strategySurface == null)
-            return Vector2Int.zero;
-
-        int width = Mathf.RoundToInt(strategySurface.sizeDelta.x);
-        int height = Mathf.RoundToInt(strategySurface.sizeDelta.y);
-        if (width <= 0)
-            width = Mathf.RoundToInt(strategySurface.rect.width);
-        if (height <= 0)
-            height = Mathf.RoundToInt(strategySurface.rect.height);
-
-        return new Vector2Int(width, height);
     }
 
     /// <summary>
@@ -929,38 +900,9 @@ public sealed class StrategyController
                 faction?.RefinedMaterials.ToString() ?? "0",
                 faction?.MaintenanceHeadroom.ToString() ?? "0",
                 gameManager.GetGameSpeed(),
-                GetUnreadMessageTypes(faction)
+                StrategyHudController.GetUnreadMessageTypes(faction)
             )
         );
-    }
-
-    /// <summary>
-    /// Collects message categories containing at least one unread message.
-    /// </summary>
-    /// <param name="faction">The active player faction.</param>
-    /// <returns>The unread message categories.</returns>
-    private static HashSet<MessageType> GetUnreadMessageTypes(Faction faction)
-    {
-        HashSet<MessageType> types = new HashSet<MessageType>();
-        if (faction?.Messages == null)
-            return types;
-
-        foreach (KeyValuePair<MessageType, List<Message>> entry in faction.Messages)
-        {
-            if (entry.Value == null)
-                continue;
-
-            foreach (Message message in entry.Value)
-            {
-                if (message?.Read == false)
-                {
-                    types.Add(entry.Key);
-                    break;
-                }
-            }
-        }
-
-        return types;
     }
 
     /// <summary>
@@ -1228,7 +1170,8 @@ public sealed class StrategyController
     {
         uiContext.ReplaceGame(game);
         BindMessageSystem(gameManager.MessageSystem);
-        RebuildSnapshot();
+        lastTick = gameManager.GetCurrentTick();
+        RefreshStrategyState();
     }
 
     /// <summary>
@@ -1392,24 +1335,6 @@ public sealed class StrategyController
     }
 
     /// <inheritdoc />
-    void IFacilityWindowActions.OpenFacilityScrapConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenScrap(sourceWindow, items);
-    }
-
-    /// <inheritdoc />
-    void IFacilityWindowActions.OpenFacilityStopConstructionConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenStopConstruction(sourceWindow, items);
-    }
-
-    /// <inheritdoc />
     void IFacilityWindowActions.OpenFacilityStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
@@ -1442,33 +1367,6 @@ public sealed class StrategyController
     }
 
     /// <inheritdoc />
-    void IFleetWindowActions.OpenFleetScrapConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenScrap(sourceWindow, items);
-    }
-
-    /// <inheritdoc />
-    void IFleetWindowActions.OpenFleetStopConstructionConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenStopConstruction(sourceWindow, items);
-    }
-
-    /// <inheritdoc />
-    void IFleetWindowActions.OpenFleetRetireConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenRetire(sourceWindow, items, PlayerFactionId);
-    }
-
-    /// <inheritdoc />
     void IFleetWindowActions.RefreshFleetState()
     {
         RefreshStrategyState();
@@ -1484,33 +1382,6 @@ public sealed class StrategyController
     void IDefenseWindowActions.OpenDefenseStatusWindow(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
-    }
-
-    /// <inheritdoc />
-    void IDefenseWindowActions.OpenDefenseScrapConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenScrap(sourceWindow, items);
-    }
-
-    /// <inheritdoc />
-    void IDefenseWindowActions.OpenDefenseStopConstructionConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenStopConstruction(sourceWindow, items);
-    }
-
-    /// <inheritdoc />
-    void IDefenseWindowActions.OpenDefenseRetireConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenRetire(sourceWindow, items, PlayerFactionId);
     }
 
     /// <inheritdoc />
@@ -1540,15 +1411,6 @@ public sealed class StrategyController
     void IPlanetSystemWindowActions.OpenPlanetSystemStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
-    }
-
-    /// <inheritdoc />
-    void IPlanetSystemWindowActions.OpenPlanetSystemScrapConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    )
-    {
-        confirmDialogWindowController.OpenScrap(sourceWindow, items);
     }
 
     /// <inheritdoc />
@@ -1589,13 +1451,6 @@ public sealed class StrategyController
     void IStatusWindowActions.OpenStatusInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
-    }
-
-    /// <inheritdoc />
-    void IConfirmDialogWindowActions.RefreshAfterConfirmedAction(UIWindow sourceWindow)
-    {
-        ClearWindowSelection(sourceWindow);
-        RefreshStrategyState();
     }
 
     /// <inheritdoc />
@@ -1828,8 +1683,8 @@ public sealed class StrategyController
         if (sector == null)
             return false;
 
-        CloseWindow(FindWindow<MessagesWindowView>());
-        CloseWindow(FindWindow<EncyclopediaWindowView>());
+        CloseWindow(strategyWindowManager.FindWindow<MessagesWindowView>());
+        CloseWindow(strategyWindowManager.FindWindow<EncyclopediaWindowView>());
 
         Vector2Int source = GetSystemSourcePosition(sector);
         OpenPlanetSystemWindow(sector, source.x, source.y);
@@ -2182,19 +2037,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Finds the first registered window hosting a requested feature view.
-    /// </summary>
-    /// <typeparam name="TView">The requested feature-view type.</typeparam>
-    /// <returns>The matching window, or null.</returns>
-    private UIWindow FindWindow<TView>()
-        where TView : class
-    {
-        return Windows.FirstOrDefault(window =>
-            strategyWindowManager.TryGetWindowView(window, out TView _)
-        );
-    }
-
-    /// <summary>
     /// Rebuilds authoritative strategy state and invalidates presentation.
     /// </summary>
     private void RefreshStrategyState()
@@ -2523,23 +2365,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Converts the current pointer position into strategy source-space coordinates.
-    /// </summary>
-    /// <param name="eventData">The source pointer event.</param>
-    /// <param name="x">Receives the source-space horizontal coordinate.</param>
-    /// <param name="y">Receives the source-space vertical coordinate.</param>
-    /// <returns>True when the pointer lies within the strategy surface.</returns>
-    private bool TryGetSourcePosition(PointerEventData eventData, out int x, out int y)
-    {
-        return TryGetSourcePosition(
-            eventData,
-            eventData == null ? Vector2.zero : eventData.position,
-            out x,
-            out y
-        );
-    }
-
-    /// <summary>
     /// Converts a screen position into strategy source-space coordinates.
     /// </summary>
     /// <param name="eventData">The pointer event supplying the event camera.</param>
@@ -2561,30 +2386,20 @@ public sealed class StrategyController
             return false;
 
         if (strategySurface == null)
-            EnsureStrategySurface();
-
-        if (strategySurface == null)
             return false;
 
-        Camera camera = eventData.pressEventCamera;
         if (
-            !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            !UILayout.TryGetSourcePosition(
                 strategySurface,
                 screenPosition,
-                camera,
-                out Vector2 local
+                eventData.pressEventCamera,
+                out Vector2Int sourcePosition
             )
         )
-        {
-            return false;
-        }
-
-        Vector2Int surfaceSize = GetStrategySurfaceSize();
-        if (surfaceSize.x <= 0 || surfaceSize.y <= 0)
             return false;
 
-        x = Mathf.RoundToInt(local.x + surfaceSize.x / 2f);
-        y = Mathf.RoundToInt(surfaceSize.y / 2f - local.y);
-        return x >= 0 && x < surfaceSize.x && y >= 0 && y < surfaceSize.y;
+        x = sourcePosition.x;
+        y = sourcePosition.y;
+        return true;
     }
 }

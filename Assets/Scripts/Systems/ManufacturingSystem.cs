@@ -22,6 +22,7 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementSystem;
+        private readonly FleetSystem _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
         private readonly Dictionary<string, int> _refinedProgressRemainingByFaction =
             new Dictionary<string, int>();
@@ -30,15 +31,18 @@ namespace Rebellion.Systems
         /// Creates a new ManufacturingSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
+        /// <param name="fleetSystem">Owns fleet creation and empty-fleet cleanup.</param>
         /// <param name="provider">Random number provider for capital ship progress rolls.</param>
         /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
         public ManufacturingSystem(
             GameRoot game,
+            FleetSystem fleetSystem,
             IRandomNumberProvider provider = null,
             MovementSystem movementSystem = null
         )
         {
-            _game = game;
+            _game = game ?? throw new ArgumentNullException(nameof(game));
+            _fleetSystem = fleetSystem ?? throw new ArgumentNullException(nameof(fleetSystem));
             _provider = provider;
             _movementSystem = movementSystem;
         }
@@ -109,7 +113,7 @@ namespace Rebellion.Systems
                 }
                 else if (destinationPlanet != null && item is CapitalShip)
                 {
-                    capitalShipDestination ??= _game.CreateFleetAtPlanet(
+                    capitalShipDestination ??= _fleetSystem.CreateAtPlanet(
                         destinationPlanet,
                         producer.GetOwnerInstanceID()
                     );
@@ -129,7 +133,7 @@ namespace Rebellion.Systems
 
                 if (!enqueued)
                 {
-                    _game.RemoveEmptyFleet(capitalShipDestination);
+                    _fleetSystem.RemoveIfEmpty(capitalShipDestination);
                     return started;
                 }
 
@@ -1254,6 +1258,27 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Cancels every authorized manufacturing item that remains queued or under construction.
+        /// </summary>
+        /// <param name="items">The manufacturing items to cancel.</param>
+        /// <param name="ownerInstanceId">The faction authorized to cancel the items.</param>
+        /// <returns>True when at least one selected item was cancelled.</returns>
+        public bool CancelManufacturing(
+            IReadOnlyList<IManufacturable> items,
+            string ownerInstanceId
+        )
+        {
+            if (items == null || items.Count == 0)
+                return false;
+
+            bool cancelled = false;
+            foreach (IManufacturable item in items)
+                cancelled |= CancelManufacturing(item, ownerInstanceId);
+
+            return cancelled;
+        }
+
+        /// <summary>
         /// Detaches queued manufacturing items and resets the facilities assigned to their queue.
         /// </summary>
         /// <param name="planet">The planet whose queued items are being cleared.</param>
@@ -1288,8 +1313,8 @@ namespace Rebellion.Systems
             if (parent != null)
                 _game.DetachNode(sceneNode);
 
-            if (parent is Fleet fleet && fleet.CapitalShips.Count == 0 && fleet.GetParent() != null)
-                _game.DetachNode(fleet);
+            if (parent is Fleet fleet)
+                _fleetSystem.RemoveIfEmpty(fleet);
         }
 
         /// <summary>

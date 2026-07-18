@@ -36,6 +36,12 @@
     </xs:sequence>
   </xs:complexType>
 
+  <xs:complexType name="StringListType">
+    <xs:sequence>
+      <xs:element name="String" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+
   <!-- Mission tick range: base ticks + random spread -->
   <xs:complexType name="MissionTickConfigType">
     <xs:all>
@@ -95,21 +101,6 @@
               </xs:element>
               <xs:element name="DeploymentGateLow" type="xs:nonNegativeInteger" />
               <xs:element name="DeploymentGateHigh" type="xs:nonNegativeInteger" />
-              <xs:element name="CapitalShipProduction">
-                <xs:complexType>
-                  <xs:all>
-                    <xs:element name="FacilityPersonnelDivisor" type="PositiveIntType" />
-                    <xs:element name="StrikeThresholdLow" type="xs:nonNegativeInteger" />
-                    <xs:element name="StrikeThresholdHigh" type="xs:nonNegativeInteger" />
-                    <xs:element name="EnergyStrikeResistance" type="xs:nonNegativeInteger" />
-                    <xs:element
-                      name="AllocatedEnergyStrikeResistance"
-                      type="xs:nonNegativeInteger"
-                    />
-                    <xs:element name="OrbitalStrikeSupportShift" type="xs:integer" />
-                  </xs:all>
-                </xs:complexType>
-              </xs:element>
               <xs:element name="Selection">
                 <xs:complexType>
                   <xs:all>
@@ -463,21 +454,97 @@
         <xs:element name="Combat">
           <xs:complexType>
             <xs:all>
-              <xs:element name="AssaultPersonnelDivisor" type="PositiveIntType" />
-              <xs:element name="BombardmentStrikeThresholdLow" type="xs:nonNegativeInteger" />
-              <xs:element name="BombardmentStrikeThresholdHigh" type="xs:nonNegativeInteger" />
-              <xs:element name="BombardmentEnergyResistance" type="xs:nonNegativeInteger" />
-              <xs:element name="BombardmentShieldBlockThreshold" type="xs:nonNegativeInteger" />
-              <xs:element name="DefenseFacilityResponseDivisor" type="PositiveIntType" />
-              <xs:element name="RepeatTrialProbability" type="xs:nonNegativeInteger" />
-              <xs:element name="GroundCombatCommanderDivisor" type="PositiveIntType" />
-              <xs:element name="GroundCombatContestDiceRange" type="xs:nonNegativeInteger" />
-              <xs:element name="GroundCombatDefenderWinsThreshold" type="xs:integer" />
-              <xs:element name="GroundCombatAttackerWinsThreshold" type="xs:integer" />
-              <xs:element name="WeaponDamageVariancePercent" type="xs:nonNegativeInteger" />
-              <xs:element name="FighterDogfightLossRatePercent" type="xs:nonNegativeInteger" />
-              <xs:element name="FighterDamageBasePercent" type="xs:nonNegativeInteger" />
-              <xs:element name="FighterDamageSpreadPercent" type="xs:nonNegativeInteger" />
+              <xs:element name="Bombardment">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="AttackerLeadershipDivisor" type="PositiveIntType" />
+                    <xs:element name="DefenderLeadershipDivisor" type="PositiveIntType" />
+                    <xs:element name="StrikeRollMinimum" type="xs:nonNegativeInteger" />
+                    <xs:element name="StrikeRollMaximum" type="xs:nonNegativeInteger" />
+                    <xs:element name="EnergyResistance" type="xs:nonNegativeInteger" />
+                    <xs:element
+                      name="AllocatedEnergyResistance"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="HeadquartersResistance" type="xs:nonNegativeInteger" />
+                    <xs:element name="CivilianSupportPenalty" type="xs:integer" />
+                    <xs:element
+                      name="CivilianCoreAllianceSupportPenalty"
+                      type="xs:integer"
+                    />
+                    <xs:element
+                      name="CivilianCoreEmpireSupportPenalty"
+                      type="xs:integer"
+                    />
+                    <xs:element
+                      name="CivilianOuterRimAllianceSupportPenalty"
+                      type="xs:integer"
+                    />
+                    <xs:element
+                      name="CivilianOuterRimEmpireSupportPenalty"
+                      type="xs:integer"
+                    />
+                    <xs:element
+                      name="DestroySystemPersonnelInjuryPercent"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="DestroySystemMinorPersonnelDeathPercent"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element name="DestroySystemCoreSupportPenalty" type="xs:integer" />
+                    <xs:element
+                      name="DestroySystemOuterRimSupportPenalty"
+                      type="xs:integer"
+                    />
+                    <xs:element
+                      name="DestroySystemOuterRimSupportThreshold"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="PlanetDestroyingCapitalShipTypeIDs"
+                      type="StringListType"
+                    />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="PlanetaryAssault">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="PersonnelDivisor" type="PositiveIntType" />
+                    <xs:element name="ShieldGeneratorLimit" type="PositiveIntType" />
+                    <xs:element name="DefenseFireDivisor" type="PositiveIntType" />
+                    <xs:element name="CollateralDamagePercent" type="xs:nonNegativeInteger" />
+                    <xs:element name="GeneralLeadershipDivisor" type="PositiveIntType" />
+                    <xs:element name="ContestRollMaximum" type="xs:nonNegativeInteger" />
+                    <xs:element name="DefenderWinsMaximum" type="xs:integer" />
+                    <xs:element name="AttackerWinsMinimum" type="xs:integer" />
+                    <xs:element name="CaptureGarrisonCount" type="xs:nonNegativeInteger" />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="SpaceCombat">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element
+                      name="WeaponDamageVariancePercent"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FighterDogfightLossRatePercent"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FighterDamageBasePercent"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="FighterDamageSpreadPercent"
+                      type="xs:nonNegativeInteger"
+                    />
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -490,7 +557,6 @@
               <xs:element name="PrimaryConsequenceTable" type="IntTableType" />
               <xs:element name="SecondaryConsequenceTable" type="IntTableType" />
               <xs:element name="ControllerSupportShift" type="xs:integer" />
-              <xs:element name="WeakSupportPenaltyDivisor" type="PositiveIntType" />
               <xs:element name="ActiveSupportDriftMinTicks" type="PositiveIntType" />
               <xs:element name="ActiveSupportDriftMaxTicks" type="PositiveIntType" />
               <xs:element name="IncidentPulseMinTicks" type="PositiveIntType" />
@@ -512,6 +578,9 @@
               <xs:element name="FighterPenalty" type="xs:integer" />
               <xs:element name="TroopPenalty" type="xs:integer" />
               <xs:element name="OwnershipTransferThreshold" type="xs:nonNegativeInteger" />
+              <xs:element name="WeakSupportPenaltyDivisor" type="PositiveIntType" />
+              <xs:element name="GarrisonRemovalSupportShift" type="xs:integer" />
+              <xs:element name="ControlChangeSupportShift" type="xs:integer" />
               <xs:element name="BlockadeMatchShift" type="xs:integer" />
               <xs:element name="BlockadeOpposeShift" type="xs:integer" />
               <xs:element name="DiplomacyCompletionSupportBonus" type="xs:integer" />

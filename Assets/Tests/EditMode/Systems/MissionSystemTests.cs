@@ -57,7 +57,11 @@ namespace Rebellion.Tests.Systems
             // Parent to planet so IsOnMission() = false and IsMovable() = true.
             game.AttachNode(officer, planet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             return (game, planet, officer, movement);
         }
 
@@ -209,7 +213,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(regiment, planet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             return (game, planet, spy, defender, movement);
         }
 
@@ -266,7 +274,11 @@ namespace Rebellion.Tests.Systems
             target.CaptorInstanceID = capturedTarget ? "rebels" : null;
             game.AttachNode(target, targetPlanet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             MissionSystem missions = new MissionSystem(game, new FixedRNG(0.0), movement);
             return (game, origin, targetPlanet, participant, target, missions);
         }
@@ -310,7 +322,7 @@ namespace Rebellion.Tests.Systems
             };
 
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar);
+            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
@@ -353,7 +365,11 @@ namespace Rebellion.Tests.Systems
             StubMission mission = new StubMission(null, planet.InstanceID);
             game.AttachNode(mission, planet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
@@ -410,7 +426,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
 
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
@@ -542,7 +562,7 @@ namespace Rebellion.Tests.Systems
                 inciteMission.IncrementProgress();
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             return (game, diplomacyMission, inciteMission, missionSystem);
@@ -777,7 +797,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(sabotageTarget, targetPlanet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(
@@ -840,7 +860,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(sabotageTarget, targetPlanet);
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
             MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
 
             missionSystem.InitiateMission(
@@ -1984,7 +2004,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(specialForces, origin);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(

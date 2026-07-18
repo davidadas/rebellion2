@@ -247,35 +247,6 @@ public static class StrategyContextMenuAvailability
     }
 
     /// <summary>
-    /// Determines whether every selected fleet item can be retired.
-    /// </summary>
-    /// <param name="items">The selected scene nodes.</param>
-    /// <param name="playerFactionId">The player faction identifier.</param>
-    /// <returns><see langword="true"/> when the complete selection can be retired.</returns>
-    public static bool CanRetireFleet(IReadOnlyList<ISceneNode> items, string playerFactionId)
-    {
-        if (items == null || items.Count == 0)
-            return false;
-
-        if (!PlayerControlsItems(items, playerFactionId))
-            return false;
-
-        foreach (ISceneNode item in items)
-        {
-            if (HasMoveBlockingStatus(item))
-                return false;
-
-            if (item is Officer officer && officer.IsMain)
-                return false;
-
-            if (item is not Officer and not SpecialForces)
-                return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
     /// Determines whether the player controls every selected item.
     /// </summary>
     /// <param name="items">The selected scene nodes.</param>

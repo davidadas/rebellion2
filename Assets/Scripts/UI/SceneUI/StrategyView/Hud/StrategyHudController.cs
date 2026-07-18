@@ -212,6 +212,35 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Collects message categories containing at least one unread message.
+    /// </summary>
+    /// <param name="faction">The faction whose message state is projected into the HUD.</param>
+    /// <returns>The unread message categories.</returns>
+    internal static HashSet<MessageType> GetUnreadMessageTypes(Faction faction)
+    {
+        HashSet<MessageType> types = new HashSet<MessageType>();
+        if (faction?.Messages == null)
+            return types;
+
+        foreach (KeyValuePair<MessageType, List<Message>> entry in faction.Messages)
+        {
+            if (entry.Value == null)
+                continue;
+
+            foreach (Message message in entry.Value)
+            {
+                if (message?.Read == false)
+                {
+                    types.Add(entry.Key);
+                    break;
+                }
+            }
+        }
+
+        return types;
+    }
+
+    /// <summary>
     /// Projects one HUD counter from dynamic content and optional themed bounds.
     /// </summary>
     /// <param name="text">The displayed value.</param>

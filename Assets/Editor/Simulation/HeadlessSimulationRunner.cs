@@ -1445,7 +1445,9 @@ public static class HeadlessSimulationRunner
         Planet targetPlanet = string.IsNullOrEmpty(fleet.Order?.TargetPlanetId)
             ? null
             : game.GetSceneNodeByInstanceID<Planet>(fleet.Order.TargetPlanetId);
-        int assaultStrength = fleet.GetAssaultStrength(game.Config.Combat.AssaultPersonnelDivisor);
+        int assaultStrength = fleet.GetAssaultStrength(
+            game.Config.Combat.PlanetaryAssault.PersonnelDivisor
+        );
         int targetDefenseStrength = targetPlanet?.GetDefenseStrength() ?? 0;
         int targetRegimentCount = targetPlanet?.GetAllRegiments().Count ?? 0;
         int targetStrongestHostileFleetStrength = GetStrongestHostileFleetStrength(

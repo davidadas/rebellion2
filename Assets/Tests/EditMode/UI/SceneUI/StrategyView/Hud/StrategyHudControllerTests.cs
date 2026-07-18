@@ -116,6 +116,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void GetUnreadMessageTypes_MixedMessages_ReturnsUnreadCategories()
+        {
+            Faction faction = new Faction
+            {
+                Messages = new Dictionary<MessageType, List<Message>>
+                {
+                    [MessageType.Fleet] = new List<Message>
+                    {
+                        new Message { Read = true },
+                        new Message { Read = false },
+                    },
+                    [MessageType.Mission] = new List<Message> { new Message { Read = true } },
+                    [MessageType.Resource] = null,
+                },
+            };
+
+            HashSet<MessageType> types = StrategyHudController.GetUnreadMessageTypes(faction);
+
+            CollectionAssert.AreEquivalent(new[] { MessageType.Fleet }, types);
+        }
+
+        [Test]
+        public void GetUnreadMessageTypes_MissingFaction_ReturnsEmptyCollection()
+        {
+            HashSet<MessageType> types = StrategyHudController.GetUnreadMessageTypes(null);
+
+            Assert.IsEmpty(types);
+        }
+
+        [Test]
         public void OnContextMenuCommandSelected_OwnedEnabledSpeedCommand_SetsGameSpeed()
         {
             StrategyMenuCommand command = new StrategyMenuCommand(

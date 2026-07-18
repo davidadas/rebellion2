@@ -25,23 +25,6 @@ public interface IFacilityWindowActions
     void OpenFacilityInfo(StrategyStatusTarget target);
 
     /// <summary>
-    /// Opens scrap confirmation for selected facility items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting facility window.</param>
-    /// <param name="items">The selected facility items.</param>
-    void OpenFacilityScrapConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
-
-    /// <summary>
-    /// Opens stop-construction confirmation for selected queued items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting facility window.</param>
-    /// <param name="items">The queued items selected for cancellation.</param>
-    void OpenFacilityStopConstructionConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    );
-
-    /// <summary>
     /// Rebuilds shared strategy state after a facility command changes the game.
     /// </summary>
     void RefreshFacilityState();
@@ -69,6 +52,7 @@ public sealed class FacilityWindowController
     private readonly UIWindowManager windowManager;
 
     private IFacilityWindowActions actions;
+    private IStrategyConfirmationActions confirmationActions;
 
     /// <summary>
     /// Creates a facility feature controller.
@@ -111,9 +95,16 @@ public sealed class FacilityWindowController
     /// Connects facility feature requests to strategy window actions.
     /// </summary>
     /// <param name="windowActions">The feature-specific facility actions.</param>
-    public void Initialize(IFacilityWindowActions windowActions)
+    /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
+    public void Initialize(
+        IFacilityWindowActions windowActions,
+        IStrategyConfirmationActions windowConfirmationActions
+    )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
+        confirmationActions =
+            windowConfirmationActions
+            ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
     }
 
     /// <summary>
@@ -346,7 +337,7 @@ public sealed class FacilityWindowController
                 OpenConstruction(context.Window);
                 break;
             case StrategyContextMenuActions.Stop:
-                actions.OpenFacilityStopConstructionConfirmWindow(
+                confirmationActions.OpenStopConstructionConfirmWindow(
                     context.Window,
                     GetStopConstructionItems(view)
                 );
@@ -361,7 +352,7 @@ public sealed class FacilityWindowController
                 actions.OpenFacilityStatus(GetStatusTarget(view));
                 break;
             case StrategyContextMenuActions.Scrap:
-                actions.OpenFacilityScrapConfirmWindow(context.Window, GetScrapItems(view));
+                confirmationActions.OpenScrapConfirmWindow(context.Window, GetScrapItems(view));
                 break;
         }
     }
@@ -1068,7 +1059,7 @@ public sealed class FacilityWindowController
     /// </summary>
     private void EnsureInitialized()
     {
-        if (actions == null)
+        if (actions == null || confirmationActions == null)
             throw new InvalidOperationException(
                 $"{nameof(FacilityWindowController)} must be initialized before use."
             );

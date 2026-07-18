@@ -92,10 +92,6 @@ namespace Rebellion.Game
             /// <summary>Upper bound for the fleet deployment probability gate.</summary>
             public int DeploymentGateHigh { get; set; }
 
-            /// <summary>Capital ship production pipeline parameters.</summary>
-            public CapitalShipProductionConfig CapitalShipProduction { get; set; } =
-                new CapitalShipProductionConfig();
-
             /// <summary>Unit selection parameters for AI manufacturing.</summary>
             public AISelectionConfig Selection { get; set; } = new AISelectionConfig();
 
@@ -285,31 +281,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Capital ship production pipeline parameters.
-        /// </summary>
-        [PersistableObject]
-        public class CapitalShipProductionConfig
-        {
-            /// <summary>Personnel skill divisor for facility production contribution.</summary>
-            public int FacilityPersonnelDivisor { get; set; }
-
-            /// <summary>Lower bound of the strike target evaluation threshold.</summary>
-            public int StrikeThresholdLow { get; set; }
-
-            /// <summary>Upper bound of the strike target evaluation threshold.</summary>
-            public int StrikeThresholdHigh { get; set; }
-
-            /// <summary>Strike resistance for system energy targets.</summary>
-            public int EnergyStrikeResistance { get; set; }
-
-            /// <summary>Strike resistance for allocated energy targets.</summary>
-            public int AllocatedEnergyStrikeResistance { get; set; }
-
-            /// <summary>Popular support shift applied to the producing faction during a Death Star orbital strike.</summary>
-            public int OrbitalStrikeSupportShift { get; set; }
-        }
-
-        /// <summary>
         /// Garrison troop requirements based on popular support.
         /// </summary>
         [PersistableObject]
@@ -352,9 +323,6 @@ namespace Rebellion.Game
 
             /// <summary>Popular support shift applied to the controlling faction each uprising tick.</summary>
             public int ControllerSupportShift { get; set; }
-
-            /// <summary>Divisor applied to weak uprising support penalties.</summary>
-            public int WeakSupportPenaltyDivisor { get; set; } = 2;
 
             /// <summary>Minimum ticks between active-uprising support drift pulses.</summary>
             public int ActiveSupportDriftMinTicks { get; set; }
@@ -404,6 +372,12 @@ namespace Rebellion.Game
 
             /// <summary>Popular support threshold above which a neutral planet transfers to the faction.</summary>
             public int OwnershipTransferThreshold { get; set; }
+
+            public int WeakSupportPenaltyDivisor { get; set; }
+
+            public int GarrisonRemovalSupportShift { get; set; }
+
+            public int ControlChangeSupportShift { get; set; }
 
             /// <summary>Support shift when a blockading fleet matches the popular support side.</summary>
             public int BlockadeMatchShift { get; set; }
@@ -540,39 +514,55 @@ namespace Rebellion.Game
         [PersistableObject]
         public class CombatConfig
         {
-            /// <summary>Personnel divisor for the assault strength calculation.</summary>
-            public int AssaultPersonnelDivisor { get; set; }
+            public BombardmentConfig Bombardment { get; set; } = new BombardmentConfig();
 
-            /// <summary>Lower bound of the bombardment strike resistance check.</summary>
-            public int BombardmentStrikeThresholdLow { get; set; }
+            public PlanetaryAssaultConfig PlanetaryAssault { get; set; } =
+                new PlanetaryAssaultConfig();
 
-            /// <summary>Upper bound of the bombardment strike resistance check.</summary>
-            public int BombardmentStrikeThresholdHigh { get; set; }
+            public SpaceCombatConfig SpaceCombat { get; set; } = new SpaceCombatConfig();
+        }
 
-            /// <summary>Resistance value for the system energy bombardment lane.</summary>
-            public int BombardmentEnergyResistance { get; set; }
+        [PersistableObject]
+        public class BombardmentConfig
+        {
+            public int AttackerLeadershipDivisor { get; set; }
+            public int DefenderLeadershipDivisor { get; set; }
+            public int StrikeRollMinimum { get; set; }
+            public int StrikeRollMaximum { get; set; }
+            public int EnergyResistance { get; set; }
+            public int AllocatedEnergyResistance { get; set; }
+            public int HeadquartersResistance { get; set; }
+            public int CivilianSupportPenalty { get; set; }
+            public int CivilianCoreAllianceSupportPenalty { get; set; }
+            public int CivilianCoreEmpireSupportPenalty { get; set; }
+            public int CivilianOuterRimAllianceSupportPenalty { get; set; }
+            public int CivilianOuterRimEmpireSupportPenalty { get; set; }
+            public int DestroySystemPersonnelInjuryPercent { get; set; }
+            public int DestroySystemMinorPersonnelDeathPercent { get; set; }
+            public int DestroySystemCoreSupportPenalty { get; set; }
+            public int DestroySystemOuterRimSupportPenalty { get; set; }
+            public int DestroySystemOuterRimSupportThreshold { get; set; }
+            public List<string> PlanetDestroyingCapitalShipTypeIDs { get; set; } =
+                new List<string>();
+        }
 
-            /// <summary>Minimum number of shield facilities required to block bombardment.</summary>
-            public int BombardmentShieldBlockThreshold { get; set; }
+        [PersistableObject]
+        public class PlanetaryAssaultConfig
+        {
+            public int PersonnelDivisor { get; set; }
+            public int ShieldGeneratorLimit { get; set; }
+            public int DefenseFireDivisor { get; set; }
+            public int CollateralDamagePercent { get; set; }
+            public int GeneralLeadershipDivisor { get; set; }
+            public int ContestRollMaximum { get; set; }
+            public int DefenderWinsMaximum { get; set; }
+            public int AttackerWinsMinimum { get; set; }
+            public int CaptureGarrisonCount { get; set; }
+        }
 
-            /// <summary>Divisor applied to a defense facility's production modifier when rolling its return fire chance.</summary>
-            public int DefenseFacilityResponseDivisor { get; set; }
-
-            /// <summary>Probability (out of 100) that a single planetary defense repeat trial succeeds.</summary>
-            public int RepeatTrialProbability { get; set; }
-
-            /// <summary>Divisor applied to commander skill during ground combat.</summary>
-            public int GroundCombatCommanderDivisor { get; set; }
-
-            /// <summary>Range for the ground combat contest roll.</summary>
-            public int GroundCombatContestDiceRange { get; set; }
-
-            /// <summary>Threshold at or below which the defender wins ground combat.</summary>
-            public int GroundCombatDefenderWinsThreshold { get; set; }
-
-            /// <summary>Threshold at or above which the attacker wins ground combat.</summary>
-            public int GroundCombatAttackerWinsThreshold { get; set; }
-
+        [PersistableObject]
+        public class SpaceCombatConfig
+        {
             /// <summary>Percent variance applied symmetrically to each weapon damage roll.</summary>
             public int WeaponDamageVariancePercent { get; set; }
 

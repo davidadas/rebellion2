@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <Starfighters>
+  <!--   **************************************************  -->
+  <!--   ********************* EMPIRE *********************  -->
+  <!--   **************************************************  -->
   <Starfighter>
     <TypeID>SFEM01</TypeID>
     <DisplayName>TIE Fighter Squadron</DisplayName>
@@ -280,6 +283,9 @@ The TIE defender marks a departure from the normal line of Imperial fighter desi
     <ResearchOrder>8</ResearchOrder>
     <ResearchDifficulty>50</ResearchDifficulty>
   </Starfighter>
+  <!--   **************************************************  -->
+  <!--   ******************** ALLIANCE ********************  -->
+  <!--   **************************************************  -->
   <Starfighter>
     <TypeID>SFAL01</TypeID>
     <DisplayName>Y-Wing Squadron</DisplayName>

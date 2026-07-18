@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <Officers>
+  <!--   **************************************************  -->
+  <!--   ******************* EMPIRE MAIN ******************  -->
+  <!--   **************************************************  -->
   <Officer>
     <TypeID>OFEM001</TypeID>
     <InstanceID>EMPEROR_PALPATINE</InstanceID>
@@ -1172,6 +1175,7 @@
     <JediLevelVariance>40</JediLevelVariance>
     <CurrentRank>None</CurrentRank>
   </Officer>
+  <!--   **************************************************  -->
   <Officer>
     <TypeID>OFEM022</TypeID>
     <InstanceID>OZZEL</InstanceID>
@@ -1649,6 +1653,8 @@
     <JediLevelVariance>40</JediLevelVariance>
     <CurrentRank>None</CurrentRank>
   </Officer>
+  <!--   ****************** ALLIANCE MAIN *****************  -->
+  <!--   **************************************************  -->
   <Officer>
     <TypeID>OFAL001</TypeID>
     <InstanceID>MON_MOTHMA</InstanceID>

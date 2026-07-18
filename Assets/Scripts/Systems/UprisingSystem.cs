@@ -451,7 +451,7 @@ namespace Rebellion.Systems
                     _ => false,
                 };
                 if (penaltyApplies)
-                    shift /= _game.Config.Uprising.WeakSupportPenaltyDivisor;
+                    shift /= _game.Config.SupportShift.WeakSupportPenaltyDivisor;
             }
 
             int currentSupport = planet.GetPopularSupport(faction.InstanceID);

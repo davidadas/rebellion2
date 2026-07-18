@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <CapitalShips>
+  <!--   **************************************************  -->
+  <!--   ******************* EMPRE SHIPS ******************  -->
+  <!--   **************************************************  -->
   <CapitalShip>
     <TypeID>CSEM001</TypeID>
     <DisplayName>Imperial Dreadnaught</DisplayName>
@@ -2044,6 +2047,9 @@ An immense battle station 120-kilometers in diameter, the Death Star was the pin
     <HasGravityWell>false</HasGravityWell>
     <DetectionRating>5</DetectionRating>
   </CapitalShip>
+  <!--   **************************************************  -->
+  <!--   ***************** ALLIANCE SHIPS *****************  -->
+  <!--   **************************************************  -->
   <CapitalShip>
     <TypeID>CSAL001</TypeID>
     <DisplayName>Alliance Dreadnaught</DisplayName>

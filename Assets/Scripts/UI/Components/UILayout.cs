@@ -483,6 +483,26 @@ public static class UILayout
     }
 
     /// <summary>
+    /// Resolves the usable source-space dimensions of an authored transform.
+    /// </summary>
+    /// <param name="rect">The transform to measure.</param>
+    /// <returns>The positive source-space dimensions, or zero for an invalid transform.</returns>
+    public static Vector2Int GetSourceSize(RectTransform rect)
+    {
+        if (rect == null)
+            return Vector2Int.zero;
+
+        int width = Mathf.RoundToInt(rect.sizeDelta.x);
+        int height = Mathf.RoundToInt(rect.sizeDelta.y);
+        if (width <= 0)
+            width = Mathf.RoundToInt(rect.rect.width);
+        if (height <= 0)
+            height = Mathf.RoundToInt(rect.rect.height);
+
+        return width > 0 && height > 0 ? new Vector2Int(width, height) : Vector2Int.zero;
+    }
+
+    /// <summary>
     /// Converts a pointer event into top-left source-space coordinates within an authored surface.
     /// </summary>
     /// <param name="surface">The source-space surface.</param>
@@ -496,35 +516,54 @@ public static class UILayout
     )
     {
         sourcePosition = Vector2Int.zero;
-        if (
-            surface == null
-            || eventData == null
-            || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+        return eventData != null
+            && TryGetSourcePosition(
                 surface,
                 eventData.position,
                 eventData.pressEventCamera,
+                out sourcePosition
+            );
+    }
+
+    /// <summary>
+    /// Converts a screen position into top-left source-space coordinates within an authored surface.
+    /// </summary>
+    /// <param name="surface">The source-space surface.</param>
+    /// <param name="screenPosition">The screen-space position to convert.</param>
+    /// <param name="camera">The camera associated with the pointer event.</param>
+    /// <param name="sourcePosition">Receives the bounded source-space position.</param>
+    /// <returns>True when the position lies within a surface with valid dimensions.</returns>
+    public static bool TryGetSourcePosition(
+        RectTransform surface,
+        Vector2 screenPosition,
+        Camera camera,
+        out Vector2Int sourcePosition
+    )
+    {
+        sourcePosition = Vector2Int.zero;
+        if (
+            surface == null
+            || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                surface,
+                screenPosition,
+                camera,
                 out Vector2 localPosition
             )
         )
             return false;
 
-        int width = Mathf.RoundToInt(surface.sizeDelta.x);
-        int height = Mathf.RoundToInt(surface.sizeDelta.y);
-        if (width <= 0)
-            width = Mathf.RoundToInt(surface.rect.width);
-        if (height <= 0)
-            height = Mathf.RoundToInt(surface.rect.height);
-        if (width <= 0 || height <= 0)
+        Vector2Int size = GetSourceSize(surface);
+        if (size == Vector2Int.zero)
             return false;
 
         sourcePosition = new Vector2Int(
-            Mathf.RoundToInt(localPosition.x + width / 2f),
-            Mathf.RoundToInt(height / 2f - localPosition.y)
+            Mathf.RoundToInt(localPosition.x + size.x / 2f),
+            Mathf.RoundToInt(size.y / 2f - localPosition.y)
         );
         return sourcePosition.x >= 0
-            && sourcePosition.x < width
+            && sourcePosition.x < size.x
             && sourcePosition.y >= 0
-            && sourcePosition.y < height;
+            && sourcePosition.y < size.y;
     }
 
     /// <summary>

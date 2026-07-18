@@ -21,30 +21,6 @@ public interface IDefenseWindowActions
     /// </summary>
     /// <param name="target">The selected information target.</param>
     void OpenDefenseInfoWindow(StrategyStatusTarget target);
-
-    /// <summary>
-    /// Opens scrap confirmation for selected Defense items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting Defense window.</param>
-    /// <param name="items">The selected Defense items.</param>
-    void OpenDefenseScrapConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
-
-    /// <summary>
-    /// Opens stop-construction confirmation for selected queued items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting Defense window.</param>
-    /// <param name="items">The queued items selected for cancellation.</param>
-    void OpenDefenseStopConstructionConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    );
-
-    /// <summary>
-    /// Opens retirement confirmation for selected Defense personnel.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting Defense window.</param>
-    /// <param name="items">The selected Defense personnel.</param>
-    void OpenDefenseRetireConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
 }
 
 /// <summary>
@@ -68,6 +44,7 @@ public sealed class DefenseWindowController
     private Action<PointerEventData> endItemDrag;
     private IDefenseWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
+    private IStrategyConfirmationActions confirmationActions;
     private Action<PointerEventData> moveItemDrag;
     private Action<UIWindow, int, int> startItemDrag;
 
@@ -106,12 +83,14 @@ public sealed class DefenseWindowController
     /// </summary>
     /// <param name="windowActions">The feature-specific Defense actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
+    /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     /// <param name="continueItemDrag">Advances the active strategy item drag.</param>
     /// <param name="completeItemDrag">Completes the active strategy item drag.</param>
     public void Initialize(
         IDefenseWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
+        IStrategyConfirmationActions windowConfirmationActions,
         Action<UIWindow, int, int> beginItemDrag,
         Action<PointerEventData> continueItemDrag,
         Action<PointerEventData> completeItemDrag
@@ -120,6 +99,9 @@ public sealed class DefenseWindowController
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
         commandActions =
             windowCommandActions ?? throw new ArgumentNullException(nameof(windowCommandActions));
+        confirmationActions =
+            windowConfirmationActions
+            ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
         moveItemDrag =
             continueItemDrag ?? throw new ArgumentNullException(nameof(continueItemDrag));
@@ -446,7 +428,7 @@ public sealed class DefenseWindowController
             StrategyContextMenuAvailability.CanMoveItems(items, playerFactionId),
             StrategyContextMenuAvailability.PlayerControlsItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
-            StrategyContextMenuAvailability.CanRetireFleet(items, playerFactionId)
+            confirmationActions.CanRetire(items)
         );
         if (commands.Count == 0)
             return false;
@@ -492,13 +474,13 @@ public sealed class DefenseWindowController
                 actions.OpenDefenseStatusWindow(source.Target);
                 break;
             case StrategyContextMenuActions.Scrap:
-                actions.OpenDefenseScrapConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.Stop:
-                actions.OpenDefenseStopConstructionConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenStopConstructionConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.Retire:
-                actions.OpenDefenseRetireConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenRetireConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.CreateMission:
             case StrategyContextMenuActions.Move:
@@ -992,6 +974,7 @@ public sealed class DefenseWindowController
         if (
             actions == null
             || commandActions == null
+            || confirmationActions == null
             || startItemDrag == null
             || moveItemDrag == null
             || endItemDrag == null

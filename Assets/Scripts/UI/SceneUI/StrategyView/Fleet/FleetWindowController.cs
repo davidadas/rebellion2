@@ -26,30 +26,6 @@ public interface IFleetWindowActions
     void OpenFleetStatusWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
 
     /// <summary>
-    /// Opens a scrap confirmation for selected fleet items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting fleet window.</param>
-    /// <param name="items">The selected items.</param>
-    void OpenFleetScrapConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
-
-    /// <summary>
-    /// Opens stop-construction confirmation for selected queued items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting fleet window.</param>
-    /// <param name="items">The queued items selected for cancellation.</param>
-    void OpenFleetStopConstructionConfirmWindow(
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
-    );
-
-    /// <summary>
-    /// Opens a retirement confirmation for selected personnel.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting fleet window.</param>
-    /// <param name="items">The selected personnel.</param>
-    void OpenFleetRetireConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
-
-    /// <summary>
     /// Rebuilds shared strategy state after a fleet command changes the game.
     /// </summary>
     void RefreshFleetState();
@@ -77,6 +53,7 @@ public sealed class FleetWindowController
     private Action<PointerEventData> endItemDrag;
     private IFleetWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
+    private IStrategyConfirmationActions confirmationActions;
     private Action<PointerEventData> moveItemDrag;
     private Action<UIWindow, int, int> startItemDrag;
 
@@ -120,12 +97,14 @@ public sealed class FleetWindowController
     /// </summary>
     /// <param name="windowActions">The feature-specific fleet actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
+    /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     /// <param name="continueItemDrag">Advances the active strategy item drag.</param>
     /// <param name="completeItemDrag">Completes the active strategy item drag.</param>
     public void Initialize(
         IFleetWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
+        IStrategyConfirmationActions windowConfirmationActions,
         Action<UIWindow, int, int> beginItemDrag,
         Action<PointerEventData> continueItemDrag,
         Action<PointerEventData> completeItemDrag
@@ -134,6 +113,9 @@ public sealed class FleetWindowController
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
         commandActions =
             windowCommandActions ?? throw new ArgumentNullException(nameof(windowCommandActions));
+        confirmationActions =
+            windowConfirmationActions
+            ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
         moveItemDrag =
             continueItemDrag ?? throw new ArgumentNullException(nameof(continueItemDrag));
@@ -412,7 +394,7 @@ public sealed class FleetWindowController
             StrategyContextMenuAvailability.PlayerControlsItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanMoveItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
-            StrategyContextMenuAvailability.CanRetireFleet(items, playerFactionId)
+            confirmationActions.CanRetire(items)
         );
         FleetContextMenuSource source = new FleetContextMenuSource(
             context.Window,
@@ -462,13 +444,13 @@ public sealed class FleetWindowController
                 BeginRename(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.Scrap:
-                actions.OpenFleetScrapConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.Stop:
-                actions.OpenFleetStopConstructionConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenStopConstructionConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.Retire:
-                actions.OpenFleetRetireConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenRetireConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.CreateFleet:
                 TryCreateFleetFromCapitalShips(source.Window, source.Items);
@@ -1179,6 +1161,7 @@ public sealed class FleetWindowController
         if (
             actions == null
             || commandActions == null
+            || confirmationActions == null
             || startItemDrag == null
             || moveItemDrag == null
             || endItemDrag == null

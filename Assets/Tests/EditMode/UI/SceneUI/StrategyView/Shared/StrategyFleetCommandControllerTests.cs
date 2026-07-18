@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using GameFleet = Rebellion.Game.Units.Fleet;
 using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
 
@@ -43,10 +44,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(null, (_, _) => null)
+                new StrategyFleetCommandController(
+                    null,
+                    () => new FleetSystem(_game),
+                    (_, _) => null
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(() => _game, null)
+                new StrategyFleetCommandController(() => _game, null, (_, _) => null)
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new StrategyFleetCommandController(() => _game, () => new FleetSystem(_game), null)
             );
         }
 
@@ -94,6 +102,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             StrategyFleetCommandController controller = new StrategyFleetCommandController(
                 () => null,
+                () => new FleetSystem(_game),
                 (_, _) => null
             );
 
@@ -114,6 +123,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             IReadOnlyList<GameFleet> receivedFleets = null;
             StrategyFleetCommandController controller = new StrategyFleetCommandController(
                 () => _game,
+                () => new FleetSystem(_game),
                 (target, fleets) =>
                 {
                     receivedTarget = target;
@@ -177,7 +187,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(() => _game, (_, _) => null);
+            return new StrategyFleetCommandController(
+                () => _game,
+                () => new FleetSystem(_game),
+                (_, _) => null
+            );
         }
 
         private static CapitalShip CreateShip(string instanceId, string ownerId)

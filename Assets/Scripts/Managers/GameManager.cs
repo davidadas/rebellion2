@@ -8,7 +8,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -23,10 +22,14 @@ public class GameManager
     private GameEventSystem _eventManager;
     private MissionSystem _missionManager;
     private MovementSystem _movementManager;
+    private FleetSystem _fleetSystem;
+    private PersonnelSystem _personnelSystem;
     private ManufacturingSystem _manufacturingManager;
     private MaintenanceSystem _maintenanceManager;
     private ResourceProductionSystem _resourceProductionManager;
-    private CombatSystem _combatManager;
+    private SpaceCombatSystem _spaceCombatSystem;
+    private BombardmentSystem _bombardmentSystem;
+    private PlanetaryAssaultSystem _planetaryAssaultSystem;
     private FogOfWarSystem _fogOfWarManager;
     private BlockadeSystem _blockadeManager;
     private ResearchSystem _researchManager;
@@ -63,14 +66,24 @@ public class GameManager
     internal MovementSystem MovementSystem => _movementManager;
 
     /// <summary>
+    /// Gets the fleet system owned by this game runtime.
+    /// </summary>
+    internal FleetSystem FleetSystem => _fleetSystem;
+
+    /// <summary>
+    /// Gets the personnel system owned by this game runtime.
+    /// </summary>
+    internal PersonnelSystem PersonnelSystem => _personnelSystem;
+
+    /// <summary>
     /// Gets the mission system owned by this game runtime.
     /// </summary>
     internal MissionSystem MissionSystem => _missionManager;
 
     /// <summary>
-    /// Gets the combat system owned by this game runtime.
+    /// Gets the space combat system owned by this game runtime.
     /// </summary>
-    internal CombatSystem CombatSystem => _combatManager;
+    internal SpaceCombatSystem SpaceCombatSystem => _spaceCombatSystem;
 
     /// <summary>
     /// Gets the message system owned by this game runtime.
@@ -140,9 +153,21 @@ public class GameManager
         _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
         _blockadeManager = new BlockadeSystem(_game, _randomProvider);
-        _movementManager = new MovementSystem(_game, _fogOfWarManager, _blockadeManager);
-        _manufacturingManager = new ManufacturingSystem(_game, _randomProvider, _movementManager);
-        _maintenanceManager = new MaintenanceSystem(_game, _randomProvider);
+        _fleetSystem = new FleetSystem(_game);
+        _personnelSystem = new PersonnelSystem(_game);
+        _movementManager = new MovementSystem(
+            _game,
+            _fogOfWarManager,
+            _fleetSystem,
+            _blockadeManager
+        );
+        _manufacturingManager = new ManufacturingSystem(
+            _game,
+            _fleetSystem,
+            _randomProvider,
+            _movementManager
+        );
+        _maintenanceManager = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
         _resourceProductionManager = new ResourceProductionSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
@@ -152,10 +177,16 @@ public class GameManager
         );
         _jediSystem = new JediSystem(_game, _randomProvider);
         _missionManager = new MissionSystem(_game, _randomProvider, _movementManager);
-        _combatManager = new CombatSystem(
+        _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementManager);
+        _bombardmentSystem = new BombardmentSystem(
             _game,
             _randomProvider,
             _movementManager,
+            _planetaryControlSystem
+        );
+        _planetaryAssaultSystem = new PlanetaryAssaultSystem(
+            _game,
+            _randomProvider,
             _planetaryControlSystem
         );
         _researchManager = new ResearchSystem(_game, _randomProvider);
@@ -167,7 +198,8 @@ public class GameManager
             _missionManager,
             _movementManager,
             _manufacturingManager,
-            _combatManager,
+            _bombardmentSystem,
+            _planetaryAssaultSystem,
             _randomProvider
         );
     }
@@ -209,55 +241,6 @@ public class GameManager
     /// </summary>
     /// <returns>The faction whose PlayerID is set.</returns>
     public Faction GetPlayerFaction() => _game.GetPlayerFaction();
-
-    /// <summary>
-    /// Requests a group move through the movement system.
-    /// </summary>
-    /// <param name="units">The units to move.</param>
-    /// <param name="destination">The shared destination.</param>
-    public void RequestMove(List<IMovable> units, ContainerNode destination)
-    {
-        _movementManager.RequestMove(units, destination);
-    }
-
-    /// <summary>
-    /// Estimates transit time for a group move without changing scene state.
-    /// </summary>
-    /// <param name="units">The units to evaluate.</param>
-    /// <param name="destination">The shared destination.</param>
-    /// <param name="transitTicks">The maximum transit ticks for the group.</param>
-    /// <returns>True when the move can be estimated.</returns>
-    public bool TryGetTransitTicks(
-        IReadOnlyList<IMovable> units,
-        ContainerNode destination,
-        out int transitTicks
-    )
-    {
-        return _movementManager.TryGetTransitTicks(units, destination, out transitTicks);
-    }
-
-    /// <summary>
-    /// Estimates manufactured unit transit time without assigning movement.
-    /// </summary>
-    /// <param name="unit">The manufactured unit to evaluate.</param>
-    /// <param name="origin">The production planet.</param>
-    /// <param name="destination">The requested destination.</param>
-    /// <param name="transitTicks">The estimated transit ticks.</param>
-    /// <returns>True when the destination can be evaluated.</returns>
-    public bool TryEstimateManufacturedTransitTicks(
-        IMovable unit,
-        Planet origin,
-        ContainerNode destination,
-        out int transitTicks
-    )
-    {
-        return _movementManager.TryEstimateManufacturedTransitTicks(
-            unit,
-            origin,
-            destination,
-            out transitTicks
-        );
-    }
 
     /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
@@ -316,7 +299,7 @@ public class GameManager
     /// </summary>
     public void Update()
     {
-        if (_combatManager.HasPendingDecision || _tickInterval == null)
+        if (_spaceCombatSystem.HasPendingDecision || _tickInterval == null)
             return;
 
         float deltaTime = (float)_stopwatch.Elapsed.TotalSeconds;
@@ -337,7 +320,7 @@ public class GameManager
     /// <returns>The space combat result generated by the encounter, when present.</returns>
     public SpaceCombatResult ResolveCombat(bool autoResolve)
     {
-        List<GameResult> combatResults = _combatManager.ResolvePendingCombat(autoResolve);
+        List<GameResult> combatResults = _spaceCombatSystem.ResolvePending(autoResolve);
         return CompleteCombatResolution(combatResults);
     }
 
@@ -348,7 +331,7 @@ public class GameManager
     /// <returns>The resulting space-combat summary, or null when retreat is unavailable.</returns>
     public SpaceCombatResult ResolveCombatRetreat(string retreatingFactionInstanceId)
     {
-        List<GameResult> combatResults = _combatManager.ResolvePendingCombatRetreat(
+        List<GameResult> combatResults = _spaceCombatSystem.ResolvePendingRetreat(
             retreatingFactionInstanceId
         );
         if (combatResults == null)
@@ -383,10 +366,12 @@ public class GameManager
     /// </summary>
     /// <param name="attackingFleets">The attacking fleets.</param>
     /// <param name="targetPlanet">The bombardment target planet.</param>
+    /// <param name="type">The bombardment target profile.</param>
     /// <returns>The bombardment result, or null when bombardment cannot execute.</returns>
     public BombardmentResult ExecuteOrbitalBombardment(
         IReadOnlyList<Fleet> attackingFleets,
-        Planet targetPlanet
+        Planet targetPlanet,
+        BombardmentType type
     )
     {
         if (targetPlanet == null)
@@ -397,8 +382,9 @@ public class GameManager
         if (fleets.Count == 0)
             return null;
 
-        BombardmentResult result = _combatManager.ExecuteOrbitalBombardment(fleets, targetPlanet);
+        BombardmentResult result = _bombardmentSystem.Execute(fleets, targetPlanet, type);
         List<GameResult> results = new List<GameResult> { result };
+        results.AddRange(result.Events);
         if (result.OwnershipChange != null)
             results.Add(result.OwnershipChange);
 
@@ -411,7 +397,7 @@ public class GameManager
     /// </summary>
     public void ProcessTick()
     {
-        if (_combatManager.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
+        if (_spaceCombatSystem.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
             return;
 
         _game.CurrentTick++;
@@ -424,14 +410,14 @@ public class GameManager
         List<GameResult> movementResults = _movementManager.ProcessTick();
         ProcessResults(movementResults, processMessages: false);
 
-        List<GameResult> combatResults = _combatManager.ProcessTick();
+        List<GameResult> combatResults = _spaceCombatSystem.ProcessTick();
         ProcessResults(combatResults, processMessages: false);
 
         List<GameResult> resultsWaitingForCombatResolution = CombineResults(
             movementResults,
             combatResults
         );
-        if (_combatManager.HasPendingDecision)
+        if (_spaceCombatSystem.HasPendingDecision)
         {
             DeferResultsUntilCombatResolution(resultsWaitingForCombatResolution);
             return;

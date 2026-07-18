@@ -44,9 +44,14 @@ namespace Rebellion.AI.Director
         public ManufacturingSystem Manufacturing { get; }
 
         /// <summary>
-        /// Combat system used by combat proposals.
+        /// Bombardment system used by fleet attack proposals.
         /// </summary>
-        public CombatSystem Combat { get; }
+        public BombardmentSystem Bombardment { get; }
+
+        /// <summary>
+        /// Planetary-assault system used by fleet attack proposals.
+        /// </summary>
+        public PlanetaryAssaultSystem PlanetaryAssault { get; }
 
         /// <summary>
         /// Derived AI assessment for this turn.
@@ -80,7 +85,8 @@ namespace Rebellion.AI.Director
         /// <param name="missions">Mission system used by mission proposals.</param>
         /// <param name="movement">Movement system used by movement proposals.</param>
         /// <param name="manufacturing">Manufacturing system used by production proposals.</param>
-        /// <param name="combat">Combat system used by combat proposals.</param>
+        /// <param name="bombardment">Bombardment system used by fleet attack proposals.</param>
+        /// <param name="planetaryAssault">Planetary-assault system used by fleet attack proposals.</param>
         /// <param name="random">RNG provider used by probabilistic decisions.</param>
         public AITurnContext(
             GameRoot game,
@@ -88,7 +94,8 @@ namespace Rebellion.AI.Director
             MissionSystem missions,
             MovementSystem movement,
             ManufacturingSystem manufacturing,
-            CombatSystem combat,
+            BombardmentSystem bombardment,
+            PlanetaryAssaultSystem planetaryAssault,
             IRandomNumberProvider random
         )
         {
@@ -97,7 +104,8 @@ namespace Rebellion.AI.Director
             Missions = missions;
             Movement = movement;
             Manufacturing = manufacturing;
-            Combat = combat;
+            Bombardment = bombardment;
+            PlanetaryAssault = planetaryAssault;
             Random = random;
             Assessment = new AIAssessment(this);
         }

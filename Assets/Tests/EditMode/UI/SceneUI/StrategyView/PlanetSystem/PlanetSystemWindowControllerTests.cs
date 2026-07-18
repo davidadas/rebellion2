@@ -9,6 +9,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -56,7 +57,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _targetingController = new TargetingController();
             _actions = new TestActions();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, (_, _, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
         }
 
         [TearDown]
@@ -90,7 +91,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, _actions, (_, _, _) => { })
+                _controller.Initialize(null, _actions, _actions, (_, _, _) => { })
             );
         }
 
@@ -397,7 +398,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(() => _game, (_, _) => null);
+            return new StrategyFleetCommandController(
+                () => _game,
+                () => new FleetSystem(_game),
+                (_, _) => null
+            );
         }
 
         private GameRoot CreateGame()
@@ -546,8 +551,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
-        private sealed class TestActions : IPlanetSystemWindowActions, IStrategyWindowCommandActions
+        private sealed class TestActions
+            : IPlanetSystemWindowActions,
+                IStrategyWindowCommandActions,
+                IStrategyConfirmationActions
         {
+            public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
             public int MissionCreateCount { get; private set; }
             public int MoveConfirmCount { get; private set; }
             public int MoveCount { get; private set; }
@@ -566,7 +576,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
             public void OpenPlanetSystemStatus(StrategyStatusTarget target) { }
 
-            public void OpenPlanetSystemScrapConfirmWindow(
+            public void OpenScrapConfirmWindow(
+                UIWindow sourceWindow,
+                IReadOnlyList<ISceneNode> items
+            ) { }
+
+            public void OpenStopConstructionConfirmWindow(
+                UIWindow sourceWindow,
+                IReadOnlyList<ISceneNode> items
+            ) { }
+
+            public void OpenRetireConfirmWindow(
                 UIWindow sourceWindow,
                 IReadOnlyList<ISceneNode> items
             ) { }

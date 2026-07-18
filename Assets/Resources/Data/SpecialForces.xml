@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <SpecialForces>
+  <!--   **************************************************  -->
+  <!--   ******************** ALLIANCE ********************  -->
+  <!--   **************************************************  -->
   <SpecialForce>
     <TypeID>SPAL001</TypeID>
     <DisplayName>Guerrillas</DisplayName>
@@ -165,6 +168,9 @@ Bothan spies are a wondrous source of intelligence information for the Alliance.
       <String>Espionage</String>
     </AllowedMissionTypeIDs>
   </SpecialForce>
+  <!--   **************************************************  -->
+  <!--   ********************* EMPIRE *********************  -->
+  <!--   **************************************************  -->
   <SpecialForce>
     <TypeID>SPEM001</TypeID>
     <DisplayName>Imperial Probe Droid</DisplayName>

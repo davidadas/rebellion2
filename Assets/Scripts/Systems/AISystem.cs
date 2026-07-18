@@ -23,14 +23,16 @@ namespace Rebellion.Systems
         /// <param name="missionManager">The mission system.</param>
         /// <param name="movementManager">The movement system.</param>
         /// <param name="manufacturingManager">The manufacturing system.</param>
-        /// <param name="combatManager">The combat system.</param>
+        /// <param name="bombardmentSystem">The bombardment system.</param>
+        /// <param name="planetaryAssaultSystem">The planetary-assault system.</param>
         /// <param name="randomProvider">Random number provider for AI choices.</param>
         public AISystem(
             GameRoot game,
             MissionSystem missionManager,
             MovementSystem movementManager,
             ManufacturingSystem manufacturingManager,
-            CombatSystem combatManager,
+            BombardmentSystem bombardmentSystem,
+            PlanetaryAssaultSystem planetaryAssaultSystem,
             IRandomNumberProvider randomProvider
         )
         {
@@ -40,7 +42,8 @@ namespace Rebellion.Systems
                 missionManager,
                 movementManager,
                 manufacturingManager,
-                combatManager,
+                bombardmentSystem,
+                planetaryAssaultSystem,
                 randomProvider
             );
         }

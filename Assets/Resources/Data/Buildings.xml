@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <Buildings>
+  <!--   **************************************************  -->
+  <!--   ******************* FACILITIES *******************  -->
+  <!--   **************************************************  -->
   <Building>
     <TypeID>BDFA01</TypeID>
     <AllowedOwnerInstanceIDs>
@@ -328,6 +331,9 @@ An Advanced Construction Yard can produce new facilities in half the time of a s
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>40</ResearchDifficulty>
   </Building>
+  <!--   **************************************************  -->
+  <!--   ******************** DEFENSES ********************  -->
+  <!--   **************************************************  -->
   <Building>
     <TypeID>BDDF01</TypeID>
     <AllowedOwnerInstanceIDs>

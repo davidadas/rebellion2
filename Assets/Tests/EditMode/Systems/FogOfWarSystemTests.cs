@@ -1362,7 +1362,10 @@ namespace Rebellion.Tests.Systems
             queuedBuilding.BaseBuildSpeed = 1;
             queuedBuilding.BuildingType = BuildingType.Mine;
 
-            ManufacturingSystem manufacturing = new ManufacturingSystem(_game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
             bool enqueued = manufacturing.Enqueue(
                 _coruscant,
                 queuedBuilding,

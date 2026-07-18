@@ -21,7 +21,7 @@ public sealed class AppBootstrap : MonoBehaviour
     [SerializeField]
     private AudioManager audioManager;
 
-    private CancelStack cancelStack;
+    private CancelStack _cancelStack;
     private GameRuntime _runtime;
     private UserSettingsManager _userSettingsManager;
 
@@ -66,7 +66,7 @@ public sealed class AppBootstrap : MonoBehaviour
     private void InitializeRuntime()
     {
         _runtime = new GameRuntime();
-        cancelStack ??= new CancelStack();
+        _cancelStack ??= new CancelStack();
 
         if (audioManager == null)
             audioManager = AudioManager.EnsureExists(transform);
@@ -80,7 +80,7 @@ public sealed class AppBootstrap : MonoBehaviour
         if (inputController == null)
             inputController = CreateInputController();
 
-        inputController?.Initialize(inputManager, cancelStack, _runtime);
+        inputController?.Initialize(inputManager, _cancelStack, _runtime);
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The active cancel stack.</returns>
     public CancelStack GetCancelStack()
     {
-        return cancelStack;
+        return _cancelStack;
     }
 
     /// <summary>

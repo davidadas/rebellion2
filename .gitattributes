@@ -6,4 +6,7 @@
 *.md text eol=lf
 *.sh text eol=lf
 *.xml text eol=lf
+*.anim text eol=lf whitespace=-blank-at-eol
+*.meta text eol=lf whitespace=-blank-at-eol
 *.prefab text eol=lf whitespace=-blank-at-eol
+*.unity text eol=lf whitespace=-blank-at-eol

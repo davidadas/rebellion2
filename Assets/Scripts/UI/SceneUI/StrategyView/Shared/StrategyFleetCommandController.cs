@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 
 /// <summary>
 /// Executes fleet mutations shared by fleet and planet-system UI features.
@@ -13,19 +14,24 @@ using Rebellion.SceneGraph;
 public sealed class StrategyFleetCommandController
 {
     private readonly Func<GameRoot> getGame;
+    private readonly Func<FleetSystem> getFleetSystem;
     private readonly Func<Planet, IReadOnlyList<Fleet>, BombardmentResult> executeBombardment;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
     /// <param name="getGame">Returns the active game.</param>
+    /// <param name="getFleetSystem">Returns the active fleet system.</param>
     /// <param name="executeBombardment">Executes and routes one bombardment command.</param>
     public StrategyFleetCommandController(
         Func<GameRoot> getGame,
+        Func<FleetSystem> getFleetSystem,
         Func<Planet, IReadOnlyList<Fleet>, BombardmentResult> executeBombardment
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
+        this.getFleetSystem =
+            getFleetSystem ?? throw new ArgumentNullException(nameof(getFleetSystem));
         this.executeBombardment =
             executeBombardment ?? throw new ArgumentNullException(nameof(executeBombardment));
     }
@@ -45,8 +51,7 @@ public sealed class StrategyFleetCommandController
         return game != null
             && ships.Count > 0
             && ships.Count == sourceItems.Count
-            && StrategyContextMenuAvailability.PlayerControlsItems(sourceItems, playerFactionId)
-            && game.CreateFleetFromCapitalShips(ships) != null;
+            && getFleetSystem().CreateFromCapitalShips(ships, playerFactionId) != null;
     }
 
     /// <summary>

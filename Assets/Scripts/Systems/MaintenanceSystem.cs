@@ -19,6 +19,7 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
+        private readonly FleetSystem _fleetSystem;
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
         private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
             new Dictionary<string, int>();
@@ -28,10 +29,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="provider">Random number provider for scrap target selection.</param>
-        public MaintenanceSystem(GameRoot game, IRandomNumberProvider provider)
+        /// <param name="fleetSystem">Owns empty-fleet cleanup.</param>
+        public MaintenanceSystem(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            FleetSystem fleetSystem
+        )
         {
-            _game = game;
+            _game = game ?? throw new System.ArgumentNullException(nameof(game));
             _provider = provider;
+            _fleetSystem =
+                fleetSystem ?? throw new System.ArgumentNullException(nameof(fleetSystem));
         }
 
         /// <summary>
@@ -253,7 +261,7 @@ namespace Rebellion.Systems
             ISceneNode node = item as ISceneNode;
             Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
             _game.DetachNode(node);
-            _game.RemoveEmptyFleet(parentFleet);
+            _fleetSystem.RemoveIfEmpty(parentFleet);
         }
     }
 }

@@ -31,6 +31,7 @@ public sealed class CutsceneManager : MonoBehaviour
 
     private CutscenePlayer activePlayer;
     private bool ownsTimePause;
+    private float previousTimeScale = _runningTimeScale;
 
     /// <summary>
     /// Initializes the singleton instance.
@@ -115,6 +116,9 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </summary>
     private void PauseTimeScale()
     {
+        if (!ownsTimePause)
+            previousTimeScale = Time.timeScale;
+
         Time.timeScale = _pausedTimeScale;
         ownsTimePause = true;
     }
@@ -127,7 +131,7 @@ public sealed class CutsceneManager : MonoBehaviour
         if (!ownsTimePause)
             return;
 
-        Time.timeScale = _runningTimeScale;
+        Time.timeScale = previousTimeScale;
         ownsTimePause = false;
     }
 
@@ -139,7 +143,11 @@ public sealed class CutsceneManager : MonoBehaviour
         if (activePlayer == null)
             return;
 
-        Destroy(activePlayer.gameObject);
+        GameObject playerObject = activePlayer.gameObject;
         activePlayer = null;
+        if (Application.isPlaying)
+            Destroy(playerObject);
+        else
+            DestroyImmediate(playerObject);
     }
 }

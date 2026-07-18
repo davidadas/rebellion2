@@ -1,5 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <Regiments>
+  <!--   **************************************************  -->
+  <!--   ********************* EMPIRE *********************  -->
+  <!--   **************************************************  -->
   <Regiment>
     <TypeID>REEM001</TypeID>
     <DisplayName>Imperial Fleet Regiment</DisplayName>
@@ -240,6 +243,9 @@ Dark troopers have been a closely guarded secret by the Empire.  They are a grou
     <ResearchOrder>2</ResearchOrder>
     <ResearchDifficulty>66</ResearchDifficulty>
   </Regiment>
+  <!--   **************************************************  -->
+  <!--   ******************** ALLIANCE ********************  -->
+  <!--   **************************************************  -->
   <Regiment>
     <TypeID>REAL001</TypeID>
     <DisplayName>Alliance Fleet Regiment</DisplayName>

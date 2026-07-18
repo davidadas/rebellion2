@@ -11,6 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
+using UnityEngine.UI;
 using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
@@ -29,6 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private GalaxyMapPlanet _destination;
         private GameRoot _game;
         private GameManager _gameManager;
+        private GalaxyMapPlanet _missionTarget;
         private MissionCreateWindowController _missionCreateController;
         private Officer _officer;
         private int _rebuildCount;
@@ -45,8 +47,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _clearedWindow = null;
             _dirtyCount = 0;
             _rebuildCount = 0;
-            _game = CreateGame(out Planet origin, out GalaxyMapPlanet destination);
+            _game = CreateGame(
+                out Planet origin,
+                out GalaxyMapPlanet destination,
+                out GalaxyMapPlanet missionTarget
+            );
             _destination = destination;
+            _missionTarget = missionTarget;
             _officer = new Officer { InstanceID = "officer", OwnerInstanceID = _playerFactionId };
             _specialForces = new SpecialForces
             {
@@ -67,10 +74,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _sourceWindow = CreateSourceWindow();
-            StrategyConfirmActionController actionController = new StrategyConfirmActionController(
-                _gameManager,
-                _ => { }
-            );
             _missionCreateController = new MissionCreateWindowController(
                 () => _game,
                 () => _gameManager.MissionSystem,
@@ -84,7 +87,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             );
             _missionCreateController.Initialize(new MissionCreateActions());
             ConfirmDialogWindowController confirmController = new ConfirmDialogWindowController(
-                actionController,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -93,12 +95,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
                 window => _windowManager.DestroyWindow(window),
                 () => { }
             );
-            confirmController.Initialize(new ConfirmActions());
             _controller = new StrategyWindowCommandController(
                 _missionCreateController,
-                actionController,
                 confirmController,
-                () => _playerFactionId,
+                _gameManager,
+                _ => { },
                 window => _clearedWindow = window,
                 () => _rebuildCount++,
                 () => _dirtyCount++
@@ -114,12 +115,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         [Test]
         public void Constructor_NullMissionCreateController_ThrowsArgumentNullException()
         {
-            StrategyConfirmActionController actionController = new StrategyConfirmActionController(
-                _gameManager,
-                _ => { }
-            );
             ConfirmDialogWindowController confirmController = new ConfirmDialogWindowController(
-                actionController,
                 () => _uiContext,
                 _ => { },
                 _windowLayer,
@@ -132,9 +128,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.Throws<ArgumentNullException>(() =>
                 new StrategyWindowCommandController(
                     null,
-                    actionController,
                     confirmController,
-                    () => _playerFactionId,
+                    _gameManager,
+                    _ => { },
                     _ => { },
                     () => { },
                     () => { }
@@ -187,10 +183,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
+        public void OpenMoveConfirmWindow_ConfirmedMove_MovesUnitAndRefreshesSource()
+        {
+            _controller.OpenMoveConfirmWindow(
+                _sourceWindow,
+                new StrategyMissionTarget(_destination, null),
+                new ISceneNode[] { _officer }
+            );
+
+            ConfirmOpenDialog();
+
+            Assert.AreEqual("target", _officer.GetParentOfType<Planet>().InstanceID);
+            Assert.IsNotNull(_officer.Movement);
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(1, _rebuildCount);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        [Test]
         public void OpenMissionCreateWindow_ValidSelection_OpensMissionCreateWindow()
         {
             _controller.OpenMissionCreateWindow(
-                new StrategyMissionTarget(_destination, null),
+                new StrategyMissionTarget(_missionTarget, null),
                 new ISceneNode[] { _specialForces }
             );
 
@@ -199,7 +213,59 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             Assert.IsTrue(_windowManager.TryGetWindowView(window, out MissionCreateWindowView _));
         }
 
-        private GameRoot CreateGame(out Planet origin, out GalaxyMapPlanet destination)
+        [Test]
+        public void OpenScrapConfirmWindow_ValidSelection_OpensConfirmationWindow()
+        {
+            _controller.OpenScrapConfirmWindow(_sourceWindow, new ISceneNode[] { _specialForces });
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
+        }
+
+        [Test]
+        public void OpenStopConstructionConfirmWindow_BuildingItem_OpensConfirmationWindow()
+        {
+            _specialForces.ManufacturingStatus = ManufacturingStatus.Building;
+
+            _controller.OpenStopConstructionConfirmWindow(
+                _sourceWindow,
+                new ISceneNode[] { _specialForces }
+            );
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
+        }
+
+        [Test]
+        public void OpenRetireConfirmWindow_EligibleOfficer_OpensConfirmationWindow()
+        {
+            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+
+            UIWindow window = _windowManager.Windows.Single();
+            Assert.IsTrue(window.Modal);
+            Assert.IsTrue(_windowManager.TryGetWindowView(window, out ConfirmDialogWindowView _));
+        }
+
+        [Test]
+        public void OpenRetireConfirmWindow_ConfirmedRetirement_RemovesOfficerAndRefreshesSource()
+        {
+            _controller.OpenRetireConfirmWindow(_sourceWindow, new ISceneNode[] { _officer });
+
+            ConfirmOpenDialog();
+
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(_officer.InstanceID));
+            Assert.AreSame(_sourceWindow, _clearedWindow);
+            Assert.AreEqual(1, _rebuildCount);
+            Assert.AreEqual(1, _dirtyCount);
+        }
+
+        private GameRoot CreateGame(
+            out Planet origin,
+            out GalaxyMapPlanet destination,
+            out GalaxyMapPlanet missionTarget
+        )
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
@@ -222,12 +288,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             {
                 InstanceID = "target",
                 DisplayName = "Target",
-                OwnerInstanceID = _opponentFactionId,
+                OwnerInstanceID = _playerFactionId,
                 IsColonized = true,
             }.WithMapPosition(100, 0);
+            Planet enemyTarget = new Planet
+            {
+                InstanceID = "enemy-target",
+                DisplayName = "Enemy Target",
+                OwnerInstanceID = _opponentFactionId,
+                IsColonized = true,
+            }.WithMapPosition(200, 0);
             game.AttachNode(origin, system);
             game.AttachNode(target, system);
+            game.AttachNode(enemyTarget, system);
             destination = new GalaxyMapPlanet(system, target, _playerFactionId);
+            missionTarget = new GalaxyMapPlanet(system, enemyTarget, _playerFactionId);
             return game;
         }
 
@@ -244,9 +319,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             return window;
         }
 
-        private sealed class ConfirmActions : IConfirmDialogWindowActions
+        private void ConfirmOpenDialog()
         {
-            public void RefreshAfterConfirmedAction(UIWindow sourceWindow) { }
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ConfirmButtonImage")
+                .onClick.Invoke();
         }
 
         private sealed class MissionCreateActions : IMissionCreateWindowActions

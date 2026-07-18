@@ -42,13 +42,6 @@ public interface IPlanetSystemWindowActions
     /// </summary>
     /// <param name="target">The resolved status target.</param>
     void OpenPlanetSystemStatus(StrategyStatusTarget target);
-
-    /// <summary>
-    /// Opens scrap confirmation for selected planet-system fleet items.
-    /// </summary>
-    /// <param name="sourceWindow">The requesting planet-system window.</param>
-    /// <param name="items">The selected fleet items.</param>
-    void OpenPlanetSystemScrapConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
 }
 
 /// <summary>
@@ -83,6 +76,7 @@ public sealed class PlanetSystemWindowController
 
     private IPlanetSystemWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
+    private IStrategyConfirmationActions confirmationActions;
     private Action<UIWindow, int, int> startItemDrag;
 
     /// <summary>
@@ -131,16 +125,21 @@ public sealed class PlanetSystemWindowController
     /// </summary>
     /// <param name="windowActions">The feature-specific planet-system actions.</param>
     /// <param name="windowCommandActions">The shared mission and movement actions.</param>
+    /// <param name="windowConfirmationActions">The shared confirmation actions.</param>
     /// <param name="beginItemDrag">Begins a strategy item-drag candidate.</param>
     public void Initialize(
         IPlanetSystemWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
+        IStrategyConfirmationActions windowConfirmationActions,
         Action<UIWindow, int, int> beginItemDrag
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
         commandActions =
             windowCommandActions ?? throw new ArgumentNullException(nameof(windowCommandActions));
+        confirmationActions =
+            windowConfirmationActions
+            ?? throw new ArgumentNullException(nameof(windowConfirmationActions));
         startItemDrag = beginItemDrag ?? throw new ArgumentNullException(nameof(beginItemDrag));
     }
 
@@ -467,7 +466,7 @@ public sealed class PlanetSystemWindowController
                 actions.OpenPlanetSystemStatus(source.Target);
                 break;
             case StrategyContextMenuActions.Scrap:
-                actions.OpenPlanetSystemScrapConfirmWindow(source.Window, source.Items);
+                confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.PlanetaryBombardment:
                 if (windowManager.TryGetWindowView(source.Window, out PlanetSystemWindowView view))
@@ -1063,7 +1062,12 @@ public sealed class PlanetSystemWindowController
     /// </summary>
     private void EnsureInitialized()
     {
-        if (actions == null || commandActions == null || startItemDrag == null)
+        if (
+            actions == null
+            || commandActions == null
+            || confirmationActions == null
+            || startItemDrag == null
+        )
         {
             throw new InvalidOperationException(
                 $"{nameof(PlanetSystemWindowController)} must be initialized before use."

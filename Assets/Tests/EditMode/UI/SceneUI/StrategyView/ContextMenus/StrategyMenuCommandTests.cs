@@ -255,48 +255,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
-        public void CanRetireFleet_EligibleSelection_ReturnsTrue()
-        {
-            Officer officer = CreateOfficer("player");
-            SpecialForces specialForces = new SpecialForces
-            {
-                OwnerInstanceID = "player",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-
-            bool canRetire = StrategyContextMenuAvailability.CanRetireFleet(
-                new ISceneNode[] { officer, specialForces },
-                "player"
-            );
-
-            Assert.IsTrue(canRetire);
-        }
-
-        [Test]
-        public void CanRetireFleet_MainOfficerOrUnsupportedType_ReturnsFalse()
-        {
-            Officer mainOfficer = CreateOfficer("player");
-            mainOfficer.IsMain = true;
-            Regiment regiment = new Regiment
-            {
-                OwnerInstanceID = "player",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-
-            bool mainResult = StrategyContextMenuAvailability.CanRetireFleet(
-                new ISceneNode[] { mainOfficer },
-                "player"
-            );
-            bool unsupportedResult = StrategyContextMenuAvailability.CanRetireFleet(
-                new ISceneNode[] { regiment },
-                "player"
-            );
-
-            Assert.IsFalse(mainResult);
-            Assert.IsFalse(unsupportedResult);
-        }
-
-        [Test]
         public void PlayerControlsItem_CapturedOfficer_UsesCaptorIdentity()
         {
             Officer officer = CreateOfficer("enemy");

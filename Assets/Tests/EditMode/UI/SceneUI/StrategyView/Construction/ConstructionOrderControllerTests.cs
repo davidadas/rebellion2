@@ -48,9 +48,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             game.AttachNode(destination, system);
             game.AttachNode(CreateConstructionFacility(ownerId), producer);
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar);
+            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 game,
+                new FleetSystem(game),
                 game.Random,
                 movement
             );
@@ -101,9 +102,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             owner.RebuildResearchCatalog(templates.ToArray());
             game.Factions.Add(owner);
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar);
+            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 game,
+                new FleetSystem(game),
                 game.Random,
                 movement
             );
