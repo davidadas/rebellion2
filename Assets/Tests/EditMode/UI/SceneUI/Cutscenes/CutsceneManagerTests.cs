@@ -11,7 +11,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
     public class CutsceneManagerTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
-        private const string _clipPath = "Assets/Resources/Videos/intro.mp4";
+        private const string _clipPath =
+            "Assets/Tests/EditMode/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
 
         private VideoClip _clip;
         private CutsceneManager _manager;

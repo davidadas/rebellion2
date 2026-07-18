@@ -12,9 +12,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESOURCE_ROOT = PROJECT_ROOT / "Assets" / "Resources"
 ART_ROOT = RESOURCE_ROOT / "Art"
-VIDEO_ROOT = RESOURCE_ROOT / "Videos"
 JPEG_FIXTURE = PROJECT_ROOT / ".github" / "fixtures" / "blank-3840x2160.jpg"
-VIDEO_FIXTURE = PROJECT_ROOT / ".github" / "fixtures" / "blank-video.mp4"
 
 
 def get_metadata(root: Path) -> list[Path]:
@@ -141,28 +139,13 @@ def create_configured_resource_images() -> int:
     return created
 
 
-def create_video_assets() -> int:
-    created = 0
-    for metadata_path in get_metadata(VIDEO_ROOT):
-        asset_path = metadata_path.with_suffix("")
-        if asset_path.exists() or asset_path.suffix.lower() != ".mp4":
-            continue
-
-        asset_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(VIDEO_FIXTURE, asset_path)
-        created += 1
-
-    return created
-
-
 def main() -> None:
     serialized_images = create_serialized_reference_images()
     configured_images = create_configured_resource_images()
-    videos = create_video_assets()
     print(
         "Prepared CI asset stand-ins: "
         f"{serialized_images} serialized images, "
-        f"{configured_images} configured images, {videos} videos."
+        f"{configured_images} configured images."
     )
 
 

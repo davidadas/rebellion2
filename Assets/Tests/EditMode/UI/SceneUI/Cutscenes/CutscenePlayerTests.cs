@@ -12,7 +12,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
     [TestFixture]
     public class CutscenePlayerTests
     {
-        private const string _clipPath = "Assets/Resources/Videos/intro.mp4";
+        private const string _clipPath =
+            "Assets/Tests/EditMode/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
         private const string _prefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
 
         private AudioSource _audioSource;
