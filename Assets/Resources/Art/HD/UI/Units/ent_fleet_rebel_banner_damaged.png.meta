@@ -1,0 +1,533 @@
+fileFormatVersion: 2
+guid: b4e9c07e95c2d40f9ac021f54539078a
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2452054804381275362
+    second: ent_fleet_rebel_banner_damaged_0
+  - first:
+      213: 8264013154787892727
+    second: ent_fleet_rebel_banner_damaged_1
+  - first:
+      213: 291352384502543279
+    second: ent_fleet_rebel_banner_damaged_2
+  - first:
+      213: -517923875929992850
+    second: ent_fleet_rebel_banner_damaged_3
+  - first:
+      213: 4031288724809412006
+    second: ent_fleet_rebel_banner_damaged_4
+  - first:
+      213: 3222742684330919226
+    second: ent_fleet_rebel_banner_damaged_5
+  - first:
+      213: 4665268027550024130
+    second: ent_fleet_rebel_banner_damaged_6
+  - first:
+      213: 511610783156805905
+    second: ent_fleet_rebel_banner_damaged_7
+  - first:
+      213: 2219350769766414529
+    second: ent_fleet_rebel_banner_damaged_8
+  - first:
+      213: -6576333769992177850
+    second: ent_fleet_rebel_banner_damaged_9
+  - first:
+      213: -7761930770413919407
+    second: ent_fleet_rebel_banner_damaged_10
+  - first:
+      213: -4360382101193037405
+    second: ent_fleet_rebel_banner_damaged_11
+  - first:
+      213: 443843105517997286
+    second: ent_fleet_rebel_banner_damaged_12
+  - first:
+      213: -1854983007301746969
+    second: ent_fleet_rebel_banner_damaged_13
+  - first:
+      213: 3030151329461173460
+    second: ent_fleet_rebel_banner_damaged_14
+  - first:
+      213: 1089641927712602850
+    second: ent_fleet_rebel_banner_damaged_15
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_0
+      rect:
+        serializedVersion: 2
+        x: 39
+        y: 174
+        width: 52
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e49fe06ad2770220800000000000000
+      internalID: 2452054804381275362
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_1
+      rect:
+        serializedVersion: 2
+        x: 233
+        y: 174
+        width: 65
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fd994efd2cafa270800000000000000
+      internalID: 8264013154787892727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_2
+      rect:
+        serializedVersion: 2
+        x: 426
+        y: 202
+        width: 29
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa3bcb633771b0400800000000000000
+      internalID: 291352384502543279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_3
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 174
+        width: 29
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e61df7a9af6ffc8f0800000000000000
+      internalID: -517923875929992850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_4
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 152
+        width: 47
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ad6d4d8cb302f730800000000000000
+      internalID: 4031288724809412006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_5
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 147
+        width: 47
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a358806856b79bc20800000000000000
+      internalID: 3222742684330919226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_6
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 44
+        width: 119
+        height: 69
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c14b1cad8c5eb040800000000000000
+      internalID: 4665268027550024130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_7
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 102
+        width: 16
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1112251fb4b991700800000000000000
+      internalID: 511610783156805905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_8
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 111
+        width: 78
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c8bae734c7bcce10800000000000000
+      internalID: 2219350769766414529
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_9
+      rect:
+        serializedVersion: 2
+        x: 242
+        y: 93
+        width: 7
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 647f533774b2cb4a0800000000000000
+      internalID: -6576333769992177850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_10
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 48
+        width: 24
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 153ed4ab615184490800000000000000
+      internalID: -7761930770413919407
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_11
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 35
+        width: 33
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a9ea6dc49fcc73c0800000000000000
+      internalID: -4360382101193037405
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_12
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 21
+        width: 65
+        height: 61
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ec0860f3f8d82600800000000000000
+      internalID: 443843105517997286
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_13
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 44
+        width: 47
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7eeb46178c6c146e0800000000000000
+      internalID: -1854983007301746969
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_14
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 30
+        width: 16
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4dcf53864924d0a20800000000000000
+      internalID: 3030151329461173460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_banner_damaged_15
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 35
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ea7ea16f8f2f1f00800000000000000
+      internalID: 1089641927712602850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ent_fleet_rebel_banner_damaged_0: 2452054804381275362
+      ent_fleet_rebel_banner_damaged_1: 8264013154787892727
+      ent_fleet_rebel_banner_damaged_10: -7761930770413919407
+      ent_fleet_rebel_banner_damaged_11: -4360382101193037405
+      ent_fleet_rebel_banner_damaged_12: 443843105517997286
+      ent_fleet_rebel_banner_damaged_13: -1854983007301746969
+      ent_fleet_rebel_banner_damaged_14: 3030151329461173460
+      ent_fleet_rebel_banner_damaged_15: 1089641927712602850
+      ent_fleet_rebel_banner_damaged_2: 291352384502543279
+      ent_fleet_rebel_banner_damaged_3: -517923875929992850
+      ent_fleet_rebel_banner_damaged_4: 4031288724809412006
+      ent_fleet_rebel_banner_damaged_5: 3222742684330919226
+      ent_fleet_rebel_banner_damaged_6: 4665268027550024130
+      ent_fleet_rebel_banner_damaged_7: 511610783156805905
+      ent_fleet_rebel_banner_damaged_8: 2219350769766414529
+      ent_fleet_rebel_banner_damaged_9: -6576333769992177850
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

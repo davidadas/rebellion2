@@ -32,6 +32,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare CI asset stand-ins
+        run: python3 .github/scripts/prepare_ci_test_assets.py
+
       - uses: actions/cache@v4
         with:
           path: Library
@@ -150,6 +153,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Prepare CI asset stand-ins
+        run: python3 .github/scripts/prepare_ci_test_assets.py
 
       - uses: actions/cache@v4
         with:

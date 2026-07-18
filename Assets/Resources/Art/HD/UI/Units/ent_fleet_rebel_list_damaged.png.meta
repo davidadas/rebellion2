@@ -1,0 +1,377 @@
+fileFormatVersion: 2
+guid: eb1746d47e35b4baf8de026a3bc6752e
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1353938904607786049
+    second: ent_fleet_rebel_list_damaged_0
+  - first:
+      213: -1276441671874099707
+    second: ent_fleet_rebel_list_damaged_1
+  - first:
+      213: -8934779218196889771
+    second: ent_fleet_rebel_list_damaged_2
+  - first:
+      213: -126853860236411325
+    second: ent_fleet_rebel_list_damaged_3
+  - first:
+      213: 4306822890049613539
+    second: ent_fleet_rebel_list_damaged_4
+  - first:
+      213: -8290884781791557855
+    second: ent_fleet_rebel_list_damaged_5
+  - first:
+      213: -705118296817503593
+    second: ent_fleet_rebel_list_damaged_6
+  - first:
+      213: -2486640739400987725
+    second: ent_fleet_rebel_list_damaged_7
+  - first:
+      213: 6377248270142509111
+    second: ent_fleet_rebel_list_damaged_8
+  - first:
+      213: -4785717432917740585
+    second: ent_fleet_rebel_list_damaged_9
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_0
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 89
+        width: 25
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1448ab0a2482ac210800000000000000
+      internalID: 1353938904607786049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_1
+      rect:
+        serializedVersion: 2
+        x: 116
+        y: 89
+        width: 33
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5064073ff0b294ee0800000000000000
+      internalID: -1276441671874099707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_2
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 102
+        width: 15
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55ff4d8b3a9410480800000000000000
+      internalID: -8934779218196889771
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_3
+      rect:
+        serializedVersion: 2
+        x: 71
+        y: 84
+        width: 11
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34eb83216135d3ef0800000000000000
+      internalID: -126853860236411325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_4
+      rect:
+        serializedVersion: 2
+        x: 89
+        y: 75
+        width: 20
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3eeade79998e4cb30800000000000000
+      internalID: 4306822890049613539
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_5
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 75
+        width: 20
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1274f9bc73cd0fc80800000000000000
+      internalID: -8290884781791557855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_6
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 57
+        width: 38
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 792709915aae636f0800000000000000
+      internalID: -705118296817503593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_7
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 17
+        width: 61
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bb4dfb1c6dad7dd0800000000000000
+      internalID: -2486640739400987725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_8
+      rect:
+        serializedVersion: 2
+        x: 156
+        y: 12
+        width: 34
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 730915a7389808850800000000000000
+      internalID: 6377248270142509111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ent_fleet_rebel_list_damaged_9
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 21
+        width: 24
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d33b8fb957b59db0800000000000000
+      internalID: -4785717432917740585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ent_fleet_rebel_list_damaged_0: 1353938904607786049
+      ent_fleet_rebel_list_damaged_1: -1276441671874099707
+      ent_fleet_rebel_list_damaged_2: -8934779218196889771
+      ent_fleet_rebel_list_damaged_3: -126853860236411325
+      ent_fleet_rebel_list_damaged_4: 4306822890049613539
+      ent_fleet_rebel_list_damaged_5: -8290884781791557855
+      ent_fleet_rebel_list_damaged_6: -705118296817503593
+      ent_fleet_rebel_list_damaged_7: -2486640739400987725
+      ent_fleet_rebel_list_damaged_8: 6377248270142509111
+      ent_fleet_rebel_list_damaged_9: -4785717432917740585
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
