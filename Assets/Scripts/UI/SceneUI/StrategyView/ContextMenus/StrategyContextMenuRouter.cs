@@ -13,9 +13,6 @@ public sealed class StrategyContextMenuRouter : ICancelable
     private readonly List<IStrategyContextMenuProvider> providers =
         new List<IStrategyContextMenuProvider>();
 
-    /// <summary>
-    /// Gets whether either context-menu implementation is currently open.
-    /// </summary>
     internal bool IsOpen => contextMenuController.IsOpen || contextMenuPresenter.Open;
 
     /// <summary>

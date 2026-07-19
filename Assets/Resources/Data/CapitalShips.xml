@@ -7,9 +7,9 @@
     <TypeID>CSEM001</TypeID>
     <DisplayName>Imperial Dreadnaught</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_dreadnaught_in_transit_small</InTransitSmallImagePath>
@@ -145,9 +145,9 @@ The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old 
     <TypeID>CSEM002</TypeID>
     <DisplayName>Galleon</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_galleon_in_transit_small</InTransitSmallImagePath>
@@ -283,9 +283,9 @@ This older model starship dates from the time of the Old Republic.  Specifically
     <TypeID>CSEM003</TypeID>
     <DisplayName>Imperial Escort Carrier</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_escort_carrier_in_transit_small</InTransitSmallImagePath>
@@ -422,9 +422,9 @@ Imperial escort carriers were designed to complement a fleet's starfighter capac
     <TypeID>CSEM004</TypeID>
     <DisplayName>Carrack Light Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_carrack_light_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -560,9 +560,9 @@ The Carrack light cruiser is by far the fastest Imperial escort ship.  Approxima
     <TypeID>CSEM005</TypeID>
     <DisplayName>Victory Destroyer I</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_1_star_destroyer_in_transit_small</InTransitSmallImagePath>
@@ -698,9 +698,9 @@ The Victory Destroyer is an older star cruiser that proved to be an important pa
     <TypeID>CSEM006</TypeID>
     <DisplayName>Imperial Star Destroyer</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_1_star_destroyer_in_transit_small</InTransitSmallImagePath>
@@ -836,9 +836,9 @@ The Empire's awesome, wedge-shaped, Imperial-class Star Destroyers form the core
     <TypeID>CSEM007</TypeID>
     <DisplayName>Lancer Frigate</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_lancer_frigate_in_transit_small</InTransitSmallImagePath>
@@ -974,9 +974,9 @@ The Lancer frigate is a 250-meter long, capital combat starship that the Empire 
     <TypeID>CSEM008</TypeID>
     <DisplayName>Star Galleon</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_star_galleon_in_transit_small</InTransitSmallImagePath>
@@ -1112,9 +1112,9 @@ The 300-meter long Imperial Star Galleon is designed to combine the cargo space 
     <TypeID>CSEM009</TypeID>
     <DisplayName>Assault Transport</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_assault_transport_in_transit_small</InTransitSmallImagePath>
@@ -1250,9 +1250,9 @@ Assault transports are designed to delivery Imperial assault troops anywhere in 
     <TypeID>CSEM010</TypeID>
     <DisplayName>Interdictor Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_interdictor_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -1388,9 +1388,9 @@ The 600-meter long star cruiser is built on a standard, heavy-cruiser hull , but
     <TypeID>CSEM011</TypeID>
     <DisplayName>Victory II Star Destroyer</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_victory_2_star_destroyer_in_transit_small</InTransitSmallImagePath>
@@ -1526,9 +1526,9 @@ The Victory II is an upgrade of the older Victory model starship.  The Victory I
     <TypeID>CSEM012</TypeID>
     <DisplayName>Strike Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_strike_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -1664,9 +1664,9 @@ This 450-meter long Imperial star cruiser was designed to be massed-produced in 
     <TypeID>CSEM013</TypeID>
     <DisplayName>Imperial Star Destroyer II</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_imperial_2_star_destroyer_in_transit_small</InTransitSmallImagePath>
@@ -1802,9 +1802,9 @@ An upgraded version of the Imperial Star Destroyer which boasts a heavily reinfo
     <TypeID>CSEM014</TypeID>
     <DisplayName>Super Star Destroyer</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_super_star_destroyer_in_transit_small</InTransitSmallImagePath>
@@ -1940,9 +1940,9 @@ The Super-class Star Destroyer, the newest model in the fleet, is eight kilomete
     <TypeID>CSEM015</TypeID>
     <DisplayName>Death Star</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_empire_death_star_in_transit_small</InTransitSmallImagePath>
@@ -2054,9 +2054,9 @@ An immense battle station 120-kilometers in diameter, the Death Star was the pin
     <TypeID>CSAL001</TypeID>
     <DisplayName>Alliance Dreadnaught</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_dreadnaught_in_transit_small</InTransitSmallImagePath>
@@ -2192,9 +2192,9 @@ The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old 
     <TypeID>CSAL002</TypeID>
     <DisplayName>Bulk Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -2330,9 +2330,9 @@ The aging bulk cruiser class of capital ships has existed since the time of the 
     <TypeID>ALCS003</TypeID>
     <DisplayName>Medium Transport</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_medium_transport_in_transit_small</InTransitSmallImagePath>
@@ -2468,9 +2468,9 @@ These vessels can haul an immense amount of equipment considering that they are 
     <TypeID>ALCS004</TypeID>
     <DisplayName>Bulk Transport</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulk_transport_in_transit_small</InTransitSmallImagePath>
@@ -2606,9 +2606,9 @@ The bulk transport is the life blood of intergalactic trade and commerce.  The e
     <TypeID>ALCS005</TypeID>
     <DisplayName>Alliance Escort Carrier</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_rebel_escort_carrier_in_transit_small</InTransitSmallImagePath>
@@ -2745,9 +2745,9 @@ Alliance escort carriers serve a similar purpose to their Imperial counterparts.
     <TypeID>ALCS006</TypeID>
     <DisplayName>Corellian Corvette</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_corvette_in_transit_small</InTransitSmallImagePath>
@@ -2882,9 +2882,9 @@ A mid-sized capital ship constructed in the Corellian shipyards, the Corvette ha
   <CapitalShip>
     <DisplayName>Nebulon-B Frigate</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_nebulon_b_frigate_in_transit_small</InTransitSmallImagePath>
@@ -3021,9 +3021,9 @@ The Nebulon-B frigate is 300 meters long and was originally designed for use aga
     <TypeID>ALCS008</TypeID>
     <DisplayName>Mon Calamari Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_mon_calamari_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -3159,9 +3159,9 @@ The Mon Calamari cruisers were originally spaceliners which were converted into 
     <TypeID>CSAL009</TypeID>
     <DisplayName>Corellian Gunship</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_corellian_gunship_in_transit_small</InTransitSmallImagePath>
@@ -3297,9 +3297,9 @@ The Corellian Gunship was designed to be two things, fast and deadly.  Engines f
     <TypeID>CSAL010</TypeID>
     <DisplayName>CC-7700 Frigate</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_7700_frigate_in_transit_small</InTransitSmallImagePath>
@@ -3435,9 +3435,9 @@ The CC-7700 is an older sibling to the Corellian Gunship. While lightly armed, t
     <TypeID>CSAL011</TypeID>
     <DisplayName>Assault Frigate</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_assault_frigate_in_transit_small</InTransitSmallImagePath>
@@ -3574,9 +3574,9 @@ The assault frigate is one of the Rebel Alliance's main front line warships. Bui
     <TypeID>CSAL012</TypeID>
     <DisplayName>Liberator Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_liberator_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -3712,9 +3712,9 @@ The SoroSuub Liberator's slender hull disguises the fact that it can carry three
     <TypeID>CSAL013</TypeID>
     <DisplayName>CC-9600 Frigate</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_cc_9600_frigate_in_transit_small</InTransitSmallImagePath>
@@ -3851,9 +3851,9 @@ The CC-9600 is the latest iteration of the CC series of capital ships.  It is mo
     <TypeID>CSAL014</TypeID>
     <DisplayName>Dauntless Cruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_dauntless_cruiser_in_transit_small</InTransitSmallImagePath>
@@ -3990,9 +3990,9 @@ The Dauntless is the second largest cruiser in the Alliance fleet.  Built from t
     <TypeID>CSAL015</TypeID>
     <DisplayName>Bulwark Battlecruiser</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_capital_ship_rebel_bulwark_battlecruiser_in_transit_small</InTransitSmallImagePath>

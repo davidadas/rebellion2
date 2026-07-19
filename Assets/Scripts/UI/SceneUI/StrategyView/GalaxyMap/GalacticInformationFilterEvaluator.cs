@@ -25,19 +25,10 @@ public readonly struct GalacticInformationMarker
         Mixed = mixed;
     }
 
-    /// <summary>
-    /// Gets the zero-based marker intensity.
-    /// </summary>
     public int Index { get; }
 
-    /// <summary>
-    /// Gets the faction whose marker artwork is shown.
-    /// </summary>
     public string FactionInstanceId { get; }
 
-    /// <summary>
-    /// Gets whether mixed-faction marker artwork is shown.
-    /// </summary>
     public bool Mixed { get; }
 }
 

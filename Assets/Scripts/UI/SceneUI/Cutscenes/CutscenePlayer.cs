@@ -11,23 +11,14 @@ using UnityEngine.Video;
 /// </summary>
 public sealed class CutscenePlayer : MonoBehaviour
 {
-    /// <summary>
-    /// The target screen surface used for rendering the video.
-    /// </summary>
     [SerializeField]
     [FormerlySerializedAs("Screen")]
     private RawImage screen;
 
-    /// <summary>
-    /// The <see cref="VideoPlayer"/> responsible for video playback.
-    /// </summary>
     [SerializeField]
     [FormerlySerializedAs("VideoPlayer")]
     private VideoPlayer videoPlayer;
 
-    /// <summary>
-    /// Audio source used for cutscene audio output.
-    /// </summary>
     [SerializeField]
     [FormerlySerializedAs("AudioSource")]
     private AudioSource audioSource;

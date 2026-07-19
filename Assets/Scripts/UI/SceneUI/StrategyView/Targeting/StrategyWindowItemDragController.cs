@@ -85,14 +85,8 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
     }
 
-    /// <summary>
-    /// Gets whether a pointer press is waiting to cross the drag threshold.
-    /// </summary>
     public bool HasCandidate => dragController.HasCandidate;
 
-    /// <summary>
-    /// Gets whether a source-image drag is active.
-    /// </summary>
     public bool SourceDragActive => dragController.IsDragging;
 
     /// <summary>

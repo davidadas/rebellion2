@@ -5,9 +5,6 @@ using System;
 /// </summary>
 public interface ITargetable
 {
-    /// <summary>
-    /// Gets the target.
-    /// </summary>
     object Target { get; }
 }
 
@@ -54,19 +51,10 @@ public sealed class TargetingRequest
         Receiver = receiver ?? throw new ArgumentNullException(nameof(receiver));
     }
 
-    /// <summary>
-    /// Gets the prompt.
-    /// </summary>
     public string Prompt { get; }
 
-    /// <summary>
-    /// Gets the source.
-    /// </summary>
     public object Source { get; }
 
-    /// <summary>
-    /// Gets the receiver.
-    /// </summary>
     public ITargetingReceiver Receiver { get; }
 }
 
@@ -107,14 +95,8 @@ public sealed class TargetingController : ICancelable
         this.cursor = cursor;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether targeting is active.
-    /// </summary>
     public bool IsTargeting => activeRequest != null;
 
-    /// <summary>
-    /// Gets the active request.
-    /// </summary>
     public TargetingRequest ActiveRequest => activeRequest;
 
     /// <summary>

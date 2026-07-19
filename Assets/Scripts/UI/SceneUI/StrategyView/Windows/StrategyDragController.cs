@@ -47,29 +47,14 @@ public readonly struct StrategyDragEventResult
         Dirty = dirty;
     }
 
-    /// <summary>
-    /// Gets whether the item-drag controller consumed the pointer event.
-    /// </summary>
     public bool Handled { get; }
 
-    /// <summary>
-    /// Gets whether the drag overlay must be rendered immediately.
-    /// </summary>
     public bool RenderOverlay { get; }
 
-    /// <summary>
-    /// Gets whether the subsequent click must be suppressed.
-    /// </summary>
     public bool SuppressClick { get; }
 
-    /// <summary>
-    /// Gets whether pressed-window gesture state must be cleared.
-    /// </summary>
     public bool ClearPressedWindow { get; }
 
-    /// <summary>
-    /// Gets whether the complete strategy presentation must be invalidated.
-    /// </summary>
     public bool Dirty { get; }
 
     /// <summary>
@@ -77,33 +62,18 @@ public readonly struct StrategyDragEventResult
     /// </summary>
     public static StrategyDragEventResult None => new StrategyDragEventResult();
 
-    /// <summary>
-    /// Gets a result for a consumed event with no immediate presentation work.
-    /// </summary>
     public static StrategyDragEventResult HandledOnly =>
         new StrategyDragEventResult(true, false, false, false, false);
 
-    /// <summary>
-    /// Gets a result for a continuing source drag whose overlay changed.
-    /// </summary>
     public static StrategyDragEventResult SourceDragVisible =>
         new StrategyDragEventResult(true, true, true, false, false);
 
-    /// <summary>
-    /// Gets a result for a candidate that transitioned into targeting.
-    /// </summary>
     public static StrategyDragEventResult TargetingStarted =>
         new StrategyDragEventResult(true, false, false, true, false);
 
-    /// <summary>
-    /// Gets a result for a candidate that transitioned into a source drag.
-    /// </summary>
     public static StrategyDragEventResult SourceDragStarted =>
         new StrategyDragEventResult(true, true, true, true, false);
 
-    /// <summary>
-    /// Gets a result for a completed or canceled item drag.
-    /// </summary>
     public static StrategyDragEventResult ItemDragFinished =>
         new StrategyDragEventResult(true, false, true, true, true);
 }
@@ -152,14 +122,8 @@ public sealed class StrategyDragController
         );
     }
 
-    /// <summary>
-    /// Gets whether an item drag may begin after additional pointer movement.
-    /// </summary>
     private bool HasItemCandidate => itemDragController.HasCandidate;
 
-    /// <summary>
-    /// Gets whether an item candidate or source drag is active.
-    /// </summary>
     private bool HasItemState =>
         itemDragController.HasCandidate || itemDragController.SourceDragActive;
 

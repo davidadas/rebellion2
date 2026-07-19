@@ -9,14 +9,8 @@ public sealed class SelectableListSelection
 {
     private readonly HashSet<int> selectedIndexes = new HashSet<int>();
 
-    /// <summary>
-    /// Gets or sets the selected index.
-    /// </summary>
     public int SelectedIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the selected indexes.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedIndexes => selectedIndexes;
 
     /// <summary>
@@ -356,24 +350,12 @@ public sealed class SelectableListSelection
             Alt = alt;
         }
 
-        /// <summary>
-        /// Gets a value indicating whether the Control modifier is held.
-        /// </summary>
         public bool Control { get; }
 
-        /// <summary>
-        /// Gets a value indicating whether the Shift modifier is held.
-        /// </summary>
         public bool Shift { get; }
 
-        /// <summary>
-        /// Gets a value indicating whether the Alt modifier is held.
-        /// </summary>
         public bool Alt { get; }
 
-        /// <summary>
-        /// Gets a value indicating whether any modifier is present.
-        /// </summary>
         public bool HasAnyModifier => Control || Shift || Alt;
     }
 }

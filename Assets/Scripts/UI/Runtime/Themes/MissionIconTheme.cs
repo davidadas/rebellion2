@@ -39,19 +39,10 @@ public class MissionIconSetTheme
 [PersistableObject]
 public class MissionIconTheme
 {
-    /// <summary>
-    /// Gets or sets the key.
-    /// </summary>
     public string Key { get; set; }
 
-    /// <summary>
-    /// Gets or sets the large image path.
-    /// </summary>
     public string LargeImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the small image path.
-    /// </summary>
     public string SmallImagePath { get; set; }
 
     /// <summary>

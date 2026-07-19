@@ -119,7 +119,7 @@ Balmorra is a factory world located at the Galactic Core. The Balmorrans are one
         </EncyclopediaStats>
         <EncyclopediaDescription>Balmorra is a factory world located at the Galactic Core. The Balmorrans are one of the primary manufacturers of weapons for the Imperial army, and were the builders of the AT-ST walker.</EncyclopediaDescription>
         <PositionX>253</PositionX>
-        <PositionY>123</PositionY>
+        <PositionY>122</PositionY>
         <PlanetIconPath>Art/HD/UI/StrategyView/ui_strategyview_blue_green_continental_planet_icon</PlanetIconPath>
         <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_system_blue_green_continental</EncyclopediaImagePath>
       </Planet>

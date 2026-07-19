@@ -25,9 +25,6 @@ public sealed class FinderWindowRowView : SelectableListRowView
     [SerializeField]
     private TextMeshProUGUI[] countTextFields = System.Array.Empty<TextMeshProUGUI>();
 
-    /// <summary>
-    /// Gets the stable domain identity represented by the current row presentation.
-    /// </summary>
     public string RowId { get; private set; } = string.Empty;
 
     /// <summary>

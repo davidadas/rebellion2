@@ -28,24 +28,12 @@ public sealed class GalaxyMapRenderData
         Clusters = Copy(clusters);
     }
 
-    /// <summary>
-    /// Gets the resolved galaxy background texture.
-    /// </summary>
     public Texture2D BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the optional source-space background bounds.
-    /// </summary>
     public RectInt? BackgroundBounds { get; }
 
-    /// <summary>
-    /// Gets the active galactic-information label presentation.
-    /// </summary>
     public GalaxyMapActiveFilterLabelRenderData ActiveFilterLabel { get; }
 
-    /// <summary>
-    /// Gets the visible system clusters in render order.
-    /// </summary>
     public IReadOnlyList<GalaxyMapClusterRenderData> Clusters { get; }
 
     /// <summary>
@@ -97,24 +85,12 @@ public readonly struct GalaxyMapActiveFilterLabelRenderData
     /// </summary>
     public bool Visible => !string.IsNullOrEmpty(Text);
 
-    /// <summary>
-    /// Gets the displayed filter name.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the faction presentation color.
-    /// </summary>
     public Color Color { get; }
 
-    /// <summary>
-    /// Gets the source-space label bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 
-    /// <summary>
-    /// Gets the source-space font size.
-    /// </summary>
     public int FontSize { get; }
 }
 
@@ -155,34 +131,16 @@ public sealed class GalaxyMapClusterRenderData
         Stars = GalaxyMapRenderData.Copy(stars);
     }
 
-    /// <summary>
-    /// Gets the represented planet-system identifier.
-    /// </summary>
     public string SystemInstanceId { get; }
 
-    /// <summary>
-    /// Gets the source-space horizontal cluster position.
-    /// </summary>
     public int SourceX { get; }
 
-    /// <summary>
-    /// Gets the source-space vertical cluster position.
-    /// </summary>
     public int SourceY { get; }
 
-    /// <summary>
-    /// Gets the displayed system label.
-    /// </summary>
     public string Label { get; }
 
-    /// <summary>
-    /// Gets whether the system label is visible.
-    /// </summary>
     public bool ShowLabel { get; }
 
-    /// <summary>
-    /// Gets the rendered planet markers.
-    /// </summary>
     public IReadOnlyList<GalaxyMapStarRenderData> Stars { get; }
 }
 
@@ -214,28 +172,13 @@ public sealed class GalaxyMapStarRenderData
         HeadquartersTexture = headquartersTexture;
     }
 
-    /// <summary>
-    /// Gets the represented planet identifier.
-    /// </summary>
     public string PlanetInstanceId { get; }
 
-    /// <summary>
-    /// Gets the horizontal marker offset within its cluster.
-    /// </summary>
     public int SourceX { get; }
 
-    /// <summary>
-    /// Gets the vertical marker offset within its cluster.
-    /// </summary>
     public int SourceY { get; }
 
-    /// <summary>
-    /// Gets the resolved star-marker texture.
-    /// </summary>
     public Texture2D StarTexture { get; }
 
-    /// <summary>
-    /// Gets the optional resolved headquarters overlay.
-    /// </summary>
     public Texture2D HeadquartersTexture { get; }
 }

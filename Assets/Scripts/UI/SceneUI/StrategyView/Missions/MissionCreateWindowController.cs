@@ -623,59 +623,26 @@ internal sealed class MissionCreateWindowSession
         SelectedMissionIndex = this.choices.Count > 0 ? 0 : -1;
     }
 
-    /// <summary>
-    /// Gets the target.
-    /// </summary>
     public StrategyMissionTarget Target { get; }
 
-    /// <summary>
-    /// Gets the owning Mission Create window.
-    /// </summary>
     public UIWindow Window { get; }
 
-    /// <summary>
-    /// Gets the choices.
-    /// </summary>
     public IReadOnlyList<StrategyMissionChoice> Choices => readOnlyChoices;
 
-    /// <summary>
-    /// Gets the agents.
-    /// </summary>
     public IReadOnlyList<IMissionParticipant> Agents => readOnlyAgents;
 
-    /// <summary>
-    /// Gets the decoys.
-    /// </summary>
     public IReadOnlyList<IMissionParticipant> Decoys => readOnlyDecoys;
 
-    /// <summary>
-    /// Gets the selected agents.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedAgents => selectedAgents;
 
-    /// <summary>
-    /// Gets the selected decoys.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedDecoys => selectedDecoys;
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public MissionCreateWindowTab ActiveTab { get; private set; } = MissionCreateWindowTab.Mission;
 
-    /// <summary>
-    /// Gets the selected mission index.
-    /// </summary>
     public int SelectedMissionIndex { get; private set; }
 
-    /// <summary>
-    /// Gets a value indicating whether the dropdown is open.
-    /// </summary>
     public bool DropdownOpen { get; private set; }
 
-    /// <summary>
-    /// Gets the currently selected mission choice, or null.
-    /// </summary>
     public StrategyMissionChoice SelectedChoice =>
         SelectedMissionIndex >= 0 && SelectedMissionIndex < Choices.Count
             ? Choices[SelectedMissionIndex]

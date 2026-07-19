@@ -309,13 +309,7 @@ public sealed class ConstructionBuildEstimate
         DeploymentTicks = deploymentTicks;
     }
 
-    /// <summary>
-    /// Gets the completion ticks.
-    /// </summary>
     public int CompletionTicks { get; }
 
-    /// <summary>
-    /// Gets the deployment ticks.
-    /// </summary>
     public int DeploymentTicks { get; }
 }

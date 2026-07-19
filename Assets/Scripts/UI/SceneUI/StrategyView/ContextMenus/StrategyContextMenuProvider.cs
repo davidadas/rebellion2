@@ -49,29 +49,14 @@ public sealed class StrategyContextMenuProviderContext : IStrategyContextMenuSou
         Y = y;
     }
 
-    /// <summary>
-    /// Gets the window.
-    /// </summary>
     public UIWindow Window { get; }
 
-    /// <summary>
-    /// Gets the layout.
-    /// </summary>
     public StrategyContextMenuLayout Layout { get; }
 
-    /// <summary>
-    /// Gets the event data.
-    /// </summary>
     public PointerEventData EventData { get; }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 }
 
@@ -109,39 +94,18 @@ public readonly struct StrategyContextMenuLayout
         FallbackMenuWidth = fallbackMenuWidth;
     }
 
-    /// <summary>
-    /// Gets the facility menu width.
-    /// </summary>
     public int FacilityMenuWidth { get; }
 
-    /// <summary>
-    /// Gets the standard fleet menu width.
-    /// </summary>
     public int FleetMenuWidth { get; }
 
-    /// <summary>
-    /// Gets the fleet menu width used when bombardment is available.
-    /// </summary>
     public int FleetBombardmentMenuWidth { get; }
 
-    /// <summary>
-    /// Gets the planet-system menu width.
-    /// </summary>
     public int PlanetSystemMenuWidth { get; }
 
-    /// <summary>
-    /// Gets the defense menu width.
-    /// </summary>
     public int DefenseMenuWidth { get; }
 
-    /// <summary>
-    /// Gets the missions menu width.
-    /// </summary>
     public int MissionsMenuWidth { get; }
 
-    /// <summary>
-    /// Gets the fallback menu width.
-    /// </summary>
     public int FallbackMenuWidth { get; }
 }
 
@@ -173,28 +137,13 @@ public sealed class StrategyContextMenuData
         Commands = commands?.ToList() ?? new List<StrategyMenuCommand>();
     }
 
-    /// <summary>
-    /// Gets the window.
-    /// </summary>
     public UIWindow Window { get; }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the width.
-    /// </summary>
     public int Width { get; }
 
-    /// <summary>
-    /// Gets the commands.
-    /// </summary>
     public IReadOnlyList<StrategyMenuCommand> Commands { get; }
 }

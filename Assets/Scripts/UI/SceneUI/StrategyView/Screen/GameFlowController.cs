@@ -15,6 +15,7 @@ public sealed class GameFlowController : MonoBehaviour
     [SerializeField]
     private StrategyController strategyController;
 
+    private GameManager activeGameManager;
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
 
@@ -58,6 +59,14 @@ public sealed class GameFlowController : MonoBehaviour
             LoadGame();
         else
             StartNewGame();
+    }
+
+    /// <summary>
+    /// Advances the active game session from the strategy scene's Unity frame loop.
+    /// </summary>
+    private void Update()
+    {
+        activeGameManager?.AdvanceTime(Time.deltaTime);
     }
 
     /// <summary>
@@ -135,6 +144,7 @@ public sealed class GameFlowController : MonoBehaviour
     /// <param name="gameManager">The active game manager.</param>
     private void EnterGameplay(GameManager gameManager)
     {
+        activeGameManager = gameManager;
         EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build();
         UIContext uiContext = new UIContext(
             gameManager.GetGame(),

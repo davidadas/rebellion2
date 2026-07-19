@@ -577,29 +577,14 @@ public sealed class ConfirmDialogWindowController
                 confirmedAction ?? throw new ArgumentNullException(nameof(confirmedAction));
         }
 
-        /// <summary>
-        /// Gets the owning confirmation window.
-        /// </summary>
         public UIWindow DialogWindow { get; }
 
-        /// <summary>
-        /// Gets the kind.
-        /// </summary>
         public ConfirmDialogKind Kind { get; }
 
-        /// <summary>
-        /// Gets the items.
-        /// </summary>
         public IReadOnlyList<ISceneNode> Items { get; }
 
-        /// <summary>
-        /// Gets the action invoked after confirmation.
-        /// </summary>
         public Action ConfirmedAction { get; }
 
-        /// <summary>
-        /// Gets the transit time in days.
-        /// </summary>
         public int TransitTimeInDays { get; }
     }
 }

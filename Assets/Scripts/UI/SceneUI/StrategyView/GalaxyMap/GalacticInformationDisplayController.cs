@@ -42,14 +42,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
     }
 
-    /// <summary>
-    /// Gets whether the selector is currently open.
-    /// </summary>
     public bool Open => open;
 
-    /// <summary>
-    /// Gets the active galaxy-map filter.
-    /// </summary>
     public GalacticInformationFilterMode FilterMode => filterMode;
 
     /// <summary>

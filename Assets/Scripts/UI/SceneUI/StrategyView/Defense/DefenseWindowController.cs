@@ -1010,29 +1010,14 @@ public sealed class DefenseWindowController
             Target = target;
         }
 
-        /// <summary>
-        /// Gets the menu hotspot horizontal coordinate.
-        /// </summary>
         public int HotspotX { get; }
 
-        /// <summary>
-        /// Gets the menu hotspot vertical coordinate.
-        /// </summary>
         public int HotspotY { get; }
 
-        /// <summary>
-        /// Gets the selected scene nodes.
-        /// </summary>
         public IReadOnlyList<ISceneNode> Items { get; }
 
-        /// <summary>
-        /// Gets the selected status target.
-        /// </summary>
         public StrategyStatusTarget Target { get; }
 
-        /// <summary>
-        /// Gets the source Defense window.
-        /// </summary>
         public UIWindow Window { get; }
     }
 }

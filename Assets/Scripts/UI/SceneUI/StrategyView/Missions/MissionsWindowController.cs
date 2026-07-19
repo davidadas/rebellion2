@@ -776,19 +776,10 @@ internal sealed class MissionsWindowSession
         ReconcileSelection();
     }
 
-    /// <summary>
-    /// Gets the represented planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; private set; }
 
-    /// <summary>
-    /// Gets the owning window shell.
-    /// </summary>
     public UIWindow Window { get; }
 
-    /// <summary>
-    /// Gets the active participant role.
-    /// </summary>
     public MissionParticipantRole ActiveRole { get; private set; } = MissionParticipantRole.Agent;
 
     /// <summary>
@@ -801,9 +792,6 @@ internal sealed class MissionsWindowSession
     /// </summary>
     public int ContextParticipantIndex => FindParticipantIndex(contextParticipantInstanceId);
 
-    /// <summary>
-    /// Gets the current missions in domain order.
-    /// </summary>
     public IReadOnlyList<Mission> Missions => Planet.Planet.Missions;
 
     /// <summary>
@@ -811,9 +799,6 @@ internal sealed class MissionsWindowSession
     /// </summary>
     public Mission SelectedMission => GetMission(SelectedMissionIndex);
 
-    /// <summary>
-    /// Gets the selected mission's participants for the active role.
-    /// </summary>
     public IReadOnlyList<IMissionParticipant> ActiveParticipants
     {
         get
@@ -833,9 +818,6 @@ internal sealed class MissionsWindowSession
         }
     }
 
-    /// <summary>
-    /// Gets the participant captured by the latest context gesture, or null.
-    /// </summary>
     public ISceneNode ContextParticipant
     {
         get

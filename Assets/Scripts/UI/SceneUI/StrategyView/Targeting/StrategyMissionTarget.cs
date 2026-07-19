@@ -18,19 +18,10 @@ public sealed class StrategyMissionTarget : ITargetable
         Item = item;
     }
 
-    /// <summary>
-    /// Gets the selected galaxy-map planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; }
 
-    /// <summary>
-    /// Gets the optional selected scene node.
-    /// </summary>
     public ISceneNode Item { get; }
 
-    /// <summary>
-    /// Gets this semantic target for the targeting contract.
-    /// </summary>
     public object Target => this;
 
     /// <summary>

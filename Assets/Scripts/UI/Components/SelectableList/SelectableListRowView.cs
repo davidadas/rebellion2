@@ -30,9 +30,6 @@ public abstract class SelectableListRowView
 
     private Func<bool> canNavigate = () => true;
 
-    /// <summary>
-    /// Gets or sets the index.
-    /// </summary>
     public int Index { get; private set; }
 
     /// <summary>

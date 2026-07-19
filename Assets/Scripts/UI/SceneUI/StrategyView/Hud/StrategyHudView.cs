@@ -80,9 +80,6 @@ public sealed class StrategyHudView : MonoBehaviour
     /// </summary>
     public event Action<int, int> SpeedContextRequested;
 
-    /// <summary>
-    /// Gets the authored advisor view contained by the HUD.
-    /// </summary>
     public StrategyAdvisorView AdvisorView => advisorView;
 
     private readonly List<MessagesTab> messageNotificationTabs = new List<MessagesTab>();

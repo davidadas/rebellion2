@@ -37,9 +37,6 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
 
     private bool bound;
 
-    /// <summary>
-    /// Gets the tactical option represented by this authored row.
-    /// </summary>
     public UserTacticalOption Option => option;
 
     /// <summary>

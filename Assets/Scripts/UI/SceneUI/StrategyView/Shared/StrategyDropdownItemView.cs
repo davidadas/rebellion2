@@ -25,9 +25,6 @@ public sealed class StrategyDropdownItemView : MonoBehaviour
     /// </summary>
     public event Action<StrategyDropdownItemView> Clicked;
 
-    /// <summary>
-    /// Gets the stable visual index assigned by the owning dropdown.
-    /// </summary>
     public int Index { get; private set; }
 
     /// <summary>
@@ -123,18 +120,9 @@ public sealed class StrategyDropdownItemRenderData
         LabelColor = labelColor;
     }
 
-    /// <summary>
-    /// Gets the displayed row image.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the displayed row label.
-    /// </summary>
     public string Label { get; }
 
-    /// <summary>
-    /// Gets the displayed label color.
-    /// </summary>
     public Color32 LabelColor { get; }
 }

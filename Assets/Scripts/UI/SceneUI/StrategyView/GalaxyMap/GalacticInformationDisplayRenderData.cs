@@ -26,24 +26,12 @@ public readonly struct GalacticInformationDisplayState
         DisplayOffHovered = displayOffHovered;
     }
 
-    /// <summary>
-    /// Gets whether the selector is open.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the open category index, or a negative value when none is open.
-    /// </summary>
     public int ActiveCategoryIndex { get; }
 
-    /// <summary>
-    /// Gets the hovered filter index, or a negative value when none is hovered.
-    /// </summary>
     public int HoveredFilterIndex { get; }
 
-    /// <summary>
-    /// Gets whether the display-off row is hovered.
-    /// </summary>
     public bool DisplayOffHovered { get; }
 }
 
@@ -78,34 +66,16 @@ public sealed class GalacticInformationDisplayRenderData
         DisplayOffRow = displayOffRow;
     }
 
-    /// <summary>
-    /// Gets whether the selector is visible.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the selector's source-space bounds.
-    /// </summary>
     public RectInt SelectorBounds { get; }
 
-    /// <summary>
-    /// Gets the selector background color.
-    /// </summary>
     public Color BackgroundColor { get; }
 
-    /// <summary>
-    /// Gets the selector frame presentation.
-    /// </summary>
     public GalacticInformationFrameRenderData Frame { get; }
 
-    /// <summary>
-    /// Gets the category presentations in authored-slot order.
-    /// </summary>
     public IReadOnlyList<GalacticInformationCategoryRenderData> Categories { get; }
 
-    /// <summary>
-    /// Gets the display-off row presentation.
-    /// </summary>
     public GalacticInformationTextRowRenderData DisplayOffRow { get; }
 }
 
@@ -140,34 +110,16 @@ public sealed class GalacticInformationCategoryRenderData
         Submenu = submenu;
     }
 
-    /// <summary>
-    /// Gets whether the category slot is visible.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the category hit bounds.
-    /// </summary>
     public RectInt HitBounds { get; }
 
-    /// <summary>
-    /// Gets the category icon presentation.
-    /// </summary>
     public GalacticInformationImageRenderData Icon { get; }
 
-    /// <summary>
-    /// Gets the submenu-arrow presentation.
-    /// </summary>
     public GalacticInformationImageRenderData Arrow { get; }
 
-    /// <summary>
-    /// Gets the category label presentation.
-    /// </summary>
     public GalacticInformationTextRenderData Label { get; }
 
-    /// <summary>
-    /// Gets the category submenu presentation.
-    /// </summary>
     public GalacticInformationSubmenuRenderData Submenu { get; }
 }
 
@@ -199,29 +151,14 @@ public sealed class GalacticInformationSubmenuRenderData
         Filters = GalaxyMapRenderData.Copy(filters);
     }
 
-    /// <summary>
-    /// Gets whether the submenu is visible.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the submenu's source-space bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 
-    /// <summary>
-    /// Gets the submenu background color.
-    /// </summary>
     public Color BackgroundColor { get; }
 
-    /// <summary>
-    /// Gets the submenu frame presentation.
-    /// </summary>
     public GalacticInformationFrameRenderData Frame { get; }
 
-    /// <summary>
-    /// Gets the filter rows in authored-slot order.
-    /// </summary>
     public IReadOnlyList<GalacticInformationFilterRenderData> Filters { get; }
 }
 
@@ -253,29 +190,14 @@ public sealed class GalacticInformationFilterRenderData
         Label = label;
     }
 
-    /// <summary>
-    /// Gets the semantic filter selected by the row.
-    /// </summary>
     public GalacticInformationFilterMode Mode { get; }
 
-    /// <summary>
-    /// Gets whether the filter row is visible.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the filter row hit bounds.
-    /// </summary>
     public RectInt HitBounds { get; }
 
-    /// <summary>
-    /// Gets the filter icon presentation.
-    /// </summary>
     public GalacticInformationImageRenderData Icon { get; }
 
-    /// <summary>
-    /// Gets the filter label presentation.
-    /// </summary>
     public GalacticInformationTextRenderData Label { get; }
 }
 
@@ -295,14 +217,8 @@ public readonly struct GalacticInformationImageRenderData
         Bounds = bounds;
     }
 
-    /// <summary>
-    /// Gets the resolved texture.
-    /// </summary>
     public Texture2D Texture { get; }
 
-    /// <summary>
-    /// Gets the source-space image bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 }
 
@@ -324,19 +240,10 @@ public readonly struct GalacticInformationTextRenderData
         Bounds = bounds;
     }
 
-    /// <summary>
-    /// Gets the displayed text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the displayed text color.
-    /// </summary>
     public Color Color { get; }
 
-    /// <summary>
-    /// Gets the source-space text bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 }
 
@@ -362,19 +269,10 @@ public readonly struct GalacticInformationTextRowRenderData
         Label = label;
     }
 
-    /// <summary>
-    /// Gets whether the row is visible.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the row hit bounds.
-    /// </summary>
     public RectInt HitBounds { get; }
 
-    /// <summary>
-    /// Gets the row label presentation.
-    /// </summary>
     public GalacticInformationTextRenderData Label { get; }
 }
 
@@ -400,19 +298,10 @@ public sealed class GalacticInformationFrameRenderData
         Textures = GalaxyMapRenderData.Copy(textures);
     }
 
-    /// <summary>
-    /// Gets the source-space frame width.
-    /// </summary>
     public int Width { get; }
 
-    /// <summary>
-    /// Gets the source-space frame height.
-    /// </summary>
     public int Height { get; }
 
-    /// <summary>
-    /// Gets the eight resolved frame textures in authored order.
-    /// </summary>
     public IReadOnlyList<Texture2D> Textures { get; }
 }
 
@@ -447,33 +336,15 @@ public sealed class GalacticInformationLegendRenderData
         ClosePressedTexture = closePressedTexture;
     }
 
-    /// <summary>
-    /// Gets the source-space legend bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 
-    /// <summary>
-    /// Gets the resolved legend texture.
-    /// </summary>
     public Texture2D Texture { get; }
 
-    /// <summary>
-    /// Gets the legend frame presentation.
-    /// </summary>
     public GalacticInformationFrameRenderData Frame { get; }
 
-    /// <summary>
-    /// Gets the source-space close-control bounds.
-    /// </summary>
     public RectInt CloseBounds { get; }
 
-    /// <summary>
-    /// Gets the resolved idle close texture.
-    /// </summary>
     public Texture2D CloseTexture { get; }
 
-    /// <summary>
-    /// Gets the resolved pressed close texture.
-    /// </summary>
     public Texture2D ClosePressedTexture { get; }
 }

@@ -8,9 +8,6 @@ using UnityEngine.Video;
 /// </summary>
 public sealed class BootController : MonoBehaviour
 {
-    /// <summary>
-    /// Ordered list of video resource paths played during boot.
-    /// </summary>
     private static readonly string[] _bootVideoPaths = { "Videos/intro", "Videos/opening_crawl" };
 
     private int currentVideoIndex;

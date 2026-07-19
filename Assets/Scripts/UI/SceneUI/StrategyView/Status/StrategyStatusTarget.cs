@@ -23,18 +23,9 @@ public sealed class StrategyStatusTarget
         ManufacturingType = manufacturingType;
     }
 
-    /// <summary>
-    /// Gets the planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; }
 
-    /// <summary>
-    /// Gets the item.
-    /// </summary>
     public ISceneNode Item { get; }
 
-    /// <summary>
-    /// Gets the manufacturing type.
-    /// </summary>
     public ManufacturingType? ManufacturingType { get; }
 }

@@ -298,9 +298,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     private static FactionTheme PreviewTheme => GetDefaultPreviewTheme();
 
-    /// <summary>
-    /// Gets every configured theme used to validate and prepare authored preview assets.
-    /// </summary>
     private static IReadOnlyList<FactionTheme> PreviewThemes
     {
         get
@@ -2508,6 +2505,14 @@ public static class StrategyViewPrefabBuilder
             5
         );
         SetSourceRect(background.rectTransform, 25, 5, 61, 25);
+        RawImage entity = CreateRawImage(
+            "EntityImage",
+            item.transform,
+            _facilityCardEntityPreviewPath,
+            25,
+            5
+        );
+        SetSourceRect(entity.rectTransform, 25, 5, 61, 25);
         RawImage constructionOverlay = CreateRawImage(
             "ConstructionOverlayImage",
             item.transform,
@@ -2532,14 +2537,6 @@ public static class StrategyViewPrefabBuilder
             5
         );
         SetSourceRect(damagedOverlay.rectTransform, 25, 5, 61, 25);
-        RawImage entity = CreateRawImage(
-            "EntityImage",
-            item.transform,
-            _facilityCardEntityPreviewPath,
-            25,
-            5
-        );
-        SetSourceRect(entity.rectTransform, 25, 5, 61, 25);
         RawImage capturedOverlay = CreateRawImage(
             "CapturedOverlayImage",
             item.transform,
@@ -8732,24 +8729,12 @@ public static class StrategyViewPrefabBuilder
             Cells = cells;
         }
 
-        /// <summary>
-        /// Gets the root.
-        /// </summary>
         public RectTransform Root { get; }
 
-        /// <summary>
-        /// Gets the background.
-        /// </summary>
         public Image Background { get; }
 
-        /// <summary>
-        /// Gets the fill.
-        /// </summary>
         public Image Fill { get; }
 
-        /// <summary>
-        /// Gets the cells.
-        /// </summary>
         public IReadOnlyList<Image> Cells { get; }
     }
 

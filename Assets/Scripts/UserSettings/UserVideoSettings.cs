@@ -5,19 +5,10 @@ using System;
 /// </summary>
 public enum UserTacticalOption
 {
-    /// <summary>
-    /// Controls starfield presentation.
-    /// </summary>
     Starfield,
 
-    /// <summary>
-    /// Controls planet presentation.
-    /// </summary>
     Planet,
 
-    /// <summary>
-    /// Controls pyrotechnic presentation.
-    /// </summary>
     Pyro,
 
     /// <summary>

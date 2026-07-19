@@ -50,44 +50,20 @@ public sealed class FleetListRowRenderData
         SelectionTexture = selectionTexture;
     }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the icon texture.
-    /// </summary>
     public Texture IconTexture { get; }
 
-    /// <summary>
-    /// Gets the enroute overlay texture.
-    /// </summary>
     public Texture EnrouteOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the damaged overlay texture.
-    /// </summary>
     public Texture DamagedOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the starfighter badge texture.
-    /// </summary>
     public Texture StarfighterBadgeTexture { get; }
 
-    /// <summary>
-    /// Gets the troop badge texture.
-    /// </summary>
     public Texture TroopBadgeTexture { get; }
 
-    /// <summary>
-    /// Gets the personnel badge texture.
-    /// </summary>
     public Texture PersonnelBadgeTexture { get; }
 
-    /// <summary>
-    /// Gets the selection texture.
-    /// </summary>
     public Texture SelectionTexture { get; }
 }
 
@@ -109,19 +85,10 @@ public sealed class FleetWindowTabRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets the represented fleet tab.
-    /// </summary>
     public FleetWindowTab Tab { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 }
 
@@ -141,14 +108,8 @@ public sealed class FleetWindowRenderData
         _orderedTabs
     );
 
-    /// <summary>
-    /// Gets the number of authored fleet tabs.
-    /// </summary>
     public static int TabCount => _orderedTabs.Length;
 
-    /// <summary>
-    /// Gets the semantic fleet tabs in authored slot order.
-    /// </summary>
     public static IReadOnlyList<FleetWindowTab> OrderedTabs => _readOnlyOrderedTabs;
 
     /// <summary>
@@ -225,114 +186,48 @@ public sealed class FleetWindowRenderData
         RenameText = renameText ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the title texture.
-    /// </summary>
     public Texture TitleTexture { get; }
 
-    /// <summary>
-    /// Gets the caption.
-    /// </summary>
     public string Caption { get; }
 
-    /// <summary>
-    /// Gets the detail background texture.
-    /// </summary>
     public Texture DetailBackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the fleet rows.
-    /// </summary>
     public IReadOnlyList<FleetListRowRenderData> FleetRows { get; }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public FleetWindowTab ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the selected fleet index.
-    /// </summary>
     public int SelectedFleetIndex { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether selected fleet is present.
-    /// </summary>
     public bool HasSelectedFleet { get; }
 
-    /// <summary>
-    /// Gets the banner texture.
-    /// </summary>
     public Texture BannerTexture { get; }
 
-    /// <summary>
-    /// Gets the banner enroute overlay texture.
-    /// </summary>
     public Texture BannerEnrouteOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the banner damaged overlay texture.
-    /// </summary>
     public Texture BannerDamagedOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the fleet name.
-    /// </summary>
     public string FleetName { get; }
 
-    /// <summary>
-    /// Gets the fleet name color.
-    /// </summary>
     public Color32 FleetNameColor { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether capacity is shown.
-    /// </summary>
     public bool ShowCapacity { get; }
 
-    /// <summary>
-    /// Gets the capacity left.
-    /// </summary>
     public string CapacityLeft { get; }
 
-    /// <summary>
-    /// Gets the capacity right.
-    /// </summary>
     public string CapacityRight { get; }
 
-    /// <summary>
-    /// Gets the tabs.
-    /// </summary>
     public IReadOnlyList<FleetWindowTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets the detail items.
-    /// </summary>
     public IReadOnlyList<StrategyUnitCardRenderData> DetailItems { get; }
 
-    /// <summary>
-    /// Gets the rename fleet row index.
-    /// </summary>
     public int RenameFleetRowIndex { get; }
 
-    /// <summary>
-    /// Gets the rename detail item index.
-    /// </summary>
     public int RenameDetailItemIndex { get; }
 
-    /// <summary>
-    /// Gets the rename text.
-    /// </summary>
     public string RenameText { get; }
 
     /// <summary>

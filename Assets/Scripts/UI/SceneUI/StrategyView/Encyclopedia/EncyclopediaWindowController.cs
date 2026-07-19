@@ -494,44 +494,20 @@ internal sealed class EncyclopediaWindowSession
         Window = window ?? throw new ArgumentNullException(nameof(window));
     }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public EncyclopediaWindowTab ActiveTab => activeTab;
 
-    /// <summary>
-    /// Gets a value indicating whether the panel is enabled.
-    /// </summary>
     public bool Panel => panel;
 
-    /// <summary>
-    /// Gets the projected entries.
-    /// </summary>
     public IReadOnlyList<EncyclopediaEntry> ProjectedEntries => projectedEntries;
 
-    /// <summary>
-    /// Gets the search text.
-    /// </summary>
     public string SearchText => searchText;
 
-    /// <summary>
-    /// Gets the selected index.
-    /// </summary>
     public int SelectedIndex => selectedIndex;
 
-    /// <summary>
-    /// Gets the selected catalog entry identifier.
-    /// </summary>
     public string SelectedTypeId => selectedTypeId;
 
-    /// <summary>
-    /// Gets the owning Encyclopedia window.
-    /// </summary>
     public UIWindow Window { get; }
 
-    /// <summary>
-    /// Gets the state.
-    /// </summary>
     public EncyclopediaWindowState State =>
         new EncyclopediaWindowState(panel, activeTab, selectedIndex, searchText);
 

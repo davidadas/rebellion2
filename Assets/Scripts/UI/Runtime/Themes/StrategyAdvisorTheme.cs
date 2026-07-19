@@ -8,24 +8,12 @@ using Rebellion.Util.Serialization;
 [PersistableObject]
 public class StrategyAdvisorAnimationTheme
 {
-    /// <summary>
-    /// Gets or sets the bitmap ID.
-    /// </summary>
     public int BitmapID { get; set; }
 
-    /// <summary>
-    /// Gets or sets the frame count.
-    /// </summary>
     public int FrameCount { get; set; }
 
-    /// <summary>
-    /// Gets or sets the wave ID.
-    /// </summary>
     public int WaveID { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether announcements are required.
-    /// </summary>
     public bool RequiresAnnouncementsEnabled { get; set; }
 }
 
@@ -35,19 +23,10 @@ public class StrategyAdvisorAnimationTheme
 [PersistableObject]
 public class StrategyAdvisorNotificationTheme
 {
-    /// <summary>
-    /// Gets or sets the table ID.
-    /// </summary>
     public int TableID { get; set; }
 
-    /// <summary>
-    /// Gets or sets the droid.
-    /// </summary>
     public StrategyAdvisorAnimationTheme Droid { get; set; }
 
-    /// <summary>
-    /// Gets or sets the protocol.
-    /// </summary>
     public StrategyAdvisorAnimationTheme Protocol { get; set; }
 }
 
@@ -57,19 +36,10 @@ public class StrategyAdvisorNotificationTheme
 [PersistableObject]
 public class StrategyAdvisorNotificationCodeTheme
 {
-    /// <summary>
-    /// Gets or sets the code.
-    /// </summary>
     public int Code { get; set; }
 
-    /// <summary>
-    /// Gets or sets the table ID.
-    /// </summary>
     public int TableID { get; set; }
 
-    /// <summary>
-    /// Gets or sets the lifetime ticks.
-    /// </summary>
     public int LifetimeTicks { get; set; }
 }
 
@@ -79,24 +49,12 @@ public class StrategyAdvisorNotificationCodeTheme
 [PersistableObject]
 public class StrategyAdvisorSubjectTheme
 {
-    /// <summary>
-    /// Gets or sets the type ID.
-    /// </summary>
     public string TypeID { get; set; }
 
-    /// <summary>
-    /// Gets or sets the report code.
-    /// </summary>
     public int ReportCode { get; set; }
 
-    /// <summary>
-    /// Gets or sets the captured code.
-    /// </summary>
     public int CapturedCode { get; set; }
 
-    /// <summary>
-    /// Gets or sets the released code.
-    /// </summary>
     public int ReleasedCode { get; set; }
 
     /// <summary>
@@ -122,86 +80,38 @@ public class StrategyAdvisorSubjectTheme
 [PersistableObject]
 public class StrategyAdvisorTheme
 {
-    /// <summary>
-    /// Gets or sets the protocol source layout.
-    /// </summary>
     public SourceRectLayout ProtocolSourceLayout { get; set; }
 
-    /// <summary>
-    /// Gets or sets the droid source layout.
-    /// </summary>
     public SourceRectLayout DroidSourceLayout { get; set; }
 
-    /// <summary>
-    /// Gets or sets the animation image root.
-    /// </summary>
     public string AnimationImageRoot { get; set; }
 
-    /// <summary>
-    /// Gets or sets the animation file prefix.
-    /// </summary>
     public string AnimationFilePrefix { get; set; }
 
-    /// <summary>
-    /// Gets or sets the audio root.
-    /// </summary>
     public string AudioRoot { get; set; }
 
-    /// <summary>
-    /// Gets or sets the audio file prefix.
-    /// </summary>
     public string AudioFilePrefix { get; set; }
 
-    /// <summary>
-    /// Gets or sets the protocol IDle bitmap ID.
-    /// </summary>
     public int ProtocolIdleBitmapID { get; set; }
 
-    /// <summary>
-    /// Gets or sets the droid IDle bitmap ID.
-    /// </summary>
     public int DroidIdleBitmapID { get; set; }
 
-    /// <summary>
-    /// Gets or sets the frame interval seconds.
-    /// </summary>
     public float FrameIntervalSeconds { get; set; }
 
-    /// <summary>
-    /// Gets or sets the repeat cooldown ticks.
-    /// </summary>
     public int RepeatCooldownTicks { get; set; }
 
-    /// <summary>
-    /// Gets or sets the default report code.
-    /// </summary>
     public int DefaultReportCode { get; set; }
 
-    /// <summary>
-    /// Gets or sets the default captured code.
-    /// </summary>
     public int DefaultCapturedCode { get; set; }
 
-    /// <summary>
-    /// Gets or sets the default released code.
-    /// </summary>
     public int DefaultReleasedCode { get; set; }
 
-    /// <summary>
-    /// Gets or sets the notification codes.
-    /// </summary>
     public List<StrategyAdvisorNotificationCodeTheme> NotificationCodes { get; set; } =
         new List<StrategyAdvisorNotificationCodeTheme>();
 
-    /// <summary>
-    /// Gets or sets the notifications.
-    /// </summary>
     public List<StrategyAdvisorNotificationTheme> Notifications { get; set; } =
         new List<StrategyAdvisorNotificationTheme>();
 
-    /// <summary>
-    /// Gets or sets the subjects.
-    /// </summary>
     public List<StrategyAdvisorSubjectTheme> Subjects { get; set; } =
         new List<StrategyAdvisorSubjectTheme>();
 

@@ -21,23 +21,11 @@ public sealed class StrategyMissionChoice
         IconKey = MissionIconKeys.GetMissionIconKey(option.MissionTypeID, option.Discipline);
     }
 
-    /// <summary>
-    /// Gets the mission type ID.
-    /// </summary>
     public string MissionTypeID { get; }
 
-    /// <summary>
-    /// Gets the discipline.
-    /// </summary>
     public ResearchDiscipline? Discipline { get; }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the icon key.
-    /// </summary>
     public string IconKey { get; }
 }

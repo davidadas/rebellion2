@@ -749,14 +749,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             SourceY = sourceY;
         }
 
-        /// <summary>
-        /// Gets the source-space horizontal pointer coordinate.
-        /// </summary>
         public int SourceX { get; }
 
-        /// <summary>
-        /// Gets the source-space vertical pointer coordinate.
-        /// </summary>
         public int SourceY { get; }
     }
 }

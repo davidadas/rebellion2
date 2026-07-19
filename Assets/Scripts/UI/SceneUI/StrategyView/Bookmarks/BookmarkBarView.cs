@@ -137,18 +137,9 @@ public sealed class BookmarkRenderData
         IconTexture = iconTexture;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the bookmark is active.
-    /// </summary>
     public bool Active { get; }
 
-    /// <summary>
-    /// Gets the label.
-    /// </summary>
     public string Label { get; }
 
-    /// <summary>
-    /// Gets the icon texture.
-    /// </summary>
     public Texture2D IconTexture { get; }
 }

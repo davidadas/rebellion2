@@ -48,24 +48,12 @@ public sealed class AdvisorReportRow
         SecondaryText = secondaryText ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the optional entity represented by the row.
-    /// </summary>
     public ISceneNode Item { get; }
 
-    /// <summary>
-    /// Gets the optional configured image path used when no entity is present.
-    /// </summary>
     public string ImagePath { get; }
 
-    /// <summary>
-    /// Gets the primary row text.
-    /// </summary>
     public string PrimaryText { get; }
 
-    /// <summary>
-    /// Gets the secondary row text.
-    /// </summary>
     public string SecondaryText { get; }
 }
 

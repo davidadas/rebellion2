@@ -33,34 +33,16 @@ public sealed class StrategyAdvisorViewData
         FrameIntervalSeconds = frameIntervalSeconds;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the advisor is visible.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets the protocol advisor idle texture.
-    /// </summary>
     public Texture2D ProtocolIdleTexture { get; }
 
-    /// <summary>
-    /// Gets the droid advisor idle texture.
-    /// </summary>
     public Texture2D DroidIdleTexture { get; }
 
-    /// <summary>
-    /// Gets the protocol advisor source-space bounds.
-    /// </summary>
     public RectInt? ProtocolBounds { get; }
 
-    /// <summary>
-    /// Gets the droid advisor source-space bounds.
-    /// </summary>
     public RectInt? DroidBounds { get; }
 
-    /// <summary>
-    /// Gets the unscaled interval between animation frames.
-    /// </summary>
     public float FrameIntervalSeconds { get; }
 }
 
@@ -88,19 +70,10 @@ public sealed class StrategyAdvisorAnimationViewData
         AudioPath = audioPath;
     }
 
-    /// <summary>
-    /// Gets the frames.
-    /// </summary>
     public IReadOnlyList<Texture2D> Frames => frames;
 
-    /// <summary>
-    /// Gets a value indicating whether the droid presentation is used.
-    /// </summary>
     public bool UsesDroid { get; }
 
-    /// <summary>
-    /// Gets the audio path.
-    /// </summary>
     public string AudioPath { get; }
 
     /// <summary>

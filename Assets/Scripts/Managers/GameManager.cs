@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -43,7 +42,6 @@ public class GameManager
     private readonly List<GameResult> _resultsWaitingForCombatResolution = new List<GameResult>();
     private float? _tickInterval;
     private float _tickTimer;
-    private readonly Stopwatch _stopwatch;
 
     /// <summary>
     /// Raised when the active game speed changes.
@@ -51,48 +49,29 @@ public class GameManager
     public event Action GameSpeedChanged;
 
     /// <summary>
+    /// Raised after a game tick advances, including when processing suspends for pending combat.
+    /// </summary>
+    public event Action TickCompleted;
+
+    /// <summary>
     /// Raised after a hot load replaces the active game and its systems.
     /// </summary>
     public event Action<GameRoot> GameReplaced;
 
-    /// <summary>
-    /// Gets the manufacturing system owned by this game runtime.
-    /// </summary>
     internal ManufacturingSystem ManufacturingSystem => _manufacturingManager;
 
-    /// <summary>
-    /// Gets the movement system owned by this game runtime.
-    /// </summary>
     internal MovementSystem MovementSystem => _movementManager;
 
-    /// <summary>
-    /// Gets the fleet system owned by this game runtime.
-    /// </summary>
     internal FleetSystem FleetSystem => _fleetSystem;
 
-    /// <summary>
-    /// Gets the personnel system owned by this game runtime.
-    /// </summary>
     internal PersonnelSystem PersonnelSystem => _personnelSystem;
 
-    /// <summary>
-    /// Gets the mission system owned by this game runtime.
-    /// </summary>
     internal MissionSystem MissionSystem => _missionManager;
 
-    /// <summary>
-    /// Gets the space combat system owned by this game runtime.
-    /// </summary>
     internal SpaceCombatSystem SpaceCombatSystem => _spaceCombatSystem;
 
-    /// <summary>
-    /// Gets the message system owned by this game runtime.
-    /// </summary>
     internal MessageSystem MessageSystem => _messageSystem;
 
-    /// <summary>
-    /// Gets the maintenance system owned by this game runtime.
-    /// </summary>
     internal MaintenanceSystem MaintenanceSystem => _maintenanceManager;
 
     /// <summary>
@@ -101,8 +80,6 @@ public class GameManager
     /// <param name="game">The game instance to manage.</param>
     public GameManager(GameRoot game)
     {
-        _stopwatch = new Stopwatch();
-
         SetGame(game);
         InitializeSystems();
         RebuildDerivedState();
@@ -119,7 +96,6 @@ public class GameManager
         InitializeSystems();
         RebuildDerivedState();
         _tickTimer = 0f;
-        _stopwatch.Restart();
         SetGameSpeed(_game.GetGameSpeed());
         GameReplaced?.Invoke(_game);
     }
@@ -272,13 +248,9 @@ public class GameManager
                 _tickInterval = _game.Config.GameSpeed.VerySlowTickIntervalSeconds;
                 break;
             case TickSpeed.Paused:
-                _stopwatch.Stop();
                 _tickInterval = null;
                 break;
         }
-
-        if (_tickInterval != null)
-            _stopwatch.Start();
 
         if (previousSpeed != speed)
             GameSpeedChanged?.Invoke();
@@ -294,17 +266,16 @@ public class GameManager
     }
 
     /// <summary>
-    /// Advances the tick timer and fires a tick when the interval is reached.
+    /// Advances the tick timer by elapsed game-loop time and fires a tick when the interval is reached.
     /// No-ops while combat is pending player resolution or the game is paused.
     /// </summary>
-    public void Update()
+    /// <param name="elapsedSeconds">The elapsed game-loop time in seconds.</param>
+    public void AdvanceTime(float elapsedSeconds)
     {
-        if (_spaceCombatSystem.HasPendingDecision || _tickInterval == null)
+        if (elapsedSeconds <= 0f || _spaceCombatSystem.HasPendingDecision || _tickInterval == null)
             return;
 
-        float deltaTime = (float)_stopwatch.Elapsed.TotalSeconds;
-        _stopwatch.Restart();
-        _tickTimer += deltaTime;
+        _tickTimer += elapsedSeconds;
 
         if (_tickTimer >= _tickInterval)
         {
@@ -353,10 +324,6 @@ public class GameManager
         messageResults.AddRange(combatResults);
         _messageSystem.ProcessResults(messageResults);
         _tickTimer = 0f;
-        if (_tickInterval == null)
-            _stopwatch.Reset();
-        else
-            _stopwatch.Restart();
 
         return combatResults.OfType<SpaceCombatResult>().FirstOrDefault();
     }
@@ -420,6 +387,7 @@ public class GameManager
         if (_spaceCombatSystem.HasPendingDecision)
         {
             DeferResultsUntilCombatResolution(resultsWaitingForCombatResolution);
+            TickCompleted?.Invoke();
             return;
         }
 
@@ -437,6 +405,7 @@ public class GameManager
         ProcessResults(_researchManager.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
         ProcessResults(_victoryManager.ProcessTick());
+        TickCompleted?.Invoke();
     }
 
     /// <summary>

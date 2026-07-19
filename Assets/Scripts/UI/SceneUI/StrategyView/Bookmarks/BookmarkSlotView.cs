@@ -23,9 +23,6 @@ public sealed class BookmarkSlotView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     public event Action<BookmarkSlotView> DoubleClicked;
 
-    /// <summary>
-    /// Gets the authored slot index represented by this view.
-    /// </summary>
     public int Index { get; private set; }
 
     /// <summary>

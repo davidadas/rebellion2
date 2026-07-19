@@ -32,34 +32,16 @@ internal sealed class FacilityWindowSession
         RebindPlanet(planet);
     }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public FacilityWindowTab ActiveTab { get; private set; } = FacilityWindowTab.Manufacturing;
 
-    /// <summary>
-    /// Gets the context manufacturing facility tab.
-    /// </summary>
     public FacilityWindowTab? ContextManufacturingTab { get; private set; }
 
-    /// <summary>
-    /// Gets the represented planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; private set; }
 
-    /// <summary>
-    /// Gets the selected inventory building identifiers.
-    /// </summary>
     public IReadOnlyCollection<string> SelectedBuildingIds => selectedBuildingIds;
 
-    /// <summary>
-    /// Gets the selected manufacturing lane indexes.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedCards => selectedCards;
 
-    /// <summary>
-    /// Gets the owning facility window.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

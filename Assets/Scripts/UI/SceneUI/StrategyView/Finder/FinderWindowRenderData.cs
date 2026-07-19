@@ -45,29 +45,14 @@ public readonly struct FinderWindowState
         SearchText = searchText ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the mode.
-    /// </summary>
     public FinderMode Mode { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the panel is enabled.
-    /// </summary>
     public bool Panel { get; }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public int ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the selected index.
-    /// </summary>
     public int SelectedIndex { get; }
 
-    /// <summary>
-    /// Gets the search text.
-    /// </summary>
     public string SearchText { get; }
 }
 
@@ -96,24 +81,12 @@ public sealed class FinderWindowDialogButtonRenderData
         SourceRect = sourceRect;
     }
 
-    /// <summary>
-    /// Gets the command.
-    /// </summary>
     public FinderWindowCommand Command { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 
-    /// <summary>
-    /// Gets the source rect.
-    /// </summary>
     public RectInt? SourceRect { get; }
 }
 
@@ -133,14 +106,8 @@ public sealed class FinderWindowTabRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 }
 
@@ -169,24 +136,12 @@ public sealed class FinderWindowRowRenderData
         Counts = FinderWindowRenderData.Copy(counts);
     }
 
-    /// <summary>
-    /// Gets the stable represented row identifier.
-    /// </summary>
     public string RowId { get; }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the row is selected.
-    /// </summary>
     public bool Selected { get; }
 
-    /// <summary>
-    /// Gets the counts.
-    /// </summary>
     public IReadOnlyList<string> Counts { get; }
 }
 
@@ -233,54 +188,24 @@ public sealed class FinderWindowFrameRenderData
         DialogButtons = FinderWindowRenderData.Copy(dialogButtons);
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the width.
-    /// </summary>
     public int Width { get; }
 
-    /// <summary>
-    /// Gets the height.
-    /// </summary>
     public int Height { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the window is active.
-    /// </summary>
     public bool ActiveWindow { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether upper button layout is used.
-    /// </summary>
     public bool UseUpperButtonLayout { get; }
 
-    /// <summary>
-    /// Gets the background texture.
-    /// </summary>
     public Texture BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the overlay frame texture.
-    /// </summary>
     public Texture OverlayFrameTexture { get; }
 
-    /// <summary>
-    /// Gets the button strip texture.
-    /// </summary>
     public Texture ButtonStripTexture { get; }
 
-    /// <summary>
-    /// Gets the dialog buttons.
-    /// </summary>
     public IReadOnlyList<FinderWindowDialogButtonRenderData> DialogButtons { get; }
 }
 
@@ -330,59 +255,26 @@ public sealed class FinderWindowRenderData
         Rows = Copy(rows);
     }
 
-    /// <summary>
-    /// Gets the mode.
-    /// </summary>
     public FinderMode Mode { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the panel is enabled.
-    /// </summary>
     public bool Panel { get; }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public int ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the selected index.
-    /// </summary>
     public int SelectedIndex { get; }
 
-    /// <summary>
-    /// Gets the search text.
-    /// </summary>
     public string SearchText { get; }
 
-    /// <summary>
-    /// Gets the title.
-    /// </summary>
     public string Title { get; }
 
-    /// <summary>
-    /// Gets the label.
-    /// </summary>
     public string Label { get; }
 
-    /// <summary>
-    /// Gets the active tab text.
-    /// </summary>
     public string ActiveTabText { get; }
 
-    /// <summary>
-    /// Gets the frame.
-    /// </summary>
     public FinderWindowFrameRenderData Frame { get; }
 
-    /// <summary>
-    /// Gets the tabs.
-    /// </summary>
     public IReadOnlyList<FinderWindowTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets the rows.
-    /// </summary>
     public IReadOnlyList<FinderWindowRowRenderData> Rows { get; }
 
     /// <summary>

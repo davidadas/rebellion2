@@ -48,9 +48,6 @@ public sealed class PlanetSystemClusterView
     /// </summary>
     public event Action<PlanetSystemClusterView, PointerEventData> OpenRequested;
 
-    /// <summary>
-    /// Gets the planet-system identifier represented by the current snapshot.
-    /// </summary>
     public string SystemInstanceId => renderData?.SystemInstanceId;
 
     /// <summary>

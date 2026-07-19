@@ -62,83 +62,35 @@ public sealed class ConstructionWindowRenderData
         ).AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the title texture.
-    /// </summary>
     public Texture2D TitleTexture { get; }
 
-    /// <summary>
-    /// Gets the selected texture.
-    /// </summary>
     public Texture2D SelectedTexture { get; }
 
-    /// <summary>
-    /// Gets the selected name.
-    /// </summary>
     public string SelectedName { get; }
 
-    /// <summary>
-    /// Gets the build count.
-    /// </summary>
     public int BuildCount { get; }
 
-    /// <summary>
-    /// Gets the construction cost.
-    /// </summary>
     public string ConstructionCost { get; }
 
-    /// <summary>
-    /// Gets the maintenance cost.
-    /// </summary>
     public string MaintenanceCost { get; }
 
-    /// <summary>
-    /// Gets the completion estimate.
-    /// </summary>
     public string CompletionEstimate { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether completion includes a day count.
-    /// </summary>
     public bool CompletionHasDays { get; }
 
-    /// <summary>
-    /// Gets the deployment estimate.
-    /// </summary>
     public string DeploymentEstimate { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether deployment includes a day count.
-    /// </summary>
     public bool DeploymentHasDays { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the dropdown is open.
-    /// </summary>
     public bool DropdownOpen { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether start is allowed.
-    /// </summary>
     public bool CanStart { get; }
 
-    /// <summary>
-    /// Gets the dropdown items.
-    /// </summary>
     public IReadOnlyList<StrategyDropdownItemRenderData> DropdownItems { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether selection is present.
-    /// </summary>
     public bool HasSelection => DropdownItems.Count > 0;
 }

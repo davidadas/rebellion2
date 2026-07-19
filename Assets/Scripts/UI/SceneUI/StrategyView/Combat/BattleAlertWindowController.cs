@@ -680,35 +680,17 @@ public sealed class BattleAlertWindowController
             Window = window ?? throw new ArgumentNullException(nameof(window));
         }
 
-        /// <summary>
-        /// Gets the active window mode.
-        /// </summary>
         internal BattleAlertWindowMode Mode { get; private set; } = BattleAlertWindowMode.Hidden;
 
-        /// <summary>
-        /// Gets the active pending-combat panel.
-        /// </summary>
         internal BattleAlertPanel PendingPanel { get; private set; } = BattleAlertPanel.Summary;
 
-        /// <summary>
-        /// Gets the active completed-result category.
-        /// </summary>
         internal BattleResultCategory ResultCategory { get; private set; } =
             BattleResultCategoryCatalog.Ordered[0];
 
-        /// <summary>
-        /// Gets the active completed-result panel.
-        /// </summary>
         internal BattleResultPanel ResultPanel { get; private set; } = BattleResultPanel.Summary;
 
-        /// <summary>
-        /// Gets the completed combat result owned by this window.
-        /// </summary>
         internal SpaceCombatResult Result { get; private set; }
 
-        /// <summary>
-        /// Gets the owning battle-alert window.
-        /// </summary>
         internal UIWindow Window { get; }
 
         /// <summary>

@@ -74,14 +74,8 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     /// </summary>
     public event Action<StrategyUnitCardView, PointerEventData> Released;
 
-    /// <summary>
-    /// Gets the stable visual index assigned by the owning window.
-    /// </summary>
     public int Index { get; private set; }
 
-    /// <summary>
-    /// Gets the authored primary name field used by inline rename presentation.
-    /// </summary>
     internal TextMeshProUGUI NameTextField => nameTextField;
 
     /// <summary>
@@ -398,83 +392,35 @@ public sealed class StrategyUnitCardRenderData
         CanDrag = canDrag;
     }
 
-    /// <summary>
-    /// Gets the displayed unit name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the displayed unit-name color.
-    /// </summary>
     public Color32 NameColor { get; }
 
-    /// <summary>
-    /// Gets whether the unit name is visible.
-    /// </summary>
     public bool ShowName { get; }
 
-    /// <summary>
-    /// Gets whether the authored alternate name layout is used.
-    /// </summary>
     public bool UseAlternateNameLayout { get; }
 
-    /// <summary>
-    /// Gets the optional card background.
-    /// </summary>
     public Texture BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the optional construction overlay.
-    /// </summary>
     public Texture ConstructionOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the optional in-transit overlay.
-    /// </summary>
     public Texture EnrouteOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the optional damaged or injured overlay.
-    /// </summary>
     public Texture DamagedOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the represented entity image.
-    /// </summary>
     public Texture EntityTexture { get; }
 
-    /// <summary>
-    /// Gets the optional captured-personnel overlay.
-    /// </summary>
     public Texture CapturedOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the optional selection frame.
-    /// </summary>
     public Texture SelectionTexture { get; }
 
-    /// <summary>
-    /// Gets the source-space entity-slot vertical offset.
-    /// </summary>
     public int EntityFrameYOffset { get; }
 
-    /// <summary>
-    /// Gets the optional starfighter badge.
-    /// </summary>
     public Texture StarfighterBadgeTexture { get; }
 
-    /// <summary>
-    /// Gets the optional troop badge.
-    /// </summary>
     public Texture TroopBadgeTexture { get; }
 
-    /// <summary>
-    /// Gets the optional personnel badge.
-    /// </summary>
     public Texture PersonnelBadgeTexture { get; }
 
-    /// <summary>
-    /// Gets whether the card can initiate a move drag.
-    /// </summary>
     public bool CanDrag { get; }
 }

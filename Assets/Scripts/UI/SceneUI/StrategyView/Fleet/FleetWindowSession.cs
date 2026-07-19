@@ -33,74 +33,32 @@ internal sealed class FleetWindowSession
         Reconcile();
     }
 
-    /// <summary>
-    /// Gets the active detail tab.
-    /// </summary>
     public FleetWindowTab ActiveTab { get; private set; } = FleetWindowTab.CapitalShips;
 
-    /// <summary>
-    /// Gets the current context detail-item index.
-    /// </summary>
     public int ContextDetailItemIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the current context fleet index.
-    /// </summary>
     public int ContextFleetIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the selected fleet's current ordered detail items.
-    /// </summary>
     public IReadOnlyList<ISceneNode> DetailItems => detailItems;
 
-    /// <summary>
-    /// Gets the current ordered fleets represented by the session.
-    /// </summary>
     public IReadOnlyList<Fleet> Fleets => fleets;
 
-    /// <summary>
-    /// Gets the represented strategy planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; private set; }
 
-    /// <summary>
-    /// Gets the current rename target.
-    /// </summary>
     public ISceneNode RenameTarget => renameTarget;
 
-    /// <summary>
-    /// Gets the current detail-card rename index.
-    /// </summary>
     public int RenameDetailItemIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the current fleet-row rename index.
-    /// </summary>
     public int RenameFleetRowIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the selected detail-item indices.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedDetailItems => selectedDetailItems;
 
-    /// <summary>
-    /// Gets the selected fleet-row index.
-    /// </summary>
     public int SelectedFleetIndex => selectedFleetIndexHint;
 
-    /// <summary>
-    /// Gets the selected fleet-row indices.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedFleetItems => selectedFleetItems;
 
-    /// <summary>
-    /// Gets the currently displayed fleet.
-    /// </summary>
     public Fleet SelectedFleet => selectedFleet;
 
-    /// <summary>
-    /// Gets the owning window shell.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

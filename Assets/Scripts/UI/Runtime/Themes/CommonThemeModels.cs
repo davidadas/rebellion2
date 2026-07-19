@@ -7,24 +7,12 @@ using UnityEngine;
 [PersistableObject]
 public class SourceRectLayout
 {
-    /// <summary>
-    /// Gets or sets the horizontal coordinate.
-    /// </summary>
     public int X { get; set; }
 
-    /// <summary>
-    /// Gets or sets the vertical coordinate.
-    /// </summary>
     public int Y { get; set; }
 
-    /// <summary>
-    /// Gets or sets the width.
-    /// </summary>
     public int Width { get; set; }
 
-    /// <summary>
-    /// Gets or sets the height.
-    /// </summary>
     public int Height { get; set; }
 }
 
@@ -34,14 +22,8 @@ public class SourceRectLayout
 [PersistableObject]
 public class SourcePointLayout
 {
-    /// <summary>
-    /// Gets or sets the horizontal coordinate.
-    /// </summary>
     public int X { get; set; }
 
-    /// <summary>
-    /// Gets or sets the vertical coordinate.
-    /// </summary>
     public int Y { get; set; }
 
     /// <summary>
@@ -60,14 +42,8 @@ public class SourcePointLayout
 [PersistableObject]
 public class WindowTitleTheme
 {
-    /// <summary>
-    /// Gets or sets the active image path.
-    /// </summary>
     public string ActiveImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the inactive image path.
-    /// </summary>
     public string InactiveImagePath { get; set; }
 }
 
@@ -77,24 +53,12 @@ public class WindowTitleTheme
 [PersistableObject]
 public class WindowTabImageTheme
 {
-    /// <summary>
-    /// Gets or sets the active image path.
-    /// </summary>
     public string ActiveImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the inactive image path.
-    /// </summary>
     public string InactiveImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the disabled image path.
-    /// </summary>
     public string DisabledImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the empty image path.
-    /// </summary>
     public string EmptyImagePath { get; set; }
 
     /// <summary>
@@ -147,24 +111,12 @@ public class WindowTabImageTheme
 [PersistableObject]
 public class WindowButtonImageTheme
 {
-    /// <summary>
-    /// Gets or sets the up image path.
-    /// </summary>
     public string UpImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the down image path.
-    /// </summary>
     public string DownImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the disabled image path.
-    /// </summary>
     public string DisabledImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the source layout.
-    /// </summary>
     public SourceRectLayout SourceLayout { get; set; }
 
     /// <summary>

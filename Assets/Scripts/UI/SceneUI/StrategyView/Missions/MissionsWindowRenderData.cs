@@ -24,19 +24,10 @@ public sealed class MissionsWindowTabRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets the represented mission-participant role.
-    /// </summary>
     public MissionParticipantRole Role { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 }
 
@@ -53,14 +44,8 @@ public sealed class MissionsWindowRenderData
     private static readonly IReadOnlyList<MissionParticipantRole> _readOnlyOrderedRoles =
         Array.AsReadOnly(_orderedRoles);
 
-    /// <summary>
-    /// Gets the number of authored mission-participant tabs.
-    /// </summary>
     public static int TabCount => _orderedRoles.Length;
 
-    /// <summary>
-    /// Gets the semantic participant roles in authored tab-slot order.
-    /// </summary>
     public static IReadOnlyList<MissionParticipantRole> OrderedRoles => _readOnlyOrderedRoles;
 
     /// <summary>
@@ -107,64 +92,28 @@ public sealed class MissionsWindowRenderData
         Participants = Copy(participants, nameof(participants));
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the title texture.
-    /// </summary>
     public Texture TitleTexture { get; }
 
-    /// <summary>
-    /// Gets the caption.
-    /// </summary>
     public string Caption { get; }
 
-    /// <summary>
-    /// Gets the active participant role.
-    /// </summary>
     public MissionParticipantRole ActiveRole { get; }
 
-    /// <summary>
-    /// Gets the selected mission index.
-    /// </summary>
     public int SelectedMissionIndex { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether selected mission is present.
-    /// </summary>
     public bool HasSelectedMission { get; }
 
-    /// <summary>
-    /// Gets the target name.
-    /// </summary>
     public string TargetName { get; }
 
-    /// <summary>
-    /// Gets the target texture.
-    /// </summary>
     public Texture TargetTexture { get; }
 
-    /// <summary>
-    /// Gets the missions.
-    /// </summary>
     public IReadOnlyList<MissionListRowRenderData> Missions { get; }
 
-    /// <summary>
-    /// Gets the tabs.
-    /// </summary>
     public IReadOnlyList<MissionsWindowTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets the participants.
-    /// </summary>
     public IReadOnlyList<MissionParticipantRowRenderData> Participants { get; }
 
     /// <summary>

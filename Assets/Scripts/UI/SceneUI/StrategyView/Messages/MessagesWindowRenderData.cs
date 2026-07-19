@@ -38,34 +38,16 @@ public sealed class MessagesWindowRenderData
         DetailPanel = detailPanel;
     }
 
-    /// <summary>
-    /// Gets whether the detail panel is visible.
-    /// </summary>
     public bool DetailVisible { get; }
 
-    /// <summary>
-    /// Gets the window position in source coordinates.
-    /// </summary>
     public Vector2Int FramePosition { get; }
 
-    /// <summary>
-    /// Gets the faction-themed overlay frame.
-    /// </summary>
     public Texture OverlayFrameTexture { get; }
 
-    /// <summary>
-    /// Gets the command-bar presentation.
-    /// </summary>
     public MessagesCommandBarRenderData CommandBar { get; }
 
-    /// <summary>
-    /// Gets the index presentation when detail is hidden.
-    /// </summary>
     public MessagesIndexPanelRenderData IndexPanel { get; }
 
-    /// <summary>
-    /// Gets the detail presentation when detail is visible.
-    /// </summary>
     public MessagesDetailPanelRenderData DetailPanel { get; }
 }
 
@@ -104,39 +86,18 @@ public sealed class MessagesCommandBarRenderData
         ChatButton = chatButton ?? throw new ArgumentNullException(nameof(chatButton));
     }
 
-    /// <summary>
-    /// Gets the faction-themed command-strip texture.
-    /// </summary>
     public Texture ButtonStripTexture { get; }
 
-    /// <summary>
-    /// Gets the close-command presentation.
-    /// </summary>
     public MessagesCommandButtonRenderData CloseButton { get; }
 
-    /// <summary>
-    /// Gets the display-command presentation.
-    /// </summary>
     public MessagesCommandButtonRenderData DisplayButton { get; }
 
-    /// <summary>
-    /// Gets the index-command presentation.
-    /// </summary>
     public MessagesCommandButtonRenderData IndexButton { get; }
 
-    /// <summary>
-    /// Gets the notification-command presentation.
-    /// </summary>
     public MessagesCommandButtonRenderData SignalButton { get; }
 
-    /// <summary>
-    /// Gets the target-command presentation.
-    /// </summary>
     public MessagesCommandButtonRenderData SignalTargetButton { get; }
 
-    /// <summary>
-    /// Gets the chat-command presentation.
-    /// </summary>
     public MessagesCommandButtonRenderData ChatButton { get; }
 }
 
@@ -165,24 +126,12 @@ public sealed class MessagesCommandButtonRenderData
         Enabled = enabled;
     }
 
-    /// <summary>
-    /// Gets the displayed texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pointer-down texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 
-    /// <summary>
-    /// Gets whether the button is displayed.
-    /// </summary>
     public bool Visible { get; }
 
-    /// <summary>
-    /// Gets whether the button accepts input.
-    /// </summary>
     public bool Enabled { get; }
 }
 
@@ -211,24 +160,12 @@ public sealed class MessagesIndexPanelRenderData
         Rows = Copy(rows);
     }
 
-    /// <summary>
-    /// Gets the active semantic Messages tab.
-    /// </summary>
     public MessagesTab ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the displayed tab title.
-    /// </summary>
     public string Title { get; }
 
-    /// <summary>
-    /// Gets tab presentations in authored slot order.
-    /// </summary>
     public IReadOnlyList<MessagesTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets message-row presentations in display order.
-    /// </summary>
     public IReadOnlyList<MessageWindowRowRenderData> Rows { get; }
 
     /// <summary>
@@ -267,19 +204,10 @@ public sealed class MessagesTabRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets the semantic tab represented by this authored slot.
-    /// </summary>
     public MessagesTab Tab { get; }
 
-    /// <summary>
-    /// Gets the displayed texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pointer-down texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 }
 
@@ -340,49 +268,22 @@ public sealed class MessageWindowRowRenderData
         HeaderColor = headerColor;
     }
 
-    /// <summary>
-    /// Gets the source message identifier.
-    /// </summary>
     public string MessageId { get; }
 
-    /// <summary>
-    /// Gets the displayed row header.
-    /// </summary>
     public string Header { get; }
 
-    /// <summary>
-    /// Gets the message category.
-    /// </summary>
     public MessageType Type { get; }
 
-    /// <summary>
-    /// Gets whether the row is selected.
-    /// </summary>
     public bool Selected { get; }
 
-    /// <summary>
-    /// Gets whether the source message is unread.
-    /// </summary>
     public bool Unread { get; }
 
-    /// <summary>
-    /// Gets the selected-row background texture.
-    /// </summary>
     public Texture SelectionTexture { get; }
 
-    /// <summary>
-    /// Gets the selected-row category icon.
-    /// </summary>
     public Texture SelectedIconTexture { get; }
 
-    /// <summary>
-    /// Gets the unselected-row category icon.
-    /// </summary>
     public Texture NormalIconTexture { get; }
 
-    /// <summary>
-    /// Gets the displayed header color.
-    /// </summary>
     public Color32 HeaderColor { get; }
 }
 
@@ -423,43 +324,19 @@ public sealed class MessagesDetailPanelRenderData
         NextDisabled = nextDisabled;
     }
 
-    /// <summary>
-    /// Gets the selected source message identifier.
-    /// </summary>
     public string MessageId { get; }
 
-    /// <summary>
-    /// Gets the detail header.
-    /// </summary>
     public string Header { get; }
 
-    /// <summary>
-    /// Gets the detail body text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the primary detail artwork.
-    /// </summary>
     public Texture CardTexture { get; }
 
-    /// <summary>
-    /// Gets the optional detail overlay artwork.
-    /// </summary>
     public Texture OverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the message-category icon.
-    /// </summary>
     public Texture IconTexture { get; }
 
-    /// <summary>
-    /// Gets whether previous navigation is disabled.
-    /// </summary>
     public bool PreviousDisabled { get; }
 
-    /// <summary>
-    /// Gets whether next navigation is disabled.
-    /// </summary>
     public bool NextDisabled { get; }
 }

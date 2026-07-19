@@ -24,19 +24,10 @@ public sealed class MainMenuView : MonoBehaviour
         [SerializeField]
         private GameSize value;
 
-        /// <summary>
-        /// Gets the authored toggle.
-        /// </summary>
         public Toggle Toggle => toggle;
 
-        /// <summary>
-        /// Gets the launch value represented by the toggle.
-        /// </summary>
         public GameSize Value => value;
 
-        /// <summary>
-        /// Gets whether the binding has its required authored reference.
-        /// </summary>
         public bool IsConfigured => toggle != null;
     }
 
@@ -52,19 +43,10 @@ public sealed class MainMenuView : MonoBehaviour
         [SerializeField]
         private GameDifficulty value;
 
-        /// <summary>
-        /// Gets the authored toggle.
-        /// </summary>
         public Toggle Toggle => toggle;
 
-        /// <summary>
-        /// Gets the launch value represented by the toggle.
-        /// </summary>
         public GameDifficulty Value => value;
 
-        /// <summary>
-        /// Gets whether the binding has its required authored reference.
-        /// </summary>
         public bool IsConfigured => toggle != null;
     }
 
@@ -80,14 +62,8 @@ public sealed class MainMenuView : MonoBehaviour
         [SerializeField]
         private string factionId;
 
-        /// <summary>
-        /// Gets the authored launch button.
-        /// </summary>
         public Button Button => button;
 
-        /// <summary>
-        /// Gets the faction identifier represented by the button.
-        /// </summary>
         public string FactionId => factionId;
 
         /// <summary>
@@ -111,26 +87,14 @@ public sealed class MainMenuView : MonoBehaviour
         [SerializeField]
         private GameObject[] objectsShownWhilePressed = Array.Empty<GameObject>();
 
-        /// <summary>
-        /// Gets the authored pointer-event source.
-        /// </summary>
         public EventTrigger Trigger => trigger;
 
-        /// <summary>
-        /// Gets the graphics hidden while the control is pressed.
-        /// </summary>
         public IReadOnlyList<Graphic> GraphicsHiddenWhilePressed =>
             graphicsHiddenWhilePressed ?? Array.Empty<Graphic>();
 
-        /// <summary>
-        /// Gets the objects shown while the control is pressed.
-        /// </summary>
         public IReadOnlyList<GameObject> ObjectsShownWhilePressed =>
             objectsShownWhilePressed ?? Array.Empty<GameObject>();
 
-        /// <summary>
-        /// Gets whether the binding has a trigger and at least one visual target.
-        /// </summary>
         public bool IsConfigured =>
             trigger != null
             && (
@@ -160,19 +124,10 @@ public sealed class MainMenuView : MonoBehaviour
         [SerializeField]
         private string resourcePath;
 
-        /// <summary>
-        /// Gets the authored pointer-event source.
-        /// </summary>
         public EventTrigger Trigger => trigger;
 
-        /// <summary>
-        /// Gets the pointer event that emits the cue.
-        /// </summary>
         public EventTriggerType EventType => eventType;
 
-        /// <summary>
-        /// Gets the audio resource path emitted by the binding.
-        /// </summary>
         public string ResourcePath => resourcePath;
 
         /// <summary>

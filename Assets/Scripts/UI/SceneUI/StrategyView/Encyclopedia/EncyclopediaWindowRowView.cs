@@ -13,9 +13,6 @@ public sealed class EncyclopediaWindowRowView : SelectableListRowView
     [SerializeField]
     private TextMeshProUGUI nameTextField;
 
-    /// <summary>
-    /// Gets the stable catalog identifier represented by the current row presentation.
-    /// </summary>
     public string EntryTypeId { get; private set; } = string.Empty;
 
     /// <summary>

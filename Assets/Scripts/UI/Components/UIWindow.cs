@@ -53,34 +53,16 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     /// </summary>
     public event Action<UIWindow> Moved;
 
-    /// <summary>
-    /// Gets the manager-assigned runtime identifier.
-    /// </summary>
     public int Id { get; private set; }
 
-    /// <summary>
-    /// Gets whether this window blocks interaction with other registered windows.
-    /// </summary>
     public bool Modal { get; private set; }
 
-    /// <summary>
-    /// Gets whether this window may become the active window.
-    /// </summary>
     public bool CanFocus { get; private set; }
 
-    /// <summary>
-    /// Gets whether an authored drag handle may move this window.
-    /// </summary>
     public bool CanMove { get; private set; }
 
-    /// <summary>
-    /// Gets whether this is the manager's current active window.
-    /// </summary>
     public bool ActiveWindow => activeWindow;
 
-    /// <summary>
-    /// Gets the feature view hosted by this shell.
-    /// </summary>
     public MonoBehaviour Content => content;
 
     /// <summary>

@@ -136,9 +136,6 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     public event Action<FacilityWindowView, FacilityWindowTab> TabSelected;
 
-    /// <summary>
-    /// Gets the inventory column count.
-    /// </summary>
     public int InventoryColumnCount => inventoryColumnCount;
 
     /// <summary>

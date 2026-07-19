@@ -9,89 +9,38 @@ using UnityEngine;
 [PersistableObject]
 public class MessagesWindowTheme
 {
-    /// <summary>
-    /// Gets or sets the all button.
-    /// </summary>
     public WindowButtonImageTheme AllButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the support button.
-    /// </summary>
     public WindowButtonImageTheme SupportButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the fleet button.
-    /// </summary>
     public WindowButtonImageTheme FleetButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the missions button.
-    /// </summary>
     public WindowButtonImageTheme MissionsButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the resource button.
-    /// </summary>
     public WindowButtonImageTheme ResourceButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the manufacturing button.
-    /// </summary>
     public WindowButtonImageTheme ManufacturingButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the defense button.
-    /// </summary>
     public WindowButtonImageTheme DefenseButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the conflict button.
-    /// </summary>
     public WindowButtonImageTheme ConflictButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the chat button.
-    /// </summary>
     public WindowButtonImageTheme ChatButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the advice button.
-    /// </summary>
     public WindowButtonImageTheme AdviceButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the close button.
-    /// </summary>
     public WindowButtonImageTheme CloseButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the display button.
-    /// </summary>
     public WindowButtonImageTheme DisplayButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the index button.
-    /// </summary>
     public WindowButtonImageTheme IndexButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the signal button.
-    /// </summary>
     public WindowButtonImageTheme SignalButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the signal silent image path.
-    /// </summary>
     public string SignalSilentImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the signal target button.
-    /// </summary>
     public WindowButtonImageTheme SignalTargetButton { get; set; }
 
-    /// <summary>
-    /// Gets or sets the chat command button.
-    /// </summary>
     public WindowButtonImageTheme ChatCommandButton { get; set; }
 
     /// <summary>
@@ -99,29 +48,14 @@ public class MessagesWindowTheme
     /// </summary>
     public List<MessageWindowIconTheme> Icons { get; set; } = new List<MessageWindowIconTheme>();
 
-    /// <summary>
-    /// Gets or sets the selection image path.
-    /// </summary>
     public string SelectionImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the overlay frame image path.
-    /// </summary>
     public string OverlayFrameImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the button strip image path.
-    /// </summary>
     public string ButtonStripImagePath { get; set; }
 
-    /// <summary>
-    /// Gets or sets the selected row text color hex.
-    /// </summary>
     public string SelectedRowTextColorHex { get; set; }
 
-    /// <summary>
-    /// Gets or sets the detail images.
-    /// </summary>
     public List<MessageDetailImageTheme> DetailImages { get; set; } =
         new List<MessageDetailImageTheme>();
 
@@ -203,13 +137,7 @@ public class MessagesWindowTheme
 [PersistableObject]
 public class MessageDetailImageTheme
 {
-    /// <summary>
-    /// Gets or sets the key.
-    /// </summary>
     public string Key { get; set; }
 
-    /// <summary>
-    /// Gets or sets the image path.
-    /// </summary>
     public string ImagePath { get; set; }
 }

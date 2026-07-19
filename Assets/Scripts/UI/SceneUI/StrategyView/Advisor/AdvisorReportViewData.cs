@@ -20,19 +20,10 @@ public sealed class AdvisorReportRowRenderData
         SecondaryText = secondaryText ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the optional row texture.
-    /// </summary>
     public Texture2D Texture { get; }
 
-    /// <summary>
-    /// Gets the primary row text.
-    /// </summary>
     public string PrimaryText { get; }
 
-    /// <summary>
-    /// Gets the secondary row text.
-    /// </summary>
     public string SecondaryText { get; }
 }
 
@@ -83,38 +74,17 @@ public sealed class AdvisorReportWindowRenderData
         Rows = rowSnapshot.AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets the source-space horizontal position.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the source-space vertical position.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the report mode selecting the authored row presentation.
-    /// </summary>
     public AdvisorReportMode Mode { get; }
 
-    /// <summary>
-    /// Gets the window background texture.
-    /// </summary>
     public Texture2D BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the optional galaxy texture.
-    /// </summary>
     public Texture2D GalaxyTexture { get; }
 
-    /// <summary>
-    /// Gets the report title.
-    /// </summary>
     public string Title { get; }
 
-    /// <summary>
-    /// Gets the immutable report-row snapshot.
-    /// </summary>
     public IReadOnlyList<AdvisorReportRowRenderData> Rows { get; }
 }

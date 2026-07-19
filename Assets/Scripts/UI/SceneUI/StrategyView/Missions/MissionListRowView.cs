@@ -45,9 +45,6 @@ public sealed class MissionListRowView : MonoBehaviour, IStrategyStatusDoubleCli
     /// </summary>
     internal event Action<MissionListRowView, PointerEventData> Released;
 
-    /// <summary>
-    /// Gets the row's current visual index.
-    /// </summary>
     internal int Index { get; private set; }
 
     /// <summary>
@@ -192,18 +189,9 @@ public sealed class MissionListRowRenderData
         SelectionTexture = selectionTexture;
     }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the icon texture.
-    /// </summary>
     public Texture IconTexture { get; }
 
-    /// <summary>
-    /// Gets the selection texture.
-    /// </summary>
     public Texture SelectionTexture { get; }
 }

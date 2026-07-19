@@ -49,50 +49,23 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
     )
         : this(StrategyContextMenuActions.Submenu, text, enabled, 0, submenuCommands) { }
 
-    /// <summary>
-    /// Gets the semantic action identifier.
-    /// </summary>
     public int Action { get; }
 
-    /// <summary>
-    /// Gets the displayed command text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets whether the command can be selected.
-    /// </summary>
     public bool Enabled { get; }
 
-    /// <summary>
-    /// Gets the semantic icon identifier.
-    /// </summary>
     public int IconKey { get; }
 
-    /// <summary>
-    /// Gets the ordered child commands.
-    /// </summary>
     public IReadOnlyList<StrategyMenuCommand> SubmenuCommands { get; }
 
-    /// <summary>
-    /// Gets the ordered child commands through the shared context-menu contract.
-    /// </summary>
     public IReadOnlyList<IContextMenuCommand> ChildCommands => SubmenuCommands;
 
-    /// <summary>
-    /// Gets whether the command has an explicit icon.
-    /// </summary>
     public bool HasIcon => IconKey != StrategyContextMenuIconKeys.None;
 
-    /// <summary>
-    /// Gets whether selecting the command opens a submenu.
-    /// </summary>
     public bool IsSubmenu =>
         Action == StrategyContextMenuActions.Submenu || SubmenuCommands.Count > 0;
 
-    /// <summary>
-    /// Gets whether the row reserves space for an icon.
-    /// </summary>
     public bool UsesIconColumn { get; }
 }
 

@@ -126,19 +126,10 @@ internal sealed class BattleAlertButtonRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the control is interactable.
-    /// </summary>
     public bool Interactable { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture2D Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture2D PressedTexture { get; }
 }
 
@@ -158,14 +149,8 @@ internal sealed class BattleAlertRowRenderData
         IconTexture = iconTexture;
     }
 
-    /// <summary>
-    /// Gets the text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the icon texture.
-    /// </summary>
     public Texture2D IconTexture { get; }
 }
 
@@ -194,24 +179,12 @@ internal sealed class BattleResultItemRenderData
         DamagedOverlayTexture = damagedOverlayTexture;
     }
 
-    /// <summary>
-    /// Gets the text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the base texture.
-    /// </summary>
     public Texture2D BaseTexture { get; }
 
-    /// <summary>
-    /// Gets the withdrawing overlay texture.
-    /// </summary>
     public Texture2D WithdrawingOverlayTexture { get; }
 
-    /// <summary>
-    /// Gets the damaged overlay texture.
-    /// </summary>
     public Texture2D DamagedOverlayTexture { get; }
 }
 
@@ -238,14 +211,8 @@ internal sealed class BattleResultTableRenderData
             .AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets the operational.
-    /// </summary>
     public IReadOnlyList<BattleResultItemRenderData> Operational { get; }
 
-    /// <summary>
-    /// Gets the destroyed.
-    /// </summary>
     public IReadOnlyList<BattleResultItemRenderData> Destroyed { get; }
 }
 
@@ -268,14 +235,8 @@ internal sealed class BattleResultCategoryRenderData
         Button = button ?? throw new ArgumentNullException(nameof(button));
     }
 
-    /// <summary>
-    /// Gets the category.
-    /// </summary>
     public BattleResultCategory Category { get; }
 
-    /// <summary>
-    /// Gets the button.
-    /// </summary>
     public BattleAlertButtonRenderData Button { get; }
 }
 
@@ -312,34 +273,16 @@ internal sealed class BattleAlertPendingRenderData
             .AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets the panel.
-    /// </summary>
     public BattleAlertPanel Panel { get; }
 
-    /// <summary>
-    /// Gets the title.
-    /// </summary>
     public string Title { get; }
 
-    /// <summary>
-    /// Gets the header.
-    /// </summary>
     public string Header { get; }
 
-    /// <summary>
-    /// Gets the summary.
-    /// </summary>
     public string Summary { get; }
 
-    /// <summary>
-    /// Gets the rows.
-    /// </summary>
     public IReadOnlyList<BattleAlertRowRenderData> Rows { get; }
 
-    /// <summary>
-    /// Gets the command buttons.
-    /// </summary>
     public IReadOnlyList<BattleAlertButtonRenderData> CommandButtons { get; }
 }
 
@@ -401,69 +344,30 @@ internal sealed class BattleAlertResultRenderData
         ResultTable = resultTable;
     }
 
-    /// <summary>
-    /// Gets the panel.
-    /// </summary>
     public BattleResultPanel Panel { get; }
 
-    /// <summary>
-    /// Gets the category.
-    /// </summary>
     public BattleResultCategory Category { get; }
 
-    /// <summary>
-    /// Gets the title.
-    /// </summary>
     public string Title { get; }
 
-    /// <summary>
-    /// Gets the summary.
-    /// </summary>
     public string Summary { get; }
 
-    /// <summary>
-    /// Gets the result close button.
-    /// </summary>
     public BattleAlertButtonRenderData ResultCloseButton { get; }
 
-    /// <summary>
-    /// Gets the result force header.
-    /// </summary>
     public string ResultForceHeader { get; }
 
-    /// <summary>
-    /// Gets the result force header color.
-    /// </summary>
     public Color ResultForceHeaderColor { get; }
 
-    /// <summary>
-    /// Gets the result table title.
-    /// </summary>
     public string ResultTableTitle { get; }
 
-    /// <summary>
-    /// Gets the result column headers.
-    /// </summary>
     public IReadOnlyList<string> ResultColumnHeaders { get; }
 
-    /// <summary>
-    /// Gets the result categories.
-    /// </summary>
     public IReadOnlyList<BattleResultCategoryRenderData> ResultCategories { get; }
 
-    /// <summary>
-    /// Gets the result direct buttons.
-    /// </summary>
     public IReadOnlyList<BattleAlertButtonRenderData> ResultDirectButtons { get; }
 
-    /// <summary>
-    /// Gets the result table.
-    /// </summary>
     public BattleResultTableRenderData ResultTable { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether personnel columns are used.
-    /// </summary>
     public bool UsesPersonnelColumns => Category == BattleResultCategory.Personnel;
 }
 
@@ -514,48 +418,21 @@ internal sealed class BattleAlertWindowRenderData
         Result = result;
     }
 
-    /// <summary>
-    /// Gets the mode.
-    /// </summary>
     public BattleAlertWindowMode Mode { get; }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the background texture.
-    /// </summary>
     public Texture2D BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the frame texture.
-    /// </summary>
     public Texture2D FrameTexture { get; }
 
-    /// <summary>
-    /// Gets the title color.
-    /// </summary>
     public Color TitleColor { get; }
 
-    /// <summary>
-    /// Gets the view buttons.
-    /// </summary>
     public IReadOnlyList<BattleAlertButtonRenderData> ViewButtons { get; }
 
-    /// <summary>
-    /// Gets the pending.
-    /// </summary>
     public BattleAlertPendingRenderData Pending { get; }
 
-    /// <summary>
-    /// Gets the result.
-    /// </summary>
     public BattleAlertResultRenderData Result { get; }
 }

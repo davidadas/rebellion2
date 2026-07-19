@@ -40,19 +40,10 @@ internal sealed class StatusWindowSession
         staticItem = rebindVisibleItem ? null : target.Item;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether Encyclopedia navigation is unavailable.
-    /// </summary>
     public bool InfoDisabled { get; }
 
-    /// <summary>
-    /// Gets the current status target.
-    /// </summary>
     public StrategyStatusTarget Target { get; private set; }
 
-    /// <summary>
-    /// Gets the owning status window.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

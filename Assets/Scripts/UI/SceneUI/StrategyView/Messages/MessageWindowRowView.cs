@@ -28,9 +28,6 @@ public sealed class MessageWindowRowView : SelectableListRowView
     private RectInt iconImageTemplateRect;
     private bool initialized;
 
-    /// <summary>
-    /// Gets the stable identifier represented by the current row presentation.
-    /// </summary>
     public string MessageId { get; private set; } = string.Empty;
 
     /// <summary>

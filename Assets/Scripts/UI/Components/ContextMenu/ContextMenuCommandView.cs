@@ -42,9 +42,6 @@ public sealed class ContextMenuCommandView
     /// </summary>
     internal event System.Action<ContextMenuCommandItem> StateChanged;
 
-    /// <summary>
-    /// Gets the authored row height in source units.
-    /// </summary>
     internal int RowHeight
     {
         get
@@ -54,9 +51,6 @@ public sealed class ContextMenuCommandView
         }
     }
 
-    /// <summary>
-    /// Gets the authored width reserved for the complete icon panel.
-    /// </summary>
     internal int IconPanelWidth
     {
         get

@@ -100,9 +100,6 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     internal event Action<DefenseWindowView, DefenseWindowTab> TabRequested;
 
-    /// <summary>
-    /// Gets the window shell.
-    /// </summary>
     internal UIWindow WindowShell => windowShell;
 
     /// <summary>

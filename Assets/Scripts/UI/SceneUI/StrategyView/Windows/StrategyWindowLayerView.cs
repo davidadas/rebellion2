@@ -66,84 +66,36 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     [SerializeField]
     private int itemDragStartDistance;
 
-    /// <summary>
-    /// Gets the authored planet-system window prefab.
-    /// </summary>
     internal PlanetSystemWindowView PlanetSystemWindowPrefab => planetSystemWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored facility window prefab.
-    /// </summary>
     internal FacilityWindowView FacilityWindowPrefab => facilityWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored defense window prefab.
-    /// </summary>
     internal DefenseWindowView DefenseWindowPrefab => defenseWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored fleet window prefab.
-    /// </summary>
     internal FleetWindowView FleetWindowPrefab => fleetWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored missions window prefab.
-    /// </summary>
     internal MissionsWindowView MissionsWindowPrefab => missionsWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored construction window prefab.
-    /// </summary>
     internal ConstructionWindowView ConstructionWindowPrefab => constructionWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored mission-creation window prefab.
-    /// </summary>
     internal MissionCreateWindowView MissionCreateWindowPrefab => missionCreateWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored status window prefab.
-    /// </summary>
     internal StatusWindowView StatusWindowPrefab => statusWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored advisor-report window prefab.
-    /// </summary>
     internal AdvisorReportWindowView AdvisorReportWindowPrefab => advisorReportWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored messages window prefab.
-    /// </summary>
     internal MessagesWindowView MessagesWindowPrefab => messagesWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored confirmation-dialog window prefab.
-    /// </summary>
     internal ConfirmDialogWindowView ConfirmDialogWindowPrefab => confirmDialogWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored battle-alert window prefab.
-    /// </summary>
     internal BattleAlertWindowView BattleAlertWindowPrefab => battleAlertWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored Finder window prefab.
-    /// </summary>
     internal FinderWindowView FinderWindowPrefab => finderWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored encyclopedia window prefab.
-    /// </summary>
     internal EncyclopediaWindowView EncyclopediaWindowPrefab => encyclopediaWindowPrefab;
 
-    /// <summary>
-    /// Gets the authored offset from a facility window to its construction window.
-    /// </summary>
     internal Vector2Int ConstructionWindowOffset => constructionWindowOffset;
 
-    /// <summary>
-    /// Gets the authored source-space distance required to start an item drag.
-    /// </summary>
     internal int ItemDragStartDistance => itemDragStartDistance;
 
     /// <summary>

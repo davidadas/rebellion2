@@ -61,9 +61,6 @@ public sealed class ManufacturingLaneCardView : MonoBehaviour
     /// </summary>
     public event Action<ManufacturingLaneCardView, PointerEventData> Dropped;
 
-    /// <summary>
-    /// Gets or sets the index.
-    /// </summary>
     public int Index { get; private set; }
 
     /// <summary>

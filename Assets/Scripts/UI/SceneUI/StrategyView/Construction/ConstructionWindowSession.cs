@@ -38,60 +38,27 @@ internal sealed class ConstructionWindowSession
         DestinationItemId = destinationItemId;
     }
 
-    /// <summary>
-    /// Gets the requested build count.
-    /// </summary>
     public int BuildCount { get; private set; } = _minimumBuildCount;
 
-    /// <summary>
-    /// Gets the selected destination entity identifier.
-    /// </summary>
     public string DestinationItemId { get; private set; }
 
-    /// <summary>
-    /// Gets the selected destination planet identifier.
-    /// </summary>
     public string DestinationPlanetId { get; private set; }
 
-    /// <summary>
-    /// Gets whether the build-item dropdown is open.
-    /// </summary>
     public bool DropdownOpen { get; private set; }
 
-    /// <summary>
-    /// Gets the ordered build templates represented by this session.
-    /// </summary>
     public IReadOnlyList<IManufacturable> Items => items;
 
-    /// <summary>
-    /// Gets the active manufacturing facility tab.
-    /// </summary>
     public FacilityWindowTab ManufacturingTab { get; private set; }
 
-    /// <summary>
-    /// Gets the producing strategy planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; private set; }
 
-    /// <summary>
-    /// Gets the selected build template.
-    /// </summary>
     public IManufacturable SelectedItem =>
         SelectedItemIndex >= 0 && SelectedItemIndex < items.Count ? items[SelectedItemIndex] : null;
 
-    /// <summary>
-    /// Gets the selected build-item index.
-    /// </summary>
     public int SelectedItemIndex { get; private set; }
 
-    /// <summary>
-    /// Gets the facility window that opened this construction window.
-    /// </summary>
     public UIWindow SourceWindow { get; private set; }
 
-    /// <summary>
-    /// Gets the owning construction window.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

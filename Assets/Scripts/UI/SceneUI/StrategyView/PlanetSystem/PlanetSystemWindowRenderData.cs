@@ -24,14 +24,8 @@ public sealed class PlanetSystemWindowRenderData
                 : new List<PlanetSystemPlanetRenderData>(planets).AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets the planets.
-    /// </summary>
     public IReadOnlyList<PlanetSystemPlanetRenderData> Planets { get; }
 
-    /// <summary>
-    /// Gets the title.
-    /// </summary>
     public string Title { get; }
 }
 
@@ -105,99 +99,42 @@ public sealed class PlanetSystemPlanetRenderData
         SupportBar = supportBar ?? throw new ArgumentNullException(nameof(supportBar));
     }
 
-    /// <summary>
-    /// Gets the defense pressed texture.
-    /// </summary>
     public Texture2D DefensePressedTexture { get; }
 
-    /// <summary>
-    /// Gets the defense texture.
-    /// </summary>
     public Texture2D DefenseTexture { get; }
 
-    /// <summary>
-    /// Gets the energy bar.
-    /// </summary>
     public PlanetSystemBarRenderData EnergyBar { get; }
 
-    /// <summary>
-    /// Gets the facility pressed texture.
-    /// </summary>
     public Texture2D FacilityPressedTexture { get; }
 
-    /// <summary>
-    /// Gets the facility texture.
-    /// </summary>
     public Texture2D FacilityTexture { get; }
 
-    /// <summary>
-    /// Gets the fleet pressed texture.
-    /// </summary>
     public Texture2D FleetPressedTexture { get; }
 
-    /// <summary>
-    /// Gets the fleet texture.
-    /// </summary>
     public Texture2D FleetTexture { get; }
 
-    /// <summary>
-    /// Gets the headquarters texture.
-    /// </summary>
     public Texture2D HeadquartersTexture { get; }
 
-    /// <summary>
-    /// Gets the hovered icon.
-    /// </summary>
     public PlanetIcon HoveredIcon { get; }
 
-    /// <summary>
-    /// Gets the mission pressed texture.
-    /// </summary>
     public Texture2D MissionPressedTexture { get; }
 
-    /// <summary>
-    /// Gets the mission texture.
-    /// </summary>
     public Texture2D MissionTexture { get; }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the name color.
-    /// </summary>
     public Color32 NameColor { get; }
 
-    /// <summary>
-    /// Gets the planet texture.
-    /// </summary>
     public Texture2D PlanetTexture { get; }
 
-    /// <summary>
-    /// Gets the planet index.
-    /// </summary>
     public int PlanetIndex { get; }
 
-    /// <summary>
-    /// Gets the planet's projected galaxy offset from its parent system.
-    /// </summary>
     public Vector2Int GalaxyOffset { get; }
 
-    /// <summary>
-    /// Gets the raw resource bar.
-    /// </summary>
     public PlanetSystemBarRenderData RawResourceBar { get; }
 
-    /// <summary>
-    /// Gets the selected icon.
-    /// </summary>
     public PlanetIcon SelectedIcon { get; }
 
-    /// <summary>
-    /// Gets the support bar.
-    /// </summary>
     public PlanetSystemBarRenderData SupportBar { get; }
 }
 
@@ -235,39 +172,18 @@ public sealed class PlanetSystemBarRenderData
         BackgroundColor = backgroundColor;
     }
 
-    /// <summary>
-    /// Gets the background color.
-    /// </summary>
     public Color32 BackgroundColor { get; }
 
-    /// <summary>
-    /// Gets the cell count.
-    /// </summary>
     public int CellCount { get; }
 
-    /// <summary>
-    /// Gets the empty color.
-    /// </summary>
     public Color32 EmptyColor { get; }
 
-    /// <summary>
-    /// Gets the fill color.
-    /// </summary>
     public Color32 FillColor { get; }
 
-    /// <summary>
-    /// Gets the normalized continuous fill ratio.
-    /// </summary>
     public float FillRatio { get; }
 
-    /// <summary>
-    /// Gets the lit cells.
-    /// </summary>
     public int LitCells { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the planet status bar is displayed.
-    /// </summary>
     public bool Visible { get; }
 }
 
@@ -289,18 +205,9 @@ public sealed class PlanetSystemWindowElement
         PlanetImage = planetImage;
     }
 
-    /// <summary>
-    /// Gets the icon.
-    /// </summary>
     public PlanetIcon Icon { get; }
 
-    /// <summary>
-    /// Gets the planet index.
-    /// </summary>
     public int PlanetIndex { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the element represents the planet image.
-    /// </summary>
     public bool PlanetImage { get; }
 }

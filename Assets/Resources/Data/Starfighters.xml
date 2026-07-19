@@ -7,9 +7,9 @@
     <TypeID>SFEM01</TypeID>
     <DisplayName>TIE Fighter Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_fighter_in_transit_small</InTransitSmallImagePath>
@@ -77,9 +77,9 @@ TIE fighters make up the bulk of all the Imperial starfighter corps.  The small 
     <TypeID>SFEM02</TypeID>
     <DisplayName>TIE Bomber Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_bomber_in_transit_small</InTransitSmallImagePath>
@@ -147,9 +147,9 @@ A special purpose TIE model, the TIE bomber has two pods contained between bent 
     <TypeID>SFEM03</TypeID>
     <DisplayName>TIE Interceptor Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_interceptor_in_transit_small</InTransitSmallImagePath>
@@ -217,9 +217,9 @@ An improvement over the original TIE design, the interceptor incorporates the be
     <TypeID>SFEM04</TypeID>
     <DisplayName>TIE Defender Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_empire_tie_defender_in_transit_small</InTransitSmallImagePath>
@@ -290,9 +290,9 @@ The TIE defender marks a departure from the normal line of Imperial fighter desi
     <TypeID>SFAL01</TypeID>
     <DisplayName>Y-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_rebel_y_wing_in_transit_small</InTransitSmallImagePath>
@@ -360,9 +360,9 @@ The older, twin-engine Y-wing still sees lots of action in the Alliance fleet.  
     <TypeID>SFAL02</TypeID>
     <DisplayName>X-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_rebel_x_wing_in_transit_small</InTransitSmallImagePath>
@@ -433,9 +433,9 @@ Designed by the Incom Corporation, the T-65 X-wing is a small, single-pilot star
     </AllowedOwnerInstanceIDs>
     <DisplayName>A-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_rebel_a_wing_in_transit_small</InTransitSmallImagePath>
@@ -503,9 +503,9 @@ The A-wing is a lightweight, extremely quick and agile starfighter.  The A-wing 
     </AllowedOwnerInstanceIDs>
     <DisplayName>B-Wing Squadron</DisplayName>
     <DisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_primary</DisplayImagePath>
-    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_battle_result</BattleResultImagePath>
-    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_battle_result_in_transit</BattleResultInTransitImagePath>
-    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_battle_result_damaged</BattleResultDamagedImagePath>
+    <BattleResultImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_large</BattleResultImagePath>
+    <BattleResultInTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_in_transit_large</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_damaged_large</BattleResultDamagedImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_small</SmallDisplayImagePath>
     <InTransitImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_in_transit</InTransitImagePath>
     <InTransitSmallImagePath>Art/HD/UI/Units/ent_fighter_rebel_b_wing_in_transit_small</InTransitSmallImagePath>

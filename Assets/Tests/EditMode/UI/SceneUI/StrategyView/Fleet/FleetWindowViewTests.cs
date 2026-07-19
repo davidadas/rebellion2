@@ -493,6 +493,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void DetailItemTemplate_StatusOverlaysRenderAboveEntity()
+        {
+            StrategyUnitCardView itemTemplate = _viewObject
+                .GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.name == "FleetDetailItemTemplate");
+            Transform entity = FindCardObject(itemTemplate, "EntityImage").transform;
+
+            Assert.Greater(
+                FindCardObject(itemTemplate, "ConstructionOverlayImage")
+                    .transform.GetSiblingIndex(),
+                entity.GetSiblingIndex()
+            );
+            Assert.Greater(
+                FindCardObject(itemTemplate, "EnrouteOverlayImage").transform.GetSiblingIndex(),
+                entity.GetSiblingIndex()
+            );
+            Assert.Greater(
+                FindCardObject(itemTemplate, "DamagedOverlayImage").transform.GetSiblingIndex(),
+                entity.GetSiblingIndex()
+            );
+        }
+
+        [Test]
         public void OnDestroy_InitializedView_RaisesDestroyedEvent()
         {
             FleetWindowView destroyed = null;

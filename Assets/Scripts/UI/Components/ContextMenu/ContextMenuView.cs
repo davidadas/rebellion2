@@ -40,14 +40,8 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
     /// </summary>
     public event System.Action<PointerEventData> DismissRequested;
 
-    /// <summary>
-    /// Gets whether the menu is currently open.
-    /// </summary>
     public bool Open { get; private set; }
 
-    /// <summary>
-    /// Gets the feature object that opened the current menu.
-    /// </summary>
     public object Owner { get; private set; }
 
     /// <summary>
@@ -455,29 +449,14 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
             Visuals = visuals;
         }
 
-        /// <summary>
-        /// Gets or sets the horizontal coordinate.
-        /// </summary>
         public int X { get; set; }
 
-        /// <summary>
-        /// Gets or sets the vertical coordinate.
-        /// </summary>
         public int Y { get; set; }
 
-        /// <summary>
-        /// Gets the width.
-        /// </summary>
         public int Width { get; }
 
-        /// <summary>
-        /// Gets the commands.
-        /// </summary>
         public List<ContextMenuCommandItem> Commands { get; }
 
-        /// <summary>
-        /// Gets the visuals.
-        /// </summary>
         public ContextMenuVisuals Visuals { get; }
     }
 
@@ -505,19 +484,10 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
             DisabledColor = disabledColor;
         }
 
-        /// <summary>
-        /// Gets the enabled command color.
-        /// </summary>
         public Color32 EnabledColor { get; }
 
-        /// <summary>
-        /// Gets the active command color.
-        /// </summary>
         public Color32 ActiveColor { get; }
 
-        /// <summary>
-        /// Gets the disabled command color.
-        /// </summary>
         public Color32 DisabledColor { get; }
     }
 }
@@ -556,54 +526,24 @@ public sealed class ContextMenuCommandItem
                 : new List<ContextMenuCommandItem>(submenuCommands);
     }
 
-    /// <summary>
-    /// Gets the command invoked by this item.
-    /// </summary>
     public IContextMenuCommand Command { get; }
 
-    /// <summary>
-    /// Gets the current command label.
-    /// </summary>
     public string Text => Command.Text;
 
-    /// <summary>
-    /// Gets whether the command may be selected.
-    /// </summary>
     public bool Enabled => Command.Enabled;
 
-    /// <summary>
-    /// Gets or sets whether the item is currently active.
-    /// </summary>
     public bool Active { get; set; }
 
-    /// <summary>
-    /// Gets whether the item reserves the panel icon column.
-    /// </summary>
     public bool UsesIconColumn { get; }
 
-    /// <summary>
-    /// Gets whether the icon uses its native source size.
-    /// </summary>
     public bool CenterNativeIcon { get; }
 
-    /// <summary>
-    /// Gets the commands shown when this item opens a submenu.
-    /// </summary>
     public IReadOnlyList<ContextMenuCommandItem> SubmenuCommands { get; }
 
-    /// <summary>
-    /// Gets whether this item owns a submenu.
-    /// </summary>
     public bool HasSubmenu => SubmenuCommands.Count > 0;
 
-    /// <summary>
-    /// Gets the default icon texture.
-    /// </summary>
     public Texture IconTexture { get; }
 
-    /// <summary>
-    /// Gets the active-state icon texture.
-    /// </summary>
     public Texture ActiveIconTexture { get; }
 
     /// <summary>
@@ -637,19 +577,10 @@ internal readonly struct ContextMenuMetrics
         BorderSize = borderSize;
     }
 
-    /// <summary>
-    /// Gets the authored command-row height.
-    /// </summary>
     public int RowHeight { get; }
 
-    /// <summary>
-    /// Gets the additional width reserved for icon panels.
-    /// </summary>
     public int IconPanelWidth { get; }
 
-    /// <summary>
-    /// Gets the authored panel-border thickness.
-    /// </summary>
     public int BorderSize { get; }
 
     /// <summary>

@@ -41,9 +41,6 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
     /// </summary>
     public event Action<FacilityInventoryItemView, PointerEventData> DoubleClicked;
 
-    /// <summary>
-    /// Gets or sets the index.
-    /// </summary>
     public int Index { get; private set; }
 
     /// <summary>

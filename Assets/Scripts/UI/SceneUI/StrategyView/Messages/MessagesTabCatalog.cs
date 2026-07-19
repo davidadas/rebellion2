@@ -7,44 +7,20 @@ using Rebellion.Game.Messages;
 /// </summary>
 public enum MessagesTab
 {
-    /// <summary>
-    /// Displays messages from every category.
-    /// </summary>
     All = 0,
 
-    /// <summary>
-    /// Displays popular-support messages.
-    /// </summary>
     Support = 1,
 
-    /// <summary>
-    /// Displays fleet messages.
-    /// </summary>
     Fleet = 2,
 
-    /// <summary>
-    /// Displays mission messages.
-    /// </summary>
     Mission = 3,
 
-    /// <summary>
-    /// Displays resource messages.
-    /// </summary>
     Resource = 4,
 
-    /// <summary>
-    /// Displays manufacturing messages.
-    /// </summary>
     Manufacturing = 5,
 
-    /// <summary>
-    /// Displays defense messages.
-    /// </summary>
     Defense = 6,
 
-    /// <summary>
-    /// Displays conflict messages.
-    /// </summary>
     Conflict = 7,
 
     /// <summary>
@@ -80,14 +56,8 @@ internal static class MessagesTabCatalog
         _orderedTabs
     );
 
-    /// <summary>
-    /// Gets the number of authored Messages tabs.
-    /// </summary>
     internal static int Count => _orderedTabs.Length;
 
-    /// <summary>
-    /// Gets the Messages tabs in authored slot order.
-    /// </summary>
     internal static IReadOnlyList<MessagesTab> OrderedTabs => _readOnlyOrderedTabs;
 
     /// <summary>

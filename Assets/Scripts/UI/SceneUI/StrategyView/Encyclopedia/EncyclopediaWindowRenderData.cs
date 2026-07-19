@@ -45,9 +45,6 @@ public static class EncyclopediaWindowTabCatalog
         EncyclopediaWindowTab.Personnel,
     };
 
-    /// <summary>
-    /// Gets the count.
-    /// </summary>
     public static int Count => _tabs.Length;
 
     /// <summary>
@@ -138,24 +135,12 @@ public readonly struct EncyclopediaWindowState
         SearchText = searchText ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the topic detail panel is open.
-    /// </summary>
     public bool Panel { get; }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public EncyclopediaWindowTab ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the selected index.
-    /// </summary>
     public int SelectedIndex { get; }
 
-    /// <summary>
-    /// Gets the search text.
-    /// </summary>
     public string SearchText { get; }
 }
 
@@ -184,24 +169,12 @@ public sealed class EncyclopediaDialogButtonRenderData
         SourceRect = sourceRect;
     }
 
-    /// <summary>
-    /// Gets the command.
-    /// </summary>
     public EncyclopediaWindowCommand Command { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 
-    /// <summary>
-    /// Gets the source rect.
-    /// </summary>
     public RectInt? SourceRect { get; }
 }
 
@@ -221,14 +194,8 @@ public sealed class EncyclopediaTabRenderData
         Texture = texture;
     }
 
-    /// <summary>
-    /// Gets the tab.
-    /// </summary>
     public EncyclopediaWindowTab Tab { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 }
 
@@ -250,19 +217,10 @@ public sealed class EncyclopediaWindowRowRenderData
         Selected = selected;
     }
 
-    /// <summary>
-    /// Gets the stable catalog entry identifier.
-    /// </summary>
     public string EntryTypeId { get; }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the row is selected.
-    /// </summary>
     public bool Selected { get; }
 }
 
@@ -306,49 +264,22 @@ public sealed class EncyclopediaWindowFrameRenderData
         DialogButtons = EncyclopediaWindowRenderData.Copy(dialogButtons);
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the width.
-    /// </summary>
     public int Width { get; }
 
-    /// <summary>
-    /// Gets the height.
-    /// </summary>
     public int Height { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the window is active.
-    /// </summary>
     public bool ActiveWindow { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether upper button layout is used.
-    /// </summary>
     public bool UseUpperButtonLayout { get; }
 
-    /// <summary>
-    /// Gets the overlay frame texture.
-    /// </summary>
     public Texture OverlayFrameTexture { get; }
 
-    /// <summary>
-    /// Gets the button strip texture.
-    /// </summary>
     public Texture ButtonStripTexture { get; }
 
-    /// <summary>
-    /// Gets the dialog buttons.
-    /// </summary>
     public IReadOnlyList<EncyclopediaDialogButtonRenderData> DialogButtons { get; }
 }
 
@@ -383,34 +314,16 @@ public sealed class EncyclopediaWindowIndexRenderData
         Rows = EncyclopediaWindowRenderData.Copy(rows);
     }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public EncyclopediaWindowTab ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the selected index.
-    /// </summary>
     public int SelectedIndex { get; }
 
-    /// <summary>
-    /// Gets the search text.
-    /// </summary>
     public string SearchText { get; }
 
-    /// <summary>
-    /// Gets the tab title.
-    /// </summary>
     public string TabTitle { get; }
 
-    /// <summary>
-    /// Gets the tabs.
-    /// </summary>
     public IReadOnlyList<EncyclopediaTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets the rows.
-    /// </summary>
     public IReadOnlyList<EncyclopediaWindowRowRenderData> Rows { get; }
 }
 
@@ -442,29 +355,14 @@ public sealed class EncyclopediaWindowDetailRenderData
         NextDisabled = nextDisabled;
     }
 
-    /// <summary>
-    /// Gets the title.
-    /// </summary>
     public string Title { get; }
 
-    /// <summary>
-    /// Gets the text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the image.
-    /// </summary>
     public Texture Image { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the previous control is disabled.
-    /// </summary>
     public bool PreviousDisabled { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the next control is disabled.
-    /// </summary>
     public bool NextDisabled { get; }
 }
 
@@ -493,24 +391,12 @@ public sealed class EncyclopediaWindowRenderData
         Detail = detail ?? throw new ArgumentNullException(nameof(detail));
     }
 
-    /// <summary>
-    /// Gets a value indicating whether the topic detail panel is open.
-    /// </summary>
     public bool Panel { get; }
 
-    /// <summary>
-    /// Gets the frame.
-    /// </summary>
     public EncyclopediaWindowFrameRenderData Frame { get; }
 
-    /// <summary>
-    /// Gets the index.
-    /// </summary>
     public EncyclopediaWindowIndexRenderData Index { get; }
 
-    /// <summary>
-    /// Gets the detail.
-    /// </summary>
     public EncyclopediaWindowDetailRenderData Detail { get; }
 
     /// <summary>

@@ -31,14 +31,8 @@ public sealed class GalaxyMapSector
         Planets = CreatePlanetSnapshot(planets);
     }
 
-    /// <summary>
-    /// Gets the represented planet system.
-    /// </summary>
     public PlanetSystem System { get; }
 
-    /// <summary>
-    /// Gets the visible planets in source render order.
-    /// </summary>
     public IReadOnlyList<GalaxyMapPlanet> Planets { get; }
 
     /// <summary>
@@ -83,29 +77,14 @@ public sealed class GalaxyMapPlanet
         PlanetIconPath = planetIconPath ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the owning visible galaxy-map sector.
-    /// </summary>
     public GalaxyMapSector Sector { get; private set; }
 
-    /// <summary>
-    /// Gets the represented planet system.
-    /// </summary>
     public PlanetSystem SectorSystem { get; }
 
-    /// <summary>
-    /// Gets the visible planet snapshot.
-    /// </summary>
     public Planet Planet { get; }
 
-    /// <summary>
-    /// Gets the resolved planet-art resource path.
-    /// </summary>
     public string PlanetIconPath { get; }
 
-    /// <summary>
-    /// Gets the visible planet owner's faction identifier.
-    /// </summary>
     public string OwnerFactionId => Planet?.OwnerInstanceID;
 
     /// <summary>

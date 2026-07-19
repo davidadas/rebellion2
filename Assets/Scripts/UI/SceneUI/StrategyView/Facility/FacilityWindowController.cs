@@ -1087,19 +1087,10 @@ public sealed class FacilityWindowController
             ManufacturingTab = manufacturingTab;
         }
 
-        /// <summary>
-        /// Gets the window.
-        /// </summary>
         public UIWindow Window { get; }
 
-        /// <summary>
-        /// Gets the view.
-        /// </summary>
         public FacilityWindowView View { get; }
 
-        /// <summary>
-        /// Gets the manufacturing facility tab.
-        /// </summary>
         public FacilityWindowTab ManufacturingTab { get; }
     }
 }

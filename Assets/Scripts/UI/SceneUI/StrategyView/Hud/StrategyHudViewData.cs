@@ -40,29 +40,14 @@ public sealed class StrategyHudRenderData
                 : new HashSet<MessageType>(unreadMessageTypes);
     }
 
-    /// <summary>
-    /// Gets the tick text.
-    /// </summary>
     public string TickText { get; }
 
-    /// <summary>
-    /// Gets the raw materials text.
-    /// </summary>
     public string RawMaterialsText { get; }
 
-    /// <summary>
-    /// Gets the refined materials text.
-    /// </summary>
     public string RefinedMaterialsText { get; }
 
-    /// <summary>
-    /// Gets the maintenance text.
-    /// </summary>
     public string MaintenanceText { get; }
 
-    /// <summary>
-    /// Gets the speed.
-    /// </summary>
     public TickSpeed Speed { get; }
 
     /// <summary>
@@ -94,19 +79,10 @@ public sealed class StrategyHudCounterViewData
         Bounds = bounds;
     }
 
-    /// <summary>
-    /// Gets the text.
-    /// </summary>
     public string Text { get; }
 
-    /// <summary>
-    /// Gets the color.
-    /// </summary>
     public Color Color { get; }
 
-    /// <summary>
-    /// Gets the bounds.
-    /// </summary>
     public RectInt? Bounds { get; }
 }
 
@@ -135,24 +111,12 @@ public sealed class StrategyHudButtonViewData
         PressedBounds = pressedBounds;
     }
 
-    /// <summary>
-    /// Gets the action.
-    /// </summary>
     public StrategyHudAction Action { get; }
 
-    /// <summary>
-    /// Gets the hit area.
-    /// </summary>
     public RectInt HitArea { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture2D PressedTexture { get; }
 
-    /// <summary>
-    /// Gets the pressed bounds.
-    /// </summary>
     public RectInt PressedBounds { get; }
 }
 
@@ -178,19 +142,10 @@ public sealed class StrategyHudMessageNotificationViewData
         Bounds = bounds;
     }
 
-    /// <summary>
-    /// Gets the tab.
-    /// </summary>
     public MessagesTab Tab { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture2D Texture { get; }
 
-    /// <summary>
-    /// Gets the bounds.
-    /// </summary>
     public RectInt Bounds { get; }
 }
 
@@ -246,64 +201,28 @@ public sealed class StrategyHudViewData
         this.messageNotifications = Copy(messageNotifications);
     }
 
-    /// <summary>
-    /// Gets the background texture.
-    /// </summary>
     public Texture2D BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the tick counter.
-    /// </summary>
     public StrategyHudCounterViewData TickCounter { get; }
 
-    /// <summary>
-    /// Gets the raw materials counter.
-    /// </summary>
     public StrategyHudCounterViewData RawMaterialsCounter { get; }
 
-    /// <summary>
-    /// Gets the refined materials counter.
-    /// </summary>
     public StrategyHudCounterViewData RefinedMaterialsCounter { get; }
 
-    /// <summary>
-    /// Gets the maintenance counter.
-    /// </summary>
     public StrategyHudCounterViewData MaintenanceCounter { get; }
 
-    /// <summary>
-    /// Gets the speed indicator texture.
-    /// </summary>
     public Texture2D SpeedIndicatorTexture { get; }
 
-    /// <summary>
-    /// Gets the speed indicator bounds.
-    /// </summary>
     public RectInt? SpeedIndicatorBounds { get; }
 
-    /// <summary>
-    /// Gets the galactic information display texture.
-    /// </summary>
     public Texture2D GalacticInformationDisplayTexture { get; }
 
-    /// <summary>
-    /// Gets the galactic information display bounds.
-    /// </summary>
     public RectInt? GalacticInformationDisplayBounds { get; }
 
-    /// <summary>
-    /// Gets the speed context bounds.
-    /// </summary>
     public RectInt? SpeedContextBounds { get; }
 
-    /// <summary>
-    /// Gets the buttons.
-    /// </summary>
     public IReadOnlyList<StrategyHudButtonViewData> Buttons => buttons;
 
-    /// <summary>
-    /// Gets the message notifications.
-    /// </summary>
     public IReadOnlyList<StrategyHudMessageNotificationViewData> MessageNotifications =>
         messageNotifications;
 

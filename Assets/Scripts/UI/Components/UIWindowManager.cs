@@ -59,14 +59,8 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// </summary>
     public event Action<UIWindow> ModalOpened;
 
-    /// <summary>
-    /// Gets registered windows in bottom-to-top stacking order.
-    /// </summary>
     public IReadOnlyList<UIWindow> Windows => windows;
 
-    /// <summary>
-    /// Gets the registered window that currently owns focus.
-    /// </summary>
     public UIWindow ActiveWindow { get; private set; }
 
     /// <summary>

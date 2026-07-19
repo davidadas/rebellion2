@@ -439,18 +439,9 @@ public sealed class StrategyOverlayRenderData
         DragImageBounds = dragImageBounds;
     }
 
-    /// <summary>
-    /// Gets the drag frame bounds.
-    /// </summary>
     public RectInt? DragFrameBounds { get; }
 
-    /// <summary>
-    /// Gets the drag image texture.
-    /// </summary>
     public Texture DragImageTexture { get; }
 
-    /// <summary>
-    /// Gets the drag image bounds.
-    /// </summary>
     public RectInt? DragImageBounds { get; }
 }

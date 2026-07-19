@@ -1103,29 +1103,14 @@ public sealed class PlanetSystemWindowController
             Target = target;
         }
 
-        /// <summary>
-        /// Gets the menu hotspot horizontal coordinate.
-        /// </summary>
         public int HotspotX { get; }
 
-        /// <summary>
-        /// Gets the menu hotspot vertical coordinate.
-        /// </summary>
         public int HotspotY { get; }
 
-        /// <summary>
-        /// Gets the selected fleet items.
-        /// </summary>
         public IReadOnlyList<ISceneNode> Items { get; }
 
-        /// <summary>
-        /// Gets the selected status target.
-        /// </summary>
         public StrategyStatusTarget Target { get; }
 
-        /// <summary>
-        /// Gets the source planet-system window.
-        /// </summary>
         public UIWindow Window { get; }
     }
 
@@ -1147,39 +1132,18 @@ public sealed class PlanetSystemWindowController
             Window = window ?? throw new ArgumentNullException(nameof(window));
         }
 
-        /// <summary>
-        /// Gets the hovered icon.
-        /// </summary>
         public PlanetIcon HoveredIcon { get; private set; }
 
-        /// <summary>
-        /// Gets the hovered planet instance ID.
-        /// </summary>
         public string HoveredPlanetInstanceId { get; private set; }
 
-        /// <summary>
-        /// Gets the represented sector.
-        /// </summary>
         public GalaxyMapSector Sector { get; private set; }
 
-        /// <summary>
-        /// Gets the selected icon.
-        /// </summary>
         public PlanetIcon SelectedIcon { get; private set; }
 
-        /// <summary>
-        /// Gets the selected planet instance ID.
-        /// </summary>
         public string SelectedPlanetInstanceId { get; private set; }
 
-        /// <summary>
-        /// Gets the sector position.
-        /// </summary>
         public int SectorPosition { get; private set; }
 
-        /// <summary>
-        /// Gets the owning window.
-        /// </summary>
         public UIWindow Window { get; }
 
         /// <summary>
@@ -1445,34 +1409,16 @@ public sealed class PlanetSystemWindowHit
         PlanetImage = planetImage;
     }
 
-    /// <summary>
-    /// Gets the element.
-    /// </summary>
     public PlanetSystemWindowElement Element =>
         new PlanetSystemWindowElement(PlanetIndex, Icon, PlanetImage);
 
-    /// <summary>
-    /// Gets the galaxy map planet.
-    /// </summary>
     public GalaxyMapPlanet GalaxyMapPlanet { get; }
 
-    /// <summary>
-    /// Gets the icon.
-    /// </summary>
     public PlanetIcon Icon { get; }
 
-    /// <summary>
-    /// Gets the planet.
-    /// </summary>
     public Planet Planet => GalaxyMapPlanet?.Planet;
 
-    /// <summary>
-    /// Gets the planet index.
-    /// </summary>
     public int PlanetIndex { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the hit originated from the planet image.
-    /// </summary>
     public bool PlanetImage { get; }
 }

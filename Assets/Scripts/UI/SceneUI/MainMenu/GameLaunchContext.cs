@@ -13,19 +13,10 @@ public static class GameLaunchContext
     /// </summary>
     public static GameSummary Summary { get; private set; } = CreateDefaultSummary();
 
-    /// <summary>
-    /// Gets or sets the selected save-file name.
-    /// </summary>
     public static string SaveFileName { get; set; }
 
-    /// <summary>
-    /// Gets or sets whether the strategy scene should load a saved game.
-    /// </summary>
     public static bool IsLoadGame { get; set; }
 
-    /// <summary>
-    /// Gets or sets whether a new game should play its faction introduction.
-    /// </summary>
     public static bool PlayIntroCutscene { get; set; }
 
     /// <summary>

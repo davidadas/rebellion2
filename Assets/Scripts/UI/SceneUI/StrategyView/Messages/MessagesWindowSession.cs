@@ -22,29 +22,14 @@ internal sealed class MessagesWindowSession
         Window = window ?? throw new ArgumentNullException(nameof(window));
     }
 
-    /// <summary>
-    /// Gets the active semantic Messages tab.
-    /// </summary>
     public MessagesTab ActiveTab { get; private set; } = MessagesTab.All;
 
-    /// <summary>
-    /// Gets whether the detail panel is active.
-    /// </summary>
     public bool DetailVisible { get; private set; }
 
-    /// <summary>
-    /// Gets the active tab's current ordered message snapshot.
-    /// </summary>
     public IReadOnlyList<Message> Messages => messages;
 
-    /// <summary>
-    /// Gets the primary selected message identifier.
-    /// </summary>
     public string SelectedMessageId => selectedMessageId;
 
-    /// <summary>
-    /// Gets the owning Messages window.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

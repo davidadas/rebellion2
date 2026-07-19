@@ -24,19 +24,10 @@ public sealed class ContextMenuRequest
         Receiver = receiver ?? throw new ArgumentNullException(nameof(receiver));
     }
 
-    /// <summary>
-    /// Gets the feature state that opened the menu.
-    /// </summary>
     public object Source { get; }
 
-    /// <summary>
-    /// Gets the commands accepted by this request.
-    /// </summary>
     public IReadOnlyList<IContextMenuCommand> Commands { get; }
 
-    /// <summary>
-    /// Gets the receiver for request completion.
-    /// </summary>
     public IContextMenuReceiver Receiver { get; }
 }
 
@@ -45,14 +36,8 @@ public sealed class ContextMenuRequest
 /// </summary>
 public interface IContextMenuCommand
 {
-    /// <summary>
-    /// Gets the command label.
-    /// </summary>
     string Text { get; }
 
-    /// <summary>
-    /// Gets whether the command may be selected.
-    /// </summary>
     bool Enabled { get; }
 }
 
@@ -61,9 +46,6 @@ public interface IContextMenuCommand
 /// </summary>
 public interface IContextMenuParentCommand : IContextMenuCommand
 {
-    /// <summary>
-    /// Gets the ordered child commands.
-    /// </summary>
     IReadOnlyList<IContextMenuCommand> ChildCommands { get; }
 }
 
@@ -93,14 +75,8 @@ public sealed class ContextMenuController : ICancelable
 {
     private ContextMenuRequest activeRequest;
 
-    /// <summary>
-    /// Gets whether a request is currently active.
-    /// </summary>
     public bool IsOpen => activeRequest != null;
 
-    /// <summary>
-    /// Gets the active request, or <see langword="null"/> when no menu is open.
-    /// </summary>
     public ContextMenuRequest ActiveRequest => activeRequest;
 
     /// <summary>

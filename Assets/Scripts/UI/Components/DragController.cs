@@ -15,9 +15,6 @@ public sealed class DragRequest
         Source = source ?? throw new ArgumentNullException(nameof(source));
     }
 
-    /// <summary>
-    /// Gets the source.
-    /// </summary>
     public object Source { get; }
 }
 
@@ -43,29 +40,14 @@ public sealed class DragPreview
         OffsetY = offsetY;
     }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the width.
-    /// </summary>
     public int Width { get; }
 
-    /// <summary>
-    /// Gets the height.
-    /// </summary>
     public int Height { get; }
 
-    /// <summary>
-    /// Gets the offset x.
-    /// </summary>
     public int OffsetX { get; }
 
-    /// <summary>
-    /// Gets the offset y.
-    /// </summary>
     public int OffsetY { get; }
 }
 
@@ -95,24 +77,12 @@ public sealed class DragController
         this.startDistance = startDistance;
     }
 
-    /// <summary>
-    /// Gets a value indicating whether candidate is present.
-    /// </summary>
     public bool HasCandidate => candidateRequest != null;
 
-    /// <summary>
-    /// Gets a value indicating whether dragging is active.
-    /// </summary>
     public bool IsDragging => activeRequest != null;
 
-    /// <summary>
-    /// Gets the candidate request.
-    /// </summary>
     public DragRequest CandidateRequest => candidateRequest;
 
-    /// <summary>
-    /// Gets the active request.
-    /// </summary>
     public DragRequest ActiveRequest => activeRequest;
 
     /// <summary>

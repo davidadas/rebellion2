@@ -298,14 +298,8 @@ public sealed class AdvisorReportWindowController
             Mode = mode;
         }
 
-        /// <summary>
-        /// Gets the displayed report mode.
-        /// </summary>
         public AdvisorReportMode Mode { get; private set; }
 
-        /// <summary>
-        /// Gets the owning advisor-report window.
-        /// </summary>
         public UIWindow Window { get; }
 
         /// <summary>

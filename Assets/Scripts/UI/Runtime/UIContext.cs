@@ -43,9 +43,6 @@ public sealed class UIContext
         EncyclopediaCatalog = encyclopediaCatalog;
     }
 
-    /// <summary>
-    /// Gets the game.
-    /// </summary>
     public GameRoot Game => game;
 
     /// <summary>
@@ -57,9 +54,6 @@ public sealed class UIContext
         game = newGame ?? throw new ArgumentNullException(nameof(newGame));
     }
 
-    /// <summary>
-    /// Gets the encyclopedia catalog.
-    /// </summary>
     public EncyclopediaCatalog EncyclopediaCatalog { get; }
 
     /// <summary>

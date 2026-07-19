@@ -59,14 +59,8 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
     /// </summary>
     public event Action<FleetListRowView, PointerEventData> Released;
 
-    /// <summary>
-    /// Gets or sets the index.
-    /// </summary>
     public int Index { get; private set; }
 
-    /// <summary>
-    /// Gets the name text field.
-    /// </summary>
     internal TextMeshProUGUI NameTextField => nameTextField;
 
     /// <summary>

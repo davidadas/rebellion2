@@ -512,19 +512,10 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour
             IsTabbed = tabbed;
         }
 
-        /// <summary>
-        /// Gets the indent tabs.
-        /// </summary>
         public int IndentTabs { get; }
 
-        /// <summary>
-        /// Gets the cells.
-        /// </summary>
         public IReadOnlyList<string> Cells { get; }
 
-        /// <summary>
-        /// Gets a value indicating whether the detail uses tabbed presentation.
-        /// </summary>
         public bool IsTabbed { get; }
     }
 }

@@ -1224,24 +1224,12 @@ public sealed class FleetWindowController
             Items = new List<ISceneNode>(items ?? Array.Empty<ISceneNode>()).AsReadOnly();
         }
 
-        /// <summary>
-        /// Gets the hotspot x.
-        /// </summary>
         public int HotspotX { get; }
 
-        /// <summary>
-        /// Gets the hotspot y.
-        /// </summary>
         public int HotspotY { get; }
 
-        /// <summary>
-        /// Gets the items.
-        /// </summary>
         public IReadOnlyList<ISceneNode> Items { get; }
 
-        /// <summary>
-        /// Gets the window.
-        /// </summary>
         public UIWindow Window { get; }
     }
 }

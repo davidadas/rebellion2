@@ -29,34 +29,16 @@ internal sealed class DefenseWindowSession
         Reconcile();
     }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public DefenseWindowTab ActiveTab { get; private set; } = DefenseWindowTab.Personnel;
 
-    /// <summary>
-    /// Gets the current context-item index.
-    /// </summary>
     public int ContextItemIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the current drag-item index.
-    /// </summary>
     public int DragItemIndex { get; private set; } = -1;
 
-    /// <summary>
-    /// Gets the represented strategy planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; private set; }
 
-    /// <summary>
-    /// Gets the selected current visual indices.
-    /// </summary>
     public IReadOnlyCollection<int> SelectedItemIndexes => selectedIndexes;
 
-    /// <summary>
-    /// Gets the owning window shell.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

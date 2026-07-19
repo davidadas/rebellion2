@@ -32,19 +32,10 @@ public sealed class DefenseWindowTabRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets the represented Defense tab.
-    /// </summary>
     public DefenseWindowTab Tab { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 }
 
@@ -65,14 +56,8 @@ public sealed class DefenseWindowRenderData
         _orderedTabs
     );
 
-    /// <summary>
-    /// Gets the number of authored Defense tabs.
-    /// </summary>
     public static int TabCount => _orderedTabs.Length;
 
-    /// <summary>
-    /// Gets the semantic Defense tabs in authored slot order.
-    /// </summary>
     public static IReadOnlyList<DefenseWindowTab> OrderedTabs => _readOnlyOrderedTabs;
 
     /// <summary>
@@ -107,44 +92,20 @@ public sealed class DefenseWindowRenderData
         Items = Copy(items, nameof(items));
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the title texture.
-    /// </summary>
     public Texture TitleTexture { get; }
 
-    /// <summary>
-    /// Gets the caption.
-    /// </summary>
     public string Caption { get; }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public DefenseWindowTab ActiveTab { get; }
 
-    /// <summary>
-    /// Gets the tab title.
-    /// </summary>
     public string TabTitle { get; }
 
-    /// <summary>
-    /// Gets the tabs.
-    /// </summary>
     public IReadOnlyList<DefenseWindowTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets the items.
-    /// </summary>
     public IReadOnlyList<StrategyUnitCardRenderData> Items { get; }
 
     /// <summary>

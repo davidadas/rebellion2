@@ -50,9 +50,6 @@ public sealed class ScrollAreaView : MonoBehaviour
     /// </summary>
     public event Action<PointerEventData> Dropped;
 
-    /// <summary>
-    /// Gets the authored content container.
-    /// </summary>
     public RectTransform ContentRoot
     {
         get
@@ -62,9 +59,6 @@ public sealed class ScrollAreaView : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gets the authored viewport container.
-    /// </summary>
     public RectTransform ViewportRoot
     {
         get
@@ -74,9 +68,6 @@ public sealed class ScrollAreaView : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gets the authored scroll-root transform.
-    /// </summary>
     public RectTransform ScrollRoot
     {
         get
@@ -86,9 +77,6 @@ public sealed class ScrollAreaView : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gets the current viewport width.
-    /// </summary>
     public float ViewportWidth
     {
         get
@@ -98,9 +86,6 @@ public sealed class ScrollAreaView : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gets the current viewport height.
-    /// </summary>
     public float ViewportHeight
     {
         get

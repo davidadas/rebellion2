@@ -18,14 +18,8 @@ public sealed class StatusWindowRowRenderData
         Right = right ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the left.
-    /// </summary>
     public string Left { get; }
 
-    /// <summary>
-    /// Gets the right.
-    /// </summary>
     public string Right { get; }
 }
 
@@ -69,49 +63,22 @@ public sealed class StatusWindowRenderData
         Rows = Copy(rows, nameof(rows));
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the background texture.
-    /// </summary>
     public Texture2D BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether center image is enabled.
-    /// </summary>
     public bool CenterImage { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether info is disabled.
-    /// </summary>
     public bool InfoDisabled { get; }
 
-    /// <summary>
-    /// Gets the header.
-    /// </summary>
     public string Header { get; }
 
-    /// <summary>
-    /// Gets the image textures.
-    /// </summary>
     public IReadOnlyList<Texture2D> ImageTextures { get; }
 
-    /// <summary>
-    /// Gets the label.
-    /// </summary>
     public string Label { get; }
 
-    /// <summary>
-    /// Gets the rows.
-    /// </summary>
     public IReadOnlyList<StatusWindowRowRenderData> Rows { get; }
 
     /// <summary>

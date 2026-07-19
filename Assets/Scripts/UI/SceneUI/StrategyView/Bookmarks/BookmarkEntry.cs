@@ -18,24 +18,12 @@ public sealed class BookmarkEntry
         Planet = planet;
     }
 
-    /// <summary>
-    /// Gets the icon.
-    /// </summary>
     public PlanetIcon Icon { get; }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets or sets the planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; private set; }
 
     /// <summary>

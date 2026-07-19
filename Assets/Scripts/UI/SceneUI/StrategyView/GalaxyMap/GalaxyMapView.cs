@@ -53,14 +53,8 @@ public sealed class GalaxyMapView : MonoBehaviour
     /// </summary>
     public event Action<string, int, int> SystemOpenRequested;
 
-    /// <summary>
-    /// Gets the authored galaxy-background transform.
-    /// </summary>
     public RectTransform Background => background;
 
-    /// <summary>
-    /// Gets the authored system-cluster host transform.
-    /// </summary>
     public RectTransform PlanetSystemClusters => planetSystemClusters;
 
     /// <summary>

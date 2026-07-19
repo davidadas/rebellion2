@@ -47,44 +47,20 @@ public sealed class SaveMenuWindowRenderData
         ConfirmationMessage = confirmationMessage;
     }
 
-    /// <summary>
-    /// Gets the normal return-to-strategy button texture.
-    /// </summary>
     public Texture2D ReturnStrategyButtonUpTexture { get; }
 
-    /// <summary>
-    /// Gets the pressed return-to-strategy button texture.
-    /// </summary>
     public Texture2D ReturnStrategyButtonDownTexture { get; }
 
-    /// <summary>
-    /// Gets the normalized music volume.
-    /// </summary>
     public float MusicVolume { get; }
 
-    /// <summary>
-    /// Gets the normalized sound-effect volume.
-    /// </summary>
     public float SfxVolume { get; }
 
-    /// <summary>
-    /// Gets the displayed application version.
-    /// </summary>
     public string VersionText { get; }
 
-    /// <summary>
-    /// Gets the tactical option states.
-    /// </summary>
     public IReadOnlyDictionary<UserTacticalOption, bool> TacticalOptions { get; }
 
-    /// <summary>
-    /// Gets the ordered save-slot presentation data.
-    /// </summary>
     public IReadOnlyList<SaveSlotRenderData> Slots { get; }
 
-    /// <summary>
-    /// Gets the active confirmation message, or null when no confirmation is shown.
-    /// </summary>
     public string ConfirmationMessage { get; }
 }
 
@@ -116,29 +92,14 @@ public sealed class SaveSlotRenderData
         FactionIconTexture = factionIconTexture;
     }
 
-    /// <summary>
-    /// Gets the zero-based save-slot index.
-    /// </summary>
     public int Slot { get; }
 
-    /// <summary>
-    /// Gets the displayed save name.
-    /// </summary>
     public string Label { get; }
 
-    /// <summary>
-    /// Gets whether the slot accepts save requests.
-    /// </summary>
     public bool CanSave { get; }
 
-    /// <summary>
-    /// Gets whether the slot accepts load requests.
-    /// </summary>
     public bool CanLoad { get; }
 
-    /// <summary>
-    /// Gets the faction icon for the saved game.
-    /// </summary>
     public Texture2D FactionIconTexture { get; }
 
     /// <summary>

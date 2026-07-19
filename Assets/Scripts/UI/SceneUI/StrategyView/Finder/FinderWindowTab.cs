@@ -31,34 +31,16 @@ public sealed class FinderWindowTab
         FactionDisplayName = factionDisplayName;
     }
 
-    /// <summary>
-    /// Gets the kind.
-    /// </summary>
     public FinderWindowTabKind Kind { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether this tab represents all results.
-    /// </summary>
     public bool IsAll => Kind == FinderWindowTabKind.All;
 
-    /// <summary>
-    /// Gets a value indicating whether this tab represents neutral systems.
-    /// </summary>
     public bool IsNeutral => Kind == FinderWindowTabKind.Neutral;
 
-    /// <summary>
-    /// Gets a value indicating whether this tab represents unexplored systems.
-    /// </summary>
     public bool IsUnexplored => Kind == FinderWindowTabKind.Unexplored;
 
-    /// <summary>
-    /// Gets the faction instance ID.
-    /// </summary>
     public string FactionInstanceId { get; }
 
-    /// <summary>
-    /// Gets the faction display name.
-    /// </summary>
     public string FactionDisplayName { get; }
 
     /// <summary>

@@ -33,19 +33,10 @@ public sealed class MissionCreateTabRenderData
         PressedTexture = pressedTexture;
     }
 
-    /// <summary>
-    /// Gets the represented Mission Create tab.
-    /// </summary>
     public MissionCreateWindowTab Tab { get; }
 
-    /// <summary>
-    /// Gets the texture.
-    /// </summary>
     public Texture Texture { get; }
 
-    /// <summary>
-    /// Gets the pressed texture.
-    /// </summary>
     public Texture PressedTexture { get; }
 }
 
@@ -62,14 +53,8 @@ public sealed class MissionCreateWindowRenderData
     private static readonly IReadOnlyList<MissionCreateWindowTab> _readOnlyOrderedTabs =
         Array.AsReadOnly(_orderedTabs);
 
-    /// <summary>
-    /// Gets the number of authored Mission Create workflow tabs.
-    /// </summary>
     public static int TabCount => _orderedTabs.Length;
 
-    /// <summary>
-    /// Gets the semantic Mission Create tabs in authored slot order.
-    /// </summary>
     public static IReadOnlyList<MissionCreateWindowTab> OrderedTabs => _readOnlyOrderedTabs;
 
     /// <summary>
@@ -128,84 +113,36 @@ public sealed class MissionCreateWindowRenderData
         DecoyRows = Copy(decoyRows, nameof(decoyRows));
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public MissionCreateWindowTab ActiveTab { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the dropdown is open.
-    /// </summary>
     public bool DropdownOpen { get; }
 
-    /// <summary>
-    /// Gets the title texture.
-    /// </summary>
     public Texture TitleTexture { get; }
 
-    /// <summary>
-    /// Gets the mission name.
-    /// </summary>
     public string MissionName { get; }
 
-    /// <summary>
-    /// Gets the selected mission texture.
-    /// </summary>
     public Texture SelectedMissionTexture { get; }
 
-    /// <summary>
-    /// Gets the target name.
-    /// </summary>
     public string TargetName { get; }
 
-    /// <summary>
-    /// Gets the target texture.
-    /// </summary>
     public Texture TargetTexture { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether planet target preview is used.
-    /// </summary>
     public bool UsePlanetTargetPreview { get; }
 
-    /// <summary>
-    /// Gets the agents header texture.
-    /// </summary>
     public Texture AgentsHeaderTexture { get; }
 
-    /// <summary>
-    /// Gets the decoys header texture.
-    /// </summary>
     public Texture DecoysHeaderTexture { get; }
 
-    /// <summary>
-    /// Gets the tabs.
-    /// </summary>
     public IReadOnlyList<MissionCreateTabRenderData> Tabs { get; }
 
-    /// <summary>
-    /// Gets the dropdown items.
-    /// </summary>
     public IReadOnlyList<StrategyDropdownItemRenderData> DropdownItems { get; }
 
-    /// <summary>
-    /// Gets the agent rows.
-    /// </summary>
     public IReadOnlyList<MissionParticipantRowRenderData> AgentRows { get; }
 
-    /// <summary>
-    /// Gets the decoy rows.
-    /// </summary>
     public IReadOnlyList<MissionParticipantRowRenderData> DecoyRows { get; }
 
     /// <summary>

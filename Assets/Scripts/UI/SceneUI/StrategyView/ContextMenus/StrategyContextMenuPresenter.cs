@@ -47,9 +47,6 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
     /// </summary>
     internal event System.Action<PointerEventData> DismissRequested;
 
-    /// <summary>
-    /// Gets the authored widths used by Strategy context-menu providers.
-    /// </summary>
     internal StrategyContextMenuLayout Layout =>
         new StrategyContextMenuLayout(
             facilityMenuWidth,
@@ -61,19 +58,10 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
             fallbackMenuWidth
         );
 
-    /// <summary>
-    /// Gets the authored width of the game-speed menu.
-    /// </summary>
     internal int SpeedMenuWidth => speedMenuWidth;
 
-    /// <summary>
-    /// Gets whether the shared context-menu view is open.
-    /// </summary>
     internal bool Open => contextMenuView != null && contextMenuView.Open;
 
-    /// <summary>
-    /// Gets the Strategy window that owns the current menu.
-    /// </summary>
     internal UIWindow Window => contextMenuView?.Owner as UIWindow;
 
     /// <summary>

@@ -73,9 +73,6 @@ public sealed class StrategyController
     [SerializeField]
     private BookmarkBarView bookmarkBar;
 
-    /// <summary>
-    /// Contains the resource paths sequenced by the strategy music playlist.
-    /// </summary>
     private static readonly string[] _strategyMusicTracks =
     {
         "Audio/Music/battle_of_endor_medley_2",
@@ -92,7 +89,6 @@ public sealed class StrategyController
     private UIContext uiContext;
 
     private bool dirty = true;
-    private int lastTick = -1;
     private bool initialized;
     private bool cancelHandlersRegistered;
     private RectInt windowMovePreviewBounds;
@@ -125,15 +121,9 @@ public sealed class StrategyController
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
 
-    /// <summary>
-    /// Gets the sectors in the current visible galaxy snapshot.
-    /// </summary>
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
 
-    /// <summary>
-    /// Gets the active player's faction identifier from the visible snapshot.
-    /// </summary>
     private string PlayerFactionId => galaxyMapController?.PlayerFactionId ?? string.Empty;
 
     /// <summary>
@@ -163,6 +153,7 @@ public sealed class StrategyController
         strategyContextMenu.Initialize(uiContext);
         gameManager.GameSpeedChanged += MarkDirty;
         gameManager.GameReplaced += HandleGameReplaced;
+        gameManager.TickCompleted += RefreshStrategyState;
         BindMessageSystem(gameManager.MessageSystem);
 
         InitializeScreenControllers();
@@ -581,7 +572,6 @@ public sealed class StrategyController
     {
         ResumeStrategyMusic();
         RebuildSnapshot();
-        lastTick = gameManager.GetCurrentTick();
         Render();
     }
 
@@ -618,19 +608,19 @@ public sealed class StrategyController
         {
             gameManager.GameSpeedChanged -= MarkDirty;
             gameManager.GameReplaced -= HandleGameReplaced;
+            gameManager.TickCompleted -= RefreshStrategyState;
         }
         BindMessageSystem(null);
     }
 
     /// <summary>
-    /// Advances game time, synchronizes pending alerts, and renders invalidated UI state.
+    /// Synchronizes pending alerts and renders invalidated UI state.
     /// </summary>
     private void Update()
     {
         if (gameManager == null)
             return;
 
-        gameManager.Update();
         if (battleAlertWindowController.SyncPendingCombatWindow())
             dirty = true;
 
@@ -640,13 +630,6 @@ public sealed class StrategyController
             currentTick,
             messagesWindowController?.IsOpen != true && playerFaction?.TranslateCounterpart == true
         );
-        if (currentTick != lastTick)
-        {
-            lastTick = currentTick;
-            RebuildSnapshot();
-            dirty = true;
-        }
-
         if (dirty)
             Render();
     }
@@ -1170,7 +1153,6 @@ public sealed class StrategyController
     {
         uiContext.ReplaceGame(game);
         BindMessageSystem(gameManager.MessageSystem);
-        lastTick = gameManager.GetCurrentTick();
         RefreshStrategyState();
     }
 

@@ -443,58 +443,28 @@ internal sealed class FinderWindowSession
         ProjectedRows = Array.Empty<FinderWindowRow>();
     }
 
-    /// <summary>
-    /// Gets the active tab.
-    /// </summary>
     public int ActiveTab => activeTab;
 
-    /// <summary>
-    /// Gets the mode.
-    /// </summary>
     public FinderMode Mode { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether the panel is enabled.
-    /// </summary>
     public bool Panel => panel;
 
-    /// <summary>
-    /// Gets the current semantic tabs in display order.
-    /// </summary>
     public IReadOnlyList<FinderWindowTab> ProjectedTabs { get; private set; }
 
-    /// <summary>
-    /// Gets the current projected rows in display order.
-    /// </summary>
     public IReadOnlyList<FinderWindowRow> ProjectedRows { get; private set; }
 
-    /// <summary>
-    /// Gets the search text.
-    /// </summary>
     public string SearchText => searchText;
 
-    /// <summary>
-    /// Gets the selected index.
-    /// </summary>
     public int SelectedIndex => selectedIndex;
 
-    /// <summary>
-    /// Gets the selected projected row.
-    /// </summary>
     public FinderWindowRow SelectedRow =>
         selectedIndex >= 0 && selectedIndex < ProjectedRows.Count
             ? ProjectedRows[selectedIndex]
             : null;
 
-    /// <summary>
-    /// Gets the state.
-    /// </summary>
     public FinderWindowState State =>
         new FinderWindowState(Mode, panel, activeTab, selectedIndex, searchText);
 
-    /// <summary>
-    /// Gets the owning Finder window.
-    /// </summary>
     public UIWindow Window { get; }
 
     /// <summary>

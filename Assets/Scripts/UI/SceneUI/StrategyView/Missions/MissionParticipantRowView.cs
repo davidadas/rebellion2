@@ -41,14 +41,8 @@ public sealed class MissionParticipantRowView : MonoBehaviour
     /// </summary>
     internal event Action<MissionParticipantRowView, PointerEventData> Pressed;
 
-    /// <summary>
-    /// Gets the zero-based participant index represented by this row.
-    /// </summary>
     internal int Index { get; private set; }
 
-    /// <summary>
-    /// Gets the semantic participant role assigned by the parent view.
-    /// </summary>
     internal MissionParticipantRole Role { get; private set; }
 
     /// <summary>
@@ -192,28 +186,13 @@ public sealed class MissionParticipantRowRenderData
         UseInTransitBackground = useInTransitBackground;
     }
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the name color.
-    /// </summary>
     public Color32 NameColor { get; }
 
-    /// <summary>
-    /// Gets the background texture.
-    /// </summary>
     public Texture BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the entity texture.
-    /// </summary>
     public Texture EntityTexture { get; }
 
-    /// <summary>
-    /// Gets a value indicating whether in transit background is used.
-    /// </summary>
     public bool UseInTransitBackground { get; }
 }

@@ -39,49 +39,22 @@ public sealed class FinderWindowRow
         Counts = CopyCounts(counts);
     }
 
-    /// <summary>
-    /// Gets the stable domain identity represented by the row.
-    /// </summary>
     public string Identity => Node?.InstanceID ?? Planet?.Planet?.InstanceID ?? string.Empty;
 
-    /// <summary>
-    /// Gets the name.
-    /// </summary>
     public string Name { get; }
 
-    /// <summary>
-    /// Gets the planet.
-    /// </summary>
     public GalaxyMapPlanet Planet { get; }
 
-    /// <summary>
-    /// Gets the target icon.
-    /// </summary>
     public PlanetIcon TargetIcon { get; }
 
-    /// <summary>
-    /// Gets the node.
-    /// </summary>
     public ISceneNode Node { get; }
 
-    /// <summary>
-    /// Gets the fleet.
-    /// </summary>
     public Fleet Fleet { get; }
 
-    /// <summary>
-    /// Gets the mission.
-    /// </summary>
     public Mission Mission { get; }
 
-    /// <summary>
-    /// Gets the counts.
-    /// </summary>
     public IReadOnlyList<int> Counts { get; }
 
-    /// <summary>
-    /// Gets the owner faction ID.
-    /// </summary>
     public string OwnerFactionId => Node?.OwnerInstanceID ?? Planet?.Planet?.OwnerInstanceID;
 
     /// <summary>

@@ -17,14 +17,8 @@ public sealed class CutsceneManager : MonoBehaviour
     private const float _pausedTimeScale = 0f;
     private const float _runningTimeScale = 1f;
 
-    /// <summary>
-    /// Global singleton instance of the CutsceneManager.
-    /// </summary>
     public static CutsceneManager Instance { get; private set; }
 
-    /// <summary>
-    /// Prefab used to create a runtime <see cref="CutscenePlayer"/> instance.
-    /// </summary>
     [SerializeField]
     [FormerlySerializedAs("CutscenePrefab")]
     private CutscenePlayer cutscenePrefab;

@@ -6,24 +6,12 @@ using Rebellion.SceneGraph;
 /// </summary>
 internal sealed class StrategyStatusInfo
 {
-    /// <summary>
-    /// Gets or sets the owner faction ID.
-    /// </summary>
     public string OwnerFactionId { get; set; }
 
-    /// <summary>
-    /// Gets or sets the header.
-    /// </summary>
     public string Header { get; set; }
 
-    /// <summary>
-    /// Gets or sets the label.
-    /// </summary>
     public string Label { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether center image is enabled.
-    /// </summary>
     public bool CenterImage { get; set; }
 
     /// <summary>
@@ -82,13 +70,7 @@ public sealed class StrategyStatusRow
         Right = right ?? string.Empty;
     }
 
-    /// <summary>
-    /// Gets the left.
-    /// </summary>
     public string Left { get; }
 
-    /// <summary>
-    /// Gets the right.
-    /// </summary>
     public string Right { get; }
 }

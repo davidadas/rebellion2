@@ -30,29 +30,14 @@ public sealed class StrategyWindowTargetingSource
         Items = items?.ToList() ?? new List<ISceneNode>();
     }
 
-    /// <summary>
-    /// Gets the source strategy window.
-    /// </summary>
     public UIWindow Window { get; }
 
-    /// <summary>
-    /// Gets the semantic command identifier.
-    /// </summary>
     public int Action { get; }
 
-    /// <summary>
-    /// Gets the source-space horizontal hotspot coordinate.
-    /// </summary>
     public int SourceX { get; }
 
-    /// <summary>
-    /// Gets the source-space vertical hotspot coordinate.
-    /// </summary>
     public int SourceY { get; }
 
-    /// <summary>
-    /// Gets an isolated copy of the selected scene nodes.
-    /// </summary>
     public IReadOnlyList<ISceneNode> Items { get; }
 
     /// <summary>

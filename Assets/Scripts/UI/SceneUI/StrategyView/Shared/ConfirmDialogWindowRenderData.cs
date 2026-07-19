@@ -43,28 +43,13 @@ public sealed class ConfirmDialogWindowRenderData
         ).AsReadOnly();
     }
 
-    /// <summary>
-    /// Gets the horizontal coordinate.
-    /// </summary>
     public int X { get; }
 
-    /// <summary>
-    /// Gets the vertical coordinate.
-    /// </summary>
     public int Y { get; }
 
-    /// <summary>
-    /// Gets the background texture.
-    /// </summary>
     public Texture2D BackgroundTexture { get; }
 
-    /// <summary>
-    /// Gets the title texture.
-    /// </summary>
     public Texture2D TitleTexture { get; }
 
-    /// <summary>
-    /// Gets the lines.
-    /// </summary>
     public IReadOnlyList<string> Lines { get; }
 }

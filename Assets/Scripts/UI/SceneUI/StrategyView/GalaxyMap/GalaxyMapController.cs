@@ -49,19 +49,10 @@ public sealed class GalaxyMapController
     private string hoveredSystemInstanceId;
     private string playerFactionId = string.Empty;
 
-    /// <summary>
-    /// Gets the player faction identifier represented by the current visible snapshot.
-    /// </summary>
     public string PlayerFactionId => playerFactionId;
 
-    /// <summary>
-    /// Gets the immutable sectors in the current visible snapshot.
-    /// </summary>
     public IReadOnlyList<GalaxyMapSector> Sectors => readOnlySectors;
 
-    /// <summary>
-    /// Gets the current faction-filtered galaxy snapshot.
-    /// </summary>
     public GalaxyMap VisibleGalaxyMap => visibleGalaxyMap;
 
     /// <summary>

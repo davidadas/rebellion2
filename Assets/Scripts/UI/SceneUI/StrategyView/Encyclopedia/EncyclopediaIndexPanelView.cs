@@ -373,9 +373,6 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
         };
     }
 
-    /// <summary>
-    /// Gets the reusable index-list renderer backed by the authored row template.
-    /// </summary>
     private SelectableListView<EncyclopediaWindowRowView, EncyclopediaWindowRowRenderData> RowsList
     {
         get
