@@ -11,6 +11,7 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
+  REBELLION2_MEDIA_REVISION: 8dc2d8fbe2c23399a16ede6bf95b41b6fee54fa4
 
 jobs:
   build:
@@ -32,8 +33,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare CI asset stand-ins
-        run: python3 .github/scripts/prepare_ci_test_assets.py
+      - name: Checkout media
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          persist-credentials: false
+          lfs: true
+          sparse-checkout: |
+            Art
+            Audio
+            Videos
+          path: .ci/rebellion2-media
+
+      - name: Install media
+        run: |
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
+          rm -rf .ci/rebellion2-media/Art .ci/rebellion2-media/Audio .ci/rebellion2-media/Videos
+          rm -rf .ci/rebellion2-media/.git/lfs/objects
 
       - uses: actions/cache@v4
         with:
@@ -154,8 +174,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare CI asset stand-ins
-        run: python3 .github/scripts/prepare_ci_test_assets.py
+      - name: Checkout media
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          persist-credentials: false
+          lfs: true
+          sparse-checkout: |
+            Art
+            Audio
+            Videos
+          path: .ci/rebellion2-media
+
+      - name: Install media
+        run: |
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
+          rm -rf .ci/rebellion2-media/Art .ci/rebellion2-media/Audio .ci/rebellion2-media/Videos
+          rm -rf .ci/rebellion2-media/.git/lfs/objects
 
       - uses: actions/cache@v4
         with:
@@ -182,17 +221,19 @@ jobs:
       - name: Check coverage threshold
         run: |
           python3 - <<'EOF'
-          import xml.etree.ElementTree as ET, glob, sys
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
 
           LINE_THRESHOLD   = 62.8
           METHOD_THRESHOLD = 67.4
 
-          files = glob.glob("artifacts/**/Report/Summary.xml", recursive=True)
-          if not files:
-              print("No Summary.xml found — skipping threshold check")
-              sys.exit(0)
+          summary_path = Path("CodeCoverage/Report/Summary.xml")
+          if not summary_path.is_file():
+              print("FAIL: CodeCoverage/Report/Summary.xml was not generated")
+              sys.exit(1)
 
-          root = ET.parse(files[0]).getroot()
+          root = ET.parse(summary_path).getroot()
           summary = root.find("Summary")
 
           covered_lines = int(summary.findtext("Coveredlines", 0))
