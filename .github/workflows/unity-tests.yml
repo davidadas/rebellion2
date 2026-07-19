@@ -17,6 +17,7 @@ jobs:
   build:
     name: Build (${{ matrix.targetPlatform }})
     runs-on: ubuntu-latest
+    needs: lint
     environment: production
     permissions:
       contents: read
@@ -24,10 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        targetPlatform:
-          - StandaloneWindows64
-          - StandaloneLinux64
-          - StandaloneOSX
+        targetPlatform: ${{ fromJSON(github.event_name == 'pull_request' && '["StandaloneLinux64"]' || '["StandaloneWindows64", "StandaloneLinux64", "StandaloneOSX"]') }}
 
     steps:
       - name: Checkout repository
@@ -96,7 +94,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: build
     permissions:
       contents: read
 
@@ -180,18 +177,12 @@ jobs:
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           persist-credentials: false
-          lfs: true
-          sparse-checkout: |
-            Art
-            Audio
-            Videos
+          sparse-checkout: Art
           path: .ci/rebellion2-media
 
       - name: Install media
         run: |
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
           rm -rf .ci
 
       - uses: actions/cache@v4
