@@ -52,8 +52,7 @@ jobs:
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
-          rm -rf .ci/rebellion2-media/Art .ci/rebellion2-media/Audio .ci/rebellion2-media/Videos
-          rm -rf .ci/rebellion2-media/.git/lfs/objects
+          rm -rf .ci
 
       - uses: actions/cache@v4
         with:
@@ -193,8 +192,7 @@ jobs:
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
           rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
-          rm -rf .ci/rebellion2-media/Art .ci/rebellion2-media/Audio .ci/rebellion2-media/Videos
-          rm -rf .ci/rebellion2-media/.git/lfs/objects
+          rm -rf .ci
 
       - uses: actions/cache@v4
         with:
