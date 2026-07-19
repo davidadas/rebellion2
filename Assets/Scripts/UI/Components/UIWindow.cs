@@ -237,7 +237,7 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     /// <returns>True when the window can receive interaction.</returns>
     public bool RequestFocus()
     {
-        return CanFocus && windowManager != null && windowManager.Focus(this);
+        return CanFocus && windowManager && windowManager.Focus(this);
     }
 
     /// <summary>
@@ -278,7 +278,7 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
             return false;
         if (content is ICancelable cancelable && cancelable.TryCancel())
             return true;
-        return windowManager != null && windowManager.TryRequestClose(this);
+        return windowManager && windowManager.TryRequestClose(this);
     }
 
     /// <summary>
@@ -338,7 +338,7 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     /// <returns>True when modal and focus policy permit the request.</returns>
     private bool CanSendRequest()
     {
-        if (windowManager != null && !windowManager.CanInteractWithWindow(this))
+        if (windowManager && !windowManager.CanInteractWithWindow(this))
             return false;
 
         return !CanFocus || RequestFocus();
@@ -350,7 +350,7 @@ public sealed class UIWindow : MonoBehaviour, IPointerDownHandler
     /// <returns>True when the active window may process cancellation.</returns>
     private bool CanCancel()
     {
-        return activeWindow && (windowManager == null || windowManager.CanInteractWithWindow(this));
+        return activeWindow && (!windowManager || windowManager.CanInteractWithWindow(this));
     }
 
     /// <summary>

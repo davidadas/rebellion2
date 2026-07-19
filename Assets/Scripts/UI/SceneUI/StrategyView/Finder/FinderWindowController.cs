@@ -219,7 +219,7 @@ public sealed class FinderWindowController
                 session.Window.RequestButton(StrategyWindowButtonActions.CloseWindow);
                 return;
             case FinderWindowCommand.Target:
-                OpenSelectedRow(view, session);
+                OpenSelectedRow(session);
                 return;
             case FinderWindowCommand.ShowShips:
             case FinderWindowCommand.ShowSpecialForces:
@@ -270,7 +270,7 @@ public sealed class FinderWindowController
     {
         FinderWindowSession session = GetSession(view);
         session.SelectRow(rowId);
-        OpenSelectedRow(view, session);
+        OpenSelectedRow(session);
     }
 
     /// <summary>
@@ -340,9 +340,8 @@ public sealed class FinderWindowController
     /// <summary>
     /// Opens the selected projected row and refreshes strategy presentation.
     /// </summary>
-    /// <param name="view">The requesting Finder view.</param>
     /// <param name="session">The session that owns the current selection and projection.</param>
-    private void OpenSelectedRow(FinderWindowView view, FinderWindowSession session)
+    private void OpenSelectedRow(FinderWindowSession session)
     {
         FinderWindowRow row = session.SelectedRow;
         if (row == null)

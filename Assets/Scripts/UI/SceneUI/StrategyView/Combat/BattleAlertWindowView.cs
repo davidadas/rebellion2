@@ -465,12 +465,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
 
         HidePendingPresentation();
         HideButtons(commandButtonImages, commandButtonPressVisuals, commandButtons);
-        RenderButton(
-            resultCloseButtonImage,
-            resultCloseButtonPressVisual,
-            resultCloseButton,
-            result.ResultCloseButton
-        );
+        RenderButton(resultCloseButtonPressVisual, resultCloseButton, result.ResultCloseButton);
 
         switch (result.Panel)
         {
@@ -612,12 +607,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         for (int i = 0; i < resultCategoryButtons.Length; i++)
         {
             BattleAlertButtonRenderData button = i < categories.Count ? categories[i].Button : null;
-            RenderButton(
-                resultCategoryButtonImages[i],
-                resultCategoryButtonPressVisuals[i],
-                resultCategoryButtons[i],
-                button
-            );
+            RenderButton(resultCategoryButtonPressVisuals[i], resultCategoryButtons[i], button);
         }
     }
 
@@ -749,18 +739,16 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         int count = Math.Min(images.Count, Math.Min(pressVisuals.Count, buttons.Count));
         for (int i = 0; i < count; i++)
-            RenderButton(images[i], pressVisuals[i], buttons[i], i < data.Count ? data[i] : null);
+            RenderButton(pressVisuals[i], buttons[i], i < data.Count ? data[i] : null);
     }
 
     /// <summary>
     /// Applies one button presentation to an authored control.
     /// </summary>
-    /// <param name="image">The authored button image.</param>
     /// <param name="pressVisual">The authored pressed-state visual.</param>
     /// <param name="button">The authored button control.</param>
     /// <param name="data">The presentation to apply, or null to hide the control.</param>
     private static void RenderButton(
-        RawImage image,
         RawImagePressVisual pressVisual,
         Button button,
         BattleAlertButtonRenderData data
@@ -789,7 +777,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         int count = Math.Min(images.Count, Math.Min(pressVisuals.Count, buttons.Count));
         for (int i = 0; i < count; i++)
-            RenderButton(images[i], pressVisuals[i], buttons[i], null);
+            RenderButton(pressVisuals[i], buttons[i], null);
     }
 
     /// <summary>
@@ -843,7 +831,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         HideResultItems();
         HideResultCategoryButtons();
         HideResultDirectButtons();
-        RenderButton(resultCloseButtonImage, resultCloseButtonPressVisual, resultCloseButton, null);
+        RenderButton(resultCloseButtonPressVisual, resultCloseButton, null);
     }
 
     /// <summary>
@@ -864,12 +852,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     private void HideResultCategoryButtons()
     {
         for (int i = 0; i < resultCategoryButtons.Length; i++)
-            RenderButton(
-                resultCategoryButtonImages[i],
-                resultCategoryButtonPressVisuals[i],
-                resultCategoryButtons[i],
-                null
-            );
+            RenderButton(resultCategoryButtonPressVisuals[i], resultCategoryButtons[i], null);
     }
 
     /// <summary>

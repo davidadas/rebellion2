@@ -202,26 +202,22 @@ public sealed class PlanetSystemWindowController
     /// Opens the sector window containing a planetary system.
     /// </summary>
     /// <param name="system">The planetary system to display.</param>
-    /// <param name="sourceX">The source-space horizontal origin of the request.</param>
-    /// <param name="sourceY">The source-space vertical origin of the request.</param>
     /// <returns>True when a new sector window was opened.</returns>
-    public bool Open(PlanetSystem system, int sourceX, int sourceY)
+    public bool Open(PlanetSystem system)
     {
         if (system == null)
             return false;
 
         GalaxyMapSector sector = getSectors().FirstOrDefault(item => item.System == system);
-        return Open(sector, sourceX, sourceY);
+        return Open(sector);
     }
 
     /// <summary>
     /// Opens a sector in the next authored planet-system window slot.
     /// </summary>
     /// <param name="sector">The sector to display.</param>
-    /// <param name="sourceX">The source-space horizontal origin of the request.</param>
-    /// <param name="sourceY">The source-space vertical origin of the request.</param>
     /// <returns>True when a new sector window was opened.</returns>
-    public bool Open(GalaxyMapSector sector, int sourceX, int sourceY)
+    public bool Open(GalaxyMapSector sector)
     {
         if (sector == null || FindWindow(sector) != null)
             return false;

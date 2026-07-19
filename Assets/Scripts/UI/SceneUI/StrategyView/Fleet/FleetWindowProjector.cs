@@ -474,13 +474,14 @@ internal sealed class FleetWindowProjector
     /// <returns>The resolved damaged overlay, or null.</returns>
     private static Texture2D GetFleetBannerDamagedOverlayTexture(UIContext uiContext, Fleet fleet)
     {
-        return fleet == null || !fleet.CapitalShips.Any(ship => ship.IsDamaged())
-            ? null
-            : uiContext.GetTexture(
-                uiContext
-                    .GetTheme(fleet.OwnerInstanceID)
-                    ?.StrategyWindows?.Status?.FleetBannerDamagedImagePath
-            );
+        if (fleet?.CapitalShips.Any(ship => ship.IsDamaged()) != true)
+            return null;
+
+        return uiContext.GetTexture(
+            uiContext
+                .GetTheme(fleet.OwnerInstanceID)
+                ?.StrategyWindows?.Status?.FleetBannerDamagedImagePath
+        );
     }
 
     /// <summary>

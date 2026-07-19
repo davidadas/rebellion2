@@ -399,8 +399,7 @@ public sealed class StrategyScreenInputController : ICancelable
     private static bool IsStatusDoubleClickTarget(PointerEventData eventData)
     {
         GameObject target = GetRaycastTarget(eventData);
-        return target != null
-            && target.GetComponentInParent<IStrategyStatusDoubleClickTarget>() != null;
+        return target && target.GetComponentInParent<IStrategyStatusDoubleClickTarget>() != null;
     }
 
     /// <summary>

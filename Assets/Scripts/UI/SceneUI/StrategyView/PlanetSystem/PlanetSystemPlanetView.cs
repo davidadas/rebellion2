@@ -211,7 +211,7 @@ public sealed class PlanetSystemPlanetView
     internal bool TryGetIconSourceRect(PlanetIcon icon, out RectTransform rect)
     {
         RawImage image = GetIconImage(icon);
-        if (image == null || !image.isActiveAndEnabled)
+        if (!image || !image.isActiveAndEnabled)
         {
             rect = null;
             return false;
@@ -526,7 +526,7 @@ public sealed class PlanetSystemPlanetView
     /// <returns>True when the point lies inside the image.</returns>
     private static bool IsImageSourcePoint(RawImage image, int x, int y)
     {
-        return image != null
+        return image
             && image.isActiveAndEnabled
             && UILayout.GetSourceRect(image.rectTransform).Contains(new Vector2Int(x, y));
     }

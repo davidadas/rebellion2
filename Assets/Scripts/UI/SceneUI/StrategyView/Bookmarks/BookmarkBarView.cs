@@ -32,7 +32,7 @@ public sealed class BookmarkBarView : MonoBehaviour
         for (int i = 0; i < safeBookmarks.Count; i++)
         {
             BookmarkRenderData bookmark = safeBookmarks[i];
-            if (bookmark == null || !bookmark.Active)
+            if (bookmark?.Active != true)
             {
                 if (i < slotViews.Count)
                     slotViews[i].gameObject.SetActive(false);

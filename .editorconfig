@@ -39,6 +39,7 @@ dotnet_diagnostic.IDE0047.severity = error
 dotnet_diagnostic.IDE0004.severity = error
 
 # Roslynator diagnostics
+roslynator_unity_code_analysis.enabled = true
 dotnet_diagnostic.RCS1046.severity = error    # async method name must end with Async
 dotnet_diagnostic.RCS1047.severity = error    # non-async method name must not end with Async
 dotnet_diagnostic.RCS1129.severity = error    # remove redundant field initialization
@@ -48,20 +49,6 @@ dotnet_diagnostic.RCS1164.severity = error    # unused type parameter
 dotnet_diagnostic.RCS1077.severity = error    # optimize LINQ method call
 dotnet_diagnostic.RCS1146.severity = error    # use conditional access
 dotnet_diagnostic.RCS1213.severity = error    # remove unused member declaration
-
-# Unity MonoBehaviour classes call Awake/Start/Update/OnDestroy via reflection.
-# Suppress false positives in UI and MonoBehaviour-heavy layers.
-# Also suppress naming rule: [SerializeField] fields use camelCase (Unity convention).
-[Assets/Scripts/UI/**/*.cs]
-dotnet_diagnostic.RCS1046.severity = none
-dotnet_diagnostic.RCS1047.severity = none
-dotnet_diagnostic.RCS1077.severity = none
-dotnet_diagnostic.RCS1129.severity = none
-dotnet_diagnostic.RCS1146.severity = none
-dotnet_diagnostic.RCS1163.severity = none
-dotnet_diagnostic.RCS1164.severity = none
-dotnet_diagnostic.RCS1213.severity = none
-dotnet_naming_rule.private_fields_underscore.severity = none
 
 [Assets/Scripts/Managers/AudioManager.cs]
 dotnet_diagnostic.RCS1163.severity = none

@@ -73,7 +73,7 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
         VerifyReferences();
         categoryIndex = ownerCategoryIndex;
         renderedFilters.Clear();
-        if (data == null || !data.Visible)
+        if (data?.Visible != true)
         {
             HideRows(0);
             gameObject.SetActive(false);

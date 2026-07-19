@@ -170,7 +170,7 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
     /// <param name="data">The category presentation.</param>
     private void RenderCategory(int index, GalacticInformationCategoryRenderData data)
     {
-        if (data == null || !data.Visible)
+        if (data?.Visible != true)
         {
             HideCategory(index);
             return;

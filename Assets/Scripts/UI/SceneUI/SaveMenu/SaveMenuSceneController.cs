@@ -76,6 +76,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// <summary>
     /// Recalculates source-space scaling when the viewport dimensions change.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Roslynator.CSharp", "RCS1213")]
     private void OnRectTransformDimensionsChange()
     {
         UpdateContentHostLayout();

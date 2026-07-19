@@ -168,8 +168,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
             return;
 
         GameManager gameManager = _runtime?.GetActiveGameManager();
-        if (gameManager != null)
-            gameManager.SetGameSpeed(GetSlowerGameSpeed(gameManager.GetGameSpeed()));
+        gameManager?.SetGameSpeed(GetSlowerGameSpeed(gameManager.GetGameSpeed()));
     }
 
     /// <summary>
@@ -185,8 +184,7 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
             return;
 
         GameManager gameManager = _runtime?.GetActiveGameManager();
-        if (gameManager != null)
-            gameManager.SetGameSpeed(GetFasterGameSpeed(gameManager.GetGameSpeed()));
+        gameManager?.SetGameSpeed(GetFasterGameSpeed(gameManager.GetGameSpeed()));
     }
 
     /// <summary>

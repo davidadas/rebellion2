@@ -219,7 +219,7 @@ public sealed class MissionsWindowView : MonoBehaviour, IPointerClickHandler
                 : eventData.pointerCurrentRaycast.gameObject
                     ?? eventData.pointerPressRaycast.gameObject;
         MissionParticipantRowView row = target?.GetComponentInParent<MissionParticipantRowView>();
-        return row != null && row.gameObject.activeInHierarchy && participantRowViews.Contains(row)
+        return row && row.gameObject.activeInHierarchy && participantRowViews.Contains(row)
             ? row.Index
             : -1;
     }

@@ -60,7 +60,7 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
 
     internal int SpeedMenuWidth => speedMenuWidth;
 
-    internal bool Open => contextMenuView != null && contextMenuView.Open;
+    internal bool Open => contextMenuView && contextMenuView.Open;
 
     internal UIWindow Window => contextMenuView?.Owner as UIWindow;
 

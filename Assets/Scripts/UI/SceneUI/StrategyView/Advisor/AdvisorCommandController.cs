@@ -119,8 +119,7 @@ public sealed class AdvisorCommandController : ITargetingReceiver
         return faction
             .GetOwnedUnitsByType<Planet>()
             .Where(planet =>
-                planet != null
-                && !planet.IsDestroyed
+                planet?.IsDestroyed == false
                 && string.Equals(
                     planet.GetOwnerInstanceID(),
                     faction.InstanceID,

@@ -180,7 +180,7 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
     /// <returns>True when the target belongs to this row.</returns>
     internal bool ContainsRaycastTarget(GameObject target)
     {
-        return target != null && target.transform.IsChildOf(transform);
+        return target && target.transform.IsChildOf(transform);
     }
 
     /// <summary>

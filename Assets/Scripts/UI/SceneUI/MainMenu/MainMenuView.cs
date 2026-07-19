@@ -515,7 +515,7 @@ public sealed class MainMenuView : MonoBehaviour
 
         foreach (GameObject activeObject in binding.ObjectsShownWhilePressed)
         {
-            if (activeObject != null)
+            if (activeObject)
                 activeObject.SetActive(pressed);
         }
     }

@@ -119,11 +119,11 @@ public sealed class RawImagePressVisual
     /// <returns>True when the image is visible, interactive, and has a pressed texture.</returns>
     private bool IsPressable()
     {
-        return image != null
+        return image
             && image.enabled
             && image.gameObject.activeInHierarchy
             && downTexture != null
-            && (button == null || button.interactable);
+            && (!button || button.interactable);
     }
 
     /// <summary>
@@ -143,7 +143,7 @@ public sealed class RawImagePressVisual
     /// </summary>
     private void ApplyUpTexture()
     {
-        if (image != null)
+        if (image)
             image.texture = upTexture;
     }
 

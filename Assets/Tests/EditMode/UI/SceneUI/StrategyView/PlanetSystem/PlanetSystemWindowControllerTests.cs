@@ -119,7 +119,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Open_ValidSector_CreatesNamedWindowInFirstSlot()
         {
-            bool opened = _controller.Open(_sector, 500, 600);
+            bool opened = _controller.Open(_sector);
             PlanetSystemWindowView view = GetOpenView(out UIWindow window);
             Vector2Int requestedPosition = GetWindowPosition(SectorWindowPositions.Left);
             Vector2Int expectedPosition = _windowManager.ClampPosition(
@@ -139,9 +139,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void Open_ExistingSector_ReturnsFalseWithoutAdditionalWindow()
         {
-            bool first = _controller.Open(_system, 10, 20);
+            bool first = _controller.Open(_system);
 
-            bool second = _controller.Open(_sector, 30, 40);
+            bool second = _controller.Open(_sector);
 
             Assert.IsTrue(first);
             Assert.IsFalse(second);
@@ -461,7 +461,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private PlanetSystemWindowView OpenWindow(out UIWindow window)
         {
-            _controller.Open(_sector, 10, 20);
+            _controller.Open(_sector);
             return GetOpenView(out window);
         }
 

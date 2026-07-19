@@ -214,9 +214,7 @@ public sealed class SelectableListSelection
     /// <returns>True when the index is selected and no selection modifier is held.</returns>
     public static bool CanDragExistingSelection(HashSet<int> selection, int index)
     {
-        return selection != null
-            && selection.Contains(index)
-            && !GetSelectionModifiers().HasAnyModifier;
+        return selection?.Contains(index) == true && !GetSelectionModifiers().HasAnyModifier;
     }
 
     /// <summary>
@@ -329,7 +327,7 @@ public sealed class SelectableListSelection
     /// <returns>True when the key exists and is held.</returns>
     private static bool IsPressed(KeyControl key)
     {
-        return key != null && key.isPressed;
+        return key?.isPressed == true;
     }
 
     /// <summary>

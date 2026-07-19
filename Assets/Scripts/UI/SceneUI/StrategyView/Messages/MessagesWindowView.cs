@@ -389,7 +389,7 @@ public sealed class MessagesWindowView : MonoBehaviour
     /// <returns>True when the key is pressed.</returns>
     private static bool IsPressed(KeyControl key)
     {
-        return key != null && key.isPressed;
+        return key?.isPressed == true;
     }
 
     /// <summary>

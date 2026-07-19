@@ -247,18 +247,18 @@ public sealed class SaveMenuSlotRowView : MonoBehaviour
     /// <returns>True when every required authored reference is assigned.</returns>
     private bool ReferencesAssigned()
     {
-        return factionImage != null
-            && saveButton != null
-            && loadButton != null
-            && saveButtonPressVisual != null
-            && loadButtonPressVisual != null
-            && nameInputField != null
-            && nameInputField.textComponent != null
-            && saveButtonUpTexture != null
-            && saveButtonDownTexture != null
-            && saveButtonDisabledTexture != null
-            && loadButtonUpTexture != null
-            && loadButtonDownTexture != null
-            && loadButtonDisabledTexture != null;
+        return factionImage
+            && saveButton
+            && loadButton
+            && saveButtonPressVisual
+            && loadButtonPressVisual
+            && nameInputField
+            && nameInputField.textComponent
+            && saveButtonUpTexture
+            && saveButtonDownTexture
+            && saveButtonDisabledTexture
+            && loadButtonUpTexture
+            && loadButtonDownTexture
+            && loadButtonDisabledTexture;
     }
 }

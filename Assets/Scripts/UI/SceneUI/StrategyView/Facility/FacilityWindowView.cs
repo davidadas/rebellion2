@@ -178,7 +178,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
     {
         ManufacturingLaneCardView card = GetRaycastTarget(eventData)
             ?.GetComponentInParent<ManufacturingLaneCardView>();
-        if (card != null && card.transform.IsChildOf(transform))
+        if (card && card.transform.IsChildOf(transform))
         {
             index = card.Index;
             return true;
@@ -198,7 +198,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
     {
         FacilityInventoryItemView item = GetRaycastTarget(eventData)
             ?.GetComponentInParent<FacilityInventoryItemView>();
-        if (item != null && item.transform.IsChildOf(transform) && item != inventoryItemTemplate)
+        if (item && item.transform.IsChildOf(transform) && item != inventoryItemTemplate)
         {
             index = item.Index;
             return true;

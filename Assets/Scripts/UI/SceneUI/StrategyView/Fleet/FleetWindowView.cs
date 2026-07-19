@@ -371,7 +371,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
             StrategyUnitCardView item = detailItemViews[i];
             if (
                 item.gameObject.activeInHierarchy
-                && target != null
+                && target
                 && target.transform.IsChildOf(item.transform)
             )
             {
@@ -623,7 +623,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
             data.RenameFleetRowIndex,
             data.RenameDetailItemIndex
         );
-        if (source == null || !source.gameObject.activeInHierarchy)
+        if (!source || !source.gameObject.activeInHierarchy)
         {
             if (IsRenameActive())
                 EndRenamePresentation();
@@ -777,7 +777,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
     private bool IsRenameActive()
     {
         return (renameFleetRowIndex >= 0 || renameDetailItemIndex >= 0)
-            && renameInputField != null
+            && renameInputField
             && renameInputField.gameObject.activeSelf;
     }
 

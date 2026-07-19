@@ -141,6 +141,6 @@ public sealed class SaveMenuSliderView : MonoBehaviour
     /// <returns>True when every required authored reference is assigned.</returns>
     private bool ReferencesAssigned()
     {
-        return slider != null && thumbImage != null && thumbImage.texture != null;
+        return slider && thumbImage && thumbImage.texture;
     }
 }

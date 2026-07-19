@@ -814,7 +814,7 @@ public sealed class StrategyController
     /// <param name="label">The authored hierarchy label used in errors.</param>
     private static void RequireRectTransform(Component component, string label)
     {
-        if (component != null && component.transform is RectTransform)
+        if (component && component.transform is RectTransform)
             return;
 
         throw new MissingReferenceException($"{label} is missing RectTransform.");
@@ -1276,7 +1276,7 @@ public sealed class StrategyController
         if (!CanInteractWithGalaxy())
             return;
 
-        OpenPlanetSystemWindow(system, sourceX, sourceY);
+        OpenPlanetSystemWindow(system);
         dirty = true;
     }
 
@@ -1448,7 +1448,7 @@ public sealed class StrategyController
         int sourceY
     )
     {
-        OpenPlanetSystemWindow(system, sourceX, sourceY);
+        OpenPlanetSystemWindow(system);
     }
 
     /// <inheritdoc />
@@ -1507,7 +1507,7 @@ public sealed class StrategyController
             case StrategyWindowButtonActions.OpenSector:
                 GalaxyMapPlanet planet = GetWindowPlanet(window);
                 if (planet != null)
-                    OpenPlanetSystemWindow(planet.Sector, window.X, window.Y);
+                    OpenPlanetSystemWindow(planet.Sector);
                 break;
             case StrategyWindowButtonActions.SwapWindow:
                 planetSystemWindowController.Swap(window);
@@ -1669,7 +1669,7 @@ public sealed class StrategyController
         CloseWindow(strategyWindowManager.FindWindow<EncyclopediaWindowView>());
 
         Vector2Int source = GetSystemSourcePosition(sector);
-        OpenPlanetSystemWindow(sector, source.x, source.y);
+        OpenPlanetSystemWindow(sector);
 
         PlanetIcon icon = GetMessageTargetIcon(target);
         if (planet != null && icon != PlanetIcon.None)
@@ -2051,28 +2051,24 @@ public sealed class StrategyController
     /// Opens or focuses the sector window containing a planetary system.
     /// </summary>
     /// <param name="system">The planetary system to display.</param>
-    /// <param name="sourceX">The source-space horizontal origin.</param>
-    /// <param name="sourceY">The source-space vertical origin.</param>
     /// <returns>True when the sector was opened or focused.</returns>
-    private bool OpenPlanetSystemWindow(PlanetSystem system, int sourceX, int sourceY)
+    private bool OpenPlanetSystemWindow(PlanetSystem system)
     {
         GalaxyMapSector sector = Sectors.FirstOrDefault(candidate => candidate.System == system);
-        return OpenPlanetSystemWindow(sector, sourceX, sourceY);
+        return OpenPlanetSystemWindow(sector);
     }
 
     /// <summary>
     /// Opens or focuses one sector window and plays its authored creation sound.
     /// </summary>
     /// <param name="sector">The strategy sector to display.</param>
-    /// <param name="sourceX">The source-space horizontal origin.</param>
-    /// <param name="sourceY">The source-space vertical origin.</param>
     /// <returns>True when the sector was opened or focused.</returns>
-    private bool OpenPlanetSystemWindow(GalaxyMapSector sector, int sourceX, int sourceY)
+    private bool OpenPlanetSystemWindow(GalaxyMapSector sector)
     {
         if (sector == null)
             return false;
 
-        if (planetSystemWindowController.Open(sector, sourceX, sourceY))
+        if (planetSystemWindowController.Open(sector))
         {
             PlayStrategySfx(StrategyUISoundPaths.SectorWindowOpen);
             return true;
@@ -2234,7 +2230,7 @@ public sealed class StrategyController
             return false;
 
         Vector2Int position = GetSystemSourcePosition(row.Planet.Sector);
-        OpenPlanetSystemWindow(row.Planet.Sector, position.x, position.y);
+        OpenPlanetSystemWindow(row.Planet.Sector);
         UIWindow window = OpenPlanetWindowAt(row.Planet, row.TargetIcon, position.x, position.y);
         switch (row.TargetIcon)
         {

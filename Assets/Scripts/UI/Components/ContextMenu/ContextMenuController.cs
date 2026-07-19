@@ -101,9 +101,8 @@ public sealed class ContextMenuController : ICancelable
     public bool TrySelectCommand(IContextMenuCommand command)
     {
         if (
-            activeRequest == null
-            || command == null
-            || !command.Enabled
+            activeRequest is null
+            || command?.Enabled != true
             || !ContainsCommand(activeRequest.Commands, command)
         )
             return false;

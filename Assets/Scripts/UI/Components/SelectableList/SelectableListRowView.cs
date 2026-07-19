@@ -144,7 +144,7 @@ public abstract class SelectableListRowView
         for (int i = 0; i < parent.childCount; i++)
         {
             SelectableListRowView row = parent.GetChild(i).GetComponent<SelectableListRowView>();
-            if (row == null || !row.gameObject.activeInHierarchy)
+            if (!row || !row.gameObject.activeInHierarchy)
                 continue;
 
             int sibling = row.transform.GetSiblingIndex();
@@ -211,7 +211,7 @@ public abstract class SelectableListRowView
 
         GameObject currentSelection = eventSystem.currentSelectedGameObject;
         if (
-            currentSelection != null
+            currentSelection
             && currentSelection.activeInHierarchy
             && selectionScope != null
             && currentSelection.transform.IsChildOf(selectionScope)

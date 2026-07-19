@@ -251,7 +251,7 @@ public sealed class ScrollAreaView : MonoBehaviour
             scrollDownButton.onClick.RemoveListener(ScrollDown);
         if (scrollbar != null)
             scrollbar.onValueChanged.RemoveListener(HandleScrollbarValueChanged);
-        if (dragRelay != null)
+        if (dragRelay)
             dragRelay.Clear(this);
     }
 

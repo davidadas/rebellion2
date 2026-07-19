@@ -211,7 +211,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// <returns>True when the window received focus.</returns>
     public bool Focus(UIWindow window)
     {
-        if (window == null || !window.CanFocus || !CanInteractWithWindow(window))
+        if (!window || !window.CanFocus || !CanInteractWithWindow(window))
             return false;
 
         windows.Remove(window);
@@ -628,7 +628,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         for (int index = windows.Count - 1; index >= 0; index--)
         {
             UIWindow window = windows[index];
-            if (window != null && window.Modal)
+            if (window && window.Modal)
                 return window;
         }
 
@@ -648,7 +648,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         for (int index = windows.Count - 1; index >= 0; index--)
         {
             UIWindow window = windows[index];
-            if (window != null && window.CanFocus)
+            if (window && window.CanFocus)
                 return window;
         }
 
