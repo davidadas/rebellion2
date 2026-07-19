@@ -29,6 +29,10 @@ namespace Rebellion.Game.Units
     /// </summary>
     public class CapitalShip : ContainerNode, IManufacturable, IMovable
     {
+        public string BattleResultImagePath { get; set; }
+        public string BattleResultInTransitImagePath { get; set; }
+        public string BattleResultDamagedImagePath { get; set; }
+
         // Manufacture Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
@@ -271,6 +275,7 @@ namespace Rebellion.Game.Units
             {
                 throw new SceneAccessException(officer, this);
             }
+
             Officers.Add(officer);
         }
 
@@ -284,6 +289,7 @@ namespace Rebellion.Game.Units
             {
                 throw new SceneAccessException(specialForces, this);
             }
+
             SpecialForces.Add(specialForces);
         }
 

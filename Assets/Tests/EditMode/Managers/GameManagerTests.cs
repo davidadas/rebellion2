@@ -75,6 +75,39 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void AdvanceTime_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
+            GameManager manager = new GameManager(game);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            int completedTicks = 0;
+            manager.TickCompleted += () => completedTicks++;
+
+            manager.AdvanceTime(config.GameSpeed.FastTickIntervalSeconds);
+
+            Assert.AreEqual(1, game.CurrentTick);
+            Assert.AreEqual(1, completedTicks);
+        }
+
+        [Test]
+        public void AdvanceTime_BelowCompletedInterval_DoesNotProcessTick()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            GameManager manager = new GameManager(game);
+            manager.SetGameSpeed(TickSpeed.Fast);
+            int completedTicks = 0;
+            manager.TickCompleted += () => completedTicks++;
+
+            manager.AdvanceTime(config.GameSpeed.FastTickIntervalSeconds / 2f);
+
+            Assert.AreEqual(0, game.CurrentTick);
+            Assert.AreEqual(0, completedTicks);
+        }
+
+        [Test]
         public void ProcessTick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
             GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
@@ -209,7 +242,7 @@ namespace Rebellion.Tests.Managers
             defendingFleet.CapitalShips[0].HasGravityWell = true;
 
             GameManager manager = new GameManager(game);
-            manager.RequestMove(new List<IMovable> { arrivingFleet }, destination);
+            manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);
 
             manager.ProcessTick();
 
@@ -236,7 +269,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void ProcessTick_PendingCombat_DoesNotAdvanceTick()
+        public void ProcessTick_PendingCombat_CompletesOnlyStartedTick()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction alliance = new Faction
@@ -279,12 +312,15 @@ namespace Rebellion.Tests.Managers
             );
 
             GameManager manager = new GameManager(game);
+            int completedTicks = 0;
+            manager.TickCompleted += () => completedTicks++;
 
             manager.ProcessTick();
             int pendingCombatTick = game.CurrentTick;
             manager.ProcessTick();
 
             Assert.AreEqual(pendingCombatTick, game.CurrentTick);
+            Assert.AreEqual(1, completedTicks);
         }
 
         [Test]

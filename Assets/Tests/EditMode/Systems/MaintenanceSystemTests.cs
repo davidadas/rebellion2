@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -67,6 +68,30 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Constructor_WithNullGame_ThrowsArgumentNullException()
+        {
+            GameRoot dependencyGame = CreateGame();
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MaintenanceSystem(null, new FixedRNG(), new FleetSystem(dependencyGame))
+            );
+
+            Assert.AreEqual("game", exception.ParamName);
+        }
+
+        [Test]
+        public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
+        {
+            GameRoot game = CreateGame();
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MaintenanceSystem(game, new FixedRNG(), null)
+            );
+
+            Assert.AreEqual("fleetSystem", exception.ParamName);
+        }
+
+        [Test]
         public void ProcessTick_NoShortfall_DoesNotScrap()
         {
             GameRoot game = CreateGame();
@@ -92,7 +117,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceSystem system2 = new MaintenanceSystem(game, rng);
+            MaintenanceSystem system2 = new MaintenanceSystem(game, rng, new FleetSystem(game));
 
             system2.ProcessTick();
 
@@ -134,7 +159,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment2, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                rng,
+                new FleetSystem(game)
+            );
 
             List<GameResult> firstResults = maintenanceSystem.ProcessTick();
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -187,7 +216,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment2, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                rng,
+                new FleetSystem(game)
+            );
 
             maintenanceSystem.ProcessTick();
             game.CurrentTick = 1;
@@ -226,7 +259,11 @@ namespace Rebellion.Tests.Systems
                 game.AttachNode(regiment, planet);
             }
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
 
             maintenanceSystem.ProcessTick();
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -266,7 +303,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(regiment, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                rng,
+                new FleetSystem(game)
+            );
 
             maintenanceSystem.ProcessTick();
 
@@ -297,7 +338,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(regiment, planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
 
             List<GameResult> results = maintenanceSystem.ProcessTick();
 
@@ -340,7 +385,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(ship, fleet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                rng,
+                new FleetSystem(game)
+            );
 
             maintenanceSystem.ProcessTick();
 
@@ -412,7 +461,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(defense, planet);
 
             FixedRNG rng = new FixedRNG();
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, rng);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                rng,
+                new FleetSystem(game)
+            );
 
             maintenanceSystem.ProcessTick();
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -448,7 +501,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mine, planet);
             game.AttachNode(regiment, planet);
 
-            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(game, new FixedRNG());
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
 
             maintenanceSystem.ProcessTick();
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
@@ -456,6 +513,72 @@ namespace Rebellion.Tests.Systems
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+        }
+
+        [Test]
+        public void Scrap_OwnedAttachedUnit_RemovesUnit()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(regiment, planet);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
+
+            bool scrapped = maintenanceSystem.Scrap(
+                new List<IManufacturable> { regiment },
+                "empire"
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.IsNull(regiment.GetParent());
+        }
+
+        [Test]
+        public void Scrap_OtherFactionUnit_PreservesUnit()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(regiment, planet);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
+
+            bool scrapped = maintenanceSystem.Scrap(
+                new List<IManufacturable> { regiment },
+                "alliance"
+            );
+
+            Assert.IsFalse(scrapped);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreSame(planet, regiment.GetParent());
         }
     }
 }

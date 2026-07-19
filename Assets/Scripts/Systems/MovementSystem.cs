@@ -25,6 +25,7 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
         private readonly BlockadeSystem _blockade;
+        private readonly FleetSystem _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -32,15 +33,18 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="fogOfWar">The fog of war system for capturing snapshots on arrival.</param>
+        /// <param name="fleetSystem">Owns fleet formation and empty-fleet cleanup.</param>
         /// <param name="blockade">The blockade system for evacuation loss rolls.</param>
         public MovementSystem(
             GameRoot game,
             FogOfWarSystem fogOfWar,
+            FleetSystem fleetSystem,
             BlockadeSystem blockade = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _fogOfWar = fogOfWar ?? throw new ArgumentNullException(nameof(fogOfWar));
+            _fleetSystem = fleetSystem ?? throw new ArgumentNullException(nameof(fleetSystem));
             _blockade = blockade;
         }
 
@@ -166,14 +170,103 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            destination = ResolveLiveContainer(destination);
+            TryRequestMoveGroup(units, destination);
+        }
 
-            if (!CanMoveGroup(units, destination))
-                return;
+        /// <summary>
+        /// Validates and executes a player-controlled movement selection.
+        /// </summary>
+        /// <param name="items">The selected scene nodes or their snapshots.</param>
+        /// <param name="destination">The requested destination or its snapshot.</param>
+        /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <returns>True when the complete movement order was accepted.</returns>
+        public bool TryRequestMove(
+            IReadOnlyList<ISceneNode> items,
+            ContainerNode destination,
+            string ownerInstanceId
+        )
+        {
+            ContainerNode liveDestination = ResolveRegisteredContainer(destination);
+            if (
+                liveDestination == null
+                || !TryResolveControlledSelection(
+                    items,
+                    ownerInstanceId,
+                    out List<ISceneNode> liveItems
+                )
+            )
+                return false;
 
-            string movementGroupID = Guid.NewGuid().ToString("N");
-            foreach (IMovable unit in units)
-                ExecuteMove(unit, destination, movementGroupID);
+            Fleet createdDestinationFleet = null;
+            if (liveDestination is Planet planet && liveItems.Any(item => item is CapitalShip))
+            {
+                createdDestinationFleet = _fleetSystem.CreateAtPlanet(planet, ownerInstanceId);
+                if (createdDestinationFleet == null)
+                    return false;
+
+                liveDestination = createdDestinationFleet;
+            }
+
+            if (
+                !TryBuildMoveGroup(
+                    liveItems,
+                    liveDestination,
+                    ownerInstanceId,
+                    out List<IMovable> movables,
+                    out List<Fleet> sourceFleets
+                )
+            )
+            {
+                _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+                return false;
+            }
+
+            bool accepted = TryRequestMoveGroup(movables, liveDestination);
+            if (accepted)
+            {
+                foreach (Fleet sourceFleet in sourceFleets.Distinct())
+                    _fleetSystem.RemoveIfEmpty(sourceFleet);
+            }
+
+            _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+            return accepted;
+        }
+
+        /// <summary>
+        /// Estimates transit time for a player-controlled selection without mutating it.
+        /// </summary>
+        /// <param name="items">The selected scene nodes or their snapshots.</param>
+        /// <param name="destination">The requested destination or its snapshot.</param>
+        /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="transitTicks">Receives the maximum transit duration.</param>
+        /// <returns>True when the complete movement order can be estimated.</returns>
+        public bool TryGetSelectionTransitTicks(
+            IReadOnlyList<ISceneNode> items,
+            ContainerNode destination,
+            string ownerInstanceId,
+            out int transitTicks
+        )
+        {
+            transitTicks = 0;
+            ContainerNode liveDestination = ResolveRegisteredContainer(destination);
+            if (
+                liveDestination == null
+                || !TryResolveControlledSelection(
+                    items,
+                    ownerInstanceId,
+                    out List<ISceneNode> liveItems
+                )
+                || !TryBuildMoveGroup(
+                    liveItems,
+                    liveDestination,
+                    ownerInstanceId,
+                    out List<IMovable> movables,
+                    out _
+                )
+            )
+                return false;
+
+            return TryGetTransitTicks(movables, liveDestination, out transitTicks);
         }
 
         /// <summary>
@@ -357,6 +450,133 @@ namespace Rebellion.Systems
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Executes a validated movement group through the existing movement pipeline.
+        /// </summary>
+        /// <param name="units">The movable units in execution order.</param>
+        /// <param name="destination">The shared destination.</param>
+        /// <returns>True when the movement group was accepted.</returns>
+        private bool TryRequestMoveGroup(List<IMovable> units, ContainerNode destination)
+        {
+            if (units == null || units.Count == 0 || destination == null)
+                return false;
+
+            destination = ResolveLiveContainer(destination);
+            if (!CanMoveGroup(units, destination))
+                return false;
+
+            string movementGroupID = Guid.NewGuid().ToString("N");
+            foreach (IMovable unit in units)
+                ExecuteMove(unit, destination, movementGroupID);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves and validates a player-controlled selection before movement planning.
+        /// </summary>
+        /// <param name="items">The selected scene nodes or their snapshots.</param>
+        /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="liveItems">Receives registered scene nodes in selection order.</param>
+        /// <returns>True when the complete selection can receive movement orders.</returns>
+        private bool TryResolveControlledSelection(
+            IReadOnlyList<ISceneNode> items,
+            string ownerInstanceId,
+            out List<ISceneNode> liveItems
+        )
+        {
+            liveItems = new List<ISceneNode>();
+            if (items == null || items.Count == 0 || string.IsNullOrEmpty(ownerInstanceId))
+                return false;
+
+            HashSet<string> instanceIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ISceneNode item in items)
+            {
+                ISceneNode liveItem = ResolveRegisteredNode(item);
+                if (
+                    liveItem is not IMovable movable
+                    || !instanceIds.Add(liveItem.InstanceID)
+                    || !string.Equals(
+                        GetMovementControlOwner(movable),
+                        ownerInstanceId,
+                        StringComparison.Ordinal
+                    )
+                    || !CanReceiveMoveOrder(movable, allowManufacturingRetarget: false)
+                )
+                    return false;
+
+                liveItems.Add(liveItem);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Expands selected fleets and records source fleets for post-move cleanup.
+        /// </summary>
+        /// <param name="items">The registered selected scene nodes.</param>
+        /// <param name="destination">The registered movement destination.</param>
+        /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="movables">Receives the concrete units to move.</param>
+        /// <param name="sourceFleets">Receives fleets that may become empty.</param>
+        /// <returns>True when at least one unique movable was produced.</returns>
+        private static bool TryBuildMoveGroup(
+            IReadOnlyList<ISceneNode> items,
+            ContainerNode destination,
+            string ownerInstanceId,
+            out List<IMovable> movables,
+            out List<Fleet> sourceFleets
+        )
+        {
+            movables = new List<IMovable>();
+            sourceFleets = new List<Fleet>();
+            HashSet<ISceneNode> movableNodes = new HashSet<ISceneNode>();
+            Fleet destinationFleet = destination as Fleet;
+
+            foreach (ISceneNode item in items)
+            {
+                if (item is Fleet fleet && destinationFleet != null)
+                {
+                    if (ReferenceEquals(fleet, destinationFleet) || fleet.CapitalShips.Count == 0)
+                        return false;
+
+                    sourceFleets.Add(fleet);
+                    foreach (CapitalShip capitalShip in fleet.CapitalShips)
+                    {
+                        if (
+                            !string.Equals(
+                                capitalShip.GetOwnerInstanceID(),
+                                ownerInstanceId,
+                                StringComparison.Ordinal
+                            ) || !movableNodes.Add(capitalShip)
+                        )
+                            return false;
+
+                        movables.Add(capitalShip);
+                    }
+
+                    continue;
+                }
+
+                if (
+                    item is not IMovable movable
+                    || ReferenceEquals(item, destination)
+                    || !movableNodes.Add(item)
+                )
+                    return false;
+
+                if (
+                    item is CapitalShip selectedCapitalShip
+                    && selectedCapitalShip.GetParent() is Fleet sourceFleet
+                )
+                    sourceFleets.Add(sourceFleet);
+
+                movables.Add(movable);
+            }
+
+            return movables.Count > 0;
         }
 
         /// <summary>
@@ -1260,6 +1480,30 @@ namespace Rebellion.Systems
                 return null;
 
             return _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID) ?? node;
+        }
+
+        /// <summary>
+        /// Resolves a scene-node snapshot only when it is registered in the active game.
+        /// </summary>
+        /// <param name="node">The scene node to resolve.</param>
+        /// <returns>The registered node, or null.</returns>
+        private ISceneNode ResolveRegisteredNode(ISceneNode node)
+        {
+            return string.IsNullOrEmpty(node?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<ISceneNode>(node.InstanceID);
+        }
+
+        /// <summary>
+        /// Resolves a container snapshot only when it is registered in the active game.
+        /// </summary>
+        /// <param name="node">The container to resolve.</param>
+        /// <returns>The registered container, or null.</returns>
+        private ContainerNode ResolveRegisteredContainer(ContainerNode node)
+        {
+            return string.IsNullOrEmpty(node?.InstanceID)
+                ? null
+                : _game.GetSceneNodeByInstanceID<ContainerNode>(node.InstanceID);
         }
 
         /// <summary>

@@ -1,0 +1,455 @@
+fileFormatVersion: 2
+guid: 96b55a81e62f544ce82c3f4f716a731d
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1650124363517991902
+    second: ui_strategyview_fleet_window_icon_0
+  - first:
+      213: -581832758070979505
+    second: ui_strategyview_fleet_window_icon_1
+  - first:
+      213: 1618796018942678792
+    second: ui_strategyview_fleet_window_icon_2
+  - first:
+      213: -6782596014295421280
+    second: ui_strategyview_fleet_window_icon_3
+  - first:
+      213: 680657715388708722
+    second: ui_strategyview_fleet_window_icon_4
+  - first:
+      213: -2626706201312430938
+    second: ui_strategyview_fleet_window_icon_5
+  - first:
+      213: 7703925513837636226
+    second: ui_strategyview_fleet_window_icon_6
+  - first:
+      213: -6522344727646684297
+    second: ui_strategyview_fleet_window_icon_7
+  - first:
+      213: 222675992486743547
+    second: ui_strategyview_fleet_window_icon_8
+  - first:
+      213: 5521479209687846558
+    second: ui_strategyview_fleet_window_icon_9
+  - first:
+      213: 8972288921693284070
+    second: ui_strategyview_fleet_window_icon_10
+  - first:
+      213: 2349645297308147948
+    second: ui_strategyview_fleet_window_icon_11
+  - first:
+      213: -3328349509118563212
+    second: ui_strategyview_fleet_window_icon_12
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_0
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 89
+        width: 38
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: edb15baad5b66e610800000000000000
+      internalID: 1650124363517991902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_1
+      rect:
+        serializedVersion: 2
+        x: 62
+        y: 57
+        width: 101
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f445e70703aece7f0800000000000000
+      internalID: -581832758070979505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_2
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 89
+        width: 43
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80715e8076e177610800000000000000
+      internalID: 1618796018942678792
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_3
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 98
+        width: 25
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0aee0f85cd06fd1a0800000000000000
+      internalID: -6782596014295421280
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_4
+      rect:
+        serializedVersion: 2
+        x: 251
+        y: 98
+        width: 16
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2777f5bf59e227900800000000000000
+      internalID: 680657715388708722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_5
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 75
+        width: 20
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a4f47570a01c8bd0800000000000000
+      internalID: -2626706201312430938
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_6
+      rect:
+        serializedVersion: 2
+        x: 184
+        y: 62
+        width: 29
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28a6c5c0077d9ea60800000000000000
+      internalID: 7703925513837636226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_7
+      rect:
+        serializedVersion: 2
+        x: 220
+        y: 48
+        width: 47
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77b3afde60afb75a0800000000000000
+      internalID: -6522344727646684297
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_8
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 0
+        width: 119
+        height: 64
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfd0e28a2aa171300800000000000000
+      internalID: 222675992486743547
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_9
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 53
+        width: 34
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9e0620561c30ac40800000000000000
+      internalID: 5521479209687846558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_10
+      rect:
+        serializedVersion: 2
+        x: 139
+        y: 44
+        width: 33
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e663bfac39f38c70800000000000000
+      internalID: 8972288921693284070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_11
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 0
+        width: 61
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce0283ee2fd9b9020800000000000000
+      internalID: 2349645297308147948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_window_icon_12
+      rect:
+        serializedVersion: 2
+        x: 220
+        y: 17
+        width: 33
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47c64ac71c35fc1d0800000000000000
+      internalID: -3328349509118563212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ui_strategyview_fleet_window_icon_0: 1650124363517991902
+      ui_strategyview_fleet_window_icon_1: -581832758070979505
+      ui_strategyview_fleet_window_icon_10: 8972288921693284070
+      ui_strategyview_fleet_window_icon_11: 2349645297308147948
+      ui_strategyview_fleet_window_icon_12: -3328349509118563212
+      ui_strategyview_fleet_window_icon_2: 1618796018942678792
+      ui_strategyview_fleet_window_icon_3: -6782596014295421280
+      ui_strategyview_fleet_window_icon_4: 680657715388708722
+      ui_strategyview_fleet_window_icon_5: -2626706201312430938
+      ui_strategyview_fleet_window_icon_6: 7703925513837636226
+      ui_strategyview_fleet_window_icon_7: -6522344727646684297
+      ui_strategyview_fleet_window_icon_8: 222675992486743547
+      ui_strategyview_fleet_window_icon_9: 5521479209687846558
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

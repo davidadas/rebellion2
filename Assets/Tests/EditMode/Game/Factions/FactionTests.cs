@@ -608,6 +608,9 @@ namespace Rebellion.Tests.Game.Factions
             _faction.SetHighestUnlockedOrder(ResearchDiscipline.ShipDesign, 3);
             _faction.AddOwnedUnit(_planet1);
             _faction.AddMessage(new Message(MessageType.Resource, "Test message"));
+            _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
+            _faction.TranslateCounterpart = false;
+            _faction.AgentAdvice = false;
 
             string serialized = SerializationHelper.Serialize(_faction);
             Console.WriteLine("=== SERIALIZED XML ===");
@@ -635,6 +638,10 @@ namespace Rebellion.Tests.Game.Factions
                 deserialized.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
                 "Research orders should be correctly deserialized."
             );
+            Assert.IsFalse(deserialized.IsAdvisorMessageNotificationEnabled(MessageType.Fleet));
+            Assert.IsTrue(deserialized.IsAdvisorMessageNotificationEnabled(MessageType.Mission));
+            Assert.IsFalse(deserialized.TranslateCounterpart);
+            Assert.IsFalse(deserialized.AgentAdvice);
         }
 
         [Test]

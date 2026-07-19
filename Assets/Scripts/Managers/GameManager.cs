@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -8,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -23,6 +21,8 @@ public class GameManager
     private GameEventSystem _eventManager;
     private MissionSystem _missionManager;
     private MovementSystem _movementManager;
+    private FleetSystem _fleetSystem;
+    private PersonnelSystem _personnelSystem;
     private ManufacturingSystem _manufacturingManager;
     private MaintenanceSystem _maintenanceManager;
     private ResourceProductionSystem _resourceProductionManager;
@@ -42,7 +42,6 @@ public class GameManager
     private readonly List<GameResult> _resultsWaitingForCombatResolution = new List<GameResult>();
     private float? _tickInterval;
     private float _tickTimer;
-    private readonly Stopwatch _stopwatch;
 
     /// <summary>
     /// Raised when the active game speed changes.
@@ -50,13 +49,37 @@ public class GameManager
     public event Action GameSpeedChanged;
 
     /// <summary>
+    /// Raised after a game tick advances, including when processing suspends for pending combat.
+    /// </summary>
+    public event Action TickCompleted;
+
+    /// <summary>
+    /// Raised after a hot load replaces the active game and its systems.
+    /// </summary>
+    public event Action<GameRoot> GameReplaced;
+
+    internal ManufacturingSystem ManufacturingSystem => _manufacturingManager;
+
+    internal MovementSystem MovementSystem => _movementManager;
+
+    internal FleetSystem FleetSystem => _fleetSystem;
+
+    internal PersonnelSystem PersonnelSystem => _personnelSystem;
+
+    internal MissionSystem MissionSystem => _missionManager;
+
+    internal SpaceCombatSystem SpaceCombatSystem => _spaceCombatSystem;
+
+    internal MessageSystem MessageSystem => _messageSystem;
+
+    internal MaintenanceSystem MaintenanceSystem => _maintenanceManager;
+
+    /// <summary>
     /// Creates a new GameManager for the given game instance.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
     public GameManager(GameRoot game)
     {
-        _stopwatch = new Stopwatch();
-
         SetGame(game);
         InitializeSystems();
         RebuildDerivedState();
@@ -73,8 +96,8 @@ public class GameManager
         InitializeSystems();
         RebuildDerivedState();
         _tickTimer = 0f;
-        _stopwatch.Restart();
         SetGameSpeed(_game.GetGameSpeed());
+        GameReplaced?.Invoke(_game);
     }
 
     /// <summary>
@@ -106,9 +129,21 @@ public class GameManager
         _eventManager = new GameEventSystem(_game, _randomProvider);
         _fogOfWarManager = new FogOfWarSystem(_game);
         _blockadeManager = new BlockadeSystem(_game, _randomProvider);
-        _movementManager = new MovementSystem(_game, _fogOfWarManager, _blockadeManager);
-        _manufacturingManager = new ManufacturingSystem(_game, _randomProvider, _movementManager);
-        _maintenanceManager = new MaintenanceSystem(_game, _randomProvider);
+        _fleetSystem = new FleetSystem(_game);
+        _personnelSystem = new PersonnelSystem(_game);
+        _movementManager = new MovementSystem(
+            _game,
+            _fogOfWarManager,
+            _fleetSystem,
+            _blockadeManager
+        );
+        _manufacturingManager = new ManufacturingSystem(
+            _game,
+            _fleetSystem,
+            _randomProvider,
+            _movementManager
+        );
+        _maintenanceManager = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
         _resourceProductionManager = new ResourceProductionSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
             _game,
@@ -184,55 +219,6 @@ public class GameManager
     public Faction GetPlayerFaction() => _game.GetPlayerFaction();
 
     /// <summary>
-    /// Requests a group move through the movement system.
-    /// </summary>
-    /// <param name="units">The units to move.</param>
-    /// <param name="destination">The shared destination.</param>
-    public void RequestMove(List<IMovable> units, ContainerNode destination)
-    {
-        _movementManager.RequestMove(units, destination);
-    }
-
-    /// <summary>
-    /// Estimates transit time for a group move without changing scene state.
-    /// </summary>
-    /// <param name="units">The units to evaluate.</param>
-    /// <param name="destination">The shared destination.</param>
-    /// <param name="transitTicks">The maximum transit ticks for the group.</param>
-    /// <returns>True when the move can be estimated.</returns>
-    public bool TryGetTransitTicks(
-        IReadOnlyList<IMovable> units,
-        ContainerNode destination,
-        out int transitTicks
-    )
-    {
-        return _movementManager.TryGetTransitTicks(units, destination, out transitTicks);
-    }
-
-    /// <summary>
-    /// Estimates manufactured unit transit time without assigning movement.
-    /// </summary>
-    /// <param name="unit">The manufactured unit to evaluate.</param>
-    /// <param name="origin">The production planet.</param>
-    /// <param name="destination">The requested destination.</param>
-    /// <param name="transitTicks">The estimated transit ticks.</param>
-    /// <returns>True when the destination can be evaluated.</returns>
-    public bool TryEstimateManufacturedTransitTicks(
-        IMovable unit,
-        Planet origin,
-        ContainerNode destination,
-        out int transitTicks
-    )
-    {
-        return _movementManager.TryEstimateManufacturedTransitTicks(
-            unit,
-            origin,
-            destination,
-            out transitTicks
-        );
-    }
-
-    /// <summary>
     /// Returns the fog of war system for building faction-specific galaxy views.
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
@@ -262,13 +248,9 @@ public class GameManager
                 _tickInterval = _game.Config.GameSpeed.VerySlowTickIntervalSeconds;
                 break;
             case TickSpeed.Paused:
-                _stopwatch.Stop();
                 _tickInterval = null;
                 break;
         }
-
-        if (_tickInterval != null)
-            _stopwatch.Start();
 
         if (previousSpeed != speed)
             GameSpeedChanged?.Invoke();
@@ -284,17 +266,16 @@ public class GameManager
     }
 
     /// <summary>
-    /// Advances the tick timer and fires a tick when the interval is reached.
+    /// Advances the tick timer by elapsed game-loop time and fires a tick when the interval is reached.
     /// No-ops while combat is pending player resolution or the game is paused.
     /// </summary>
-    public void Update()
+    /// <param name="elapsedSeconds">The elapsed game-loop time in seconds.</param>
+    public void AdvanceTime(float elapsedSeconds)
     {
-        if (_spaceCombatSystem.HasPendingDecision || _tickInterval == null)
+        if (elapsedSeconds <= 0f || _spaceCombatSystem.HasPendingDecision || _tickInterval == null)
             return;
 
-        float deltaTime = (float)_stopwatch.Elapsed.TotalSeconds;
-        _stopwatch.Restart();
-        _tickTimer += deltaTime;
+        _tickTimer += elapsedSeconds;
 
         if (_tickTimer >= _tickInterval)
         {
@@ -307,19 +288,75 @@ public class GameManager
     /// Resolves the pending combat encounter and resumes ticking.
     /// </summary>
     /// <param name="autoResolve">Whether to auto-resolve instead of tactical combat.</param>
-    public void ResolveCombat(bool autoResolve)
+    /// <returns>The space combat result generated by the encounter, when present.</returns>
+    public SpaceCombatResult ResolveCombat(bool autoResolve)
     {
         List<GameResult> combatResults = _spaceCombatSystem.ResolvePending(autoResolve);
+        return CompleteCombatResolution(combatResults);
+    }
+
+    /// <summary>
+    /// Resolves a pending retreat and routes its results before resuming ticks.
+    /// </summary>
+    /// <param name="retreatingFactionInstanceId">The faction withdrawing from combat.</param>
+    /// <returns>The resulting space-combat summary, or null when retreat is unavailable.</returns>
+    public SpaceCombatResult ResolveCombatRetreat(string retreatingFactionInstanceId)
+    {
+        List<GameResult> combatResults = _spaceCombatSystem.ResolvePendingRetreat(
+            retreatingFactionInstanceId
+        );
+        if (combatResults == null)
+            return null;
+
+        return CompleteCombatResolution(combatResults);
+    }
+
+    /// <summary>
+    /// Routes resolved combat results and restores the tick timer.
+    /// </summary>
+    /// <param name="combatResults">The results produced by combat resolution.</param>
+    /// <returns>The space-combat result in the routed batch, when present.</returns>
+    private SpaceCombatResult CompleteCombatResolution(List<GameResult> combatResults)
+    {
         ProcessResults(combatResults, processMessages: false);
 
         List<GameResult> messageResults = FlushDeferredResults();
         messageResults.AddRange(combatResults);
         _messageSystem.ProcessResults(messageResults);
         _tickTimer = 0f;
-        if (_tickInterval == null)
-            _stopwatch.Reset();
-        else
-            _stopwatch.Restart();
+
+        return combatResults.OfType<SpaceCombatResult>().FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Executes orbital bombardment and processes the resulting game effects.
+    /// </summary>
+    /// <param name="attackingFleets">The attacking fleets.</param>
+    /// <param name="targetPlanet">The bombardment target planet.</param>
+    /// <param name="type">The bombardment target profile.</param>
+    /// <returns>The bombardment result, or null when bombardment cannot execute.</returns>
+    public BombardmentResult ExecuteOrbitalBombardment(
+        IReadOnlyList<Fleet> attackingFleets,
+        Planet targetPlanet,
+        BombardmentType type
+    )
+    {
+        if (targetPlanet == null)
+            return null;
+
+        List<Fleet> fleets =
+            attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
+        if (fleets.Count == 0)
+            return null;
+
+        BombardmentResult result = _bombardmentSystem.Execute(fleets, targetPlanet, type);
+        List<GameResult> results = new List<GameResult> { result };
+        results.AddRange(result.Events);
+        if (result.OwnershipChange != null)
+            results.Add(result.OwnershipChange);
+
+        ProcessResults(results);
+        return result;
     }
 
     /// <summary>
@@ -350,6 +387,7 @@ public class GameManager
         if (_spaceCombatSystem.HasPendingDecision)
         {
             DeferResultsUntilCombatResolution(resultsWaitingForCombatResolution);
+            TickCompleted?.Invoke();
             return;
         }
 
@@ -367,6 +405,7 @@ public class GameManager
         ProcessResults(_researchManager.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
         ProcessResults(_victoryManager.ProcessTick());
+        TickCompleted?.Invoke();
     }
 
     /// <summary>

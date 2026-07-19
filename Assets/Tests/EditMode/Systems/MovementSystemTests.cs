@@ -67,7 +67,11 @@ namespace Rebellion.Tests.Systems
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, origin);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
 
             return (game, origin, destination, officer, movement);
         }
@@ -75,8 +79,14 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void Constructor_WithNullGame_ThrowsArgumentNullException()
         {
+            GameRoot dependencyGame = new GameRoot(TestConfig.Create());
+
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
-                new MovementSystem(null, new FogOfWarSystem(new GameRoot(TestConfig.Create())))
+                new MovementSystem(
+                    null,
+                    new FogOfWarSystem(dependencyGame),
+                    new FleetSystem(dependencyGame)
+                )
             );
 
             Assert.AreEqual("game", exception.ParamName);
@@ -88,10 +98,22 @@ namespace Rebellion.Tests.Systems
             GameRoot game = new GameRoot(TestConfig.Create());
 
             ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
-                new MovementSystem(game, null)
+                new MovementSystem(game, null, new FleetSystem(game))
             );
 
             Assert.AreEqual("fogOfWar", exception.ParamName);
+        }
+
+        [Test]
+        public void Constructor_WithNullFleetSystem_ThrowsArgumentNullException()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                new MovementSystem(game, new FogOfWarSystem(game), null)
+            );
+
+            Assert.AreEqual("fleetSystem", exception.ParamName);
         }
 
         [Test]
@@ -209,7 +231,11 @@ namespace Rebellion.Tests.Systems
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, origin);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
 
             movement.RequestMove(officer, destination);
 
@@ -256,7 +282,11 @@ namespace Rebellion.Tests.Systems
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, origin);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
 
             movement.RequestMove(officer, destination);
 
@@ -1255,7 +1285,11 @@ namespace Rebellion.Tests.Systems
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             game.AttachNode(officer, planetA);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(officer, fleet);
 
             int transitTicks = officer.Movement.TransitTicks;
@@ -1372,7 +1406,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(specialForces, planetA);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             IMovable[] inboundUnits =
             {
                 capitalShip,
@@ -1511,7 +1549,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(capitalShip2, sourceFleet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
 
             // Fleet moves A -> B (MinTransitTicks, since A and B are very close).
             movement.RequestMove(fleet, planetB);
@@ -1711,8 +1753,12 @@ namespace Rebellion.Tests.Systems
                 BaseBuildSpeed = 1,
             };
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
-            ManufacturingSystem mfg = new ManufacturingSystem(game);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            ManufacturingSystem mfg = new ManufacturingSystem(game, new FleetSystem(game));
             mfg.Enqueue(planet, fighter, destFleet);
 
             Assert.AreEqual(ManufacturingStatus.Building, fighter.ManufacturingStatus);
@@ -1773,7 +1819,11 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
             game.AttachNode(fleet, planetB);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(capitalShip, fleet);
 
             // Tick until transit completes.
@@ -1835,7 +1885,11 @@ namespace Rebellion.Tests.Systems
 
             game.AttachNode(mine, destPlanet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(mine, destPlanet, originPlanet);
 
             // Destination captured while building is in transit.
@@ -1892,7 +1946,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(regiment, destPlanet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(regiment, destPlanet, originPlanet);
 
             // Destination captured while regiment is in transit.
@@ -1952,7 +2010,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(fleet, originPlanet);
             game.AttachNode(capitalShip, fleet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(fleet, hostilePlanet);
 
             int transit = fleet.Movement.TransitTicks;
@@ -2025,7 +2087,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(sourceShip, sourceFleet);
             game.AttachNode(regiment, sourceShip);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(regiment, hostileOrbitFleet);
 
             int transit = regiment.Movement.TransitTicks;
@@ -2086,7 +2152,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(ship, fleet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(ship, fleet, productionPlanet);
 
             Assert.IsNotNull(
@@ -2138,7 +2208,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(ship, fleet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(ship, fleet, productionPlanet);
 
             Assert.AreEqual(
@@ -2221,7 +2295,11 @@ namespace Rebellion.Tests.Systems
             StubMission mission = EntityFactory.CreateMission("m1", "empire", "p2");
             game.AttachNode(mission, missionPlanet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
 
             Assert.DoesNotThrow(
                 () => movement.RequestMove(officer, mission),
@@ -2260,7 +2338,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(ship, sourceFleet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(ship, destinationFleet);
 
             Assert.AreEqual(destinationFleet, ship.GetParent());
@@ -2317,7 +2399,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(officer1, sourceShip1);
             game.AttachNode(officer2, sourceShip2);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(new List<IMovable> { officer1, officer2 }, destinationFleet);
 
             Assert.AreEqual(destinationShip, officer1.GetParent());
@@ -2362,7 +2448,11 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(specialForces, planet);
 
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game));
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
             movement.RequestMove(specialForces, fleet);
 
             Assert.AreEqual(ship, specialForces.GetParent());
@@ -2427,7 +2517,12 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(origin.IsBlockaded());
 
             BlockadeSystem blockade = new BlockadeSystem(game, rng);
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game), blockade);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game),
+                blockade
+            );
 
             return (game, origin, destination, movement);
         }
@@ -2536,7 +2631,12 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(origin.IsBlockaded());
 
             BlockadeSystem blockade = new BlockadeSystem(game, new FixedRNG());
-            MovementSystem movement = new MovementSystem(game, new FogOfWarSystem(game), blockade);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game),
+                blockade
+            );
 
             movement.RequestMove(regiment, destination);
 
@@ -2969,6 +3069,156 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(regiment, ship);
 
             Assert.AreEqual("empire", destination.GetOwnerInstanceID());
+        }
+
+        [Test]
+        public void TryRequestMove_FleetToFleet_MovesShipsAndRemovesSourceFleet()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip firstShip = CreateMovableCapitalShip("first-ship");
+            CapitalShip secondShip = CreateMovableCapitalShip("second-ship");
+            game.AttachNode(firstShip, sourceFleet);
+            game.AttachNode(secondShip, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { sourceFleet },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, firstShip.GetParent());
+            Assert.AreSame(destinationFleet, secondShip.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipToFleet_RemovesEmptySourceFleet()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destinationFleet,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, ship.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.IsNull(ship.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipToPlanet_CreatesDestinationFleet()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, destination, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreEqual(1, destination.Fleets.Count);
+            Assert.AreSame(destination.Fleets[0], ship.GetParent());
+            Assert.IsNotNull(ship.Movement);
+            Assert.IsNull(sourceFleet.GetParent());
+        }
+
+        [Test]
+        public void TryRequestMove_SnapshotPlanet_CreatesFleetOnLiveDestination()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+            Planet snapshot = new Planet { InstanceID = destination.InstanceID };
+
+            bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, snapshot, "empire");
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destination, ship.GetParentOfType<Planet>());
+            Assert.AreEqual(0, snapshot.Fleets.Count);
+        }
+
+        [Test]
+        public void TryRequestMove_MultipleCapitalShipsToPlanet_CreatesOneDestinationFleet()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            CapitalShip firstShip = CreateMovableCapitalShip("first-ship");
+            CapitalShip secondShip = CreateMovableCapitalShip("second-ship");
+            game.AttachNode(firstShip, sourceFleet);
+            game.AttachNode(secondShip, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { firstShip, secondShip },
+                destination,
+                "empire"
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreEqual(1, destination.Fleets.Count);
+            Assert.AreSame(destination.Fleets[0], firstShip.GetParent());
+            Assert.AreSame(destination.Fleets[0], secondShip.GetParent());
+            Assert.AreEqual(2, destination.Fleets[0].CapitalShips.Count);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipsAtDifferentPlanets_PreservesSourceFleets()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet originFleet = EntityFactory.CreateFleet("origin-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(originFleet, origin);
+            game.AttachNode(destinationFleet, destination);
+            CapitalShip originShip = CreateMovableCapitalShip("origin-ship");
+            CapitalShip destinationShip = CreateMovableCapitalShip("destination-ship");
+            game.AttachNode(originShip, originFleet);
+            game.AttachNode(destinationShip, destinationFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { originShip, destinationShip },
+                origin,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            CollectionAssert.AreEqual(new[] { originFleet }, origin.GetFleets());
+            CollectionAssert.AreEqual(new[] { destinationFleet }, destination.GetFleets());
+            Assert.AreSame(originFleet, originShip.GetParent());
+            Assert.AreSame(destinationFleet, destinationShip.GetParent());
+        }
+
+        private static CapitalShip CreateMovableCapitalShip(string instanceId)
+        {
+            return new CapitalShip
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = "empire",
+                Hyperdrive = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
         }
 
         private static Faction AddFaction(GameRoot game, string instanceId)

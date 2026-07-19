@@ -1,0 +1,585 @@
+fileFormatVersion: 2
+guid: 7276fd21b29614408ad0353e0a99073c
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8411924064504625523
+    second: ui_strategyview_fleet_banner_rebel_0
+  - first:
+      213: -3276252297694245529
+    second: ui_strategyview_fleet_banner_rebel_1
+  - first:
+      213: -6505243926861513732
+    second: ui_strategyview_fleet_banner_rebel_2
+  - first:
+      213: -5214985458307344895
+    second: ui_strategyview_fleet_banner_rebel_3
+  - first:
+      213: 8130692758295498273
+    second: ui_strategyview_fleet_banner_rebel_4
+  - first:
+      213: 5349009891910957666
+    second: ui_strategyview_fleet_banner_rebel_5
+  - first:
+      213: 7819945252230910409
+    second: ui_strategyview_fleet_banner_rebel_6
+  - first:
+      213: 5298944976691448231
+    second: ui_strategyview_fleet_banner_rebel_7
+  - first:
+      213: 8227138747603894028
+    second: ui_strategyview_fleet_banner_rebel_8
+  - first:
+      213: 4451494831898723643
+    second: ui_strategyview_fleet_banner_rebel_9
+  - first:
+      213: 5946376169320506725
+    second: ui_strategyview_fleet_banner_rebel_10
+  - first:
+      213: -7460758661204183651
+    second: ui_strategyview_fleet_banner_rebel_11
+  - first:
+      213: 959753673031291774
+    second: ui_strategyview_fleet_banner_rebel_12
+  - first:
+      213: -313585165698259963
+    second: ui_strategyview_fleet_banner_rebel_13
+  - first:
+      213: 1386207971881774244
+    second: ui_strategyview_fleet_banner_rebel_14
+  - first:
+      213: 8093037927547995441
+    second: ui_strategyview_fleet_banner_rebel_15
+  - first:
+      213: -7975574084757369978
+    second: ui_strategyview_fleet_banner_rebel_16
+  - first:
+      213: -6483496803082918830
+    second: ui_strategyview_fleet_banner_rebel_17
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_0
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 179
+        width: 75
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d8644a1b1a7d24b80800000000000000
+      internalID: -8411924064504625523
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_1
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 161
+        width: 190
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76d8061c4e96882d0800000000000000
+      internalID: -3276252297694245529
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_2
+      rect:
+        serializedVersion: 2
+        x: 332
+        y: 188
+        width: 56
+        height: 34
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cfbf6226d1bb8b5a0800000000000000
+      internalID: -6505243926861513732
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_3
+      rect:
+        serializedVersion: 2
+        x: 426
+        y: 202
+        width: 47
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10653c81b56a0a7b0800000000000000
+      internalID: -5214985458307344895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_4
+      rect:
+        serializedVersion: 2
+        x: 503
+        y: 197
+        width: 24
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12e4b044cf506d070800000000000000
+      internalID: 8130692758295498273
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_5
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 156
+        width: 34
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26a376b08208b3a40800000000000000
+      internalID: 5349009891910957666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_6
+      rect:
+        serializedVersion: 2
+        x: 390
+        y: 179
+        width: 34
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c1d93a66c6068c60800000000000000
+      internalID: 7819945252230910409
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_7
+      rect:
+        serializedVersion: 2
+        x: 440
+        y: 170
+        width: 24
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a9c80c9162a98940800000000000000
+      internalID: 5298944976691448231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_8
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 165
+        width: 29
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0f38c80a1bac2270800000000000000
+      internalID: 8227138747603894028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_9
+      rect:
+        serializedVersion: 2
+        x: 157
+        y: 120
+        width: 60
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b358fcee6f2e6cd30800000000000000
+      internalID: 4451494831898723643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_10
+      rect:
+        serializedVersion: 2
+        x: 265
+        y: 152
+        width: 38
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5656239ee95c58250800000000000000
+      internalID: 5946376169320506725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_11
+      rect:
+        serializedVersion: 2
+        x: 368
+        y: 129
+        width: 51
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d957104c68f067890800000000000000
+      internalID: -7460758661204183651
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_12
+      rect:
+        serializedVersion: 2
+        x: 431
+        y: 98
+        width: 87
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7318e071eab15d00800000000000000
+      internalID: 959753673031291774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_13
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 3
+        width: 236
+        height: 119
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50429b704fbe5abf0800000000000000
+      internalID: -313585165698259963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_14
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 107
+        width: 56
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ace3d45ecccc3310800000000000000
+      internalID: 1386207971881774244
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_15
+      rect:
+        serializedVersion: 2
+        x: 274
+        y: 84
+        width: 64
+        height: 61
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1350349cd1f305070800000000000000
+      internalID: 8093037927547995441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_16
+      rect:
+        serializedVersion: 2
+        x: 269
+        y: 8
+        width: 114
+        height: 87
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68bc93650a1115190800000000000000
+      internalID: -7975574084757369978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ui_strategyview_fleet_banner_rebel_17
+      rect:
+        serializedVersion: 2
+        x: 440
+        y: 39
+        width: 51
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 254acd5320ef506a0800000000000000
+      internalID: -6483496803082918830
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ui_strategyview_fleet_banner_rebel_0: -8411924064504625523
+      ui_strategyview_fleet_banner_rebel_1: -3276252297694245529
+      ui_strategyview_fleet_banner_rebel_10: 5946376169320506725
+      ui_strategyview_fleet_banner_rebel_11: -7460758661204183651
+      ui_strategyview_fleet_banner_rebel_12: 959753673031291774
+      ui_strategyview_fleet_banner_rebel_13: -313585165698259963
+      ui_strategyview_fleet_banner_rebel_14: 1386207971881774244
+      ui_strategyview_fleet_banner_rebel_15: 8093037927547995441
+      ui_strategyview_fleet_banner_rebel_16: -7975574084757369978
+      ui_strategyview_fleet_banner_rebel_17: -6483496803082918830
+      ui_strategyview_fleet_banner_rebel_2: -6505243926861513732
+      ui_strategyview_fleet_banner_rebel_3: -5214985458307344895
+      ui_strategyview_fleet_banner_rebel_4: 8130692758295498273
+      ui_strategyview_fleet_banner_rebel_5: 5349009891910957666
+      ui_strategyview_fleet_banner_rebel_6: 7819945252230910409
+      ui_strategyview_fleet_banner_rebel_7: 5298944976691448231
+      ui_strategyview_fleet_banner_rebel_8: 8227138747603894028
+      ui_strategyview_fleet_banner_rebel_9: 4451494831898723643
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

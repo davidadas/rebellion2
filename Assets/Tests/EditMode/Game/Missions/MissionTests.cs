@@ -384,7 +384,7 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(3);
 
-            MovementSystem movement = new MovementSystem(game, fog);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
             movement.RequestMove(officer, mission);
             movement.RequestMove(decoy, mission);
 

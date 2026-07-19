@@ -73,6 +73,12 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddNarrativeMessages(
+                resultArray.OfType<DagobahCompletedResult>(),
+                resultArray.OfType<HeritageRevealedResult>(),
+                game,
+                deliveries
+            );
             AddSabotageMessages(sabotageResults, game, deliveries);
             AddResearchMessages(
                 resultArray.OfType<ResearchOrderedResult>(),
@@ -133,17 +139,21 @@ namespace Rebellion.Game.Messages
         /// <returns>The fleet arrival message, or null when no matching definition exists.</returns>
         private Message CreateFleetArrived(Faction faction, Fleet fleet, Planet destination)
         {
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.FleetArrived),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "fleet", fleet?.GetDisplayName() ?? string.Empty },
-                        { "system", destination?.GetDisplayName() ?? string.Empty },
-                    }
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.FleetArrived),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            { "fleet", fleet?.GetDisplayName() ?? string.Empty },
+                            { "system", destination?.GetDisplayName() ?? string.Empty },
+                        }
+                    ),
+                    destination,
+                    fleet
                 ),
-                destination
+                AdvisorNotificationCode.FleetArrived
             );
         }
 
@@ -160,21 +170,24 @@ namespace Rebellion.Game.Messages
             Planet destination
         )
         {
-            string shipList = string.Join(
-                "\n",
-                (ships ?? Enumerable.Empty<CapitalShip>()).Select(ship => ship.GetDisplayName())
-            );
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.ShipsArrived),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "ships", shipList },
-                        { "system", destination?.GetDisplayName() ?? string.Empty },
-                    }
+            CapitalShip[] shipArray =
+                ships?.Where(ship => ship != null).ToArray() ?? Array.Empty<CapitalShip>();
+            string shipList = string.Join("\n", shipArray.Select(ship => ship.GetDisplayName()));
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.ShipsArrived),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            { "ships", shipList },
+                            { "system", destination?.GetDisplayName() ?? string.Empty },
+                        }
+                    ),
+                    destination,
+                    shipArray.FirstOrDefault()
                 ),
-                destination
+                AdvisorNotificationCode.UnitsArrived
             );
         }
 
@@ -184,11 +197,13 @@ namespace Rebellion.Game.Messages
         /// <param name="faction">The faction receiving the report.</param>
         /// <param name="personnel">The officers included in the arrival.</param>
         /// <param name="destination">The planet where the officers arrived.</param>
+        /// <param name="game">The game state used for voice selection randomness.</param>
         /// <returns>The personnel arrival message, or null when no officers were provided.</returns>
         private Message CreatePersonnelArrived(
             Faction faction,
             IEnumerable<Officer> personnel,
-            Planet destination
+            Planet destination,
+            GameRoot game
         )
         {
             Officer[] officers =
@@ -196,35 +211,72 @@ namespace Rebellion.Game.Messages
             if (officers.Length == 0)
                 return null;
 
-            return WithEventLocation(
+            Officer reporter = officers.FirstOrDefault(officer =>
+                officer.HasVoicePath(OfficerVoiceLineType.PersonnelArrived)
+            );
+            Officer[] listedPersonnel =
+                reporter == null
+                    ? officers
+                    : officers.Where(officer => officer != reporter).ToArray();
+            string personnelList = string.Join(
+                "\n",
+                listedPersonnel.Select(officer => officer.GetDisplayName())
+            );
+            MessageResultType resultType =
+                reporter == null ? MessageResultType.PersonnelArrived
+                : listedPersonnel.Length == 0 ? MessageResultType.PersonnelArrivedByOfficer
+                : MessageResultType.PersonnelArrivedByOfficerWithCompany;
+            Message message = WithEventLocation(
                 CreateMessage(
-                    GetDefinition(MessageResultType.PersonnelArrived),
+                    GetDefinition(resultType),
                     faction,
                     new Dictionary<string, string>
                     {
-                        {
-                            "personnel",
-                            string.Join("\n", officers.Select(officer => officer.GetDisplayName()))
-                        },
+                        { "officer", reporter?.GetDisplayName() ?? string.Empty },
                         { "system", destination?.GetDisplayName() ?? string.Empty },
+                        { "personnel", personnelList },
                     },
-                    overlayImagePath: GetMessageImagePath(officers[0])
+                    overlayImagePath: GetMessageImagePath(reporter ?? officers[0]),
+                    officerVoicePath: reporter?.GetVoicePath(
+                        OfficerVoiceLineType.PersonnelArrived,
+                        game?.Random
+                    )
                 ),
-                destination
+                destination,
+                reporter ?? officers[0]
             );
+
+            return reporter == null
+                ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
+                : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
         }
 
         /// <summary>
         /// Creates the emperor seat-of-power message.
         /// </summary>
         /// <param name="faction">The faction that owns the emperor.</param>
+        /// <param name="officer">The officer returning to the seat of power.</param>
+        /// <param name="game">The game state used for voice selection randomness.</param>
         /// <returns>The seat-of-power message, or null when no matching definition exists.</returns>
-        private Message CreateEmperorSeatOfPower(Faction faction)
+        private Message CreateEmperorSeatOfPower(Faction faction, Officer officer, GameRoot game)
         {
-            return CreateMessage(
-                GetDefinition(MessageResultType.EmperorSeatOfPower),
-                faction,
-                new Dictionary<string, string>()
+            return WithAdvisorSubject(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.EmperorSeatOfPower),
+                        faction,
+                        new Dictionary<string, string>(),
+                        overlayImagePath: GetMessageImagePath(officer),
+                        officerVoicePath: officer?.GetVoicePath(
+                            OfficerVoiceLineType.SeatOfPower,
+                            game?.Random
+                        )
+                    ),
+                    GetOfficerPlanet(officer),
+                    officer
+                ),
+                AdvisorSubjectNotification.Report,
+                officer
             );
         }
 
@@ -256,7 +308,8 @@ namespace Rebellion.Game.Messages
                     },
                     imageOverride: GetMessageImagePath(building)
                 ),
-                destination
+                destination,
+                building
             );
         }
 
@@ -276,19 +329,22 @@ namespace Rebellion.Game.Messages
             if (manufacturingType == ManufacturingType.None)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(
-                        MessageResultType.ManufacturingIdle,
-                        manufacturingType: manufacturingType
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(
+                            MessageResultType.ManufacturingIdle,
+                            manufacturingType: manufacturingType
+                        ),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            { "system", planet?.GetDisplayName() ?? string.Empty },
+                        }
                     ),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "system", planet?.GetDisplayName() ?? string.Empty },
-                    }
+                    planet
                 ),
-                planet
+                AdvisorNotificationCode.Manufacturing
             );
         }
 
@@ -330,6 +386,8 @@ namespace Rebellion.Game.Messages
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
+            OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
+            Officer reporter = jediTrainer ?? GetMissionParticipantOfficer(result, voiceLineType);
 
             Message message = WithEventLocation(
                 CreateMessage(
@@ -355,17 +413,19 @@ namespace Rebellion.Game.Messages
                     overlayImagePath: jediTrainer == null
                         ? GetMissionParticipantOverlayImagePath(result)
                         : GetMessageImagePath(jediTrainer),
-                    officerVoicePath: jediTrainer == null
-                        ? GetMissionParticipantVoicePath(result, game)
-                        : jediTrainer.GetVoicePath(GetMissionVoiceLineType(result), game?.Random)
+                    officerVoicePath: reporter?.GetVoicePath(voiceLineType, game?.Random)
                 ),
-                target
+                target,
+                GetMissionNavigationTarget(result),
+                result.Mission
             );
 
             if (message != null && result.CanContinue)
                 message.MissionInstanceID = result.MissionInstanceID;
 
-            return message;
+            return reporter == null
+                ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
+                : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
         }
 
         /// <summary>
@@ -384,7 +444,7 @@ namespace Rebellion.Game.Messages
             if (result == null || result.Outcome != MissionOutcome.Foiled)
                 return null;
 
-            return WithEventLocation(
+            Message message = WithEventLocation(
                 CreateMessage(
                     GetMissionDefinition(
                         MessageResultType.EnemyMissionFoiled,
@@ -397,11 +457,11 @@ namespace Rebellion.Game.Messages
                     {
                         { "mission", GetMissionName(result) },
                         { "system", GetTargetName(result, target) },
-                    },
-                    overlayImagePath: GetMissionParticipantOverlayImagePath(result)
+                    }
                 ),
                 target
             );
+            return WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel);
         }
 
         /// <summary>
@@ -411,6 +471,7 @@ namespace Rebellion.Game.Messages
         /// <param name="faction">The faction that should receive the message.</param>
         /// <param name="officer">The officer described by the message.</param>
         /// <param name="planet">The planet associated with the officer state.</param>
+        /// <param name="game">The game state used for voice selection randomness.</param>
         /// <param name="includeOfficerOverlay">Whether to include the officer portrait overlay.</param>
         /// <returns>The officer status message, or null when no matching definition exists.</returns>
         private Message CreateOfficerMessage(
@@ -418,13 +479,14 @@ namespace Rebellion.Game.Messages
             Faction faction,
             Officer officer,
             Planet planet,
+            GameRoot game,
             bool includeOfficerOverlay = true
         )
         {
             if (officer == null)
                 return null;
 
-            return WithEventLocation(
+            Message message = WithEventLocation(
                 CreateMessage(
                     GetDefinition(resultType),
                     faction,
@@ -433,10 +495,23 @@ namespace Rebellion.Game.Messages
                         { "officer", officer.GetDisplayName() ?? string.Empty },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: includeOfficerOverlay ? GetMessageImagePath(officer) : null
+                    overlayImagePath: includeOfficerOverlay ? GetMessageImagePath(officer) : null,
+                    officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
                 ),
-                planet
+                planet,
+                officer
             );
+            AdvisorSubjectNotification notification = resultType switch
+            {
+                MessageResultType.OfficerCaptured => AdvisorSubjectNotification.Captured,
+                MessageResultType.OfficerReleased => AdvisorSubjectNotification.Released,
+                MessageResultType.OfficerRecruited => AdvisorSubjectNotification.Report,
+                MessageResultType.OfficerInjured => AdvisorSubjectNotification.Report,
+                MessageResultType.OfficerRecovered => AdvisorSubjectNotification.Report,
+                MessageResultType.OfficerKilled => AdvisorSubjectNotification.Report,
+                _ => AdvisorSubjectNotification.None,
+            };
+            return WithAdvisorSubject(message, notification, officer);
         }
 
         /// <summary>
@@ -455,24 +530,98 @@ namespace Rebellion.Game.Messages
             if (result?.Officer == null)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.ForceGrowth),
-                    faction,
-                    new Dictionary<string, string>
-                    {
+            return WithAdvisorSubject(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.ForceGrowth),
+                        faction,
+                        new Dictionary<string, string>
                         {
-                            "rank",
-                            GetForceRankText(
-                                GetCurrentForceRank(result),
-                                result.Officer.IsJedi,
-                                game
-                            )
+                            {
+                                "rank",
+                                GetForceRankText(
+                                    GetCurrentForceRank(result),
+                                    result.Officer.IsJedi,
+                                    game
+                                )
+                            },
                         },
-                    },
-                    overlayImagePath: GetMessageImagePath(result.Officer)
+                        overlayImagePath: GetMessageImagePath(result.Officer),
+                        officerVoicePath: result.Officer.GetVoicePath(
+                            OfficerVoiceLineType.ForceGrowth,
+                            game?.Random
+                        )
+                    ),
+                    result.Officer.GetParentOfType<Planet>(),
+                    result.Officer
                 ),
-                result.Officer.GetParentOfType<Planet>()
+                AdvisorSubjectNotification.Report,
+                result.Officer
+            );
+        }
+
+        /// <summary>
+        /// Creates the narrative report for completed Dagobah training.
+        /// </summary>
+        /// <param name="faction">The faction receiving the report.</param>
+        /// <param name="result">The completed narrative result.</param>
+        /// <param name="game">The game state used to select officer audio.</param>
+        /// <returns>The completed narrative message, or null when no officer is present.</returns>
+        private Message CreateDagobahCompleted(
+            Faction faction,
+            DagobahCompletedResult result,
+            GameRoot game
+        )
+        {
+            Officer officer = result?.Officer;
+            if (officer == null)
+                return null;
+
+            return WithAdvisorSubject(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.DagobahCompleted),
+                        faction,
+                        new Dictionary<string, string>(),
+                        overlayImagePath: GetMessageImagePath(officer),
+                        officerVoicePath: officer.GetVoicePath(
+                            OfficerVoiceLineType.DagobahCompleted,
+                            game?.Random
+                        )
+                    ),
+                    GetOfficerPlanet(officer),
+                    officer
+                ),
+                AdvisorSubjectNotification.Report,
+                officer
+            );
+        }
+
+        /// <summary>
+        /// Creates the narrative report for a revealed officer heritage.
+        /// </summary>
+        /// <param name="faction">The faction receiving the report.</param>
+        /// <param name="result">The revealed heritage result.</param>
+        /// <returns>The heritage message, or null when no officer is present.</returns>
+        private Message CreateHeritageRevealed(Faction faction, HeritageRevealedResult result)
+        {
+            Officer officer = result?.Officer;
+            if (officer == null)
+                return null;
+
+            return WithAdvisorSubject(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.HeritageRevealed),
+                        faction,
+                        new Dictionary<string, string>(),
+                        overlayImagePath: GetMessageImagePath(officer)
+                    ),
+                    GetOfficerPlanet(officer),
+                    officer
+                ),
+                AdvisorSubjectNotification.Report,
+                officer
             );
         }
 
@@ -492,9 +641,13 @@ namespace Rebellion.Game.Messages
             if (result?.Officer == null || result.Discoverer == null)
                 return null;
 
+            bool abilityRevealed = result.Officer.HasVoicePath(
+                OfficerVoiceLineType.ForceAbilityRevealed
+            );
             bool canTrain = JediTrainingMission.CanLeadTraining(result.Discoverer, game);
-            MessageResultType resultType = canTrain
-                ? MessageResultType.ForceUserDiscovered
+            MessageResultType resultType =
+                abilityRevealed ? MessageResultType.ForceAbilityRevealed
+                : canTrain ? MessageResultType.ForceUserDiscovered
                 : MessageResultType.ForceUserDiscoveredByStudent;
 
             return WithEventLocation(
@@ -505,9 +658,12 @@ namespace Rebellion.Game.Messages
                     {
                         { "officer", result.Officer.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: GetMessageImagePath(result.Discoverer)
+                    overlayImagePath: GetMessageImagePath(
+                        abilityRevealed ? result.Officer : result.Discoverer
+                    )
                 ),
-                GetOfficerPlanet(result.Officer)
+                GetOfficerPlanet(result.Officer),
+                result.Officer
             );
         }
 
@@ -532,7 +688,8 @@ namespace Rebellion.Game.Messages
                         { "attachment", GetAttachmentName(result.Ship) },
                     }
                 ),
-                result.Ship.GetParentOfType<Planet>()
+                result.Ship.GetParentOfType<Planet>(),
+                result.Ship
             );
         }
 
@@ -557,7 +714,8 @@ namespace Rebellion.Game.Messages
                         { "attachment", GetAttachmentName(result.Fighter) },
                     }
                 ),
-                result.Fighter.GetParentOfType<Planet>()
+                result.Fighter.GetParentOfType<Planet>(),
+                result.Fighter
             );
         }
 
@@ -587,7 +745,8 @@ namespace Rebellion.Game.Messages
                         { "system", target?.GetDisplayName() ?? string.Empty },
                     }
                 ),
-                target
+                target,
+                result.SabotagedObject as ISceneNode
             );
         }
 
@@ -644,7 +803,7 @@ namespace Rebellion.Game.Messages
             if (result == null)
                 return null;
 
-            return WithEventLocation(
+            Message message = WithEventLocation(
                 CreateMessage(
                     GetDefinition(MessageResultType.UprisingStarted),
                     faction,
@@ -656,6 +815,11 @@ namespace Rebellion.Game.Messages
                 ),
                 result.Planet
             );
+            AdvisorNotificationCode notification =
+                faction?.InstanceID == controller?.InstanceID
+                    ? AdvisorNotificationCode.NegativePopularSupport
+                    : AdvisorNotificationCode.PositivePopularSupport;
+            return WithAdvisorNotification(message, notification);
         }
 
         /// <summary>
@@ -674,18 +838,21 @@ namespace Rebellion.Game.Messages
             if (result == null)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.UprisingEnded),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", controller?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    },
-                    controller
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.UprisingEnded),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            { "faction", controller?.GetDisplayName() ?? string.Empty },
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                        },
+                        controller
+                    ),
+                    result.Planet
                 ),
-                result.Planet
+                AdvisorNotificationCode.PositivePopularSupport
             );
         }
 
@@ -699,17 +866,20 @@ namespace Rebellion.Game.Messages
             if (result?.NewOwner == null)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.PlanetJoinedBySupport),
-                    result.NewOwner,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.PlanetJoinedBySupport),
+                        result.NewOwner,
+                        new Dictionary<string, string>
+                        {
+                            { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                        }
+                    ),
+                    result.Planet
                 ),
-                result.Planet
+                AdvisorNotificationCode.PositivePopularSupport
             );
         }
 
@@ -726,18 +896,21 @@ namespace Rebellion.Game.Messages
             if (result.PreviousOwner.InstanceID == result.NewOwner.InstanceID)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.PlanetJoinedEnemyBySupport),
-                    result.PreviousOwner,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    },
-                    result.NewOwner
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.PlanetJoinedEnemyBySupport),
+                        result.PreviousOwner,
+                        new Dictionary<string, string>
+                        {
+                            { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                        },
+                        result.NewOwner
+                    ),
+                    result.Planet
                 ),
-                result.Planet
+                AdvisorNotificationCode.NegativePopularSupport
             );
         }
 
@@ -751,17 +924,20 @@ namespace Rebellion.Game.Messages
             if (result?.PreviousOwner == null || result.NewOwner != null)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.PlanetDeclaredNeutralityBySupport),
-                    result.PreviousOwner,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", result.PreviousOwner.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.PlanetDeclaredNeutralityBySupport),
+                        result.PreviousOwner,
+                        new Dictionary<string, string>
+                        {
+                            { "faction", result.PreviousOwner.GetDisplayName() ?? string.Empty },
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                        }
+                    ),
+                    result.Planet
                 ),
-                result.Planet
+                AdvisorNotificationCode.NegativePopularSupport
             );
         }
 
@@ -814,7 +990,8 @@ namespace Rebellion.Game.Messages
                     },
                     targetFaction
                 ),
-                result.Planet
+                result.Planet,
+                result.BlockadingFleet
             );
         }
 
@@ -845,7 +1022,8 @@ namespace Rebellion.Game.Messages
                         { "system", result.Planet?.GetDisplayName() ?? string.Empty },
                     }
                 ),
-                result.Planet
+                result.Planet,
+                result.BlockadingFleet
             );
         }
 
@@ -900,7 +1078,8 @@ namespace Rebellion.Game.Messages
                         { "system", location?.GetDisplayName() ?? string.Empty },
                     }
                 ),
-                location
+                location,
+                result.DestroyedObject as ISceneNode
             );
         }
 
@@ -935,7 +1114,8 @@ namespace Rebellion.Game.Messages
                         { "system", result.Planet?.GetDisplayName() ?? string.Empty },
                     }
                 ),
-                result.Planet
+                result.Planet,
+                GetSpaceBattleFleet(faction, result)
             );
         }
 
@@ -955,23 +1135,26 @@ namespace Rebellion.Game.Messages
             if (result == null)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(
-                        MessageResultType.Bombardment,
-                        GetBombardmentOutcome(result),
-                        GetBombardmentPlanetOwnership(result)
-                    ),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", result.AttackingFaction?.GetDisplayName() ?? string.Empty },
-                        { "target", targetFaction?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
+            Message message = CreateMessage(
+                GetDefinition(
+                    MessageResultType.Bombardment,
+                    GetBombardmentOutcome(result),
+                    GetBombardmentPlanetOwnership(result)
                 ),
-                result.Planet
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "faction", result.AttackingFaction?.GetDisplayName() ?? string.Empty },
+                    { "target", targetFaction?.GetDisplayName() ?? string.Empty },
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                }
             );
+            AdvisorNotificationCode notification =
+                faction?.InstanceID == result.AttackingFaction?.InstanceID
+                    ? AdvisorNotificationCode.None
+                    : AdvisorNotificationCode.Bombardment;
+
+            return WithEventLocation(WithAdvisorNotification(message, notification), result.Planet);
         }
 
         /// <summary>
@@ -1125,7 +1308,12 @@ namespace Rebellion.Game.Messages
                 AddDelivery(
                     deliveries,
                     faction,
-                    CreatePersonnelArrived(faction, group.Value, personnelDestinations[group.Key])
+                    CreatePersonnelArrived(
+                        faction,
+                        group.Value,
+                        personnelDestinations[group.Key],
+                        game
+                    )
                 );
             }
         }
@@ -1253,7 +1441,8 @@ namespace Rebellion.Game.Messages
                         MessageResultType.OfficerRecruited,
                         result.Faction,
                         result.Officer,
-                        planet
+                        planet,
+                        game
                     )
                 );
             }
@@ -1272,7 +1461,8 @@ namespace Rebellion.Game.Messages
                             : MessageResultType.OfficerReleased,
                         faction,
                         officer,
-                        planet
+                        planet,
+                        game
                     )
                 );
             }
@@ -1298,7 +1488,8 @@ namespace Rebellion.Game.Messages
                             : MessageResultType.OfficerRecovered,
                         faction,
                         result.Officer,
-                        planet
+                        planet,
+                        game
                     )
                 );
             }
@@ -1315,6 +1506,7 @@ namespace Rebellion.Game.Messages
                         faction,
                         result.TargetOfficer,
                         planet,
+                        game,
                         false
                     )
                 );
@@ -1364,6 +1556,33 @@ namespace Rebellion.Game.Messages
 
                 Faction faction = GetOwnerFaction(game, result.Officer);
                 AddDelivery(deliveries, faction, CreateForceGrowth(faction, result, game));
+            }
+        }
+
+        /// <summary>
+        /// Adds narrative event reports to the pending message deliveries.
+        /// </summary>
+        /// <param name="dagobahResults">The completed Dagobah narrative results.</param>
+        /// <param name="heritageResults">The revealed heritage results.</param>
+        /// <param name="game">The game state used to resolve message recipients.</param>
+        /// <param name="deliveries">The delivery list to append messages to.</param>
+        private void AddNarrativeMessages(
+            IEnumerable<DagobahCompletedResult> dagobahResults,
+            IEnumerable<HeritageRevealedResult> heritageResults,
+            GameRoot game,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (DagobahCompletedResult result in dagobahResults)
+            {
+                Faction faction = GetOwnerFaction(game, result.Officer);
+                AddDelivery(deliveries, faction, CreateDagobahCompleted(faction, result, game));
+            }
+
+            foreach (HeritageRevealedResult result in heritageResults)
+            {
+                Faction faction = GetOwnerFaction(game, result.Officer);
+                AddDelivery(deliveries, faction, CreateHeritageRevealed(faction, result));
             }
         }
 
@@ -1728,7 +1947,11 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Faction faction = GetFaction(game, result.Officer?.GetOwnerInstanceID());
-                AddDelivery(deliveries, faction, CreateEmperorSeatOfPower(faction));
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateEmperorSeatOfPower(faction, result.Officer, game)
+                );
             }
         }
 
@@ -1771,15 +1994,90 @@ namespace Rebellion.Game.Messages
             string officerVoicePath = null
         )
         {
-            return _templateBuilder.Build(
-                definition,
-                faction,
-                values,
-                imageFaction,
-                imageOverride,
-                overlayImagePath,
-                officerVoicePath
+            return WithAdvisorNotification(
+                _templateBuilder.Build(
+                    definition,
+                    faction,
+                    values,
+                    imageFaction,
+                    imageOverride,
+                    overlayImagePath,
+                    officerVoicePath
+                ),
+                GetDefaultAdvisorNotification(definition?.ResultType)
             );
+        }
+
+        /// <summary>
+        /// Resolves the default advisor notification for a message result type.
+        /// </summary>
+        /// <param name="resultType">The message result type, or null.</param>
+        /// <returns>The matching advisor notification code.</returns>
+        private static AdvisorNotificationCode GetDefaultAdvisorNotification(
+            MessageResultType? resultType
+        )
+        {
+            return resultType switch
+            {
+                MessageResultType.FleetArrived => AdvisorNotificationCode.FleetArrived,
+                MessageResultType.ShipsArrived => AdvisorNotificationCode.UnitsArrived,
+                MessageResultType.ManufacturingIdle => AdvisorNotificationCode.Manufacturing,
+                MessageResultType.CapitalShipRepaired =>
+                    AdvisorNotificationCode.CapitalShipRepaired,
+                MessageResultType.StarfighterRepaired =>
+                    AdvisorNotificationCode.StarfighterRepaired,
+                MessageResultType.SabotageStrike => AdvisorNotificationCode.Maintenance,
+                MessageResultType.ResearchComplete => AdvisorNotificationCode.Research,
+                MessageResultType.ResearchExhausted => AdvisorNotificationCode.Research,
+                MessageResultType.BlockadeInitiated => AdvisorNotificationCode.BlockadeInitiated,
+                MessageResultType.BlockadeDetected => AdvisorNotificationCode.BlockadeDetected,
+                MessageResultType.MaintenanceAutoscrap => AdvisorNotificationCode.Maintenance,
+                MessageResultType.Bombardment => AdvisorNotificationCode.Bombardment,
+                MessageResultType.PlanetaryAssault => AdvisorNotificationCode.PlanetaryAssault,
+                _ => AdvisorNotificationCode.None,
+            };
+        }
+
+        /// <summary>
+        /// Assigns an advisor notification code to a message.
+        /// </summary>
+        /// <param name="message">The message to update.</param>
+        /// <param name="notification">The advisor notification code.</param>
+        /// <returns>The updated message, or null when no message was supplied.</returns>
+        private static Message WithAdvisorNotification(
+            Message message,
+            AdvisorNotificationCode notification
+        )
+        {
+            if (message != null)
+                message.AdvisorNotificationCode = (int)notification;
+
+            return message;
+        }
+
+        /// <summary>
+        /// Assigns an officer-specific advisor notification to a message.
+        /// </summary>
+        /// <param name="message">The message to update.</param>
+        /// <param name="notification">The officer notification kind.</param>
+        /// <param name="officer">The officer represented by the notification.</param>
+        /// <returns>The updated message.</returns>
+        private static Message WithAdvisorSubject(
+            Message message,
+            AdvisorSubjectNotification notification,
+            Officer officer
+        )
+        {
+            if (
+                message == null
+                || notification == AdvisorSubjectNotification.None
+                || officer == null
+            )
+                return message;
+
+            message.AdvisorSubjectNotification = notification;
+            message.AdvisorSubjectTypeID = officer.TypeID;
+            return message;
         }
 
         /// <summary>
@@ -1787,11 +2085,22 @@ namespace Rebellion.Game.Messages
         /// </summary>
         /// <param name="message">The message to update.</param>
         /// <param name="planet">The planet associated with the event.</param>
+        /// <param name="target">The primary navigation target.</param>
+        /// <param name="secondaryTarget">The optional secondary navigation target.</param>
         /// <returns>The same message instance after the event location is assigned.</returns>
-        private static Message WithEventLocation(Message message, Planet planet)
+        private static Message WithEventLocation(
+            Message message,
+            Planet planet,
+            ISceneNode target = null,
+            ISceneNode secondaryTarget = null
+        )
         {
             if (message != null)
+            {
                 message.EventLocationInstanceID = planet?.GetInstanceID();
+                message.NavigationTargetInstanceID = (target ?? planet)?.GetInstanceID();
+                message.NavigationSecondaryTargetInstanceID = secondaryTarget?.GetInstanceID();
+            }
 
             return message;
         }
@@ -1947,21 +2256,61 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Gets the officer voice line path for the first participant with a matching voice line.
+        /// Finds the first mission participant with audio for the requested outcome.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
-        /// <param name="game">The game state used for voice selection randomness.</param>
-        /// <returns>The voice line path, or null when none is available.</returns>
-        private static string GetMissionParticipantVoicePath(
+        /// <param name="voiceLineType">The requested officer voice line type.</param>
+        /// <returns>The matching officer, or null when none is available.</returns>
+        private static Officer GetMissionParticipantOfficer(
             MissionCompletedResult result,
+            OfficerVoiceLineType voiceLineType
+        )
+        {
+            return GetFirstParticipantOfficer(result?.Participants, voiceLineType)
+                ?? GetFirstParticipantOfficer(result?.Mission?.GetAllParticipants(), voiceLineType);
+        }
+
+        /// <summary>
+        /// Resolves the scene node opened from a completed mission message.
+        /// </summary>
+        /// <param name="result">The completed mission result.</param>
+        /// <returns>The first participant scene node or the mission itself.</returns>
+        private static ISceneNode GetMissionNavigationTarget(MissionCompletedResult result)
+        {
+            return (result?.Participants ?? Enumerable.Empty<IMissionParticipant>())
+                    .OfType<ISceneNode>()
+                    .FirstOrDefault()
+                ?? (
+                    result?.Mission?.GetAllParticipants() ?? Enumerable.Empty<IMissionParticipant>()
+                )
+                    .OfType<ISceneNode>()
+                    .FirstOrDefault()
+                ?? result?.Mission;
+        }
+
+        /// <summary>
+        /// Resolves officer audio for a personnel message result.
+        /// </summary>
+        /// <param name="resultType">The personnel message result type.</param>
+        /// <param name="officer">The officer represented by the message.</param>
+        /// <param name="game">The game state used to select officer audio.</param>
+        /// <returns>The matching voice path, or null when no line applies.</returns>
+        private static string GetOfficerMessageVoicePath(
+            MessageResultType resultType,
+            Officer officer,
             GameRoot game
         )
         {
-            OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
-            Officer officer =
-                GetFirstParticipantOfficer(result?.Participants, voiceLineType)
-                ?? GetFirstParticipantOfficer(result?.Mission?.GetAllParticipants(), voiceLineType);
-            return officer?.GetVoicePath(voiceLineType, game?.Random);
+            OfficerVoiceLineType? voiceLineType = resultType switch
+            {
+                MessageResultType.OfficerRecruited => OfficerVoiceLineType.PersonnelArrived,
+                MessageResultType.OfficerReleased => OfficerVoiceLineType.Released,
+                MessageResultType.OfficerRecovered => OfficerVoiceLineType.Recovered,
+                _ => null,
+            };
+            return voiceLineType.HasValue
+                ? officer?.GetVoicePath(voiceLineType.Value, game?.Random)
+                : null;
         }
 
         /// <summary>
@@ -1971,6 +2320,9 @@ namespace Rebellion.Game.Messages
         /// <returns>The voice line type that matches the mission outcome.</returns>
         private static OfficerVoiceLineType GetMissionVoiceLineType(MissionCompletedResult result)
         {
+            if (result?.CompletionReason == MissionCompletionReason.TargetUnavailable)
+                return OfficerVoiceLineType.MissionAbort;
+
             return result?.Outcome == MissionOutcome.Success
                 ? OfficerVoiceLineType.MissionSuccess
                 : OfficerVoiceLineType.MissionFailure;
@@ -2381,6 +2733,22 @@ namespace Rebellion.Game.Messages
                     : MessageResultOutcome.Defeat;
 
             return MessageResultOutcome.None;
+        }
+
+        /// <summary>
+        /// Resolves the fleet belonging to one faction in a space battle result.
+        /// </summary>
+        /// <param name="faction">The faction whose fleet should be returned.</param>
+        /// <param name="result">The space battle result.</param>
+        /// <returns>The faction's participating fleet, or null.</returns>
+        private static Fleet GetSpaceBattleFleet(Faction faction, SpaceCombatResult result)
+        {
+            if (faction?.InstanceID == result?.AttackerFleet?.GetOwnerInstanceID())
+                return result.AttackerFleet;
+
+            return faction?.InstanceID == result?.DefenderFleet?.GetOwnerInstanceID()
+                ? result.DefenderFleet
+                : null;
         }
 
         /// <summary>

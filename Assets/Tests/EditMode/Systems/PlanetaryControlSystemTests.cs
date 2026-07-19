@@ -75,11 +75,15 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(_empirePlanet, system);
 
-            _movementSystem = new MovementSystem(_game, new FogOfWarSystem(_game));
+            _movementSystem = new MovementSystem(
+                _game,
+                new FogOfWarSystem(_game),
+                new FleetSystem(_game)
+            );
             _ownershipSystem = new PlanetaryControlSystem(
                 _game,
                 _movementSystem,
-                new ManufacturingSystem(_game),
+                new ManufacturingSystem(_game, new FleetSystem(_game)),
                 new FogOfWarSystem(_game)
             );
         }
@@ -444,7 +448,10 @@ namespace Rebellion.Tests.Systems
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
-            ManufacturingSystem manufacturing = new ManufacturingSystem(_game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
             bool enqueued = manufacturing.Enqueue(_targetPlanet, regiment, _targetPlanet);
             Assert.IsTrue(enqueued, "Setup: regiment should enqueue successfully");
@@ -463,7 +470,10 @@ namespace Rebellion.Tests.Systems
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
-            ManufacturingSystem manufacturing = new ManufacturingSystem(_game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
             Building mine = new Building
             {
                 InstanceID = "mine1",

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -13,6 +14,8 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly MessageFactory _messageFactory;
+
+        public event Action<Faction, Message> MessageDelivered;
 
         /// <summary>
         /// Initializes a message system for the supplied game state and message definitions.
@@ -37,7 +40,13 @@ namespace Rebellion.Systems
                     _game
                 )
             )
-                delivery.faction?.AddMessage(delivery.message);
+            {
+                if (delivery.faction == null || delivery.message == null)
+                    continue;
+
+                delivery.faction.AddMessage(delivery.message);
+                MessageDelivered?.Invoke(delivery.faction, delivery.message);
+            }
         }
     }
 }

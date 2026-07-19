@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <Officers>
   <!--   **************************************************  -->
   <!--   ******************* EMPIRE MAIN ******************  -->
@@ -7,12 +7,16 @@
     <TypeID>OFEM001</TypeID>
     <InstanceID>EMPEROR_PALPATINE</InstanceID>
     <DisplayName>Emperor Palpatine</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_emperor_palpatine</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_emperor_palpatine</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_emperor_palpatine</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_emperor_palpatine_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_emperor_palpatine_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_emperor_palpatine</MessageImagePath>
     <OrderVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1385</String>
     </OrderVoicePaths>
+    <PersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1388</String>
+    </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1386</String>
     </MissionSuccessVoicePaths>
@@ -22,7 +26,24 @@
     <MissionAbortVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1389</String>
     </MissionAbortVoicePaths>
+    <ReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1390</String>
+    </ReleasedVoicePaths>
+    <RecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1391</String>
+    </RecoveredVoicePaths>
+    <EnemyDetectedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1392</String>
+    </EnemyDetectedVoicePaths>
+    <TraitorDiscoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1393</String>
+    </TraitorDiscoveredVoicePaths>
+    <SeatOfPowerVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1394</String>
+    </SeatOfPowerVoicePaths>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_emperor_palpatine_captured_overlay</CapturedOverlayImagePath>
     <Description>Although aged and decrepit looking, Emperor Palpatine is the ultimate power in the Empire.  Palpatine formed the Empire and declared himself Emperor when the Old Republic Senate fell.  Since that time, the Empire under Palpatine's direction has virtually conquered the known galaxy.  A true master in the dark side of the Force, Palpatine was responsible for Darth Vader's instruction in the dark side.  The true extent of his powers is as yet unknown.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_emperor_palpatine</EncyclopediaImagePath>
     <EncyclopediaDescription>Although aged and decrepit looking, Emperor Palpatine is the ultimate power in the Empire.  Palpatine formed the Empire and declared himself Emperor when the Old Republic Senate fell.  Since that time, the Empire under Palpatine's direction has virtually conquered the known galaxy.  A true master in the dark side of the Force, Palpatine was responsible for Darth Vader's instruction in the dark side.  The true extent of his powers is as yet unknown.</EncyclopediaDescription>
     <OwnerInstanceID>FNEMP1</OwnerInstanceID>
     <IsMain>true</IsMain>
@@ -70,12 +91,16 @@
     <TypeID>OFEM002</TypeID>
     <InstanceID>DARTH_VADER</InstanceID>
     <DisplayName>Darth Vader</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_darth_vader</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_darth_vader</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_darth_vader</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_darth_vader_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_darth_vader_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_darth_vader</MessageImagePath>
     <OrderVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1376</String>
     </OrderVoicePaths>
+    <PersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1379</String>
+    </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1377</String>
     </MissionSuccessVoicePaths>
@@ -85,7 +110,21 @@
     <MissionAbortVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1380</String>
     </MissionAbortVoicePaths>
+    <ReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1381</String>
+    </ReleasedVoicePaths>
+    <RecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1382</String>
+    </RecoveredVoicePaths>
+    <EnemyDetectedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1383</String>
+    </EnemyDetectedVoicePaths>
+    <TraitorDiscoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1384</String>
+    </TraitorDiscoveredVoicePaths>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_darth_vader_captured_overlay</CapturedOverlayImagePath>
     <Description>Encased in imposing black armor and death's head mask, Darth Vader, Dark Lord of the Sith, is the most visible symbol of the Empire and its New Order.  Vader is a powerful dark Jedi and primarily responsible for the almost complete extermination of the Order of the Jedi Knights. Once a student of Obi-Wan Kenobi, Vader was corrupted by the dark side of the Force and joined the Empire.  He is a brilliant military tactician and excellent starfighter pilot.  Known for his ruthlessness, few who fail Lord Vader ever live to regret their mistake.  The Alliance hoped that Vader was lost during the destruction of the Death Star, but he has recently returned in command of one of the new Super Star Destroyers.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_darth_vader</EncyclopediaImagePath>
     <EncyclopediaDescription>Encased in imposing black armor and death's head mask, Darth Vader, Dark Lord of the Sith, is the most visible symbol of the Empire and its New Order.  Vader is a powerful dark Jedi and primarily responsible for the almost complete extermination of the Order of the Jedi Knights. Once a student of Obi-Wan Kenobi, Vader was corrupted by the dark side of the Force and joined the Empire.  He is a brilliant military tactician and excellent starfighter pilot.  Known for his ruthlessness, few who fail Lord Vader ever live to regret their mistake.  The Alliance hoped that Vader was lost during the destruction of the Death Star, but he has recently returned in command of one of the new Super Star Destroyers.</EncyclopediaDescription>
     <OwnerInstanceID>FNEMP1</OwnerInstanceID>
     <IsMain>true</IsMain>
@@ -133,10 +172,12 @@
     <TypeID>OFEM003</TypeID>
     <InstanceID>JERJERROD</InstanceID>
     <DisplayName>Jerjerrod</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_jerjerrod</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_jerjerrod</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_jerjerrod</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_jerjerrod_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_jerjerrod_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_jerjerrod</MessageImagePath>
     <Description>Moff Jerjerrod is the commander in charge of the construction of Imperial super weapons like the Death Star.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_jerjerrod</EncyclopediaImagePath>
     <EncyclopediaDescription>Moff Jerjerrod is the commander in charge of the construction of Imperial super weapons like the Death Star.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -184,10 +225,12 @@
     <TypeID>OFEM004</TypeID>
     <InstanceID>PIETT</InstanceID>
     <DisplayName>Piett</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_piett</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_piett</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_piett</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_piett_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_piett_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_piett</MessageImagePath>
     <Description>Captain Piett is first officer aboard Lord Vader's Super Star Destroyer.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_piett</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Piett is first officer aboard Lord Vader's Super Star Destroyer.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -235,10 +278,12 @@
     <TypeID>OFEM005</TypeID>
     <InstanceID>VEERS</InstanceID>
     <DisplayName>Veers</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_veers</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_veers</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_veers</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_veers_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_veers_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_veers</MessageImagePath>
     <Description>General Veers commands an elite group of Imperial ground assault forces currently attached to Lord Vader's command. Renowned for his brilliant strategic planning and technique, Veers is positioned to take command of all Imperial ground forces, providing he survives his time with Lord Vader.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_veers</EncyclopediaImagePath>
     <EncyclopediaDescription>General Veers commands an elite group of Imperial ground assault forces currently attached to Lord Vader's command. Renowned for his brilliant strategic planning and technique, Veers is positioned to take command of all Imperial ground forces, providing he survives his time with Lord Vader.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -286,10 +331,12 @@
     <TypeID>OFEM006</TypeID>
     <InstanceID>BRANDEI</InstanceID>
     <DisplayName>Brandei</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_brandei</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_brandei</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_brandei</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_brandei_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_brandei_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_brandei</MessageImagePath>
     <Description>Captain Brandei is the commander of an Imperial Star Destroyer assigned to Admiral Thrawn's personal armada.  Brandei's philosophy is that it is more important to live and fight another day than to die spectacularly.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_brandei</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Brandei is the commander of an Imperial Star Destroyer assigned to Admiral Thrawn's personal armada.  Brandei's philosophy is that it is more important to live and fight another day than to die spectacularly.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -337,10 +384,12 @@
     <TypeID>OFEM007</TypeID>
     <InstanceID>DORJA</InstanceID>
     <DisplayName>Dorja</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_dorja</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_dorja</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_dorja</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_dorja_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_dorja_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_dorja</MessageImagePath>
     <Description>Captain Dorja is in command of an Imperial Star Destroyer.  He is extremely cautious and is usually unwilling to engage the enemy in direct combat.  Because of his cautious tactics, his ship has not received any casualties during the war while it has been under his command.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_dorja</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Dorja is in command of an Imperial Star Destroyer.  He is extremely cautious and is usually unwilling to engage the enemy in direct combat.  Because of his cautious tactics, his ship has not received any casualties during the war while it has been under his command.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -388,10 +437,12 @@
     <TypeID>OFEM008</TypeID>
     <InstanceID>BIN_ESSADA</InstanceID>
     <DisplayName>Bin Essada</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_bin_essada</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bin_essada</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_bin_essada</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bin_essada_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bin_essada_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_bin_essada</MessageImagePath>
     <Description>Bin Essada is the Imperial military governor presiding over the Circarpous Major system.  It is suspected that while he looks human, his origins may not be so.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bin_essada</EncyclopediaImagePath>
     <EncyclopediaDescription>Bin Essada is the Imperial military governor presiding over the Circarpous Major system.  It is suspected that while he looks human, his origins may not be so.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -439,10 +490,12 @@
     <TypeID>OFEM009</TypeID>
     <InstanceID>NILES_FERRIER</InstanceID>
     <DisplayName>Niles Ferrier</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_niles_ferrier</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_niles_ferrier</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_niles_ferrier</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_niles_ferrier_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_niles_ferrier_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_niles_ferrier</MessageImagePath>
     <Description>A tactless mercenary in the service of the Empire, Niles Ferrier is a smuggler, spy and inveterate war profiteer.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_niles_ferrier</EncyclopediaImagePath>
     <EncyclopediaDescription>A tactless mercenary in the service of the Empire, Niles Ferrier is a smuggler, spy and inveterate war profiteer.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -490,10 +543,12 @@
     <TypeID>OFEM010</TypeID>
     <InstanceID>GRAMMEL</InstanceID>
     <DisplayName>Grammel</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_grammel</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_grammel</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_grammel</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_grammel_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_grammel_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_grammel</MessageImagePath>
     <Description>Captain-Supervisor Grammel is the commander of the Imperial garrison on Circarpous V.  He is well known for being ruthless and torturing prisoners whether he needed information or not.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_grammel</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain-Supervisor Grammel is the commander of the Imperial garrison on Circarpous V.  He is well known for being ruthless and torturing prisoners whether he needed information or not.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -541,10 +596,12 @@
     <TypeID>OFEM011</TypeID>
     <InstanceID>GRIFF</InstanceID>
     <DisplayName>Griff</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_griff</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_griff</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_griff</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_griff_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_griff_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_griff</MessageImagePath>
     <Description>Admiral Griff is the fleet commander who supervised the construction of the new Super Star Destroyers.  He was also charged with the blockade of the Yavin system after the destruction of the Death Star.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_griff</EncyclopediaImagePath>
     <EncyclopediaDescription>Admiral Griff is the fleet commander who supervised the construction of the new Super Star Destroyers.  He was also charged with the blockade of the Yavin system after the destruction of the Death Star.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -592,10 +649,12 @@
     <TypeID>OFEM012</TypeID>
     <InstanceID>KLEV</InstanceID>
     <DisplayName>Klev</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_klev</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_klev</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_klev</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_klev_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_klev_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_klev</MessageImagePath>
     <Description>Commander Klev is an able-bodied commander who has extensive experience in both fleet and ground assault command.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_klev</EncyclopediaImagePath>
     <EncyclopediaDescription>Commander Klev is an able-bodied commander who has extensive experience in both fleet and ground assault command.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -643,10 +702,12 @@
     <TypeID>OFEM013</TypeID>
     <InstanceID>NEEDA</InstanceID>
     <DisplayName>Needa</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_needa</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_needa</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_needa</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_needa_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_needa_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_needa</MessageImagePath>
     <Description>An able fleet commander in the service of Darth Vader, Captain Needa commands an Imperial Star Destroyer.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_needa</EncyclopediaImagePath>
     <EncyclopediaDescription>An able fleet commander in the service of Darth Vader, Captain Needa commands an Imperial Star Destroyer.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -694,10 +755,12 @@
     <TypeID>OFEM014</TypeID>
     <InstanceID>BANE_NOTHOS</InstanceID>
     <DisplayName>Bane Nothos</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_bane_nothos</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bane_nothos</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_bane_nothos</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bane_nothos_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bane_nothos_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_bane_nothos</MessageImagePath>
     <Description>Bane Nothos is the commander in charge of the Imperial Outer Rim Territories patrol fleet.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bane_nothos</EncyclopediaImagePath>
     <EncyclopediaDescription>Bane Nothos is the commander in charge of the Imperial Outer Rim Territories patrol fleet.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -745,10 +808,12 @@
     <TypeID>OFEM015</TypeID>
     <InstanceID>ORLOK</InstanceID>
     <DisplayName>Orlok</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_orlok</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_orlok</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_orlok</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_orlok_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_orlok_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_orlok</MessageImagePath>
     <Description>The Imperial commander at Daluuj, Commander Orlok is the Empire's facility specialist.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_orlok</EncyclopediaImagePath>
     <EncyclopediaDescription>The Imperial commander at Daluuj, Commander Orlok is the Empire's facility specialist.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -796,10 +861,12 @@
     <TypeID>OFEM016</TypeID>
     <InstanceID>PALLAEON</InstanceID>
     <DisplayName>Pellaeon</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_pellaeon</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_pallaeon</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_pellaeon</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pellaeon_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pellaeon_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_pellaeon</MessageImagePath>
     <Description>Captain Gilad Pellaeon is a competent, if somewhat cautious, battle commander.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_pallaeon</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Gilad Pellaeon is a competent, if somewhat cautious, battle commander.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -847,10 +914,12 @@
     <TypeID>OFEM017</TypeID>
     <InstanceID>SCREED</InstanceID>
     <DisplayName>Screed</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_screed</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_screed</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_screed</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_screed_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_screed_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_screed</MessageImagePath>
     <Description>Formerly the Emperor's right hand man and a distinguished military commander, Screed can be trusted with nearly any space battle.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_screed</EncyclopediaImagePath>
     <EncyclopediaDescription>Formerly the Emperor's right hand man and a distinguished military commander, Screed can be trusted with nearly any space battle.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -898,10 +967,12 @@
     <TypeID>OFEM018</TypeID>
     <InstanceID>THRAWN</InstanceID>
     <DisplayName>Thrawn</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_thrawn</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_thrawn</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_thrawn</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_thrawn_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_thrawn_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_thrawn</MessageImagePath>
     <Description>The only non-human Admiral in the service of the Empire, Thrawn is a master tactician and a cool-headed warrior. His familiarity with spacecraft and cunning make him a deadly foe.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_thrawn</EncyclopediaImagePath>
     <EncyclopediaDescription>The only non-human Admiral in the service of the Empire, Thrawn is a master tactician and a cool-headed warrior. His familiarity with spacecraft and cunning make him a deadly foe.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -949,10 +1020,12 @@
     <TypeID>OFEM019</TypeID>
     <InstanceID>ZUGGS</InstanceID>
     <DisplayName>Zuggs</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_zuggs</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_zuggs</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_zuggs</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_zuggs_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_zuggs_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_zuggs</MessageImagePath>
     <Description>Pilot of an Imperial strike cruiser, Commodore Zuggs furthers the military aims of the Emperor.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_zuggs</EncyclopediaImagePath>
     <EncyclopediaDescription>Pilot of an Imperial strike cruiser, Commodore Zuggs furthers the military aims of the Emperor.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1000,10 +1073,12 @@
     <TypeID>OFEM020</TypeID>
     <InstanceID>DAALA</InstanceID>
     <DisplayName>Daala</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_daala</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_daala</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_daala</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_daala_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_daala_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_daala</MessageImagePath>
     <Description>Daala is the only known female Admiral in the Imperial Navy and one of the most brilliant military strategists in the Empire.  Daala is currently in command of the late Grand Moff Tarkin's special weapons development task force.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_daala</EncyclopediaImagePath>
     <EncyclopediaDescription>Daala is the only known female Admiral in the Imperial Navy and one of the most brilliant military strategists in the Empire.  Daala is currently in command of the late Grand Moff Tarkin's special weapons development task force.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1051,10 +1126,12 @@
     <TypeID>OFEM021</TypeID>
     <InstanceID>THANAS</InstanceID>
     <DisplayName>Pter Thanas</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_pter_thanas</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_pter_thanas</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_pter_thanas</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pter_thanas_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pter_thanas_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_pter_thanas</MessageImagePath>
     <Description>A loyal and dependable servant of the Empire, Commander Pter Thanas is nevertheless among the kindest of those who follow the will of Emperor Palpatine.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_pter_thanas</EncyclopediaImagePath>
     <EncyclopediaDescription>A loyal and dependable servant of the Empire, Commander Pter Thanas is nevertheless among the kindest of those who follow the will of Emperor Palpatine.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1103,10 +1180,12 @@
     <TypeID>OFEM022</TypeID>
     <InstanceID>OZZEL</InstanceID>
     <DisplayName>Ozzel</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_ozzel</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ozzel</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_ozzel</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_ozzel_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_ozzel_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_ozzel</MessageImagePath>
     <Description>Admiral Ozzel is the commanding officer of Lord Vader's personal Super Star Destroyer.  Since Lord Vader seems to have a mild dislike for the Admiral, it remains to be seen how long he will retain command and his life.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ozzel</EncyclopediaImagePath>
     <EncyclopediaDescription>Admiral Ozzel is the commanding officer of Lord Vader's personal Super Star Destroyer.  Since Lord Vader seems to have a mild dislike for the Admiral, it remains to be seen how long he will retain command and his life.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1154,10 +1233,12 @@
     <TypeID>OFEM023</TypeID>
     <InstanceID>COVELL</InstanceID>
     <DisplayName>Covell</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_covell</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_covell</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_covell</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_covell_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_covell_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_covell</MessageImagePath>
     <Description>Major Covell is second in command of General Veer's elite Imperial ground forces.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_covell</EncyclopediaImagePath>
     <EncyclopediaDescription>Major Covell is second in command of General Veer's elite Imperial ground forces.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1205,10 +1286,12 @@
     <TypeID>OFEM024</TypeID>
     <InstanceID>BEVEL_LEMELISK</InstanceID>
     <DisplayName>Bevel Lemelisk</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_bevel_lemelisk</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bevel_lemelisk</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_bevel_lemelisk</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bevel_lemelisk_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bevel_lemelisk_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_bevel_lemelisk</MessageImagePath>
     <Description>Chief Engineer Bevel Lemelisk is the chief Imperial space station designer and was the creator of the Death Star.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bevel_lemelisk</EncyclopediaImagePath>
     <EncyclopediaDescription>Chief Engineer Bevel Lemelisk is the chief Imperial space station designer and was the creator of the Death Star.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1256,10 +1339,12 @@
     <TypeID>OFEM025</TypeID>
     <InstanceID>SHENIR_RIX</InstanceID>
     <DisplayName>Shenir Rix</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_shenir_rix</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_shenir_rix</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_shenir_rix</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_shenir_rix_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_shenir_rix_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_shenir_rix</MessageImagePath>
     <Description>Shenir Rix is a Calamari female reputed to be one of the best information dealers in the galaxy.  She only deals in solid, reliable information less than 24 hours old.  If the information comes from Rix, you can be guaranteed it will be accurate.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_shenir_rix</EncyclopediaImagePath>
     <EncyclopediaDescription>Shenir Rix is a Calamari female reputed to be one of the best information dealers in the galaxy.  She only deals in solid, reliable information less than 24 hours old.  If the information comes from Rix, you can be guaranteed it will be accurate.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1307,10 +1392,12 @@
     <TypeID>OFEM026</TypeID>
     <InstanceID>NOVAL_GARAINT</InstanceID>
     <DisplayName>Noval Garaint</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_noval_garaint</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_noval_garaint</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_noval_garaint</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_noval_garaint_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_noval_garaint_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_noval_garaint</MessageImagePath>
     <Description>Noval Garaint is a bounty hunter who is never seen outside of his battle armor.  He is rumored to be the real power behind Horch, the crime lord of Kheedar.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_noval_garaint</EncyclopediaImagePath>
     <EncyclopediaDescription>Noval Garaint is a bounty hunter who is never seen outside of his battle armor.  He is rumored to be the real power behind Horch, the crime lord of Kheedar.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1358,10 +1445,12 @@
     <TypeID>OFEM027</TypeID>
     <InstanceID>GARINDAN</InstanceID>
     <DisplayName>Garindan</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_garindan</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_garindan</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_garindan</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_garindan_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_garindan_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_garindan</MessageImagePath>
     <Description>Garindan is one of the most famous Kubaz informants in the galaxy.  Usually found lurking around the major space ports like Mos Eisley, Garindan has been responsible for exposing several Alliance covert operations to the Empire.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_garindan</EncyclopediaImagePath>
     <EncyclopediaDescription>Garindan is one of the most famous Kubaz informants in the galaxy.  Usually found lurking around the major space ports like Mos Eisley, Garindan has been responsible for exposing several Alliance covert operations to the Empire.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1409,10 +1498,12 @@
     <TypeID>OFEM028</TypeID>
     <InstanceID>MENNDO</InstanceID>
     <DisplayName>Menndo</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_menndo</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_menndo</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_menndo</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_menndo_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_menndo_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_menndo</MessageImagePath>
     <Description>Like most Rodians, Menndo began his career as a bounty hunter, but later learned that assassination and espionage were more profitable and less hassling than bounties.  An expert assassin, Menndo has been linked to the deaths of several high ranking political officials.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_menndo</EncyclopediaImagePath>
     <EncyclopediaDescription>Like most Rodians, Menndo began his career as a bounty hunter, but later learned that assassination and espionage were more profitable and less hassling than bounties.  An expert assassin, Menndo has been linked to the deaths of several high ranking political officials.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1460,10 +1551,12 @@
     <TypeID>OFEM029</TypeID>
     <InstanceID>LABANSAT</InstanceID>
     <DisplayName>Labansat</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_labansat</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_labansat</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_labansat</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_labansat_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_labansat_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_labansat</MessageImagePath>
     <Description>Labansat is one of the most famous Weequay mercenaries.  Known for his fierce brutality and deadly fighting skill, he often plies the Lesser Plooriod Cluster and Karstaxon Regions working for whomever will meet his price.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_labansat</EncyclopediaImagePath>
     <EncyclopediaDescription>Labansat is one of the most famous Weequay mercenaries.  Known for his fierce brutality and deadly fighting skill, he often plies the Lesser Plooriod Cluster and Karstaxon Regions working for whomever will meet his price.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1511,10 +1604,12 @@
     <TypeID>OFEM030</TypeID>
     <InstanceID>VILLAR</InstanceID>
     <DisplayName>Villar</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_empire_villar</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_villar</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_empire_villar</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_villar_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_villar_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_villar</MessageImagePath>
     <Description>Villar is a typical Devaronian male, filled with wanderlust and a desire to explore the galaxy. Exploration costs money, so Villar sells the information he gathers on his travels to the highest bidder, which is usually the Empire.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_villar</EncyclopediaImagePath>
     <EncyclopediaDescription>Villar is a typical Devaronian male, filled with wanderlust and a desire to explore the galaxy. Exploration costs money, so Villar sells the information he gathers on his travels to the highest bidder, which is usually the Empire.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNEMP1</String>
@@ -1564,12 +1659,16 @@
     <TypeID>OFAL001</TypeID>
     <InstanceID>MON_MOTHMA</InstanceID>
     <DisplayName>Mon Mothma</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_mon_mothma</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_mon_mothma</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_mon_mothma</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_mon_mothma_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_mon_mothma_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_mon_mothma</MessageImagePath>
     <OrderVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1368</String>
     </OrderVoicePaths>
+    <PersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1372</String>
+    </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1369</String>
     </MissionSuccessVoicePaths>
@@ -1579,7 +1678,15 @@
     <MissionAbortVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1373</String>
     </MissionAbortVoicePaths>
+    <ReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1374</String>
+    </ReleasedVoicePaths>
+    <RecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1375</String>
+    </RecoveredVoicePaths>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_mon_mothma_captured_overlay</CapturedOverlayImagePath>
     <Description>A former Senator in the Old Republic, Mon Mothma is the leader of the Rebel Alliance and an old foe of Emperor Palpatine. An accomplished diplomat and skilled negotiator, she is the beacon around which much of the support for the Rebellion gathers.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_mon_mothma</EncyclopediaImagePath>
     <EncyclopediaDescription>A former Senator in the Old Republic, Mon Mothma is the leader of the Rebel Alliance and an old foe of Emperor Palpatine. An accomplished diplomat and skilled negotiator, she is the beacon around which much of the support for the Rebellion gathers.</EncyclopediaDescription>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
@@ -1626,13 +1733,17 @@
     <TypeID>OFAL002</TypeID>
     <InstanceID>LEIA_ORGANA</InstanceID>
     <DisplayName>Leia Organa</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_leia_organa</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_leia_organa</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_leia_organa</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_leia_organa_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_leia_organa_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_leia_organa</MessageImagePath>
     <OrderVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1333</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1334</String>
     </OrderVoicePaths>
+    <PersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1344</String>
+    </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1335</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1336</String>
@@ -1644,7 +1755,30 @@
     <MissionAbortVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1345</String>
     </MissionAbortVoicePaths>
+    <ReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1346</String>
+    </ReleasedVoicePaths>
+    <RecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1347</String>
+    </RecoveredVoicePaths>
+    <EnemyDetectedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1351</String>
+    </EnemyDetectedVoicePaths>
+    <ForceGrowthVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1350</String>
+    </ForceGrowthVoicePaths>
+    <ForceAbilityRevealedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1349</String>
+    </ForceAbilityRevealedVoicePaths>
+    <TraitorDiscoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1352</String>
+    </TraitorDiscoveredVoicePaths>
+    <RescueAttemptVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1348</String>
+    </RescueAttemptVoicePaths>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_leia_organa_captured_overlay</CapturedOverlayImagePath>
     <Description>Adopted daughter of the Old Republic Senator Bail Organa of Alderaan and a senator herself until the disbanding of the Imperial Senate, Princess Leia Organa is a fiery visionary and an unequaled diplomat. She is one of  the most passionate voices of dissent against the Emperor's New Order.  It was her bravery that provided the Alliance with the technical data they used to destroy the first Death Star.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_leia_organa</EncyclopediaImagePath>
     <EncyclopediaDescription>Adopted daughter of the Old Republic Senator Bail Organa of Alderaan and a senator herself until the disbanding of the Imperial Senate, Princess Leia Organa is a fiery visionary and an unequaled diplomat. She is one of  the most passionate voices of dissent against the Emperor's New Order.  It was her bravery that provided the Alliance with the technical data they used to destroy the first Death Star.</EncyclopediaDescription>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
@@ -1692,14 +1826,23 @@
     <TypeID>OFAL003</TypeID>
     <InstanceID>LUKE_SKYWALKER</InstanceID>
     <DisplayName>Luke Skywalker</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_luke_skywalker</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_luke_skywalker</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_luke_skywalker</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_luke_skywalker_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_luke_skywalker_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_luke_skywalker</MessageImagePath>
     <OrderVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1301</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1302</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1303</String>
     </OrderVoicePaths>
+    <PersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1311</String>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1312</String>
+    </PersonnelArrivedVoicePaths>
+    <AdvancedPersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1322</String>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1323</String>
+    </AdvancedPersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1304</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1305</String>
@@ -1713,7 +1856,52 @@
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1313</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1314</String>
     </MissionAbortVoicePaths>
+    <AdvancedMissionAbortVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1324</String>
+    </AdvancedMissionAbortVoicePaths>
+    <ReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1315</String>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1316</String>
+    </ReleasedVoicePaths>
+    <AdvancedReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1325</String>
+    </AdvancedReleasedVoicePaths>
+    <RecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1317</String>
+    </RecoveredVoicePaths>
+    <AdvancedRecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1326</String>
+    </AdvancedRecoveredVoicePaths>
+    <EnemyDetectedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1319</String>
+    </EnemyDetectedVoicePaths>
+    <AdvancedEnemyDetectedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1328</String>
+    </AdvancedEnemyDetectedVoicePaths>
+    <ForceGrowthVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1320</String>
+    </ForceGrowthVoicePaths>
+    <AdvancedForceGrowthVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1329</String>
+    </AdvancedForceGrowthVoicePaths>
+    <ForceUserDiscoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1331</String>
+    </ForceUserDiscoveredVoicePaths>
+    <TraitorDiscoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1321</String>
+    </TraitorDiscoveredVoicePaths>
+    <RescueAttemptVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1318</String>
+    </RescueAttemptVoicePaths>
+    <AdvancedRescueAttemptVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1328</String>
+    </AdvancedRescueAttemptVoicePaths>
+    <DagobahCompletedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1332</String>
+    </DagobahCompletedVoicePaths>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_luke_skywalker_captured_overlay</CapturedOverlayImagePath>
     <Description>A farm boy raised on Tatooine, Luke is a student of the Force and a Jedi in training.  A skilled and daring pilot, Skywalker was responsible for the destruction of the first Death Star. His developing abilities with the Force make him an invaluable asset to the Rebellion.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_luke_skywalker</EncyclopediaImagePath>
     <EncyclopediaDescription>A farm boy raised on Tatooine, Luke is a student of the Force and a Jedi in training.  A skilled and daring pilot, Skywalker was responsible for the destruction of the first Death Star. His developing abilities with the Force make him an invaluable asset to the Rebellion.</EncyclopediaDescription>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
@@ -1763,12 +1951,17 @@
     <TypeID>OFAL004</TypeID>
     <InstanceID>HAN_SOLO</InstanceID>
     <DisplayName>Han Solo</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_han_solo</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_han_solo</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_han_solo</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_han_solo_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_han_solo_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_han_solo</MessageImagePath>
     <OrderVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1353</String>
     </OrderVoicePaths>
+    <PersonnelArrivedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1361</String>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1362</String>
+    </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1354</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1355</String>
@@ -1783,7 +1976,18 @@
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1363</String>
       <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1364</String>
     </MissionAbortVoicePaths>
+    <ReleasedVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1365</String>
+    </ReleasedVoicePaths>
+    <RecoveredVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1366</String>
+    </RecoveredVoicePaths>
+    <BountyAttackVoicePaths>
+      <String>Audio/SFX/StrategyView/Voice/Officers/voice_officer_1367</String>
+    </BountyAttackVoicePaths>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_han_solo_captured_overlay</CapturedOverlayImagePath>
     <Description>A former smuggler for the infamous Jabba the Hutt, this scruffy-looking mercenary only recently joined the Alliance. An ace pilot, accomplished spy and leader, Solo has the ability to get into and out of dangerous situations virtually unscratched. Together with his first mate Chewbacca, Solo captains the freighter Millennium Falcon.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_han_solo</EncyclopediaImagePath>
     <EncyclopediaDescription>A former smuggler for the infamous Jabba the Hutt, this scruffy-looking mercenary only recently joined the Alliance. An ace pilot, accomplished spy and leader, Solo has the ability to get into and out of dangerous situations virtually unscratched. Together with his first mate Chewbacca, Solo captains the freighter Millennium Falcon.</EncyclopediaDescription>
     <OwnerInstanceID>FNALL1</OwnerInstanceID>
     <IsMain>true</IsMain>
@@ -1830,10 +2034,13 @@
     <TypeID>OFAL005</TypeID>
     <InstanceID>ACKBAR</InstanceID>
     <DisplayName>Ackbar</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_ackbar</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ackbar</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_ackbar</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_ackbar_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_ackbar_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_ackbar</MessageImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_ackbar_captured_overlay</CapturedOverlayImagePath>
     <Description>Admiral Ackbar is one of the senior military advisors in the Rebel Alliance.  While serving as a slave to Grand Moff Tarkin, Ackbar studied Imperial tactics and defenses.  Now freed, Ackbar utilizes that knowledge for the Alliance.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ackbar</EncyclopediaImagePath>
     <EncyclopediaDescription>Admiral Ackbar is one of the senior military advisors in the Rebel Alliance.  While serving as a slave to Grand Moff Tarkin, Ackbar studied Imperial tactics and defenses.  Now freed, Ackbar utilizes that knowledge for the Alliance.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -1881,10 +2088,13 @@
     <TypeID>OFAL006</TypeID>
     <InstanceID>WEDGE_ANTILLES</InstanceID>
     <DisplayName>Wedge Antilles</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_wedge_antilles</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_wedge_antilles</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_wedge_antilles</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_wedge_antilles_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_wedge_antilles_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_wedge_antilles</MessageImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_wedge_antilles_captured_overlay</CapturedOverlayImagePath>
     <Description>A veteran pilot and expert ship mechanic, Wedge Antilles is one of the few pilots who survived the attack that destroyed the first Death Star.  After the destruction of the Death Star, Wedge was given command of his own squadron of fighters.  He also invests a great deal of time in creating or enhancing new ship designs.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_wedge_antilles</EncyclopediaImagePath>
     <EncyclopediaDescription>A veteran pilot and expert ship mechanic, Wedge Antilles is one of the few pilots who survived the attack that destroyed the first Death Star.  After the destruction of the Death Star, Wedge was given command of his own squadron of fighters.  He also invests a great deal of time in creating or enhancing new ship designs.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -1932,10 +2142,13 @@
     <TypeID>OFAL007</TypeID>
     <InstanceID>LANDO_CALRISSIAN</InstanceID>
     <DisplayName>Lando Calrissian</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_lando_calrissian</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_lando_calrissian</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_lando_calrissian</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_lando_calrissian_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_lando_calrissian_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_lando_calrissian</MessageImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_lando_calrissian_captured_overlay</CapturedOverlayImagePath>
     <Description>This former smuggler and pirate turned legitimate businessman has currently set up shop as Baron Administrator of Cloud City in the Bespin system. His background makes him an important and valuable ally for the Alliance. In addition to his piloting and espionage skills from his past, Lando now possesses knowledge relating to planetary upkeep and facility improvement.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_lando_calrissian</EncyclopediaImagePath>
     <EncyclopediaDescription>This former smuggler and pirate turned legitimate businessman has currently set up shop as Baron Administrator of Cloud City in the Bespin system. His background makes him an important and valuable ally for the Alliance. In addition to his piloting and espionage skills from his past, Lando now possesses knowledge relating to planetary upkeep and facility improvement.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -1983,10 +2196,13 @@
     <TypeID>OFAL008</TypeID>
     <InstanceID>CHEWBACCA</InstanceID>
     <DisplayName>Chewbacca</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_chewbacca</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_chewbacca</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_chewbacca</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_chewbacca_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_chewbacca_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_chewbacca</MessageImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_chewbacca_captured_overlay</CapturedOverlayImagePath>
     <Description>Chewbacca is a two-meter-tall Wookiee from the world of Kashyyyk. Once the Empire conquered Kashyyyk, it declared Wookiees to be a slave species and Chewbacca was sold into slavery.  He was eventually freed by a young Imperial officer named Han Solo, who sacrificed his career to save the Wookiee. Chewbacca felt a life debt was owed to Solo and has been his constant companion ever since.  Together, they embarked on a life of smuggling and questionable activities for various crime lords including Jabba the Hutt.  Chewbacca is also first mate on the freighter Millennium Falcon and keeps it in working order.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_chewbacca</EncyclopediaImagePath>
     <EncyclopediaDescription>Chewbacca is a two-meter-tall Wookiee from the world of Kashyyyk. Once the Empire conquered Kashyyyk, it declared Wookiees to be a slave species and Chewbacca was sold into slavery.  He was eventually freed by a young Imperial officer named Han Solo, who sacrificed his career to save the Wookiee. Chewbacca felt a life debt was owed to Solo and has been his constant companion ever since.  Together, they embarked on a life of smuggling and questionable activities for various crime lords including Jabba the Hutt.  Chewbacca is also first mate on the freighter Millennium Falcon and keeps it in working order.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2035,10 +2251,13 @@
     <TypeID>OFAL009</TypeID>
     <InstanceID>JAN_DODONNA</InstanceID>
     <DisplayName>Jan Dodonna</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_jan_dodonna</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_jan_dodonna</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_jan_dodonna</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_jan_dodonna_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_jan_dodonna_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_jan_dodonna</MessageImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_jan_dodonna_captured_overlay</CapturedOverlayImagePath>
     <Description>General Jan Dodonna was the Alliance officer who planned the assault on the first Death Star at the Battle of Yavin.  When the Alliance evacuated the base on Yavin 4, Dodonna remained behind to destroy the base and cover the retreat.  Initially presumed killed at Yavin 4, Dodonna has now returned to the Alliance.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_jan_dodonna</EncyclopediaImagePath>
     <EncyclopediaDescription>General Jan Dodonna was the Alliance officer who planned the assault on the first Death Star at the Battle of Yavin.  When the Alliance evacuated the base on Yavin 4, Dodonna remained behind to destroy the base and cover the retreat.  Initially presumed killed at Yavin 4, Dodonna has now returned to the Alliance.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2086,10 +2305,12 @@
     <TypeID>OFAL010</TypeID>
     <InstanceID>CRIX_MADINE</InstanceID>
     <DisplayName>Crix Madine</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_crix_madine</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_crix_madine</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_crix_madine</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_crix_madine_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_crix_madine_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_crix_madine</MessageImagePath>
     <Description>Crix Madine was an Imperial officer in command of an elite commando force before defecting to the Alliance after the Battle of Yavin. He is currently in command of all Alliance ground forces and strategy.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_crix_madine</EncyclopediaImagePath>
     <EncyclopediaDescription>Crix Madine was an Imperial officer in command of an elite commando force before defecting to the Alliance after the Battle of Yavin. He is currently in command of all Alliance ground forces and strategy.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2137,10 +2358,12 @@
     <TypeID>OFAL011</TypeID>
     <InstanceID>CARLIST_RIEEKAN</InstanceID>
     <DisplayName>Carlist Rieekan</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_carlist_rieekan</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_carlist_rieekan</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_carlist_rieekan</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_carlist_rieekan_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_carlist_rieekan_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_carlist_rieekan</MessageImagePath>
     <Description>General Carlist Rieekan is the commander of all Alliance ground and fleet forces in the Hoth star system.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_carlist_rieekan</EncyclopediaImagePath>
     <EncyclopediaDescription>General Carlist Rieekan is the commander of all Alliance ground and fleet forces in the Hoth star system.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2188,10 +2411,12 @@
     <TypeID>OFAL012</TypeID>
     <InstanceID>AFYON</InstanceID>
     <DisplayName>Afyon</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_afyon</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_afyon</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_afyon</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_afyon_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_afyon_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_afyon</MessageImagePath>
     <Description>Captain Afyon is the commander of an Alliance escort frigate, which has lately been relegated to cargo transport duties.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_afyon</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Afyon is the commander of an Alliance escort frigate, which has lately been relegated to cargo transport duties.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2239,10 +2464,12 @@
     <TypeID>OFAL013</TypeID>
     <InstanceID>DRAYSON</InstanceID>
     <DisplayName>Drayson</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_drayson</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_drayson</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_drayson</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_drayson_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_drayson_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_drayson</MessageImagePath>
     <Description>Admiral Drayson is a high ranking officer in the Alliance military, but unlike many others, he did not begin his career in the Old Republic or Imperial Navy.  He was Admiral of the Chandrila Defense Fleet prior to conquest by the Empire.  Mon Mothma, also of Chandrila, asked Drayson to join the Alliance and serve as the commander of the Alliance Headquarters ship.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_drayson</EncyclopediaImagePath>
     <EncyclopediaDescription>Admiral Drayson is a high ranking officer in the Alliance military, but unlike many others, he did not begin his career in the Old Republic or Imperial Navy.  He was Admiral of the Chandrila Defense Fleet prior to conquest by the Empire.  Mon Mothma, also of Chandrila, asked Drayson to join the Alliance and serve as the commander of the Alliance Headquarters ship.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2290,10 +2517,12 @@
     <TypeID>OFAL014</TypeID>
     <InstanceID>BORSK_FEYLA</InstanceID>
     <DisplayName>Borsk Fey'lya</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_borsk_fey'lya</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_borsk_fey_la</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_borsk_fey'lya</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_borsk_fey'lya_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_borsk_fey'lya_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_borsk_fey'lya</MessageImagePath>
     <Description>Borsk Fey'lya is the leader of a large portion of the Bothan population.  He is a master diplomat and was responsible for the Bothans joining the Alliance after the Battle of Yavin.  Like most Bothans, Fey'lya believes the game of politics and power is more important than individual issues, and is steadily working his way up through the Alliance's command structure.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_borsk_fey_la</EncyclopediaImagePath>
     <EncyclopediaDescription>Borsk Fey'lya is the leader of a large portion of the Bothan population.  He is a master diplomat and was responsible for the Bothans joining the Alliance after the Battle of Yavin.  Like most Bothans, Fey'lya believes the game of politics and power is more important than individual issues, and is steadily working his way up through the Alliance's command structure.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2341,10 +2570,12 @@
     <TypeID>OFAL015</TypeID>
     <InstanceID>TURA_RAFTICAN</InstanceID>
     <DisplayName>Tura Raftican</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_tura_raftican</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_tura_raftican</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_tura_raftican</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_tura_raftican_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_tura_raftican_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_tura_raftican</MessageImagePath>
     <Description>Lieutenant Tura Raftican was once an investigative reporter for the HoloNews Network.  Since joining the Alliance, she has used her contacts to provide information to the Rebels.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_tura_raftican</EncyclopediaImagePath>
     <EncyclopediaDescription>Lieutenant Tura Raftican was once an investigative reporter for the HoloNews Network.  Since joining the Alliance, she has used her contacts to provide information to the Rebels.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2392,10 +2623,12 @@
     <TypeID>OFAL016</TypeID>
     <InstanceID>BREN_DERLIN</InstanceID>
     <DisplayName>Bren Derlin</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_bren_derlin</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bren_derlin</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_bren_derlin</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_bren_derlin_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_bren_derlin_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_bren_derlin</MessageImagePath>
     <Description>One of the executive members of the Rebel Alliance's command staff, Major Derlin was assigned to locating sites for the Alliance's base after the Battle of Yavin.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bren_derlin</EncyclopediaImagePath>
     <EncyclopediaDescription>One of the executive members of the Rebel Alliance's command staff, Major Derlin was assigned to locating sites for the Alliance's base after the Battle of Yavin.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2443,10 +2676,12 @@
     <TypeID>OFAL017</TypeID>
     <InstanceID>GARM_BEL_IBLIS</InstanceID>
     <DisplayName>Garm Bel Iblis</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_garm_bel_iblis</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_garm_bel_iblis</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_garm_bel_iblis</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_garm_bel_iblis_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_garm_bel_iblis_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_garm_bel_iblis</MessageImagePath>
     <Description>Garm Bel Iblis was a senator from the Corellian system and was one of the founding members of the Alliance. Due to conflicts with Mon Mothma and death warrants from the Empire, Bel Iblis has gone into hiding.  He surfaces from time to time with small groups of resistance fighters before disappearing again.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_garm_bel_iblis</EncyclopediaImagePath>
     <EncyclopediaDescription>Garm Bel Iblis was a senator from the Corellian system and was one of the founding members of the Alliance. Due to conflicts with Mon Mothma and death warrants from the Empire, Bel Iblis has gone into hiding.  He surfaces from time to time with small groups of resistance fighters before disappearing again.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2494,10 +2729,12 @@
     <TypeID>OFAL018</TypeID>
     <InstanceID>TALON_KARRDE</InstanceID>
     <DisplayName>Talon Karrde</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_talon_karrde</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_talon_karrde</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_talon_karrde</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_talon_karrde_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_talon_karrde_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_talon_karrde</MessageImagePath>
     <Description>A multi-talented mercenary with a sense of humor, Karrde is an inscrutable negotiator and a good man in a fight. His payroll currently flows from the Alliance, though he has been known to perform services for the Empire in the past.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_talon_karrde</EncyclopediaImagePath>
     <EncyclopediaDescription>A multi-talented mercenary with a sense of humor, Karrde is an inscrutable negotiator and a good man in a fight. His payroll currently flows from the Alliance, though he has been known to perform services for the Empire in the past.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2545,10 +2782,12 @@
     <TypeID>OFAL019</TypeID>
     <InstanceID>NARRA</InstanceID>
     <DisplayName>Narra</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_narra</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_narra</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_narra</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_narra_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_narra_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_narra</MessageImagePath>
     <Description>Commander Narra is an old hand at disrupting Imperial business. He participated in the attack on the first Death Star.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_narra</EncyclopediaImagePath>
     <EncyclopediaDescription>Commander Narra is an old hand at disrupting Imperial business. He participated in the attack on the first Death Star.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2596,10 +2835,12 @@
     <TypeID>OFAL020</TypeID>
     <InstanceID>HUOBA_NEVA</InstanceID>
     <DisplayName>Huoba Neva</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_huoba_neva</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_huoba_neva</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_huoba_neva</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_huoba_neva_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_huoba_neva_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_huoba_neva</MessageImagePath>
     <Description>Captain Neva is an excellent special forces operative.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_huoba_neva</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Neva is an excellent special forces operative.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2647,10 +2888,12 @@
     <TypeID>OFAL021</TypeID>
     <InstanceID>PAGE</InstanceID>
     <DisplayName>Page</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_page</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_page</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_page</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_page_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_page_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_page</MessageImagePath>
     <Description>An invaluable special forces man, Lieutenant Page assists the Alliance with covert operations.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_page</EncyclopediaImagePath>
     <EncyclopediaDescription>An invaluable special forces man, Lieutenant Page assists the Alliance with covert operations.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2698,10 +2941,12 @@
     <TypeID>OFAL022</TypeID>
     <InstanceID>SYUB_SNUNB</InstanceID>
     <DisplayName>Syub Snunb</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_syub_snunb</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_syub_snunb</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_syub_snunb</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_syub_snunb_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_syub_snunb_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_syub_snunb</MessageImagePath>
     <Description>Sullustan Captain Syub Snunb commands an Alliance frigate.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_syub_snunb</EncyclopediaImagePath>
     <EncyclopediaDescription>Sullustan Captain Syub Snunb commands an Alliance frigate.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2749,10 +2994,12 @@
     <TypeID>OFAL023</TypeID>
     <InstanceID>ADAR_TALLON</InstanceID>
     <DisplayName>Adar Tallon</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_adar_tallon</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_adar_tallon</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_adar_tallon</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_adar_tallon_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_adar_tallon_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_adar_tallon</MessageImagePath>
     <Description>During the time of the Old Republic, Adar Tallon was a brilliant military strategist.  Many of the space combat techniques developed by Tallon are still being utilized by both the Empire and the Alliance.  After many years of hiding from the Empire on Tatooine, Tallon has recently joined the Alliance.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_adar_tallon</EncyclopediaImagePath>
     <EncyclopediaDescription>During the time of the Old Republic, Adar Tallon was a brilliant military strategist.  Many of the space combat techniques developed by Tallon are still being utilized by both the Empire and the Alliance.  After many years of hiding from the Empire on Tatooine, Tallon has recently joined the Alliance.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2800,10 +3047,12 @@
     <TypeID>OFAL024</TypeID>
     <InstanceID>SARIN_VIRGILIO</InstanceID>
     <DisplayName>Sarin Virgilio</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_sarin_virgilio</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_sarin_virgilio</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_sarin_virgilio</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_sarin_virgilio_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_sarin_virgilio_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_sarin_virgilio</MessageImagePath>
     <Description>Captain Virgilio commands one of the Alliance Home Guard's escort vessels.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_sarin_virgilio</EncyclopediaImagePath>
     <EncyclopediaDescription>Captain Virgilio commands one of the Alliance Home Guard's escort vessels.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2851,10 +3100,12 @@
     <TypeID>OFAL025</TypeID>
     <InstanceID>VANDEN_WILLARD</InstanceID>
     <DisplayName>Vanden Willard</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_vanden_willard</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_vanden_willard</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_vanden_willard</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_vanden_willard_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_vanden_willard_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_vanden_willard</MessageImagePath>
     <Description>Commander Vanden Willard serves the Alliance under General Dodonna. He is currently assigned to planetary defense at Yavin.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_vanden_willard</EncyclopediaImagePath>
     <EncyclopediaDescription>Commander Vanden Willard serves the Alliance under General Dodonna. He is currently assigned to planetary defense at Yavin.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2902,10 +3153,12 @@
     <TypeID>OFAL026</TypeID>
     <InstanceID>ROGET_JIRISS</InstanceID>
     <DisplayName>Roget Jiriss</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_roget_jiriss</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_roget_jiriss</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_roget_jiriss</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_roget_jiriss_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_roget_jiriss_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_roget_jiriss</MessageImagePath>
     <Description>Roget Jiriss is a smuggler with a sense of honor. When Jiriss agrees to deliver a shipment, it will always arrive on time.  Having contacts deep within several large crime syndicates, Jiriss is also an excellent source of information for the Alliance.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_roget_jiriss</EncyclopediaImagePath>
     <EncyclopediaDescription>Roget Jiriss is a smuggler with a sense of honor. When Jiriss agrees to deliver a shipment, it will always arrive on time.  Having contacts deep within several large crime syndicates, Jiriss is also an excellent source of information for the Alliance.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -2953,10 +3206,12 @@
     <TypeID>OFAL027</TypeID>
     <InstanceID>KAIYA_ANDRIMETRUM</InstanceID>
     <DisplayName>Kaiya Andrimetrum</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_kaiya_andrimetrum</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_kaiya_andrimetrum</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_kaiya_andrimetrum</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_kaiya_andrimetrum_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_kaiya_andrimetrum_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_kaiya_andrimetrum</MessageImagePath>
     <Description>Commander Andrimetrum joined the Alliance after her husband was killed by Imperial forces during the occupation of her homeworld.  She is an exceptional combat leader and her troops are almost fanatically loyal.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_kaiya_andrimetrum</EncyclopediaImagePath>
     <EncyclopediaDescription>Commander Andrimetrum joined the Alliance after her husband was killed by Imperial forces during the occupation of her homeworld.  She is an exceptional combat leader and her troops are almost fanatically loyal.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -3004,10 +3259,12 @@
     <TypeID>OFAL028</TypeID>
     <InstanceID>MAZER_RACKUS</InstanceID>
     <DisplayName>Mazer Rackus</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_mazer_rackus</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_mazer_rackus</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_mazer_rackus</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_mazer_rackus_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_mazer_rackus_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_mazer_rackus</MessageImagePath>
     <Description>Mazer Rackus is a Twi'lek pilot for the Alliance.  He has been flying for the Alliance since crashing on an Alliance held world when he was young.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_mazer_rackus</EncyclopediaImagePath>
     <EncyclopediaDescription>Mazer Rackus is a Twi'lek pilot for the Alliance.  He has been flying for the Alliance since crashing on an Alliance held world when he was young.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -3055,10 +3312,12 @@
     <TypeID>OFAL029</TypeID>
     <InstanceID>ORRIMAARKO</InstanceID>
     <DisplayName>Orrimaarko</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_orrimaarko</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_orrimaarko</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_orrimaarko</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_orrimaarko_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_orrimaarko_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_orrimaarko</MessageImagePath>
     <Description>Orrimaarko is the leader of the Alliance resistance cell on Dressel. He is an expert in espionage and covert warfare and the first Dresselian to be given command of an Alliance SpecForce team.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_orrimaarko</EncyclopediaImagePath>
     <EncyclopediaDescription>Orrimaarko is the leader of the Alliance resistance cell on Dressel. He is an expert in espionage and covert warfare and the first Dresselian to be given command of an Alliance SpecForce team.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>
@@ -3106,10 +3365,12 @@
     <TypeID>OFAL030</TypeID>
     <InstanceID>MAWSHIYE</InstanceID>
     <DisplayName>Ma'w'shiye</DisplayName>
-    <DisplayImagePath>Art/UI/Units/ent_officer_rebel_ma'w'shiye</DisplayImagePath>
-    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ma_w_shiye</EncyclopediaImagePath>
-    <MessageImagePath>Art/UI/Units/ui_message_character_alliance_ma'w'shiye</MessageImagePath>
+    <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_ma'w'shiye_primary</DisplayImagePath>
+    <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
+    <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_ma'w'shiye_small</SmallDisplayImagePath>
+    <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_ma'w'shiye</MessageImagePath>
     <Description>Lieutenant Ma'w'shiye is a marksman on the Alliance's elite SpecForce Eclipse Team.  Ma'w'shiye has undergone intense survival training and can survive on almost any kind of world.</Description>
+    <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ma_w_shiye</EncyclopediaImagePath>
     <EncyclopediaDescription>Lieutenant Ma'w'shiye is a marksman on the Alliance's elite SpecForce Eclipse Team.  Ma'w'shiye has undergone intense survival training and can survive on almost any kind of world.</EncyclopediaDescription>
     <AllowedOwnerInstanceIDs>
       <String>FNALL1</String>

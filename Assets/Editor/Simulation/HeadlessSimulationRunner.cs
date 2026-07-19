@@ -76,7 +76,6 @@ public static class HeadlessSimulationRunner
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
             StartingResearchLevel = 1,
-            StartingFactionIDs = new[] { "FNALL1", "FNEMP1" },
         };
 
         string startMessage =

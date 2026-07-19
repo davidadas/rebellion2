@@ -18,11 +18,47 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public class Faction : BaseGameEntity
     {
+        private FactionSettings _settings = new FactionSettings();
+
+        // Fleet naming counter for sequential fleet names (Fleet 1, Fleet 2, etc.)
+        private int _nextFleetNumber = 1;
+
+        // Owned Entities (Fleets, Planets, etc).
+        private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
+            Type,
+            List<ISceneNode>
+        >()
+        {
+            { typeof(CapitalShip), new List<ISceneNode>() },
+            { typeof(Building), new List<ISceneNode>() },
+            { typeof(Fleet), new List<ISceneNode>() },
+            { typeof(Officer), new List<ISceneNode>() },
+            { typeof(Planet), new List<ISceneNode>() },
+            { typeof(Regiment), new List<ISceneNode>() },
+            { typeof(SpecialForces), new List<ISceneNode>() },
+            { typeof(Starfighter), new List<ISceneNode>() },
+        };
+
+        // Messages and Notifications.
+        public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
+            MessageType,
+            List<Message>
+        >()
+        {
+            { MessageType.PopularSupport, new List<Message>() },
+            { MessageType.Fleet, new List<Message>() },
+            { MessageType.Mission, new List<Message>() },
+            { MessageType.Resource, new List<Message>() },
+            { MessageType.Manufacturing, new List<Message>() },
+            { MessageType.Defense, new List<Message>() },
+            { MessageType.Conflict, new List<Message>() },
+            { MessageType.Chat, new List<Message>() },
+            { MessageType.Advice, new List<Message>() },
+        };
+
         // Faction Info.
         public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
         public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
-
-        private FactionSettings _settings = new FactionSettings();
 
         /// <summary>
         /// Faction-specific gameplay settings.
@@ -88,56 +124,29 @@ namespace Rebellion.Game.Factions
         public int ProjectedMaintenanceHeadroom =>
             MaintenanceCapacity - GetTotalProjectedMaintenanceCost();
 
-        public int GetProjectedMaintenanceHeadroom(IManufacturable item)
-        {
-            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
-        }
-
         /// <summary>
         /// Fog of war state - snapshots and entity tracking.
         /// </summary>
         public FogState Fog { get; set; } = new FogState();
 
-        // Fleet naming counter for sequential fleet names (Fleet 1, Fleet 2, etc.)
-        private int _nextFleetNumber = 1;
+        public bool AdvisorMessageNotificationsEnabled { get; set; } = true;
 
-        // Owned Entities (Fleets, Planets, etc).
-        private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
-            Type,
-            List<ISceneNode>
-        >()
-        {
-            { typeof(CapitalShip), new List<ISceneNode>() },
-            { typeof(Building), new List<ISceneNode>() },
-            { typeof(Fleet), new List<ISceneNode>() },
-            { typeof(Officer), new List<ISceneNode>() },
-            { typeof(Planet), new List<ISceneNode>() },
-            { typeof(Regiment), new List<ISceneNode>() },
-            { typeof(SpecialForces), new List<ISceneNode>() },
-            { typeof(Starfighter), new List<ISceneNode>() },
-        };
+        public Dictionary<MessageType, bool> AdvisorMessageNotifications { get; set; } =
+            new Dictionary<MessageType, bool>();
 
-        // Messages and Notifications.
-        public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
-            MessageType,
-            List<Message>
-        >()
-        {
-            { MessageType.PopularSupport, new List<Message>() },
-            { MessageType.Fleet, new List<Message>() },
-            { MessageType.Mission, new List<Message>() },
-            { MessageType.Resource, new List<Message>() },
-            { MessageType.Manufacturing, new List<Message>() },
-            { MessageType.Defense, new List<Message>() },
-            { MessageType.Conflict, new List<Message>() },
-            { MessageType.Chat, new List<Message>() },
-            { MessageType.Advice, new List<Message>() },
-        };
+        public bool TranslateCounterpart { get; set; } = true;
+
+        public bool AgentAdvice { get; set; } = true;
 
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public Faction() { }
+
+        public int GetProjectedMaintenanceHeadroom(IManufacturable item)
+        {
+            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
+        }
 
         /// <summary>
         /// Returns the instance ID of the faction's headquarters.
@@ -527,6 +536,41 @@ namespace Rebellion.Game.Factions
             }
 
             messages.Add(message);
+        }
+
+        /// <summary>
+        /// Returns whether advisor notifications are enabled for one message category.
+        /// </summary>
+        /// <param name="messageType">The message category to inspect.</param>
+        /// <returns>True when advisor notifications are enabled for the category.</returns>
+        public bool IsAdvisorMessageNotificationEnabled(MessageType messageType)
+        {
+            return
+                AdvisorMessageNotifications != null
+                && AdvisorMessageNotifications.TryGetValue(messageType, out bool enabled)
+                ? enabled
+                : AdvisorMessageNotificationsEnabled;
+        }
+
+        /// <summary>
+        /// Toggles advisor notifications for one message category.
+        /// </summary>
+        /// <param name="messageType">The message category to toggle.</param>
+        public void ToggleAdvisorMessageNotification(MessageType messageType)
+        {
+            AdvisorMessageNotifications ??= new Dictionary<MessageType, bool>();
+            AdvisorMessageNotifications[messageType] = !IsAdvisorMessageNotificationEnabled(
+                messageType
+            );
+        }
+
+        /// <summary>
+        /// Toggles the default advisor notification state for every message category.
+        /// </summary>
+        public void ToggleAllAdvisorMessageNotifications()
+        {
+            AdvisorMessageNotificationsEnabled = !AdvisorMessageNotificationsEnabled;
+            AdvisorMessageNotifications?.Clear();
         }
 
         /// <summary>

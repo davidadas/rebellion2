@@ -48,6 +48,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("arrived:Fleet 1:Yavin", message.Title);
             Assert.AreEqual("body:Fleet 1:Yavin", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
+            Assert.AreEqual(fleet.InstanceID, message.NavigationTargetInstanceID);
+            Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
         }
 
         [Test]
@@ -211,6 +213,62 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("ships:Yavin", message.Title);
             Assert.AreEqual("body:Nebulon-B Frigate\nCorellian Corvette", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
+            Assert.AreEqual(firstShip.InstanceID, message.NavigationTargetInstanceID);
+        }
+
+        [Test]
+        public void CreateMessages_PersonnelArrival_UsesReportingOfficerVoiceAndGroupsPersonnel()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Officer reporter = new Officer
+            {
+                TypeID = "OFAL003",
+                DisplayName = "Reporter",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "reporter-image",
+                PersonnelArrivedVoicePaths = new List<string> { "arrival-voice" },
+            };
+            Officer passenger = new Officer
+            {
+                DisplayName = "Passenger",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.PersonnelArrivedByOfficerWithCompany,
+                            MessageType.Mission,
+                            "{officer}:{system}",
+                            "{personnel}"
+                        ),
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = reporter,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = passenger,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Reporter:Yavin", message.Title);
+            Assert.AreEqual("Passenger", message.Body);
+            Assert.AreEqual("reporter-image", message.OverlayImagePath);
+            Assert.AreEqual("arrival-voice", message.OfficerVoicePath);
+            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+            Assert.AreEqual(reporter.TypeID, message.AdvisorSubjectTypeID);
+            Assert.AreEqual(reporter.InstanceID, message.NavigationTargetInstanceID);
         }
 
         [Test]
@@ -581,7 +639,12 @@ namespace Rebellion.Tests.Game.Messages
         public void CreateMessages_SeatOfPowerChanged_ReturnsSeatOfPowerReport()
         {
             (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
-            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
+            Officer officer = new Officer
+            {
+                TypeID = "OFEM001",
+                OwnerInstanceID = alliance.InstanceID,
+                SeatOfPowerVoicePaths = new List<string> { "seat-voice" },
+            };
 
             Message message = FirstMessageFor(
                 CreateMessages(
@@ -605,6 +668,9 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("seat", message.Title);
             Assert.AreEqual("body", message.Body);
             Assert.AreEqual("seat-image", message.DisplayImagePath);
+            Assert.AreEqual("seat-voice", message.OfficerVoicePath);
+            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+            Assert.AreEqual(officer.TypeID, message.AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -750,6 +816,151 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("success:Sabotage:Yavin", message.Title);
             Assert.AreEqual("body:Sabotage:Yavin", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_RecruitmentSuccess_UsesRecruiterVoiceAndAdvisorSubject()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer recruiter = new Officer
+            {
+                TypeID = "OFAL004",
+                DisplayName = "Recruiter",
+                OwnerInstanceID = alliance.InstanceID,
+                MissionSuccessVoicePaths = new List<string> { "success-voice" },
+            };
+            Officer recruit = new Officer
+            {
+                InstanceID = "RECRUIT",
+                DisplayName = "Recruit",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            RecruitmentMission mission = new RecruitmentMission
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                TargetOfficerInstanceID = recruit.InstanceID,
+            };
+            game.AttachNode(recruit, origin);
+            game.AttachNode(mission, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "{participant} recruits {officer}",
+                            "body",
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeID: MissionTypeIDs.Recruitment
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                        Participants = new List<IMissionParticipant> { recruiter },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Recruiter recruits Recruit", message.Title);
+            Assert.AreEqual("success-voice", message.OfficerVoicePath);
+            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+            Assert.AreEqual(recruiter.TypeID, message.AdvisorSubjectTypeID);
+        }
+
+        [Test]
+        public void CreateMessages_MissionFailure_UsesReporterVoiceAndAdvisorSubject()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Officer reporter = new Officer
+            {
+                TypeID = "OFAL003",
+                OwnerInstanceID = alliance.InstanceID,
+                MissionFailureVoicePaths = new List<string> { "failure-voice" },
+            };
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "failed",
+                            "body",
+                            outcome: MessageResultOutcome.Failed
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Failed,
+                        Participants = new List<IMissionParticipant> { reporter },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("failure-voice", message.OfficerVoicePath);
+            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+            Assert.AreEqual(reporter.TypeID, message.AdvisorSubjectTypeID);
+        }
+
+        [Test]
+        public void CreateMessages_TargetUnavailableMission_UsesAbortVoice()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Officer reporter = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                MissionFailureVoicePaths = new List<string> { "failure-voice" },
+                MissionAbortVoicePaths = new List<string> { "abort-voice" },
+            };
+            Mission mission = new SabotageMission
+            {
+                DisplayName = "Sabotage",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "aborted",
+                            "body",
+                            outcome: MessageResultOutcome.Failed,
+                            missionCompletionReason: MissionCompletionReason.TargetUnavailable
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Failed,
+                        CompletionReason = MissionCompletionReason.TargetUnavailable,
+                        Participants = new List<IMissionParticipant> { reporter },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("abort-voice", message.OfficerVoicePath);
         }
 
         [Test]
@@ -1347,7 +1558,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             Assert.AreEqual("empire-image", FirstMessageFor(deliveries, empire).DisplayImagePath);
             Assert.AreEqual("agent-card", FirstMessageFor(deliveries, alliance).OverlayImagePath);
-            Assert.AreEqual("agent-card", FirstMessageFor(deliveries, empire).OverlayImagePath);
+            Assert.IsNull(FirstMessageFor(deliveries, empire).OverlayImagePath);
         }
 
         [Test]
@@ -1449,6 +1660,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Agent",
                 OwnerInstanceID = alliance.InstanceID,
                 MessageImagePath = "agent-card",
+                RecoveredVoicePaths = new List<string> { "recovered-voice" },
             };
             game.AttachNode(officer, origin);
 
@@ -1473,6 +1685,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("recovered:Agent:Coruscant", message.Title);
             Assert.AreEqual("fallback-card", message.DisplayImagePath);
             Assert.AreEqual("agent-card", message.OverlayImagePath);
+            Assert.AreEqual("recovered-voice", message.OfficerVoicePath);
         }
 
         [Test]
@@ -1665,6 +1878,108 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(expectedTitle, message.Title);
             Assert.AreEqual("discovered:Student", message.Body);
             Assert.AreEqual("discoverer-card", message.OverlayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_ForceUserDiscovered_DoesNotUseDialog()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer discoverer = new Officer
+            {
+                TypeID = "OFAL003",
+                OwnerInstanceID = alliance.InstanceID,
+                IsJedi = true,
+                IsForceEligible = true,
+                IsJediTrainer = true,
+                ForceValue = game.Config.Jedi.ForceQualifiedThreshold,
+                MessageImagePath = "discoverer-image",
+                ForceUserDiscoveredVoicePaths = new List<string> { "discovery-voice" },
+            };
+            Officer candidate = new Officer
+            {
+                DisplayName = "Candidate",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "candidate-image",
+            };
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(candidate, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ForceUserDiscovered,
+                            MessageType.Mission,
+                            "future jedi",
+                            "body:{officer}"
+                        ),
+                    },
+                    new ForceDiscoveryResult
+                    {
+                        EventType = ForceEventType.ForceUserDiscovered,
+                        Officer = candidate,
+                        Discoverer = discoverer,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("body:Candidate", message.Body);
+            Assert.AreEqual("discoverer-image", message.OverlayImagePath);
+            Assert.IsNull(message.OfficerVoicePath);
+            Assert.AreEqual(0, message.AdvisorNotificationCode);
+            Assert.AreEqual(AdvisorSubjectNotification.None, message.AdvisorSubjectNotification);
+            Assert.IsNull(message.AdvisorSubjectTypeID);
+        }
+
+        [Test]
+        public void CreateMessages_ForceAbilityRevealed_DoesNotUseDialog()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer discoverer = new Officer
+            {
+                TypeID = "OFAL003",
+                OwnerInstanceID = alliance.InstanceID,
+                ForceUserDiscoveredVoicePaths = new List<string> { "discovery-voice" },
+            };
+            Officer candidate = new Officer
+            {
+                TypeID = "OFAL002",
+                DisplayName = "Candidate",
+                OwnerInstanceID = alliance.InstanceID,
+                ForceAbilityRevealedVoicePaths = new List<string> { "revelation-voice" },
+            };
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(candidate, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ForceAbilityRevealed,
+                            MessageType.Mission,
+                            "ability revealed",
+                            "body"
+                        ),
+                    },
+                    new ForceDiscoveryResult
+                    {
+                        EventType = ForceEventType.ForceUserDiscovered,
+                        Officer = candidate,
+                        Discoverer = discoverer,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.IsNull(message.OfficerVoicePath);
+            Assert.AreEqual(0, message.AdvisorNotificationCode);
+            Assert.AreEqual(AdvisorSubjectNotification.None, message.AdvisorSubjectNotification);
+            Assert.IsNull(message.AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -2138,23 +2453,27 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    BombardmentDefinitions(),
-                    new BombardmentResult
-                    {
-                        AttackingFaction = alliance,
-                        Planet = target,
-                        DestroyedBuildings = { new Building { DisplayName = "Shield Generator" } },
-                    }
-                ),
-                alliance
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                BombardmentDefinitions(),
+                new BombardmentResult
+                {
+                    AttackingFaction = alliance,
+                    Planet = target,
+                    DestroyedBuildings = { new Building { DisplayName = "Shield Generator" } },
+                }
             );
+            Message message = FirstMessageFor(deliveries, alliance);
+            Message defendingMessage = FirstMessageFor(deliveries, empire);
 
             Assert.AreEqual(MessageType.Conflict, message.Type);
             Assert.AreEqual("owned-target:Alliance:Empire:Yavin", message.Title);
             Assert.AreEqual("target-losses-image", message.DisplayImagePath);
+            Assert.AreEqual(0, message.AdvisorNotificationCode);
+            Assert.AreEqual(
+                (int)AdvisorNotificationCode.Bombardment,
+                defendingMessage.AdvisorNotificationCode
+            );
         }
 
         [Test]

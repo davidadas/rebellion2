@@ -11,11 +11,13 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
+  REBELLION2_MEDIA_REVISION: 5db0e65c7374761cb827a6b9a66a83f947c218b4
 
 jobs:
   build:
     name: Build (${{ matrix.targetPlatform }})
     runs-on: ubuntu-latest
+    needs: lint
     environment: production
     permissions:
       contents: read
@@ -23,14 +25,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        targetPlatform:
-          - StandaloneWindows64
-          - StandaloneLinux64
-          - StandaloneOSX
+        targetPlatform: ${{ fromJSON(github.event_name == 'pull_request' && '["StandaloneLinux64"]' || '["StandaloneWindows64", "StandaloneLinux64", "StandaloneOSX"]') }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Checkout media
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          persist-credentials: false
+          lfs: true
+          sparse-checkout: |
+            Art
+            Audio
+            Videos
+          path: .ci/rebellion2-media
+
+      - name: Install media
+        run: |
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
+          rm -rf .ci
 
       - uses: actions/cache@v4
         with:
@@ -74,7 +94,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    needs: build
     permissions:
       contents: read
 
@@ -151,6 +170,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout media
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          persist-credentials: false
+          sparse-checkout: Art
+          path: .ci/rebellion2-media
+
+      - name: Install media
+        run: |
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
+          rm -rf .ci
+
       - uses: actions/cache@v4
         with:
           path: Library
@@ -176,17 +210,19 @@ jobs:
       - name: Check coverage threshold
         run: |
           python3 - <<'EOF'
-          import xml.etree.ElementTree as ET, glob, sys
+          import sys
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
 
           LINE_THRESHOLD   = 62.8
           METHOD_THRESHOLD = 67.4
 
-          files = glob.glob("artifacts/**/Report/Summary.xml", recursive=True)
-          if not files:
-              print("No Summary.xml found — skipping threshold check")
-              sys.exit(0)
+          summary_path = Path("CodeCoverage/Report/Summary.xml")
+          if not summary_path.is_file():
+              print("FAIL: CodeCoverage/Report/Summary.xml was not generated")
+              sys.exit(1)
 
-          root = ET.parse(files[0]).getroot()
+          root = ET.parse(summary_path).getroot()
           summary = root.find("Summary")
 
           covered_lines = int(summary.findtext("Coveredlines", 0))

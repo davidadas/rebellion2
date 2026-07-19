@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Systems
 
         private static MovementSystem CreateMovement(GameRoot game)
         {
-            return new MovementSystem(game, new FogOfWarSystem(game));
+            return new MovementSystem(game, new FogOfWarSystem(game), new FleetSystem(game));
         }
 
         private static (
@@ -42,11 +42,11 @@ namespace Rebellion.Tests.Systems
         ) CreatePlanetaryCombatSystems(GameRoot game)
         {
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fogOfWar);
+            MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
             PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
                 game,
                 movement,
-                new ManufacturingSystem(game),
+                new ManufacturingSystem(game, new FleetSystem(game)),
                 fogOfWar
             );
             return (movement, planetaryControl);

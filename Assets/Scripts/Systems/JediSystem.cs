@@ -69,12 +69,16 @@ namespace Rebellion.Systems
                 )
                 {
                     // ForceValue can exceed the normal max from discovery, but ForceRank cannot.
+                    int previousForceRank = officer.ForceRank;
                     officer.ForceValue += growth;
+                    int currentForceRank = officer.ForceRank;
                     results.Add(
                         new ForceExperienceResult
                         {
                             Officer = officer,
                             ExperienceGained = growth,
+                            PreviousForceRank = previousForceRank,
+                            CurrentForceRank = currentForceRank,
                             Tick = _game.CurrentTick,
                         }
                     );
@@ -208,15 +212,19 @@ namespace Rebellion.Systems
         /// <param name="results">Collection to append discovery results to.</param>
         private void DiscoverForceUser(Officer scanner, Officer candidate, List<GameResult> results)
         {
+            int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
             candidate.ForceValue =
                 candidate.JediLevel + _provider.NextInt(0, candidate.JediLevelVariance + 1);
+            int currentForceRank = candidate.ForceRank;
 
             results.Add(
                 new ForceExperienceResult
                 {
                     Officer = candidate,
                     ExperienceGained = candidate.ForceValue,
+                    PreviousForceRank = previousForceRank,
+                    CurrentForceRank = currentForceRank,
                     Tick = _game.CurrentTick,
                 }
             );

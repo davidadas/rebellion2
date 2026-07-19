@@ -153,11 +153,13 @@ namespace Rebellion.Tests.AI.Helpers
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movementSystem = movement ?? new MovementSystem(game, fog);
+            MovementSystem movementSystem =
+                movement ?? new MovementSystem(game, fog, new FleetSystem(game));
             MissionSystem missionSystem =
                 missions ?? new MissionSystem(game, provider, movementSystem);
             ManufacturingSystem manufacturingSystem =
-                manufacturing ?? new ManufacturingSystem(game, provider, movementSystem);
+                manufacturing
+                ?? new ManufacturingSystem(game, new FleetSystem(game), provider, movementSystem);
 
             return new AITurnContext(
                 game,

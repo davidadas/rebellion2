@@ -36,9 +36,21 @@ namespace Rebellion.Game.Units
     public enum OfficerVoiceLineType
     {
         Order,
+        PersonnelArrived,
         MissionSuccess,
         MissionFailure,
         MissionAbort,
+        Released,
+        Recovered,
+        EnemyDetected,
+        ForceGrowth,
+        ForceUserDiscovered,
+        ForceAbilityRevealed,
+        TraitorDiscovered,
+        RescueAttempt,
+        BountyAttack,
+        DagobahCompleted,
+        SeatOfPower,
     }
 
     /// <summary>
@@ -125,10 +137,30 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
+        public bool UsesAdvancedVoiceLines { get; set; }
         public List<string> OrderVoicePaths { get; set; } = new List<string>();
+        public List<string> PersonnelArrivedVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedPersonnelArrivedVoicePaths { get; set; } = new List<string>();
         public List<string> MissionSuccessVoicePaths { get; set; } = new List<string>();
         public List<string> MissionFailureVoicePaths { get; set; } = new List<string>();
         public List<string> MissionAbortVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedMissionAbortVoicePaths { get; set; } = new List<string>();
+        public List<string> ReleasedVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedReleasedVoicePaths { get; set; } = new List<string>();
+        public List<string> RecoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedRecoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> EnemyDetectedVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedEnemyDetectedVoicePaths { get; set; } = new List<string>();
+        public List<string> ForceGrowthVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedForceGrowthVoicePaths { get; set; } = new List<string>();
+        public List<string> ForceUserDiscoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> ForceAbilityRevealedVoicePaths { get; set; } = new List<string>();
+        public List<string> TraitorDiscoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> RescueAttemptVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedRescueAttemptVoicePaths { get; set; } = new List<string>();
+        public List<string> BountyAttackVoicePaths { get; set; } = new List<string>();
+        public List<string> DagobahCompletedVoicePaths { get; set; } = new List<string>();
+        public List<string> SeatOfPowerVoicePaths { get; set; } = new List<string>();
 
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
@@ -356,14 +388,45 @@ namespace Rebellion.Game.Units
             return paths?.Count > 0;
         }
 
+        /// <summary>
+        /// Gets the available voice paths for an officer event.
+        /// </summary>
+        /// <param name="voiceLineType">The officer event requesting a voice response.</param>
+        /// <returns>The matching voice paths, or null when the event has no configured paths.</returns>
         private IReadOnlyList<string> GetVoicePaths(OfficerVoiceLineType voiceLineType)
         {
+            IReadOnlyList<string> advancedPaths = voiceLineType switch
+            {
+                OfficerVoiceLineType.PersonnelArrived => AdvancedPersonnelArrivedVoicePaths,
+                OfficerVoiceLineType.MissionAbort => AdvancedMissionAbortVoicePaths,
+                OfficerVoiceLineType.Released => AdvancedReleasedVoicePaths,
+                OfficerVoiceLineType.Recovered => AdvancedRecoveredVoicePaths,
+                OfficerVoiceLineType.EnemyDetected => AdvancedEnemyDetectedVoicePaths,
+                OfficerVoiceLineType.ForceGrowth => AdvancedForceGrowthVoicePaths,
+                OfficerVoiceLineType.RescueAttempt => AdvancedRescueAttemptVoicePaths,
+                _ => null,
+            };
+            if (UsesAdvancedVoiceLines && advancedPaths?.Count > 0)
+                return advancedPaths;
+
             return voiceLineType switch
             {
                 OfficerVoiceLineType.Order => OrderVoicePaths,
+                OfficerVoiceLineType.PersonnelArrived => PersonnelArrivedVoicePaths,
                 OfficerVoiceLineType.MissionSuccess => MissionSuccessVoicePaths,
                 OfficerVoiceLineType.MissionFailure => MissionFailureVoicePaths,
                 OfficerVoiceLineType.MissionAbort => MissionAbortVoicePaths,
+                OfficerVoiceLineType.Released => ReleasedVoicePaths,
+                OfficerVoiceLineType.Recovered => RecoveredVoicePaths,
+                OfficerVoiceLineType.EnemyDetected => EnemyDetectedVoicePaths,
+                OfficerVoiceLineType.ForceGrowth => ForceGrowthVoicePaths,
+                OfficerVoiceLineType.ForceUserDiscovered => ForceUserDiscoveredVoicePaths,
+                OfficerVoiceLineType.ForceAbilityRevealed => ForceAbilityRevealedVoicePaths,
+                OfficerVoiceLineType.TraitorDiscovered => TraitorDiscoveredVoicePaths,
+                OfficerVoiceLineType.RescueAttempt => RescueAttemptVoicePaths,
+                OfficerVoiceLineType.BountyAttack => BountyAttackVoicePaths,
+                OfficerVoiceLineType.DagobahCompleted => DagobahCompletedVoicePaths,
+                OfficerVoiceLineType.SeatOfPower => SeatOfPowerVoicePaths,
                 _ => null,
             };
         }

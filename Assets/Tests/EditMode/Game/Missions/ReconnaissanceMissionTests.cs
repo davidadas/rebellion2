@@ -123,7 +123,7 @@ namespace Rebellion.Tests.Game.Missions
             MissionSystem system = new MissionSystem(
                 game,
                 new FixedRNG(0.01),
-                new MovementSystem(game, fog)
+                new MovementSystem(game, fog, new FleetSystem(game))
             );
 
             List<GameResult> results = system.UpdateMission(mission);
