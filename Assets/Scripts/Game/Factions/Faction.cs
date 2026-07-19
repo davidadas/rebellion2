@@ -18,11 +18,47 @@ namespace Rebellion.Game.Factions
     /// </summary>
     public class Faction : BaseGameEntity
     {
+        private FactionSettings _settings = new FactionSettings();
+
+        // Fleet naming counter for sequential fleet names (Fleet 1, Fleet 2, etc.)
+        private int _nextFleetNumber = 1;
+
+        // Owned Entities (Fleets, Planets, etc).
+        private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
+            Type,
+            List<ISceneNode>
+        >()
+        {
+            { typeof(CapitalShip), new List<ISceneNode>() },
+            { typeof(Building), new List<ISceneNode>() },
+            { typeof(Fleet), new List<ISceneNode>() },
+            { typeof(Officer), new List<ISceneNode>() },
+            { typeof(Planet), new List<ISceneNode>() },
+            { typeof(Regiment), new List<ISceneNode>() },
+            { typeof(SpecialForces), new List<ISceneNode>() },
+            { typeof(Starfighter), new List<ISceneNode>() },
+        };
+
+        // Messages and Notifications.
+        public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
+            MessageType,
+            List<Message>
+        >()
+        {
+            { MessageType.PopularSupport, new List<Message>() },
+            { MessageType.Fleet, new List<Message>() },
+            { MessageType.Mission, new List<Message>() },
+            { MessageType.Resource, new List<Message>() },
+            { MessageType.Manufacturing, new List<Message>() },
+            { MessageType.Defense, new List<Message>() },
+            { MessageType.Conflict, new List<Message>() },
+            { MessageType.Chat, new List<Message>() },
+            { MessageType.Advice, new List<Message>() },
+        };
+
         // Faction Info.
         public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
         public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
-
-        private FactionSettings _settings = new FactionSettings();
 
         /// <summary>
         /// Faction-specific gameplay settings.
@@ -88,51 +124,10 @@ namespace Rebellion.Game.Factions
         public int ProjectedMaintenanceHeadroom =>
             MaintenanceCapacity - GetTotalProjectedMaintenanceCost();
 
-        public int GetProjectedMaintenanceHeadroom(IManufacturable item)
-        {
-            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
-        }
-
         /// <summary>
         /// Fog of war state - snapshots and entity tracking.
         /// </summary>
         public FogState Fog { get; set; } = new FogState();
-
-        // Fleet naming counter for sequential fleet names (Fleet 1, Fleet 2, etc.)
-        private int _nextFleetNumber = 1;
-
-        // Owned Entities (Fleets, Planets, etc).
-        private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
-            Type,
-            List<ISceneNode>
-        >()
-        {
-            { typeof(CapitalShip), new List<ISceneNode>() },
-            { typeof(Building), new List<ISceneNode>() },
-            { typeof(Fleet), new List<ISceneNode>() },
-            { typeof(Officer), new List<ISceneNode>() },
-            { typeof(Planet), new List<ISceneNode>() },
-            { typeof(Regiment), new List<ISceneNode>() },
-            { typeof(SpecialForces), new List<ISceneNode>() },
-            { typeof(Starfighter), new List<ISceneNode>() },
-        };
-
-        // Messages and Notifications.
-        public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
-            MessageType,
-            List<Message>
-        >()
-        {
-            { MessageType.PopularSupport, new List<Message>() },
-            { MessageType.Fleet, new List<Message>() },
-            { MessageType.Mission, new List<Message>() },
-            { MessageType.Resource, new List<Message>() },
-            { MessageType.Manufacturing, new List<Message>() },
-            { MessageType.Defense, new List<Message>() },
-            { MessageType.Conflict, new List<Message>() },
-            { MessageType.Chat, new List<Message>() },
-            { MessageType.Advice, new List<Message>() },
-        };
 
         public bool AdvisorMessageNotificationsEnabled { get; set; } = true;
 
@@ -147,6 +142,11 @@ namespace Rebellion.Game.Factions
         /// Default constructor used for deserialization.
         /// </summary>
         public Faction() { }
+
+        public int GetProjectedMaintenanceHeadroom(IManufacturable item)
+        {
+            return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
+        }
 
         /// <summary>
         /// Returns the instance ID of the faction's headquarters.

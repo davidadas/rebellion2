@@ -4,6 +4,10 @@ set -eE
 PROJECT_PATH="${PROJECT_PATH:-.}"
 TEST_RESULTS="${TEST_RESULTS:-TestResults.xml}"
 ROSLYNATOR_ANALYZERS="${ROSLYNATOR_ANALYZERS:-$HOME/.nuget/packages/roslynator.analyzers/4.12.9/analyzers/dotnet/roslyn4.7/cs}"
+MEMBER_ORDER_ANALYZER_PROJECT="${MEMBER_ORDER_ANALYZER_PROJECT:-Tools/Rebellion.Analyzers/Rebellion.Analyzers.csproj}"
+MEMBER_ORDER_ANALYZER="${MEMBER_ORDER_ANALYZER:-Tools/Rebellion.Analyzers/bin/Release/netstandard2.0/Rebellion.Analyzers.dll}"
+MEMBER_ORDER_ANALYZER_TEST_PROJECT="${MEMBER_ORDER_ANALYZER_TEST_PROJECT:-Tools/Rebellion.Analyzers.Tests/Rebellion.Analyzers.Tests.csproj}"
+MEMBER_ORDER_LINT_PROJECT="${MEMBER_ORDER_LINT_PROJECT:-MemberOrder.Lint.csproj}"
 GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
 EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
 
@@ -130,6 +134,8 @@ do_xmlformat() {
 
 do_lint() {
     dotnet tool restore
+    dotnet build "$MEMBER_ORDER_ANALYZER_PROJECT" --configuration Release --verbosity quiet
+    dotnet test "$MEMBER_ORDER_ANALYZER_TEST_PROJECT" --configuration Release --verbosity quiet
 
     local extra_args=()
     if [ -n "$FRAMEWORK_PATH" ]; then
@@ -177,6 +183,16 @@ do_lint() {
     run_roslynator analyze "$EDITOR_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
+        --severity-level error
+    echo ""
+
+    echo "=== Member Order ==="
+    dotnet restore "$MEMBER_ORDER_LINT_PROJECT"
+    run_roslynator analyze "$MEMBER_ORDER_LINT_PROJECT" \
+        --analyzer-assemblies "$MEMBER_ORDER_ANALYZER" \
+        --ignore-analyzer-references \
+        --ignore-compiler-diagnostics \
+        --supported-diagnostics REB0001 \
         --severity-level error
     echo ""
     echo "Lint complete."

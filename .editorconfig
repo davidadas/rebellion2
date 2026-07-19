@@ -49,6 +49,7 @@ dotnet_diagnostic.RCS1164.severity = error    # unused type parameter
 dotnet_diagnostic.RCS1077.severity = error    # optimize LINQ method call
 dotnet_diagnostic.RCS1146.severity = error    # use conditional access
 dotnet_diagnostic.RCS1213.severity = error    # remove unused member declaration
+dotnet_diagnostic.REB0001.severity = error    # fields must precede constructors and methods
 
 [Assets/Scripts/Managers/AudioManager.cs]
 dotnet_diagnostic.RCS1163.severity = none

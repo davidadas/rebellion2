@@ -15,6 +15,13 @@ namespace Rebellion.Systems
     /// </summary>
     public class ResearchSystem : IGameSystem
     {
+        private static readonly ResearchDiscipline[] _researchDisciplines = new[]
+        {
+            ResearchDiscipline.ShipDesign,
+            ResearchDiscipline.FacilityDesign,
+            ResearchDiscipline.TroopTraining,
+        };
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
 
@@ -158,12 +165,5 @@ namespace Rebellion.Systems
             return config.RefreshIntervalBase
                 + _provider.NextInt(0, config.RefreshIntervalSpread + 1);
         }
-
-        private static readonly ResearchDiscipline[] _researchDisciplines = new[]
-        {
-            ResearchDiscipline.ShipDesign,
-            ResearchDiscipline.FacilityDesign,
-            ResearchDiscipline.TroopTraining,
-        };
     }
 }

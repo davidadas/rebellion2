@@ -883,6 +883,8 @@ namespace Rebellion.Util.Serialization
             | BindingFlags.Instance
             | BindingFlags.Static;
 
+        private static IDictionary<string, Type> _persistableObjectMap;
+
         public enum OperationType
         {
             Write,
@@ -1061,8 +1063,6 @@ namespace Rebellion.Util.Serialization
 
             return attributeMap;
         }
-
-        private static IDictionary<string, Type> _persistableObjectMap;
 
         /// <summary>
         /// Gets a dictionary mapping type names to Type objects for all persistable types in the current AppDomain.
