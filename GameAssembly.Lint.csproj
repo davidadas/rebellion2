@@ -11,14 +11,16 @@
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup>
-    <!-- uGUI and TextMeshPro ship as package assemblies. Prefer the staged lint assemblies
-         (CI provides them there before the project's own Library is compiled), then fall back
-         to the locally compiled project output. Resolving these keeps the semantic model complete
-         so IDE0005 does not flag genuinely-used using directives. -->
+    <!-- uGUI, TextMeshPro, and the Input System ship as package assemblies. Prefer the staged lint
+         assemblies (CI provides them there before the project's own Library is compiled), then fall
+         back to the locally compiled project output. Resolving these keeps the semantic model
+         complete so IDE0005 / CS8019 do not flag genuinely-used using directives. -->
     <UGuiHintPath Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UI.dll')">$(UnityManagedAssembliesPath)/UnityEngine.UI.dll</UGuiHintPath>
     <UGuiHintPath Condition="'$(UGuiHintPath)' == '' And Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')">Library/ScriptAssemblies/UnityEngine.UI.dll</UGuiHintPath>
     <TextMeshProHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll')">$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll</TextMeshProHintPath>
     <TextMeshProHintPath Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')">Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath>
+    <InputSystemHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.InputSystem.dll')">$(UnityManagedAssembliesPath)/Unity.InputSystem.dll</InputSystemHintPath>
+    <InputSystemHintPath Condition="'$(InputSystemHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.InputSystem.dll')">Library/ScriptAssemblies/Unity.InputSystem.dll</InputSystemHintPath>
   </PropertyGroup>
   <ItemGroup>
     <Reference
@@ -92,23 +94,18 @@
       <HintPath>$(UGuiHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference
-      Include="Unity.InputSystem"
-      Condition="Exists('Library/ScriptAssemblies/Unity.InputSystem.dll')"
-    >
-      <HintPath>Library/ScriptAssemblies/Unity.InputSystem.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference
-      Include="Rebellion.InputActions"
-      Condition="Exists('Library/ScriptAssemblies/Rebellion.InputActions.dll')"
-    >
-      <HintPath>Library/ScriptAssemblies/Rebellion.InputActions.dll</HintPath>
+    <Reference Include="Unity.InputSystem" Condition="'$(InputSystemHintPath)' != ''">
+      <HintPath>$(InputSystemHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/**/*.cs" />
+    <!-- The generated Input System actions live in their own assembly (Rebellion.InputActions).
+         Compile the source directly so the Rebellion.Input namespace resolves without depending on
+         the project's compiled Library output, which CI's lint stage may not have built yet. The
+         file is auto-generated, so analyzers skip it. -->
+    <Compile Include="Assets/Input/**/*.cs" />
     <Compile Remove="Assets/Scripts/Core/AppBootstrap.cs" />
     <Compile Remove="Assets/Scripts/Core/GameRuntime.cs" />
   </ItemGroup>

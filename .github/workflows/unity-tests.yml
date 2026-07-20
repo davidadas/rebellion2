@@ -147,7 +147,7 @@ jobs:
           # precompiled in the editor image's project-template library cache. Resolving them keeps the
           # lint semantic model complete so IDE0005 does not falsely flag genuinely-used usings.
           docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Resources/PackageManager/ProjectTemplates/libcache/." /tmp/unity-libcache/ 2>/dev/null || true
-          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll; do
+          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll Unity.InputSystem.dll; do
             src="$(find /tmp/unity-libcache -name "$dll" 2>/dev/null | head -n 1)"
             if [ -n "$src" ]; then
               cp "$src" .unity-lint-assemblies/
@@ -155,7 +155,7 @@ jobs:
           done
           rm -rf /tmp/unity-libcache
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll; do
+          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1
