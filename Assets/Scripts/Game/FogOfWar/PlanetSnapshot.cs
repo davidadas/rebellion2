@@ -23,6 +23,18 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         public string OwnerInstanceID;
 
+        public bool IsColonized;
+
+        public bool IsInUprising;
+
+        public bool IsDestroyed;
+
+        public bool IsHeadquarters;
+
+        public int EnergyCapacity;
+
+        public int AllocatedEnergy;
+
         /// <summary>
         /// Popular support by faction instance ID.
         /// </summary>
@@ -44,6 +56,8 @@ namespace Rebellion.Game.FogOfWar
         /// Regiments stationed at the planet.
         /// </summary>
         public List<Regiment> Regiments;
+
+        public List<SpecialForces> SpecialForces;
 
         /// <summary>
         /// Buildings visible on the planet.
@@ -69,6 +83,7 @@ namespace Rebellion.Game.FogOfWar
             Officers = new List<Officer>();
             Fleets = new List<Fleet>();
             Regiments = new List<Regiment>();
+            SpecialForces = new List<SpecialForces>();
             Buildings = new List<Building>();
             Starfighters = new List<Starfighter>();
             Missions = new List<Mission>();

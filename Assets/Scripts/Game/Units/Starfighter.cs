@@ -71,6 +71,15 @@ namespace Rebellion.Game.Units
             CurrentSquadronSize = Math.Min(MaxSquadronSize, CurrentSquadronSize + amount);
         }
 
+        public int GetCombatValue()
+        {
+            if (ManufacturingStatus != ManufacturingStatus.Complete || Movement != null)
+                return 0;
+
+            int weaponStrength = LaserCannon + IonCannon + Torpedoes;
+            return weaponStrength * Math.Max(0, CurrentSquadronSize);
+        }
+
         /// <summary>
         /// Returns the manufacturing type for this unit.
         /// </summary>

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rebellion.AI.Director;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -111,6 +112,7 @@ namespace Rebellion.Tests.AI.Helpers
             {
                 InstanceID = instanceId,
                 DisplayName = instanceId,
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaxHullStrength = 100,
@@ -140,6 +142,22 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
+        public static SpecialForces CreateSpecialForces(string typeId, string ownerInstanceId)
+        {
+            SpecialForces specialForces = new SpecialForces
+            {
+                TypeID = typeId,
+                DisplayName = typeId,
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
+                OwnerInstanceID = ownerInstanceId,
+                ConstructionCost = 1,
+                MaintenanceCost = 0,
+                BaseBuildSpeed = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            return specialForces;
+        }
+
         public static AITurnContext CreateContext(
             GameRoot game,
             Faction faction,
@@ -153,13 +171,24 @@ namespace Rebellion.Tests.AI.Helpers
         {
             IRandomNumberProvider provider = random ?? new StubRNG();
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movementSystem =
-                movement ?? new MovementSystem(game, fog, new FleetSystem(game));
+            FleetSystem fleetSystem = new FleetSystem(game);
+            MovementSystem movementSystem = movement ?? new MovementSystem(game, fog, fleetSystem);
             MissionSystem missionSystem =
                 missions ?? new MissionSystem(game, provider, movementSystem);
             ManufacturingSystem manufacturingSystem =
                 manufacturing
-                ?? new ManufacturingSystem(game, new FleetSystem(game), provider, movementSystem);
+                ?? new ManufacturingSystem(game, fleetSystem, provider, movementSystem);
+            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
+                game,
+                movementSystem,
+                manufacturingSystem,
+                fog
+            );
+            BombardmentSystem bombardmentSystem =
+                bombardment
+                ?? new BombardmentSystem(game, provider, movementSystem, planetaryControl);
+            PlanetaryAssaultSystem planetaryAssaultSystem =
+                planetaryAssault ?? new PlanetaryAssaultSystem(game, provider, planetaryControl);
 
             return new AITurnContext(
                 game,
@@ -167,10 +196,17 @@ namespace Rebellion.Tests.AI.Helpers
                 missionSystem,
                 movementSystem,
                 manufacturingSystem,
-                bombardment,
-                planetaryAssault,
-                provider
+                bombardmentSystem,
+                planetaryAssaultSystem,
+                provider,
+                fog
             );
+        }
+
+        public static void RevealPlanet(GameRoot game, Faction faction, Planet planet)
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            new FogOfWarSystem(game).CaptureSnapshot(faction, planet, system, game.CurrentTick);
         }
     }
 }

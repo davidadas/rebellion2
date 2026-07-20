@@ -132,6 +132,69 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreEqual(0, selected.Count);
         }
 
+        [Test]
+        public void Select_WithTwoNewAttackOrders_SelectsOnlyHigherScoredOrder()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet firstEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "enemy-1",
+                rebels.InstanceID
+            );
+            Planet secondEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "enemy-2",
+                rebels.InstanceID
+            );
+            Fleet firstFleet = CreateBattleFleet(game, owned, empire.InstanceID, "fleet-1");
+            Fleet secondFleet = CreateBattleFleet(game, owned, empire.InstanceID, "fleet-2");
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal lowerScore = new AIFleetAttackProposal(
+                firstFleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                firstEnemy
+            );
+            AIFleetAttackProposal higherScore = new AIFleetAttackProposal(
+                secondFleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                secondEnemy
+            );
+            lowerScore.SetScore(10);
+            higherScore.SetScore(20);
+            context.AddProposal(lowerScore);
+            context.AddProposal(higherScore);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            Assert.AreEqual(1, selected.Count);
+            Assert.AreSame(higherScore, selected[0]);
+        }
+
+        private static Fleet CreateBattleFleet(
+            GameRoot game,
+            Planet planet,
+            string ownerInstanceId,
+            string fleetId
+        )
+        {
+            Fleet fleet = EntityFactory.CreateFleet(fleetId, ownerInstanceId);
+            fleet.RoleType = FleetRoleType.Battle;
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                $"{fleetId}-ship",
+                ownerInstanceId
+            );
+            fleet.AddChild(ship);
+            ship.SetParent(fleet);
+            game.AttachNode(fleet, planet);
+            return fleet;
+        }
+
         private static AITurnContext CreateEmptyContext()
         {
             return new AITurnContext(null, null, null, null, null, null, null, null);

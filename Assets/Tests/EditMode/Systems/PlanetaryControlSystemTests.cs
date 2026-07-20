@@ -287,6 +287,28 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TransferPlanet_CloserUncolonizedFallback_EvictsOfficerToColonizedPlanet()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, "empire");
+            Planet uncolonizedPlanet = new Planet
+            {
+                InstanceID = "uncolonized",
+                OwnerInstanceID = "empire",
+                IsColonized = false,
+                PositionX = 10,
+                PositionY = 0,
+            };
+            _game.AttachNode(uncolonizedPlanet, _targetPlanet.GetParent());
+            Officer officer = EntityFactory.CreateOfficer("o1", "empire");
+            _game.AttachNode(officer, _targetPlanet);
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreEqual(_empirePlanet, officer.GetParentOfType<Planet>());
+        }
+
+        [Test]
         public void TransferPlanet_PlanetWithEnemyRegiments_EvictsEnemyRegiments()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
@@ -501,6 +523,49 @@ namespace Rebellion.Tests.Systems
                 mine.GetParent(),
                 "In-progress building must be detached from planet on transfer"
             );
+        }
+
+        [Test]
+        public void TransferPlanet_RemoteBuildingOrder_CancelsOnlyCapturedDestination()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, "empire");
+            _targetPlanet.EnergyCapacity = 1;
+            _empirePlanet.EnergyCapacity = 1;
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
+            Building canceled = new Building
+            {
+                InstanceID = "captured-order",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+            };
+            Building retained = new Building
+            {
+                InstanceID = "retained-order",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Refinery,
+                ConstructionCost = 100,
+            };
+            Assert.IsTrue(
+                manufacturing.Enqueue(_empirePlanet, canceled, _targetPlanet, ignoreCost: true)
+            );
+            Assert.IsTrue(
+                manufacturing.Enqueue(_empirePlanet, retained, _empirePlanet, ignoreCost: true)
+            );
+
+            _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
+
+            List<IManufacturable> queue = _empirePlanet.GetManufacturingQueue()[
+                ManufacturingType.Building
+            ];
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreSame(retained, queue[0]);
+            Assert.IsNull(canceled.GetParent());
+            Assert.AreSame(_empirePlanet, retained.GetParent());
         }
 
         /// <summary>

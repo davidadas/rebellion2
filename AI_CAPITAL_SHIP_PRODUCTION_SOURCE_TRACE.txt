@@ -1,0 +1,451 @@
+# Capital Ship Production Source Trace
+
+## Purpose
+
+This document preserves the verified source trace, the implemented capital-ship role slice, and the remaining work required for complete strategic-production parity.
+
+## Bottom Line
+
+- The manufacturing throughput calculation is correct and remains unchanged.
+- The original selects a strategic capability shortage first, ranks compatible products with a role-specific metric, and accepts the first affordable candidate.
+- The implemented slice applies that role-specific product selection to the repo's existing fleet-demand pipeline for general combat, troop transport, and bombardment shortages.
+- The implemented selector derives compatibility from ship capabilities, applies the verified maintenance budget, and uses the injected random stream for equal-metric candidates.
+- Planet-destroying ships remain excluded until their separate strategy lane is implemented.
+- Capital ships are ordered for a manufacturing system. They are not manufactured directly into a destination fleet.
+- Fleet creation, consolidation, loading, and movement are a separate downstream AI flow and must not be inferred inside production planning.
+- Product roles are derived from ship capabilities. The implementation must not hardcode ship TypeIDs or ship names.
+
+## Authoritative Inputs
+
+Use the decompiled functions and runtime data as the source of truth. Do not use reverse-engineering Markdown summaries as proof.
+
+- Source tree: `/Users/davidadams/Downloads/rebexe-disassembly-source-trees 4/functions`
+- Manual: `/Users/davidadams/Downloads/Star_Wars_Rebellion-Manual.pdf`
+- Alternate manual copy: `/Users/davidadams/Downloads/Star_Wars_Rebellion-Manual (1).pdf`
+- Executable data source: `/Users/davidadams/Downloads/swr-editor.net-3.0.8960.41824/game-update/REBEXE.EXE`
+
+## Verified Manufacturing Throughput
+
+The original has one production queue for each manufacturing family at a planet. Multiple matching facilities do not create independent parallel queues. Every active facility contributes throughput to the same queue.
+
+The original aggregate rate is built by summing `100 / ProcessRate` for every active matching facility:
+
+- `FUN_00527b20_get_all_facility_processing_rate.c`
+- `FUN_00527ef0_get_build_completion_days.c`
+
+The completion estimate divides remaining work by the aggregate rate and rounds up. The manual independently states that two matching facilities double production speed and three triple it.
+
+The repo already follows this model:
+
+- `Assets/Scripts/Systems/ManufacturingSystem.cs`
+- `EstimateProductionTicks` sums `_productionRateScale / facility.GetProcessRate()`.
+- Production ticks collect ready points from all matching facilities and apply them to the shared queue.
+
+Do not replace this with one queue per facility.
+
+## Current Facility AI Divergence
+
+The current AI decides global facility counts from owned-planet ratios and then spreads facilities toward planets with the fewest copies:
+
+- `Assets/Scripts/AI/Planners/AIProductionDemandGenerator.cs`
+- `AddInfrastructureFacilityDemand`
+- `GetDesiredFacilityCount`
+- `FindFacilityTargetPlanet`
+- `Assets/Scripts/AI/Proposals/AIManufactureProposal.cs`
+- `GetDesiredFacilityCount`
+
+The key current behavior is:
+
+- Desired shipyard and training-facility counts are computed with `CeilingDivide(ownedPlanets, planetsPerFacility)`.
+- Placement orders planets by the current count of that building type ascending.
+- This deliberately distributes low-volume facilities across many planets.
+
+That placement policy is not established by the original production trace. The original type-1 strategy path creates local/system shortage records and resolves eligible system contexts. A source-faithful building-placement change requires a separate complete trace through the type-1 issue-row writer, consumer, scheduler, and emitted building command.
+
+Do not remove building scoring. Building work should continue to separate:
+
+1. which facility role is needed
+2. which unlocked facility satisfies that role
+3. which planet should receive it
+
+The current global planets-per-facility rule must not be presented as original behavior.
+
+## Original Capital Ship Strategy Lifecycle
+
+Capital-ship production is owned by strategy record type 11.
+
+### Construction and cadence
+
+- Constructor: `FUN_004c7b90.c`
+- Tick entry: `FUN_004c7ea0.c`
+- Production phase: `FUN_004c7f90.c`
+- The strategy record uses a 30-tick cadence (`0x1e`).
+
+### Source chain
+
+The verified decision chain is:
+
+1. `FUN_004c7ea0` advances the type-11 state machine.
+2. `FUN_004c7f90` enters the production phase.
+3. `FUN_004c9950_choose_production_shortage_request_family` selects a capability shortage and its ranking metric.
+4. `FUN_004cb590` calculates the available budget.
+5. `FUN_004c9c80` queries compatible products and scans the ordered candidates.
+6. `FUN_004c9670` selects the manufacturing/system context.
+7. `FUN_004ca030` repopulates eligible system candidates when required.
+8. `FUN_004cae00` emits package `0x211` with system context, product ID, and count.
+9. The strategy-command route consumes that package and starts manufacturing.
+10. `FUN_0052ab20`, `FUN_0052aff0`, and `FUN_0052b090` finalize completed production and attach the completed object through the manufacturing context.
+
+This closes the required writer, reader, scheduler, finalize, and gameplay-commit chain for capital-ship production.
+
+## Capability Shortage Selection
+
+`FUN_004c9950_choose_production_shortage_request_family` scans existing strategic issue records and counts six capability lanes. It ignores a lane when that lane is already marked pending. Its nested comparisons choose an absent or least-represented lane.
+
+This is not a raw count of living ships and is not a count of ship names. It balances strategic role/request records.
+
+The source comparison and tie ordering must be preserved. Do not replace the nested source ordering with a generic `OrderBy(count)` unless tests prove identical behavior for every tie combination.
+
+### Role requests
+
+- General combat:
+  - Required capability: `0x100001`
+  - Ranking metric: `0x80000`
+  - Pending flag: `0x01000000`
+- Anti-fighter escort:
+  - Required capability: `0x100002`
+  - Ranking metric: `0x400`
+  - Pending flag: `0x02000000`
+- Troop transport:
+  - Required capability: `0x100004`
+  - Ranking metric: `0x100`
+  - Pending flag: `0x04000000`
+- Fighter carrier:
+  - Required capability: `0x100102`
+  - Ranking metric: `0x80`
+  - Pending flag: `0x08000000`
+- Bombardment:
+  - Required capability: `0x100800`
+  - Ranking metric: `0x800`
+  - Pending flag: `0x10000000`
+- Gravity-well/interdictor:
+  - Required capability: `0x100400`
+  - Ranking metric: `0x10000`
+  - Pending flag: `0x40000000`
+- Death Star special lane:
+  - Required capability: `0x80`
+  - Ranking metric: `0x200`
+  - Pending flag: `0x20000000`
+
+The Death Star lane has additional mode, candidate-count, global-state, and pending-state gates in `FUN_004c9950`. Port those branches literally if that lane is included. Do not reduce them to a generic special-project check.
+
+When the normal count comparison produces no request, the source checks additional manager counters and state before forcing missing baseline lanes. These fallback branches are part of the selector and must be ported with their exact tie and gate behavior.
+
+## Product Cache and Capability Derivation
+
+Product metadata is constructed from the unit's capabilities, not a hardcoded ship list.
+
+- Cache builder: `FUN_0042d3a0.c`
+- Capital-ship record constructor: `FUN_00472c80.c`
+- Capability and metric derivation: `FUN_00472e00.c`
+- Weapon matrix reader: `FUN_0053a350.c`
+
+The capital-ship cache includes:
+
+- capability flags
+- refined-material cost
+- maintenance cost
+- primary combat metric
+- anti-fighter metric
+- bombardment availability
+- hull strength
+- fighter capacity
+- troop capacity
+- weapon recharge
+- shield recharge
+- combat-per-maintenance metric
+- combat-per-refined-material metric
+
+Capability flags include:
+
+- base capital-ship capability
+- gravity-well capability
+- fighter capacity
+- troop capacity
+- bombardment capability
+- hull-size tiers below 1100, below 2000, and 2000 or greater
+- Death Star special classification
+- combat/escort/transport combinations derived from weapon and capacity data
+
+The repo currently has authored `CapitalShip.Roles` values. Those values must not automatically become the source of truth for this port. Either:
+
+- derive the source capability flags from existing ship statistics at runtime, or
+- exhaustively prove every authored role against the source-derived result and then use the verified data
+
+Do not add or preserve ship-name conditionals.
+
+The directional weapon calculations in `FUN_00472e00` are more specific than the repo's current `CapitalShip.GetPrimaryWeaponStrength()`. Port the source metric calculations before using them for source-parity ranking. In particular, do not substitute one summed combat value for both the primary-combat and anti-fighter metrics.
+
+## Candidate Query and Budget Gate
+
+The product query path is:
+
+- Wrapper: `FUN_0041aa20.c`
+- Product selection: `FUN_0042ddc0.c`
+- Product comparison: `FUN_0041ba00_compare_and_decide.c`
+
+`FUN_004c9c80` calls the ship-family query with:
+
+- product family `0x28`
+- the selected required-capability value
+- the selected role-specific metric
+- ordering mode `1`
+
+The query filters products with the equivalent of:
+
+```text
+(productCapabilities & requiredCapabilities) == requiredCapabilities
+```
+
+It returns an ordered candidate collection. `FUN_004c9c80` walks that collection and selects the first candidate whose required value/cost is less than or equal to the budget. If no candidate is affordable, it marks the selected role pending.
+
+This establishes the important ordering:
+
+1. select the needed role
+2. filter to compatible products
+3. rank with the role-specific metric
+4. apply affordability as a hard acceptance gate
+
+Do not subtract construction cost and maintenance cost from every ship's universal utility score. Cost participates where the selected source metric explicitly measures efficiency, and otherwise acts as the budget ceiling.
+
+The budget function is `FUN_004cb590.c`. Its exact source arithmetic is:
+
+```text
+budget = (((strategyScale * managerValueAt0x184) / 100) * 90) / 100
+         - managerValueAt0x24c
+
+if (managerValueAt0x184 - managerValueAt0x188 < budget)
+    budget = 0
+```
+
+Before implementing the budget formula, map those manager fields through their writers and consumers. Do not assign repo-native names to the offsets from intuition.
+
+## Production Context and Completion
+
+The original production order is system-scoped.
+
+### Context selection
+
+- `FUN_004c9670.c` chooses an eligible live manufacturing/system context from the type-11 candidate list.
+- When no suitable candidate is available, it falls back through the manager's primary/home system path.
+- `FUN_004ca030.c` queries and repopulates eligible systems when the candidate list is empty.
+
+### Emitted package
+
+`FUN_004cae00.c` emits strategy package `0x211`. The package carries:
+
+- faction/side
+- manufacturing or system context ID
+- selected product ID
+- quantity
+
+It does not carry a destination Fleet ID.
+
+The same command shape is consumed through both the human strategy-command path and the computer strategy-worker path:
+
+- `FUN_00486400_handle_strategy_command.c`
+- `FUN_00484f90.c`
+- `FUN_00489ee0.c`
+- `FUN_0041c690.c`
+- `FUN_00435770.c`
+
+### Completion
+
+Manufacturing completion flows through:
+
+- `FUN_0052ab20.c`
+- `FUN_0052aff0.c`
+- `FUN_0052b090.c`
+
+The completed ship is created and attached through the producing context. Production does not create an empty destination fleet and does not bind the unfinished ship to a fleet.
+
+## Implemented Slice And Remaining Divergence
+
+`AIProductionDemandGenerator` assigns one of three role shortages to a fleet demand:
+
+- troop transport when regiment capacity is short
+- general combat when projected combat strength is short
+- bombardment when bombardment strength is short
+
+`AIProductionPlanner` filters unlocked capital ships by the selected role, ranks them with that role's metric, applies the capital maintenance budget as a hard affordability gate, and resolves equal metrics through the injected random provider. It excludes gravity-well ships from the current general and transport lanes and excludes configured planet-destroying ships from every normal lane.
+
+The fleet-deficit selector is a bounded integration with the current AI pipeline. It does not replace the original type-11 least-represented role records, pending flags, anti-fighter lane, carrier lane, gravity-well lane, or Death Star lane.
+
+### Direct-to-fleet manufacturing
+
+`Assets/Scripts/AI/Proposals/AIManufactureProposal.cs` currently:
+
+- enqueues reinforcement ships directly to a Fleet destination
+- creates an empty battle fleet for `FleetSeedCapitalShip`
+- enqueues the first unfinished capital ship directly to that new fleet
+
+The original production package has no fleet destination. This behavior must be removed from production when the source-shaped flow is implemented.
+
+### Producer selection
+
+`AIProductionPlanner.FindProducerPlanets` currently sorts producers by distance to the demand destination and then by production rate.
+
+The source uses a strategy-maintained eligible system list plus fallback context selection. Do not preserve nearest-destination producer selection as a silent fallback in the source-parity path.
+
+## Observed Result That Motivated This Work
+
+The inspected simulation save was:
+
+`~/Library/Application Support/AdasGames/Rebellion 2/saves/save_slot_6.sav`
+
+One Empire fleet contained:
+
+- 1 Imperial Star Destroyer
+- 3 Carracks
+- 3 Escort Carriers
+- 13 Lancers
+- 1 Victory I
+
+Other Empire fleets were commonly built around three Lancers and a Galleon. This is consistent with the current universal score's continuous cost penalties. It is evidence of the current defect, but it is not source proof by itself.
+
+## Required Repo Implementation Shape
+
+Use the existing AI production pipeline. Do not add another manager or a speculative host layer.
+
+### Stage 1: Source-derived product metadata
+
+1. Reproduce the capital-ship capability and metric calculations from `FUN_00472e00`.
+2. Bind every calculation to existing `CapitalShip` data fields.
+3. Add focused tests using constructed capital ships for each capability lane.
+4. Verify the resulting candidate sets against representative original ship records.
+5. Do not continue to role selection until these metrics are proven.
+
+### Stage 2: Strategic role selection
+
+1. Represent the six normal role counts and pending state in the existing AI production flow.
+2. Port the exact nested comparison and fallback branches from `FUN_004c9950`.
+3. Preserve its tie ordering.
+4. Keep the Death Star branch separate and retain every source gate.
+5. Do not introduce configurable role weights into this selector.
+
+### Stage 3: Candidate ranking and affordability
+
+1. Filter unlocked products by the selected source capability mask.
+2. Rank with only the selected source metric.
+3. Preserve source tie behavior, including random tie resolution where used.
+4. Walk candidates in order and accept the first affordable product.
+5. Mark the role pending when no product is affordable.
+6. Remove the universal capital-ship score and its cost/maintenance/duplicate blend after all call sites are migrated.
+
+### Stage 4: System-scoped manufacturing
+
+1. Resolve an eligible producing system using the translated type-11 candidate path.
+2. Enqueue the capital ship at that system without a Fleet destination.
+3. Do not create an empty fleet as part of manufacturing.
+4. Let normal manufacturing completion attach the ship at the producing system.
+
+### Stage 5: Separate fleet organization
+
+1. Trace the original selector that consumes available completed ships at systems.
+2. Trace fleet creation, ship grouping, troop and fighter loading, and movement assignment end to end.
+3. Bind completed ships to fleets only through that proven downstream path.
+4. Do not invent nearest-fleet, weakest-fleet, empty-fleet, or destination-fleet heuristics inside manufacturing.
+
+## Expected Files to Change
+
+The exact final set depends on the implementation, but the current divergence is concentrated in:
+
+- `Assets/Scripts/AI/Planners/AIProductionDemand.cs`
+- `Assets/Scripts/AI/Planners/AIProductionDemandGenerator.cs`
+- `Assets/Scripts/AI/Planners/AIProductionPlanner.cs`
+- `Assets/Scripts/AI/Proposals/AIManufactureProposal.cs`
+- `Assets/Scripts/AI/Scoring/AIProductionProposalScorer.cs`
+- `Assets/Scripts/Game/Units/CapitalShip.cs`
+- `Assets/Scripts/Game/GameConfig.cs`
+- `Assets/Resources/Configs/GameConfig.xml`
+- `Assets/Resources/Configs/GameConfigSchema.xsd`
+- corresponding AI planner, proposal, unit, config, and simulation tests
+
+Remove obsolete capital-ship scoring configuration only after every runtime reader has been removed. Do not retain unused compatibility fields.
+
+## Validation Requirements
+
+### Focused tests
+
+Add or update tests that prove:
+
+- source-derived capability flags for general combat, escort, transport, carrier, bombardment, and gravity-well ships
+- role-specific metric calculation
+- absent role selection
+- least-represented role selection
+- exact tie ordering
+- pending-role exclusion
+- source fallback branches
+- compatible-product filtering
+- first-affordable-candidate selection
+- pending state when no candidate is affordable
+- system-scoped manufacturing destination
+- no empty fleet creation during manufacturing
+- no direct Fleet destination on a capital-ship production order
+- additive same-family facility throughput remains unchanged
+
+Do not create one test per XML data entry. These are behavioral unit tests using controlled objects and fixed random providers.
+
+### Build and test order
+
+Always run:
+
+```bash
+csharpier format .
+bash build.sh
+```
+
+### Simulation validation
+
+Use the standard 1000-tick `HeadlessSimulationCommand` path through the persistent Unity editor. Run seeds one at a time.
+
+For every reported run, include per faction:
+
+- current planets owned
+- current capital ships
+- current starfighters
+- current regiments
+- current special forces
+- total manufactured capital ships
+- total manufactured starfighters
+- total manufactured regiments
+- total manufactured special forces
+
+Also inspect:
+
+- selected role sequence
+- candidate IDs returned for each role
+- selected product ID
+- budget and affordability result
+- producing system
+- completed ship parent
+- eventual fleet assignment source
+- fleet composition by hull type
+
+Simulation improvement does not justify retaining a selector or assignment rule that is not source-proven.
+
+## Do Not Reintroduce
+
+- one universal capital-ship utility score
+- global construction and maintenance penalties applied to every role
+- ship-name or TypeID preference lists
+- direct manufacture-to-fleet orders
+- empty fleet creation at enqueue time
+- nearest-destination producer fallback
+- inferred fleet assignment inside production
+- configurable role weights that replace the source count comparator
+- manual outcome tuning accepted only because one simulation seed improved
+
+## Future Full-Parity Work
+
+Complete parity still requires the remaining capability lanes, exact type-11 shortage and pending-state controller, system-scoped manufacturing, and the separate fleet-organization consumer. Those mechanisms should replace the bounded fleet-demand integration only as complete source chains, not as inferred extensions of this slice.

@@ -6,7 +6,11 @@ using Rebellion.Util.Common;
 [UnityEditor.InitializeOnLoad]
 public static class PersistentSimulationRunner
 {
-    private const string _jobDirectory = "/tmp/rebellion2-sim-jobs";
+    private static readonly string _jobDirectory = Path.Combine(
+        "/tmp/rebellion2-sim-jobs",
+        Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, ".."))
+            .TrimStart(Path.DirectorySeparatorChar)
+    );
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
     private const double _pollIntervalSeconds = 1.0;
 

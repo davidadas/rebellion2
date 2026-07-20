@@ -220,6 +220,32 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void GetAbortReason_TargetCapturedByMissionFaction_ReturnsTargetUnavailable()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Mission mission = CreateInciteUprisingMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            enemyPlanet.OwnerInstanceID = "empire";
+
+            Assert.AreEqual(
+                MissionCompletionReason.TargetUnavailable,
+                mission.GetAbortReason(game)
+            );
+        }
+
+        [Test]
         public void GetAgentProbability_HighEnemyStrength_FailsAtHighRoll()
         {
             (

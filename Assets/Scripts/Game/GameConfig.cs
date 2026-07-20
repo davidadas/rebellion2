@@ -76,9 +76,6 @@ namespace Rebellion.Game
             /// <summary>Minimum leadership required for the AI to assign recruitment.</summary>
             public int RecruitmentMinimumLeadership { get; set; } = 80;
 
-            /// <summary>Mission dispatch probability tables.</summary>
-            public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
-
             /// <summary>Mission proposal candidate limits.</summary>
             public AIMissionPlanningConfig MissionPlanning { get; set; } =
                 new AIMissionPlanningConfig();
@@ -86,18 +83,8 @@ namespace Rebellion.Game
             /// <summary>Garrison requirement parameters.</summary>
             public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
 
-            /// <summary>Lower bound for the fleet deployment probability gate.</summary>
-            public int DeploymentGateLow { get; set; }
-
-            /// <summary>Upper bound for the fleet deployment probability gate.</summary>
-            public int DeploymentGateHigh { get; set; }
-
             /// <summary>Unit selection parameters for AI manufacturing.</summary>
             public AISelectionConfig Selection { get; set; } = new AISelectionConfig();
-
-            /// <summary>Non-capital strategic summary thresholds.</summary>
-            public AINonCapitalSummaryConfig NonCapitalSummary { get; set; } =
-                new AINonCapitalSummaryConfig();
 
             /// <summary>Infrastructure shortage parameters for AI manufacturing.</summary>
             public AIInfrastructureConfig Infrastructure { get; set; } =
@@ -114,6 +101,46 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionPlanningConfig
         {
+            public int ReconnaissanceCandidatePlanetLimit { get; set; } = 4;
+
+            public int EspionageCandidatePlanetLimit { get; set; } = 4;
+
+            public int EspionageRefreshIntervalTicks { get; set; } = 70;
+
+            public int HostileMissionMaximumIntelAgeTicks { get; set; } = 70;
+
+            public int MaximumConcurrentHostileMissions { get; set; } = 3;
+
+            public int MaximumConcurrentResearchMissionsPerDiscipline { get; set; } = 1;
+
+            public int MaximumJediTrainingStudents { get; set; } = 3;
+
+            public int SabotageTargetsPerPlanetLimit { get; set; } = 3;
+
+            public int SabotageAssaultBlockerBonus { get; set; } = 150;
+
+            public int MinimumMissionScore { get; set; } = 20;
+
+            public int ReconnaissancePriorityBonus { get; set; } = 50;
+
+            public int RecruitmentPriorityBonus { get; set; } = 80;
+
+            public int RescuePriorityBonus { get; set; } = 120;
+
+            public int SubdueUprisingPriorityBonus { get; set; } = 120;
+
+            public int ResearchPriorityBonus { get; set; } = 50;
+
+            public int JediTrainingPriorityBonus { get; set; } = 80;
+
+            public int EspionagePriorityBonus { get; set; } = 50;
+
+            public int DiplomacyPriorityBonus { get; set; } = 30;
+
+            public int DiplomacySupportDeficitWeight { get; set; } = 1;
+
+            public int HostileOfficerReplacementPenalty { get; set; } = 100;
+
             /// <summary>Maximum diplomacy mission planet candidates to consider.</summary>
             public int DiplomacyCandidatePlanetLimit { get; set; } = 8;
 
@@ -133,11 +160,25 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIFleetDeploymentConfig
         {
+            public int MaximumConcurrentAttackOrders { get; set; } = 2;
+
+            public int MaximumConcurrentColonizationOrders { get; set; } = 1;
+
+            public int ColonizationCandidatePlanetLimit { get; set; } = 6;
+
+            public int MinimumBattleFleetCount { get; set; } = 3;
+
+            public int PlanetsPerBattleFleet { get; set; } = 15;
+
+            public int MaximumBattleFleetCount { get; set; } = 8;
+
             /// <summary>Minimum friendly attack strength required before attacking.</summary>
             public int MinimumAttackStrength { get; set; }
 
             /// <summary>Minimum defensive strength a fleet should keep available.</summary>
             public int MinimumDefenseStrength { get; set; } = 1000;
+
+            public int FleetDefenseScore { get; set; } = 1000;
 
             /// <summary>Minimum loaded regiments required before attempting planet capture.</summary>
             public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
@@ -171,6 +212,20 @@ namespace Rebellion.Game
 
             /// <summary>Score bonus for attacking an enemy headquarters.</summary>
             public int HeadquartersAttackBonus { get; set; } = 45;
+
+            public int OrbitalResponseBonus { get; set; } = 250;
+
+            public int ColonizationBaseScore { get; set; } = 45;
+
+            public int ColonizationStrategicValueWeight { get; set; } = 20;
+
+            public int ColonizationTravelEfficiencyWeight { get; set; } = 20;
+
+            public int ColonizationReadyFleetBonus { get; set; } = 35;
+
+            public int ColonizationOpportunityCostPenaltyWeight { get; set; } = 20;
+
+            public int ExistingColonizationOrderBonus { get; set; } = 100;
         }
 
         /// <summary>
@@ -180,27 +235,12 @@ namespace Rebellion.Game
         public class AISelectionConfig
         {
             public float MinimumSelectableScore { get; set; }
-            public int CandidatePoolSize { get; set; }
-            public int RecentBuildHistoryLimit { get; set; }
-            public int RepeatBuildPenaltyPerSelection { get; set; }
             public int LocalDuplicatePenaltyPerSelection { get; set; }
-            public int MaxDuplicateCapitalTypePerFleet { get; set; }
             public int MaxDuplicateStarfighterTypePerFleet { get; set; }
             public int MaxDuplicateRegimentTypePerDestination { get; set; }
-            public int PremiumCapitalConstructionCostThreshold { get; set; }
-            public int MaxPremiumCapitalsPerFaction { get; set; }
-            public int CapitalConstructionCostWeight { get; set; }
-            public int CapitalMaintenanceCostWeight { get; set; }
-            public int CapitalCombatWeight { get; set; }
-            public int CapitalExcessCombatPenaltyWeight { get; set; } = 1;
-            public int CapitalStarfighterCapacityWeight { get; set; }
-            public int CapitalRegimentCapacityWeight { get; set; }
-            public int CapitalBombardmentWeight { get; set; }
-            public int CapitalGravityWellWeight { get; set; }
-            public int CapitalEmptyFleetCombatBoost { get; set; }
-            public int CapitalMissingStarfighterCapacityBoost { get; set; }
-            public int CapitalMissingRegimentCapacityBoost { get; set; }
-            public int CapitalMissingGravityWellBoost { get; set; }
+            public int CapitalMaintenanceAllocationPercent { get; set; } = 30;
+            public int CapitalMaintenanceSafetyPercent { get; set; } = 90;
+            public int CapitalShipTieReplacementPercent { get; set; } = 50;
             public int StarfighterEscortWeight { get; set; }
             public int StarfighterInterceptorWeight { get; set; }
             public int StarfighterBomberWeight { get; set; }
@@ -210,7 +250,6 @@ namespace Rebellion.Game
             public int RegimentAttackWeight { get; set; }
             public int RegimentBombardmentDefenseWeight { get; set; }
             public int RegimentMaintenanceCostWeight { get; set; }
-            public int RegimentGarrisonDefenseBoost { get; set; }
             public int RegimentFleetAttackBoost { get; set; }
             public int MinimumMaintenanceHeadroomAfterProduction { get; set; } = 200;
             public int MaintenanceHeadroomHardFloor { get; set; } = 0;
@@ -229,18 +268,23 @@ namespace Rebellion.Game
             public int ConstructionFacilityTargetClearTicks { get; set; } = 80;
             public int PlanetsPerShipyard { get; set; }
             public int PlanetsPerTrainingFacility { get; set; }
-            public int ManufacturingFacilityBaseDemandPercent { get; set; }
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
             public int TrainingFacilityDemandPercent { get; set; }
             public int FleetCapitalShipDemandPercent { get; set; } = 80;
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
+            public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
+            public int SpecialForcesTargetCountPerType { get; set; } = 2;
+            public int SpecialForcesDemandPercent { get; set; } = 25;
             public int StarfighterParentFillPercent { get; set; } = 100;
             public int StarfighterLocalReservePercent { get; set; }
             public int AssaultRegimentLoadPercent { get; set; } = 100;
             public int GarrisonRegimentReservePercent { get; set; }
-            public int MaxDefensePerPlanet { get; set; }
+            public int HeadquartersShieldTargetCount { get; set; } = 1;
+            public int HeadquartersWeaponTargetCount { get; set; } = 1;
+            public int HeadquartersShieldDemandPercent { get; set; } = 100;
+            public int HeadquartersWeaponDemandPercent { get; set; } = 95;
             public int EconomyDefaultBatchSize { get; set; } = 1;
             public int EconomyDemandPercent { get; set; } = 90;
             public int EconomySevereDemandPercent { get; set; } = 100;
@@ -254,30 +298,6 @@ namespace Rebellion.Game
             public int FleetFinalReadinessGateUnitCount { get; set; } = 2;
             public int FleetStarfighterFillPressureWeight { get; set; } = 20;
             public int FleetReinforcementTravelPenaltyWeight { get; set; } = 1;
-        }
-
-        /// <summary>
-        /// AI non-capital production summary thresholds.
-        /// </summary>
-        [PersistableObject]
-        public class AINonCapitalSummaryConfig
-        {
-            public int MajorThreatWeaponDefenseCapacity { get; set; }
-            public int MajorThreatShieldDefenseCapacity { get; set; }
-            public int StrategicThreatShieldDefenseCapacity { get; set; }
-            public int StrategicThreatWeaponDefenseCapacity { get; set; }
-            public int MinimumShieldDefenseCapacity { get; set; }
-            public int SupportThreatWeaponDefenseCapacity { get; set; }
-            public float SubtypeSelectorRatioThreshold { get; set; }
-            public int SupportThreshold { get; set; }
-            public int SupportDivisor { get; set; }
-            public int SupportUrgencyCap { get; set; }
-            public int BaseRequirementDefault { get; set; }
-            public int BaseRequirementInfrastructure { get; set; }
-            public int BaseRequirementHeadquarters { get; set; }
-            public int StarfighterRequirementDefault { get; set; }
-            public int StarfighterRequirementInfrastructure { get; set; }
-            public int StarfighterRequirementHeadquarters { get; set; }
         }
 
         /// <summary>
@@ -399,43 +419,6 @@ namespace Rebellion.Game
 
             /// <summary>Random support shift range for successful diplomacy on a neutral planet.</summary>
             public int DiplomacyNeutralPlanetSupportRange { get; set; }
-        }
-
-        /// <summary>
-        /// AI mission dispatch probability tables. Each table maps a per-mission score to a dispatch probability.
-        /// </summary>
-        [PersistableObject]
-        public class AIMissionTablesConfig
-        {
-            /// <summary>Reconnaissance mission dispatch table.</summary>
-            public Dictionary<int, int> Reconnaissance { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Diplomacy mission dispatch table.</summary>
-            public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>SubdueUprising mission dispatch table.</summary>
-            public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Espionage mission dispatch table.</summary>
-            public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>InciteUprising mission dispatch table.</summary>
-            public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Rescue mission dispatch table.</summary>
-            public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Sabotage mission dispatch table.</summary>
-            public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Abduction mission dispatch table.</summary>
-            public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Assassination mission dispatch table.</summary>
-            public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
-
-            /// <summary>Recruitment mission dispatch table.</summary>
-            public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
         }
 
         /// <summary>

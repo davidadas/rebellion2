@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -34,6 +33,7 @@ namespace Rebellion.Game.Units
         /// </summary>
         public FleetRoleType RoleType { get; set; } = FleetRoleType.None;
 
+        [PersistableIgnore]
         public FleetOrder Order { get; set; }
 
         /// <summary>
@@ -252,44 +252,11 @@ namespace Rebellion.Game.Units
                 ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null
             );
 
-            int capitalShipCombat = activeShips.Sum(ship => ship.GetCombatValue());
-
-            int starfighterCombat = 0;
-            foreach (Starfighter f in activeShips.SelectMany(ship => ship.Starfighters))
-            {
-                if (f.ManufacturingStatus != ManufacturingStatus.Complete || f.Movement != null)
-                    continue;
-
-                int weaponStrength = f.LaserCannon + f.IonCannon + f.Torpedoes;
-                if (f.MaxSquadronSize > 0)
-                {
-                    starfighterCombat += weaponStrength * f.CurrentSquadronSize / f.MaxSquadronSize;
-                }
-                else
-                {
-                    starfighterCombat += weaponStrength;
-                }
-            }
-
-            return capitalShipCombat + starfighterCombat;
-        }
-
-        /// <summary>
-        /// Planetary assault strength: <c>(personnel / divisor + 1) * combat_value</c>.
-        /// Personnel comes from the fleet commander's Leadership skill. The commander
-        /// must be a General; only ground officers contribute to assault personnel.
-        /// Fleets without a General get a baseline strength equal to the combat value.
-        /// </summary>
-        /// <param name="assaultPersonnelDivisor">
-        /// Divisor from <see cref="GameConfig.PlanetaryAssaultConfig.PersonnelDivisor"/>.
-        /// </param>
-        /// <returns>The fleet's assault strength.</returns>
-        public int GetAssaultStrength(int assaultPersonnelDivisor)
-        {
-            Officer commander = GetOfficers()
-                .FirstOrDefault(o => o.CurrentRank == OfficerRank.General);
-            int personnel = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
-            return (personnel / assaultPersonnelDivisor + 1) * GetCombatValue();
+            return activeShips.Sum(ship =>
+                ship.GetCombatValue()
+                + ship.Starfighters.Where(fighter => fighter != null)
+                    .Sum(fighter => fighter.GetCombatValue())
+            );
         }
 
         /// <summary>

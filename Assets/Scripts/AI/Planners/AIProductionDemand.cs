@@ -15,11 +15,22 @@ namespace Rebellion.AI.Planners
         ConstructionFacility,
         Shipyard,
         TrainingFacility,
+        HeadquartersDefense,
         FleetCapitalShip,
         FleetStarfighter,
         FleetRegiment,
         LocalStarfighterReserve,
         GarrisonRegimentReserve,
+        SpecialForces,
+        FleetSeedCapitalShip,
+    }
+
+    public enum AICapitalShipProductionRole
+    {
+        None,
+        General,
+        TroopTransport,
+        Bombardment,
     }
 
     /// <summary>
@@ -37,6 +48,8 @@ namespace Rebellion.AI.Planners
         /// <param name="destination">Container receiving the produced item.</param>
         /// <param name="quantityNeeded">Amount of demand still needed.</param>
         /// <param name="pressure">Demand pressure used for scoring.</param>
+        /// <param name="productTypeId">Exact product type required by the demand.</param>
+        /// <param name="capitalShipRole">Capital ship role required by the demand.</param>
         public AIProductionDemand(
             string id,
             AIProductionDemandKind kind,
@@ -44,7 +57,9 @@ namespace Rebellion.AI.Planners
             BuildingType buildingType,
             ContainerNode destination,
             int quantityNeeded,
-            double pressure
+            double pressure,
+            string productTypeId = null,
+            AICapitalShipProductionRole capitalShipRole = AICapitalShipProductionRole.None
         )
         {
             Id = id;
@@ -54,6 +69,8 @@ namespace Rebellion.AI.Planners
             Destination = destination;
             QuantityNeeded = quantityNeeded;
             Pressure = pressure;
+            ProductTypeId = productTypeId;
+            CapitalShipRole = capitalShipRole;
         }
 
         public string Id { get; }
@@ -65,5 +82,7 @@ namespace Rebellion.AI.Planners
         public Fleet DestinationFleet => Destination as Fleet;
         public int QuantityNeeded { get; }
         public double Pressure { get; }
+        public string ProductTypeId { get; }
+        public AICapitalShipProductionRole CapitalShipRole { get; }
     }
 }

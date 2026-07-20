@@ -34,7 +34,7 @@ namespace Rebellion.Tests.AI.Scoring
                 system,
                 "far",
                 empire.InstanceID,
-                positionX: 100,
+                positionX: 240,
                 positionY: 0
             );
             Planet fleetPlanet = AITestSceneBuilder.AddPlanet(
@@ -72,6 +72,7 @@ namespace Rebellion.Tests.AI.Scoring
             );
 
             Assert.Greater(nearScore, farScore);
+            Assert.Greater(farScore, 0);
         }
     }
 }

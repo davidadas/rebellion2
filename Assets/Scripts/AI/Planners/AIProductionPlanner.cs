@@ -15,6 +15,12 @@ namespace Rebellion.AI.Planners
     /// </summary>
     public sealed class AIProductionPlanner : IAIProposalPlanner
     {
+        private const int _percentageScale = 100;
+        private const int _primaryLaserDivisor = 6;
+        private const int _primaryWeaponWeight = 100;
+        private const int _roleMetricScale = 10;
+        private const int _weaponArcCount = 4;
+
         private readonly AIProductionDemandGenerator _demandGenerator =
             new AIProductionDemandGenerator();
 
@@ -99,7 +105,8 @@ namespace Rebellion.AI.Planners
                 or AIProductionDemandKind.Refinery
                 or AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
-                or AIProductionDemandKind.TrainingFacility => GetUnlockedBuildingTechnology(
+                or AIProductionDemandKind.TrainingFacility
+                or AIProductionDemandKind.HeadquartersDefense => GetUnlockedBuildingTechnology(
                     context.Faction,
                     demand.BuildingType
                 ),
@@ -107,7 +114,9 @@ namespace Rebellion.AI.Planners
                 or AIProductionDemandKind.FleetStarfighter
                 or AIProductionDemandKind.FleetRegiment
                 or AIProductionDemandKind.LocalStarfighterReserve
-                or AIProductionDemandKind.GarrisonRegimentReserve => GetUnlockedUnitTechnology(
+                or AIProductionDemandKind.GarrisonRegimentReserve
+                or AIProductionDemandKind.SpecialForces
+                or AIProductionDemandKind.FleetSeedCapitalShip => GetUnlockedUnitTechnology(
                     context,
                     demand
                 ),
@@ -132,10 +141,31 @@ namespace Rebellion.AI.Planners
                     technology.GetReference() is Building building
                     && building.GetBuildingType() == buildingType
                 )
-                .OrderBy(technology => technology.GetResearchOrder())
+                .OrderByDescending(technology =>
+                    GetBuildingCapability((Building)technology.GetReference())
+                )
+                .ThenByDescending(technology => technology.GetResearchOrder())
+                .ThenBy(technology => technology.GetReference().GetMaintenanceCost())
                 .ThenBy(technology => technology.GetReference().GetConstructionCost())
                 .ThenBy(technology => technology.GetReference().GetTypeID())
                 .FirstOrDefault();
+        }
+
+        private static int GetBuildingCapability(Building building)
+        {
+            return building.GetBuildingType() switch
+            {
+                BuildingType.ConstructionFacility
+                or BuildingType.Shipyard
+                or BuildingType.TrainingFacility
+                or BuildingType.Mine
+                or BuildingType.Refinery => building.ProcessRate > 0
+                    ? -building.ProcessRate
+                    : int.MinValue,
+                BuildingType.Weapon => building.WeaponPower,
+                BuildingType.Defense => building.ShieldStrength,
+                _ => int.MinValue,
+            };
         }
 
         /// <summary>
@@ -156,8 +186,11 @@ namespace Rebellion.AI.Planners
             {
                 AIProductionDemandKind.FleetCapitalShip => GetUnlockedCapitalShipTechnology(
                     context,
-                    demand,
-                    demand.DestinationFleet
+                    demand
+                ),
+                AIProductionDemandKind.FleetSeedCapitalShip => GetUnlockedCapitalShipTechnology(
+                    context,
+                    demand
                 ),
                 AIProductionDemandKind.FleetStarfighter => GetUnlockedStarfighterTechnology(
                     context,
@@ -175,156 +208,217 @@ namespace Rebellion.AI.Planners
                     context,
                     null
                 ),
+                AIProductionDemandKind.SpecialForces => GetUnlockedSpecialForcesTechnology(
+                    context,
+                    demand.ProductTypeId
+                ),
                 _ => null,
             };
         }
 
-        /// <summary>
-        /// Returns the unlocked capital ship technology for a fleet demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
-        /// <param name="fleet">Fleet receiving the ship.</param>
-        /// <returns>The selected technology, or null.</returns>
-        private Technology GetUnlockedCapitalShipTechnology(
+        private Technology GetUnlockedSpecialForcesTechnology(
             AITurnContext context,
-            AIProductionDemand demand,
-            Fleet fleet
+            string productTypeId
         )
         {
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            List<Technology> technologies = context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Ship)
-                .Where(technology => technology.GetReference() is CapitalShip)
-                .ToList();
-            List<Technology> routineTechnologies = technologies
-                .Where(technology =>
-                    technology.GetReference() is CapitalShip capitalShip
-                    && !IsPremiumCapitalShip(config, capitalShip)
-                )
-                .ToList();
-            List<Technology> selectableTechnologies =
-                routineTechnologies.Count > 0
-                    ? routineTechnologies
-                    : technologies
-                        .Where(technology =>
-                            technology.GetReference() is CapitalShip capitalShip
-                            && CanSelectPremiumCapitalShip(context, config, capitalShip)
-                        )
-                        .ToList();
-            List<Technology> combatTechnologies = selectableTechnologies
-                .Where(technology =>
-                    technology.GetReference() is CapitalShip capitalShip
-                    && CanServeFleetCombatDemand(capitalShip)
-                )
-                .ToList();
-            List<Technology> candidateTechnologies =
-                NeedsFleetCombat(context, fleet) && combatTechnologies.Count > 0
-                    ? combatTechnologies
-                    : selectableTechnologies;
-            List<Technology> preferredTechnologies = candidateTechnologies
-                .Where(technology =>
-                    CountFleetUnitsByType<CapitalShip>(fleet, technology.GetReference().GetTypeID())
-                    < config.MaxDuplicateCapitalTypePerFleet
-                )
-                .ToList();
+            if (string.IsNullOrEmpty(productTypeId))
+                return null;
 
-            return (preferredTechnologies.Count > 0 ? preferredTechnologies : candidateTechnologies)
-                .OrderByDescending(technology =>
-                    ScoreCapitalShipTechnology(
-                        config,
-                        demand,
-                        fleet,
-                        (CapitalShip)technology.GetReference()
-                    )
+            return context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
+                .Where(technology =>
+                    technology.GetReference() is SpecialForces specialForces
+                    && specialForces.GetTypeID() == productTypeId
                 )
+                .OrderBy(technology => technology.GetResearchOrder())
                 .ThenBy(technology => technology.GetReference().GetConstructionCost())
-                .ThenBy(technology => technology.GetReference().GetTypeID())
                 .FirstOrDefault();
         }
 
-        /// <summary>
-        /// Returns whether a capital ship can satisfy combat demand.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the capital ship can serve combat demand.</returns>
-        private bool CanServeFleetCombatDemand(CapitalShip capitalShip)
+        private Technology GetUnlockedCapitalShipTechnology(
+            AITurnContext context,
+            AIProductionDemand demand
+        )
         {
-            return capitalShip.GetPrimaryWeaponStrength() > 0
-                && !IsPureTransportCapitalShip(capitalShip);
+            if (context?.Faction == null || demand == null)
+                return null;
+
+            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
+            Technology selectedTechnology = null;
+            long selectedMetric = long.MinValue;
+
+            foreach (
+                Technology technology in context.Faction.GetUnlockedTechnologies(
+                    ManufacturingType.Ship
+                )
+            )
+            {
+                if (technology.GetReference() is not CapitalShip capitalShip)
+                    continue;
+
+                if (!capitalShip.HasAllowedOwnerInstanceID(context.Faction.InstanceID))
+                    continue;
+
+                if (!CanFillCapitalShipRole(context, capitalShip, demand.CapitalShipRole))
+                    continue;
+
+                if (capitalShip.MaintenanceCost > maintenanceBudget)
+                    continue;
+
+                long metric = GetCapitalShipRoleMetric(capitalShip, demand.CapitalShipRole);
+                if (metric < selectedMetric)
+                    continue;
+
+                if (
+                    metric == selectedMetric
+                    && context.Random.NextInt(0, _percentageScale)
+                        >= config.CapitalShipTieReplacementPercent
+                )
+                    continue;
+
+                selectedTechnology = technology;
+                selectedMetric = metric;
+            }
+
+            return selectedTechnology;
         }
 
-        /// <summary>
-        /// Returns whether a fleet needs more combat strength.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>True if the fleet needs combat strength.</returns>
-        private bool NeedsFleetCombat(AITurnContext context, Fleet fleet)
+        private int GetCapitalShipMaintenanceBudget(AITurnContext context)
         {
-            Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
-            if (targetPlanet == null)
-                return true;
+            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            int allocatedMaintenance = ScaleByPercent(
+                context.Faction.MaintenanceCapacity,
+                config.CapitalMaintenanceAllocationPercent
+            );
+            int targetCapitalMaintenance = ScaleByPercent(
+                allocatedMaintenance,
+                config.CapitalMaintenanceSafetyPercent
+            );
+            int committedCapitalMaintenance = context
+                .Faction.GetOwnedUnitsByType<CapitalShip>()
+                .Where(IsCommittedCapitalShip)
+                .Sum(capitalShip => capitalShip.MaintenanceCost);
+            int budget = System.Math.Max(0, targetCapitalMaintenance - committedCapitalMaintenance);
 
-            return GetProjectedFleetCombatValue(fleet)
-                < context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
+            return context.Faction.ProjectedMaintenanceHeadroom < budget ? 0 : budget;
         }
 
-        /// <summary>
-        /// Returns current or committed combat value for a fleet.
-        /// </summary>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The projected combat value.</returns>
-        private static int GetProjectedFleetCombatValue(Fleet fleet)
+        private static bool IsCommittedCapitalShip(CapitalShip capitalShip)
         {
-            if (fleet == null)
+            return capitalShip?.ManufacturingStatus
+                is ManufacturingStatus.Complete
+                    or ManufacturingStatus.Building;
+        }
+
+        private static int ScaleByPercent(int value, int percent)
+        {
+            return (int)((long)value * percent / _percentageScale);
+        }
+
+        private static bool CanFillCapitalShipRole(
+            AITurnContext context,
+            CapitalShip capitalShip,
+            AICapitalShipProductionRole role
+        )
+        {
+            if (
+                context.Game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs?.Contains(
+                    capitalShip.GetTypeID()
+                ) == true
+            )
+                return false;
+
+            return role switch
+            {
+                AICapitalShipProductionRole.General => !capitalShip.HasGravityWell
+                    && GetMaximumPrimaryWeaponWeight(capitalShip) > 0,
+                AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity > 0
+                    && !capitalShip.HasGravityWell
+                    && GetMaximumPrimaryWeaponWeight(capitalShip) == 0,
+                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0,
+                _ => false,
+            };
+        }
+
+        private static long GetCapitalShipRoleMetric(
+            CapitalShip capitalShip,
+            AICapitalShipProductionRole role
+        )
+        {
+            return role switch
+            {
+                AICapitalShipProductionRole.General => GetPrimaryWeaponMetric(capitalShip)
+                    * _roleMetricScale
+                    / System.Math.Max(1, capitalShip.MaintenanceCost),
+                AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
+                AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
+                _ => 0,
+            };
+        }
+
+        private static long GetPrimaryWeaponMetric(CapitalShip capitalShip)
+        {
+            long maximumWeight = 0;
+            int selectedWeaponCount = 0;
+
+            for (int arc = 0; arc < _weaponArcCount; arc++)
+            {
+                int turbolasers = GetWeaponCount(capitalShip, PrimaryWeaponType.Turbolaser, arc);
+                int ionCannons = GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, arc);
+                int laserCannons = GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc);
+                long weight =
+                    (long)_primaryWeaponWeight * turbolasers
+                    + (long)_primaryWeaponWeight * ionCannons
+                    + (long)_primaryWeaponWeight * laserCannons / _primaryLaserDivisor;
+                if (weight <= maximumWeight)
+                    continue;
+
+                maximumWeight = weight;
+                selectedWeaponCount = turbolasers + ionCannons + laserCannons;
+            }
+
+            if (selectedWeaponCount <= 0)
                 return 0;
 
-            int committedCapitalCombat = fleet
-                .CapitalShips.Where(IsPresentOrUnderConstruction)
-                .Sum(ship => ship.GetPrimaryWeaponStrength());
-            return System.Math.Max(fleet.GetCombatValue(), committedCapitalCombat);
+            return (long)capitalShip.WeaponRecharge * maximumWeight / selectedWeaponCount;
         }
 
-        /// <summary>
-        /// Returns the active attack target for a fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The attack target planet, or null.</returns>
-        private Planet GetAttackTargetPlanet(AITurnContext context, Fleet fleet)
+        private static long GetMaximumPrimaryWeaponWeight(CapitalShip capitalShip)
         {
-            string targetPlanetId = fleet?.Order?.TargetPlanetId;
+            long maximumWeight = 0;
+            for (int arc = 0; arc < _weaponArcCount; arc++)
+            {
+                long weight =
+                    (long)_primaryWeaponWeight
+                        * GetWeaponCount(capitalShip, PrimaryWeaponType.Turbolaser, arc)
+                    + (long)_primaryWeaponWeight
+                        * GetWeaponCount(capitalShip, PrimaryWeaponType.IonCannon, arc)
+                    + (long)_primaryWeaponWeight
+                        * GetWeaponCount(capitalShip, PrimaryWeaponType.LaserCannon, arc)
+                        / _primaryLaserDivisor;
+                maximumWeight = System.Math.Max(maximumWeight, weight);
+            }
+
+            return maximumWeight;
+        }
+
+        private static int GetWeaponCount(
+            CapitalShip capitalShip,
+            PrimaryWeaponType weaponType,
+            int arc
+        )
+        {
             if (
-                fleet?.Order?.OrderType != FleetOrderType.Attack
-                || string.IsNullOrEmpty(targetPlanetId)
+                capitalShip?.PrimaryWeapons == null
+                || !capitalShip.PrimaryWeapons.TryGetValue(weaponType, out int[] values)
+                || values == null
+                || arc < 0
+                || arc >= values.Length
             )
-                return null;
+                return 0;
 
-            Planet targetPlanet = context.Game.GetSceneNodeByInstanceID<Planet>(targetPlanetId);
-            string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(targetOwnerId) || targetOwnerId == context.Faction.InstanceID)
-                return null;
-
-            return targetPlanet;
-        }
-
-        /// <summary>
-        /// Returns whether a capital ship only provides transport capacity.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the capital ship is only a transport.</returns>
-        private bool IsPureTransportCapitalShip(CapitalShip capitalShip)
-        {
-            return capitalShip.HasRole(CapitalShipRole.Transport)
-                && !capitalShip.HasAnyRole(
-                    CapitalShipRole.PrimaryLine,
-                    CapitalShipRole.SecondaryLine,
-                    CapitalShipRole.Escort,
-                    CapitalShipRole.Interdictor,
-                    CapitalShipRole.Carrier,
-                    CapitalShipRole.Flagship
-                );
+            return values[arc];
         }
 
         /// <summary>
@@ -382,7 +476,7 @@ namespace Rebellion.AI.Planners
 
             return (preferredTechnologies.Count > 0 ? preferredTechnologies : technologies)
                 .OrderByDescending(technology =>
-                    ScoreRegimentTechnology(config, (Regiment)technology.GetReference())
+                    ScoreRegimentTechnology(config, fleet, (Regiment)technology.GetReference())
                 )
                 .ThenBy(technology => technology.GetReference().GetConstructionCost())
                 .ThenBy(technology => technology.GetReference().GetTypeID())
@@ -413,6 +507,10 @@ namespace Rebellion.AI.Planners
             if (starfighter.Torpedoes > 0 && !FleetHasTorpedoStarfighter(fleet))
                 score += config.StarfighterMissingBomberBoost;
 
+            score -=
+                CountFleetUnitsByType<Starfighter>(fleet, starfighter.GetTypeID())
+                * config.LocalDuplicatePenaltyPerSelection;
+
             return score;
         }
 
@@ -420,10 +518,12 @@ namespace Rebellion.AI.Planners
         /// Returns the score for a regiment technology.
         /// </summary>
         /// <param name="config">AI selection configuration.</param>
+        /// <param name="fleet">Fleet receiving the regiment.</param>
         /// <param name="regiment">Regiment to score.</param>
         /// <returns>The regiment technology score.</returns>
         private double ScoreRegimentTechnology(
             GameConfig.AISelectionConfig config,
+            Fleet fleet,
             Regiment regiment
         )
         {
@@ -431,129 +531,9 @@ namespace Rebellion.AI.Planners
                 + regiment.DefenseRating * config.RegimentDefenseWeight
                 + regiment.BombardmentDefense * config.RegimentBombardmentDefenseWeight
                 + config.RegimentFleetAttackBoost
-                - regiment.MaintenanceCost * config.RegimentMaintenanceCostWeight;
-        }
-
-        /// <summary>
-        /// Returns the score for a capital ship technology.
-        /// </summary>
-        /// <param name="config">AI selection configuration.</param>
-        /// <param name="demand">Demand item to satisfy.</param>
-        /// <param name="fleet">Fleet receiving the capital ship.</param>
-        /// <param name="capitalShip">Capital ship to score.</param>
-        /// <returns>The capital ship technology score.</returns>
-        private double ScoreCapitalShipTechnology(
-            GameConfig.AISelectionConfig config,
-            AIProductionDemand demand,
-            Fleet fleet,
-            CapitalShip capitalShip
-        )
-        {
-            int combatStrength = capitalShip.GetPrimaryWeaponStrength();
-            int requiredCombat = demand?.QuantityNeeded ?? combatStrength;
-            int usefulCombat =
-                requiredCombat <= 0
-                    ? combatStrength
-                    : System.Math.Min(combatStrength, requiredCombat);
-            int excessCombat =
-                requiredCombat <= 0 ? 0 : System.Math.Max(0, combatStrength - requiredCombat);
-            double score =
-                usefulCombat * config.CapitalCombatWeight
-                + capitalShip.StarfighterCapacity * config.CapitalStarfighterCapacityWeight
-                + capitalShip.RegimentCapacity * config.CapitalRegimentCapacityWeight
-                + capitalShip.Bombardment * config.CapitalBombardmentWeight
-                - excessCombat * config.CapitalExcessCombatPenaltyWeight
-                - capitalShip.ConstructionCost * config.CapitalConstructionCostWeight
-                - capitalShip.MaintenanceCost * config.CapitalMaintenanceCostWeight;
-
-            if (capitalShip.HasGravityWell)
-                score += config.CapitalGravityWellWeight;
-
-            if (fleet?.CapitalShips.Count == 0)
-                score += config.CapitalEmptyFleetCombatBoost;
-
-            if (fleet?.GetExcessStarfighterCapacity() <= 0)
-                score += config.CapitalMissingStarfighterCapacityBoost;
-
-            if (fleet?.GetExcessRegimentCapacity() <= 0)
-                score += config.CapitalMissingRegimentCapacityBoost;
-
-            if (fleet?.CapitalShips.Any(ship => ship.HasGravityWell) == false)
-                score += config.CapitalMissingGravityWellBoost;
-
-            return score;
-        }
-
-        /// <summary>
-        /// Returns whether a premium capital ship can be selected.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="config">AI selection configuration.</param>
-        /// <param name="capitalShip">Capital ship to inspect.</param>
-        /// <returns>True if the capital ship can be selected.</returns>
-        private bool CanSelectPremiumCapitalShip(
-            AITurnContext context,
-            GameConfig.AISelectionConfig config,
-            CapitalShip capitalShip
-        )
-        {
-            if (config.PremiumCapitalConstructionCostThreshold <= 0)
-                return true;
-
-            if (config.MaxPremiumCapitalsPerFaction <= 0)
-                return true;
-
-            if (!IsPremiumCapitalShip(config, capitalShip))
-                return true;
-
-            return CountPremiumCapitalShips(context, config) < config.MaxPremiumCapitalsPerFaction;
-        }
-
-        /// <summary>
-        /// Returns whether a capital ship is a premium production choice.
-        /// </summary>
-        /// <param name="config">AI selection configuration.</param>
-        /// <param name="capitalShip">Capital ship to inspect.</param>
-        /// <returns>True if the capital ship is premium.</returns>
-        private bool IsPremiumCapitalShip(
-            GameConfig.AISelectionConfig config,
-            CapitalShip capitalShip
-        )
-        {
-            return config.PremiumCapitalConstructionCostThreshold > 0
-                && capitalShip.ConstructionCost >= config.PremiumCapitalConstructionCostThreshold;
-        }
-
-        /// <summary>
-        /// Returns the faction's committed premium capital ship count.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="config">AI selection configuration.</param>
-        /// <returns>The premium capital ship count.</returns>
-        private int CountPremiumCapitalShips(
-            AITurnContext context,
-            GameConfig.AISelectionConfig config
-        )
-        {
-            return context
-                .Faction.GetOwnedUnitsByType<CapitalShip>()
-                .Count(capitalShip =>
-                    capitalShip.ConstructionCost >= config.PremiumCapitalConstructionCostThreshold
-                    && IsPresentOrUnderConstruction(capitalShip)
-                );
-        }
-
-        /// <summary>
-        /// Returns whether a capital ship is present or being built.
-        /// </summary>
-        /// <param name="capitalShip">The capital ship to inspect.</param>
-        /// <returns>True if the capital ship is present or under construction.</returns>
-        private static bool IsPresentOrUnderConstruction(CapitalShip capitalShip)
-        {
-            return capitalShip?.ManufacturingStatus
-                    is ManufacturingStatus.Complete
-                        or ManufacturingStatus.Building
-                && capitalShip.Movement == null;
+                - regiment.MaintenanceCost * config.RegimentMaintenanceCostWeight
+                - CountFleetUnitsByType<Regiment>(fleet, regiment.GetTypeID())
+                    * config.LocalDuplicatePenaltyPerSelection;
         }
 
         /// <summary>

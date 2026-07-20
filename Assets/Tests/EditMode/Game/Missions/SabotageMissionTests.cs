@@ -256,6 +256,42 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_LastCapitalShipInFleet_RemovesFleet()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "rebels" };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(capitalShip, fleet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                capitalShip
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(capitalShip.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
+        }
+
+        [Test]
         public void TryCreate_OfficerTarget_ReturnsNull()
         {
             (

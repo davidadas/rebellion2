@@ -166,7 +166,10 @@ namespace Rebellion.Game.Missions
             if (target == null)
                 return new List<GameResult>();
 
+            Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
             game.DetachNode(target);
+            if (targetFleet?.CapitalShips.Count == 0)
+                game.DetachNode(targetFleet);
 
             return new List<GameResult>
             {

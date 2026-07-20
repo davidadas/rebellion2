@@ -1546,6 +1546,51 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("b1", queue[ManufacturingType.Building][0].InstanceID);
         }
 
+        [Test]
+        public void RebuildQueues_CapturedDestinationOrder_RemovesItem()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            game.Factions.Add(new Faction { InstanceID = "alliance" });
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.Galaxy);
+            Planet producer = new Planet
+            {
+                InstanceID = "producer",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Planet capturedDestination = new Planet
+            {
+                InstanceID = "destination",
+                OwnerInstanceID = "alliance",
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(producer, system);
+            game.AttachNode(capturedDestination, system);
+            Building order = new Building
+            {
+                InstanceID = "captured-order",
+                OwnerInstanceID = "alliance",
+                ProducerOwnerID = "empire",
+                ProducerPlanetID = producer.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingProgress = 5,
+                BuildingType = BuildingType.Refinery,
+                ConstructionCost = 100,
+            };
+            game.AttachNode(order, capturedDestination);
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
+
+            manager.RebuildQueues();
+
+            Assert.IsFalse(producer.GetManufacturingQueue().Values.Any(items => items.Count > 0));
+            Assert.IsNull(order.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(order.InstanceID));
+        }
+
         private Planet BuildShipyardPlanet(GameRoot _game, string planetId, string factionId)
         {
             PlanetSystem sys = new PlanetSystem
@@ -1829,6 +1874,46 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(mfg.Enqueue(planet, fighter, carrier, ignoreCost: true));
             Assert.AreEqual(carrier, fighter.GetParent());
             Assert.Contains(fighter, carrier.Starfighters);
+        }
+
+        [Test]
+        public void Enqueue_CapitalShipDestinationDetached_ReturnsFalse()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(carrier, fleet);
+            game.DetachNode(fleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                new FleetSystem(game),
+                _provider,
+                _movement
+            );
+
+            Assert.IsFalse(manufacturing.Enqueue(planet, fighter, carrier, ignoreCost: true));
+            Assert.IsNull(fighter.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
         }
 
         [Test]
@@ -2526,6 +2611,49 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(
                 found,
                 "Fighter should be deregistered when its destination fleet is destroyed."
+            );
+        }
+
+        [Test]
+        public void ProcessTick_DestinationCarrierDestroyed_RemovesQueuedUnit()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+            Planet productionPlanet = BuildShipyardPlanet(game, "p1", empire.InstanceID);
+            Planet destinationPlanet = BuildShipyardPlanet(game, "p2", empire.InstanceID);
+            Fleet destinationFleet = EntityFactory.CreateFleet("f1", empire.InstanceID);
+            CapitalShip destinationCarrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 2,
+            };
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = empire.InstanceID,
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+            game.AttachNode(destinationFleet, destinationPlanet);
+            game.AttachNode(destinationCarrier, destinationFleet);
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                _provider,
+                new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
+            );
+            manufacturing.Enqueue(productionPlanet, fighter, destinationCarrier, ignoreCost: true);
+            game.DetachNode(destinationCarrier);
+
+            Assert.DoesNotThrow(() => manufacturing.ProcessTick());
+
+            Assert.IsFalse(
+                productionPlanet.GetManufacturingQueue().ContainsKey(ManufacturingType.Ship)
             );
         }
 

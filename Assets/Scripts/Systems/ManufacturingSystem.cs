@@ -403,7 +403,7 @@ namespace Rebellion.Systems
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
-            if (faction == null || destination == null)
+            if (faction == null || !IsLiveDestination(destination))
                 return false;
 
             if (item is CapitalShip)
@@ -452,7 +452,7 @@ namespace Rebellion.Systems
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
-            if (faction == null || destination == null)
+            if (faction == null || !IsLiveDestination(destination))
                 return false;
 
             if (
@@ -519,7 +519,7 @@ namespace Rebellion.Systems
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
-            if (faction == null || destination == null)
+            if (faction == null || !IsLiveDestination(destination))
                 return false;
 
             if (
@@ -565,6 +565,20 @@ namespace Rebellion.Systems
         {
             return ship?.ManufacturingStatus == ManufacturingStatus.Complete
                 && ship.Movement == null;
+        }
+
+        private bool IsLiveDestination(ContainerNode destination)
+        {
+            if (destination == null)
+                return false;
+
+            ContainerNode liveDestination = _game.GetSceneNodeByInstanceID<ContainerNode>(
+                destination.InstanceID
+            );
+            if (!ReferenceEquals(liveDestination, destination))
+                return false;
+
+            return destination is Planet || destination.GetParentOfType<Planet>() != null;
         }
 
         /// <summary>
@@ -692,8 +706,17 @@ namespace Rebellion.Systems
                 ManufacturingType type = kvp.Key;
                 List<IManufacturable> items = kvp.Value;
 
-                if (items == null || items.Count == 0)
+                if (items == null)
                     continue;
+
+                items.RemoveAll(item => !IsQueuedItemActive(item));
+                if (items.Count == 0)
+                {
+                    queue.Remove(type);
+                    ResetProductionFacilities(planet, type);
+                    results.Add(CreateQueueIdleResult(planet, type));
+                    continue;
+                }
 
                 List<Building> readyFacilities = AdvanceProductionFacilities(planet, type);
                 List<IManufacturable> completed = DistributeProgress(
@@ -706,6 +729,12 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        private bool IsQueuedItemActive(IManufacturable item)
+        {
+            return item != null
+                && _game.GetSceneNodeByInstanceID<ISceneNode>(item.InstanceID) == item;
         }
 
         /// <summary>
@@ -1278,6 +1307,26 @@ namespace Rebellion.Systems
             return cancelled;
         }
 
+        internal void CancelOrdersTo(Planet destination)
+        {
+            if (destination == null)
+                return;
+
+            List<IManufacturable> orders = destination
+                .GetChildren<IManufacturable>(
+                    item => item.ManufacturingStatus == ManufacturingStatus.Building,
+                    recurse: false
+                )
+                .ToList();
+
+            foreach (IManufacturable order in orders)
+            {
+                Planet producer = _game.GetSceneNodeByInstanceID<Planet>(order.ProducerPlanetID);
+                if (producer != null)
+                    CancelManufacturing(order, producer.GetOwnerInstanceID());
+            }
+        }
+
         /// <summary>
         /// Detaches queued manufacturing items and resets the facilities assigned to their queue.
         /// </summary>
@@ -1385,6 +1434,8 @@ namespace Rebellion.Systems
         /// </summary>
         public void RebuildQueues()
         {
+            List<IManufacturable> canceledOrders = new List<IManufacturable>();
+
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 Dictionary<ManufacturingType, List<IManufacturable>> queue =
@@ -1419,9 +1470,18 @@ namespace Rebellion.Systems
                             return;
                         }
 
+                        if (!CanRestoreOrder(manufacturable, producerPlanet))
+                        {
+                            canceledOrders.Add(manufacturable);
+                            return;
+                        }
+
                         producerPlanet.AddToManufacturingQueue(manufacturable);
                     }
                 });
+
+            foreach (IManufacturable canceledOrder in canceledOrders)
+                DetachQueuedItem(canceledOrder);
 
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
@@ -1434,6 +1494,29 @@ namespace Rebellion.Systems
                     );
                 }
             }
+        }
+
+        private static bool CanRestoreOrder(IManufacturable item, Planet producer)
+        {
+            string producerOwnerId = producer.GetOwnerInstanceID();
+            if (
+                !string.Equals(producerOwnerId, item.GetOwnerInstanceID(), StringComparison.Ordinal)
+            )
+                return false;
+
+            if (
+                !string.IsNullOrEmpty(item.ProducerOwnerID)
+                && !string.Equals(producerOwnerId, item.ProducerOwnerID, StringComparison.Ordinal)
+            )
+                return false;
+
+            return item is not ISceneNode sceneNode
+                || sceneNode.GetParent() is not Planet destination
+                || string.Equals(
+                    destination.GetOwnerInstanceID(),
+                    item.GetOwnerInstanceID(),
+                    StringComparison.Ordinal
+                );
         }
     }
 }

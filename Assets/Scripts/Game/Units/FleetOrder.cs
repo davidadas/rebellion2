@@ -8,6 +8,7 @@ namespace Rebellion.Game.Units
     public enum FleetOrderType
     {
         Attack,
+        Colonize,
         Defend,
     }
 

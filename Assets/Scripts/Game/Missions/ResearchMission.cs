@@ -358,6 +358,16 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the mission should repeat.</returns>
-        public override bool ShouldRepeatAfterCompletion(GameRoot game) => IsMissionSatisfied(game);
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
+        {
+            if (!IsMissionSatisfied(game))
+                return false;
+
+            Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            if (faction?.ResearchCatalog.ContainsKey(Discipline) != true)
+                return true;
+
+            return !faction.IsResearchExhausted(Discipline);
+        }
     }
 }

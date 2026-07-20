@@ -110,8 +110,9 @@ namespace Rebellion.Systems
                 : _game.GetFactionByOwnerInstanceID(previousOwnerId);
 
             CancelCompetingMissions(planet, newOwner.InstanceID);
-            TransferBuildings(planet, newOwner);
+            _manufacturingSystem.CancelOrdersTo(planet);
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+            TransferBuildings(planet, newOwner);
             EvictEnemyUnits(planet, newOwner.InstanceID);
             planet.EndUprising();
             _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
@@ -280,8 +281,9 @@ namespace Rebellion.Systems
                 : _game.GetFactionByOwnerInstanceID(previousOwnerId);
 
             CancelCompetingMissions(planet, newOwnerID: null);
-            EvictEnemyUnits(planet, newOwnerID: null);
+            _manufacturingSystem.CancelOrdersTo(planet);
             _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+            EvictEnemyUnits(planet, newOwnerID: null);
             _game.DeregsiterOwnedUnit(planet);
             planet.SetOwnerInstanceID(null);
             CaptureSnapshotForFaction(planet, previousOwner);

@@ -54,6 +54,53 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithHeadquartersDefenseTransfer_ReparentsUnitToDefenseFleet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet staging = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "staging",
+                empire.InstanceID
+            );
+            Fleet sourceFleet = EntityFactory.CreateFleet("source", empire.InstanceID);
+            Fleet targetFleet = EntityFactory.CreateFleet("defense", empire.InstanceID);
+            targetFleet.RoleType = FleetRoleType.Battle;
+            targetFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = headquarters.InstanceID,
+            };
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip("ship", empire.InstanceID);
+            game.AttachNode(sourceFleet, staging);
+            game.AttachNode(ship, sourceFleet);
+            game.AttachNode(targetFleet, staging);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AITransferUnitProposal proposal = new AITransferUnitProposal(
+                sourceFleet,
+                targetFleet,
+                ship,
+                targetFleet,
+                headquarters
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreSame(targetFleet, ship.GetParent());
+            Assert.IsNull(ship.Movement);
+        }
+
+        [Test]
         public void GetClaimKeys_WithSourceAndTargetFleet_ReturnsTransferClaims()
         {
             Fleet sourceFleet = EntityFactory.CreateFleet("source", "empire");
@@ -77,6 +124,10 @@ namespace Rebellion.Tests.AI.Proposals
             );
             Assert.Contains(
                 "container:transfer-target:targetFleet",
+                (System.Collections.ICollection)claimKeys
+            );
+            Assert.Contains(
+                "fleet:capital-reinforcement:targetFleet",
                 (System.Collections.ICollection)claimKeys
             );
         }

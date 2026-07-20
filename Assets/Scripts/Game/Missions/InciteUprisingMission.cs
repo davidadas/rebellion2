@@ -91,9 +91,14 @@ namespace Rebellion.Game.Missions
             if (reason.HasValue)
                 return reason;
 
-            return GetParent() is Planet p && p.IsInUprising
-                ? MissionCompletionReason.Failure
-                : null;
+            if (GetParent() is not Planet planet)
+                return MissionCompletionReason.TargetUnavailable;
+
+            string targetOwner = planet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(targetOwner) || targetOwner == OwnerInstanceID)
+                return MissionCompletionReason.TargetUnavailable;
+
+            return planet.IsInUprising ? MissionCompletionReason.Failure : null;
         }
 
         /// <summary>

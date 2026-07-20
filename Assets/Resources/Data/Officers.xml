@@ -132,11 +132,11 @@
     <Ratings>
       <Entry>
         <Key>Diplomacy</Key>
-        <Value>19</Value>
+        <Value>40</Value>
       </Entry>
       <Entry>
         <Key>Espionage</Key>
-        <Value>100</Value>
+        <Value>50</Value>
       </Entry>
       <Entry>
         <Key>Combat</Key>
@@ -144,7 +144,7 @@
       </Entry>
       <Entry>
         <Key>Leadership</Key>
-        <Value>90</Value>
+        <Value>100</Value>
       </Entry>
     </Ratings>
     <Loyalty>100</Loyalty>

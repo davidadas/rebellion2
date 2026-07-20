@@ -5,6 +5,8 @@ namespace Rebellion.Util.Common
 {
     public class ProbabilityTable
     {
+        public const int GuaranteedProbability = 100;
+
         private readonly Dictionary<int, int> _table;
 
         public ProbabilityTable(Dictionary<int, int> entries)

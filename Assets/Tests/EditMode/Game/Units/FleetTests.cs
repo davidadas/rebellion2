@@ -229,6 +229,26 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void SerializeAndDeserialize_FleetWithOrder_OmitsRuntimeOrder()
+        {
+            _fleet.RoleType = FleetRoleType.Battle;
+            _fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Colonize,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = "TARGET",
+            };
+
+            string serialized = SerializationHelper.Serialize(_fleet);
+            Fleet deserialized = SerializationHelper.Deserialize<Fleet>(serialized);
+
+            StringAssert.Contains("<RoleType>Battle</RoleType>", serialized);
+            StringAssert.DoesNotContain("<Order>", serialized);
+            Assert.AreEqual(FleetRoleType.Battle, deserialized.RoleType);
+            Assert.IsNull(deserialized.Order);
+        }
+
+        [Test]
         public void GetStarfighters_FleetWithStarfighters_ReturnsAllStarfightersAcrossFleet()
         {
             Starfighter starfighter1 = new Starfighter();
@@ -384,76 +404,6 @@ namespace Rebellion.Tests.Game.Units
             _fleet.AddChild(_capitalShip1);
 
             Assert.Throws<SceneAccessException>(() => _fleet.AddChild(reg));
-        }
-
-        [Test]
-        public void GetAssaultStrength_GeneralCommanderWithLeadership_AppliesPersonnelModifier()
-        {
-            Fleet fleet = new Fleet { InstanceID = "F1", OwnerInstanceID = "empire" };
-            CapitalShip ship = new CapitalShip
-            {
-                InstanceID = "CS1",
-                OwnerInstanceID = "empire",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
-            fleet.AddChild(ship);
-
-            Officer general = new Officer
-            {
-                InstanceID = "O1",
-                OwnerInstanceID = "empire",
-                CurrentRank = OfficerRank.General,
-            };
-            general.SetBaseRating(OfficerRating.Leadership, 50);
-            ship.AddChild(general);
-
-            // (50 / 10 + 1) * 100 = 6 * 100 = 600
-            Assert.AreEqual(600, fleet.GetAssaultStrength(10));
-        }
-
-        [Test]
-        public void GetAssaultStrength_AdmiralCommanderOnly_UsesBaseMultiplier()
-        {
-            Fleet fleet = new Fleet { InstanceID = "F1", OwnerInstanceID = "empire" };
-            CapitalShip ship = new CapitalShip
-            {
-                InstanceID = "CS1",
-                OwnerInstanceID = "empire",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
-            fleet.AddChild(ship);
-
-            Officer admiral = new Officer
-            {
-                InstanceID = "O1",
-                OwnerInstanceID = "empire",
-                CurrentRank = OfficerRank.Admiral,
-            };
-            admiral.SetBaseRating(OfficerRating.Leadership, 50);
-            ship.AddChild(admiral);
-
-            // Admiral's Leadership does not count — only Generals contribute assault personnel.
-            // (0 / 10 + 1) * 100 = 1 * 100 = 100
-            Assert.AreEqual(100, fleet.GetAssaultStrength(10));
-        }
-
-        [Test]
-        public void GetAssaultStrength_NoCommander_UsesBaseMultiplier()
-        {
-            Fleet fleet = new Fleet { InstanceID = "F1", OwnerInstanceID = "empire" };
-            CapitalShip ship = new CapitalShip
-            {
-                InstanceID = "CS1",
-                OwnerInstanceID = "empire",
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
-            fleet.AddChild(ship);
-
-            // (0 / 10 + 1) * 100 = 100
-            Assert.AreEqual(100, fleet.GetAssaultStrength(10));
         }
     }
 } // namespace Rebellion.Tests.Game.Units

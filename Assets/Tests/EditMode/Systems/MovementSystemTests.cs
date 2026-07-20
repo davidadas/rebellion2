@@ -758,6 +758,26 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void EvacuateToNearestFriendlyPlanet_CapturedOfficer_MovesTowardCaptorPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            officer.OwnerInstanceID = "rebels";
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "empire";
+
+            movement.EvacuateToNearestFriendlyPlanet(officer);
+
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
         public void RequestMove_CompletedBuilding_DoesNotMove()
         {
             (
@@ -1122,6 +1142,42 @@ namespace Rebellion.Tests.Systems
                     .OfType<UnitArrivedResult>()
                     .Any(result => ReferenceEquals(result.Unit, captive))
             );
+        }
+
+        [Test]
+        public void ProcessTick_CapturedOfficerDestinationChangesToOwner_ReroutesToCaptorPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementSystem movement
+            ) = BuildScene();
+            Officer captive = new Officer
+            {
+                InstanceID = "captive",
+                DisplayName = "captive",
+                OwnerInstanceID = "rebels",
+                IsCaptured = true,
+                CaptorInstanceID = "empire",
+            };
+            game.AttachNode(captive, origin);
+
+            movement.RequestMove(new List<IMovable> { escort, captive }, destination);
+            destination.OwnerInstanceID = "rebels";
+            captive.Movement.TicksElapsed = captive.Movement.TransitTicks;
+
+            movement.ProcessTick();
+
+            Assert.AreEqual(origin, captive.GetParent());
+            Assert.IsNotNull(captive.Movement);
+
+            captive.Movement.TicksElapsed = captive.Movement.TransitTicks;
+            movement.ProcessTick();
+
+            Assert.AreEqual(origin, captive.GetParent());
+            Assert.IsNull(captive.Movement);
         }
 
         [Test]

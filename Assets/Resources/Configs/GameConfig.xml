@@ -16,515 +16,27 @@
     <EnablePlanetaryAssaults>true</EnablePlanetaryAssaults>
     <DiplomacyMinimumSkill>69</DiplomacyMinimumSkill>
     <RecruitmentMinimumLeadership>80</RecruitmentMinimumLeadership>
-    <!-- Mission dispatch tables. Each table maps a mission score to a dispatch probability. -->
-    <MissionTables>
-      <Reconnaissance>
-        <Entry>
-          <Key>-1</Key>
-          <Value>0</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </Reconnaissance>
-      <!-- Diplomacy dispatch table. -->
-      <Diplomacy>
-        <Entry>
-          <Key>-39</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>-29</Key>
-          <Value>3</Value>
-        </Entry>
-        <Entry>
-          <Key>-19</Key>
-          <Value>5</Value>
-        </Entry>
-        <Entry>
-          <Key>-9</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>70</Value>
-        </Entry>
-      </Diplomacy>
-      <!-- Subdue uprising dispatch table. -->
-      <SubdueUprising>
-        <Entry>
-          <Key>-20</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>-10</Key>
-          <Value>3</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>5</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </SubdueUprising>
-      <!-- Espionage dispatch table. -->
-      <Espionage>
-        <Entry>
-          <Key>-1</Key>
-          <Value>0</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </Espionage>
-      <!-- Incite uprising dispatch table. -->
-      <InciteUprising>
-        <Entry>
-          <Key>-20</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>-10</Key>
-          <Value>3</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>5</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </InciteUprising>
-      <!-- Rescue dispatch table. -->
-      <Rescue>
-        <Entry>
-          <Key>-1</Key>
-          <Value>0</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </Rescue>
-      <!-- Sabotage dispatch table. -->
-      <Sabotage>
-        <Entry>
-          <Key>-1</Key>
-          <Value>0</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>1</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </Sabotage>
-      <!-- Abduction dispatch table. -->
-      <Abduction>
-        <Entry>
-          <Key>-100</Key>
-          <Value>5</Value>
-        </Entry>
-        <Entry>
-          <Key>-80</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>-60</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>-40</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>-20</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>80</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>90</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>95</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>99</Value>
-        </Entry>
-      </Abduction>
-      <!-- Assassination dispatch table. -->
-      <Assassination>
-        <Entry>
-          <Key>-100</Key>
-          <Value>0</Value>
-        </Entry>
-        <Entry>
-          <Key>-80</Key>
-          <Value>5</Value>
-        </Entry>
-        <Entry>
-          <Key>-60</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>-40</Key>
-          <Value>15</Value>
-        </Entry>
-        <Entry>
-          <Key>-20</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>0</Key>
-          <Value>25</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>35</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>45</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>55</Value>
-        </Entry>
-      </Assassination>
-      <!-- Recruitment dispatch table. -->
-      <Recruitment>
-        <Entry>
-          <Key>0</Key>
-          <Value>10</Value>
-        </Entry>
-        <Entry>
-          <Key>10</Key>
-          <Value>20</Value>
-        </Entry>
-        <Entry>
-          <Key>20</Key>
-          <Value>30</Value>
-        </Entry>
-        <Entry>
-          <Key>30</Key>
-          <Value>35</Value>
-        </Entry>
-        <Entry>
-          <Key>40</Key>
-          <Value>40</Value>
-        </Entry>
-        <Entry>
-          <Key>50</Key>
-          <Value>45</Value>
-        </Entry>
-        <Entry>
-          <Key>60</Key>
-          <Value>50</Value>
-        </Entry>
-        <Entry>
-          <Key>70</Key>
-          <Value>55</Value>
-        </Entry>
-        <Entry>
-          <Key>80</Key>
-          <Value>60</Value>
-        </Entry>
-        <Entry>
-          <Key>90</Key>
-          <Value>70</Value>
-        </Entry>
-        <Entry>
-          <Key>100</Key>
-          <Value>80</Value>
-        </Entry>
-      </Recruitment>
-    </MissionTables>
     <MissionPlanning>
+      <ReconnaissanceCandidatePlanetLimit>4</ReconnaissanceCandidatePlanetLimit>
+      <EspionageCandidatePlanetLimit>4</EspionageCandidatePlanetLimit>
+      <EspionageRefreshIntervalTicks>70</EspionageRefreshIntervalTicks>
+      <HostileMissionMaximumIntelAgeTicks>70</HostileMissionMaximumIntelAgeTicks>
+      <MaximumConcurrentHostileMissions>3</MaximumConcurrentHostileMissions>
+      <MaximumConcurrentResearchMissionsPerDiscipline>1</MaximumConcurrentResearchMissionsPerDiscipline>
+      <MaximumJediTrainingStudents>3</MaximumJediTrainingStudents>
+      <SabotageTargetsPerPlanetLimit>3</SabotageTargetsPerPlanetLimit>
+      <SabotageAssaultBlockerBonus>150</SabotageAssaultBlockerBonus>
+      <MinimumMissionScore>20</MinimumMissionScore>
+      <ReconnaissancePriorityBonus>50</ReconnaissancePriorityBonus>
+      <RecruitmentPriorityBonus>80</RecruitmentPriorityBonus>
+      <RescuePriorityBonus>120</RescuePriorityBonus>
+      <SubdueUprisingPriorityBonus>120</SubdueUprisingPriorityBonus>
+      <ResearchPriorityBonus>50</ResearchPriorityBonus>
+      <JediTrainingPriorityBonus>80</JediTrainingPriorityBonus>
+      <EspionagePriorityBonus>50</EspionagePriorityBonus>
+      <DiplomacyPriorityBonus>30</DiplomacyPriorityBonus>
+      <DiplomacySupportDeficitWeight>1</DiplomacySupportDeficitWeight>
+      <HostileOfficerReplacementPenalty>100</HostileOfficerReplacementPenalty>
       <DiplomacyCandidatePlanetLimit>8</DiplomacyCandidatePlanetLimit>
       <ResearchCandidatePlanetLimit>4</ResearchCandidatePlanetLimit>
       <SabotageCandidatePlanetLimit>5</SabotageCandidatePlanetLimit>
@@ -536,31 +48,14 @@
       <UprisingMultiplier>2</UprisingMultiplier>
       <FleetLoadingDeficitThreshold>1</FleetLoadingDeficitThreshold>
     </Garrison>
-    <DeploymentGateLow>20</DeploymentGateLow>
-    <DeploymentGateHigh>80</DeploymentGateHigh>
     <Selection>
       <MinimumSelectableScore>0</MinimumSelectableScore>
-      <CandidatePoolSize>3</CandidatePoolSize>
-      <RecentBuildHistoryLimit>12</RecentBuildHistoryLimit>
-      <RepeatBuildPenaltyPerSelection>15</RepeatBuildPenaltyPerSelection>
       <LocalDuplicatePenaltyPerSelection>45</LocalDuplicatePenaltyPerSelection>
-      <MaxDuplicateCapitalTypePerFleet>1</MaxDuplicateCapitalTypePerFleet>
       <MaxDuplicateStarfighterTypePerFleet>4</MaxDuplicateStarfighterTypePerFleet>
       <MaxDuplicateRegimentTypePerDestination>3</MaxDuplicateRegimentTypePerDestination>
-      <PremiumCapitalConstructionCostThreshold>275</PremiumCapitalConstructionCostThreshold>
-      <MaxPremiumCapitalsPerFaction>2</MaxPremiumCapitalsPerFaction>
-      <CapitalConstructionCostWeight>4</CapitalConstructionCostWeight>
-      <CapitalMaintenanceCostWeight>2</CapitalMaintenanceCostWeight>
-      <CapitalCombatWeight>1</CapitalCombatWeight>
-      <CapitalExcessCombatPenaltyWeight>1</CapitalExcessCombatPenaltyWeight>
-      <CapitalStarfighterCapacityWeight>14</CapitalStarfighterCapacityWeight>
-      <CapitalRegimentCapacityWeight>14</CapitalRegimentCapacityWeight>
-      <CapitalBombardmentWeight>8</CapitalBombardmentWeight>
-      <CapitalGravityWellWeight>20</CapitalGravityWellWeight>
-      <CapitalEmptyFleetCombatBoost>120</CapitalEmptyFleetCombatBoost>
-      <CapitalMissingStarfighterCapacityBoost>80</CapitalMissingStarfighterCapacityBoost>
-      <CapitalMissingRegimentCapacityBoost>80</CapitalMissingRegimentCapacityBoost>
-      <CapitalMissingGravityWellBoost>60</CapitalMissingGravityWellBoost>
+      <CapitalMaintenanceAllocationPercent>30</CapitalMaintenanceAllocationPercent>
+      <CapitalMaintenanceSafetyPercent>90</CapitalMaintenanceSafetyPercent>
+      <CapitalShipTieReplacementPercent>50</CapitalShipTieReplacementPercent>
       <StarfighterEscortWeight>6</StarfighterEscortWeight>
       <StarfighterInterceptorWeight>7</StarfighterInterceptorWeight>
       <StarfighterBomberWeight>9</StarfighterBomberWeight>
@@ -570,49 +65,35 @@
       <RegimentAttackWeight>8</RegimentAttackWeight>
       <RegimentBombardmentDefenseWeight>6</RegimentBombardmentDefenseWeight>
       <RegimentMaintenanceCostWeight>10</RegimentMaintenanceCostWeight>
-      <RegimentGarrisonDefenseBoost>50</RegimentGarrisonDefenseBoost>
       <RegimentFleetAttackBoost>50</RegimentFleetAttackBoost>
       <MinimumMaintenanceHeadroomAfterProduction>200</MinimumMaintenanceHeadroomAfterProduction>
       <MaintenanceHeadroomHardFloor>0</MaintenanceHeadroomHardFloor>
       <MaintenanceHeadroomPenaltyWeight>50</MaintenanceHeadroomPenaltyWeight>
       <MaintenanceShortfallPenalty>1000</MaintenanceShortfallPenalty>
     </Selection>
-    <NonCapitalSummary>
-      <MajorThreatWeaponDefenseCapacity>3</MajorThreatWeaponDefenseCapacity>
-      <MajorThreatShieldDefenseCapacity>3</MajorThreatShieldDefenseCapacity>
-      <StrategicThreatShieldDefenseCapacity>2</StrategicThreatShieldDefenseCapacity>
-      <StrategicThreatWeaponDefenseCapacity>1</StrategicThreatWeaponDefenseCapacity>
-      <MinimumShieldDefenseCapacity>1</MinimumShieldDefenseCapacity>
-      <SupportThreatWeaponDefenseCapacity>0</SupportThreatWeaponDefenseCapacity>
-      <SubtypeSelectorRatioThreshold>1.5</SubtypeSelectorRatioThreshold>
-      <SupportThreshold>70</SupportThreshold>
-      <SupportDivisor>10</SupportDivisor>
-      <SupportUrgencyCap>6</SupportUrgencyCap>
-      <BaseRequirementDefault>0</BaseRequirementDefault>
-      <BaseRequirementInfrastructure>3</BaseRequirementInfrastructure>
-      <BaseRequirementHeadquarters>9</BaseRequirementHeadquarters>
-      <StarfighterRequirementDefault>0</StarfighterRequirementDefault>
-      <StarfighterRequirementInfrastructure>6</StarfighterRequirementInfrastructure>
-      <StarfighterRequirementHeadquarters>12</StarfighterRequirementHeadquarters>
-    </NonCapitalSummary>
     <Infrastructure>
       <PlanetsPerConstructionFacility>2</PlanetsPerConstructionFacility>
       <MinimumConstructionFacilityLanes>1</MinimumConstructionFacilityLanes>
       <ConstructionFacilityTargetClearTicks>80</ConstructionFacilityTargetClearTicks>
       <PlanetsPerShipyard>6</PlanetsPerShipyard>
       <PlanetsPerTrainingFacility>6</PlanetsPerTrainingFacility>
-      <ManufacturingFacilityBaseDemandPercent>30</ManufacturingFacilityBaseDemandPercent>
       <ConstructionFacilityDemandPercent>100</ConstructionFacilityDemandPercent>
       <ShipyardDemandPercent>90</ShipyardDemandPercent>
       <TrainingFacilityDemandPercent>70</TrainingFacilityDemandPercent>
       <FleetCapitalShipDemandPercent>80</FleetCapitalShipDemandPercent>
       <FleetStarfighterDemandPercent>50</FleetStarfighterDemandPercent>
       <FleetRegimentDemandPercent>60</FleetRegimentDemandPercent>
+      <FleetSeedCapitalShipDemandPercent>95</FleetSeedCapitalShipDemandPercent>
+      <SpecialForcesTargetCountPerType>2</SpecialForcesTargetCountPerType>
+      <SpecialForcesDemandPercent>25</SpecialForcesDemandPercent>
       <StarfighterParentFillPercent>100</StarfighterParentFillPercent>
       <StarfighterLocalReservePercent>20</StarfighterLocalReservePercent>
       <AssaultRegimentLoadPercent>100</AssaultRegimentLoadPercent>
       <GarrisonRegimentReservePercent>20</GarrisonRegimentReservePercent>
-      <MaxDefensePerPlanet>1</MaxDefensePerPlanet>
+      <HeadquartersShieldTargetCount>1</HeadquartersShieldTargetCount>
+      <HeadquartersWeaponTargetCount>1</HeadquartersWeaponTargetCount>
+      <HeadquartersShieldDemandPercent>100</HeadquartersShieldDemandPercent>
+      <HeadquartersWeaponDemandPercent>95</HeadquartersWeaponDemandPercent>
       <EconomyDefaultBatchSize>1</EconomyDefaultBatchSize>
       <EconomyDemandPercent>90</EconomyDemandPercent>
       <EconomySevereDemandPercent>100</EconomySevereDemandPercent>
@@ -628,8 +109,15 @@
       <FleetReinforcementTravelPenaltyWeight>1</FleetReinforcementTravelPenaltyWeight>
     </Infrastructure>
     <FleetDeployment>
+      <MaximumConcurrentAttackOrders>2</MaximumConcurrentAttackOrders>
+      <MaximumConcurrentColonizationOrders>1</MaximumConcurrentColonizationOrders>
+      <ColonizationCandidatePlanetLimit>6</ColonizationCandidatePlanetLimit>
+      <MinimumBattleFleetCount>3</MinimumBattleFleetCount>
+      <PlanetsPerBattleFleet>15</PlanetsPerBattleFleet>
+      <MaximumBattleFleetCount>8</MaximumBattleFleetCount>
       <MinimumAttackStrength>1750</MinimumAttackStrength>
       <MinimumDefenseStrength>1000</MinimumDefenseStrength>
+      <FleetDefenseScore>1000</FleetDefenseScore>
       <MinimumPlanetaryAssaultRegimentCount>1</MinimumPlanetaryAssaultRegimentCount>
       <AttackStrengthPercentOfDefense>175</AttackStrengthPercentOfDefense>
       <AttackStrengthPercentOfStrongestHostileFleet>125</AttackStrengthPercentOfStrongestHostileFleet>
@@ -641,6 +129,13 @@
       <AttackOpportunityCostPenaltyWeight>30</AttackOpportunityCostPenaltyWeight>
       <ExistingAttackOrderBonus>25</ExistingAttackOrderBonus>
       <HeadquartersAttackBonus>45</HeadquartersAttackBonus>
+      <OrbitalResponseBonus>250</OrbitalResponseBonus>
+      <ColonizationBaseScore>45</ColonizationBaseScore>
+      <ColonizationStrategicValueWeight>20</ColonizationStrategicValueWeight>
+      <ColonizationTravelEfficiencyWeight>20</ColonizationTravelEfficiencyWeight>
+      <ColonizationReadyFleetBonus>35</ColonizationReadyFleetBonus>
+      <ColonizationOpportunityCostPenaltyWeight>20</ColonizationOpportunityCostPenaltyWeight>
+      <ExistingColonizationOrderBonus>100</ExistingColonizationOrderBonus>
     </FleetDeployment>
   </AI>
   <!-- Distance scaling, transit minimums, and hyperdrive defaults for fleet and unit movement. -->

@@ -59,7 +59,12 @@ namespace Rebellion.Systems
             string defenderId = defendingPlanet.GetOwnerInstanceID();
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
 
-            if (IsBlockedByShields(defendingPlanet))
+            if (
+                IsBlockedByShields(
+                    defendingPlanet,
+                    _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                )
+            )
             {
                 result.BlockedByShields = true;
                 return result;
@@ -144,16 +149,20 @@ namespace Rebellion.Systems
         /// Determines whether active planetary shields prevent an assault.
         /// </summary>
         /// <param name="planet">Planet whose shield facilities are evaluated.</param>
+        /// <param name="shieldGeneratorLimit">Active shield count that blocks an assault.</param>
         /// <returns>True when the active shield count meets the configured limit.</returns>
-        private bool IsBlockedByShields(Planet planet)
+        public static bool IsBlockedByShields(Planet planet, int shieldGeneratorLimit)
         {
+            if (planet == null)
+                return false;
+
             int activeShieldCount = planet
                 .GetAllBuildings()
                 .Count(building =>
                     IsActiveAssaultUnit(building)
                     && building.DefenseFacilityClass == DefenseFacilityClass.Shield
                 );
-            return activeShieldCount >= _game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            return activeShieldCount >= shieldGeneratorLimit;
         }
 
         /// <summary>
@@ -260,18 +269,18 @@ namespace Rebellion.Systems
         {
             GameConfig.PlanetaryAssaultConfig config = _game.Config.Combat.PlanetaryAssault;
             Fleet fleet = attacker.Ship.GetParentOfType<Fleet>();
-            int attackerLeadership = GetAssaultLeadership(
+            int attackerBonus = GetLeadershipBonus(
                 fleet?.GetOfficers(),
                 OfficerRank.General,
-                fleet?.GetOwnerInstanceID()
+                fleet?.GetOwnerInstanceID(),
+                config
             );
-            int defenderLeadership = GetAssaultLeadership(
+            int defenderBonus = GetLeadershipBonus(
                 planet.GetAllOfficers(),
                 OfficerRank.General,
-                planet.GetOwnerInstanceID()
+                planet.GetOwnerInstanceID(),
+                config
             );
-            int attackerBonus = attackerLeadership / config.GeneralLeadershipDivisor;
-            int defenderBonus = defenderLeadership / config.GeneralLeadershipDivisor;
             int roll = _provider.NextInt(0, config.ContestRollMaximum + 1);
             return roll
                 + attacker.Regiment.AttackRating
@@ -470,19 +479,25 @@ namespace Rebellion.Systems
         /// <param name="officers">Officers to search.</param>
         /// <param name="rank">Required command rank.</param>
         /// <param name="ownerId">Required faction instance ID.</param>
-        /// <returns>The commander's leadership rating, or zero when none is eligible.</returns>
-        private static int GetAssaultLeadership(
+        /// <param name="config">Planetary assault configuration.</param>
+        /// <returns>The commander's leadership bonus, or zero when none is eligible.</returns>
+        public static int GetLeadershipBonus(
             IEnumerable<Officer> officers,
             OfficerRank rank,
-            string ownerId
+            string ownerId,
+            GameConfig.PlanetaryAssaultConfig config
         )
         {
+            if (config == null)
+                return 0;
+
             Officer commander = officers?.FirstOrDefault(officer =>
                 officer.CurrentRank == rank
                 && officer.GetOwnerInstanceID() == ownerId
                 && !officer.IsKilled
             );
-            return commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
+            int leadership = commander?.GetEffectiveRating(OfficerRating.Leadership) ?? 0;
+            return leadership / config.GeneralLeadershipDivisor;
         }
 
         /// <summary>

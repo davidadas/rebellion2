@@ -339,6 +339,18 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
+        public void Build_ValidConfig_LoadsSpecialForcesRatings()
+        {
+            SpecialForces[] templates = ResourceManager.GetEntityData<SpecialForces>();
+
+            Assert.IsNotEmpty(templates);
+            Assert.IsTrue(
+                templates.All(template => template.Ratings.Values.Any(rating => rating > 0)),
+                "Every special-forces template should have at least one non-zero mission rating."
+            );
+        }
+
+        [Test]
         public void Build_ValidConfig_DeploysFleets()
         {
             Dictionary<string, int> fleetsPerFaction = new Dictionary<string, int>();

@@ -8,6 +8,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.AI.Proposals
 {
@@ -62,7 +63,14 @@ namespace Rebellion.AI.Proposals
                 claimKeys.Add("production:building-kind:ConstructionFacility");
 
             if (Destination is Fleet destinationFleet)
+            {
                 claimKeys.Add($"fleet:reinforcement:{Demand?.Kind}:{destinationFleet.InstanceID}");
+                if (Demand?.Kind == AIProductionDemandKind.FleetCapitalShip)
+                    claimKeys.Add($"fleet:capital-reinforcement:{destinationFleet.InstanceID}");
+            }
+
+            if (Demand?.Kind == AIProductionDemandKind.FleetSeedCapitalShip)
+                claimKeys.Add($"fleet:create:{Demand.Destination?.GetOwnerInstanceID()}");
 
             return claimKeys;
         }
@@ -73,6 +81,18 @@ namespace Rebellion.AI.Proposals
         /// <returns>A stable sort key.</returns>
         public override string GetSortKey()
         {
+            if (Demand?.Kind == AIProductionDemandKind.FleetSeedCapitalShip)
+            {
+                return string.Join(
+                    ":",
+                    "fleet-seed",
+                    GetProducerDistanceSortKey(),
+                    ProducerPlanet?.InstanceID,
+                    Destination?.InstanceID,
+                    Product?.GetReference()?.GetTypeID()
+                );
+            }
+
             if (Destination is Fleet destinationFleet)
             {
                 return string.Join(
@@ -132,20 +152,29 @@ namespace Rebellion.AI.Proposals
 
             sceneNode.OwnerInstanceID = context.Faction.InstanceID;
 
-            if (Destination is Planet planet)
+            if (
+                Demand.Kind == AIProductionDemandKind.FleetSeedCapitalShip
+                && manufacturable is CapitalShip capitalShip
+                && Destination is Planet fleetPlanet
+            )
             {
-                if (
-                    manufacturable is Building building
-                    && !EnsureBuildingDestinationCanAccept(context, planet, building)
-                )
-                    return;
-
-                context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, planet);
+                if (!EnqueueFleetSeed(context, capitalShip, fleetPlanet))
+                    LogEnqueueFailure();
                 return;
             }
 
-            if (Destination is Fleet fleet)
-                context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet);
+            if (Destination is Planet planet)
+            {
+                if (!EnqueueAtPlanet(context, planet, manufacturable))
+                    LogEnqueueFailure();
+                return;
+            }
+
+            if (
+                Destination is Fleet fleet
+                && !context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, fleet)
+            )
+                LogEnqueueFailure();
         }
 
         /// <summary>
@@ -208,7 +237,8 @@ namespace Rebellion.AI.Proposals
                     CanManufactureBuilding(context),
                 AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
-                or AIProductionDemandKind.TrainingFacility => CanManufactureBuilding(context),
+                or AIProductionDemandKind.TrainingFacility
+                or AIProductionDemandKind.HeadquartersDefense => CanManufactureBuilding(context),
                 AIProductionDemandKind.FleetCapitalShip => CanManufactureCapitalShip(context),
                 AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(context),
                 AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(context),
@@ -218,8 +248,47 @@ namespace Rebellion.AI.Proposals
                 AIProductionDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(
                     context
                 ),
+                AIProductionDemandKind.SpecialForces => CanManufactureSpecialForces(context),
+                AIProductionDemandKind.FleetSeedCapitalShip => CanManufactureFleetSeed(context),
                 _ => false,
             };
+        }
+
+        private bool EnqueueFleetSeed(
+            AITurnContext context,
+            CapitalShip capitalShip,
+            Planet destinationPlanet
+        )
+        {
+            Fleet fleet = context.Faction.CreateFleet(roleType: FleetRoleType.Battle);
+            context.Game.AttachNode(fleet, destinationPlanet);
+
+            if (context.Manufacturing.Enqueue(ProducerPlanet, capitalShip, fleet))
+                return true;
+
+            context.Game.DetachNode(fleet);
+            return false;
+        }
+
+        private bool CanManufactureFleetSeed(AITurnContext context)
+        {
+            if (Destination is not Planet destinationPlanet)
+                return false;
+
+            if (
+                destinationPlanet.GetOwnerInstanceID() != context.Faction.InstanceID
+                || !destinationPlanet.IsColonized
+                || destinationPlanet.IsDestroyed
+            )
+                return false;
+
+            if (
+                Product.GetReference() is not CapitalShip capitalShip
+                || !capitalShip.HasAllowedOwnerInstanceID(context.Faction.InstanceID)
+            )
+                return false;
+
+            return true;
         }
 
         /// <summary>
@@ -259,32 +328,40 @@ namespace Rebellion.AI.Proposals
             return building.HasAllowedOwnerInstanceID(context.Faction.InstanceID);
         }
 
-        /// <summary>
-        /// Ensures a building destination has room for the incoming building.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">Planet receiving the building.</param>
-        /// <param name="building">Building being manufactured.</param>
-        /// <returns>True if the destination can accept the building.</returns>
-        private bool EnsureBuildingDestinationCanAccept(
+        private bool EnqueueAtPlanet(
             AITurnContext context,
             Planet destinationPlanet,
-            Building building
+            IManufacturable manufacturable
         )
         {
-            if (destinationPlanet.GetAvailableEnergy() > 0)
+            Building replacement = null;
+            if (manufacturable is Building building && destinationPlanet.GetAvailableEnergy() <= 0)
+            {
+                replacement = GetReplacementBuildingForIncomingBuilding(
+                    context,
+                    destinationPlanet,
+                    building
+                );
+                if (replacement == null)
+                    return false;
+
+                context.Game.DetachNode(replacement);
+            }
+
+            if (context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet))
                 return true;
 
-            Building replacement = GetReplacementBuildingForIncomingBuilding(
-                context,
-                destinationPlanet,
-                building
-            );
-            if (replacement == null)
-                return false;
+            if (replacement != null)
+                context.Game.AttachNode(replacement, destinationPlanet);
 
-            context.Game.DetachNode(replacement);
-            return destinationPlanet.GetAvailableEnergy() > 0;
+            return false;
+        }
+
+        private void LogEnqueueFailure()
+        {
+            GameLogger.Warning(
+                $"AI production enqueue failed for {Product?.GetReference()?.GetTypeID()} at {ProducerPlanet?.InstanceID}."
+            );
         }
 
         /// <summary>
@@ -320,7 +397,7 @@ namespace Rebellion.AI.Proposals
             Building incomingBuilding
         )
         {
-            if (!CanReplaceFacilityForIncomingBuilding(incomingBuilding))
+            if (!CanReplaceFacilityForIncomingBuilding(destinationPlanet, incomingBuilding))
                 return null;
 
             return destinationPlanet
@@ -331,6 +408,7 @@ namespace Rebellion.AI.Proposals
                 .OrderByDescending(building =>
                     GetExcessFacilityCount(context, building.GetBuildingType())
                 )
+                .ThenByDescending(building => building.ProcessRate)
                 .ThenByDescending(building => building.MaintenanceCost)
                 .ThenBy(building => building.InstanceID)
                 .FirstOrDefault();
@@ -339,16 +417,27 @@ namespace Rebellion.AI.Proposals
         /// <summary>
         /// Returns whether the incoming building may replace another facility.
         /// </summary>
+        /// <param name="destinationPlanet">Planet receiving the building.</param>
         /// <param name="building">The incoming building.</param>
         /// <returns>True if this building type can trigger replacement.</returns>
-        private bool CanReplaceFacilityForIncomingBuilding(Building building)
+        private bool CanReplaceFacilityForIncomingBuilding(
+            Planet destinationPlanet,
+            Building building
+        )
         {
-            return building.GetBuildingType()
+            if (
+                building.GetBuildingType()
                 is BuildingType.Mine
                     or BuildingType.Refinery
                     or BuildingType.ConstructionFacility
                     or BuildingType.Shipyard
-                    or BuildingType.TrainingFacility;
+                    or BuildingType.TrainingFacility
+            )
+                return true;
+
+            return Demand.Kind == AIProductionDemandKind.HeadquartersDefense
+                && destinationPlanet.IsHeadquarters
+                && building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon;
         }
 
         /// <summary>
@@ -407,7 +496,10 @@ namespace Rebellion.AI.Proposals
             BuildingType buildingType
         )
         {
-            if (destinationPlanet.GetBuildingTypeCount(buildingType) <= 1)
+            if (
+                Demand.Kind != AIProductionDemandKind.HeadquartersDefense
+                && destinationPlanet.GetBuildingTypeCount(buildingType) <= 1
+            )
                 return false;
 
             return GetExcessFacilityCount(context, buildingType) > 0;
@@ -538,6 +630,17 @@ namespace Rebellion.AI.Proposals
                 && destinationPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && !destinationPlanet.IsDestroyed
                 && Product.GetReference() is Regiment;
+        }
+
+        private bool CanManufactureSpecialForces(AITurnContext context)
+        {
+            return Destination is Planet destinationPlanet
+                && destinationPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+                && destinationPlanet.IsColonized
+                && !destinationPlanet.IsDestroyed
+                && Product.GetReference() is SpecialForces specialForces
+                && specialForces.GetTypeID() == Demand.ProductTypeId
+                && specialForces.HasAllowedOwnerInstanceID(context.Faction.InstanceID);
         }
 
         /// <summary>

@@ -224,7 +224,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="planet">The mission target planet.</param>
         /// <returns>The target troop-state value, or 0 when no completed regiment is present.</returns>
-        private static int GetTargetTroopState(Planet planet)
+        internal static int GetTargetTroopState(Planet planet)
         {
             foreach (Regiment regiment in planet.GetAllRegiments())
             {

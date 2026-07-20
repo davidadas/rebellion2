@@ -51,8 +51,11 @@ namespace Rebellion.Game.Galaxy
 
         // Manufacturing Status.
         [PersistableIgnore]
-        public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue { get; } =
-            new Dictionary<ManufacturingType, List<IManufacturable>>();
+        public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue
+        {
+            get;
+            internal set;
+        } = new Dictionary<ManufacturingType, List<IManufacturable>>();
 
         // Visitor Status.
         public List<string> VisitingFactionIDs = new List<string>();

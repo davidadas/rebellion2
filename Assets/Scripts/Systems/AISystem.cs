@@ -26,6 +26,7 @@ namespace Rebellion.Systems
         /// <param name="bombardmentSystem">The bombardment system.</param>
         /// <param name="planetaryAssaultSystem">The planetary-assault system.</param>
         /// <param name="randomProvider">Random number provider for AI choices.</param>
+        /// <param name="fogOfWarManager">Fog-of-war system used to limit AI knowledge.</param>
         public AISystem(
             GameRoot game,
             MissionSystem missionManager,
@@ -33,7 +34,8 @@ namespace Rebellion.Systems
             ManufacturingSystem manufacturingManager,
             BombardmentSystem bombardmentSystem,
             PlanetaryAssaultSystem planetaryAssaultSystem,
-            IRandomNumberProvider randomProvider
+            IRandomNumberProvider randomProvider,
+            FogOfWarSystem fogOfWarManager
         )
         {
             _game = game;
@@ -44,7 +46,8 @@ namespace Rebellion.Systems
                 manufacturingManager,
                 bombardmentSystem,
                 planetaryAssaultSystem,
-                randomProvider
+                randomProvider,
+                fogOfWarManager
             );
         }
 
@@ -55,6 +58,9 @@ namespace Rebellion.Systems
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
+            int tickInterval = _game.Config.AI.TickInterval;
+            if (tickInterval <= 0 || _game.CurrentTick % tickInterval != 0)
+                return results;
 
             foreach (Faction faction in _game.Factions.Where(f => f.IsAIControlled()))
             {

@@ -4,7 +4,10 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
+using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Generation;
 using Rebellion.SceneGraph;
@@ -17,6 +20,7 @@ public static class HeadlessSimulationRunner
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
+    private const int _percentScale = 100;
 
     /// <summary>
     /// Runs the command-line simulation entry point.
@@ -68,57 +72,70 @@ public static class HeadlessSimulationRunner
     {
         string logPath = GetLogPath(options.OutputPath);
         GameLogger.Configure(logPath, enableFileLogging: true);
+        GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
 
-        GameSummary summary = new GameSummary
+        try
         {
-            GalaxySize = GameSize.Large,
-            Difficulty = GameDifficulty.Easy,
-            VictoryCondition = GameVictoryCondition.Conquest,
-            ResourceAvailability = GameResourceAvailability.Normal,
-            StartingResearchLevel = 1,
-        };
+            GameSummary summary = new GameSummary
+            {
+                GalaxySize = GameSize.Large,
+                Difficulty = GameDifficulty.Easy,
+                VictoryCondition = GameVictoryCondition.Conquest,
+                ResourceAvailability = GameResourceAvailability.Normal,
+                StartingResearchLevel = 1,
+            };
 
-        string startMessage =
-            $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
-        UnityEngine.Debug.Log(startMessage);
-        LogToFile(logPath, startMessage);
+            string startMessage =
+                $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
+            UnityEngine.Debug.Log(startMessage);
+            LogToFile(logPath, startMessage);
 
-        GameRoot game = CreateGameBuilder(summary, options.Seed).BuildGame();
-        GameManager manager = new GameManager(game);
-        ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
-        ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
-        FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
-        manufacturedUnitTracker.RecordInitialState(game);
-        fleetHistoryTracker.RecordTick(game);
-
-        for (int i = 0; i < options.TickCount; i++)
-        {
-            manager.ProcessTick();
-            idleTracker.RecordTick(game);
-            manufacturedUnitTracker.RecordTick(game);
+            GameRoot game = CreateGameBuilder(summary, options.Seed).BuildGame();
+            GameManager manager = new GameManager(game);
+            ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
+            ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
+            FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
+            ActivityTracker activityTracker = new ActivityTracker();
+            manufacturedUnitTracker.RecordInitialState(game);
             fleetHistoryTracker.RecordTick(game);
+            activityTracker.RecordInitialState(game);
+
+            for (int i = 0; i < options.TickCount; i++)
+            {
+                manager.ProcessTick();
+                idleTracker.RecordTick(game);
+                manufacturedUnitTracker.RecordTick(game);
+                fleetHistoryTracker.RecordTick(game);
+                activityTracker.RecordTick(game);
+            }
+
+            SimulationSummary report = BuildSimulationSummary(
+                game,
+                summary,
+                options,
+                idleTracker,
+                manufacturedUnitTracker,
+                fleetHistoryTracker,
+                activityTracker
+            );
+            string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
+            string completeMessage =
+                $"[HeadlessSim] complete ticks={report.TicksCompleted} output={resolvedPath}";
+            UnityEngine.Debug.Log(completeMessage);
+            LogToFile(logPath, completeMessage);
+
+            return new SimulationRunResult
+            {
+                TicksCompleted = report.TicksCompleted,
+                OutputPath = resolvedPath,
+                Seed = options.Seed ?? -1,
+            };
         }
-
-        SimulationSummary report = BuildSimulationSummary(
-            game,
-            summary,
-            options,
-            idleTracker,
-            manufacturedUnitTracker,
-            fleetHistoryTracker
-        );
-        string resolvedPath = WriteSimulationSummary(options.OutputPath, report);
-        string completeMessage =
-            $"[HeadlessSim] complete ticks={report.TicksCompleted} output={resolvedPath}";
-        UnityEngine.Debug.Log(completeMessage);
-        LogToFile(logPath, completeMessage);
-
-        return new SimulationRunResult
+        finally
         {
-            TicksCompleted = report.TicksCompleted,
-            OutputPath = resolvedPath,
-            Seed = options.Seed ?? -1,
-        };
+            GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
+            GameLogger.Configure(enableFileLogging: false);
+        }
     }
 
     /// <summary>
@@ -168,6 +185,7 @@ public static class HeadlessSimulationRunner
     /// <param name="idleTracker">The manufacturing idle tracker.</param>
     /// <param name="manufacturedUnitTracker">The manufactured unit tracker.</param>
     /// <param name="fleetHistoryTracker">The fleet history tracker.</param>
+    /// <param name="activityTracker">The strategic activity tracker.</param>
     /// <returns>The simulation summary.</returns>
     private static SimulationSummary BuildSimulationSummary(
         GameRoot game,
@@ -175,7 +193,8 @@ public static class HeadlessSimulationRunner
         SimulationOptions options,
         ManufacturingIdleTracker idleTracker,
         ManufacturedUnitTracker manufacturedUnitTracker,
-        FleetHistoryTracker fleetHistoryTracker
+        FleetHistoryTracker fleetHistoryTracker,
+        ActivityTracker activityTracker
     )
     {
         return new SimulationSummary
@@ -185,6 +204,16 @@ public static class HeadlessSimulationRunner
             Seed = options.Seed ?? -1,
             GalaxySize = summary.GalaxySize.ToString(),
             OutputPath = options.OutputPath,
+            AITickInterval = game.Config.AI.TickInterval,
+            MaximumConcurrentAttackOrders = game.Config
+                .AI
+                .FleetDeployment
+                .MaximumConcurrentAttackOrders,
+            MinimumAttackStrength = game.Config.AI.FleetDeployment.MinimumAttackStrength,
+            MinimumAttackRegimentCount = game.Config
+                .AI
+                .FleetDeployment
+                .MinimumPlanetaryAssaultRegimentCount,
             FleetHistory = fleetHistoryTracker.ToArray(),
             Factions = game
                 .Factions.Select(faction => new FactionSimulationSummary
@@ -204,6 +233,14 @@ public static class HeadlessSimulationRunner
                     BuildingCount = game.GetSceneNodesByOwnerInstanceID<Building>(
                         faction.InstanceID
                     ).Count,
+                    DefenseFacilityCount = game.GetSceneNodesByOwnerInstanceID<Planet>(
+                            faction.InstanceID
+                        )
+                        .Sum(planet => planet.GetBuildingTypeCount(BuildingType.Defense)),
+                    WeaponFacilityCount = game.GetSceneNodesByOwnerInstanceID<Planet>(
+                            faction.InstanceID
+                        )
+                        .Sum(planet => planet.GetBuildingTypeCount(BuildingType.Weapon)),
                     CapitalShipCount = game.GetSceneNodesByOwnerInstanceID<CapitalShip>(
                         faction.InstanceID
                     ).Count,
@@ -280,6 +317,7 @@ public static class HeadlessSimulationRunner
                     TroopReinforcementPackages = BuildTroopReinforcementPackageSummary(faction),
                     CapitalShipProduction = BuildCapitalShipProductionSummary(faction),
                     ManufacturingIdle = idleTracker.BuildSummary(faction.InstanceID),
+                    Activity = activityTracker.BuildSummary(faction),
                     CurrentIdlePlanets = BuildCurrentIdlePlanetSummaries(game, faction),
                     Fleets = game.GetSceneNodesByOwnerInstanceID<Fleet>(faction.InstanceID)
                         .OrderBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
@@ -756,6 +794,10 @@ public static class HeadlessSimulationRunner
         public int Seed = -1;
         public string GalaxySize;
         public string OutputPath;
+        public int AITickInterval;
+        public int MaximumConcurrentAttackOrders;
+        public int MinimumAttackStrength;
+        public int MinimumAttackRegimentCount;
         public FleetHistorySnapshot[] FleetHistory;
         public FactionSimulationSummary[] Factions;
     }
@@ -769,6 +811,8 @@ public static class HeadlessSimulationRunner
         public int PlanetCount;
         public int FleetCount;
         public int BuildingCount;
+        public int DefenseFacilityCount;
+        public int WeaponFacilityCount;
         public int CapitalShipCount;
         public int StarfighterCount;
         public int RegimentCount;
@@ -799,6 +843,7 @@ public static class HeadlessSimulationRunner
         public TroopReinforcementPackageSimulationSummary TroopReinforcementPackages;
         public CapitalShipProductionSimulationSummary CapitalShipProduction;
         public ManufacturingIdleSummary ManufacturingIdle;
+        public FactionActivitySummary Activity;
         public CurrentIdlePlanetSummary[] CurrentIdlePlanets;
         public FleetSimulationSummary[] Fleets;
     }
@@ -867,6 +912,519 @@ public static class HeadlessSimulationRunner
         public int RefineryDeficit;
         public int UnusedMinedResources;
         public int UnusedRefineryCapacity;
+    }
+
+    [Serializable]
+    private sealed class FactionActivitySummary
+    {
+        public MissionActivitySummary[] Missions;
+        public MissionTargetActivitySummary[] MissionTargets;
+        public SabotageTargetActivitySummary[] SabotageTargets;
+        public int PlanetsAcquired;
+        public int PlanetsLost;
+        public int PlanetsColonized;
+        public int ShipResearchAdvances;
+        public int FacilityResearchAdvances;
+        public int TroopResearchAdvances;
+        public int FinalShipResearchOrder;
+        public int FinalFacilityResearchOrder;
+        public int FinalTroopResearchOrder;
+    }
+
+    [Serializable]
+    private sealed class MissionActivitySummary
+    {
+        public string MissionTypeId;
+        public int Started;
+        public int Ended;
+        public int Active;
+    }
+
+    [Serializable]
+    private sealed class MissionTargetActivitySummary
+    {
+        public string MissionTypeId;
+        public string PlanetId;
+        public int Started;
+        public int Ended;
+        public int Active;
+        public int IntelRefreshes;
+        public int EarlyInterruptions;
+        public int ArrivalInterruptions;
+        public int MinimumMainRating;
+        public int MaximumMainRating;
+        public double AverageMainRating;
+    }
+
+    [Serializable]
+    private sealed class SabotageTargetActivitySummary
+    {
+        public string TargetId;
+        public string PlanetId;
+        public string TargetType;
+        public int Started;
+        public int Ended;
+        public int Destroyed;
+    }
+
+    private sealed class ActivityTracker
+    {
+        private readonly Dictionary<string, TrackedMission> _activeMissions = new(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, PlanetState> _planetStates = new(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, FactionActivity> _factionActivities = new(
+            StringComparer.Ordinal
+        );
+        private readonly Dictionary<string, ResearchOrders> _researchOrders = new(
+            StringComparer.Ordinal
+        );
+
+        public void RecordInitialState(GameRoot game)
+        {
+            foreach (Mission mission in game.GetSceneNodesByType<Mission>())
+            {
+                TrackedMission trackedMission = TrackedMission.From(mission, game);
+                trackedMission.InitialIntelTick = GetIntelTick(
+                    game,
+                    trackedMission.FactionId,
+                    trackedMission.PlanetId
+                );
+                _activeMissions[mission.InstanceID] = trackedMission;
+            }
+
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+                _planetStates[planet.InstanceID] = PlanetState.From(planet);
+
+            foreach (Faction faction in game.Factions)
+                _researchOrders[faction.InstanceID] = ResearchOrders.From(faction);
+        }
+
+        public void RecordTick(GameRoot game)
+        {
+            RecordMissions(game);
+            RecordPlanetOwnership(game);
+            RecordResearch(game);
+        }
+
+        public FactionActivitySummary BuildSummary(Faction faction)
+        {
+            FactionActivity activity = GetActivity(faction.InstanceID);
+            ResearchOrders orders = ResearchOrders.From(faction);
+            return new FactionActivitySummary
+            {
+                Missions = activity
+                    .MissionCounts.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                    .Select(pair => new MissionActivitySummary
+                    {
+                        MissionTypeId = pair.Key,
+                        Started = pair.Value.Started,
+                        Ended = pair.Value.Ended,
+                        Active = _activeMissions.Values.Count(mission =>
+                            mission.FactionId == faction.InstanceID
+                            && mission.MissionTypeId == pair.Key
+                        ),
+                    })
+                    .ToArray(),
+                MissionTargets = activity
+                    .MissionTargetCounts.Values.OrderBy(counts => counts.MissionTypeId)
+                    .ThenBy(counts => counts.PlanetId)
+                    .Select(counts => new MissionTargetActivitySummary
+                    {
+                        MissionTypeId = counts.MissionTypeId,
+                        PlanetId = counts.PlanetId,
+                        Started = counts.Started,
+                        Ended = counts.Ended,
+                        IntelRefreshes = counts.IntelRefreshes,
+                        EarlyInterruptions = counts.EarlyInterruptions,
+                        ArrivalInterruptions = counts.ArrivalInterruptions,
+                        MinimumMainRating =
+                            counts.MainRatingSamples > 0 ? counts.MinimumMainRating : 0,
+                        MaximumMainRating = counts.MaximumMainRating,
+                        AverageMainRating =
+                            counts.MainRatingSamples > 0
+                                ? (double)counts.MainRatingTotal / counts.MainRatingSamples
+                                : 0,
+                        Active = _activeMissions.Values.Count(mission =>
+                            mission.FactionId == faction.InstanceID
+                            && mission.MissionTypeId == counts.MissionTypeId
+                            && mission.PlanetId == counts.PlanetId
+                        ),
+                    })
+                    .ToArray(),
+                SabotageTargets = activity
+                    .SabotageTargetCounts.Values.OrderBy(counts => counts.PlanetId)
+                    .ThenBy(counts => counts.TargetId)
+                    .Select(counts => new SabotageTargetActivitySummary
+                    {
+                        TargetId = counts.TargetId,
+                        PlanetId = counts.PlanetId,
+                        TargetType = counts.TargetType,
+                        Started = counts.Started,
+                        Ended = counts.Ended,
+                        Destroyed = counts.Destroyed,
+                    })
+                    .ToArray(),
+                PlanetsAcquired = activity.PlanetsAcquired,
+                PlanetsLost = activity.PlanetsLost,
+                PlanetsColonized = activity.PlanetsColonized,
+                ShipResearchAdvances = activity.ShipResearchAdvances,
+                FacilityResearchAdvances = activity.FacilityResearchAdvances,
+                TroopResearchAdvances = activity.TroopResearchAdvances,
+                FinalShipResearchOrder = orders.Ship,
+                FinalFacilityResearchOrder = orders.Facility,
+                FinalTroopResearchOrder = orders.Troop,
+            };
+        }
+
+        private void RecordMissions(GameRoot game)
+        {
+            Dictionary<string, TrackedMission> currentMissions = game.GetSceneNodesByType<Mission>()
+                .ToDictionary(
+                    mission => mission.InstanceID,
+                    mission => TrackedMission.From(mission, game)
+                );
+
+            foreach (TrackedMission mission in currentMissions.Values)
+            {
+                if (
+                    _activeMissions.TryGetValue(
+                        mission.InstanceId,
+                        out TrackedMission previousMission
+                    )
+                )
+                    mission.InitialIntelTick = previousMission.InitialIntelTick;
+                else
+                    mission.InitialIntelTick = GetIntelTick(
+                        game,
+                        mission.FactionId,
+                        mission.PlanetId
+                    );
+            }
+
+            foreach (
+                TrackedMission mission in currentMissions.Values.Where(mission =>
+                    !_activeMissions.ContainsKey(mission.InstanceId)
+                )
+            )
+            {
+                GetMissionCounts(mission).Started++;
+                MissionTargetCounts targetCounts = GetMissionTargetCounts(mission);
+                targetCounts.Started++;
+                targetCounts.MainRatingTotal += mission.MainRating;
+                targetCounts.MainRatingSamples++;
+                targetCounts.MinimumMainRating = Math.Min(
+                    targetCounts.MinimumMainRating,
+                    mission.MainRating
+                );
+                targetCounts.MaximumMainRating = Math.Max(
+                    targetCounts.MaximumMainRating,
+                    mission.MainRating
+                );
+                SabotageTargetCounts sabotageCounts = GetSabotageTargetCounts(mission);
+                if (sabotageCounts != null)
+                    sabotageCounts.Started++;
+            }
+
+            foreach (
+                TrackedMission mission in _activeMissions.Values.Where(mission =>
+                    !currentMissions.ContainsKey(mission.InstanceId)
+                )
+            )
+            {
+                GetMissionCounts(mission).Ended++;
+                MissionTargetCounts targetCounts = GetMissionTargetCounts(mission);
+                targetCounts.Ended++;
+                RecordEspionageOutcome(game, mission, targetCounts);
+                SabotageTargetCounts sabotageCounts = GetSabotageTargetCounts(mission);
+                if (sabotageCounts == null)
+                    continue;
+
+                sabotageCounts.Ended++;
+                if (game.GetSceneNodeByInstanceID<ISceneNode>(mission.TargetId) == null)
+                    sabotageCounts.Destroyed++;
+            }
+
+            _activeMissions.Clear();
+            foreach (KeyValuePair<string, TrackedMission> pair in currentMissions)
+                _activeMissions[pair.Key] = pair.Value;
+        }
+
+        private void RecordEspionageOutcome(
+            GameRoot game,
+            TrackedMission mission,
+            MissionTargetCounts counts
+        )
+        {
+            if (mission.MissionTypeId != MissionTypeIDs.Espionage)
+                return;
+
+            if (GetIntelTick(game, mission.FactionId, mission.PlanetId) > mission.InitialIntelTick)
+            {
+                counts.IntelRefreshes++;
+                return;
+            }
+
+            if (mission.WaitingForParticipants)
+            {
+                counts.ArrivalInterruptions++;
+                return;
+            }
+
+            if (mission.CurrentProgress + 1 < mission.MaxProgress)
+                counts.EarlyInterruptions++;
+        }
+
+        private static int GetIntelTick(GameRoot game, string factionId, string planetId)
+        {
+            Faction faction = game.GetFactionByOwnerInstanceID(factionId);
+            if (
+                faction?.Fog?.PlanetToSystem == null
+                || !faction.Fog.PlanetToSystem.TryGetValue(planetId, out string systemId)
+                || !faction.Fog.Snapshots.TryGetValue(systemId, out SystemSnapshot systemSnapshot)
+                || !systemSnapshot.Planets.TryGetValue(planetId, out PlanetSnapshot planetSnapshot)
+            )
+                return -1;
+
+            return planetSnapshot.TickCaptured;
+        }
+
+        private void RecordPlanetOwnership(GameRoot game)
+        {
+            foreach (Planet planet in game.GetSceneNodesByType<Planet>())
+            {
+                PlanetState current = PlanetState.From(planet);
+                if (_planetStates.TryGetValue(planet.InstanceID, out PlanetState previous))
+                {
+                    if (previous.OwnerId != current.OwnerId)
+                    {
+                        if (!string.IsNullOrEmpty(previous.OwnerId))
+                            GetActivity(previous.OwnerId).PlanetsLost++;
+
+                        if (!string.IsNullOrEmpty(current.OwnerId))
+                            GetActivity(current.OwnerId).PlanetsAcquired++;
+                    }
+
+                    if (
+                        !previous.IsColonized
+                        && current.IsColonized
+                        && !string.IsNullOrEmpty(current.OwnerId)
+                    )
+                        GetActivity(current.OwnerId).PlanetsColonized++;
+                }
+
+                _planetStates[planet.InstanceID] = current;
+            }
+        }
+
+        private void RecordResearch(GameRoot game)
+        {
+            foreach (Faction faction in game.Factions)
+            {
+                ResearchOrders current = ResearchOrders.From(faction);
+                if (_researchOrders.TryGetValue(faction.InstanceID, out ResearchOrders previous))
+                {
+                    FactionActivity activity = GetActivity(faction.InstanceID);
+                    activity.ShipResearchAdvances += Math.Max(0, current.Ship - previous.Ship);
+                    activity.FacilityResearchAdvances += Math.Max(
+                        0,
+                        current.Facility - previous.Facility
+                    );
+                    activity.TroopResearchAdvances += Math.Max(0, current.Troop - previous.Troop);
+                }
+
+                _researchOrders[faction.InstanceID] = current;
+            }
+        }
+
+        private MissionCounts GetMissionCounts(TrackedMission mission)
+        {
+            FactionActivity activity = GetActivity(mission.FactionId);
+            if (
+                !activity.MissionCounts.TryGetValue(mission.MissionTypeId, out MissionCounts counts)
+            )
+            {
+                counts = new MissionCounts();
+                activity.MissionCounts[mission.MissionTypeId] = counts;
+            }
+
+            return counts;
+        }
+
+        private FactionActivity GetActivity(string factionId)
+        {
+            string key = factionId ?? string.Empty;
+            if (!_factionActivities.TryGetValue(key, out FactionActivity activity))
+            {
+                activity = new FactionActivity();
+                _factionActivities[key] = activity;
+            }
+
+            return activity;
+        }
+
+        private MissionTargetCounts GetMissionTargetCounts(TrackedMission mission)
+        {
+            FactionActivity activity = GetActivity(mission.FactionId);
+            string key = $"{mission.MissionTypeId}\0{mission.PlanetId}";
+            if (!activity.MissionTargetCounts.TryGetValue(key, out MissionTargetCounts counts))
+            {
+                counts = new MissionTargetCounts
+                {
+                    MissionTypeId = mission.MissionTypeId,
+                    PlanetId = mission.PlanetId,
+                };
+                activity.MissionTargetCounts[key] = counts;
+            }
+
+            return counts;
+        }
+
+        private SabotageTargetCounts GetSabotageTargetCounts(TrackedMission mission)
+        {
+            if (string.IsNullOrEmpty(mission.TargetId))
+                return null;
+
+            FactionActivity activity = GetActivity(mission.FactionId);
+            if (
+                !activity.SabotageTargetCounts.TryGetValue(
+                    mission.TargetId,
+                    out SabotageTargetCounts counts
+                )
+            )
+            {
+                counts = new SabotageTargetCounts
+                {
+                    TargetId = mission.TargetId,
+                    PlanetId = mission.PlanetId,
+                    TargetType = mission.TargetType,
+                };
+                activity.SabotageTargetCounts[mission.TargetId] = counts;
+            }
+
+            return counts;
+        }
+
+        private sealed class FactionActivity
+        {
+            public Dictionary<string, MissionCounts> MissionCounts { get; } =
+                new(StringComparer.Ordinal);
+            public Dictionary<string, MissionTargetCounts> MissionTargetCounts { get; } =
+                new(StringComparer.Ordinal);
+            public Dictionary<string, SabotageTargetCounts> SabotageTargetCounts { get; } =
+                new(StringComparer.Ordinal);
+            public int PlanetsAcquired;
+            public int PlanetsLost;
+            public int PlanetsColonized;
+            public int ShipResearchAdvances;
+            public int FacilityResearchAdvances;
+            public int TroopResearchAdvances;
+        }
+
+        private sealed class MissionCounts
+        {
+            public int Started;
+            public int Ended;
+        }
+
+        private sealed class MissionTargetCounts
+        {
+            public string MissionTypeId;
+            public string PlanetId;
+            public int Started;
+            public int Ended;
+            public int IntelRefreshes;
+            public int EarlyInterruptions;
+            public int ArrivalInterruptions;
+            public int MainRatingTotal;
+            public int MainRatingSamples;
+            public int MinimumMainRating = int.MaxValue;
+            public int MaximumMainRating;
+        }
+
+        private sealed class SabotageTargetCounts
+        {
+            public string TargetId;
+            public string PlanetId;
+            public string TargetType;
+            public int Started;
+            public int Ended;
+            public int Destroyed;
+        }
+
+        private sealed class TrackedMission
+        {
+            public string InstanceId;
+            public string FactionId;
+            public string MissionTypeId;
+            public string TargetId;
+            public string PlanetId;
+            public string TargetType;
+            public int InitialIntelTick;
+            public int CurrentProgress;
+            public int MaxProgress;
+            public bool WaitingForParticipants;
+            public int MainRating;
+
+            public static TrackedMission From(Mission mission, GameRoot game)
+            {
+                string targetId = (mission as SabotageMission)?.SabotageTargetInstanceID;
+                return new TrackedMission
+                {
+                    InstanceId = mission.InstanceID,
+                    FactionId = mission.GetOwnerInstanceID(),
+                    MissionTypeId = mission.ConfigKey,
+                    TargetId = targetId,
+                    PlanetId = mission.LocationInstanceID,
+                    TargetType = game.GetSceneNodeByInstanceID<ISceneNode>(targetId)
+                        ?.GetType()
+                        .Name,
+                    CurrentProgress = mission.CurrentProgress,
+                    MaxProgress = mission.MaxProgress,
+                    WaitingForParticipants = mission.IsWaitingForParticipants(),
+                    MainRating =
+                        mission.MainParticipants.Count > 0
+                            ? mission.MainParticipants.Sum(participant =>
+                                participant.GetEffectiveRating(mission.ParticipantRating)
+                            ) / mission.MainParticipants.Count
+                            : 0,
+                };
+            }
+        }
+
+        private sealed class PlanetState
+        {
+            public string OwnerId;
+            public bool IsColonized;
+
+            public static PlanetState From(Planet planet)
+            {
+                return new PlanetState
+                {
+                    OwnerId = planet.GetOwnerInstanceID(),
+                    IsColonized = planet.IsColonized,
+                };
+            }
+        }
+
+        private sealed class ResearchOrders
+        {
+            public int Ship;
+            public int Facility;
+            public int Troop;
+
+            public static ResearchOrders From(Faction faction)
+            {
+                return new ResearchOrders
+                {
+                    Ship = faction.GetHighestUnlockedOrder(ResearchDiscipline.ShipDesign),
+                    Facility = faction.GetHighestUnlockedOrder(ResearchDiscipline.FacilityDesign),
+                    Troop = faction.GetHighestUnlockedOrder(ResearchDiscipline.TroopTraining),
+                };
+            }
+        }
     }
 
     private sealed class ManufacturedUnitTracker
@@ -1141,11 +1699,15 @@ public static class HeadlessSimulationRunner
         public string OrderTargetPlanetId;
         public string OrderTargetPlanetName;
         public string OrderTargetOwnerId;
-        public int AssaultStrength;
+        public int GroundAttackStrength;
+        public int BombardmentStrength;
         public int RegimentCapacity;
         public int RequiredAttackCombatStrength;
         public int RequiredAttackRegimentCount;
-        public int TargetDefenseStrength;
+        public int RequiredAttackRegimentStrength;
+        public int RequiredBombardmentStrength;
+        public int TargetRegimentDefenseStrength;
+        public int TargetShieldStrength;
         public int TargetRegimentCount;
         public int TargetStrongestHostileFleetStrength;
         public string[] CapitalShips;
@@ -1445,18 +2007,29 @@ public static class HeadlessSimulationRunner
         Planet targetPlanet = string.IsNullOrEmpty(fleet.Order?.TargetPlanetId)
             ? null
             : game.GetSceneNodeByInstanceID<Planet>(fleet.Order.TargetPlanetId);
-        int assaultStrength = fleet.GetAssaultStrength(
-            game.Config.Combat.PlanetaryAssault.PersonnelDivisor
+        int groundAttackStrength = GetFleetRegimentAttackStrength(game, fleet);
+        int bombardmentStrength = BombardmentSystem.GetBombardmentStrength(
+            new[] { fleet },
+            game.Config.Combat.Bombardment
         );
-        int targetDefenseStrength = targetPlanet?.GetDefenseStrength() ?? 0;
-        int targetRegimentCount = targetPlanet?.GetAllRegiments().Count ?? 0;
+        int targetRegimentDefenseStrength = GetTargetRegimentDefenseStrength(game, targetPlanet);
+        int targetShieldStrength = BombardmentSystem.GetBombardmentShieldStrength(targetPlanet);
+        string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
+        int targetRegimentCount =
+            targetPlanet
+                ?.GetAllRegiments()
+                .Count(regiment =>
+                    regiment.GetOwnerInstanceID() == targetOwnerId
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                )
+            ?? 0;
         int targetStrongestHostileFleetStrength = GetStrongestHostileFleetStrength(
             faction,
             targetPlanet
         );
         int requiredAttackCombatStrength = GetRequiredAttackCombatStrength(
             game,
-            targetDefenseStrength,
             targetStrongestHostileFleetStrength
         );
         int requiredAttackRegimentCount = GetRequiredAttackRegimentCount(
@@ -1465,6 +2038,18 @@ public static class HeadlessSimulationRunner
             targetPlanet,
             targetRegimentCount
         );
+        int requiredAttackRegimentStrength =
+            targetRegimentDefenseStrength
+                * game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense
+            + _percentScale
+            - 1;
+        requiredAttackRegimentStrength /= _percentScale;
+        int requiredBombardmentStrength = PlanetaryAssaultSystem.IsBlockedByShields(
+            targetPlanet,
+            game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+        )
+            ? targetShieldStrength + 1
+            : 0;
 
         return new FleetSimulationSummary
         {
@@ -1485,11 +2070,15 @@ public static class HeadlessSimulationRunner
             OrderTargetPlanetId = fleet.Order?.TargetPlanetId,
             OrderTargetPlanetName = targetPlanet?.GetDisplayName(),
             OrderTargetOwnerId = targetPlanet?.GetOwnerInstanceID(),
-            AssaultStrength = assaultStrength,
+            GroundAttackStrength = groundAttackStrength,
+            BombardmentStrength = bombardmentStrength,
             RegimentCapacity = fleet.GetRegimentCapacity(),
             RequiredAttackCombatStrength = requiredAttackCombatStrength,
             RequiredAttackRegimentCount = requiredAttackRegimentCount,
-            TargetDefenseStrength = targetDefenseStrength,
+            RequiredAttackRegimentStrength = requiredAttackRegimentStrength,
+            RequiredBombardmentStrength = requiredBombardmentStrength,
+            TargetRegimentDefenseStrength = targetRegimentDefenseStrength,
+            TargetShieldStrength = targetShieldStrength,
             TargetRegimentCount = targetRegimentCount,
             TargetStrongestHostileFleetStrength = targetStrongestHostileFleetStrength,
             CapitalShips = SummarizeUnits(fleet.CapitalShips),
@@ -1526,27 +2115,67 @@ public static class HeadlessSimulationRunner
     /// Gets the combat strength required to attack a target.
     /// </summary>
     /// <param name="game">The game state to inspect.</param>
-    /// <param name="targetDefenseStrength">The target defense strength.</param>
     /// <param name="targetStrongestHostileFleetStrength">The strongest hostile fleet strength.</param>
     /// <returns>The required attack combat strength.</returns>
     private static int GetRequiredAttackCombatStrength(
         GameRoot game,
-        int targetDefenseStrength,
         int targetStrongestHostileFleetStrength
     )
     {
         GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
-        int shieldDefenseRequirement =
-            targetDefenseStrength * config.AttackStrengthPercentOfDefense / 100;
         int fleetDefenseRequirement =
             targetStrongestHostileFleetStrength
-            * config.AttackStrengthPercentOfStrongestHostileFleet
-            / 100;
+                * config.AttackStrengthPercentOfStrongestHostileFleet
+            + _percentScale
+            - 1;
+        fleetDefenseRequirement /= _percentScale;
 
-        return Math.Max(
-            config.MinimumAttackStrength,
-            Math.Max(shieldDefenseRequirement, fleetDefenseRequirement)
+        return Math.Max(config.MinimumAttackStrength, fleetDefenseRequirement);
+    }
+
+    private static int GetFleetRegimentAttackStrength(GameRoot game, Fleet fleet)
+    {
+        if (game == null || fleet == null)
+            return 0;
+
+        int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+            fleet.GetOfficers(),
+            OfficerRank.General,
+            fleet.GetOwnerInstanceID(),
+            game.Config.Combat.PlanetaryAssault
         );
+        return fleet
+            .CapitalShips.Where(ship =>
+                ship.ManufacturingStatus == ManufacturingStatus.Complete && ship.Movement == null
+            )
+            .SelectMany(ship => ship.Regiments)
+            .Where(regiment =>
+                regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null
+            )
+            .Sum(regiment => regiment.AttackRating + leadershipBonus);
+    }
+
+    private static int GetTargetRegimentDefenseStrength(GameRoot game, Planet planet)
+    {
+        if (game == null || planet == null)
+            return 0;
+
+        string ownerId = planet.GetOwnerInstanceID();
+        int leadershipBonus = PlanetaryAssaultSystem.GetLeadershipBonus(
+            planet.GetAllOfficers(),
+            OfficerRank.General,
+            ownerId,
+            game.Config.Combat.PlanetaryAssault
+        );
+        return planet
+            .GetAllRegiments()
+            .Where(regiment =>
+                regiment.GetOwnerInstanceID() == ownerId
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null
+            )
+            .Sum(regiment => regiment.DefenseRating + leadershipBonus);
     }
 
     /// <summary>
@@ -1565,16 +2194,16 @@ public static class HeadlessSimulationRunner
     )
     {
         if (game == null || faction == null || targetPlanet == null)
-            return 1;
+            return 0;
 
+        int stableGarrison = UprisingSystem.CalculateGarrisonRequirement(
+            targetPlanet,
+            faction,
+            game.Config.AI.Garrison
+        );
         return Math.Max(
-            1,
-            targetRegimentCount
-                + UprisingSystem.CalculateGarrisonRequirement(
-                    targetPlanet,
-                    faction,
-                    game.Config.AI.Garrison
-                )
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount,
+            targetRegimentCount + stableGarrison
         );
     }
 

@@ -34,10 +34,22 @@ Alliance guerrilla cells have been the nemesis of many Imperial governors, sprea
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>55</Espionage>
-      <Combat>20</Combat>
-      <Leadership>50</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>20</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>50</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>InciteUprising</String>
@@ -75,10 +87,22 @@ Infiltrators are the Alliance's elite commando forces.  They are able to enter a
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>60</Espionage>
-      <Combat>55</Combat>
-      <Leadership>0</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>60</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Rescue</String>
@@ -119,10 +143,22 @@ Longprobe Y-wing recon teams are used by the Alliance for scouting unknown syste
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>40</Espionage>
-      <Combat>30</Combat>
-      <Leadership>0</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>40</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>30</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Reconnaissance</String>
@@ -159,10 +195,22 @@ Bothan spies are a wondrous source of intelligence information for the Alliance.
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>70</Espionage>
-      <Combat>0</Combat>
-      <Leadership>0</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>70</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Espionage</String>
@@ -204,10 +252,22 @@ Probe droids are designed as reconnaissance and information-gathering units by t
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>30</Espionage>
-      <Combat>10</Combat>
-      <Leadership>0</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>30</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>10</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Reconnaissance</String>
@@ -244,10 +304,22 @@ Imperial espionage droids are designed to look like any other protocol droid, ex
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>60</Espionage>
-      <Combat>5</Combat>
-      <Leadership>0</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>60</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>5</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Espionage</String>
@@ -284,10 +356,22 @@ Imperial commandos are elite special forces whose missions usually entail the in
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>55</Espionage>
-      <Combat>55</Combat>
-      <Leadership>50</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>50</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Sabotage</String>
@@ -326,10 +410,22 @@ Noghri death commandos are experts in infiltration and assassination.  All Noghr
     <ResearchOrder>0</ResearchOrder>
     <ResearchDifficulty>0</ResearchDifficulty>
     <Ratings>
-      <Diplomacy>0</Diplomacy>
-      <Espionage>55</Espionage>
-      <Combat>70</Combat>
-      <Leadership>0</Leadership>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>70</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
     </Ratings>
     <AllowedMissionTypeIDs>
       <String>Rescue</String>

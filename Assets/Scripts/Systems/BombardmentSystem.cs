@@ -116,8 +116,11 @@ namespace Rebellion.Systems
                 if (!GetActiveCapitalShips(attackingFleets).Any())
                     return result;
 
-                result.BombardmentStrength = CalculateBombardmentStrength(attackingFleets);
-                result.ShieldStrength = CalculatePlanetShieldStrength(targetPlanet);
+                result.BombardmentStrength = GetBombardmentStrength(
+                    attackingFleets,
+                    _game.Config.Combat.Bombardment
+                );
+                result.ShieldStrength = GetBombardmentShieldStrength(targetPlanet);
                 result.StrikeAttempts = Math.Max(
                     0,
                     result.BombardmentStrength - result.ShieldStrength
@@ -194,20 +197,20 @@ namespace Rebellion.Systems
         /// Calculates the total effective bombardment strength of the attacking fleets.
         /// </summary>
         /// <param name="fleets">Fleets contributing ships and starfighters.</param>
+        /// <param name="config">Bombardment configuration.</param>
         /// <returns>The combined bombardment strength after condition and leadership adjustments.</returns>
-        private int CalculateBombardmentStrength(List<Fleet> fleets)
+        public static int GetBombardmentStrength(
+            IEnumerable<Fleet> fleets,
+            GameConfig.BombardmentConfig config
+        )
         {
-            int divisor = _game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
+            if (fleets == null || config == null)
+                return 0;
+
             int total = 0;
 
-            foreach (Fleet fleet in fleets)
+            foreach (Fleet fleet in fleets.Where(fleet => fleet != null))
             {
-                int leadership = GetBombardmentLeadership(
-                    fleet.GetOfficers(),
-                    OfficerRank.Admiral,
-                    fleet.GetOwnerInstanceID()
-                );
-                int multiplier = leadership / divisor + 1;
                 int fleetStrength = 0;
 
                 foreach (CapitalShip ship in fleet.CapitalShips.Where(IsActiveBombardmentUnit))
@@ -228,10 +231,37 @@ namespace Rebellion.Systems
                         );
                 }
 
-                total += fleetStrength * multiplier;
+                total += fleetStrength * GetBombardmentMultiplier(fleet, config);
             }
 
             return total;
+        }
+
+        internal static int GetProjectedBombardmentStrength(
+            Fleet fleet,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (fleet == null || config == null)
+                return 0;
+
+            return fleet
+                    .CapitalShips.Where(IsCommittedBombardmentUnit)
+                    .Sum(GetProjectedCapitalShipBombardmentStrength)
+                * GetBombardmentMultiplier(fleet, config);
+        }
+
+        internal static int GetProjectedCapitalShipBombardmentStrength(
+            Fleet fleet,
+            CapitalShip capitalShip,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            if (fleet == null || capitalShip == null || config == null)
+                return 0;
+
+            return GetProjectedCapitalShipBombardmentStrength(capitalShip)
+                * GetBombardmentMultiplier(fleet, config);
         }
 
         /// <summary>
@@ -239,8 +269,11 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">Planet whose shields are evaluated.</param>
         /// <returns>The combined active shield strength.</returns>
-        private static int CalculatePlanetShieldStrength(Planet planet)
+        public static int GetBombardmentShieldStrength(Planet planet)
         {
+            if (planet == null)
+                return 0;
+
             return planet
                 .GetAllBuildings()
                 .Where(building =>
@@ -248,6 +281,47 @@ namespace Rebellion.Systems
                     && building.DefenseFacilityClass == DefenseFacilityClass.Shield
                 )
                 .Sum(building => building.ShieldStrength);
+        }
+
+        private static int GetBombardmentMultiplier(
+            Fleet fleet,
+            GameConfig.BombardmentConfig config
+        )
+        {
+            int leadership = GetBombardmentLeadership(
+                fleet.GetOfficers(),
+                OfficerRank.Admiral,
+                fleet.GetOwnerInstanceID()
+            );
+            return leadership / config.AttackerLeadershipDivisor + 1;
+        }
+
+        private static int GetProjectedCapitalShipBombardmentStrength(CapitalShip capitalShip)
+        {
+            bool useCurrentCondition =
+                capitalShip.GetParent() != null
+                && capitalShip.ManufacturingStatus == ManufacturingStatus.Complete;
+            int capitalShipStrength = useCurrentCondition
+                ? ScaleByCondition(
+                    capitalShip.Bombardment,
+                    capitalShip.CurrentHullStrength,
+                    capitalShip.MaxHullStrength
+                )
+                : capitalShip.Bombardment;
+            int starfighterStrength = capitalShip
+                .Starfighters.Where(IsCommittedBombardmentUnit)
+                .Sum(starfighter =>
+                    useCurrentCondition
+                    && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                        ? ScaleByCondition(
+                            starfighter.Bombardment,
+                            starfighter.CurrentSquadronSize,
+                            starfighter.MaxSquadronSize
+                        )
+                        : starfighter.Bombardment
+                );
+
+            return capitalShipStrength + starfighterStrength;
         }
 
         /// <summary>
@@ -1020,6 +1094,13 @@ namespace Rebellion.Systems
         {
             return unit.ManufacturingStatus == ManufacturingStatus.Complete
                 && unit.Movement == null;
+        }
+
+        private static bool IsCommittedBombardmentUnit(IManufacturable unit)
+        {
+            return unit?.ManufacturingStatus
+                is ManufacturingStatus.Complete
+                    or ManufacturingStatus.Building;
         }
 
         /// <summary>

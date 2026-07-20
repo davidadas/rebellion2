@@ -93,7 +93,12 @@ namespace Rebellion.AI.Scoring
             if (producerPlanet == null || destinationPlanet == null)
                 return 0;
 
+            double distanceScale = context.Game.Config.Movement.DistanceScale;
+            if (distanceScale <= 0)
+                return 0;
+
             return producerPlanet.GetRawDistanceTo(destinationPlanet)
+                / distanceScale
                 * context.Game.Config.AI.Infrastructure.FleetReinforcementTravelPenaltyWeight;
         }
     }

@@ -57,13 +57,19 @@ namespace Rebellion.AI.Proposals
             {
                 claimKeys.Add($"fleet:attack:{Fleet.InstanceID}");
 
+                if (Fleet.Order == null)
+                    claimKeys.Add($"faction:new-attack-order:{Fleet.GetOwnerInstanceID()}");
+
                 if (TargetPlanet != null)
                     claimKeys.Add($"fleet:attack-target:{TargetPlanet.InstanceID}");
 
-                if (Fleet.GetParentOfType<Planet>() != TargetPlanet)
+                if (Fleet.GetParentOfType<Planet>()?.InstanceID != TargetPlanet.InstanceID)
                     claimKeys.Add($"fleet:movement:{Fleet.InstanceID}");
 
-                if (TargetPlanet != null && Fleet.GetParentOfType<Planet>() == TargetPlanet)
+                if (
+                    TargetPlanet != null
+                    && Fleet.GetParentOfType<Planet>()?.InstanceID == TargetPlanet.InstanceID
+                )
                     claimKeys.Add($"planet:attack:{TargetPlanet.InstanceID}");
             }
 
@@ -112,11 +118,11 @@ namespace Rebellion.AI.Proposals
         /// <param name="context">The current AI turn context.</param>
         public override void Execute(AITurnContext context)
         {
-            if (TryClearCompletedAttackOrder(context))
-                return;
-
             if (!CanExecute(context))
+            {
+                ClearOrder();
                 return;
+            }
 
             EnsureOrder();
 
@@ -160,9 +166,19 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (Fleet.GetParentOfType<Planet>() != TargetPlanet)
+            if (Fleet.GetParentOfType<Planet>()?.InstanceID != TargetPlanet.InstanceID)
             {
-                MoveToTarget(context);
+                MoveToTarget(context, TargetPlanet);
+                return;
+            }
+
+            Planet liveTarget = ResolveLiveTarget(context);
+            if (
+                TryClearCompletedAttackOrder(context, liveTarget)
+                || !IsLiveTargetHostile(context, liveTarget)
+            )
+            {
+                ClearOrder();
                 return;
             }
 
@@ -172,9 +188,9 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (ShouldAssault(context))
+            if (ShouldAssault(context, liveTarget))
             {
-                ExecuteAssault(context);
+                ExecuteAssault(context, liveTarget);
                 return;
             }
 
@@ -183,44 +199,46 @@ namespace Rebellion.AI.Proposals
 
             BombardmentResult bombardmentResult = context.Bombardment.Execute(
                 new List<Fleet> { Fleet },
-                TargetPlanet,
+                liveTarget,
                 BombardmentType.Military
             );
             context.AddResult(bombardmentResult);
             context.AddResults(bombardmentResult.Events);
             context.AddResult(bombardmentResult.OwnershipChange);
 
-            if (TryClearCompletedAttackOrder(context) || !CanExecute(context))
-                return;
-
-            if (ShouldAssault(context))
-                ExecuteAssault(context);
+            if (!TryClearCompletedAttackOrder(context, liveTarget))
+            {
+                if (!IsLiveTargetHostile(context, liveTarget))
+                    ClearOrder();
+            }
         }
 
         /// <summary>
         /// Executes a planetary assault with this fleet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        private void ExecuteAssault(AITurnContext context)
+        /// <param name="liveTarget">The current scene-graph target.</param>
+        private void ExecuteAssault(AITurnContext context, Planet liveTarget)
         {
             if (context.PlanetaryAssault == null)
                 return;
 
             PlanetaryAssaultResult assaultResult = context.PlanetaryAssault.Execute(
                 new List<Fleet> { Fleet },
-                TargetPlanet
+                liveTarget
             );
             context.AddResult(assaultResult);
             context.AddResult(assaultResult.OwnershipChange);
-            TryClearCompletedAttackOrder(context);
+            TryClearCompletedAttackOrder(context, liveTarget);
         }
 
         /// <summary>
         /// Clears the attack order after the target changes ownership.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="liveTarget">The current scene-graph target.</param>
         /// <returns>True if the order was cleared.</returns>
-        private bool TryClearCompletedAttackOrder(AITurnContext context)
+        private bool TryClearCompletedAttackOrder(AITurnContext context, Planet liveTarget)
         {
             if (context?.Faction == null || Fleet == null || TargetPlanet == null)
                 return false;
@@ -236,10 +254,10 @@ namespace Rebellion.AI.Proposals
             )
                 return false;
 
-            if (TargetPlanet.GetOwnerInstanceID() != context.Faction.InstanceID)
+            if (liveTarget?.GetOwnerInstanceID() != context.Faction.InstanceID)
                 return false;
 
-            Fleet.Order = null;
+            ClearOrder();
             return true;
         }
 
@@ -247,36 +265,36 @@ namespace Rebellion.AI.Proposals
         /// Requests movement toward the target planet.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        private void MoveToTarget(AITurnContext context)
+        /// <param name="liveTarget">The current scene-graph target.</param>
+        private void MoveToTarget(AITurnContext context, Planet liveTarget)
         {
             if (context.Movement == null)
                 return;
 
             Fleet.Order.Status = FleetOrderStatus.Readying;
-            context.Movement.RequestMove(Fleet, TargetPlanet);
+            context.Movement.RequestMove(Fleet, liveTarget);
         }
 
         /// <summary>
         /// Returns whether the fleet should attempt a planetary assault.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
+        /// <param name="liveTarget">The current scene-graph target.</param>
         /// <returns>True if the fleet should assault.</returns>
-        private bool ShouldAssault(AITurnContext context)
+        private bool ShouldAssault(AITurnContext context, Planet liveTarget)
         {
-            if (context.Game?.Config?.AI.EnablePlanetaryAssaults != true)
+            if (
+                context.Game?.Config?.AI.EnablePlanetaryAssaults != true
+                || context.PlanetaryAssault == null
+            )
                 return false;
 
-            int assaultDivisor = context.Game.Config.Combat.PlanetaryAssault.PersonnelDivisor;
-            int assaultStrength = Fleet.GetAssaultStrength(assaultDivisor);
-            int minimumStrength = context.Game.Config.AI.FleetDeployment.MinimumAttackStrength;
-            int defenseRequirement =
-                TargetPlanet.GetDefenseStrength()
-                * context.Game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense
-                / 100;
-            int requiredStrength = System.Math.Max(minimumStrength, defenseRequirement);
+            if (context.Assessment.IsAssaultBlockedByShields(liveTarget))
+                return false;
 
-            return assaultStrength >= requiredStrength
-                && context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0;
+            return context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0
+                && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
+                    >= context.Assessment.GetRequiredAttackRegimentStrength(liveTarget);
         }
 
         /// <summary>
@@ -286,7 +304,11 @@ namespace Rebellion.AI.Proposals
         /// <returns>True if the fleet is ready to launch.</returns>
         private bool IsReadyToLaunch(AITurnContext context)
         {
-            return context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet);
+            return context.Assessment.CanFleetDepartHeadquarters(Fleet)
+                && (
+                    context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet)
+                    || context.Assessment.CanWinOrbitalCombat(Fleet, TargetPlanet)
+                );
         }
 
         /// <summary>
@@ -320,8 +342,38 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             FleetOrder order = Fleet.Order;
-            return order == null
-                || order.OrderType == OrderType && order.TargetPlanetId == TargetPlanet.InstanceID;
+            if (order == null)
+                return true;
+
+            if (order.OrderType != OrderType)
+                return false;
+
+            if (order.TargetPlanetId == TargetPlanet.InstanceID)
+                return true;
+
+            return order.Status == FleetOrderStatus.Staging
+                && Fleet.Movement == null
+                && !Fleet.IsInCombat;
+        }
+
+        private Planet ResolveLiveTarget(AITurnContext context)
+        {
+            return context?.Game?.GetSceneNodeByInstanceID<Planet>(TargetPlanet?.InstanceID);
+        }
+
+        private bool IsLiveTargetHostile(AITurnContext context, Planet liveTarget)
+        {
+            string ownerId = liveTarget?.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(ownerId) && ownerId != context.Faction.InstanceID;
+        }
+
+        private void ClearOrder()
+        {
+            if (
+                Fleet?.Order?.OrderType == OrderType
+                && Fleet.Order.TargetPlanetId == TargetPlanet?.InstanceID
+            )
+                Fleet.Order = null;
         }
     }
 }

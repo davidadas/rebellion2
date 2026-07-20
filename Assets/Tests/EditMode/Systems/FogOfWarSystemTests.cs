@@ -207,6 +207,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = _empire.InstanceID,
             };
             Regiment stormtroopers = CreateRegiment("REG1", _empire);
+            SpecialForces commandos = CreateSpecialForces("SPEC1", _empire);
             Building starport = CreateBuilding("BLDG1", _empire);
             Starfighter tieFighter = CreateStarfighter("TIE1", _empire);
 
@@ -214,6 +215,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(imperialFleet, _coruscant);
             _game.AttachNode(destroyer, imperialFleet);
             _game.AttachNode(stormtroopers, _coruscant);
+            _game.AttachNode(commandos, _coruscant);
             _coruscant.Buildings.Add(starport);
             _coruscant.Starfighters.Add(tieFighter);
 
@@ -225,9 +227,11 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, snapshot.Officers.Count);
             Assert.AreEqual(1, snapshot.Fleets.Count);
             Assert.AreEqual(1, snapshot.Regiments.Count);
+            Assert.AreEqual(1, snapshot.SpecialForces.Count);
             Assert.AreEqual(1, snapshot.Buildings.Count);
             Assert.AreEqual(1, snapshot.Starfighters.Count);
             Assert.AreEqual("FNEMP1", snapshot.OwnerInstanceID);
+            Assert.IsTrue(snapshot.IsColonized);
         }
 
         [Test]
@@ -247,6 +251,77 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, snapshot.Officers.Count);
             Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
+        }
+
+        [Test]
+        public void CaptureSnapshot_FleetChanges_DoNotAffectSnapshot()
+        {
+            Fleet fleet = CreateFleet("FLEET1", _empire);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP1",
+                OwnerInstanceID = _empire.InstanceID,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter starfighter = CreateStarfighter("FIGHTER1", _empire);
+            starfighter.CurrentSquadronSize = 12;
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(starfighter, ship);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            ship.CurrentHullStrength = 25;
+            starfighter.CurrentSquadronSize = 3;
+            AddCapitalShip(fleet, _empire, "SHIP2");
+
+            Fleet snapshotFleet = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single();
+
+            Assert.AreEqual(1, snapshotFleet.CapitalShips.Count);
+            Assert.AreEqual(100, snapshotFleet.CapitalShips[0].CurrentHullStrength);
+            Assert.AreEqual(12, snapshotFleet.GetStarfighters().Single().CurrentSquadronSize);
+        }
+
+        [Test]
+        public void CaptureSnapshot_MovingEntityChanges_DoNotAffectSnapshot()
+        {
+            Building building = CreateBuilding("BLDG1", _empire);
+            building.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 5 };
+            _coruscant.Buildings.Add(building);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            building.Movement.TicksElapsed = 15;
+
+            Building snapshotBuilding = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .Buildings.Single();
+            Assert.AreEqual(5, snapshotBuilding.Movement.TicksElapsed);
+        }
+
+        [Test]
+        public void CaptureSnapshot_SpecialForcesChanges_DoNotAffectSnapshot()
+        {
+            SpecialForces commandos = CreateSpecialForces("SPEC1", _empire);
+            commandos.SetBaseRating(OfficerRating.Espionage, 40);
+            _game.AttachNode(commandos, _coruscant);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            commandos.SetBaseRating(OfficerRating.Espionage, 90);
+
+            SpecialForces snapshotSpecialForces = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .SpecialForces.Single();
+            Assert.AreEqual(40, snapshotSpecialForces.GetBaseRating(OfficerRating.Espionage));
         }
 
         [Test]
@@ -497,6 +572,23 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void BuildFactionView_ViewNodesUseViewParents()
+        {
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            PlanetSystem viewSystem = view.PlanetSystems.Single(system =>
+                system.InstanceID == _coreSystem.InstanceID
+            );
+            Planet viewPlanet = viewSystem.Planets.Single(planet =>
+                planet.InstanceID == _coruscant.InstanceID
+            );
+
+            Assert.AreSame(view, viewSystem.GetParent());
+            Assert.AreSame(viewSystem, viewPlanet.GetParent());
+            Assert.AreNotSame(_game.Galaxy, viewSystem.GetParent());
+            Assert.AreNotSame(_coreSystem, viewPlanet.GetParent());
+        }
+
+        [Test]
         public void BuildFactionView_LivePlanet_BuildingsPreserved()
         {
             Building groundFacility = CreateBuilding("BLDG1", _alliance);
@@ -529,6 +621,46 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, viewCoruscant.Officers.Count);
             Assert.AreEqual("VADER", viewCoruscant.Officers[0].InstanceID);
+            Assert.AreSame(viewCoruscant, viewCoruscant.Officers[0].GetParent());
+        }
+
+        [Test]
+        public void BuildFactionView_SnapshotPlanet_DoesNotRevealChangedPlanetState()
+        {
+            _coruscant.EnergyCapacity = 7;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _coruscant.IsColonized = false;
+            _coruscant.IsInUprising = true;
+            _coruscant.IsDestroyed = true;
+            _coruscant.IsHeadquarters = true;
+            _coruscant.EnergyCapacity = 11;
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsTrue(viewCoruscant.IsColonized);
+            Assert.IsFalse(viewCoruscant.IsInUprising);
+            Assert.IsFalse(viewCoruscant.IsDestroyed);
+            Assert.IsFalse(viewCoruscant.IsHeadquarters);
+            Assert.AreEqual(7, viewCoruscant.EnergyCapacity);
+        }
+
+        [Test]
+        public void BuildFactionView_SnapshotPlanet_DoesNotRevealOtherFactionVisits()
+        {
+            _coruscant.AddVisitor(_empire.InstanceID);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsTrue(viewCoruscant.WasVisitedBy(_alliance.InstanceID));
+            Assert.IsFalse(viewCoruscant.WasVisitedBy(_empire.InstanceID));
         }
 
         [Test]
@@ -551,6 +683,28 @@ namespace Rebellion.Tests.Systems
             PlanetSnapshot snapshot = systemSnapshot.Planets["CORUSCANT"];
 
             Assert.AreEqual(1, snapshot.Officers.Count);
+        }
+
+        [Test]
+        public void BuildFactionView_SnapshotFleet_ModifyingViewDoesNotAffectSnapshot()
+        {
+            Fleet fleet = CreateFleet("FLEET1", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "SHIP1");
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Fleet viewFleet = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID)
+                .Fleets.Single();
+            viewFleet.CapitalShips.Clear();
+
+            Fleet snapshotFleet = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single();
+            Assert.AreEqual(1, snapshotFleet.CapitalShips.Count);
         }
 
         [Test]
@@ -1194,6 +1348,14 @@ namespace Rebellion.Tests.Systems
         private Starfighter CreateStarfighter(string id, Faction faction) =>
             EntityFactory.CreateStarfighter(id, faction.InstanceID);
 
+        private SpecialForces CreateSpecialForces(string id, Faction faction) =>
+            new SpecialForces
+            {
+                InstanceID = id,
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
         private StubMission CreateMission(string id, Faction owner, Planet target) =>
             EntityFactory.CreateMission(id, owner.InstanceID, target.InstanceID);
 
@@ -1384,6 +1546,25 @@ namespace Rebellion.Tests.Systems
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.IsFalse(viewCoruscant.Buildings.Any(b => b.InstanceID == "BLDG_AFTER"));
+            Assert.IsEmpty(viewCoruscant.GetManufacturingQueue());
+            Assert.AreEqual(
+                1,
+                _coruscant.GetManufacturingQueue()[ManufacturingType.Building].Count
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_SnapshotPlanet_SpecialForcesAddedAfterSnapshot_NotVisible()
+        {
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _game.AttachNode(CreateSpecialForces("SPEC_AFTER", _empire), _coruscant);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsEmpty(viewCoruscant.SpecialForces);
         }
 
         [Test]
@@ -1408,12 +1589,8 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_PlanetCapturedFromEnemy_LiveOwnData_PlusSnapshotEnemyFleet()
+        public void BuildFactionView_PlanetCapturedFromEnemy_ExcludesStaleEnemyFleet()
         {
-            // Coruscant was empire's. Alliance took a snapshot when empire owned it —
-            // capturing an empire fleet. Alliance then takes ownership.
-            // View should show live own data alongside the snapshot enemy fleet.
-            // Enemy missions are never visible regardless of snapshot.
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
             CapitalShip destroyer = new CapitalShip
             {
@@ -1427,12 +1604,10 @@ namespace Rebellion.Tests.Systems
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            // Alliance takes ownership — empire units depart.
             _coruscant.OwnerInstanceID = _alliance.InstanceID;
             _game.MoveNode(empireFleet, _hoth);
             _game.DetachNode(empireMission);
 
-            // Alliance officer now stationed on the captured planet.
             Officer leia = CreateOfficer("LEIA", _alliance);
             _game.AttachNode(leia, _coruscant);
 
@@ -1444,8 +1619,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, viewCoruscant.Officers.Count, "Live alliance officer should appear");
             Assert.AreEqual("LEIA", viewCoruscant.Officers[0].InstanceID);
-            Assert.AreEqual(1, viewCoruscant.Fleets.Count, "Snapshot empire fleet should appear");
-            Assert.AreEqual("EMPIRE_FLEET", viewCoruscant.Fleets[0].InstanceID);
+            Assert.IsEmpty(viewCoruscant.Fleets, "Stale enemy fleet should not appear");
             Assert.AreEqual(
                 0,
                 viewCoruscant.Missions.Count,

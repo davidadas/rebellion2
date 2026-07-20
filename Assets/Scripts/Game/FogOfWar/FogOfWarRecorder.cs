@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
@@ -46,6 +48,12 @@ namespace Rebellion.Game.FogOfWar
             AddEntityCopiesToSnapshot(
                 planet.Regiments,
                 planetSnapshot.Regiments,
+                faction,
+                planet.InstanceID
+            );
+            AddEntityCopiesToSnapshot(
+                planet.SpecialForces,
+                planetSnapshot.SpecialForces,
                 faction,
                 planet.InstanceID
             );
@@ -112,6 +120,12 @@ namespace Rebellion.Game.FogOfWar
             {
                 TickCaptured = currentTick,
                 OwnerInstanceID = planet.OwnerInstanceID,
+                IsColonized = planet.IsColonized,
+                IsInUprising = planet.IsInUprising,
+                IsDestroyed = planet.IsDestroyed,
+                IsHeadquarters = planet.IsHeadquarters,
+                EnergyCapacity = planet.EnergyCapacity,
+                AllocatedEnergy = planet.AllocatedEnergy,
                 PopularSupport = new Dictionary<string, int>(planet.PopularSupport),
             };
         }
@@ -157,7 +171,7 @@ namespace Rebellion.Game.FogOfWar
                 if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
                     continue;
 
-                snapshot.Fleets.Add(fleet.GetShallowCopy(CloneMode.Full));
+                snapshot.Fleets.Add(CopyFleetForSnapshot(fleet));
                 InvalidateEntityFromOtherSnapshots(faction, fleet.InstanceID, planet.InstanceID);
             }
         }
@@ -186,9 +200,30 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
-                destination.Add(entity.GetShallowCopy(CloneMode.Full));
+                destination.Add(CopyEntityForSnapshot(entity));
                 InvalidateEntityFromOtherSnapshots(faction, entity.InstanceID, planetId);
             }
+        }
+
+        internal static T CopyEntityForSnapshot<T>(T entity)
+            where T : class, ISceneNode
+        {
+            if (entity is Building building)
+                return CopyBuildingForSnapshot(building) as T;
+            if (entity is CapitalShip capitalShip)
+                return CopyCapitalShipForSnapshot(capitalShip) as T;
+            if (entity is Officer officer)
+                return CopyOfficerForSnapshot(officer) as T;
+            if (entity is Regiment regiment)
+                return CopyRegimentForSnapshot(regiment) as T;
+            if (entity is SpecialForces specialForces)
+                return CopySpecialForcesForSnapshot(specialForces) as T;
+            if (entity is Starfighter starfighter)
+                return CopyStarfighterForSnapshot(starfighter) as T;
+
+            T copy = entity.GetShallowCopy(CloneMode.Full);
+            ClearParentReferences(copy);
+            return copy;
         }
 
         /// <summary>
@@ -196,11 +231,97 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="officer">The officer to copy.</param>
         /// <returns>The copied officer.</returns>
-        private Officer CopyOfficerForSnapshot(Officer officer)
+        internal static Officer CopyOfficerForSnapshot(Officer officer)
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
             copy.Ratings = new Dictionary<OfficerRating, int>(officer.Ratings);
+            copy.Movement = CopyMovementForSnapshot(officer.Movement);
+            ClearParentReferences(copy);
             return copy;
+        }
+
+        internal static Fleet CopyFleetForSnapshot(Fleet fleet)
+        {
+            if (fleet == null)
+                return null;
+
+            Fleet copy = fleet.GetShallowCopy(CloneMode.Full);
+            copy.Movement = CopyMovementForSnapshot(fleet.Movement);
+            copy.Order = fleet.Order?.GetShallowCopy(CloneMode.Full);
+            copy.CapitalShips = fleet.CapitalShips.ConvertAll(CopyCapitalShipForSnapshot);
+            ClearParentReferences(copy);
+
+            foreach (CapitalShip capitalShip in copy.CapitalShips)
+                capitalShip.SetParent(copy);
+
+            return copy;
+        }
+
+        private static CapitalShip CopyCapitalShipForSnapshot(CapitalShip capitalShip)
+        {
+            CapitalShip copy = capitalShip.GetShallowCopy(CloneMode.Full);
+            copy.Roles = new List<CapitalShipRole>(capitalShip.Roles);
+            copy.PrimaryWeapons = capitalShip.PrimaryWeapons.ToDictionary(
+                entry => entry.Key,
+                entry => entry.Value?.ToArray()
+            );
+            copy.Movement = CopyMovementForSnapshot(capitalShip.Movement);
+            copy.Officers = capitalShip.Officers.ConvertAll(CopyOfficerForSnapshot);
+            copy.Regiments = capitalShip.Regiments.ConvertAll(CopyRegimentForSnapshot);
+            copy.SpecialForces = capitalShip.SpecialForces.ConvertAll(CopySpecialForcesForSnapshot);
+            copy.Starfighters = capitalShip.Starfighters.ConvertAll(CopyStarfighterForSnapshot);
+            ClearParentReferences(copy);
+
+            foreach (ISceneNode child in copy.GetChildren())
+                child.SetParent(copy);
+
+            return copy;
+        }
+
+        private static Building CopyBuildingForSnapshot(Building building)
+        {
+            Building copy = building.GetShallowCopy(CloneMode.Full);
+            copy.Movement = CopyMovementForSnapshot(building.Movement);
+            ClearParentReferences(copy);
+            return copy;
+        }
+
+        private static Regiment CopyRegimentForSnapshot(Regiment regiment)
+        {
+            Regiment copy = regiment.GetShallowCopy(CloneMode.Full);
+            copy.Movement = CopyMovementForSnapshot(regiment.Movement);
+            ClearParentReferences(copy);
+            return copy;
+        }
+
+        private static SpecialForces CopySpecialForcesForSnapshot(SpecialForces specialForces)
+        {
+            SpecialForces copy = specialForces.GetShallowCopy(CloneMode.Full);
+            copy.Ratings = new Dictionary<OfficerRating, int>(specialForces.Ratings);
+            copy.Movement = CopyMovementForSnapshot(specialForces.Movement);
+            ClearParentReferences(copy);
+            return copy;
+        }
+
+        private static Starfighter CopyStarfighterForSnapshot(Starfighter starfighter)
+        {
+            Starfighter copy = starfighter.GetShallowCopy(CloneMode.Full);
+            copy.Movement = CopyMovementForSnapshot(starfighter.Movement);
+            ClearParentReferences(copy);
+            return copy;
+        }
+
+        private static void ClearParentReferences(ISceneNode node)
+        {
+            node.ParentInstanceID = null;
+            node.LastParentInstanceID = null;
+            node.ParentNode = null;
+            node.LastParentNode = null;
+        }
+
+        private static MovementState CopyMovementForSnapshot(MovementState movement)
+        {
+            return movement?.GetShallowCopy(CloneMode.Full);
         }
 
         /// <summary>
@@ -271,6 +392,7 @@ namespace Rebellion.Game.FogOfWar
             oldPlanetSnapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
             oldPlanetSnapshot.Fleets.RemoveAll(f => f.InstanceID == entityId);
             oldPlanetSnapshot.Regiments.RemoveAll(r => r.InstanceID == entityId);
+            oldPlanetSnapshot.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
             oldPlanetSnapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
             oldPlanetSnapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
         }
@@ -280,6 +402,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
             snapshot.Fleets.RemoveAll(f => f.InstanceID == entityId);
             snapshot.Regiments.RemoveAll(r => r.InstanceID == entityId);
+            snapshot.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
             snapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
             snapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
 

@@ -320,6 +320,17 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void ShouldRepeatAfterCompletion_ResearchExhausted_ReturnsFalse()
+        {
+            Officer officer = CreateOfficer();
+            Mission mission = CreateMission(officer);
+            _faction.ResearchCatalog[ResearchDiscipline.ShipDesign] =
+                new List<ResearchCatalogEntry>();
+
+            Assert.IsFalse(mission.ShouldRepeatAfterCompletion(_game));
+        }
+
+        [Test]
         public void Execute_Success_DoesNotIncrementLeadership()
         {
             Officer officer = CreateOfficer(shipSkill: 100);

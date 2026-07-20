@@ -985,7 +985,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit to evacuate.</param>
         public void EvacuateToNearestFriendlyPlanet(IMovable unit)
         {
-            string ownerID = unit.GetOwnerInstanceID();
+            string ownerID = GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
             {
                 unit.Movement = null;
@@ -995,7 +995,7 @@ namespace Rebellion.Systems
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
             Planet currentPlanet = unit.GetParentOfType<Planet>();
-            Planet fallback = owner?.GetNearestOwnedPlanetTo(unit.GetPosition(), currentPlanet);
+            Planet fallback = FindEvacuationDestination(owner, unit, currentPlanet);
             if (fallback != null)
             {
                 ExecuteMove(unit, fallback);
@@ -1016,7 +1016,7 @@ namespace Rebellion.Systems
         /// <param name="rejectedDestination">The planet that refused the unit.</param>
         private void HandleArrivalRejection(IMovable movable, Planet rejectedDestination)
         {
-            string ownerID = movable.GetOwnerInstanceID();
+            string ownerID = GetMovementControlOwner(movable);
             if (string.IsNullOrEmpty(ownerID))
             {
                 movable.Movement = null;
@@ -1027,9 +1027,9 @@ namespace Rebellion.Systems
             }
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
-            Planet fallback = owner?.GetNearestOwnedPlanetTo(movable.GetPosition());
+            Planet fallback = FindEvacuationDestination(owner, movable, rejectedDestination);
 
-            if (fallback != null && fallback != rejectedDestination)
+            if (fallback != null)
             {
                 movable.Movement = null;
                 ExecuteMove(movable, fallback);
@@ -1044,6 +1044,25 @@ namespace Rebellion.Systems
                     $"{movable.GetDisplayName()} has no valid fallback. Staying at {movable.GetParent()?.GetDisplayName() ?? "current location"}."
                 );
             }
+        }
+
+        private static Planet FindEvacuationDestination(
+            Faction owner,
+            IMovable unit,
+            Planet excludedPlanet
+        )
+        {
+            return owner
+                ?.GetOwnedColonizedPlanets()
+                .Where(planet =>
+                    planet != excludedPlanet
+                    && !planet.IsDestroyed
+                    && planet.GetOwnerInstanceID() == owner.InstanceID
+                    && planet.CanAcceptChild(unit)
+                )
+                .OrderBy(planet => planet.GetRawDistanceTo(unit.GetPosition()))
+                .ThenBy(planet => planet.InstanceID)
+                .FirstOrDefault();
         }
 
         /// <summary>

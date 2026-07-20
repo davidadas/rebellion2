@@ -36,17 +36,6 @@ namespace Rebellion.Tests.Game
 
             // AI defaults
             Assert.AreEqual(7, config.AI.TickInterval);
-            Assert.IsNotNull(config.AI.MissionTables, "MissionTables should not be null");
-            Assert.Greater(
-                config.AI.MissionTables.Diplomacy.Count,
-                0,
-                "Diplomacy dispatch table should have entries"
-            );
-            Assert.Greater(
-                config.AI.MissionTables.SubdueUprising.Count,
-                0,
-                "SubdueUprising dispatch table should have entries"
-            );
             Assert.AreEqual(0f, config.AI.Selection.MinimumSelectableScore);
 
             // Movement defaults

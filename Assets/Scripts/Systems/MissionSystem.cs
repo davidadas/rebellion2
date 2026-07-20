@@ -217,7 +217,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a mission start request against live scene graph objects.
+        /// Resolves mission participants while preserving the caller's observed target state.
         /// </summary>
         /// <param name="request">The mission start request to resolve.</param>
         /// <returns>The resolved mission context, or null when any required object is missing.</returns>
@@ -237,9 +237,7 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = ResolveMissionParticipants(
                 request.DecoyParticipants ?? new List<IMissionParticipant>()
             );
-            ISceneNode location = ResolveSceneNode(request.Location);
-
-            if (mainParticipants == null || decoyParticipants == null || location == null)
+            if (mainParticipants == null || decoyParticipants == null)
                 return null;
 
             Officer targetOfficer = request.TargetOfficer ?? request.SelectedTarget as Officer;
@@ -249,7 +247,7 @@ namespace Rebellion.Systems
                 Game = _game,
                 MissionTypeID = request.MissionTypeID,
                 OwnerInstanceId = mainParticipants[0].GetOwnerInstanceID(),
-                Location = location,
+                Location = request.Location,
                 SelectedTarget = request.SelectedTarget,
                 MainParticipants = mainParticipants,
                 DecoyParticipants = decoyParticipants,
@@ -268,9 +266,8 @@ namespace Rebellion.Systems
             if (!_missionFactory.TryCreateMission(context, out Mission mission))
                 return false;
 
-            Planet planet = context.Location is Planet p
-                ? p
-                : context.Location.GetParentOfType<Planet>();
+            ISceneNode liveLocation = ResolveSceneNode(context.Location);
+            Planet planet = liveLocation is Planet p ? p : liveLocation?.GetParentOfType<Planet>();
             if (planet == null)
                 return false;
 
@@ -484,9 +481,20 @@ namespace Rebellion.Systems
             ContainerNode origin = GetMissionReturnOrigin(mission, missionPlanet);
 
             if (origin == null && faction != null)
-                origin = faction.GetNearestFriendlyPlanetTo(mission);
+            {
+                origin = faction
+                    .GetOwnedColonizedPlanets()
+                    .Where(planet => !planet.IsDestroyed)
+                    .OrderBy(planet => planet.GetRawDistanceTo(missionPlanet.GetPosition()))
+                    .ThenBy(planet => planet.InstanceID)
+                    .FirstOrDefault();
+            }
 
-            if (origin == null && missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID)
+            if (
+                origin == null
+                && missionPlanet?.IsColonized == true
+                && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID
+            )
                 origin = missionPlanet;
 
             return origin;
@@ -509,9 +517,15 @@ namespace Rebellion.Systems
             if (origin == null)
                 return null;
 
+            if (origin.GetOwnerInstanceID() != mission.OwnerInstanceID)
+                return null;
+
             Planet originPlanet = origin is Planet planet
                 ? planet
                 : origin.GetParentOfType<Planet>();
+            if (origin is Planet && originPlanet?.IsColonized != true)
+                return null;
+
             return originPlanet == missionPlanet ? origin : null;
         }
 
@@ -531,6 +545,7 @@ namespace Rebellion.Systems
                 return;
 
             List<IMovable> returnPassengers = GetReturnPassengers(mission, completedResult)
+                .Where(passenger => passenger.Movement == null)
                 .Distinct()
                 .ToList();
             if (returnPassengers.Count > 0)

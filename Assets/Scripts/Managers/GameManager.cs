@@ -176,7 +176,8 @@ public class GameManager
             _manufacturingManager,
             _bombardmentSystem,
             _planetaryAssaultSystem,
-            _randomProvider
+            _randomProvider,
+            _fogOfWarManager
         );
     }
 

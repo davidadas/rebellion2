@@ -756,6 +756,112 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TearDownMission_NearestFriendlyPlanetUncolonized_ReturnsParticipantToColonizedPlanet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet missionPlanet = new Planet
+            {
+                InstanceID = "mission-planet",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = false,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet returnPlanet = new Planet
+            {
+                InstanceID = "return-planet",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(missionPlanet, system);
+            game.AttachNode(returnPlanet, system);
+
+            Officer officer = EntityFactory.CreateOfficer("officer", empire.InstanceID);
+            StubMission mission = new StubMission(empire.InstanceID, missionPlanet.InstanceID);
+            game.AttachNode(mission, missionPlanet);
+            mission.MainParticipants.Add(officer);
+            game.AttachNode(officer, mission);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MissionSystem missionSystem = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, new FogOfWarSystem(game), new FleetSystem(game))
+            );
+            missionSystem.UpdateMission(mission);
+
+            Assert.AreEqual(returnPlanet, officer.GetParent());
+        }
+
+        [Test]
+        public void TearDownMission_OriginPlanetCaptured_ReturnsParticipantToFriendlyPlanet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            game.AttachNode(system, game.Galaxy);
+
+            Planet missionPlanet = new Planet
+            {
+                InstanceID = "mission-planet",
+                OwnerInstanceID = rebels.InstanceID,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet returnPlanet = new Planet
+            {
+                InstanceID = "return-planet",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(missionPlanet, system);
+            game.AttachNode(returnPlanet, system);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            StubMission mission = new StubMission(empire.InstanceID, missionPlanet.InstanceID)
+            {
+                OriginInstanceID = missionPlanet.InstanceID,
+            };
+            game.AttachNode(mission, missionPlanet);
+            mission.MainParticipants.Add(specialForces);
+            game.AttachNode(specialForces, mission);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            MissionSystem missionSystem = new MissionSystem(
+                game,
+                new StubRNG(),
+                new MovementSystem(game, new FogOfWarSystem(game), new FleetSystem(game))
+            );
+            missionSystem.UpdateMission(mission);
+
+            Assert.AreEqual(returnPlanet, specialForces.GetParent());
+        }
+
+        [Test]
         public void BeginMission_ParticipantAssigned_SetsParticipantParentToMission()
         {
             GameConfig config = TestConfig.Create();
@@ -2148,6 +2254,34 @@ namespace Rebellion.Tests.Systems
                     viewPlanet,
                     selectedTarget: viewRegiment
                 )
+            );
+
+            Assert.IsTrue(canCreate);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+        }
+
+        [Test]
+        public void CanCreateMission_StaleNeutralPlanetNowEnemy_ReturnsTrue()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            participant.Ratings[OfficerRating.Diplomacy] = 80;
+            Planet viewPlanet = new Planet
+            {
+                InstanceID = targetPlanet.InstanceID,
+                IsColonized = true,
+                OwnerInstanceID = null,
+            };
+            viewPlanet.AddVisitor("empire");
+
+            bool canCreate = missions.CanCreateMission(
+                CreateRequest(MissionTypeIDs.Diplomacy, participant, viewPlanet)
             );
 
             Assert.IsTrue(canCreate);
