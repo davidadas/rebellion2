@@ -143,7 +143,19 @@ jobs:
 
           find .unity-lint-assemblies/UnityEngine .unity-lint-assemblies/UnityEditor -maxdepth 1 -name "*.dll" -exec cp {} .unity-lint-assemblies/ \; 2>/dev/null || true
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll; do
+          # Stage uGUI and TextMeshPro package assemblies. These are not in Data/Managed; they are
+          # precompiled in the editor image's project-template library cache. Resolving them keeps the
+          # lint semantic model complete so IDE0005 does not falsely flag genuinely-used usings.
+          docker cp "$CONTAINER_ID:/opt/unity/Editor/Data/Resources/PackageManager/ProjectTemplates/libcache/." /tmp/unity-libcache/ 2>/dev/null || true
+          for dll in UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.TextMeshPro.Editor.dll; do
+            src="$(find /tmp/unity-libcache -name "$dll" 2>/dev/null | head -n 1)"
+            if [ -n "$src" ]; then
+              cp "$src" .unity-lint-assemblies/
+            fi
+          done
+          rm -rf /tmp/unity-libcache
+
+          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1

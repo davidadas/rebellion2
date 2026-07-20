@@ -10,6 +10,16 @@
     <NoWarn>0169;0649;1701;1702;1591</NoWarn>
     <WarningsAsErrors>CS1573;CS1587;CS8019</WarningsAsErrors>
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- uGUI and TextMeshPro ship as package assemblies. Prefer the staged lint assemblies
+         (CI provides them there before the project's own Library is compiled), then fall back
+         to the locally compiled project output. Resolving these keeps the semantic model complete
+         so IDE0005 does not flag genuinely-used using directives. -->
+    <UGuiHintPath Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UI.dll')">$(UnityManagedAssembliesPath)/UnityEngine.UI.dll</UGuiHintPath>
+    <UGuiHintPath Condition="'$(UGuiHintPath)' == '' And Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')">Library/ScriptAssemblies/UnityEngine.UI.dll</UGuiHintPath>
+    <TextMeshProHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll')">$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll</TextMeshProHintPath>
+    <TextMeshProHintPath Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')">Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference
       Include="UnityEngine"
@@ -74,18 +84,12 @@
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference
-      Include="Unity.TextMeshPro"
-      Condition="Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')"
-    >
-      <HintPath>Library/ScriptAssemblies/Unity.TextMeshPro.dll</HintPath>
+    <Reference Include="Unity.TextMeshPro" Condition="'$(TextMeshProHintPath)' != ''">
+      <HintPath>$(TextMeshProHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference
-      Include="UnityEngine.UI"
-      Condition="Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')"
-    >
-      <HintPath>Library/ScriptAssemblies/UnityEngine.UI.dll</HintPath>
+    <Reference Include="UnityEngine.UI" Condition="'$(UGuiHintPath)' != ''">
+      <HintPath>$(UGuiHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference
