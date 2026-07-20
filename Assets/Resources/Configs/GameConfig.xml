@@ -72,11 +72,6 @@
       <MaintenanceShortfallPenalty>1000</MaintenanceShortfallPenalty>
     </Selection>
     <Infrastructure>
-      <PlanetsPerConstructionFacility>2</PlanetsPerConstructionFacility>
-      <MinimumConstructionFacilityLanes>1</MinimumConstructionFacilityLanes>
-      <ConstructionFacilityTargetClearTicks>80</ConstructionFacilityTargetClearTicks>
-      <PlanetsPerShipyard>6</PlanetsPerShipyard>
-      <PlanetsPerTrainingFacility>6</PlanetsPerTrainingFacility>
       <ConstructionFacilityDemandPercent>100</ConstructionFacilityDemandPercent>
       <ShipyardDemandPercent>90</ShipyardDemandPercent>
       <TrainingFacilityDemandPercent>70</TrainingFacilityDemandPercent>

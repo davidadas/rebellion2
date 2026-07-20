@@ -189,23 +189,6 @@
                 <xs:complexType>
                   <xs:all>
                     <xs:element
-                      name="PlanetsPerConstructionFacility"
-                      type="PositiveIntType"
-                    />
-                    <xs:element
-                      name="MinimumConstructionFacilityLanes"
-                      type="PositiveIntType"
-                    />
-                    <xs:element
-                      name="ConstructionFacilityTargetClearTicks"
-                      type="PositiveIntType"
-                    />
-                    <xs:element name="PlanetsPerShipyard" type="PositiveIntType" />
-                    <xs:element
-                      name="PlanetsPerTrainingFacility"
-                      type="PositiveIntType"
-                    />
-                    <xs:element
                       name="ConstructionFacilityDemandPercent"
                       type="PositiveIntType"
                     />

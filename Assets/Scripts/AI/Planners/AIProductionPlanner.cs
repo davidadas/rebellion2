@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -107,7 +106,7 @@ namespace Rebellion.AI.Planners
                 or AIProductionDemandKind.Shipyard
                 or AIProductionDemandKind.TrainingFacility
                 or AIProductionDemandKind.HeadquartersDefense => GetUnlockedBuildingTechnology(
-                    context.Faction,
+                    context,
                     demand.BuildingType
                 ),
                 AIProductionDemandKind.FleetCapitalShip
@@ -127,19 +126,29 @@ namespace Rebellion.AI.Planners
         /// <summary>
         /// Returns the unlocked building technology for a building type.
         /// </summary>
-        /// <param name="faction">The faction to inspect.</param>
+        /// <param name="context">The current AI turn context.</param>
         /// <param name="buildingType">Building type to manufacture.</param>
         /// <returns>The selected technology, or null.</returns>
-        private Technology GetUnlockedBuildingTechnology(Faction faction, BuildingType buildingType)
+        private Technology GetUnlockedBuildingTechnology(
+            AITurnContext context,
+            BuildingType buildingType
+        )
         {
-            if (faction == null || buildingType == BuildingType.None)
+            if (context?.Faction == null || buildingType == BuildingType.None)
                 return null;
 
-            return faction
-                .GetUnlockedTechnologies(ManufacturingType.Building)
+            int maintenanceBudget = System.Math.Max(
+                0,
+                context.Faction.ProjectedMaintenanceHeadroom
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+            );
+            return context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Building)
                 .Where(technology =>
                     technology.GetReference() is Building building
                     && building.GetBuildingType() == buildingType
+                    && building.HasAllowedOwnerInstanceID(context.Faction.InstanceID)
+                    && building.MaintenanceCost <= maintenanceBudget
                 )
                 .OrderByDescending(technology =>
                     GetBuildingCapability((Building)technology.GetReference())

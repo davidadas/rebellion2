@@ -27,12 +27,12 @@ namespace Rebellion.AI.Planners
                 return demands;
 
             AddResourceBalanceDemand(context, demands);
-            AddInfrastructureFacilityDemands(context, demands);
             AddHeadquartersDefenseDemands(context, demands);
             AddFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
             AddLocalReserveDemands(context, demands);
             AddSpecialForcesDemands(context, demands);
+            AddProductionFacilityDemands(context, demands);
 
             return demands;
         }
@@ -256,108 +256,103 @@ namespace Rebellion.AI.Planners
                 .FirstOrDefault();
         }
 
-        /// <summary>
-        /// Adds production facility demands.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddInfrastructureFacilityDemands(
-            AITurnContext context,
-            List<AIProductionDemand> demands
-        )
-        {
-            AddConstructionFacilityDemand(context, demands);
-            AddInfrastructureFacilityDemand(
-                context,
-                demands,
-                AIProductionDemandKind.Shipyard,
-                BuildingType.Shipyard,
-                context.Game.Config.AI.Infrastructure.PlanetsPerShipyard,
-                context.Game.Config.AI.Infrastructure.ShipyardDemandPercent
-            );
-            AddInfrastructureFacilityDemand(
-                context,
-                demands,
-                AIProductionDemandKind.TrainingFacility,
-                BuildingType.TrainingFacility,
-                context.Game.Config.AI.Infrastructure.PlanetsPerTrainingFacility,
-                context.Game.Config.AI.Infrastructure.TrainingFacilityDemandPercent
-            );
-        }
-
-        /// <summary>
-        /// Adds construction facility demand when construction capacity is short.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddConstructionFacilityDemand(
+        private void AddProductionFacilityDemands(
             AITurnContext context,
             List<AIProductionDemand> demands
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int desiredCount = GetDesiredConstructionFacilityCount(context, config);
-            int currentCount = GetOwnedFacilityCount(context, BuildingType.ConstructionFacility);
-            if (ShouldAddConstructionFacilityForAssessment(context, config, currentCount))
-                desiredCount = System.Math.Max(desiredCount, currentCount + 1);
-
-            int deficit = desiredCount - currentCount;
-            if (deficit <= 0)
-                return;
-
-            Planet target = FindFacilityTargetPlanet(context, BuildingType.ConstructionFacility);
-            if (target != null)
-                demands.Add(
-                    CreateBuildingDemand(
-                        context,
-                        AIProductionDemandKind.ConstructionFacility,
-                        BuildingType.ConstructionFacility,
-                        target,
-                        deficit,
-                        desiredCount,
-                        config.ConstructionFacilityDemandPercent
-                    )
-                );
+            AddProductionFacilityDemand(
+                context,
+                demands,
+                ManufacturingType.Ship,
+                AIProductionDemandKind.Shipyard,
+                BuildingType.Shipyard,
+                config.ShipyardDemandPercent
+            );
+            AddProductionFacilityDemand(
+                context,
+                demands,
+                ManufacturingType.Troop,
+                AIProductionDemandKind.TrainingFacility,
+                BuildingType.TrainingFacility,
+                config.TrainingFacilityDemandPercent
+            );
+            AddProductionFacilityDemand(
+                context,
+                demands,
+                ManufacturingType.Building,
+                AIProductionDemandKind.ConstructionFacility,
+                BuildingType.ConstructionFacility,
+                config.ConstructionFacilityDemandPercent
+            );
         }
 
-        /// <summary>
-        /// Adds demand for one infrastructure facility type.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="kind">Demand kind to add.</param>
-        /// <param name="buildingType">Building type to request.</param>
-        /// <param name="planetsPerFacility">Planet count represented by one facility.</param>
-        /// <param name="baseDemandPercent">Base pressure for the demand.</param>
-        private void AddInfrastructureFacilityDemand(
+        private void AddProductionFacilityDemand(
             AITurnContext context,
             List<AIProductionDemand> demands,
+            ManufacturingType manufacturingType,
             AIProductionDemandKind kind,
             BuildingType buildingType,
-            int planetsPerFacility,
             int baseDemandPercent
         )
         {
-            int desiredCount = GetDesiredFacilityCount(context, planetsPerFacility);
-            int currentCount = GetOwnedFacilityCount(context, buildingType);
-            int deficit = desiredCount - currentCount;
-            if (deficit <= 0)
+            AIProductionDemand primaryDemand = demands
+                .Where(demand => demand.ManufacturingType == manufacturingType)
+                .Where(demand => demand.Kind != kind)
+                .OrderByDescending(demand => demand.Pressure)
+                .ThenBy(demand => demand.Id, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (
+                primaryDemand == null
+                || HasAvailableProductionCapacity(context, manufacturingType)
+                || HasPendingFacility(context, buildingType)
+            )
                 return;
 
-            Planet target = FindFacilityTargetPlanet(context, buildingType);
+            Planet target = FindFacilityTargetPlanet(context, primaryDemand, manufacturingType);
             if (target == null)
                 return;
 
+            int currentCount = GetOwnedFacilityCount(context, buildingType);
             demands.Add(
                 CreateBuildingDemand(
                     context,
                     kind,
                     buildingType,
                     target,
-                    deficit,
-                    desiredCount,
+                    1,
+                    currentCount + 1,
                     baseDemandPercent
                 )
+            );
+        }
+
+        private bool HasAvailableProductionCapacity(
+            AITurnContext context,
+            ManufacturingType manufacturingType
+        )
+        {
+            return context.Assessment.OwnedPlanets.Any(planet =>
+                planet.IsColonized
+                && !planet.IsDestroyed
+                && planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
+            );
+        }
+
+        private bool HasPendingFacility(AITurnContext context, BuildingType buildingType)
+        {
+            return context.Assessment.OwnedPlanets.Any(planet =>
+                planet
+                    .GetAllBuildings()
+                    .Any(building =>
+                        building.GetOwnerInstanceID() == context.Faction.InstanceID
+                        && building.GetBuildingType() == buildingType
+                        && (
+                            building.GetManufacturingStatus() != ManufacturingStatus.Complete
+                            || building.Movement != null
+                        )
+                    )
             );
         }
 
@@ -944,20 +939,32 @@ namespace Rebellion.AI.Planners
             return preferredTargets;
         }
 
-        /// <summary>
-        /// Returns a planet for a facility demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">Facility type requested.</param>
-        /// <returns>The target planet, or null.</returns>
-        private Planet FindFacilityTargetPlanet(AITurnContext context, BuildingType buildingType)
+        private Planet FindFacilityTargetPlanet(
+            AITurnContext context,
+            AIProductionDemand primaryDemand,
+            ManufacturingType manufacturingType
+        )
         {
-            return GetBuildingDestinationPlanets(context)
-                .OrderBy(planet => planet.GetTotalBuildingTypeCount(buildingType))
-                .ThenByDescending(planet => planet.GetAvailableEnergy())
-                .ThenByDescending(planet => GetReplaceableExcessFacilityCount(context, planet))
+            Planet demandPlanet = GetDemandPlanet(context, primaryDemand);
+            List<Planet> candidates = GetBuildingDestinationPlanets(context).ToList();
+            Planet existingHub = candidates
+                .Where(planet => planet.GetProductionFacilityCount(manufacturingType) > 0)
+                .OrderBy(planet => demandPlanet == null ? 0 : demandPlanet.GetRawDistanceTo(planet))
+                .ThenByDescending(planet => planet.GetProductionRate(manufacturingType))
                 .ThenBy(planet => planet.InstanceID)
                 .FirstOrDefault();
+            if (existingHub != null)
+                return existingHub;
+
+            return candidates.FirstOrDefault(planet =>
+                planet.InstanceID == demandPlanet?.InstanceID
+            );
+        }
+
+        private Planet GetDemandPlanet(AITurnContext context, AIProductionDemand demand)
+        {
+            return demand?.DestinationPlanet
+                ?? context.Assessment.GetFleetPlanet(demand?.DestinationFleet);
         }
 
         /// <summary>
@@ -968,7 +975,7 @@ namespace Rebellion.AI.Planners
         private IEnumerable<Planet> GetBuildingDestinationPlanets(AITurnContext context)
         {
             return context.Assessment.OwnedPlanets.Where(planet =>
-                IsBuildingDestinationPlanet(context, planet)
+                IsOwnedUsablePlanet(planet) && planet.GetAvailableEnergy() > 0
             );
         }
 
@@ -983,24 +990,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns whether a planet can receive a building demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>True if the planet can receive a building.</returns>
-        private bool IsBuildingDestinationPlanet(AITurnContext context, Planet planet)
-        {
-            if (planet == null)
-                return false;
-
-            return IsOwnedUsablePlanet(planet)
-                && (
-                    planet.GetAvailableEnergy() > 0
-                    || GetReplaceableExcessFacilityCount(context, planet) > 0
-                );
-        }
-
-        /// <summary>
         /// Returns whether a planet is an owned usable colony.
         /// </summary>
         /// <param name="planet">The planet to inspect.</param>
@@ -1008,81 +997,6 @@ namespace Rebellion.AI.Planners
         private bool IsOwnedUsablePlanet(Planet planet)
         {
             return planet?.IsDestroyed == false;
-        }
-
-        /// <summary>
-        /// Returns the desired facility count for a ratio.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planetsPerFacility">Planet count represented by one facility.</param>
-        /// <returns>The desired facility count.</returns>
-        private int GetDesiredFacilityCount(AITurnContext context, int planetsPerFacility)
-        {
-            return CeilingDivide(context.Assessment.OwnedPlanets.Count, planetsPerFacility);
-        }
-
-        /// <summary>
-        /// Returns the desired construction facility count.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="config">AI infrastructure configuration.</param>
-        /// <returns>The desired construction facility count.</returns>
-        private int GetDesiredConstructionFacilityCount(
-            AITurnContext context,
-            GameConfig.AIInfrastructureConfig config
-        )
-        {
-            int ratioCount = GetDesiredFacilityCount(
-                context,
-                config.PlanetsPerConstructionFacility
-            );
-            int laneCount = System.Math.Min(
-                context.Assessment.OwnedPlanets.Count,
-                config.MinimumConstructionFacilityLanes
-            );
-            return System.Math.Max(ratioCount, laneCount);
-        }
-
-        /// <summary>
-        /// Returns whether assessment pressure should add construction demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="config">AI infrastructure configuration.</param>
-        /// <param name="currentCount">Current construction facility count.</param>
-        /// <returns>True if construction demand should increase.</returns>
-        private bool ShouldAddConstructionFacilityForAssessment(
-            AITurnContext context,
-            GameConfig.AIInfrastructureConfig config,
-            int currentCount
-        )
-        {
-            if (currentCount <= 0)
-                return context.Assessment.OwnedPlanets.Count > 0;
-
-            return HasConstructionBacklogPressure(context, config);
-        }
-
-        /// <summary>
-        /// Returns whether building backlog pressure needs more construction capacity.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="config">AI infrastructure configuration.</param>
-        /// <returns>True if construction backlog pressure is high.</returns>
-        private bool HasConstructionBacklogPressure(
-            AITurnContext context,
-            GameConfig.AIInfrastructureConfig config
-        )
-        {
-            if (context.Assessment.GetQueuedProductionWork(ManufacturingType.Building) <= 0)
-                return false;
-
-            if (
-                context.Assessment.GetQueuedProductionClearTicks(ManufacturingType.Building)
-                <= config.ConstructionFacilityTargetClearTicks
-            )
-                return false;
-
-            return context.Assessment.GetIdleProductionThroughput(ManufacturingType.Building) <= 0;
         }
 
         /// <summary>
@@ -1096,95 +1010,6 @@ namespace Rebellion.AI.Planners
             return context.Assessment.OwnedPlanets.Sum(planet =>
                 planet.GetTotalBuildingTypeCount(buildingType)
             );
-        }
-
-        /// <summary>
-        /// Returns total replaceable excess facility count on a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <returns>The replaceable excess facility count.</returns>
-        private int GetReplaceableExcessFacilityCount(AITurnContext context, Planet planet)
-        {
-            if (context?.Assessment == null || planet == null)
-                return 0;
-
-            return GetReplaceableExcessFacilityCount(
-                    context,
-                    planet,
-                    BuildingType.ConstructionFacility
-                )
-                + GetReplaceableExcessFacilityCount(context, planet, BuildingType.Shipyard)
-                + GetReplaceableExcessFacilityCount(context, planet, BuildingType.TrainingFacility);
-        }
-
-        /// <summary>
-        /// Returns replaceable excess count for one facility type on a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="buildingType">Facility type to inspect.</param>
-        /// <returns>The replaceable excess facility count.</returns>
-        private int GetReplaceableExcessFacilityCount(
-            AITurnContext context,
-            Planet planet,
-            BuildingType buildingType
-        )
-        {
-            int localReplaceableCount = System.Math.Max(
-                0,
-                planet.GetBuildingTypeCount(buildingType) - 1
-            );
-            if (localReplaceableCount <= 0)
-                return 0;
-
-            int globalExcessCount =
-                GetCurrentFacilityCount(context, buildingType)
-                - GetDesiredReplacementFloor(context, buildingType);
-            if (globalExcessCount <= 0)
-                return 0;
-
-            return System.Math.Min(localReplaceableCount, globalExcessCount);
-        }
-
-        /// <summary>
-        /// Returns current completed facility count for a building type.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">Facility type to count.</param>
-        /// <returns>The completed facility count.</returns>
-        private int GetCurrentFacilityCount(AITurnContext context, BuildingType buildingType)
-        {
-            return context.Assessment.OwnedPlanets.Sum(planet =>
-                planet.GetBuildingTypeCount(buildingType)
-            );
-        }
-
-        /// <summary>
-        /// Returns the facility floor used before replacement.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">Facility type to inspect.</param>
-        /// <returns>The desired replacement floor.</returns>
-        private int GetDesiredReplacementFloor(AITurnContext context, BuildingType buildingType)
-        {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            return buildingType switch
-            {
-                BuildingType.Shipyard => GetDesiredFacilityCount(
-                    context,
-                    config.PlanetsPerShipyard
-                ),
-                BuildingType.TrainingFacility => GetDesiredFacilityCount(
-                    context,
-                    config.PlanetsPerTrainingFacility
-                ),
-                BuildingType.ConstructionFacility => GetDesiredConstructionFacilityCount(
-                    context,
-                    config
-                ),
-                _ => 0,
-            };
         }
 
         /// <summary>

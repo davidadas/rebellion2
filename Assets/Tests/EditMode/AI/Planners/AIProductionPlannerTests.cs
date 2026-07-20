@@ -102,6 +102,61 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithShipyardExactlyAtMaintenanceBudget_SelectsShipyard()
+        {
+            (GameRoot game, Faction empire, Building shipyard, Building _) =
+                CreateShipyardSelectionScene(100, 101);
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(shipyard),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+
+            Assert.AreEqual(100, empire.ProjectedMaintenanceHeadroom);
+            Assert.AreSame(shipyard, proposal.Product.GetReference());
+        }
+
+        [Test]
+        public void Plan_WithFasterShipyardOneOverMaintenanceBudget_SelectsAffordableShipyard()
+        {
+            (GameRoot game, Faction empire, Building affordableShipyard, Building _) =
+                CreateShipyardSelectionScene(100, 101);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+
+            Assert.AreSame(affordableShipyard, proposal.Product.GetReference());
+        }
+
+        [Test]
+        public void Plan_WithoutAffordableShipyard_DoesNotAddShipyardProposal()
+        {
+            (GameRoot game, Faction empire, Building _, Building overBudgetShipyard) =
+                CreateShipyardSelectionScene(100, 101);
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(overBudgetShipyard),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIManufactureProposal>()
+                    .Any(item => item.Demand.Kind == AIProductionDemandKind.Shipyard)
+            );
+        }
+
+        [Test]
         public void Plan_WithHeadquartersShieldDemand_SelectsStrongestShield()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1184,6 +1239,73 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(fleet, planet);
             game.AttachNode(existingShip, fleet);
             return (game, empire, fleet);
+        }
+
+        private static (
+            GameRoot game,
+            Faction faction,
+            Building affordableShipyard,
+            Building overBudgetShipyard
+        ) CreateShipyardSelectionScene(int affordableMaintenance, int overBudgetMaintenance)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.MaximumConcurrentAttackOrders = 0;
+            game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders = 0;
+            game.Config.AI.Selection.MaintenanceHeadroomHardFloor = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "shipyard-system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "construction-world",
+                empire.InstanceID,
+                rawResourceNodes: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"mine-{index}",
+                    BuildingType.Mine,
+                    ManufacturingType.Building
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"refinery-{index}",
+                    BuildingType.Refinery,
+                    ManufacturingType.Building
+                );
+            }
+
+            Building affordableShipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "affordable-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            affordableShipyard.ProcessRate = 2;
+            affordableShipyard.MaintenanceCost = affordableMaintenance;
+            Building overBudgetShipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "over-budget-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            overBudgetShipyard.ProcessRate = 1;
+            overBudgetShipyard.MaintenanceCost = overBudgetMaintenance;
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(affordableShipyard),
+                new Technology(overBudgetShipyard),
+            };
+            return (game, empire, affordableShipyard, overBudgetShipyard);
         }
     }
 }

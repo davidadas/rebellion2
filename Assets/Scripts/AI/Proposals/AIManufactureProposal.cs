@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Planners;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -310,10 +308,7 @@ namespace Rebellion.AI.Proposals
             if (destinationPlanet.IsDestroyed)
                 return false;
 
-            if (
-                destinationPlanet.GetAvailableEnergy() <= 0
-                && !CanReplaceBuildingForIncomingBuilding(context, destinationPlanet, building)
-            )
+            if (destinationPlanet.GetAvailableEnergy() <= 0)
                 return false;
 
             if (building.GetBuildingType() != Demand.BuildingType)
@@ -334,27 +329,7 @@ namespace Rebellion.AI.Proposals
             IManufacturable manufacturable
         )
         {
-            Building replacement = null;
-            if (manufacturable is Building building && destinationPlanet.GetAvailableEnergy() <= 0)
-            {
-                replacement = GetReplacementBuildingForIncomingBuilding(
-                    context,
-                    destinationPlanet,
-                    building
-                );
-                if (replacement == null)
-                    return false;
-
-                context.Game.DetachNode(replacement);
-            }
-
-            if (context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet))
-                return true;
-
-            if (replacement != null)
-                context.Game.AttachNode(replacement, destinationPlanet);
-
-            return false;
+            return context.Manufacturing.Enqueue(ProducerPlanet, manufacturable, destinationPlanet);
         }
 
         private void LogEnqueueFailure()
@@ -362,209 +337,6 @@ namespace Rebellion.AI.Proposals
             GameLogger.Warning(
                 $"AI production enqueue failed for {Product?.GetReference()?.GetTypeID()} at {ProducerPlanet?.InstanceID}."
             );
-        }
-
-        /// <summary>
-        /// Returns whether a destination can replace a building for the incoming building.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">Planet receiving the building.</param>
-        /// <param name="incomingBuilding">Building being manufactured.</param>
-        /// <returns>True if a replacement building exists.</returns>
-        private bool CanReplaceBuildingForIncomingBuilding(
-            AITurnContext context,
-            Planet destinationPlanet,
-            Building incomingBuilding
-        )
-        {
-            return GetReplacementBuildingForIncomingBuilding(
-                    context,
-                    destinationPlanet,
-                    incomingBuilding
-                ) != null;
-        }
-
-        /// <summary>
-        /// Returns the building that can be replaced for an incoming building.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">Planet receiving the building.</param>
-        /// <param name="incomingBuilding">Building being manufactured.</param>
-        /// <returns>The replacement building, or null.</returns>
-        private Building GetReplacementBuildingForIncomingBuilding(
-            AITurnContext context,
-            Planet destinationPlanet,
-            Building incomingBuilding
-        )
-        {
-            if (!CanReplaceFacilityForIncomingBuilding(destinationPlanet, incomingBuilding))
-                return null;
-
-            return destinationPlanet
-                .GetAllBuildings()
-                .Where(building =>
-                    CanReplaceBuilding(context, destinationPlanet, incomingBuilding, building)
-                )
-                .OrderByDescending(building =>
-                    GetExcessFacilityCount(context, building.GetBuildingType())
-                )
-                .ThenByDescending(building => building.ProcessRate)
-                .ThenByDescending(building => building.MaintenanceCost)
-                .ThenBy(building => building.InstanceID)
-                .FirstOrDefault();
-        }
-
-        /// <summary>
-        /// Returns whether the incoming building may replace another facility.
-        /// </summary>
-        /// <param name="destinationPlanet">Planet receiving the building.</param>
-        /// <param name="building">The incoming building.</param>
-        /// <returns>True if this building type can trigger replacement.</returns>
-        private bool CanReplaceFacilityForIncomingBuilding(
-            Planet destinationPlanet,
-            Building building
-        )
-        {
-            if (
-                building.GetBuildingType()
-                is BuildingType.Mine
-                    or BuildingType.Refinery
-                    or BuildingType.ConstructionFacility
-                    or BuildingType.Shipyard
-                    or BuildingType.TrainingFacility
-            )
-                return true;
-
-            return Demand.Kind == AIProductionDemandKind.HeadquartersDefense
-                && destinationPlanet.IsHeadquarters
-                && building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon;
-        }
-
-        /// <summary>
-        /// Returns whether an existing building can be replaced.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">Planet holding the existing building.</param>
-        /// <param name="incomingBuilding">Building being manufactured.</param>
-        /// <param name="building">Existing building to inspect.</param>
-        /// <returns>True if the existing building can be replaced.</returns>
-        private bool CanReplaceBuilding(
-            AITurnContext context,
-            Planet destinationPlanet,
-            Building incomingBuilding,
-            Building building
-        )
-        {
-            if (building == null)
-                return false;
-
-            if (building.GetOwnerInstanceID() != context.Faction.InstanceID)
-                return false;
-
-            if (building.GetManufacturingStatus() != ManufacturingStatus.Complete)
-                return false;
-
-            if (building.Movement != null)
-                return false;
-
-            if (building.GetBuildingType() == incomingBuilding.GetBuildingType())
-                return false;
-
-            return building.GetBuildingType() switch
-            {
-                BuildingType.Shipyard
-                or BuildingType.TrainingFacility
-                or BuildingType.ConstructionFacility => CanReplaceExcessFacility(
-                    context,
-                    destinationPlanet,
-                    building.GetBuildingType()
-                ),
-                _ => false,
-            };
-        }
-
-        /// <summary>
-        /// Returns whether a completed facility is excess for replacement.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="destinationPlanet">Planet holding the facility.</param>
-        /// <param name="buildingType">Facility type to inspect.</param>
-        /// <returns>True if the facility type is excess.</returns>
-        private bool CanReplaceExcessFacility(
-            AITurnContext context,
-            Planet destinationPlanet,
-            BuildingType buildingType
-        )
-        {
-            if (
-                Demand.Kind != AIProductionDemandKind.HeadquartersDefense
-                && destinationPlanet.GetBuildingTypeCount(buildingType) <= 1
-            )
-                return false;
-
-            return GetExcessFacilityCount(context, buildingType) > 0;
-        }
-
-        /// <summary>
-        /// Returns the global excess count for a facility type.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">Facility type to inspect.</param>
-        /// <returns>The excess facility count.</returns>
-        private int GetExcessFacilityCount(AITurnContext context, BuildingType buildingType)
-        {
-            int currentCount = context.Assessment.OwnedPlanets.Sum(planet =>
-                planet.GetBuildingTypeCount(buildingType)
-            );
-            int desiredCount = GetDesiredFacilityCount(context, buildingType);
-            return System.Math.Max(0, currentCount - desiredCount);
-        }
-
-        /// <summary>
-        /// Returns the desired count for a facility type.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">Facility type to inspect.</param>
-        /// <returns>The desired facility count.</returns>
-        private int GetDesiredFacilityCount(AITurnContext context, BuildingType buildingType)
-        {
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            return buildingType switch
-            {
-                BuildingType.Shipyard => CeilingDivide(
-                    context.Assessment.OwnedPlanets.Count,
-                    config.PlanetsPerShipyard
-                ),
-                BuildingType.TrainingFacility => CeilingDivide(
-                    context.Assessment.OwnedPlanets.Count,
-                    config.PlanetsPerTrainingFacility
-                ),
-                BuildingType.ConstructionFacility => System.Math.Max(
-                    CeilingDivide(
-                        context.Assessment.OwnedPlanets.Count,
-                        config.PlanetsPerConstructionFacility
-                    ),
-                    System.Math.Min(
-                        context.Assessment.OwnedPlanets.Count,
-                        config.MinimumConstructionFacilityLanes
-                    )
-                ),
-                _ => 0,
-            };
-        }
-
-        /// <summary>
-        /// Divides two integers and rounds up.
-        /// </summary>
-        /// <param name="value">Value to divide.</param>
-        /// <param name="divisor">Divisor to use.</param>
-        /// <returns>The rounded-up quotient.</returns>
-        private int CeilingDivide(int value, int divisor)
-        {
-            if (divisor <= 0)
-                return value;
-
-            return (value + divisor - 1) / divisor;
         }
 
         /// <summary>

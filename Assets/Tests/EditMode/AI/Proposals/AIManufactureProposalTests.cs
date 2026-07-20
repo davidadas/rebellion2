@@ -98,10 +98,9 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithHeadquartersDefenseAndFullCapacity_ReplacesExcessFacility()
+        public void Execute_WithFullDestination_DoesNotReplaceExistingFacility()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
-            game.Config.AI.Infrastructure.PlanetsPerShipyard = 2;
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -115,7 +114,7 @@ namespace Rebellion.Tests.AI.Proposals
             Building replaceableShipyard = AITestSceneBuilder.AddProductionFacility(
                 game,
                 headquarters,
-                "replaceable-shipyard",
+                "existing-shipyard",
                 BuildingType.Shipyard,
                 ManufacturingType.Ship
             );
@@ -124,13 +123,6 @@ namespace Rebellion.Tests.AI.Proposals
                 system,
                 "producer",
                 empire.InstanceID
-            );
-            AITestSceneBuilder.AddProductionFacility(
-                game,
-                producer,
-                "required-shipyard",
-                BuildingType.Shipyard,
-                ManufacturingType.Ship
             );
             AITestSceneBuilder.AddProductionFacility(
                 game,
@@ -162,9 +154,11 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.IsNull(replaceableShipyard.GetParent());
-            Assert.AreEqual(1, headquarters.GetTotalBuildingTypeCount(BuildingType.Defense));
-            Assert.AreEqual(1, producer.GetManufacturingQueue()[ManufacturingType.Building].Count);
+            Assert.AreSame(headquarters, replaceableShipyard.GetParent());
+            Assert.AreEqual(0, headquarters.GetTotalBuildingTypeCount(BuildingType.Defense));
+            Assert.IsFalse(
+                producer.GetManufacturingQueue().ContainsKey(ManufacturingType.Building)
+            );
         }
 
         [Test]
