@@ -659,9 +659,8 @@ namespace Rebellion.Util.Serialization
                     ReflectionHelper.OperationType.Read
                 );
 
-            IEnumerable<MemberInfo> members = ReflectionHelper.GetPersistableMembers(
-                actualType,
-                ReflectionHelper.OperationType.Read
+            IDictionary<string, MemberInfo> memberLookup = ReflectionHelper.GetElementMemberLookup(
+                actualType
             );
 
             if (reader.HasAttributes)
@@ -682,7 +681,7 @@ namespace Rebellion.Util.Serialization
                 if (reader.NodeType == XmlNodeType.Element)
                 {
                     string elementName = reader.Name;
-                    MemberInfo member = FindMemberForElement(members, reader.Name);
+                    memberLookup.TryGetValue(elementName, out MemberInfo member);
 
                     if (member != null)
                     {
@@ -774,56 +773,6 @@ namespace Rebellion.Util.Serialization
         }
 
         /// <summary>
-        /// Finds the member that corresponds to the given XML element.
-        /// </summary>
-        /// <param name="members">The collection of members to search.</param>
-        /// <param name="elementName">The name of the XML element.</param>
-        /// <returns>The MemberInfo that corresponds to the XML element, or null if not found.</returns>
-        private static MemberInfo FindMemberForElement(
-            IEnumerable<MemberInfo> members,
-            string elementName
-        )
-        {
-            foreach (MemberInfo member in members)
-            {
-                PersistableIncludeAttribute[] typeAttributes = (PersistableIncludeAttribute[])
-                    Attribute.GetCustomAttributes(member, typeof(PersistableIncludeAttribute));
-
-                foreach (PersistableIncludeAttribute typeAttr in typeAttributes)
-                {
-                    if (typeAttr.PersistableType.Name == elementName)
-                    {
-                        return member;
-                    }
-                }
-
-                PersistableMemberAttribute memberAttr = (PersistableMemberAttribute)
-                    Attribute.GetCustomAttribute(member, typeof(PersistableMemberAttribute));
-                if (memberAttr != null)
-                {
-                    if (!string.IsNullOrEmpty(memberAttr.Name) && memberAttr.Name == elementName)
-                    {
-                        return member;
-                    }
-                    if (memberAttr.UseTypeName)
-                    {
-                        Type memberType = ReflectionHelper.GetMemberType(member);
-                        if (memberType.Name == elementName)
-                        {
-                            return member;
-                        }
-                    }
-                }
-
-                if (member.Name == elementName)
-                {
-                    return member;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
         /// Reads a member of a persistable object from XML.
         /// </summary>
         /// <param name="info">The MemberInfo of the member to read.</param>
@@ -885,6 +834,30 @@ namespace Rebellion.Util.Serialization
 
         private static IDictionary<string, Type> _persistableObjectMap;
 
+        // Reflection metadata is expensive to compute and stable per type, so it is memoized.
+        private static readonly Dictionary<
+            (Type, OperationType),
+            IReadOnlyList<MemberInfo>
+        > _persistableMembersCache =
+            new Dictionary<(Type, OperationType), IReadOnlyList<MemberInfo>>();
+
+        private static readonly Dictionary<
+            (Type, OperationType),
+            IReadOnlyList<MemberInfo>
+        > _persistableAttributesCache =
+            new Dictionary<(Type, OperationType), IReadOnlyList<MemberInfo>>();
+
+        private static readonly Dictionary<
+            (Type, OperationType),
+            IDictionary<string, MemberInfo>
+        > _persistableAttributeMapCache =
+            new Dictionary<(Type, OperationType), IDictionary<string, MemberInfo>>();
+
+        private static readonly Dictionary<
+            Type,
+            IDictionary<string, MemberInfo>
+        > _elementMemberLookupCache = new Dictionary<Type, IDictionary<string, MemberInfo>>();
+
         public enum OperationType
         {
             Write,
@@ -897,11 +870,19 @@ namespace Rebellion.Util.Serialization
         /// <param name="classType">The type to get members from.</param>
         /// <param name="operationType">The type of operation to get members for.</param>
         /// <returns>An enumerable of persistable MemberInfo objects.</returns>
-        public static IEnumerable<MemberInfo> GetPersistableMembers(
+        public static IReadOnlyList<MemberInfo> GetPersistableMembers(
             Type classType,
             OperationType operationType
         )
         {
+            (Type, OperationType) cacheKey = (classType, operationType);
+            if (
+                _persistableMembersCache.TryGetValue(cacheKey, out IReadOnlyList<MemberInfo> cached)
+            )
+            {
+                return cached;
+            }
+
             bool IsPersistable(MemberInfo member)
             {
                 bool isInstanceField = member is FieldInfo field && !field.IsStatic;
@@ -950,7 +931,9 @@ namespace Rebellion.Util.Serialization
                 .Where(IsPersistable)
                 .Cast<MemberInfo>();
 
-            return fields.Concat(properties);
+            IReadOnlyList<MemberInfo> members = fields.Concat(properties).ToList();
+            _persistableMembersCache[cacheKey] = members;
+            return members;
         }
 
         /// <summary>
@@ -959,11 +942,22 @@ namespace Rebellion.Util.Serialization
         /// <param name="classType">The type to get attributes from.</param>
         /// <param name="operationType">The type of operation to get attributes for.</param>
         /// <returns>An enumerable of MemberInfo objects representing persistable attributes.</returns>
-        public static IEnumerable<MemberInfo> GetPersistableAttributes(
+        public static IReadOnlyList<MemberInfo> GetPersistableAttributes(
             Type classType,
             OperationType operationType
         )
         {
+            (Type, OperationType) cacheKey = (classType, operationType);
+            if (
+                _persistableAttributesCache.TryGetValue(
+                    cacheKey,
+                    out IReadOnlyList<MemberInfo> cached
+                )
+            )
+            {
+                return cached;
+            }
+
             bool IsPersistableAttribute(MemberInfo member)
             {
                 bool isInstanceField = member is FieldInfo field && !field.IsStatic;
@@ -1001,7 +995,9 @@ namespace Rebellion.Util.Serialization
                 .Where(IsPersistableAttribute)
                 .Cast<MemberInfo>();
 
-            return fields.Concat(properties);
+            IReadOnlyList<MemberInfo> attributes = fields.Concat(properties).ToList();
+            _persistableAttributesCache[cacheKey] = attributes;
+            return attributes;
         }
 
         /// <summary>
@@ -1041,6 +1037,17 @@ namespace Rebellion.Util.Serialization
             OperationType operationType
         )
         {
+            (Type, OperationType) cacheKey = (classType, operationType);
+            if (
+                _persistableAttributeMapCache.TryGetValue(
+                    cacheKey,
+                    out IDictionary<string, MemberInfo> cached
+                )
+            )
+            {
+                return cached;
+            }
+
             Dictionary<string, MemberInfo> attributeMap = new Dictionary<string, MemberInfo>();
             Type currentType = classType;
 
@@ -1061,7 +1068,78 @@ namespace Rebellion.Util.Serialization
                 currentType = currentType.BaseType;
             }
 
+            _persistableAttributeMapCache[cacheKey] = attributeMap;
             return attributeMap;
+        }
+
+        /// <summary>
+        /// Gets a dictionary mapping XML element names to the members they deserialize into,
+        /// replicating the resolution order of the former per-element linear search.
+        /// </summary>
+        /// <param name="classType">The type whose element-to-member lookup should be built.</param>
+        /// <returns>A cached dictionary mapping element names to MemberInfo objects.</returns>
+        public static IDictionary<string, MemberInfo> GetElementMemberLookup(Type classType)
+        {
+            if (
+                _elementMemberLookupCache.TryGetValue(
+                    classType,
+                    out IDictionary<string, MemberInfo> cached
+                )
+            )
+            {
+                return cached;
+            }
+
+            Dictionary<string, MemberInfo> lookup = new Dictionary<string, MemberInfo>();
+
+            // Members are processed in order and the first to claim a name keeps it, matching
+            // the first-match-wins behavior of the previous linear search.
+            foreach (MemberInfo member in GetPersistableMembers(classType, OperationType.Read))
+            {
+                PersistableIncludeAttribute[] includeAttributes = (PersistableIncludeAttribute[])
+                    Attribute.GetCustomAttributes(member, typeof(PersistableIncludeAttribute));
+                foreach (PersistableIncludeAttribute includeAttribute in includeAttributes)
+                {
+                    AddElementName(lookup, includeAttribute.PersistableType.Name, member);
+                }
+
+                PersistableMemberAttribute memberAttribute = (PersistableMemberAttribute)
+                    Attribute.GetCustomAttribute(member, typeof(PersistableMemberAttribute));
+                if (memberAttribute != null)
+                {
+                    if (!string.IsNullOrEmpty(memberAttribute.Name))
+                    {
+                        AddElementName(lookup, memberAttribute.Name, member);
+                    }
+                    if (memberAttribute.UseTypeName)
+                    {
+                        AddElementName(lookup, GetMemberType(member).Name, member);
+                    }
+                }
+
+                AddElementName(lookup, member.Name, member);
+            }
+
+            _elementMemberLookupCache[classType] = lookup;
+            return lookup;
+        }
+
+        /// <summary>
+        /// Adds an element name to the lookup when it is populated and not already claimed.
+        /// </summary>
+        /// <param name="lookup">The element-to-member lookup being built.</param>
+        /// <param name="name">The element name that resolves to the member.</param>
+        /// <param name="member">The member resolved by the name.</param>
+        private static void AddElementName(
+            IDictionary<string, MemberInfo> lookup,
+            string name,
+            MemberInfo member
+        )
+        {
+            if (!string.IsNullOrEmpty(name) && !lookup.ContainsKey(name))
+            {
+                lookup[name] = member;
+            }
         }
 
         /// <summary>
