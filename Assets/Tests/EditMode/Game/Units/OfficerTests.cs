@@ -183,6 +183,8 @@ namespace Rebellion.Tests.Game.Units
                 ForceValue = 75,
                 ForceTrainingAdjustment = 10,
                 CanBetray = false,
+                MissionReturnParentInstanceID = "return-parent",
+                MissionReturnLocationInstanceID = "return-location",
             };
 
             string xml = SerializationHelper.Serialize(originalOfficer);
@@ -219,6 +221,14 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.CanBetray,
                 deserializedOfficer.CanBetray,
                 "CanBetray mismatch"
+            );
+            Assert.AreEqual(
+                originalOfficer.MissionReturnParentInstanceID,
+                deserializedOfficer.MissionReturnParentInstanceID
+            );
+            Assert.AreEqual(
+                originalOfficer.MissionReturnLocationInstanceID,
+                deserializedOfficer.MissionReturnLocationInstanceID
             );
             Assert.AreEqual(
                 originalOfficer.GetBaseRating(OfficerRating.Espionage),

@@ -72,6 +72,8 @@ public class PlanetOverlayTheme
     public string GalaxyHeadquartersImagePath { get; set; }
 
     public string PlanetSystemHeadquartersImagePath { get; set; }
+
+    public string PlanetSystemUprisingImagePath { get; set; }
 }
 
 /// <summary>

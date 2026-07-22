@@ -168,7 +168,12 @@ namespace Rebellion.Game.Missions
             PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, system, game?.CurrentTick ?? 0);
+            recorder.RecordPlanetManufacturingSnapshot(
+                faction,
+                planet,
+                system,
+                game?.CurrentTick ?? 0
+            );
 
             return new List<GameResult>();
         }

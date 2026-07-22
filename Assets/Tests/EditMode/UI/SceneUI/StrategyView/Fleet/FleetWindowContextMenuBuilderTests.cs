@@ -42,7 +42,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 true,
                 true,
                 false,
-                false
+                false,
+                true,
+                false,
+                true
             );
 
             CollectionAssert.AreEqual(
@@ -51,7 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     StrategyContextMenuActions.Move,
                     StrategyContextMenuActions.MoveConfirm,
                     StrategyContextMenuActions.PlanetaryBombardment,
-                    0,
+                    StrategyContextMenuActions.PlanetaryAssault,
                     StrategyContextMenuActions.Rename,
                     StrategyContextMenuActions.Encyclopedia,
                     StrategyContextMenuActions.Status,
@@ -74,10 +77,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 commands.Select(command => command.Text)
             );
             Assert.IsTrue(commands.All(command => command.Enabled));
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyContextMenuActions.BombardMilitaryFacilities,
+                    StrategyContextMenuActions.BombardCivilianFacilities,
+                    StrategyContextMenuActions.GeneralBombardment,
+                    StrategyContextMenuActions.DestroySystem,
+                },
+                commands[2].SubmenuCommands.Select(command => command.Action)
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Target Military Facilities",
+                    "Target Civilian Facilities",
+                    "General Bombardment",
+                    "Destroy System",
+                },
+                commands[2].SubmenuCommands.Select(command => command.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { true, true, true, false },
+                commands[2].SubmenuCommands.Select(command => command.Enabled)
+            );
         }
 
         [Test]
-        public void Build_MultipleFleets_DisablesSingleItemCommandsAndOmitsFleetActionCommands()
+        public void Build_MultipleFleets_OffersFleetCommandsAndDisablesSingleItemCommands()
         {
             GameFleet first = new GameFleet();
             GameFleet second = new GameFleet();
@@ -87,7 +114,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 true,
                 true,
                 false,
-                false
+                false,
+                true,
+                false,
+                true
             );
 
             CollectionAssert.AreEqual(
@@ -95,6 +125,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 {
                     StrategyContextMenuActions.Move,
                     StrategyContextMenuActions.MoveConfirm,
+                    StrategyContextMenuActions.PlanetaryBombardment,
+                    StrategyContextMenuActions.PlanetaryAssault,
                     StrategyContextMenuActions.Rename,
                     StrategyContextMenuActions.Encyclopedia,
                     StrategyContextMenuActions.Status,
@@ -103,8 +135,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 commands.Select(command => command.Action)
             );
             CollectionAssert.AreEqual(
-                new[] { true, true, false, false, false, true },
+                new[] { true, true, true, true, false, false, false, true },
                 commands.Select(command => command.Enabled)
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyContextMenuActions.BombardMilitaryFacilities,
+                    StrategyContextMenuActions.BombardCivilianFacilities,
+                    StrategyContextMenuActions.GeneralBombardment,
+                    StrategyContextMenuActions.DestroySystem,
+                },
+                commands[2].SubmenuCommands.Select(command => command.Action)
             );
         }
 

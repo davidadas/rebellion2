@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -20,7 +21,10 @@ namespace Rebellion.Systems
         private readonly ManufacturingSystem _manufacturingSystem;
         private readonly FogOfWarSystem _fogOfWarSystem;
         private readonly HashSet<string> _controlShiftedOwners = new HashSet<string>();
+        private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
         private int _controlShiftTick = -1;
+
+        internal event Action<List<GameResult>> RegimentDeploymentResultsProduced;
 
         /// <summary>
         /// Creates a new PlanetaryControlSystem.
@@ -40,6 +44,7 @@ namespace Rebellion.Systems
             _movementSystem = movementSystem;
             _manufacturingSystem = manufacturingSystem;
             _fogOfWarSystem = fogOfWarSystem;
+            _movementSystem.RegimentDeploymentChanged += ReconcileRegimentDeployment;
         }
 
         /// <summary>
@@ -63,8 +68,45 @@ namespace Rebellion.Systems
         public List<GameResult> ReconcilePlanet(Planet planet)
         {
             List<GameResult> results = new List<GameResult>();
-            UpdateUncolonizedPlanet(planet, results);
+            if (planet == null || !_controlChangesInProgress.Add(planet.InstanceID))
+                return results;
+
+            try
+            {
+                if (!planet.IsColonized)
+                {
+                    UpdateUncolonizedPlanet(planet, results);
+                    return results;
+                }
+
+                List<string> regimentOwners = GetActiveRegimentOwners(planet);
+                Faction controller = GetPlanetController(planet, regimentOwners);
+                PlanetOwnershipChangedResult result = ChangePlanetControl(planet, controller);
+                if (result != null)
+                {
+                    if (regimentOwners.Count == 0)
+                        result.Reason = PlanetOwnershipChangeReason.PopularSupport;
+
+                    results.Add(result);
+                }
+            }
+            finally
+            {
+                _controlChangesInProgress.Remove(planet.InstanceID);
+            }
+
             return results;
+        }
+
+        /// <summary>
+        /// Reconciles control and emits results after regiment deployment changes.
+        /// </summary>
+        /// <param name="planet">The planet whose regiment presence changed.</param>
+        private void ReconcileRegimentDeployment(Planet planet)
+        {
+            List<GameResult> results = ReconcilePlanet(planet);
+            if (results.Count > 0)
+                RegimentDeploymentResultsProduced?.Invoke(results);
         }
 
         /// <summary>
@@ -104,21 +146,36 @@ namespace Rebellion.Systems
         /// <returns>The ownership-change result.</returns>
         public PlanetOwnershipChangedResult TransferPlanet(Planet planet, Faction newOwner)
         {
-            string previousOwnerId = planet.GetOwnerInstanceID();
-            Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
-                ? null
-                : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+            bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
+            try
+            {
+                string previousOwnerId = planet.GetOwnerInstanceID();
+                Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
+                    ? null
+                    : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+                List<Faction> observers = GetOwnershipChangeObservers(
+                    planet,
+                    previousOwner,
+                    newOwner
+                );
 
-            CancelCompetingMissions(planet, newOwner.InstanceID);
-            TransferBuildings(planet, newOwner);
-            _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
-            EvictEnemyUnits(planet, newOwner.InstanceID);
-            planet.EndUprising();
-            _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
-            if (previousOwner?.InstanceID != newOwner.InstanceID)
-                CaptureSnapshotForFaction(planet, previousOwner);
+                CancelCompetingMissions(planet, newOwner.InstanceID);
+                TransferBuildings(planet, newOwner);
+                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+                EvictEnemyUnits(planet, newOwner.InstanceID);
+                planet.EndUprising();
+                _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
+                if (previousOwner?.InstanceID != newOwner.InstanceID)
+                    CaptureSnapshotForFaction(planet, previousOwner);
+                CaptureOwnershipChange(planet, observers);
 
-            return CreateOwnershipChangedResult(planet, previousOwner, newOwner);
+                return CreateOwnershipChangedResult(planet, previousOwner, newOwner, observers);
+            }
+            finally
+            {
+                if (ownsControlChange)
+                    _controlChangesInProgress.Remove(planet.InstanceID);
+            }
         }
 
         /// <summary>
@@ -210,7 +267,10 @@ namespace Rebellion.Systems
                     newController
                 );
                 if (controlChange != null)
+                {
+                    controlChange.Reason = PlanetOwnershipChangeReason.PopularSupport;
                     results.Add(controlChange);
+                }
 
                 if (!CanApplyControlSupportShift(previousController))
                     continue;
@@ -274,19 +334,35 @@ namespace Rebellion.Systems
         /// <returns>The ownership-change result.</returns>
         private PlanetOwnershipChangedResult NeutralizePlanet(Planet planet)
         {
-            string previousOwnerId = planet.GetOwnerInstanceID();
-            Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
-                ? null
-                : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+            bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
+            try
+            {
+                string previousOwnerId = planet.GetOwnerInstanceID();
+                Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
+                    ? null
+                    : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+                List<Faction> observers = GetOwnershipChangeObservers(
+                    planet,
+                    previousOwner,
+                    newOwner: null
+                );
 
-            CancelCompetingMissions(planet, newOwnerID: null);
-            EvictEnemyUnits(planet, newOwnerID: null);
-            _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
-            _game.DeregsiterOwnedUnit(planet);
-            planet.SetOwnerInstanceID(null);
-            CaptureSnapshotForFaction(planet, previousOwner);
+                CancelCompetingMissions(planet, newOwnerID: null);
+                EvictEnemyUnits(planet, newOwnerID: null);
+                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+                planet.EndUprising();
+                _game.DeregsiterOwnedUnit(planet);
+                planet.SetOwnerInstanceID(null);
+                CaptureSnapshotForFaction(planet, previousOwner);
+                CaptureOwnershipChange(planet, observers);
 
-            return CreateOwnershipChangedResult(planet, previousOwner, null);
+                return CreateOwnershipChangedResult(planet, previousOwner, null, observers);
+            }
+            finally
+            {
+                if (ownsControlChange)
+                    _controlChangesInProgress.Remove(planet.InstanceID);
+            }
         }
 
         /// <summary>
@@ -325,7 +401,17 @@ namespace Rebellion.Systems
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         private Faction GetPlanetController(Planet planet)
         {
-            List<string> regimentOwners = planet
+            return GetPlanetController(planet, GetActiveRegimentOwners(planet));
+        }
+
+        /// <summary>
+        /// Gets the distinct owners of completed, stationary regiments on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>The active regiment owner identifiers.</returns>
+        private List<string> GetActiveRegimentOwners(Planet planet)
+        {
+            return planet
                 .GetAllRegiments()
                 .Where(regiment =>
                     regiment.ManufacturingStatus == ManufacturingStatus.Complete
@@ -335,7 +421,16 @@ namespace Rebellion.Systems
                 .Where(ownerId => !string.IsNullOrEmpty(ownerId))
                 .Distinct()
                 .ToList();
+        }
 
+        /// <summary>
+        /// Resolves planetary control from active regiment owners and popular support.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="regimentOwners">The distinct active regiment owner identifiers.</param>
+        /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
+        private Faction GetPlanetController(Planet planet, List<string> regimentOwners)
+        {
             if (regimentOwners.Count == 1)
                 return _game.GetFactionByOwnerInstanceID(regimentOwners[0]);
 
@@ -446,11 +541,13 @@ namespace Rebellion.Systems
         /// <param name="planet">The planet whose ownership changed.</param>
         /// <param name="previousOwner">The faction that previously controlled the planet.</param>
         /// <param name="newOwner">The faction that now controls the planet.</param>
+        /// <param name="observers">The factions that observed the ownership change.</param>
         /// <returns>The populated ownership-change result.</returns>
         private PlanetOwnershipChangedResult CreateOwnershipChangedResult(
             Planet planet,
             Faction previousOwner,
-            Faction newOwner
+            Faction newOwner,
+            IEnumerable<Faction> observers
         )
         {
             return new PlanetOwnershipChangedResult
@@ -459,7 +556,55 @@ namespace Rebellion.Systems
                 PreviousOwner = previousOwner,
                 NewOwner = newOwner,
                 Tick = _game.CurrentTick,
+                ObserverFactionInstanceIDs = observers
+                    .Select(faction => faction.InstanceID)
+                    .Distinct()
+                    .ToList(),
             };
+        }
+
+        /// <summary>
+        /// Finds factions that can observe an ownership change at a planet.
+        /// </summary>
+        /// <param name="planet">The planet changing ownership.</param>
+        /// <param name="previousOwner">The previous owner, when present.</param>
+        /// <param name="newOwner">The new owner, when present.</param>
+        /// <returns>The observing factions, including both affected owners.</returns>
+        private List<Faction> GetOwnershipChangeObservers(
+            Planet planet,
+            Faction previousOwner,
+            Faction newOwner
+        )
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            List<Faction> observers = _game
+                .GetFactions()
+                .Where(faction =>
+                    system?.SystemType == PlanetSystemType.CoreSystem
+                    || (_fogOfWarSystem?.IsPlanetVisible(planet, faction) ?? false)
+                )
+                .ToList();
+
+            if (previousOwner != null && !observers.Contains(previousOwner))
+                observers.Add(previousOwner);
+            if (newOwner != null && !observers.Contains(newOwner))
+                observers.Add(newOwner);
+
+            return observers;
+        }
+
+        /// <summary>
+        /// Records the new owner for every faction that observed a control change.
+        /// </summary>
+        /// <param name="planet">The planet whose owner changed.</param>
+        /// <param name="observers">The factions that observed the change.</param>
+        private void CaptureOwnershipChange(Planet planet, IEnumerable<Faction> observers)
+        {
+            PlanetSystem system = planet.GetParentOfType<PlanetSystem>();
+            if (_fogOfWarSystem == null || system == null)
+                return;
+
+            _fogOfWarSystem.CaptureOwnershipChange(observers, planet, system, _game.CurrentTick);
         }
 
         /// <summary>

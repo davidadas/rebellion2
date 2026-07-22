@@ -7,6 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
@@ -30,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private PlanetSystemWindowController _controller;
         private int _dirtyCount;
         private GameFleet _fleet;
+        private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
@@ -56,6 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
             _actions = new TestActions();
+            _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
         }
@@ -241,6 +244,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         [Test]
+        public void ContextMenu_PlanetaryAssault_ExecutesAndRoutesBattleResult()
+        {
+            PlanetaryAssaultResult expected = new PlanetaryAssaultResult();
+            _fleetCommandController = new StrategyFleetCommandController(
+                () => _game,
+                () => new FleetSystem(_game),
+                (_, _, _) => true,
+                (_, _, _) => null,
+                (_, _) => true,
+                (_, _) => expected
+            );
+            _controller = CreateController();
+            _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
+            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 177, 4, 6, 7),
+                CreateFleetPointerEvent(view),
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out _);
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyContextMenuActions.PlanetaryAssault);
+            ContextMenuController contextMenuController = new ContextMenuController();
+            contextMenuController.Open(request);
+
+            bool selected = contextMenuController.TrySelectCommand(command);
+
+            Assert.IsTrue(selected);
+            Assert.AreSame(expected, _actions.LastBattleResult);
+            Assert.AreEqual(1, _actions.RefreshCount);
+        }
+
+        [Test]
         public void ClearSelection_SelectedFleet_ClearsContextAndStatus()
         {
             PlanetSystemWindowView view = OpenWindow(out UIWindow window);
@@ -384,7 +424,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private PlanetSystemWindowController CreateController()
         {
             return new PlanetSystemWindowController(
-                CreateFleetCommandController(),
+                _fleetCommandController,
                 () => _uiContext,
                 _targetingController,
                 _windowLayer,
@@ -401,6 +441,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             return new StrategyFleetCommandController(
                 () => _game,
                 () => new FleetSystem(_game),
+                (_, _, _) => false,
+                (_, _, _) => null,
+                (_, _) => false,
                 (_, _) => null
             );
         }
@@ -561,9 +604,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             public int MissionCreateCount { get; private set; }
             public int MoveConfirmCount { get; private set; }
             public int MoveCount { get; private set; }
+            public int RefreshCount { get; private set; }
+            public GameResult LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
 
-            public void RefreshPlanetSystemState() { }
+            public void OpenPlanetSystemBattleResult(GameResult result)
+            {
+                LastBattleResult = result;
+            }
+
+            public void RefreshPlanetSystemState()
+            {
+                RefreshCount++;
+            }
 
             public void OpenPlanetSystemPlanetWindow(
                 GalaxyMapPlanet planet,

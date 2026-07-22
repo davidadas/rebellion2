@@ -115,5 +115,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             Assert.IsTrue(dismissed);
             Assert.IsFalse(_session.DropdownOpen);
         }
+
+        [TestCase(0, 1)]
+        [TestCase(17, 17)]
+        [TestCase(256, byte.MaxValue)]
+        public void SetBuildCount_Value_ClampsToSupportedRange(int value, int expected)
+        {
+            _session.SetBuildCount(value);
+
+            Assert.AreEqual(expected, _session.BuildCount);
+        }
     }
 }

@@ -193,6 +193,11 @@ namespace Rebellion.Game.Results
         public Faction InstigatorFaction { get; set; }
     }
 
+    public class PlanetNearUprisingResult : GameResult
+    {
+        public Planet Planet { get; set; }
+    }
+
     /// <summary>
     /// An uprising ended on a planet.
     /// </summary>
@@ -211,6 +216,7 @@ namespace Rebellion.Game.Results
         public Faction PreviousOwner { get; set; }
         public Faction NewOwner { get; set; }
         public PlanetOwnershipChangeReason Reason { get; set; }
+        public List<string> ObserverFactionInstanceIDs { get; set; } = new List<string>();
     }
 
     /// <summary>
@@ -720,6 +726,8 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public Planet Planet { get; set; }
         public bool AttackerCanRetreat { get; set; }
         public bool DefenderCanRetreat { get; set; }
@@ -739,6 +747,8 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public BombardmentType Type { get; set; }
         public int BombardmentStrength { get; set; }
         public int ShieldStrength { get; set; }
@@ -753,6 +763,8 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
         public List<CapitalShip> DestroyedCapitalShips { get; set; } = new List<CapitalShip>();
+        public List<ISceneNode> AttackingUnits { get; set; } = new List<ISceneNode>();
+        public List<ISceneNode> DefendingUnits { get; set; } = new List<ISceneNode>();
         public List<ShipDamageResult> AttackerShipDamage { get; set; } =
             new List<ShipDamageResult>();
         public List<GameResult> Events { get; set; } = new List<GameResult>();
@@ -766,6 +778,8 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public bool Success { get; set; }
         public bool BlockedByShields { get; set; }
         public int InitialAttackerRegimentCount { get; set; }
@@ -778,6 +792,8 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedDefenderRegiments { get; set; } = new List<Regiment>();
         public List<Building> CollateralDestroyedBuildings { get; set; } = new List<Building>();
         public List<Regiment> LandedRegiments { get; set; } = new List<Regiment>();
+        public List<ISceneNode> AttackingUnits { get; set; } = new List<ISceneNode>();
+        public List<ISceneNode> DefendingUnits { get; set; } = new List<ISceneNode>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
     }
 

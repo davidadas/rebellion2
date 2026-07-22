@@ -118,6 +118,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual("Corellia", data.Caption);
             Assert.AreEqual(DefenseWindowTab.Personnel, data.ActiveTab);
             Assert.AreEqual("Personnel", data.TabTitle);
+            Assert.AreEqual(string.Empty, data.GarrisonRequirementText);
             Assert.IsNotNull(data.TitleTexture);
             Assert.AreEqual(DefenseWindowRenderData.TabCount, data.Tabs.Count);
             Assert.IsNotNull(data.Tabs[0].Texture);
@@ -141,6 +142,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNull(card.DamagedOverlayTexture);
             Assert.IsTrue(card.CanDrag);
+        }
+
+        [Test]
+        public void Build_PlayerOwnedRegimentTab_ReturnsGarrisonRequirement()
+        {
+            _planet.SetPopularSupport(_ownerId, 35);
+            _session.SelectTab(DefenseWindowTab.Regiments);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual("Trooper Regiments", data.TabTitle);
+            Assert.AreEqual("Garrison Requirement: 3", data.GarrisonRequirementText);
+        }
+
+        [Test]
+        public void Build_NonPlayerOwnedRegimentTab_ClearsGarrisonRequirement()
+        {
+            const string opposingOwnerId = "FNEMP1";
+            _uiContext.Game.Factions.Add(new Faction { InstanceID = opposingOwnerId });
+            _planet.OwnerInstanceID = opposingOwnerId;
+            _session.SelectTab(DefenseWindowTab.Regiments);
+
+            DefenseWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.AreEqual(string.Empty, data.GarrisonRequirementText);
         }
 
         [Test]
@@ -268,7 +294,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [TestCase(DefenseWindowTab.Personnel, "Personnel")]
-        [TestCase(DefenseWindowTab.Regiments, "Troops/Regiments")]
+        [TestCase(DefenseWindowTab.Regiments, "Trooper Regiments")]
         [TestCase(DefenseWindowTab.Starfighters, "Fighter Squadrons")]
         [TestCase(DefenseWindowTab.Shields, "Planetary Shields")]
         [TestCase(DefenseWindowTab.Batteries, "Planetary Batteries")]

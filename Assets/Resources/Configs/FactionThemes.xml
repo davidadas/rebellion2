@@ -1655,6 +1655,10 @@
         <FrameImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_rebel_frame</FrameImagePath>
         <ResultFrameImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_frame</ResultFrameImagePath>
         <ResultSummaryImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_summary_background</ResultSummaryImagePath>
+        <PlanetaryAssaultImagePath>Art/HD/UI/Messages/ui_message_assault_alliance</PlanetaryAssaultImagePath>
+        <BombardmentNoLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_no_losses</BombardmentNoLossesImagePath>
+        <BombardmentAttackerLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_attacker_losses</BombardmentAttackerLossesImagePath>
+        <BombardmentTargetLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_target_losses</BombardmentTargetLossesImagePath>
         <BattleMusicPath>Audio/Music/attacking_a_star_destroyer</BattleMusicPath>
         <ResultMusicPath>Audio/Music/sail_barge_assault_alternate</ResultMusicPath>
         <ResultVictoryMusicPath>Audio/Music/sail_barge_assault_alternate</ResultVictoryMusicPath>
@@ -1815,6 +1819,50 @@
             <Height>41</Height>
           </SourceLayout>
         </ResultPersonnelButton>
+        <ResultManufacturingButton>
+          <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_manufacturing_button_up</UpImagePath>
+          <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_manufacturing_button_pressed</DownImagePath>
+        </ResultManufacturingButton>
+        <ResultDefenseButton>
+          <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_defense_button_up</UpImagePath>
+          <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_defense_button_pressed</DownImagePath>
+        </ResultDefenseButton>
+        <PlanetaryResultCapitalShipsLayout>
+          <X>36</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultCapitalShipsLayout>
+        <PlanetaryResultStarfightersLayout>
+          <X>98</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultStarfightersLayout>
+        <PlanetaryResultManufacturingLayout>
+          <X>160</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultManufacturingLayout>
+        <PlanetaryResultDefenseLayout>
+          <X>222</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultDefenseLayout>
+        <PlanetaryResultTroopsLayout>
+          <X>284</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultTroopsLayout>
+        <PlanetaryResultPersonnelLayout>
+          <X>348</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultPersonnelLayout>
         <ResultDirectSystemButton>
           <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_system_button_up</UpImagePath>
           <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_system_button_pressed</DownImagePath>
@@ -2058,7 +2106,7 @@
           </MessageDetailImageTheme>
           <MessageDetailImageTheme>
             <Key>planet_allegiance_evolves</Key>
-            <ImagePath>Art/HD/UI/Messages/ui_message_planet_allegiance_evolves_alliance</ImagePath>
+            <ImagePath>Art/HD/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
           </MessageDetailImageTheme>
         </DetailImages>
       </Messages>
@@ -2293,6 +2341,7 @@
     <PlanetOverlayTheme>
       <GalaxyHeadquartersImagePath>Art/HD/UI/StrategyView/ui_strategyview_galaxy_hq_rebel_icon</GalaxyHeadquartersImagePath>
       <PlanetSystemHeadquartersImagePath>Art/HD/UI/StrategyView/ui_strategyview_planetsystem_hq_rebel_icon</PlanetSystemHeadquartersImagePath>
+      <PlanetSystemUprisingImagePath>Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_rebel_uprising_overlay</PlanetSystemUprisingImagePath>
       <UnitTileIcons>
         <FleetTileImagePath>Art/HD/UI/StrategyView/ui_strategyview_fleet_rebel_icon</FleetTileImagePath>
         <MissionTileImagePath>Art/HD/UI/StrategyView/ui_strategyview_mission_rebel_icon</MissionTileImagePath>
@@ -4015,6 +4064,10 @@
         <FrameImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_empire_frame</FrameImagePath>
         <ResultFrameImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_empire_frame</ResultFrameImagePath>
         <ResultSummaryImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_summary_background</ResultSummaryImagePath>
+        <PlanetaryAssaultImagePath>Art/HD/UI/Messages/ui_message_assault_empire</PlanetaryAssaultImagePath>
+        <BombardmentNoLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_no_losses</BombardmentNoLossesImagePath>
+        <BombardmentAttackerLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_attacker_losses</BombardmentAttackerLossesImagePath>
+        <BombardmentTargetLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_target_losses</BombardmentTargetLossesImagePath>
         <BattleMusicPath>Audio/Music/attacking_a_star_destroyer</BattleMusicPath>
         <ResultMusicPath>Audio/Music/imperial_march_darth_vader_theme_2</ResultMusicPath>
         <ResultVictoryMusicPath>Audio/Music/imperial_march_darth_vader_theme_2</ResultVictoryMusicPath>
@@ -4175,6 +4228,50 @@
             <Height>41</Height>
           </SourceLayout>
         </ResultPersonnelButton>
+        <ResultManufacturingButton>
+          <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_empire_manufacturing_button_up</UpImagePath>
+          <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_empire_manufacturing_button_pressed</DownImagePath>
+        </ResultManufacturingButton>
+        <ResultDefenseButton>
+          <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_defense_button_up</UpImagePath>
+          <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_defense_button_pressed</DownImagePath>
+        </ResultDefenseButton>
+        <PlanetaryResultCapitalShipsLayout>
+          <X>36</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultCapitalShipsLayout>
+        <PlanetaryResultStarfightersLayout>
+          <X>98</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultStarfightersLayout>
+        <PlanetaryResultManufacturingLayout>
+          <X>160</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultManufacturingLayout>
+        <PlanetaryResultDefenseLayout>
+          <X>222</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultDefenseLayout>
+        <PlanetaryResultTroopsLayout>
+          <X>284</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultTroopsLayout>
+        <PlanetaryResultPersonnelLayout>
+          <X>348</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultPersonnelLayout>
         <ResultDirectSystemButton>
           <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_system_button_up</UpImagePath>
           <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_empire_system_direct_button_pressed</DownImagePath>
@@ -4418,7 +4515,7 @@
           </MessageDetailImageTheme>
           <MessageDetailImageTheme>
             <Key>planet_allegiance_evolves</Key>
-            <ImagePath>Art/HD/UI/Messages/ui_message_planet_allegiance_evolves_empire</ImagePath>
+            <ImagePath>Art/HD/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
           </MessageDetailImageTheme>
         </DetailImages>
       </Messages>
@@ -4650,6 +4747,7 @@
       </Icons>
     </MissionIcons>
     <PlanetOverlayTheme>
+      <PlanetSystemUprisingImagePath>Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_empire_uprising_overlay</PlanetSystemUprisingImagePath>
       <UnitTileIcons>
         <FleetTileImagePath>Art/HD/UI/StrategyView/ui_strategyview_fleet_empire_icon</FleetTileImagePath>
         <MissionTileImagePath>Art/HD/UI/StrategyView/ui_strategyview_mission_empire_icon</MissionTileImagePath>
@@ -5748,6 +5846,10 @@
         <FrameImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_rebel_frame</FrameImagePath>
         <ResultFrameImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_frame</ResultFrameImagePath>
         <ResultSummaryImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_summary_background</ResultSummaryImagePath>
+        <PlanetaryAssaultImagePath>Art/HD/UI/Messages/ui_message_assault_alliance</PlanetaryAssaultImagePath>
+        <BombardmentNoLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_no_losses</BombardmentNoLossesImagePath>
+        <BombardmentAttackerLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_attacker_losses</BombardmentAttackerLossesImagePath>
+        <BombardmentTargetLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_target_losses</BombardmentTargetLossesImagePath>
         <BattleMusicPath>Audio/Music/attacking_a_star_destroyer</BattleMusicPath>
         <ResultMusicPath>Audio/Music/sail_barge_assault_alternate</ResultMusicPath>
         <ResultVictoryMusicPath>Audio/Music/sail_barge_assault_alternate</ResultVictoryMusicPath>
@@ -5908,6 +6010,50 @@
             <Height>41</Height>
           </SourceLayout>
         </ResultPersonnelButton>
+        <ResultManufacturingButton>
+          <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_manufacturing_button_up</UpImagePath>
+          <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_manufacturing_button_pressed</DownImagePath>
+        </ResultManufacturingButton>
+        <ResultDefenseButton>
+          <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_defense_button_up</UpImagePath>
+          <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_defense_button_pressed</DownImagePath>
+        </ResultDefenseButton>
+        <PlanetaryResultCapitalShipsLayout>
+          <X>36</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultCapitalShipsLayout>
+        <PlanetaryResultStarfightersLayout>
+          <X>98</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultStarfightersLayout>
+        <PlanetaryResultManufacturingLayout>
+          <X>160</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultManufacturingLayout>
+        <PlanetaryResultDefenseLayout>
+          <X>222</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultDefenseLayout>
+        <PlanetaryResultTroopsLayout>
+          <X>284</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultTroopsLayout>
+        <PlanetaryResultPersonnelLayout>
+          <X>348</X>
+          <Y>59</Y>
+          <Width>49</Width>
+          <Height>41</Height>
+        </PlanetaryResultPersonnelLayout>
         <ResultDirectSystemButton>
           <UpImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_system_button_up</UpImagePath>
           <DownImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_rebel_system_button_pressed</DownImagePath>
@@ -6151,7 +6297,7 @@
           </MessageDetailImageTheme>
           <MessageDetailImageTheme>
             <Key>planet_allegiance_evolves</Key>
-            <ImagePath>Art/HD/UI/Messages/ui_message_planet_allegiance_evolves_alliance</ImagePath>
+            <ImagePath>Art/HD/UI/Messages/ui_message_planet_allegiance_evolves</ImagePath>
           </MessageDetailImageTheme>
         </DetailImages>
       </Messages>
@@ -6335,6 +6481,7 @@
       </Icons>
     </MissionIcons>
     <PlanetOverlayTheme>
+      <PlanetSystemUprisingImagePath>Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_rebel_uprising_overlay</PlanetSystemUprisingImagePath>
       <UnitTileIcons>
         <FleetTileImagePath>Art/HD/UI/StrategyView/ui_strategyview_fleet_rebel_icon</FleetTileImagePath>
         <MissionTileImagePath>Art/HD/UI/StrategyView/ui_strategyview_mission_rebel_icon</MissionTileImagePath>

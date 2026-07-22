@@ -21,6 +21,9 @@ public sealed class BattleResultItemView : MonoBehaviour
     private RawImage damagedOverlayImage;
 
     [SerializeField]
+    private RawImage capturedOverlayImage;
+
+    [SerializeField]
     private TextMeshProUGUI nameTextField;
 
     [SerializeField]
@@ -47,7 +50,8 @@ public sealed class BattleResultItemView : MonoBehaviour
         bool hasImage =
             data.BaseTexture != null
             || data.WithdrawingOverlayTexture != null
-            || data.DamagedOverlayTexture != null;
+            || data.DamagedOverlayTexture != null
+            || data.CapturedOverlayTexture != null;
 
         UILayout.SetCenteredImage(baseImage, data.BaseTexture, imageSlotRect);
         UILayout.SetCenteredImage(
@@ -56,6 +60,7 @@ public sealed class BattleResultItemView : MonoBehaviour
             imageSlotRect
         );
         UILayout.SetCenteredImage(damagedOverlayImage, data.DamagedOverlayTexture, imageSlotRect);
+        UILayout.SetCenteredImage(capturedOverlayImage, data.CapturedOverlayTexture, imageSlotRect);
         nameTextField.gameObject.SetActive(hasImage);
         emptyTextField.gameObject.SetActive(!hasImage);
         TextMeshProUGUI activeTextField = hasImage ? nameTextField : emptyTextField;
@@ -76,6 +81,8 @@ public sealed class BattleResultItemView : MonoBehaviour
             throw new MissingReferenceException($"{name}/WithdrawingOverlayImage is missing.");
         if (damagedOverlayImage == null)
             throw new MissingReferenceException($"{name}/DamagedOverlayImage is missing.");
+        if (capturedOverlayImage == null)
+            throw new MissingReferenceException($"{name}/CapturedOverlayImage is missing.");
         if (nameTextField == null)
             throw new MissingReferenceException($"{name}/NameTextField is missing.");
         if (emptyTextField == null)

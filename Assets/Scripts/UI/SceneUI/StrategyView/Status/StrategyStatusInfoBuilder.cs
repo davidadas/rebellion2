@@ -4,9 +4,11 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Projects game entities into status-window domain information.
@@ -219,6 +221,7 @@ internal sealed class StrategyStatusInfoBuilder
             building.GetDisplayName()
         );
         info.Rows.Add(new StrategyStatusRow("Location:", GetStatusLocationName(target, building)));
+        AddEtaDestinationRow(info, building);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(building)));
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", building.MaintenanceCost.ToString())
@@ -274,6 +277,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow("Attached:", GetStatusLocationName(target, starfighter))
         );
+        AddEtaDestinationRow(info, starfighter);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", starfighter.MaintenanceCost.ToString())
         );
@@ -331,6 +335,7 @@ internal sealed class StrategyStatusInfoBuilder
         );
         info.Rows.Add(new StrategyStatusRow("Attached:", GetStatusLocationName(target, regiment)));
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(regiment)));
+        AddEtaDestinationRow(info, regiment);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", regiment.MaintenanceCost.ToString())
         );
@@ -368,6 +373,7 @@ internal sealed class StrategyStatusInfoBuilder
             new StrategyStatusRow("Attached:", GetStatusLocationName(target, specialForces))
         );
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(specialForces)));
+        AddEtaDestinationRow(info, specialForces);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", specialForces.MaintenanceCost.ToString())
         );
@@ -415,6 +421,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(new StrategyStatusRow("Commanding:", GetOfficerCommandingText(officer)));
         info.Rows.Add(new StrategyStatusRow("Attached:", GetStatusLocationName(target, officer)));
         info.Rows.Add(new StrategyStatusRow("Status:", GetOfficerStatusText(officer)));
+        AddEtaDestinationRow(info, officer);
         info.Rows.Add(new StrategyStatusRow("Force Ranking:", GetForceRankText(officer)));
         info.Rows.Add(
             new StrategyStatusRow(
@@ -490,8 +497,9 @@ internal sealed class StrategyStatusInfoBuilder
             info.Images.Add(StatusWindowImage.FleetBannerDamaged);
         info.Images.Add(StatusWindowImage.FleetBanner);
         info.Rows.Add(
-            new StrategyStatusRow("Status:", fleet.Movement != null ? "Enroute" : "Awaiting Order")
+            new StrategyStatusRow("Status:", fleet.Movement != null ? "Enroute" : "Awaiting Orders")
         );
+        AddEtaDestinationRow(info, fleet);
         info.Rows.Add(
             new StrategyStatusRow("Admiral:", FindFleetOfficerByRank(fleet, OfficerRank.Admiral))
         );
@@ -566,6 +574,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(new StrategyStatusRow("Class:", capitalShip.GetDisplayName()));
         info.Rows.Add(new StrategyStatusRow("Fleet:", fleet?.GetDisplayName() ?? "None"));
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(capitalShip)));
+        AddEtaDestinationRow(info, capitalShip);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", capitalShip.MaintenanceCost.ToString())
         );
@@ -649,6 +658,7 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow("Target:", missionTarget?.GetDisplayName() ?? "Unknown")
         );
+        AddMissionEtaDestinationRow(info, mission);
         info.Rows.Add(new StrategyStatusRow("Team Size:", teamSize.ToString()));
         info.Rows.Add(
             new StrategyStatusRow("Decoys:", (mission.DecoyParticipants?.Count ?? 0).ToString())
@@ -683,9 +693,10 @@ internal sealed class StrategyStatusInfoBuilder
             CenterImage = true,
         };
 
-        if (HasEntityStatusImage(item))
+        MovementState transitMovement = GetTransitMovement(item);
+        if (HasEntityStatusImage(item, transitMovement))
             info.StatusImageItems.Add(item);
-        else if (item is IMovable movable && movable.Movement != null && item is not Fleet)
+        else if (transitMovement != null && item is not Fleet)
             info.Images.Add(StatusWindowImage.Enroute);
 
         info.ImageItems.Add(item);
@@ -701,8 +712,9 @@ internal sealed class StrategyStatusInfoBuilder
     /// Determines whether one entity supplies a state-specific status image.
     /// </summary>
     /// <param name="item">The scene node to inspect.</param>
+    /// <param name="transitMovement">The movement state physically carrying the entity.</param>
     /// <returns><see langword="true"/> when a state-specific image is available.</returns>
-    private static bool HasEntityStatusImage(ISceneNode item)
+    private static bool HasEntityStatusImage(ISceneNode item, MovementState transitMovement)
     {
         if (item == null)
             return false;
@@ -710,10 +722,7 @@ internal sealed class StrategyStatusInfoBuilder
         if (item is Officer { InjuryPoints: > 0 } && !string.IsNullOrEmpty(item.InjuredImagePath))
             return true;
 
-        if (
-            item is IMovable { Movement: not null }
-            && !string.IsNullOrEmpty(item.InTransitImagePath)
-        )
+        if (transitMovement != null && !string.IsNullOrEmpty(item.InTransitImagePath))
             return true;
 
         if (item is CapitalShip capitalShip && capitalShip.IsDamaged())
@@ -796,12 +805,12 @@ internal sealed class StrategyStatusInfoBuilder
         if (item.GetManufacturingStatus() == ManufacturingStatus.Building)
             return item is Regiment or SpecialForces ? "Training" : "Under Construction";
 
-        if (item is IMovable movable && movable.Movement != null)
+        if (item is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";
 
         return item.GetManufacturingStatus() == ManufacturingStatus.Complete
             ? item is Regiment or SpecialForces
-                ? "Awaiting Order"
+                ? "Awaiting Orders"
                 : "Active"
             : "Idle";
     }
@@ -824,7 +833,7 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed officer status.</returns>
     private static string GetOfficerStatusText(Officer officer)
     {
-        if (officer.Movement != null)
+        if (officer.GetTransitMovement() != null)
             return "Enroute";
         if (officer.IsCaptured)
             return "Captured";
@@ -832,7 +841,54 @@ internal sealed class StrategyStatusInfoBuilder
             return "Injured";
         if (officer.IsOnMission())
             return "On Mission";
-        return "Awaiting Order";
+        return "Awaiting Orders";
+    }
+
+    /// <summary>
+    /// Appends the arrival day for a moving status entity.
+    /// </summary>
+    /// <param name="info">The status information receiving the ETA row.</param>
+    /// <param name="item">The status entity whose effective movement should be displayed.</param>
+    private void AddEtaDestinationRow(StrategyStatusInfo info, ISceneNode item)
+    {
+        AddEtaDestinationRow(info, GetTransitMovement(item));
+    }
+
+    /// <summary>
+    /// Appends the arrival day represented by the first moving mission participant.
+    /// </summary>
+    /// <param name="info">The status information receiving the ETA row.</param>
+    /// <param name="mission">The mission whose participants should be inspected.</param>
+    private void AddMissionEtaDestinationRow(StrategyStatusInfo info, Mission mission)
+    {
+        IMissionParticipant participant = mission
+            ?.GetAllParticipants()
+            .FirstOrDefault(candidate => candidate?.Movement != null);
+        AddEtaDestinationRow(info, participant?.Movement);
+    }
+
+    /// <summary>
+    /// Appends an arrival-day row for an active movement state.
+    /// </summary>
+    /// <param name="info">The status information receiving the ETA row.</param>
+    /// <param name="movement">The active movement state.</param>
+    private void AddEtaDestinationRow(StrategyStatusInfo info, MovementState movement)
+    {
+        if (movement == null)
+            return;
+
+        long arrivalDay = (long)currentTick + Math.Max(movement.TicksRemaining(), 0);
+        info.Rows.Add(new StrategyStatusRow("ETA Destination:", $"Day {arrivalDay}"));
+    }
+
+    /// <summary>
+    /// Resolves the movement state that physically carries one status entity.
+    /// </summary>
+    /// <param name="item">The status entity to inspect.</param>
+    /// <returns>The active movement state, or null when the entity is stationary.</returns>
+    private static MovementState GetTransitMovement(ISceneNode item)
+    {
+        return item is IMovable movable ? movable.GetTransitMovement() : null;
     }
 
     /// <summary>

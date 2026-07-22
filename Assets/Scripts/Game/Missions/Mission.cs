@@ -540,12 +540,49 @@ namespace Rebellion.Game.Missions
         {
             foreach (IMissionParticipant participant in MainParticipants)
             {
-                double successThreshold = GetAgentProbability(participant, game);
-                double rolledValue = provider.NextDouble() * 100;
-                if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
+                if (RollParticipantSuccess(participant, provider, game))
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Rolls one main participant against this mission's success probability.
+        /// </summary>
+        /// <param name="participant">The participant attempting the mission.</param>
+        /// <param name="provider">The random number provider for the roll.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the participant succeeds.</returns>
+        internal bool RollParticipantSuccess(
+            IMissionParticipant participant,
+            IRandomNumberProvider provider,
+            GameRoot game
+        )
+        {
+            double successThreshold = GetAgentProbability(participant, game);
+            double rolledValue = provider.NextDouble() * 100;
+            return IsSuccessfulProbabilityRoll(rolledValue, successThreshold);
+        }
+
+        /// <summary>
+        /// Counts active resistance regiments used by uprising mission checks.
+        /// </summary>
+        /// <param name="planet">The mission planet.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The active resistance regiment count.</returns>
+        protected static int GetUprisingMissionTroopState(Planet planet, GameRoot game)
+        {
+            string regimentTypeId = game?.Config?.Uprising?.ResistanceRegimentTypeID;
+            if (planet == null || string.IsNullOrEmpty(regimentTypeId))
+                return 0;
+
+            return planet
+                .GetAllRegiments()
+                .Count(regiment =>
+                    regiment.TypeID == regimentTypeId
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
         }
 
         /// <summary>
@@ -714,10 +751,17 @@ namespace Rebellion.Game.Missions
         protected virtual void ImproveMissionParticipantRatings()
         {
             foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-            {
-                if (participant is Officer officer && participant.CanImproveMissionRating)
-                    officer.IncrementBaseRating(ParticipantRating);
-            }
+                ImproveMissionParticipantRating(participant);
+        }
+
+        /// <summary>
+        /// Improves an eligible officer's base rating for this mission.
+        /// </summary>
+        /// <param name="participant">The successful mission participant.</param>
+        internal void ImproveMissionParticipantRating(IMissionParticipant participant)
+        {
+            if (participant is Officer officer && participant.CanImproveMissionRating)
+                officer.IncrementBaseRating(ParticipantRating);
         }
 
         /// <summary>

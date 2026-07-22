@@ -104,6 +104,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             Assert.IsFalse(headquarters[1].gameObject.activeSelf);
             Assert.IsFalse(stars[0].raycastTarget);
+            Assert.Less(
+                stars[0].transform.GetSiblingIndex(),
+                headquarters[0].transform.GetSiblingIndex()
+            );
         }
 
         [Test]

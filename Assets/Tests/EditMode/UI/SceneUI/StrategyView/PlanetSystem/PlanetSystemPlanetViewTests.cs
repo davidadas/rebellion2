@@ -18,6 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private Texture2D _normalTexture;
         private Texture2D _planetTexture;
         private Texture2D _pressedTexture;
+        private Texture2D _uprisingTexture;
         private GameObject _rootObject;
         private PlanetSystemPlanetView _view;
 
@@ -30,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _normalTexture = new Texture2D(24, 24);
             _pressedTexture = new Texture2D(24, 24);
             _headquartersTexture = new Texture2D(16, 16);
+            _uprisingTexture = new Texture2D(167, 167);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
             Canvas.ForceUpdateCanvases();
         }
@@ -41,6 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             UnityEngine.Object.DestroyImmediate(_pressedTexture);
             UnityEngine.Object.DestroyImmediate(_normalTexture);
             UnityEngine.Object.DestroyImmediate(_planetTexture);
+            UnityEngine.Object.DestroyImmediate(_uprisingTexture);
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
@@ -71,6 +74,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.AreEqual(planetTemplate.width, planetBounds.width);
             Assert.AreEqual(planetTemplate.height, planetBounds.height);
             Assert.AreSame(_planetTexture, GetField<RawImage>("planetImage").texture);
+            RawImage uprisingImage = GetField<RawImage>("uprisingImage");
+            Assert.AreSame(_uprisingTexture, uprisingImage.texture);
+            Assert.AreEqual(planetTemplate, GetSourceRect(uprisingImage.transform));
+            Assert.IsFalse(uprisingImage.raycastTarget);
+            Assert.Less(
+                GetField<RawImage>("planetImage").transform.GetSiblingIndex(),
+                uprisingImage.transform.GetSiblingIndex()
+            );
+            Assert.Less(
+                uprisingImage.transform.GetSiblingIndex(),
+                GetField<RawImage>("missionImage").transform.GetSiblingIndex()
+            );
             Assert.AreSame(_pressedTexture, GetField<RawImage>("facilityImage").texture);
             Assert.IsFalse(GetField<RawImage>("defenseImage").gameObject.activeSelf);
             Assert.AreSame(_normalTexture, GetField<RawImage>("fleetImage").texture);
@@ -283,6 +298,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 7,
                 new Vector2Int(10, 20),
                 _planetTexture,
+                _uprisingTexture,
                 _normalTexture,
                 _pressedTexture,
                 null,

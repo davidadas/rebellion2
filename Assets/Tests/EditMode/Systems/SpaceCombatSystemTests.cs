@@ -10,6 +10,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Tests.Systems
 {
@@ -49,6 +50,8 @@ namespace Rebellion.Tests.Systems
                 {
                     AttackerFleetInstanceID = attacker.InstanceID,
                     DefenderFleetInstanceID = defender.InstanceID,
+                    AttackerOwnerInstanceID = attacker.OwnerInstanceID,
+                    DefenderOwnerInstanceID = defender.OwnerInstanceID,
                     PlanetInstanceID = planet?.InstanceID,
                 },
                 true
@@ -1111,6 +1114,139 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_PlayerFleetAgainstPlanetaryStarfighters_ReturnsPendingDecision()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            Starfighter defender = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 5,
+            };
+            game.AttachNode(defender, planet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+
+            Assert.AreSame(fleet, pending.AttackerFleet);
+            Assert.IsNull(pending.DefenderFleet);
+            Assert.AreEqual("empire", pending.AttackerOwnerInstanceID);
+            Assert.AreEqual("alliance", pending.DefenderOwnerInstanceID);
+            Assert.AreSame(planet, pending.Planet);
+            Assert.IsTrue(pending.AttackerCanRetreat);
+            Assert.IsFalse(pending.DefenderCanRetreat);
+        }
+
+        [Test]
+        public void ResolvePending_PlanetaryStarfighters_ParticipateInCombat()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            CreateFleet(game, "ef1", "empire", planet, 1, 1, 0, shieldRechargeRate: 0);
+            Starfighter defender = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 100,
+            };
+            game.AttachNode(defender, planet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
+            Assert.AreSame(planet, defender.GetParentOfType<Planet>());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>("ef1"));
+        }
+
+        [Test]
+        public void ResolvePending_CorellianCorvetteAgainstPlanetaryTie_DestroysTie()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = "FNALL1", PlayerID = "player1" });
+            game.Factions.Add(new Faction { InstanceID = "FNEMP1" });
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "FNEMP1");
+            Fleet fleet = new Fleet { InstanceID = "alliance-fleet", OwnerInstanceID = "FNALL1" };
+            game.AttachNode(fleet, planet);
+
+            CapitalShip corvette = ResourceManager
+                .GetEntityData<CapitalShip>()
+                .Single(ship => ship.GetTypeID() == "ALCS006")
+                .GetDeepCopy();
+            corvette.InstanceID = "corellian-corvette";
+            corvette.OwnerInstanceID = "FNALL1";
+            corvette.ManufacturingStatus = ManufacturingStatus.Complete;
+            corvette.Movement = null;
+            game.AttachNode(corvette, fleet);
+
+            Starfighter tie = ResourceManager
+                .GetEntityData<Starfighter>()
+                .Single(fighter => fighter.GetTypeID() == "SFEM01")
+                .GetDeepCopy();
+            tie.InstanceID = "planet-tie";
+            tie.OwnerInstanceID = "FNEMP1";
+            tie.ManufacturingStatus = ManufacturingStatus.Complete;
+            tie.Movement = null;
+            game.AttachNode(tie, planet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5));
+
+            manager.ProcessTick();
+            SpaceCombatResult result = manager
+                .ResolvePending(autoResolve: true)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(500, corvette.CurrentHullStrength);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>("planet-tie"));
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
+        }
+
+        [Test]
+        public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            Fleet fleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            Starfighter defender = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 5,
+            };
+            game.AttachNode(defender, planet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+
+            List<GameResult> results = manager.ProcessTick();
+
+            Assert.IsEmpty(results);
+            Assert.IsFalse(manager.HasPendingDecision);
+            Assert.IsFalse(fleet.IsInCombat);
+        }
+
+        [Test]
         public void ProcessTick_PlayerInvolvedEncounter_SetsRetreatAvailability()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1312,6 +1448,63 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void EvacuateStarfighters_SurvivingShipUnderConstruction_MovesToFriendlyPlanet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(faction);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            game.AttachNode(system, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, system);
+            game.AttachNode(friendlyPlanet, system);
+
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            CapitalShip unfinishedCarrier = new CapitalShip
+            {
+                InstanceID = "unfinished",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(unfinishedCarrier, fleet);
+            game.AttachNode(starfighter, destroyedShip);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+
+            CapitalShipDestruction.Resolve(game, movement, destroyedShip);
+
+            Assert.AreSame(friendlyPlanet, starfighter.GetParent());
+            Assert.IsFalse(unfinishedCarrier.Starfighters.Contains(starfighter));
+        }
+
+        [Test]
         public void EvacuateOfficers_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -1465,7 +1658,8 @@ namespace Rebellion.Tests.Systems
                     Torpedoes = 2,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 };
-                fleet.CapitalShips[0].Starfighters.Add(fighter);
+                fleet.CapitalShips[0].StarfighterCapacity = 1;
+                game.AttachNode(fighter, fleet.CapitalShips[0]);
             }
 
             return fleet;

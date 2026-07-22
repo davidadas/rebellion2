@@ -24,6 +24,45 @@ internal sealed class BattleResultTableProjector
     /// <returns>The operational and destroyed result columns.</returns>
     internal BattleResultTableRenderData Project(
         UIContext uiContext,
+        GameResult result,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        return result switch
+        {
+            SpaceCombatResult spaceCombat => ProjectSpaceCombat(
+                uiContext,
+                spaceCombat,
+                ownerInstanceId,
+                category
+            ),
+            BombardmentResult bombardment => ProjectBombardment(
+                uiContext,
+                bombardment,
+                ownerInstanceId,
+                category
+            ),
+            PlanetaryAssaultResult assault => ProjectPlanetaryAssault(
+                uiContext,
+                assault,
+                ownerInstanceId,
+                category
+            ),
+            _ => CreateEmptyTable(),
+        };
+    }
+
+    /// <summary>
+    /// Creates result-table presentation for one side of completed space combat.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="result">The completed space-combat result.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    private BattleResultTableRenderData ProjectSpaceCombat(
+        UIContext uiContext,
         SpaceCombatResult result,
         string ownerInstanceId,
         BattleResultCategory category
@@ -65,6 +104,239 @@ internal sealed class BattleResultTableProjector
             destroyed.Add(new BattleResultItemRenderData("No Casualties", null));
 
         return new BattleResultTableRenderData(operational, destroyed);
+    }
+
+    /// <summary>
+    /// Creates result-table presentation for one side of an orbital bombardment.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="result">The completed bombardment result.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    private BattleResultTableRenderData ProjectBombardment(
+        UIContext uiContext,
+        BombardmentResult result,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        bool attacker = ownerInstanceId == result?.AttackerOwnerInstanceID;
+        bool defender = ownerInstanceId == result?.DefenderOwnerInstanceID;
+        if (!attacker && !defender)
+            return CreateEmptyTable();
+
+        IEnumerable<ISceneNode> destroyed = attacker
+            ? result.DestroyedCapitalShips.Cast<ISceneNode>()
+            : result
+                .DestroyedBuildings.Cast<ISceneNode>()
+                .Concat(result.DestroyedRegiments)
+                .Concat(
+                    result
+                        .Events.OfType<OfficerKilledResult>()
+                        .Select(killed => killed.TargetOfficer)
+                );
+        IReadOnlyList<ShipDamageResult> shipDamage = attacker
+            ? result.AttackerShipDamage
+            : Array.Empty<ShipDamageResult>();
+        return ProjectPlanetaryUnits(
+            uiContext,
+            attacker ? result.AttackingUnits : result.DefendingUnits,
+            destroyed,
+            shipDamage,
+            category
+        );
+    }
+
+    /// <summary>
+    /// Creates result-table presentation for one side of a planetary assault.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="result">The completed planetary-assault result.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    private BattleResultTableRenderData ProjectPlanetaryAssault(
+        UIContext uiContext,
+        PlanetaryAssaultResult result,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        bool attacker = ownerInstanceId == result?.AttackerOwnerInstanceID;
+        bool defender = ownerInstanceId == result?.DefenderOwnerInstanceID;
+        if (!attacker && !defender)
+            return CreateEmptyTable();
+
+        IEnumerable<ISceneNode> destroyed = attacker
+            ? result.DestroyedAttackerRegiments.Cast<ISceneNode>()
+            : result
+                .DestroyedDefenderRegiments.Cast<ISceneNode>()
+                .Concat(result.CollateralDestroyedBuildings);
+        return ProjectPlanetaryUnits(
+            uiContext,
+            attacker ? result.AttackingUnits : result.DefendingUnits,
+            destroyed,
+            Array.Empty<ShipDamageResult>(),
+            category
+        );
+    }
+
+    /// <summary>
+    /// Creates category rows from the unit snapshots captured before planetary combat.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="participants">The units present before combat resolution.</param>
+    /// <param name="destroyedUnits">The units destroyed during combat resolution.</param>
+    /// <param name="shipDamage">Damage sustained by participating capital ships.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    private BattleResultTableRenderData ProjectPlanetaryUnits(
+        UIContext uiContext,
+        IEnumerable<ISceneNode> participants,
+        IEnumerable<ISceneNode> destroyedUnits,
+        IEnumerable<ShipDamageResult> shipDamage,
+        BattleResultCategory category
+    )
+    {
+        List<ISceneNode> destroyed = FilterCategory(destroyedUnits, category).ToList();
+        HashSet<ISceneNode> destroyedSet = destroyed.ToHashSet();
+        Dictionary<string, ShipDamageResult> damageByShipId = (
+            shipDamage ?? Enumerable.Empty<ShipDamageResult>()
+        )
+            .Where(damage => !string.IsNullOrEmpty(damage?.Ship?.GetInstanceID()))
+            .GroupBy(damage => damage.Ship.GetInstanceID())
+            .ToDictionary(group => group.Key, group => group.Last());
+        List<BattleResultItemRenderData> operational = new List<BattleResultItemRenderData>();
+        List<BattleResultItemRenderData> destroyedRows = new List<BattleResultItemRenderData>();
+        HashSet<string> addedOperational = new HashSet<string>();
+        HashSet<string> addedDestroyed = new HashSet<string>();
+
+        foreach (
+            ISceneNode participant in FilterCategory(participants, category)
+                .Where(IsActiveParticipant)
+        )
+        {
+            if (destroyedSet.Contains(participant))
+                continue;
+
+            damageByShipId.TryGetValue(
+                participant.GetInstanceID() ?? string.Empty,
+                out ShipDamageResult damage
+            );
+            BattleResultUnitState state =
+                damage != null && damage.HullAfter < damage.HullBefore
+                    ? BattleResultUnitState.Damaged
+                    : BattleResultUnitState.Operational;
+            AddItem(operational, participant, state, addedOperational, uiContext);
+        }
+
+        foreach (ISceneNode destroyedUnit in destroyed)
+        {
+            AddItem(
+                destroyedRows,
+                destroyedUnit,
+                BattleResultUnitState.Destroyed,
+                addedDestroyed,
+                uiContext
+            );
+        }
+
+        AddEmptyRows(operational, destroyedRows);
+        return new BattleResultTableRenderData(operational, destroyedRows);
+    }
+
+    /// <summary>
+    /// Filters scene nodes to one planetary-result category.
+    /// </summary>
+    /// <param name="nodes">The candidate scene nodes.</param>
+    /// <param name="category">The requested result category.</param>
+    /// <returns>The matching scene nodes.</returns>
+    private static IEnumerable<ISceneNode> FilterCategory(
+        IEnumerable<ISceneNode> nodes,
+        BattleResultCategory category
+    )
+    {
+        return (nodes ?? Enumerable.Empty<ISceneNode>()).Where(node =>
+            category switch
+            {
+                BattleResultCategory.CapitalShips => node is CapitalShip,
+                BattleResultCategory.Starfighters => node is Starfighter,
+                BattleResultCategory.Manufacturing => node is Building building
+                    && IsManufacturingFacility(building),
+                BattleResultCategory.Defense => node is Building building
+                    && IsDefenseFacility(building),
+                BattleResultCategory.Troops => node is Regiment,
+                BattleResultCategory.Personnel => node is Officer or SpecialForces,
+                _ => false,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Returns whether a captured participant was active when combat began.
+    /// </summary>
+    /// <param name="node">The captured scene node.</param>
+    /// <returns>True when the unit was complete and stationary.</returns>
+    private static bool IsActiveParticipant(ISceneNode node)
+    {
+        return node is not IManufacturable manufacturable
+            || (
+                manufacturable.ManufacturingStatus == ManufacturingStatus.Complete
+                && manufacturable.Movement == null
+            );
+    }
+
+    /// <summary>
+    /// Returns whether a building belongs to the manufacturing-facility result category.
+    /// </summary>
+    /// <param name="building">The building to classify.</param>
+    /// <returns>True for shipyards, training facilities, and construction yards.</returns>
+    private static bool IsManufacturingFacility(Building building)
+    {
+        return building.BuildingType
+            is BuildingType.Shipyard
+                or BuildingType.TrainingFacility
+                or BuildingType.ConstructionFacility;
+    }
+
+    /// <summary>
+    /// Returns whether a building belongs to the defensive-facility result category.
+    /// </summary>
+    /// <param name="building">The building to classify.</param>
+    /// <returns>True for planetary shields and weapon facilities.</returns>
+    private static bool IsDefenseFacility(Building building)
+    {
+        return building.BuildingType is BuildingType.Defense or BuildingType.Weapon
+            || building.DefenseFacilityClass != DefenseFacilityClass.None;
+    }
+
+    /// <summary>
+    /// Adds the standard empty-state row to any empty result column.
+    /// </summary>
+    /// <param name="operational">The operational result column.</param>
+    /// <param name="destroyed">The destroyed result column.</param>
+    private static void AddEmptyRows(
+        List<BattleResultItemRenderData> operational,
+        List<BattleResultItemRenderData> destroyed
+    )
+    {
+        if (operational.Count == 0)
+            operational.Add(new BattleResultItemRenderData("None", null));
+        if (destroyed.Count == 0)
+            destroyed.Add(new BattleResultItemRenderData("No Casualties", null));
+    }
+
+    /// <summary>
+    /// Creates an empty result table using the established empty-state labels.
+    /// </summary>
+    /// <returns>The empty result table.</returns>
+    private static BattleResultTableRenderData CreateEmptyTable()
+    {
+        return new BattleResultTableRenderData(
+            new[] { new BattleResultItemRenderData("None", null) },
+            new[] { new BattleResultItemRenderData("No Casualties", null) }
+        );
     }
 
     /// <summary>
@@ -149,8 +421,19 @@ internal sealed class BattleResultTableProjector
         );
         HashSet<string> addedOperational = new HashSet<string>();
 
-        IEnumerable<Starfighter> currentFighters =
-            fleet?.GetStarfighters() ?? Enumerable.Empty<Starfighter>();
+        IEnumerable<Starfighter> currentFighters = (
+            fleet?.GetStarfighters() ?? Enumerable.Empty<Starfighter>()
+        ).Concat(
+            result
+                ?.Planet?.GetAllStarfighters()
+                .Where(fighter =>
+                    fighter.GetOwnerInstanceID() == ownerInstanceId
+                    && fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && fighter.Movement == null
+                    && fighter.CurrentSquadronSize > 0
+                )
+                ?? Enumerable.Empty<Starfighter>()
+        );
         foreach (Starfighter fighter in currentFighters)
         {
             lossByFighterId.TryGetValue(fighter.GetInstanceID(), out FighterLossResult loss);
@@ -300,7 +583,8 @@ internal sealed class BattleResultTableProjector
                 node.GetDisplayName(),
                 GetBaseTexture(uiContext, node),
                 GetWithdrawingOverlayTexture(uiContext, node, state),
-                GetDamagedOverlayTexture(uiContext, node, state)
+                GetDamagedOverlayTexture(uiContext, node, state),
+                uiContext?.GetEntityCapturedOverlayTexture(node)
             )
         );
     }

@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 {
@@ -152,6 +153,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
+        public void CanMoveItems_ItemCarriedByMovingFleet_ReturnsFalse()
+        {
+            Officer officer = CreateOfficer("player");
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            officer.SetParent(ship);
+
+            bool canMove = StrategyContextMenuAvailability.CanMoveItems(
+                new ISceneNode[] { officer },
+                "player"
+            );
+
+            Assert.IsFalse(canMove);
+        }
+
+        [Test]
         public void CanMoveItems_CapturedOfficer_RequiresPlayerEscort()
         {
             Officer captive = CreateOfficer("enemy");
@@ -218,6 +236,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
 
             Assert.IsTrue(canCreate);
+        }
+
+        [Test]
+        public void CanCreateMission_OfficerCarriedByMovingFleet_ReturnsFalse()
+        {
+            Officer officer = CreateOfficer("player");
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            officer.SetParent(ship);
+
+            bool canCreate = StrategyContextMenuAvailability.CanCreateMission(
+                new ISceneNode[] { officer },
+                "player"
+            );
+
+            Assert.IsFalse(canCreate);
         }
 
         [Test]

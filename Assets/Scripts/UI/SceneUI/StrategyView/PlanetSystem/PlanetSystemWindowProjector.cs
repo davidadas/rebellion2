@@ -105,12 +105,32 @@ internal sealed class PlanetSystemWindowProjector
             GetMissionOwnerFactionIds(planet),
             ownerFactionId
         );
+        bool showUprising = !unexplored && planet?.IsInUprising == true;
         int popularSupport = GetPlayerSupport(uiContext, planet);
+        Texture2D fleetTexture = string.IsNullOrEmpty(fleetFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, false);
+        Texture2D fleetPressedTexture = string.IsNullOrEmpty(fleetFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, true);
+        Texture2D missionTexture = string.IsNullOrEmpty(missionFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, false);
+        Texture2D missionPressedTexture = string.IsNullOrEmpty(missionFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true);
 
         return new PlanetSystemPlanetRenderData(
             planetIndex,
             CreatePlanetOffset(system, planet),
             uiContext.GetPlanetTexture(planet, strategyPlanet?.PlanetIconPath),
+            showUprising
+                ? uiContext.GetTexture(
+                    uiContext
+                        .GetPlayerFactionTheme()
+                        ?.PlanetOverlayTheme?.PlanetSystemUprisingImagePath
+                )
+                : null,
             unexplored || !HasFacilities(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Facility, false),
@@ -123,10 +143,10 @@ internal sealed class PlanetSystemWindowProjector
             unexplored || !HasDefenses(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Defense, true),
-            GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, false),
-            GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, true),
-            GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, false),
-            GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true),
+            fleetTexture,
+            fleetPressedTexture,
+            missionTexture,
+            missionPressedTexture,
             !unexplored && planet?.IsHeadquarters == true
                 ? uiContext.GetTexture(
                     uiContext
@@ -179,9 +199,6 @@ internal sealed class PlanetSystemWindowProjector
         bool pressed
     )
     {
-        if (string.IsNullOrEmpty(factionId))
-            return null;
-
         PlanetOverlayIcons icons = uiContext
             .GetTheme(factionId)
             ?.PlanetOverlayTheme?.PlanetOverlayIcons;

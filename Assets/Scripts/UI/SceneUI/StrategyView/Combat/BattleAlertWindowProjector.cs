@@ -36,7 +36,7 @@ internal sealed class BattleAlertWindowProjector
         BattleResultPanel resultPanel,
         BattleResultCategory resultCategory,
         PendingCombatResult pending,
-        SpaceCombatResult result,
+        GameResult result,
         string playerFactionId,
         int x,
         int y,
@@ -150,7 +150,7 @@ internal sealed class BattleAlertWindowProjector
     private BattleAlertWindowRenderData ProjectResult(
         BattleResultPanel panel,
         BattleResultCategory category,
-        SpaceCombatResult result,
+        GameResult result,
         string playerFactionId,
         int x,
         int y,
@@ -161,6 +161,7 @@ internal sealed class BattleAlertWindowProjector
     {
         bool detail = panel is BattleResultPanel.FirstForces or BattleResultPanel.SecondForces;
         bool direct = panel == BattleResultPanel.Direct;
+        bool planetaryResult = result is BombardmentResult or PlanetaryAssaultResult;
         string ownerInstanceId = GetResultOwnerId(theme, panel);
         BattleResultTableRenderData table = detail
             ? resultTableProjector.Project(uiContext, result, ownerInstanceId, category)
@@ -168,7 +169,7 @@ internal sealed class BattleAlertWindowProjector
         BattleAlertResultRenderData resultData = new BattleAlertResultRenderData(
             panel,
             category,
-            $"Battle at {GetPlanetName(result.Planet)}",
+            GetResultTitle(result),
             direct
                     ? "Select one of the following buttons to close this display and go directly to..."
                 : panel == BattleResultPanel.Summary
@@ -180,8 +181,9 @@ internal sealed class BattleAlertWindowProjector
             detail ? GetCategoryTitle(category) : string.Empty,
             detail ? GetColumnHeaders(category) : Array.Empty<string>(),
             detail
-                ? CreateCategoryButtons(uiContext, theme, category)
+                ? CreateCategoryButtons(uiContext, theme, result, category)
                 : Array.Empty<BattleResultCategoryRenderData>(),
+            planetaryResult,
             direct
                 ? CreateDirectButtons(uiContext, theme)
                 : Array.Empty<BattleAlertButtonRenderData>(),
@@ -192,7 +194,10 @@ internal sealed class BattleAlertWindowProjector
             BattleAlertWindowMode.Result,
             x,
             y,
-            GetTexture(uiContext, GetResultBackgroundPath(theme, result, panel, category)),
+            GetTexture(
+                uiContext,
+                GetResultBackgroundPath(uiContext, theme, result, panel, category)
+            ),
             GetTexture(uiContext, theme?.ResultFrameImagePath ?? theme?.FrameImagePath),
             titleColor,
             CreateResultViewButtons(uiContext, theme, panel),
@@ -325,28 +330,29 @@ internal sealed class BattleAlertWindowProjector
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed combat result.</param>
     /// <param name="activeCategory">The controller-owned result category.</param>
     /// <returns>The category controls in displayed order.</returns>
     private static IReadOnlyList<BattleResultCategoryRenderData> CreateCategoryButtons(
         UIContext uiContext,
         BattleAlertWindowTheme theme,
+        GameResult result,
         BattleResultCategory activeCategory
     )
     {
+        IReadOnlyList<BattleResultCategory> resultCategories =
+            BattleResultCategoryCatalog.GetForResult(result);
         List<BattleResultCategoryRenderData> categories = new List<BattleResultCategoryRenderData>(
-            BattleResultCategoryCatalog.Ordered.Count
+            resultCategories.Count
         );
-        foreach (BattleResultCategory category in BattleResultCategoryCatalog.Ordered)
+        foreach (BattleResultCategory category in resultCategories)
         {
+            WindowButtonImageTheme buttonTheme = GetCategoryButtonTheme(theme, category);
+            SourceRectLayout layout = GetCategoryButtonLayout(theme, buttonTheme, result, category);
             categories.Add(
                 new BattleResultCategoryRenderData(
                     category,
-                    CreateButton(
-                        uiContext,
-                        GetCategoryButtonTheme(theme, category),
-                        true,
-                        activeCategory == category
-                    )
+                    CreateButton(uiContext, buttonTheme, true, activeCategory == category, layout)
                 )
             );
         }
@@ -379,12 +385,14 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="theme">The button theme.</param>
     /// <param name="enabled">Whether the button accepts input.</param>
     /// <param name="selected">Whether the selected-state texture is displayed.</param>
+    /// <param name="sourceLayout">The optional context-specific source layout.</param>
     /// <returns>The immutable button presentation.</returns>
     private static BattleAlertButtonRenderData CreateButton(
         UIContext uiContext,
         WindowButtonImageTheme theme,
         bool enabled,
-        bool selected
+        bool selected,
+        SourceRectLayout sourceLayout = null
     )
     {
         string normalPath = enabled
@@ -395,8 +403,19 @@ internal sealed class BattleAlertWindowProjector
         return new BattleAlertButtonRenderData(
             enabled,
             GetTexture(uiContext, normalPath),
-            enabled ? GetTexture(uiContext, theme?.DownImagePath) : null
+            enabled ? GetTexture(uiContext, theme?.DownImagePath) : null,
+            GetSourceBounds(sourceLayout ?? theme?.SourceLayout)
         );
+    }
+
+    /// <summary>
+    /// Converts an optional configured source layout to immutable render bounds.
+    /// </summary>
+    /// <param name="layout">The configured source layout.</param>
+    /// <returns>The source bounds, or null when no layout is configured.</returns>
+    private static RectInt? GetSourceBounds(SourceRectLayout layout)
+    {
+        return layout == null ? null : new RectInt(layout.X, layout.Y, layout.Width, layout.Height);
     }
 
     /// <summary>
@@ -459,6 +478,37 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (Fleet fleet in pending.Planet.GetFleets())
             AddFleet(rows, fleet, ownerInstanceId, addedFleetIds, uiContext);
+
+        AddPlanetStarfighterRows(rows, pending.Planet, ownerInstanceId, uiContext);
+    }
+
+    /// <summary>
+    /// Adds active planetary starfighters owned by one combat side to pending rows.
+    /// </summary>
+    /// <param name="rows">The destination row collection.</param>
+    /// <param name="planet">The battle planet.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    private static void AddPlanetStarfighterRows(
+        List<BattleAlertRowRenderData> rows,
+        Planet planet,
+        string ownerInstanceId,
+        UIContext uiContext
+    )
+    {
+        foreach (
+            Starfighter fighter in planet.Starfighters.Where(fighter =>
+                fighter.GetOwnerInstanceID() == ownerInstanceId && IsActiveStarfighter(fighter)
+            )
+        )
+        {
+            rows.Add(
+                new BattleAlertRowRenderData(
+                    fighter.GetDisplayName(),
+                    uiContext?.GetEntityTexture(fighter, true)
+                )
+            );
+        }
     }
 
     /// <summary>
@@ -505,7 +555,7 @@ internal sealed class BattleAlertWindowProjector
 
         foreach (ISceneNode child in planet.GetChildren())
         {
-            if (child is Fleet)
+            if (child is Fleet || child is Starfighter fighter && IsActiveStarfighter(fighter))
                 continue;
 
             rows.Add(
@@ -516,6 +566,18 @@ internal sealed class BattleAlertWindowProjector
             );
             AddDescendantRows(rows, child, uiContext);
         }
+    }
+
+    /// <summary>
+    /// Returns whether a planetary starfighter can participate in a pending battle.
+    /// </summary>
+    /// <param name="fighter">The starfighter to inspect.</param>
+    /// <returns>True when the squadron is complete, stationary, and has surviving fighters.</returns>
+    private static bool IsActiveStarfighter(Starfighter fighter)
+    {
+        return fighter.ManufacturingStatus == ManufacturingStatus.Complete
+            && fighter.Movement == null
+            && fighter.CurrentSquadronSize > 0;
     }
 
     /// <summary>
@@ -599,8 +661,24 @@ internal sealed class BattleAlertWindowProjector
         PendingCombatResult pending
     )
     {
-        string attackerSide = GetFleetLabel(uiContext, theme, pending.AttackerFleet, "Attacking");
-        string defenderSide = GetFleetLabel(uiContext, theme, pending.DefenderFleet, "Defending");
+        string attackerSide = GetOwnerLabel(
+            uiContext,
+            theme,
+            BattleResultPresentation.FirstNonBlank(
+                pending.AttackerOwnerInstanceID,
+                pending.AttackerFleet?.GetOwnerInstanceID()
+            ),
+            "Attacking"
+        );
+        string defenderSide = GetOwnerLabel(
+            uiContext,
+            theme,
+            BattleResultPresentation.FirstNonBlank(
+                pending.DefenderOwnerInstanceID,
+                pending.DefenderFleet?.GetOwnerInstanceID()
+            ),
+            "Defending"
+        );
         return $"The {attackerSide} fleet has entered the {GetPlanetName(pending.Planet)} system. {defenderSide} forces have been detected on an intercept course.";
     }
 
@@ -613,6 +691,35 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="playerFactionId">The current player faction identifier.</param>
     /// <returns>The displayed completed-result summary.</returns>
     private static string GetResultSummary(
+        UIContext uiContext,
+        BattleAlertWindowTheme theme,
+        GameResult result,
+        string playerFactionId
+    )
+    {
+        return result switch
+        {
+            SpaceCombatResult spaceCombat => GetSpaceResultSummary(
+                uiContext,
+                theme,
+                spaceCombat,
+                playerFactionId
+            ),
+            BombardmentResult bombardment => GetBombardmentSummary(uiContext, theme, bombardment),
+            PlanetaryAssaultResult assault => GetPlanetaryAssaultSummary(uiContext, theme, assault),
+            _ => string.Empty,
+        };
+    }
+
+    /// <summary>
+    /// Builds the completed space-combat summary text.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed space-combat result.</param>
+    /// <param name="playerFactionId">The current player faction identifier.</param>
+    /// <returns>The displayed completed-result summary.</returns>
+    private static string GetSpaceResultSummary(
         UIContext uiContext,
         BattleAlertWindowTheme theme,
         SpaceCombatResult result,
@@ -652,16 +759,105 @@ internal sealed class BattleAlertWindowProjector
     }
 
     /// <summary>
+    /// Builds the completed orbital-bombardment summary text.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed bombardment result.</param>
+    /// <returns>The displayed bombardment summary.</returns>
+    private static string GetBombardmentSummary(
+        UIContext uiContext,
+        BattleAlertWindowTheme theme,
+        BombardmentResult result
+    )
+    {
+        string attacker = GetOwnerLabel(
+            uiContext,
+            theme,
+            result?.AttackerOwnerInstanceID,
+            "Attacking"
+        );
+        string planet = GetPlanetName(result?.Planet);
+        if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
+            return $"{attacker} ships have conducted an orbital strike on the non-aligned system {planet}.";
+
+        string defender = GetOwnerLabel(
+            uiContext,
+            theme,
+            result.DefenderOwnerInstanceID,
+            "defending"
+        );
+        return $"{attacker} ships have conducted an orbital strike on the {defender} system of {planet}.";
+    }
+
+    /// <summary>
+    /// Builds the completed planetary-assault summary text.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed planetary-assault result.</param>
+    /// <returns>The displayed planetary-assault summary.</returns>
+    private static string GetPlanetaryAssaultSummary(
+        UIContext uiContext,
+        BattleAlertWindowTheme theme,
+        PlanetaryAssaultResult result
+    )
+    {
+        string attacker = GetOwnerLabel(
+            uiContext,
+            theme,
+            result?.AttackerOwnerInstanceID,
+            "Attacking"
+        );
+        string planet = GetPlanetName(result?.Planet);
+        if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
+        {
+            return result?.Success == true
+                ? $"{attacker} troops have seized control of the neutral system {planet}."
+                : $"The neutral system {planet} has repulsed an attack by {attacker} troops.";
+        }
+
+        string defender = GetOwnerLabel(
+            uiContext,
+            theme,
+            result.DefenderOwnerInstanceID,
+            "defending"
+        );
+        return result.Success
+            ? $"{attacker} troops have taken control of the {defender} system {planet}."
+            : $"{defender} Troops have defended {planet} from an {attacker} assault.";
+    }
+
+    /// <summary>
+    /// Returns the source title for a supported completed combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    /// <returns>The displayed result title.</returns>
+    private static string GetResultTitle(GameResult result)
+    {
+        return result switch
+        {
+            BombardmentResult bombardment =>
+                $"Orbital bombardment of {GetPlanetName(bombardment.Planet)}",
+            PlanetaryAssaultResult assault => $"Assault on {GetPlanetName(assault.Planet)}",
+            SpaceCombatResult spaceCombat => $"Battle at {GetPlanetName(spaceCombat.Planet)}",
+            _ => "Battle Result",
+        };
+    }
+
+    /// <summary>
     /// Returns the completed-result background path for the selected panel and category.
     /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="result">The completed combat result.</param>
     /// <param name="panel">The selected result panel.</param>
     /// <param name="category">The selected result category.</param>
     /// <returns>The selected result background path.</returns>
     private static string GetResultBackgroundPath(
+        UIContext uiContext,
         BattleAlertWindowTheme theme,
-        SpaceCombatResult result,
+        GameResult result,
         BattleResultPanel panel,
         BattleResultCategory category
     )
@@ -674,8 +870,89 @@ internal sealed class BattleAlertWindowProjector
                 theme?.ResultDirectBackgroundImagePath,
                 theme?.ResultSummaryImagePath
             ),
-            _ => BattleResultPresentation.GetSummaryImagePath(theme, result),
+            _ => GetResultSummaryImagePath(uiContext, theme, result),
         };
+    }
+
+    /// <summary>
+    /// Returns the summary artwork for a supported completed combat result.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed combat result.</param>
+    /// <returns>The selected summary artwork path.</returns>
+    private static string GetResultSummaryImagePath(
+        UIContext uiContext,
+        BattleAlertWindowTheme theme,
+        GameResult result
+    )
+    {
+        return result switch
+        {
+            SpaceCombatResult spaceCombat => BattleResultPresentation.GetSummaryImagePath(
+                theme,
+                spaceCombat
+            ),
+            BombardmentResult bombardment => GetBombardmentSummaryImagePath(theme, bombardment),
+            PlanetaryAssaultResult assault => BattleResultPresentation.FirstNonBlank(
+                uiContext
+                    ?.GetTheme(assault.AttackerOwnerInstanceID)
+                    ?.StrategyWindows?.BattleAlert?.PlanetaryAssaultImagePath,
+                theme?.PlanetaryAssaultImagePath,
+                theme?.ResultSummaryImagePath
+            ),
+            _ => theme?.ResultSummaryImagePath,
+        };
+    }
+
+    /// <summary>
+    /// Returns bombardment summary artwork according to the sides that sustained losses.
+    /// </summary>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="result">The completed bombardment result.</param>
+    /// <returns>The selected bombardment artwork path.</returns>
+    private static string GetBombardmentSummaryImagePath(
+        BattleAlertWindowTheme theme,
+        BombardmentResult result
+    )
+    {
+        if (HasBombardmentAttackerLosses(result))
+            return theme?.BombardmentAttackerLossesImagePath;
+        if (HasBombardmentTargetLosses(result))
+            return theme?.BombardmentTargetLossesImagePath;
+        return theme?.BombardmentNoLossesImagePath;
+    }
+
+    /// <summary>
+    /// Returns whether the attacking fleet sustained bombardment-defense losses.
+    /// </summary>
+    /// <param name="result">The completed bombardment result.</param>
+    /// <returns>True when an attacking capital ship was damaged or destroyed.</returns>
+    private static bool HasBombardmentAttackerLosses(BombardmentResult result)
+    {
+        return result?.DestroyedCapitalShips?.Count > 0
+            || result?.AttackerShipDamage?.Any(damage =>
+                damage != null && damage.HullAfter < damage.HullBefore
+            ) == true;
+    }
+
+    /// <summary>
+    /// Returns whether the bombardment damaged the target system.
+    /// </summary>
+    /// <param name="result">The completed bombardment result.</param>
+    /// <returns>True when any target asset or system value was destroyed.</returns>
+    private static bool HasBombardmentTargetLosses(BombardmentResult result)
+    {
+        return result != null
+            && (
+                result.PlanetDestroyed
+                || result.HeadquartersDestroyed
+                || result.EnergyCapacityDamage > 0
+                || result.AllocatedEnergyDamage > 0
+                || result.DestroyedRegiments.Count > 0
+                || result.DestroyedBuildings.Count > 0
+                || result.Events.OfType<OfficerKilledResult>().Any()
+            );
     }
 
     /// <summary>
@@ -736,6 +1013,8 @@ internal sealed class BattleAlertWindowProjector
         return category switch
         {
             BattleResultCategory.Starfighters => "Starfighters",
+            BattleResultCategory.Manufacturing => "Manufacturing Facilities",
+            BattleResultCategory.Defense => "Defensive Facilities",
             BattleResultCategory.Troops => "Troops",
             BattleResultCategory.Personnel => "Personnel",
             _ => "Capital Ships",
@@ -768,9 +1047,54 @@ internal sealed class BattleAlertWindowProjector
         return category switch
         {
             BattleResultCategory.Starfighters => theme?.ResultStarfightersButton,
+            BattleResultCategory.Manufacturing => theme?.ResultManufacturingButton,
+            BattleResultCategory.Defense => theme?.ResultDefenseButton,
             BattleResultCategory.Troops => theme?.ResultTroopsButton,
             BattleResultCategory.Personnel => theme?.ResultPersonnelButton,
             _ => theme?.ResultCapitalShipsButton,
+        };
+    }
+
+    /// <summary>
+    /// Returns the configured source-space layout for one result category button.
+    /// </summary>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="buttonTheme">The selected category button theme.</param>
+    /// <param name="result">The completed combat result.</param>
+    /// <param name="category">The requested result category.</param>
+    /// <returns>The category button layout.</returns>
+    private static SourceRectLayout GetCategoryButtonLayout(
+        BattleAlertWindowTheme theme,
+        WindowButtonImageTheme buttonTheme,
+        GameResult result,
+        BattleResultCategory category
+    )
+    {
+        return result is BombardmentResult or PlanetaryAssaultResult
+            ? GetPlanetaryCategoryLayout(theme, category)
+            : buttonTheme?.SourceLayout;
+    }
+
+    /// <summary>
+    /// Returns the planetary-result layout for one category.
+    /// </summary>
+    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="category">The requested result category.</param>
+    /// <returns>The configured contextual layout.</returns>
+    private static SourceRectLayout GetPlanetaryCategoryLayout(
+        BattleAlertWindowTheme theme,
+        BattleResultCategory category
+    )
+    {
+        return category switch
+        {
+            BattleResultCategory.CapitalShips => theme?.PlanetaryResultCapitalShipsLayout,
+            BattleResultCategory.Starfighters => theme?.PlanetaryResultStarfightersLayout,
+            BattleResultCategory.Manufacturing => theme?.PlanetaryResultManufacturingLayout,
+            BattleResultCategory.Defense => theme?.PlanetaryResultDefenseLayout,
+            BattleResultCategory.Troops => theme?.PlanetaryResultTroopsLayout,
+            BattleResultCategory.Personnel => theme?.PlanetaryResultPersonnelLayout,
+            _ => null,
         };
     }
 
@@ -797,29 +1121,36 @@ internal sealed class BattleAlertWindowProjector
     {
         if (pending == null || string.IsNullOrEmpty(playerFactionId))
             return false;
-        if (pending.AttackerFleet?.GetOwnerInstanceID() == playerFactionId)
+        string attackerOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
+            pending.AttackerOwnerInstanceID,
+            pending.AttackerFleet?.GetOwnerInstanceID()
+        );
+        string defenderOwnerInstanceId = BattleResultPresentation.FirstNonBlank(
+            pending.DefenderOwnerInstanceID,
+            pending.DefenderFleet?.GetOwnerInstanceID()
+        );
+        if (attackerOwnerInstanceId == playerFactionId)
             return pending.AttackerCanRetreat;
-        if (pending.DefenderFleet?.GetOwnerInstanceID() == playerFactionId)
+        if (defenderOwnerInstanceId == playerFactionId)
             return pending.DefenderCanRetreat;
         return false;
     }
 
     /// <summary>
-    /// Returns a themed or faction-derived label for a fleet.
+    /// Returns a themed or faction-derived label for an owner.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="fleet">The represented fleet.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
     /// <param name="fallback">The fallback label.</param>
-    /// <returns>The displayed fleet-side label.</returns>
-    private static string GetFleetLabel(
+    /// <returns>The displayed side label.</returns>
+    private static string GetOwnerLabel(
         UIContext uiContext,
         BattleAlertWindowTheme theme,
-        Fleet fleet,
+        string ownerInstanceId,
         string fallback
     )
     {
-        string ownerInstanceId = fleet?.GetOwnerInstanceID();
         if (!string.IsNullOrEmpty(ownerInstanceId))
         {
             if (ownerInstanceId == theme?.FirstForcesOwnerInstanceID)
@@ -852,26 +1183,19 @@ internal sealed class BattleAlertWindowProjector
         string fallback
     )
     {
-        return GetFleetLabel(uiContext, theme, GetFleetForSide(result, side), fallback);
-    }
-
-    /// <summary>
-    /// Returns a fleet for one combat side.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="side">The requested combat side.</param>
-    /// <returns>The fleet represented by that side.</returns>
-    private static Fleet GetFleetForSide(SpaceCombatResult result, CombatSide side)
-    {
-        if (result == null)
-            return null;
-
-        return side switch
+        string ownerInstanceId = side switch
         {
-            CombatSide.Attacker => result.AttackerFleet,
-            CombatSide.Defender => result.DefenderFleet,
+            CombatSide.Attacker => BattleResultPresentation.FirstNonBlank(
+                result?.AttackerOwnerInstanceID,
+                result?.AttackerFleet?.GetOwnerInstanceID()
+            ),
+            CombatSide.Defender => BattleResultPresentation.FirstNonBlank(
+                result?.DefenderOwnerInstanceID,
+                result?.DefenderFleet?.GetOwnerInstanceID()
+            ),
             _ => null,
         };
+        return GetOwnerLabel(uiContext, theme, ownerInstanceId, fallback);
     }
 
     /// <summary>

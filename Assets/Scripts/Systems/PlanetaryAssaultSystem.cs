@@ -58,6 +58,10 @@ namespace Rebellion.Systems
             string attackerId = attackingFleets[0].GetOwnerInstanceID();
             string defenderId = defendingPlanet.GetOwnerInstanceID();
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
+            result.AttackerOwnerInstanceID = attackerId;
+            result.DefenderOwnerInstanceID = defenderId;
+            result.AttackingUnits.AddRange(SnapshotFleetUnits(attackingFleets));
+            result.DefendingUnits.AddRange(SnapshotPlanetUnits(defendingPlanet, defenderId));
 
             if (IsBlockedByShields(defendingPlanet))
             {
@@ -102,23 +106,70 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Determines whether the supplied fleets can execute a planetary assault.
+        /// </summary>
+        /// <param name="fleets">Fleets attempting the assault.</param>
+        /// <param name="planet">Planet being assaulted.</param>
+        /// <returns>True when the fleets contain ready troops and shields do not block them.</returns>
+        public bool CanExecute(IReadOnlyList<Fleet> fleets, Planet planet)
+        {
+            return CanAssault(fleets, planet)
+                && !IsBlockedByShields(planet)
+                && SnapshotAttackers(fleets).Count > 0;
+        }
+
+        /// <summary>
         /// Determines whether the supplied fleets can begin an assault at the planet.
         /// </summary>
         /// <param name="fleets">Fleets attempting the assault.</param>
         /// <param name="planet">Planet being assaulted.</param>
         /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
-        private static bool CanAssault(List<Fleet> fleets, Planet planet)
+        private static bool CanAssault(IReadOnlyList<Fleet> fleets, Planet planet)
         {
-            if (planet == null || fleets?.Any() != true || fleets.Any(fleet => fleet == null))
+            if (
+                planet?.IsDestroyed != false
+                || fleets?.Any() != true
+                || fleets.Any(fleet => fleet == null)
+            )
                 return false;
 
             string ownerId = fleets[0].GetOwnerInstanceID();
             return !string.IsNullOrEmpty(ownerId)
+                && planet?.GetOwnerInstanceID() != ownerId
                 && fleets.All(fleet =>
                     fleet.GetOwnerInstanceID() == ownerId
                     && fleet.Movement == null
+                    && !fleet.IsInCombat
                     && fleet.GetParent() == planet
                 );
+        }
+
+        /// <summary>
+        /// Captures the units carried by the attacking fleets before combat mutates the scene graph.
+        /// </summary>
+        /// <param name="fleets">The attacking fleets.</param>
+        /// <returns>The attacking unit snapshot.</returns>
+        private static List<ISceneNode> SnapshotFleetUnits(IEnumerable<Fleet> fleets)
+        {
+            return fleets
+                .Where(fleet => fleet != null)
+                .SelectMany(fleet => fleet.GetChildren<ISceneNode>(_ => true))
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>
+        /// Captures the target owner's units before combat mutates the scene graph.
+        /// </summary>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="ownerInstanceId">The target owner identifier.</param>
+        /// <returns>The defending unit snapshot.</returns>
+        private static List<ISceneNode> SnapshotPlanetUnits(Planet planet, string ownerInstanceId)
+        {
+            return planet
+                .GetChildren<ISceneNode>(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
+                .Distinct()
+                .ToList();
         }
 
         /// <summary>

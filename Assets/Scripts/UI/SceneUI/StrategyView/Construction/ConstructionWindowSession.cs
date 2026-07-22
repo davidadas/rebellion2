@@ -153,6 +153,15 @@ internal sealed class ConstructionWindowSession
     }
 
     /// <summary>
+    /// Sets the build count within the supported non-empty byte range.
+    /// </summary>
+    /// <param name="buildCount">The requested build count.</param>
+    public void SetBuildCount(int buildCount)
+    {
+        BuildCount = Math.Max(_minimumBuildCount, Math.Min(byte.MaxValue, buildCount));
+    }
+
+    /// <summary>
     /// Toggles the build-item dropdown.
     /// </summary>
     public void ToggleDropdown()

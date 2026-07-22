@@ -4,6 +4,8 @@ using Rebellion.Game;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Describes one immutable command presented by a strategy context menu.
@@ -90,6 +92,10 @@ public static class StrategyContextMenuActions
     public const int DestroySystem = 1021;
     public const int Rename = 1022;
     public const int CreateFleet = 1023;
+    public const int BombardMilitaryFacilities = 1024;
+    public const int BombardCivilianFacilities = 1025;
+    public const int GeneralBombardment = 1026;
+    public const int PlanetaryAssault = 1027;
     public const int GameSpeedPause = 9000;
     public const int GameSpeedVerySlow = 9001;
     public const int GameSpeedSlow = 9002;
@@ -143,6 +149,78 @@ public static class StrategyContextMenuActions
                 return false;
         }
     }
+
+    /// <summary>
+    /// Tries to resolve a context-menu action to its bombardment target profile.
+    /// </summary>
+    /// <param name="action">The semantic action identifier.</param>
+    /// <param name="type">Receives the matching bombardment target profile.</param>
+    /// <returns>True when the action executes a bombardment.</returns>
+    public static bool TryGetBombardmentType(int action, out BombardmentType type)
+    {
+        switch (action)
+        {
+            case BombardMilitaryFacilities:
+                type = BombardmentType.Military;
+                return true;
+            case BombardCivilianFacilities:
+                type = BombardmentType.Civilian;
+                return true;
+            case GeneralBombardment:
+                type = BombardmentType.General;
+                return true;
+            case DestroySystem:
+                type = BombardmentType.DestroySystem;
+                return true;
+            default:
+                type = default;
+                return false;
+        }
+    }
+}
+
+/// <summary>
+/// Builds the source-ordered planetary bombardment submenu.
+/// </summary>
+internal static class StrategyBombardmentMenuBuilder
+{
+    /// <summary>
+    /// Creates the bombardment parent and its four target-profile commands.
+    /// </summary>
+    /// <param name="canBombard">Whether ordinary bombardment profiles can execute.</param>
+    /// <param name="canDestroySystem">Whether the selected fleets can destroy the system.</param>
+    /// <returns>The complete bombardment submenu.</returns>
+    public static StrategyMenuCommand Build(bool canBombard, bool canDestroySystem)
+    {
+        return new StrategyMenuCommand(
+            StrategyContextMenuActions.PlanetaryBombardment,
+            "Planetary Bombardment",
+            canBombard || canDestroySystem,
+            submenuCommands: new List<StrategyMenuCommand>
+            {
+                new StrategyMenuCommand(
+                    StrategyContextMenuActions.BombardMilitaryFacilities,
+                    "Target Military Facilities",
+                    canBombard
+                ),
+                new StrategyMenuCommand(
+                    StrategyContextMenuActions.BombardCivilianFacilities,
+                    "Target Civilian Facilities",
+                    canBombard
+                ),
+                new StrategyMenuCommand(
+                    StrategyContextMenuActions.GeneralBombardment,
+                    "General Bombardment",
+                    canBombard
+                ),
+                new StrategyMenuCommand(
+                    StrategyContextMenuActions.DestroySystem,
+                    "Destroy System",
+                    canDestroySystem
+                ),
+            }
+        );
+    }
 }
 
 /// <summary>
@@ -192,12 +270,7 @@ public static class StrategyContextMenuAvailability
         {
             if (item is Officer officer)
             {
-                if (
-                    officer.IsCaptured
-                    || officer.InjuryPoints > 0
-                    || officer.Movement != null
-                    || HasMoveBlockingStatus(item)
-                )
+                if (officer.IsCaptured || officer.InjuryPoints > 0 || HasMoveBlockingStatus(item))
                     return false;
 
                 participants.Add(officer);
@@ -268,7 +341,7 @@ public static class StrategyContextMenuAvailability
     /// <returns><see langword="true"/> when the item's current status prevents movement.</returns>
     private static bool HasMoveBlockingStatus(ISceneNode item)
     {
-        if (item is IMovable movable && movable.Movement != null)
+        if (item is IMovable movable && movable.GetTransitMovement() != null)
             return true;
 
         return item is IManufacturable manufacturable

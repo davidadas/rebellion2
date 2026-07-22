@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -122,7 +121,7 @@ namespace Rebellion.Game.Missions
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
             int score =
-                GetTargetTroopState(planet)
+                GetUprisingMissionTroopState(planet, game)
                 - opposingSupport
                 + agent.GetEffectiveRating(OfficerRating.Diplomacy);
             return LookupSuccessProbability(game, score);
@@ -217,22 +216,6 @@ namespace Rebellion.Game.Missions
         )
         {
             return baseShift + (range > 0 ? provider.NextInt(0, range + 1) : 0);
-        }
-
-        /// <summary>
-        /// Returns the target troop-state value used for diplomacy scoring.
-        /// </summary>
-        /// <param name="planet">The mission target planet.</param>
-        /// <returns>The target troop-state value, or 0 when no completed regiment is present.</returns>
-        private static int GetTargetTroopState(Planet planet)
-        {
-            foreach (Regiment regiment in planet.GetAllRegiments())
-            {
-                if (regiment.ManufacturingStatus == ManufacturingStatus.Complete)
-                    return regiment.UprisingDefense;
-            }
-
-            return 0;
         }
 
         /// <summary>

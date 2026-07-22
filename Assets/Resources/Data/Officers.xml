@@ -175,6 +175,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_jerjerrod_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_jerjerrod_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_jerjerrod_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_jerjerrod</MessageImagePath>
     <Description>Moff Jerjerrod is the commander in charge of the construction of Imperial super weapons like the Death Star.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_jerjerrod</EncyclopediaImagePath>
@@ -228,6 +229,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_piett_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_piett_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_piett_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_piett</MessageImagePath>
     <Description>Captain Piett is first officer aboard Lord Vader's Super Star Destroyer.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_piett</EncyclopediaImagePath>
@@ -281,6 +283,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_veers_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_veers_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_veers_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_veers</MessageImagePath>
     <Description>General Veers commands an elite group of Imperial ground assault forces currently attached to Lord Vader's command. Renowned for his brilliant strategic planning and technique, Veers is positioned to take command of all Imperial ground forces, providing he survives his time with Lord Vader.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_veers</EncyclopediaImagePath>
@@ -334,6 +337,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_brandei_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_brandei_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_brandei_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_brandei</MessageImagePath>
     <Description>Captain Brandei is the commander of an Imperial Star Destroyer assigned to Admiral Thrawn's personal armada.  Brandei's philosophy is that it is more important to live and fight another day than to die spectacularly.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_brandei</EncyclopediaImagePath>
@@ -387,6 +391,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_dorja_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_dorja_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_dorja_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_dorja</MessageImagePath>
     <Description>Captain Dorja is in command of an Imperial Star Destroyer.  He is extremely cautious and is usually unwilling to engage the enemy in direct combat.  Because of his cautious tactics, his ship has not received any casualties during the war while it has been under his command.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_dorja</EncyclopediaImagePath>
@@ -440,6 +445,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bin_essada_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bin_essada_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_bin_essada_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_bin_essada</MessageImagePath>
     <Description>Bin Essada is the Imperial military governor presiding over the Circarpous Major system.  It is suspected that while he looks human, his origins may not be so.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bin_essada</EncyclopediaImagePath>
@@ -493,6 +499,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_niles_ferrier_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_niles_ferrier_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_niles_ferrier_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_niles_ferrier</MessageImagePath>
     <Description>A tactless mercenary in the service of the Empire, Niles Ferrier is a smuggler, spy and inveterate war profiteer.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_niles_ferrier</EncyclopediaImagePath>
@@ -546,6 +553,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_grammel_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_grammel_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_grammel_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_grammel</MessageImagePath>
     <Description>Captain-Supervisor Grammel is the commander of the Imperial garrison on Circarpous V.  He is well known for being ruthless and torturing prisoners whether he needed information or not.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_grammel</EncyclopediaImagePath>
@@ -599,6 +607,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_griff_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_griff_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_griff_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_griff</MessageImagePath>
     <Description>Admiral Griff is the fleet commander who supervised the construction of the new Super Star Destroyers.  He was also charged with the blockade of the Yavin system after the destruction of the Death Star.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_griff</EncyclopediaImagePath>
@@ -652,6 +661,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_klev_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_klev_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_klev_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_klev</MessageImagePath>
     <Description>Commander Klev is an able-bodied commander who has extensive experience in both fleet and ground assault command.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_klev</EncyclopediaImagePath>
@@ -705,6 +715,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_needa_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_needa_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_needa_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_needa</MessageImagePath>
     <Description>An able fleet commander in the service of Darth Vader, Captain Needa commands an Imperial Star Destroyer.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_needa</EncyclopediaImagePath>
@@ -758,6 +769,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bane_nothos_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bane_nothos_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_bane_nothos_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_bane_nothos</MessageImagePath>
     <Description>Bane Nothos is the commander in charge of the Imperial Outer Rim Territories patrol fleet.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bane_nothos</EncyclopediaImagePath>
@@ -811,6 +823,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_orlok_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_orlok_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_orlok_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_orlok</MessageImagePath>
     <Description>The Imperial commander at Daluuj, Commander Orlok is the Empire's facility specialist.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_orlok</EncyclopediaImagePath>
@@ -864,6 +877,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pellaeon_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pellaeon_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_pellaeon_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_pellaeon</MessageImagePath>
     <Description>Captain Gilad Pellaeon is a competent, if somewhat cautious, battle commander.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_pallaeon</EncyclopediaImagePath>
@@ -917,6 +931,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_screed_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_screed_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_screed_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_screed</MessageImagePath>
     <Description>Formerly the Emperor's right hand man and a distinguished military commander, Screed can be trusted with nearly any space battle.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_screed</EncyclopediaImagePath>
@@ -970,6 +985,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_thrawn_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_thrawn_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_thrawn_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_thrawn</MessageImagePath>
     <Description>The only non-human Admiral in the service of the Empire, Thrawn is a master tactician and a cool-headed warrior. His familiarity with spacecraft and cunning make him a deadly foe.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_thrawn</EncyclopediaImagePath>
@@ -1023,6 +1039,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_zuggs_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_zuggs_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_zuggs_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_zuggs</MessageImagePath>
     <Description>Pilot of an Imperial strike cruiser, Commodore Zuggs furthers the military aims of the Emperor.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_zuggs</EncyclopediaImagePath>
@@ -1076,6 +1093,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_daala_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_daala_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_daala_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_daala</MessageImagePath>
     <Description>Daala is the only known female Admiral in the Imperial Navy and one of the most brilliant military strategists in the Empire.  Daala is currently in command of the late Grand Moff Tarkin's special weapons development task force.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_daala</EncyclopediaImagePath>
@@ -1129,6 +1147,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pter_thanas_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_pter_thanas_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_pter_thanas_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_pter_thanas</MessageImagePath>
     <Description>A loyal and dependable servant of the Empire, Commander Pter Thanas is nevertheless among the kindest of those who follow the will of Emperor Palpatine.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_pter_thanas</EncyclopediaImagePath>
@@ -1183,6 +1202,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_ozzel_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_ozzel_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_ozzel_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_ozzel</MessageImagePath>
     <Description>Admiral Ozzel is the commanding officer of Lord Vader's personal Super Star Destroyer.  Since Lord Vader seems to have a mild dislike for the Admiral, it remains to be seen how long he will retain command and his life.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ozzel</EncyclopediaImagePath>
@@ -1236,6 +1256,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_covell_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_covell_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_covell_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_covell</MessageImagePath>
     <Description>Major Covell is second in command of General Veer's elite Imperial ground forces.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_covell</EncyclopediaImagePath>
@@ -1289,6 +1310,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bevel_lemelisk_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_bevel_lemelisk_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_bevel_lemelisk_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_bevel_lemelisk</MessageImagePath>
     <Description>Chief Engineer Bevel Lemelisk is the chief Imperial space station designer and was the creator of the Death Star.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bevel_lemelisk</EncyclopediaImagePath>
@@ -1342,6 +1364,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_shenir_rix_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_shenir_rix_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_shenir_rix_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_shenir_rix</MessageImagePath>
     <Description>Shenir Rix is a Calamari female reputed to be one of the best information dealers in the galaxy.  She only deals in solid, reliable information less than 24 hours old.  If the information comes from Rix, you can be guaranteed it will be accurate.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_shenir_rix</EncyclopediaImagePath>
@@ -1395,6 +1418,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_noval_garaint_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_noval_garaint_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_noval_garaint_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_noval_garaint</MessageImagePath>
     <Description>Noval Garaint is a bounty hunter who is never seen outside of his battle armor.  He is rumored to be the real power behind Horch, the crime lord of Kheedar.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_noval_garaint</EncyclopediaImagePath>
@@ -1448,6 +1472,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_garindan_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_garindan_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_garindan_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_garindan</MessageImagePath>
     <Description>Garindan is one of the most famous Kubaz informants in the galaxy.  Usually found lurking around the major space ports like Mos Eisley, Garindan has been responsible for exposing several Alliance covert operations to the Empire.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_garindan</EncyclopediaImagePath>
@@ -1501,6 +1526,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_menndo_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_menndo_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_menndo_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_menndo</MessageImagePath>
     <Description>Like most Rodians, Menndo began his career as a bounty hunter, but later learned that assassination and espionage were more profitable and less hassling than bounties.  An expert assassin, Menndo has been linked to the deaths of several high ranking political officials.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_menndo</EncyclopediaImagePath>
@@ -1554,6 +1580,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_labansat_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_labansat_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_labansat_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_labansat</MessageImagePath>
     <Description>Labansat is one of the most famous Weequay mercenaries.  Known for his fierce brutality and deadly fighting skill, he often plies the Lesser Plooriod Cluster and Karstaxon Regions working for whomever will meet his price.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_labansat</EncyclopediaImagePath>
@@ -1607,6 +1634,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_empire_villar_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_empire_villar_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_empire_villar_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_empire_villar</MessageImagePath>
     <Description>Villar is a typical Devaronian male, filled with wanderlust and a desire to explore the galaxy. Exploration costs money, so Villar sells the information he gathers on his travels to the highest bidder, which is usually the Empire.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_villar</EncyclopediaImagePath>
@@ -2308,6 +2336,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_crix_madine_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_crix_madine_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_crix_madine_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_crix_madine</MessageImagePath>
     <Description>Crix Madine was an Imperial officer in command of an elite commando force before defecting to the Alliance after the Battle of Yavin. He is currently in command of all Alliance ground forces and strategy.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_crix_madine</EncyclopediaImagePath>
@@ -2361,6 +2390,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_carlist_rieekan_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_carlist_rieekan_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_carlist_rieekan_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_carlist_rieekan</MessageImagePath>
     <Description>General Carlist Rieekan is the commander of all Alliance ground and fleet forces in the Hoth star system.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_carlist_rieekan</EncyclopediaImagePath>
@@ -2414,6 +2444,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_afyon_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_afyon_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_afyon_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_afyon</MessageImagePath>
     <Description>Captain Afyon is the commander of an Alliance escort frigate, which has lately been relegated to cargo transport duties.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_afyon</EncyclopediaImagePath>
@@ -2467,6 +2498,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_drayson_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_drayson_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_drayson_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_drayson</MessageImagePath>
     <Description>Admiral Drayson is a high ranking officer in the Alliance military, but unlike many others, he did not begin his career in the Old Republic or Imperial Navy.  He was Admiral of the Chandrila Defense Fleet prior to conquest by the Empire.  Mon Mothma, also of Chandrila, asked Drayson to join the Alliance and serve as the commander of the Alliance Headquarters ship.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_drayson</EncyclopediaImagePath>
@@ -2520,6 +2552,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_borsk_fey'lya_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_borsk_fey'lya_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_borsk_fey'lya_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_borsk_fey'lya</MessageImagePath>
     <Description>Borsk Fey'lya is the leader of a large portion of the Bothan population.  He is a master diplomat and was responsible for the Bothans joining the Alliance after the Battle of Yavin.  Like most Bothans, Fey'lya believes the game of politics and power is more important than individual issues, and is steadily working his way up through the Alliance's command structure.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_borsk_fey_la</EncyclopediaImagePath>
@@ -2573,6 +2606,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_tura_raftican_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_tura_raftican_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_tura_raftican_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_tura_raftican</MessageImagePath>
     <Description>Lieutenant Tura Raftican was once an investigative reporter for the HoloNews Network.  Since joining the Alliance, she has used her contacts to provide information to the Rebels.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_tura_raftican</EncyclopediaImagePath>
@@ -2626,6 +2660,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_bren_derlin_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_bren_derlin_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_bren_derlin_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_bren_derlin</MessageImagePath>
     <Description>One of the executive members of the Rebel Alliance's command staff, Major Derlin was assigned to locating sites for the Alliance's base after the Battle of Yavin.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_bren_derlin</EncyclopediaImagePath>
@@ -2679,6 +2714,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_garm_bel_iblis_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_garm_bel_iblis_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_garm_bel_iblis_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_garm_bel_iblis</MessageImagePath>
     <Description>Garm Bel Iblis was a senator from the Corellian system and was one of the founding members of the Alliance. Due to conflicts with Mon Mothma and death warrants from the Empire, Bel Iblis has gone into hiding.  He surfaces from time to time with small groups of resistance fighters before disappearing again.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_garm_bel_iblis</EncyclopediaImagePath>
@@ -2732,6 +2768,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_talon_karrde_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_talon_karrde_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_talon_karrde_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_talon_karrde</MessageImagePath>
     <Description>A multi-talented mercenary with a sense of humor, Karrde is an inscrutable negotiator and a good man in a fight. His payroll currently flows from the Alliance, though he has been known to perform services for the Empire in the past.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_talon_karrde</EncyclopediaImagePath>
@@ -2785,6 +2822,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_narra_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_narra_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_narra_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_narra</MessageImagePath>
     <Description>Commander Narra is an old hand at disrupting Imperial business. He participated in the attack on the first Death Star.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_narra</EncyclopediaImagePath>
@@ -2838,6 +2876,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_huoba_neva_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_huoba_neva_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_huoba_neva_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_huoba_neva</MessageImagePath>
     <Description>Captain Neva is an excellent special forces operative.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_huoba_neva</EncyclopediaImagePath>
@@ -2891,6 +2930,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_page_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_page_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_page_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_page</MessageImagePath>
     <Description>An invaluable special forces man, Lieutenant Page assists the Alliance with covert operations.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_page</EncyclopediaImagePath>
@@ -2944,6 +2984,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_syub_snunb_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_syub_snunb_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_syub_snunb_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_syub_snunb</MessageImagePath>
     <Description>Sullustan Captain Syub Snunb commands an Alliance frigate.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_syub_snunb</EncyclopediaImagePath>
@@ -2997,6 +3038,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_adar_tallon_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_adar_tallon_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_adar_tallon_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_adar_tallon</MessageImagePath>
     <Description>During the time of the Old Republic, Adar Tallon was a brilliant military strategist.  Many of the space combat techniques developed by Tallon are still being utilized by both the Empire and the Alliance.  After many years of hiding from the Empire on Tatooine, Tallon has recently joined the Alliance.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_adar_tallon</EncyclopediaImagePath>
@@ -3050,6 +3092,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_sarin_virgilio_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_sarin_virgilio_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_sarin_virgilio_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_sarin_virgilio</MessageImagePath>
     <Description>Captain Virgilio commands one of the Alliance Home Guard's escort vessels.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_sarin_virgilio</EncyclopediaImagePath>
@@ -3103,6 +3146,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_vanden_willard_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_vanden_willard_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_vanden_willard_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_vanden_willard</MessageImagePath>
     <Description>Commander Vanden Willard serves the Alliance under General Dodonna. He is currently assigned to planetary defense at Yavin.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_vanden_willard</EncyclopediaImagePath>
@@ -3156,6 +3200,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_roget_jiriss_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_roget_jiriss_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_roget_jiriss_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_roget_jiriss</MessageImagePath>
     <Description>Roget Jiriss is a smuggler with a sense of honor. When Jiriss agrees to deliver a shipment, it will always arrive on time.  Having contacts deep within several large crime syndicates, Jiriss is also an excellent source of information for the Alliance.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_roget_jiriss</EncyclopediaImagePath>
@@ -3209,6 +3254,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_kaiya_andrimetrum_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_kaiya_andrimetrum_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_kaiya_andrimetrum_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_kaiya_andrimetrum</MessageImagePath>
     <Description>Commander Andrimetrum joined the Alliance after her husband was killed by Imperial forces during the occupation of her homeworld.  She is an exceptional combat leader and her troops are almost fanatically loyal.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_kaiya_andrimetrum</EncyclopediaImagePath>
@@ -3262,6 +3308,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_mazer_rackus_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_mazer_rackus_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_mazer_rackus_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_mazer_rackus</MessageImagePath>
     <Description>Mazer Rackus is a Twi'lek pilot for the Alliance.  He has been flying for the Alliance since crashing on an Alliance held world when he was young.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_mazer_rackus</EncyclopediaImagePath>
@@ -3315,6 +3362,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_orrimaarko_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_orrimaarko_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_orrimaarko_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_orrimaarko</MessageImagePath>
     <Description>Orrimaarko is the leader of the Alliance resistance cell on Dressel. He is an expert in espionage and covert warfare and the first Dresselian to be given command of an Alliance SpecForce team.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_orrimaarko</EncyclopediaImagePath>
@@ -3368,6 +3416,7 @@
     <DisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_ma'w'shiye_primary</DisplayImagePath>
     <InjuredImagePath>Art/HD/UI/Units/ent_personnel_injured_status</InjuredImagePath>
     <SmallDisplayImagePath>Art/HD/UI/Units/ent_officer_rebel_ma'w'shiye_small</SmallDisplayImagePath>
+    <CapturedOverlayImagePath>Art/HD/UI/Units/ent_officer_rebel_ma'w'shiye_captured_overlay</CapturedOverlayImagePath>
     <MessageImagePath>Art/HD/UI/Messages/Characters/ui_message_character_alliance_ma'w'shiye</MessageImagePath>
     <Description>Lieutenant Ma'w'shiye is a marksman on the Alliance's elite SpecForce Eclipse Team.  Ma'w'shiye has undergone intense survival training and can survive on almost any kind of world.</Description>
     <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_personnel_ma_w_shiye</EncyclopediaImagePath>

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
@@ -81,22 +80,6 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Extends base cancellation to also cancel if an uprising starts before the mission executes.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The abort reason, or null when the mission may advance.</returns>
-        public override MissionCompletionReason? GetAbortReason(GameRoot game)
-        {
-            MissionCompletionReason? reason = base.GetAbortReason(game);
-            if (reason.HasValue)
-                return reason;
-
-            return GetParent() is Planet p && p.IsInUprising
-                ? MissionCompletionReason.Failure
-                : null;
-        }
-
-        /// <summary>
         /// Returns the participant's chance to incite the target planet.
         /// </summary>
         /// <param name="agent">The participant whose leadership rating is evaluated.</param>
@@ -110,16 +93,8 @@ namespace Rebellion.Game.Missions
                 );
 
             int leadershipSkill = agent.GetEffectiveRating(OfficerRating.Leadership);
-            int enemySupport = planet.GetPopularSupport(planet.OwnerInstanceID);
-
-            int regimentStrength = 0;
-            foreach (ISceneNode child in planet.GetChildren())
-            {
-                if (child is Regiment regiment && regiment.OwnerInstanceID != OwnerInstanceID)
-                    regimentStrength += regiment.DefenseRating;
-            }
-
-            int score = leadershipSkill - enemySupport - regimentStrength;
+            int enemySupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
+            int score = leadershipSkill - enemySupport - GetUprisingMissionTroopState(planet, game);
             return LookupSuccessProbability(game, score);
         }
 
@@ -131,18 +106,9 @@ namespace Rebellion.Game.Missions
         /// <returns>One PlanetUprisingStartedResult.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
-            Planet planet = GetParent() as Planet;
-            planet.BeginUprising();
-
-            return new List<GameResult>
-            {
-                new PlanetUprisingStartedResult
-                {
-                    Planet = planet,
-                    InstigatorFaction = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
-                    Tick = game.CurrentTick,
-                },
-            };
+            throw new InvalidOperationException(
+                "Incite Uprising must be resolved by MissionSystem."
+            );
         }
 
         /// <summary>

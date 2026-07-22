@@ -313,6 +313,7 @@
       <InvertSupportShift>false</InvertSupportShift>
       <WeakSupportPenaltyTrigger>Positive</WeakSupportPenaltyTrigger>
       <HeadquartersCanBeBombarded>true</HeadquartersCanBeBombarded>
+      <MissionReturnPlanetTypeID>PLSUM06</MissionReturnPlanetTypeID>
     </Settings>
   </Faction>
   <Faction>
@@ -626,6 +627,7 @@
       <InvertSupportShift>true</InvertSupportShift>
       <WeakSupportPenaltyTrigger>Negative</WeakSupportPenaltyTrigger>
       <HeadquartersCanBeBombarded>false</HeadquartersCanBeBombarded>
+      <MissionReturnPlanetTypeID>PLSEW05</MissionReturnPlanetTypeID>
     </Settings>
   </Faction>
 </Factions>

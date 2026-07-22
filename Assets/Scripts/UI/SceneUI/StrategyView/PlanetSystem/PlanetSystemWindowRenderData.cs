@@ -40,6 +40,7 @@ public sealed class PlanetSystemPlanetRenderData
     /// <param name="planetIndex">The planet's stable position in the rendered sector.</param>
     /// <param name="galaxyOffset">The planet's projected galaxy offset from its parent system.</param>
     /// <param name="planetTexture">The planet image.</param>
+    /// <param name="uprisingTexture">The uprising marker occupying the mission-icon slot.</param>
     /// <param name="facilityTexture">The facility icon image.</param>
     /// <param name="facilityPressedTexture">The pressed facility icon image.</param>
     /// <param name="defenseTexture">The defense icon image.</param>
@@ -60,6 +61,7 @@ public sealed class PlanetSystemPlanetRenderData
         int planetIndex,
         Vector2Int galaxyOffset,
         Texture2D planetTexture,
+        Texture2D uprisingTexture,
         Texture2D facilityTexture,
         Texture2D facilityPressedTexture,
         Texture2D defenseTexture,
@@ -81,6 +83,7 @@ public sealed class PlanetSystemPlanetRenderData
         PlanetIndex = planetIndex;
         GalaxyOffset = galaxyOffset;
         PlanetTexture = planetTexture;
+        UprisingTexture = uprisingTexture;
         FacilityTexture = facilityTexture;
         FacilityPressedTexture = facilityPressedTexture;
         DefenseTexture = defenseTexture;
@@ -136,6 +139,8 @@ public sealed class PlanetSystemPlanetRenderData
     public PlanetIcon SelectedIcon { get; }
 
     public PlanetSystemBarRenderData SupportBar { get; }
+
+    public Texture2D UprisingTexture { get; }
 }
 
 /// <summary>

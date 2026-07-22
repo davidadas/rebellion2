@@ -79,7 +79,7 @@ namespace Rebellion.Systems
                 Tick = _game.CurrentTick,
             };
 
-            if (!CanBombard(attackingFleets, targetPlanet))
+            if (!CanExecute(attackingFleets, targetPlanet, type))
                 return result;
 
             string attackerId = attackingFleets[0].GetOwnerInstanceID();
@@ -89,6 +89,10 @@ namespace Rebellion.Systems
                 defenderId
             ).Count;
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
+            result.AttackerOwnerInstanceID = attackerId;
+            result.DefenderOwnerInstanceID = defenderId;
+            result.AttackingUnits.AddRange(SnapshotFleetUnits(attackingFleets));
+            result.DefendingUnits.AddRange(SnapshotPlanetUnits(targetPlanet, defenderId));
 
             SetBombardmentCombatState(attackingFleets, targetPlanet, true);
             try
@@ -156,19 +160,75 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleets">Fleets attempting the bombardment.</param>
         /// <param name="targetPlanet">Planet being targeted.</param>
+        /// <param name="type">Bombardment mode being requested.</param>
         /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
-        private static bool CanBombard(List<Fleet> fleets, Planet targetPlanet)
+        public bool CanExecute(
+            IReadOnlyList<Fleet> fleets,
+            Planet targetPlanet,
+            BombardmentType type
+        )
         {
-            if (targetPlanet == null || fleets?.Any() != true || fleets.Any(fleet => fleet == null))
+            if (!CanBombard(fleets, targetPlanet))
+                return false;
+
+            return type == BombardmentType.DestroySystem
+                ? HasPlanetDestroyingShip(fleets)
+                : CalculateBombardmentStrength(fleets) > 0;
+        }
+
+        /// <summary>
+        /// Determines whether fleets satisfy the shared bombardment restrictions.
+        /// </summary>
+        /// <param name="fleets">Fleets attempting the bombardment.</param>
+        /// <param name="targetPlanet">Planet being targeted.</param>
+        /// <returns>True when the fleets can perform an ordinary bombardment.</returns>
+        private static bool CanBombard(IReadOnlyList<Fleet> fleets, Planet targetPlanet)
+        {
+            if (
+                targetPlanet?.IsDestroyed != false
+                || fleets?.Any() != true
+                || fleets.Any(fleet => fleet == null)
+            )
                 return false;
 
             string ownerId = fleets[0].GetOwnerInstanceID();
             return !string.IsNullOrEmpty(ownerId)
+                && targetPlanet?.GetOwnerInstanceID() != ownerId
                 && fleets.All(fleet =>
                     fleet.GetOwnerInstanceID() == ownerId
                     && fleet.Movement == null
+                    && !fleet.IsInCombat
                     && fleet.GetParent() == targetPlanet
-                );
+                )
+                && GetActiveCapitalShips(fleets).Any();
+        }
+
+        /// <summary>
+        /// Captures the units carried by the attacking fleets before combat mutates the scene graph.
+        /// </summary>
+        /// <param name="fleets">The attacking fleets.</param>
+        /// <returns>The attacking unit snapshot.</returns>
+        private static List<ISceneNode> SnapshotFleetUnits(IEnumerable<Fleet> fleets)
+        {
+            return fleets
+                .Where(fleet => fleet != null)
+                .SelectMany(fleet => fleet.GetChildren<ISceneNode>(_ => true))
+                .Distinct()
+                .ToList();
+        }
+
+        /// <summary>
+        /// Captures the target owner's units before combat mutates the scene graph.
+        /// </summary>
+        /// <param name="planet">The target planet.</param>
+        /// <param name="ownerInstanceId">The target owner identifier.</param>
+        /// <returns>The defending unit snapshot.</returns>
+        private static List<ISceneNode> SnapshotPlanetUnits(Planet planet, string ownerInstanceId)
+        {
+            return planet
+                .GetChildren<ISceneNode>(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
+                .Distinct()
+                .ToList();
         }
 
         /// <summary>
@@ -195,7 +255,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleets">Fleets contributing ships and starfighters.</param>
         /// <returns>The combined bombardment strength after condition and leadership adjustments.</returns>
-        private int CalculateBombardmentStrength(List<Fleet> fleets)
+        private int CalculateBombardmentStrength(IReadOnlyList<Fleet> fleets)
         {
             int divisor = _game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
             int total = 0;
@@ -640,7 +700,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleets">Attacking fleets to inspect.</param>
         /// <returns>True when an active configured ship type is present.</returns>
-        private bool HasPlanetDestroyingShip(List<Fleet> fleets)
+        private bool HasPlanetDestroyingShip(IEnumerable<Fleet> fleets)
         {
             HashSet<string> typeIds =
                 _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs.ToHashSet();
@@ -888,7 +948,17 @@ namespace Rebellion.Systems
             if (first == null)
                 return second;
             if (second != null)
+            {
                 first.NewOwner = second.NewOwner;
+                first.ObserverFactionInstanceIDs = (
+                    first.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
+                )
+                    .Concat(second.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>())
+                    .Distinct()
+                    .ToList();
+                if (second.Reason != PlanetOwnershipChangeReason.None)
+                    first.Reason = second.Reason;
+            }
             if (first.PreviousOwner?.InstanceID == first.NewOwner?.InstanceID)
                 return null;
             return first;

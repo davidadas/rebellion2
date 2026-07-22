@@ -173,6 +173,38 @@ public sealed class MessagesWindowController
     }
 
     /// <summary>
+    /// Opens the Messages window directly on one delivered message detail.
+    /// </summary>
+    /// <param name="message">The delivered message to display.</param>
+    /// <param name="tab">The message category containing the message.</param>
+    public void OpenDetail(Message message, MessagesTab tab)
+    {
+        if (message == null)
+            return;
+
+        Open(tab);
+        UIWindow window = FindWindow();
+        if (
+            window == null
+            || !windowManager.TryGetWindowView(window, out MessagesWindowView view)
+            || !TryGetSession(view, out MessagesWindowSession session)
+        )
+            return;
+
+        RefreshSession(session);
+        Message currentMessage = GetMessage(session.Messages, message.InstanceID);
+        if (currentMessage == null)
+            return;
+
+        session.SelectOnly(currentMessage);
+        MarkMessageRead(currentMessage);
+        session.ShowDetail();
+        PlayMessageDetailAudio(currentMessage);
+        windowManager.Focus(window);
+        markDirty();
+    }
+
+    /// <summary>
     /// Renders every registered Messages window.
     /// </summary>
     public void RenderWindows()

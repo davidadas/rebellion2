@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using GameFleet = Rebellion.Game.Units.Fleet;
@@ -168,6 +169,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Project_PlanetaryStarfighterWithoutFleet_ReturnsOperationalSquadron()
+        {
+            UIContext context = CreateContext();
+            Starfighter fighter = CreateStarfighter(
+                "planet-fighter",
+                _opponentFactionId,
+                "Planetary Squadron"
+            );
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.CurrentSquadronSize = 12;
+            Planet planet = new Planet();
+            planet.Starfighters.Add(fighter);
+            fighter.SetParent(planet);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                Planet = planet,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                DefenderOutcome = SpaceCombatSideOutcome.Active,
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                result,
+                _opponentFactionId,
+                BattleResultCategory.Starfighters
+            );
+
+            Assert.AreEqual(1, table.Operational.Count);
+            Assert.AreEqual("Planetary Squadron", table.Operational[0].Text);
+            Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        [Test]
         public void Project_Troops_ReturnsFleetRegimentsInCarrierOrder()
         {
             UIContext context = CreateContext();
@@ -234,6 +269,120 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 table.Operational.Select(item => item.Text)
             );
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        [Test]
+        public void Project_CapturedOfficer_IncludesCapturedOverlay()
+        {
+            UIContext context = CreateContext();
+            Officer officer = CreateOfficer("captured", _playerFactionId, "Captured Officer");
+            officer.IsCaptured = true;
+            CapitalShip carrier = CreateCapitalShip("carrier", _playerFactionId, "Carrier");
+            carrier.Officers.Add(officer);
+            GameFleet fleet = CreateFleet(_playerFactionId, carrier);
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                DefenderFleet = fleet,
+                DefenderOwnerInstanceID = _playerFactionId,
+                DefenderOutcome = SpaceCombatSideOutcome.Active,
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                result,
+                _playerFactionId,
+                BattleResultCategory.Personnel
+            );
+
+            Assert.AreEqual("Captured Officer", table.Operational[0].Text);
+            Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
+        }
+
+        [Test]
+        public void Project_BombardmentManufacturing_SeparatesOperationalAndDestroyedFacilities()
+        {
+            UIContext context = CreateContext();
+            Building operational = CreateBuilding(
+                "operational",
+                _opponentFactionId,
+                "Operational Shipyard",
+                BuildingType.Shipyard
+            );
+            Building destroyed = CreateBuilding(
+                "destroyed",
+                _opponentFactionId,
+                "Destroyed Training Facility",
+                BuildingType.TrainingFacility
+            );
+            BombardmentResult result = new BombardmentResult
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                DefendingUnits = { operational, destroyed },
+                DestroyedBuildings = { destroyed },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                result,
+                _opponentFactionId,
+                BattleResultCategory.Manufacturing
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Operational Shipyard" },
+                table.Operational.Select(item => item.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Destroyed Training Facility" },
+                table.Destroyed.Select(item => item.Text)
+            );
+            Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
+        }
+
+        [Test]
+        public void Project_PlanetaryAssaultTroops_SeparatesSurvivingAndDestroyedRegiments()
+        {
+            UIContext context = CreateContext();
+            Regiment operational = CreateRegiment(
+                "operational",
+                _playerFactionId,
+                "Operational Regiment"
+            );
+            Regiment destroyed = CreateRegiment(
+                "destroyed",
+                _playerFactionId,
+                "Destroyed Regiment"
+            );
+            operational.ManufacturingStatus = ManufacturingStatus.Complete;
+            destroyed.ManufacturingStatus = ManufacturingStatus.Complete;
+            PlanetaryAssaultResult result = new PlanetaryAssaultResult
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+                AttackingUnits = { operational, destroyed },
+                DestroyedAttackerRegiments = { destroyed },
+            };
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                result,
+                _playerFactionId,
+                BattleResultCategory.Troops
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "Operational Regiment" },
+                table.Operational.Select(item => item.Text)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Destroyed Regiment" },
+                table.Destroyed.Select(item => item.Text)
+            );
+            Assert.IsNull(table.Destroyed[0].DamagedOverlayTexture);
         }
 
         [Test]
@@ -312,6 +461,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             };
         }
 
+        private static Building CreateBuilding(
+            string instanceId,
+            string ownerId,
+            string displayName,
+            BuildingType buildingType
+        )
+        {
+            Building definition = ResourceManager
+                .GetEntityData<Building>()
+                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            return new Building
+            {
+                InstanceID = instanceId,
+                TypeID = definition.TypeID,
+                OwnerInstanceID = ownerId,
+                DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                DamagedImagePath = definition.DamagedImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                BuildingType = buildingType,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
         private static Regiment CreateRegiment(
             string instanceId,
             string ownerId,
@@ -346,6 +520,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DisplayName = displayName,
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                CapturedOverlayImagePath = definition.CapturedOverlayImagePath,
             };
         }
 

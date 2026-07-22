@@ -119,6 +119,7 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_HiddenObserverSnapshot_NotRefreshed()
         {
             Faction observer = AddFaction("observer");
+            _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
@@ -132,6 +133,60 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(5, snapshot.TickCaptured);
             Assert.AreEqual("empire", snapshot.OwnerInstanceID);
             Assert.AreEqual(0, snapshot.Buildings.Count);
+        }
+
+        [Test]
+        public void TransferPlanet_CoreObserverSnapshot_RefreshesOwnershipOnly()
+        {
+            Faction observer = AddFaction("observer");
+            _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.EnergyCapacity = 1;
+            CapturePlanetSnapshot(observer, _targetPlanet, 5);
+            AddBuilding(_targetPlanet, "hidden-transfer-building", _empire.InstanceID);
+
+            _game.CurrentTick = 20;
+            PlanetOwnershipChangedResult result = _ownershipSystem.TransferPlanet(
+                _targetPlanet,
+                _rebels
+            );
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, _targetPlanet);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.AreEqual(_rebels.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(0, snapshot.Buildings.Count);
+            CollectionAssert.Contains(result.ObserverFactionInstanceIDs, observer.InstanceID);
+        }
+
+        [Test]
+        public void TransferPlanet_OuterRimVisibleObserverSnapshot_RefreshesOwnershipOnly()
+        {
+            Faction observer = AddFaction("observer");
+            _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.EnergyCapacity = 1;
+            CapturePlanetSnapshot(observer, _targetPlanet, 5);
+            AddBuilding(_targetPlanet, "hidden-transfer-building", _empire.InstanceID);
+            Fleet observerFleet = new Fleet(observer.InstanceID, "Observer Fleet");
+            CapitalShip observerShip = new CapitalShip
+            {
+                InstanceID = "observer-ship",
+                OwnerInstanceID = observer.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(observerFleet, _targetPlanet);
+            _game.AttachNode(observerShip, observerFleet);
+
+            _game.CurrentTick = 20;
+            PlanetOwnershipChangedResult result = _ownershipSystem.TransferPlanet(
+                _targetPlanet,
+                _rebels
+            );
+
+            PlanetSnapshot snapshot = GetPlanetSnapshot(observer, _targetPlanet);
+            Assert.AreEqual(5, snapshot.TickCaptured);
+            Assert.AreEqual(_rebels.InstanceID, snapshot.OwnerInstanceID);
+            Assert.AreEqual(0, snapshot.Buildings.Count);
+            CollectionAssert.Contains(result.ObserverFactionInstanceIDs, observer.InstanceID);
         }
 
         [Test]
@@ -253,6 +308,45 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(_targetPlanet, diplomacyMission.GetParent());
             Assert.IsTrue(diplomacyMission.ShouldRepeatAfterCompletion(_game));
+        }
+
+        [Test]
+        public void ClearPlanetOwnership_ActiveDiplomacyMission_CancelsMission()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, _rebels.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _rebels.InstanceID, 70 },
+            };
+            _targetPlanet.AddVisitor(_rebels.InstanceID);
+
+            Planet returnPlanet = new Planet
+            {
+                InstanceID = "rebel-home",
+                OwnerInstanceID = _rebels.InstanceID,
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+            };
+            _game.AttachNode(returnPlanet, _targetPlanet.GetParent());
+
+            Officer officer = EntityFactory.CreateOfficer("diplomat", _rebels.InstanceID);
+            Mission diplomacyMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                _game,
+                _rebels.InstanceID,
+                _targetPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            _game.AttachNode(diplomacyMission, _targetPlanet);
+            _game.AttachNode(officer, diplomacyMission);
+
+            _ownershipSystem.ClearPlanetOwnership(_targetPlanet);
+
+            Assert.IsNull(diplomacyMission.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(returnPlanet, officer.GetParent());
         }
 
         [Test]
@@ -503,6 +597,112 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        [TestCase("empire", 60, "empire")]
+        [TestCase("empire", 59, null)]
+        [TestCase("rebels", 60, "rebels")]
+        public void RequestMove_LastStationedRegiment_ReconcilesControlImmediately(
+            string supportFactionId,
+            int support,
+            string expectedOwnerId
+        )
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport.Clear();
+            _targetPlanet.SetPopularSupport(supportFactionId, support);
+
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+
+            Fleet fleet = EntityFactory.CreateFleet("carrier-fleet", _empire.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _empire.InstanceID,
+                AllowedOwnerInstanceIDs = new List<string> { _empire.InstanceID },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(ship, fleet);
+
+            List<GameResult> deploymentResults = new List<GameResult>();
+            _ownershipSystem.RegimentDeploymentResultsProduced += deploymentResults.AddRange;
+
+            _movementSystem.RequestMove(regiment, ship);
+
+            Assert.AreEqual(expectedOwnerId, _targetPlanet.GetOwnerInstanceID());
+
+            List<PlanetOwnershipChangedResult> changes = deploymentResults
+                .OfType<PlanetOwnershipChangedResult>()
+                .Where(result => result.Planet == _targetPlanet)
+                .ToList();
+
+            if (expectedOwnerId == _empire.InstanceID)
+            {
+                Assert.IsEmpty(changes);
+                return;
+            }
+
+            PlanetOwnershipChangedResult change = changes.Single();
+            Assert.AreEqual(_empire, change.PreviousOwner);
+            Assert.AreEqual(expectedOwnerId, change.NewOwner?.InstanceID);
+            Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, change.Reason);
+            Assert.IsEmpty(
+                _ownershipSystem
+                    .ProcessTick()
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Where(result => result.Planet == _targetPlanet)
+            );
+        }
+
+        [Test]
+        public void RequestMove_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
+            _targetPlanet.PopularSupport = new Dictionary<string, int>
+            {
+                { _empire.InstanceID, 40 },
+                { _rebels.InstanceID, 60 },
+            };
+            _targetPlanet.AddVisitor(_empire.InstanceID);
+
+            Officer officer = EntityFactory.CreateOfficer("diplomat", _empire.InstanceID);
+            Mission diplomacyMission = MissionTestFactory.TryCreate(
+                MissionTypeIDs.Diplomacy,
+                _game,
+                _empire.InstanceID,
+                _targetPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            _game.AttachNode(diplomacyMission, _targetPlanet);
+            _game.AttachNode(officer, diplomacyMission);
+
+            Regiment regiment = EntityFactory.CreateRegiment("garrison", _empire.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _targetPlanet);
+
+            Fleet fleet = EntityFactory.CreateFleet("carrier-fleet", _empire.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = _empire.InstanceID,
+                AllowedOwnerInstanceIDs = new List<string> { _empire.InstanceID },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            _game.AttachNode(fleet, _targetPlanet);
+            _game.AttachNode(ship, fleet);
+
+            _movementSystem.RequestMove(regiment, ship);
+
+            Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());
+            Assert.IsNull(diplomacyMission.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.AreSame(_empirePlanet, officer.GetParent());
+        }
+
         /// <summary>
         /// Builds a regiment-aboard-fleet at an uncolonized planet, ready for the planet
         /// to accept it: complete, not-in-transit, present at the planet via fleet → ship,
@@ -595,6 +795,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessTick_ReleaseToNeutral_HiddenObserverSnapshot_NotRefreshed()
         {
             Faction observer = AddFaction("observer");
+            _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet(
                 "wild-hidden-release",
                 "empire"
@@ -631,18 +832,22 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ColonizedPlanetLosesLastRegiment_OwnershipPersists()
+        public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_BecomesNeutralWithoutControllingSupport()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");
             _game.ChangeUnitOwnership(planet, "empire");
 
-            // Once colonized, regiment count no longer drives ownership.
             planet.IsColonized = true;
             _game.DetachNode(regiment);
 
-            _ownershipSystem.ProcessTick();
+            List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
 
-            Assert.AreEqual("empire", planet.GetOwnerInstanceID());
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsTrue(
+                results
+                    .OfType<PlanetOwnershipChangedResult>()
+                    .Any(result => result.Planet == planet && result.NewOwner == null)
+            );
         }
 
         [Test]
@@ -658,20 +863,29 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ReconcilePlanet_ColonizedPlanet_NoOp()
+        public void ReconcilePlanet_ColonizedPlanetWithoutGarrison_TransfersToSupportController()
         {
-            (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild6", "empire");
+            (Planet planet, Regiment _) = StageUncolonizedPlanetWithFleet("wild6", "empire");
             planet.IsColonized = true;
-            string priorOwner = planet.GetOwnerInstanceID();
+            _game.ChangeUnitOwnership(planet, _empire.InstanceID);
+            planet.SetPopularSupport(
+                _rebels.InstanceID,
+                _game.Config.SupportShift.OwnershipTransferThreshold
+            );
 
             List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
 
-            Assert.AreEqual(priorOwner, planet.GetOwnerInstanceID());
-            Assert.IsEmpty(results);
+            Assert.AreEqual(_rebels.InstanceID, planet.GetOwnerInstanceID());
+            PlanetOwnershipChangedResult result = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single(change => change.Planet == planet);
+            Assert.AreEqual(_empire, result.PreviousOwner);
+            Assert.AreEqual(_rebels, result.NewOwner);
+            Assert.AreEqual(PlanetOwnershipChangeReason.PopularSupport, result.Reason);
         }
 
         [Test]
-        public void ProcessTick_ColonizedNeutralPlanetWithRegiment_DoesNotClaim()
+        public void ReconcilePlanet_ColonizedNeutralPlanetWithRegiment_TransfersToRegimentOwner()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild7", "empire");
             planet.IsColonized = true;
@@ -679,12 +893,15 @@ namespace Rebellion.Tests.Systems
             _game.MoveNode(regiment, planet);
             planet.OwnerInstanceID = null;
 
-            List<GameResult> results = _ownershipSystem.ProcessTick();
+            List<GameResult> results = _ownershipSystem.ReconcilePlanet(planet);
 
-            Assert.IsNull(planet.GetOwnerInstanceID());
-            Assert.IsEmpty(
-                results.OfType<PlanetOwnershipChangedResult>().Where(r => r.Planet == planet)
-            );
+            Assert.AreEqual(_empire.InstanceID, planet.GetOwnerInstanceID());
+            PlanetOwnershipChangedResult result = results
+                .OfType<PlanetOwnershipChangedResult>()
+                .Single(change => change.Planet == planet);
+            Assert.IsNull(result.PreviousOwner);
+            Assert.AreEqual(_empire, result.NewOwner);
+            Assert.AreEqual(PlanetOwnershipChangeReason.None, result.Reason);
         }
 
         [Test]

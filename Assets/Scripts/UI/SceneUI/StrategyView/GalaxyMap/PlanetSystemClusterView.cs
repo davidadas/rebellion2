@@ -385,7 +385,6 @@ public sealed class PlanetSystemClusterView
             throw new MissingReferenceException($"{name}/StarImageTemplate is missing.");
         if (headquartersImageTemplate == null)
             throw new MissingReferenceException($"{name}/HeadquartersImageTemplate is missing.");
-
         starImageTemplate.gameObject.SetActive(false);
         headquartersImageTemplate.gameObject.SetActive(false);
         systemNameTextField.raycastTarget = false;

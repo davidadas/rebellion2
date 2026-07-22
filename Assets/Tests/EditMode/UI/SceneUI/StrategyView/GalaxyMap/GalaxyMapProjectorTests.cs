@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -128,6 +129,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 _uiContext.GetTexture(opposingTheme.PlanetOverlayTheme.GalaxyHeadquartersImagePath),
                 star.HeadquartersTexture
             );
+        }
+
+        [Test]
+        public void Project_CorellianPlanets_ReturnsCorrectedSeloniaAndDurosOffsets()
+        {
+            GamePlanetSystem system = ResourceManager
+                .GetEntityData<GamePlanetSystem>()
+                .Single(candidate => candidate.TypeID == "PSCOR");
+            Planet selonia = system.Planets.Single(planet => planet.InstanceID == "SELONIA");
+            Planet duros = system.Planets.Single(planet => planet.InstanceID == "DUROS");
+            GalaxyMapSector sector = new GalaxyMapSector(
+                system,
+                new[]
+                {
+                    new GalaxyMapPlanet(system, selonia, string.Empty),
+                    new GalaxyMapPlanet(system, duros, string.Empty),
+                }
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null
+            );
+
+            GalaxyMapStarRenderData seloniaStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == "SELONIA");
+            GalaxyMapStarRenderData durosStar = data.Clusters[0]
+                .Stars.Single(star => star.PlanetInstanceId == "DUROS");
+            Assert.AreEqual(224, selonia.PositionX);
+            Assert.AreEqual(236, duros.PositionX);
+            Assert.AreEqual(18, seloniaStar.SourceX);
+            Assert.AreEqual(30, durosStar.SourceX);
         }
 
         [Test]

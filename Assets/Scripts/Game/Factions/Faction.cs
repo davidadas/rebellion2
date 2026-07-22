@@ -96,15 +96,18 @@ namespace Rebellion.Game.Factions
         public string PlayerID { get; set; }
 
         /// <summary>
-        /// Accumulated raw materials (pre-refinement). Filled each tick from planet income.
+        /// Accumulated raw materials waiting to be reserved by refineries.
         /// </summary>
         public int RawMaterialStockpile { get; set; }
 
         /// <summary>
-        /// Accumulated refined materials (post-refinement). This is the spendable pool —
-        /// builds and maintenance deduct from it.
+        /// Accumulated refined materials waiting to be reserved by production facilities.
         /// </summary>
         public int RefinedMaterialStockpile { get; set; }
+
+        public List<string> PendingRawMaterialFacilityIDs { get; set; } = new List<string>();
+
+        public List<string> PendingRefinedMaterialFacilityIDs { get; set; } = new List<string>();
 
         public int RawMaterials => RawMaterialStockpile;
 
@@ -146,6 +149,60 @@ namespace Rebellion.Game.Factions
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
         {
             return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
+        }
+
+        /// <summary>
+        /// Reserves one raw material for a facility or queues its request in arrival order.
+        /// </summary>
+        /// <param name="facility">The facility requesting raw material.</param>
+        /// <returns>True when the material is reserved immediately.</returns>
+        public bool RequestRawMaterial(Building facility)
+        {
+            if (facility == null || string.IsNullOrEmpty(facility.InstanceID))
+                return false;
+
+            if (facility.ProductionInputReserved)
+                return true;
+
+            if (RawMaterialStockpile > 0)
+            {
+                RawMaterialStockpile--;
+                facility.ProductionInputReserved = true;
+                PendingRawMaterialFacilityIDs.Remove(facility.InstanceID);
+                return true;
+            }
+
+            if (!PendingRawMaterialFacilityIDs.Contains(facility.InstanceID))
+                PendingRawMaterialFacilityIDs.Add(facility.InstanceID);
+
+            return false;
+        }
+
+        /// <summary>
+        /// Reserves one refined material for a facility or queues its request in arrival order.
+        /// </summary>
+        /// <param name="facility">The facility requesting refined material.</param>
+        /// <returns>True when the material is reserved immediately.</returns>
+        public bool RequestRefinedMaterial(Building facility)
+        {
+            if (facility == null || string.IsNullOrEmpty(facility.InstanceID))
+                return false;
+
+            if (facility.ProductionInputReserved)
+                return true;
+
+            if (RefinedMaterialStockpile > 0)
+            {
+                RefinedMaterialStockpile--;
+                facility.ProductionInputReserved = true;
+                PendingRefinedMaterialFacilityIDs.Remove(facility.InstanceID);
+                return true;
+            }
+
+            if (!PendingRefinedMaterialFacilityIDs.Contains(facility.InstanceID))
+                PendingRefinedMaterialFacilityIDs.Add(facility.InstanceID);
+
+            return false;
         }
 
         /// <summary>

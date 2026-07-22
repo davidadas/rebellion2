@@ -54,6 +54,8 @@ namespace Rebellion.Game
         /// <summary>Game tick speed settings.</summary>
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
 
+        public MessageConfig Messages { get; set; } = new MessageConfig();
+
         /// <summary>Shared probability table settings.</summary>
         public ProbabilityTablesConfig ProbabilityTables { get; set; } =
             new ProbabilityTablesConfig();
@@ -313,6 +315,20 @@ namespace Rebellion.Game
             /// <summary>Addend applied to each uprising dice roll.</summary>
             public int DiceAddend { get; set; }
 
+            public int MissionLeadershipDivisor { get; set; }
+
+            public int InciteMissionSupportShift { get; set; }
+
+            public string ResistanceRegimentTypeID { get; set; }
+
+            public int SubdueOwnedSupportBase { get; set; }
+
+            public int SubdueOwnedSupportRange { get; set; }
+
+            public int SubdueNeutralSupportBase { get; set; }
+
+            public int SubdueNeutralSupportRange { get; set; }
+
             /// <summary>Maps an uprising score to a property damage consequence code.</summary>
             public Dictionary<int, int> PrimaryConsequenceTable { get; set; } =
                 new Dictionary<int, int>();
@@ -321,7 +337,7 @@ namespace Rebellion.Game
             public Dictionary<int, int> SecondaryConsequenceTable { get; set; } =
                 new Dictionary<int, int>();
 
-            /// <summary>Popular support shift applied to the controlling faction each uprising tick.</summary>
+            /// <summary>Popular support shift applied to the controlling faction on each uprising support pulse.</summary>
             public int ControllerSupportShift { get; set; }
 
             /// <summary>Minimum ticks between active-uprising support drift pulses.</summary>
@@ -335,6 +351,10 @@ namespace Rebellion.Game
 
             /// <summary>Maximum ticks between active-uprising incident pulses.</summary>
             public int IncidentPulseMaxTicks { get; set; }
+
+            public int ClearUprisingMinTicks { get; set; }
+
+            public int ClearUprisingMaxTicks { get; set; }
         }
 
         /// <summary>
@@ -466,33 +486,17 @@ namespace Rebellion.Game
             /// <summary>Ticks between maintenance shortfall auto-scrap attempts.</summary>
             public int MaintenanceShortfallAutoscrapInterval { get; set; }
 
-            /// <summary>Production penalty per hostile capital ship during a blockade.</summary>
-            public int BlockadeCapitalShipPenalty { get; set; }
+            /// <summary>Share of a resource facility's capacity used to scale maintenance load.</summary>
+            public int ResourceMaintenanceLoadPercent { get; set; }
 
-            /// <summary>Production penalty per hostile fighter during a blockade.</summary>
-            public int BlockadeFighterPenalty { get; set; }
+            /// <summary>Base percentage used to convert popular support into cycle duration.</summary>
+            public int ResourceCollectionBasePercent { get; set; }
 
-            /// <summary>Maps a roll threshold to a progress increment for capital ship production.</summary>
-            public Dictionary<int, int> CapitalShipProgressTable { get; set; } =
-                new Dictionary<int, int>();
+            /// <summary>Fixed share of a normal cycle used by a resource facility's first cycle.</summary>
+            public int ResourceStartupBasePercent { get; set; }
 
-            /// <summary>Range for the capital ship progress roll.</summary>
-            public int CapitalShipProgressRollRange { get; set; }
-
-            /// <summary>Threshold for the capital ship success check roll.</summary>
-            public int CapitalShipSuccessThreshold { get; set; }
-
-            /// <summary>Range for the capital ship success check roll.</summary>
-            public int CapitalShipSuccessRollRange { get; set; }
-
-            /// <summary>Popular support shift applied when a capital ship completes.</summary>
-            public int CapitalShipCompletionSupportShift { get; set; }
-
-            /// <summary>Popular support shift applied when a building completes.</summary>
-            public int BuildingCompletionSupportShift { get; set; }
-
-            /// <summary>Popular support shift applied when a troop completes.</summary>
-            public int TroopCompletionSupportShift { get; set; }
+            /// <summary>Random share of a normal cycle used by a resource facility's first cycle.</summary>
+            public int ResourceStartupRandomPercent { get; set; }
         }
 
         /// <summary>
@@ -563,6 +567,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SpaceCombatConfig
         {
+            public int FighterTacticalDurability { get; set; }
+
             /// <summary>Percent variance applied symmetrically to each weapon damage roll.</summary>
             public int WeaponDamageVariancePercent { get; set; }
 
@@ -740,6 +746,12 @@ namespace Rebellion.Game
 
             /// <summary>Tick interval for very slow speed.</summary>
             public float VerySlowTickIntervalSeconds { get; set; } = 120f;
+        }
+
+        [PersistableObject]
+        public class MessageConfig
+        {
+            public int RetentionTicks { get; set; } = 300;
         }
 
         /// <summary>

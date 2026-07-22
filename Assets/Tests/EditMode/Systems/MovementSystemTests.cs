@@ -33,7 +33,12 @@ namespace Rebellion.Tests.Systems
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
-            game.Factions.Add(new Faction { InstanceID = "empire" });
+            Faction empire = new Faction
+            {
+                InstanceID = "empire",
+                Settings = new FactionSettings { MissionReturnPlanetTypeID = "origin-type" },
+            };
+            game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
@@ -47,6 +52,7 @@ namespace Rebellion.Tests.Systems
             Planet origin = new Planet
             {
                 InstanceID = "p1",
+                TypeID = "origin-type",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
                 PositionX = 0,
@@ -196,6 +202,247 @@ namespace Rebellion.Tests.Systems
             movement.RequestMove(officer, destination);
 
             Assert.Greater(officer.Movement.TransitTicks, 0);
+        }
+
+        [Test]
+        public void SendToMission_OfficerAboardShip_RecordsShipAndPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+
+            movement.SendToMission(officer, mission);
+
+            Assert.AreEqual(ship.InstanceID, officer.MissionReturnParentInstanceID);
+            Assert.AreEqual(origin.InstanceID, officer.MissionReturnLocationInstanceID);
+            Assert.AreEqual(mission, officer.GetParent());
+        }
+
+        [Test]
+        public void TryReturnFromMission_RecordedShipMoved_ReturnsToRecordedPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, origin);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            game.MoveNode(fleet, destination);
+
+            bool returned = movement.TryReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0]
+            );
+
+            Assert.IsTrue(returned);
+            Assert.AreEqual(origin, officer.GetParent());
+        }
+
+        [Test]
+        public void TryReturnFromMission_MissingRecordedLocation_ReturnsToConfiguredPlanet()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            bool returned = movement.TryReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0]
+            );
+
+            Assert.IsTrue(returned);
+            Assert.AreEqual(origin, officer.GetParent());
+        }
+
+        [Test]
+        public void TryReturnFromMission_MissingFallback_ReturnsFalseWithoutMovingAnyParticipant()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer firstOfficer,
+                MovementSystem movement
+            ) = BuildScene();
+            Faction secondFaction = new Faction { InstanceID = "second-faction" };
+            game.Factions.Add(secondFaction);
+            Planet secondOrigin = new Planet
+            {
+                InstanceID = "second-origin",
+                OwnerInstanceID = secondFaction.InstanceID,
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 100,
+            };
+            game.AttachNode(secondOrigin, destination.GetParent());
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", secondFaction.InstanceID);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            game.AttachNode(secondOfficer, secondOrigin);
+            movement.SendToMission(firstOfficer, mission);
+            movement.SendToMission(secondOfficer, mission);
+            firstOfficer.Movement = null;
+            secondOfficer.Movement = null;
+            firstOfficer.MissionReturnParentInstanceID = "missing-first-parent";
+            firstOfficer.MissionReturnLocationInstanceID = "missing-first-location";
+            secondOfficer.MissionReturnParentInstanceID = "missing-second-parent";
+            secondOfficer.MissionReturnLocationInstanceID = "missing-second-location";
+
+            bool returned = movement.TryReturnFromMission(
+                new IMissionParticipant[] { firstOfficer, secondOfficer },
+                new IMovable[0]
+            );
+
+            Assert.IsFalse(returned);
+            Assert.AreSame(mission, firstOfficer.GetParent());
+            Assert.AreSame(mission, secondOfficer.GetParent());
+            Assert.IsNull(firstOfficer.Movement);
+            Assert.IsNull(secondOfficer.Movement);
+        }
+
+        [Test]
+        public void TryReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer escort,
+                MovementSystem movement
+            ) = BuildScene();
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(escort, mission);
+            escort.Movement = null;
+            Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
+            passenger.IsCaptured = true;
+            passenger.CaptorInstanceID = "empire";
+            game.AttachNode(passenger, destination);
+
+            bool returned = movement.TryReturnFromMission(
+                new IMissionParticipant[] { escort },
+                new IMovable[] { passenger }
+            );
+
+            Assert.IsTrue(returned);
+            Assert.AreSame(origin, escort.GetParent());
+            Assert.AreSame(origin, passenger.GetParent());
+            Assert.AreEqual(escort.Movement.MovementGroupID, passenger.Movement.MovementGroupID);
+        }
+
+        [Test]
+        public void TryReturnFromMission_PassengerWithoutParticipant_ReturnsFalseWithoutMovingPassenger()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            Officer passenger = EntityFactory.CreateOfficer("passenger", "rebels");
+            passenger.IsCaptured = true;
+            passenger.CaptorInstanceID = "empire";
+            game.AttachNode(passenger, destination);
+
+            bool returned = movement.TryReturnFromMission(
+                new IMissionParticipant[0],
+                new IMovable[] { passenger }
+            );
+
+            Assert.IsFalse(returned);
+            Assert.AreSame(destination, passenger.GetParent());
+            Assert.IsNull(passenger.Movement);
+        }
+
+        [Test]
+        public void TryReturnFromMission_ParticipantsWithDifferentOrigins_ReturnToTheirOwnLocations()
+        {
+            (
+                GameRoot game,
+                Planet firstOrigin,
+                Planet destination,
+                Officer firstOfficer,
+                MovementSystem movement
+            ) = BuildScene();
+            PlanetSystem secondSystem = new PlanetSystem
+            {
+                InstanceID = "sys2",
+                PositionX = 200,
+                PositionY = 0,
+            };
+            Planet secondOrigin = new Planet
+            {
+                InstanceID = "p3",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+            };
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(secondSystem, game.GetGalaxyMap());
+            game.AttachNode(secondOrigin, secondSystem);
+            game.AttachNode(secondOfficer, secondOrigin);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(firstOfficer, mission);
+            movement.SendToMission(secondOfficer, mission);
+            firstOfficer.Movement = null;
+            secondOfficer.Movement = null;
+
+            bool returned = movement.TryReturnFromMission(
+                new IMissionParticipant[] { firstOfficer, secondOfficer },
+                new IMovable[0]
+            );
+
+            Assert.IsTrue(returned);
+            Assert.AreEqual(firstOrigin, firstOfficer.GetParent());
+            Assert.AreEqual(secondOrigin, secondOfficer.GetParent());
+            Assert.AreNotEqual(
+                firstOfficer.Movement.MovementGroupID,
+                secondOfficer.Movement.MovementGroupID
+            );
         }
 
         [Test]
@@ -1742,6 +1989,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(carrier, destFleet);
 

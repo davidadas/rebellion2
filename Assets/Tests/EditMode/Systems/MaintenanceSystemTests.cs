@@ -144,7 +144,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 MaintenanceCost = 1,
-                ConstructionCost = 1,
+                ConstructionCost = 7,
             };
             Regiment regiment2 = new Regiment
             {
@@ -173,6 +173,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsFalse(firstResults.OfType<GameObjectAutoscrappedResult>().Any());
             Assert.IsTrue(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
+            Assert.AreEqual(3, empire.RefinedMaterialStockpile);
             MaintenanceRequiredResult shortfall = firstResults
                 .OfType<MaintenanceRequiredResult>()
                 .FirstOrDefault();
@@ -309,13 +310,17 @@ namespace Rebellion.Tests.Systems
                 new FleetSystem(game)
             );
 
-            maintenanceSystem.ProcessTick();
+            List<GameResult> firstResults = maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
+            List<GameResult> secondResults = maintenanceSystem.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
+            Assert.IsTrue(firstResults.OfType<MaintenanceRequiredResult>().Any());
+            Assert.IsFalse(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
         }
 
         [Test]
-        public void ProcessTick_OnlyBuildingUnitsUnderConstruction_DoesNotEnterShortfall()
+        public void ProcessTick_UnitUnderConstruction_ReservesMaintenance()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -346,12 +351,15 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = maintenanceSystem.ProcessTick();
 
-            Assert.IsFalse(results.OfType<MaintenanceRequiredResult>().Any());
+            MaintenanceRequiredResult shortfall = results
+                .OfType<MaintenanceRequiredResult>()
+                .Single();
+            Assert.AreEqual(3, shortfall.Amount);
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r1"));
         }
 
         [Test]
-        public void ProcessTick_UnitInTransit_DoesNotScrap()
+        public void ProcessTick_UnitInTransit_RemainsEligibleForAutoscrap()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -392,8 +400,15 @@ namespace Rebellion.Tests.Systems
             );
 
             maintenanceSystem.ProcessTick();
+            game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
 
-            Assert.IsNotNull(game.GetSceneNodeByInstanceID<CapitalShip>("cs1"));
+            List<GameResult> results = maintenanceSystem.ProcessTick();
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>("cs1"));
+            Assert.AreSame(
+                ship,
+                results.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject
+            );
         }
 
         [Test]
@@ -417,7 +432,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void GetMaintenanceCapacity_WithRefinementMultiplierOne_UsesResourceProcessingPoints()
+        public void GetMaintenanceCapacity_RefinementMultiplierDoesNotChangeCapacity()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -431,8 +446,27 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(CreateMine("mine1", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
-            Assert.AreEqual(1, empire.RefinedMaterialSupply);
             Assert.AreEqual(50, empire.MaintenanceCapacity);
+        }
+
+        [Test]
+        public void GetMaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1", DisplayName = "System" };
+            Planet minePlanet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
+            Planet refineryPlanet = CreatePlanet("p2", "Kessel", empire.InstanceID);
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(minePlanet, system);
+            game.AttachNode(refineryPlanet, system);
+            game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
+            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
+
+            int capacity = empire.MaintenanceCapacity;
+
+            Assert.AreEqual(50, capacity);
         }
 
         [Test]
@@ -528,6 +562,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "r1",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                ConstructionCost = 7,
             };
             game.AttachNode(system, game.GetGalaxyMap());
             game.AttachNode(planet, system);
@@ -546,6 +581,42 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(scrapped);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.IsNull(regiment.GetParent());
+            Assert.AreEqual(3, empire.RefinedMaterialStockpile);
+        }
+
+        [Test]
+        public void Scrap_UnitUnderConstruction_PreservesUnitAndMaterials()
+        {
+            GameRoot game = CreateGame();
+            Faction empire = CreateFaction("empire", "Empire");
+            game.Factions.Add(empire);
+            PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
+            Planet planet = CreatePlanet("p1", "Coruscant", "empire");
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "r1",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ConstructionCost = 7,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+            game.AttachNode(planet, system);
+            game.AttachNode(regiment, planet);
+            MaintenanceSystem maintenanceSystem = new MaintenanceSystem(
+                game,
+                new FixedRNG(),
+                new FleetSystem(game)
+            );
+
+            bool scrapped = maintenanceSystem.Scrap(
+                new List<IManufacturable> { regiment },
+                "empire"
+            );
+
+            Assert.IsFalse(scrapped);
+            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreSame(planet, regiment.GetParent());
+            Assert.AreEqual(0, empire.RefinedMaterialStockpile);
         }
 
         [Test]

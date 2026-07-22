@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -24,6 +26,12 @@ public interface IFleetWindowActions
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="items">The selected items.</param>
     void OpenFleetStatusWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
+
+    /// <summary>
+    /// Opens the completed planetary combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    void OpenFleetBattleResult(GameResult result);
 
     /// <summary>
     /// Rebuilds shared strategy state after a fleet command changes the game.
@@ -389,12 +397,27 @@ public sealed class FleetWindowController
         CaptureContextTarget(view, session, context.EventData);
         List<ISceneNode> items = session.GetContextItems();
         string playerFactionId = getUIContext()?.GetPlayerFactionInstanceID();
+        Planet targetPlanet = GetFleetCommandTargetPlanet(
+            context.Window,
+            items.OfType<Fleet>().ToList()
+        );
         List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
             items,
             StrategyContextMenuAvailability.PlayerControlsItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanMoveItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
-            confirmationActions.CanRetire(items)
+            confirmationActions.CanRetire(items),
+            fleetCommandController.CanExecutePlanetaryBombardment(
+                items,
+                targetPlanet,
+                BombardmentType.Military
+            ),
+            fleetCommandController.CanExecutePlanetaryBombardment(
+                items,
+                targetPlanet,
+                BombardmentType.DestroySystem
+            ),
+            fleetCommandController.CanExecutePlanetaryAssault(items, targetPlanet)
         );
         FleetContextMenuSource source = new FleetContextMenuSource(
             context.Window,
@@ -432,6 +455,17 @@ public sealed class FleetWindowController
         )
             return;
 
+        if (
+            StrategyContextMenuActions.TryGetBombardmentType(
+                menuCommand.Action,
+                out BombardmentType bombardmentType
+            )
+        )
+        {
+            TryExecutePlanetaryBombardment(source.Window, source.Items, bombardmentType);
+            return;
+        }
+
         switch (menuCommand.Action)
         {
             case StrategyContextMenuActions.Encyclopedia:
@@ -455,8 +489,8 @@ public sealed class FleetWindowController
             case StrategyContextMenuActions.CreateFleet:
                 TryCreateFleetFromCapitalShips(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.PlanetaryBombardment:
-                TryExecutePlanetaryBombardment(source.Window, source.Items);
+            case StrategyContextMenuActions.PlanetaryAssault:
+                TryExecutePlanetaryAssault(source.Window, source.Items);
                 break;
             case StrategyContextMenuActions.CreateMission:
             case StrategyContextMenuActions.Move:
@@ -504,35 +538,70 @@ public sealed class FleetWindowController
     /// </summary>
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="items">The selected fleets.</param>
+    /// <param name="type">The selected bombardment mode.</param>
     /// <returns>True when bombardment was executed.</returns>
     private bool TryExecutePlanetaryBombardment(
         UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
+        IReadOnlyList<ISceneNode> items,
+        BombardmentType type
     )
     {
         List<Fleet> fleets = items?.OfType<Fleet>().ToList() ?? new List<Fleet>();
         if (fleets.Count == 0)
             return false;
 
-        Planet targetPlanet = GetBombardmentTargetPlanet(sourceWindow, fleets);
+        Planet targetPlanet = GetFleetCommandTargetPlanet(sourceWindow, fleets);
         if (targetPlanet == null)
             return false;
 
-        if (!fleetCommandController.TryExecutePlanetaryBombardment(items, targetPlanet))
+        BombardmentResult result = fleetCommandController.ExecutePlanetaryBombardment(
+            items,
+            targetPlanet,
+            type
+        );
+        if (result == null)
             return false;
 
-        ClearSelection(sourceWindow);
         actions.RefreshFleetState();
+        actions.OpenFleetBattleResult(result);
         return true;
     }
 
     /// <summary>
-    /// Resolves the authoritative planet targeted by fleet bombardment.
+    /// Executes a planetary assault for the selected fleets.
+    /// </summary>
+    /// <param name="sourceWindow">The requesting fleet window.</param>
+    /// <param name="items">The selected fleets.</param>
+    /// <returns>True when the assault was executed.</returns>
+    private bool TryExecutePlanetaryAssault(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items)
+    {
+        List<Fleet> fleets = items?.OfType<Fleet>().ToList() ?? new List<Fleet>();
+        if (fleets.Count == 0)
+            return false;
+
+        Planet targetPlanet = GetFleetCommandTargetPlanet(sourceWindow, fleets);
+        if (targetPlanet == null)
+            return false;
+
+        PlanetaryAssaultResult result = fleetCommandController.ExecutePlanetaryAssault(
+            items,
+            targetPlanet
+        );
+        if (result == null)
+            return false;
+
+        actions.RefreshFleetState();
+        actions.OpenFleetBattleResult(result);
+        return true;
+    }
+
+    /// <summary>
+    /// Resolves the authoritative planet targeted by a fleet combat command.
     /// </summary>
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="fleets">The selected fleets.</param>
     /// <returns>The authoritative target planet, or null.</returns>
-    private Planet GetBombardmentTargetPlanet(UIWindow sourceWindow, IReadOnlyList<Fleet> fleets)
+    private Planet GetFleetCommandTargetPlanet(UIWindow sourceWindow, IReadOnlyList<Fleet> fleets)
     {
         Planet fleetPlanet = fleets
             ?.Select(fleet => fleet?.GetParentOfType<Planet>())

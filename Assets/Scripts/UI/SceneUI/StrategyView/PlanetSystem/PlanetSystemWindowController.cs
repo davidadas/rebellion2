@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -16,6 +18,12 @@ public interface IPlanetSystemWindowActions
     /// Rebuilds shared strategy state after a planet-system command changes the game.
     /// </summary>
     void RefreshPlanetSystemState();
+
+    /// <summary>
+    /// Opens the completed planetary combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    void OpenPlanetSystemBattleResult(GameResult result);
 
     /// <summary>
     /// Opens one planet icon window at a source-space position.
@@ -416,7 +424,18 @@ public sealed class PlanetSystemWindowController
         List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
             hit,
             items,
-            GetUIContext().GetPlayerFactionInstanceID()
+            GetUIContext().GetPlayerFactionInstanceID(),
+            fleetCommandController.CanExecutePlanetaryBombardment(
+                items,
+                hit?.Planet,
+                BombardmentType.Military
+            ),
+            fleetCommandController.CanExecutePlanetaryBombardment(
+                items,
+                hit?.Planet,
+                BombardmentType.DestroySystem
+            ),
+            fleetCommandController.CanExecutePlanetaryAssault(items, hit?.Planet)
         );
         if (commands.Count == 0)
             return false;
@@ -453,6 +472,18 @@ public sealed class PlanetSystemWindowController
         )
             return;
 
+        if (
+            StrategyContextMenuActions.TryGetBombardmentType(
+                strategyCommand.Action,
+                out BombardmentType bombardmentType
+            )
+        )
+        {
+            if (windowManager.TryGetWindowView(source.Window, out PlanetSystemWindowView view))
+                TryExecutePlanetaryBombardment(view, bombardmentType);
+            return;
+        }
+
         switch (strategyCommand.Action)
         {
             case StrategyContextMenuActions.Encyclopedia:
@@ -464,9 +495,9 @@ public sealed class PlanetSystemWindowController
             case StrategyContextMenuActions.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.PlanetaryBombardment:
+            case StrategyContextMenuActions.PlanetaryAssault:
                 if (windowManager.TryGetWindowView(source.Window, out PlanetSystemWindowView view))
-                    TryExecutePlanetaryBombardment(view);
+                    TryExecutePlanetaryAssault(view);
                 break;
             case StrategyContextMenuActions.CreateMission:
             case StrategyContextMenuActions.Move:
@@ -586,8 +617,9 @@ public sealed class PlanetSystemWindowController
     /// Executes planetary bombardment for the selected fleet overlay.
     /// </summary>
     /// <param name="view">The source planet-system view.</param>
+    /// <param name="type">The selected bombardment mode.</param>
     /// <returns>True when bombardment was executed.</returns>
-    public bool TryExecutePlanetaryBombardment(PlanetSystemWindowView view)
+    public bool TryExecutePlanetaryBombardment(PlanetSystemWindowView view, BombardmentType type)
     {
         if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
             return false;
@@ -597,11 +629,43 @@ public sealed class PlanetSystemWindowController
             hit?.Icon == PlanetIcon.Fleet
                 ? GetPlayerFleetItems(hit.Planet)
                 : new List<ISceneNode>();
-        if (!fleetCommandController.TryExecutePlanetaryBombardment(items, hit?.Planet))
+        BombardmentResult result = fleetCommandController.ExecutePlanetaryBombardment(
+            items,
+            hit?.Planet,
+            type
+        );
+        if (result == null)
             return false;
 
-        session.ClearSelection();
         actions.RefreshPlanetSystemState();
+        actions.OpenPlanetSystemBattleResult(result);
+        return true;
+    }
+
+    /// <summary>
+    /// Executes a planetary assault for the selected fleet overlay.
+    /// </summary>
+    /// <param name="view">The source planet-system view.</param>
+    /// <returns>True when the assault was executed.</returns>
+    public bool TryExecutePlanetaryAssault(PlanetSystemWindowView view)
+    {
+        if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
+            return false;
+
+        PlanetSystemWindowHit hit = session.GetContextHit() ?? session.GetSelectedHit();
+        List<ISceneNode> items =
+            hit?.Icon == PlanetIcon.Fleet
+                ? GetPlayerFleetItems(hit.Planet)
+                : new List<ISceneNode>();
+        PlanetaryAssaultResult result = fleetCommandController.ExecutePlanetaryAssault(
+            items,
+            hit?.Planet
+        );
+        if (result == null)
+            return false;
+
+        actions.RefreshPlanetSystemState();
+        actions.OpenPlanetSystemBattleResult(result);
         return true;
     }
 

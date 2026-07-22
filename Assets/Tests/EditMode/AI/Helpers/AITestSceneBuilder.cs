@@ -159,7 +159,7 @@ namespace Rebellion.Tests.AI.Helpers
                 missions ?? new MissionSystem(game, provider, movementSystem);
             ManufacturingSystem manufacturingSystem =
                 manufacturing
-                ?? new ManufacturingSystem(game, new FleetSystem(game), provider, movementSystem);
+                ?? new ManufacturingSystem(game, new FleetSystem(game), movementSystem);
 
             return new AITurnContext(
                 game,

@@ -203,8 +203,11 @@ public sealed class StrategyController
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
             () => gameManager.GetGame(),
             () => gameManager.FleetSystem,
-            (target, fleets) =>
-                gameManager.ExecuteOrbitalBombardment(fleets, target, BombardmentType.General)
+            (target, fleets, type) =>
+                gameManager.BombardmentSystem.CanExecute(fleets, target, type),
+            (target, fleets, type) => gameManager.ExecuteOrbitalBombardment(fleets, target, type),
+            (target, fleets) => gameManager.PlanetaryAssaultSystem.CanExecute(fleets, target),
+            (target, fleets) => gameManager.ExecutePlanetaryAssault(fleets, target)
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -1138,11 +1141,13 @@ public sealed class StrategyController
         if (faction?.InstanceID != PlayerFactionId)
             return;
 
+        messagesWindowController.ReconcileWindows();
         strategyHudController.NotifyAdvisor(
             message,
             gameManager.GetCurrentTick(),
             faction.IsAdvisorMessageNotificationEnabled(message.Type)
         );
+        MarkDirty();
     }
 
     /// <summary>
@@ -1349,6 +1354,12 @@ public sealed class StrategyController
     }
 
     /// <inheritdoc />
+    void IFleetWindowActions.OpenFleetBattleResult(GameResult result)
+    {
+        battleAlertWindowController.OpenResult(result);
+    }
+
+    /// <inheritdoc />
     void IFleetWindowActions.RefreshFleetState()
     {
         RefreshStrategyState();
@@ -1370,6 +1381,12 @@ public sealed class StrategyController
     void IPlanetSystemWindowActions.RefreshPlanetSystemState()
     {
         RefreshStrategyState();
+    }
+
+    /// <inheritdoc />
+    void IPlanetSystemWindowActions.OpenPlanetSystemBattleResult(GameResult result)
+    {
+        battleAlertWindowController.OpenResult(result);
     }
 
     /// <inheritdoc />
@@ -1616,7 +1633,7 @@ public sealed class StrategyController
         }
 
         if (created)
-            PlayPlanetWindowOpenSound(icon, bookmark != null);
+            PlayPlanetWindowOpenSound(bookmark != null);
 
         return window;
     }
@@ -2085,9 +2102,8 @@ public sealed class StrategyController
     /// <summary>
     /// Plays the configured open or bookmark-expansion sound for a planet feature window.
     /// </summary>
-    /// <param name="icon">The opened feature category.</param>
     /// <param name="restored">Whether the window was restored from a bookmark.</param>
-    private void PlayPlanetWindowOpenSound(PlanetIcon icon, bool restored)
+    private void PlayPlanetWindowOpenSound(bool restored)
     {
         StrategyWindowSoundTheme sounds = uiContext?.GetPlayerFactionTheme()?.StrategyWindowSounds;
         if (restored)
@@ -2096,8 +2112,7 @@ public sealed class StrategyController
             return;
         }
 
-        if (icon != PlanetIcon.Mission)
-            PlayStrategySfx(sounds?.PlanetWindowOpenSoundPath);
+        PlayStrategySfx(sounds?.PlanetWindowOpenSoundPath);
     }
 
     /// <summary>

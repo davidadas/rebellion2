@@ -10,6 +10,7 @@ using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using GameFleet = Rebellion.Game.Units.Fleet;
 using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
@@ -193,6 +194,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Decoy", data.Participants[0].Name);
             Assert.IsNull(data.Participants[0].BackgroundTexture);
             Assert.IsFalse(data.Participants[0].UseInTransitBackground);
+        }
+
+        [Test]
+        public void Build_ParticipantCarriedByMovingFleet_UsesTransitPresentation()
+        {
+            Officer participant = (Officer)_mission.MainParticipants[0];
+            participant.Movement = null;
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            participant.SetParent(ship);
+            MissionsWindowSession session = new MissionsWindowSession(_planet, _window);
+
+            MissionsWindowRenderData data = _projector.Build(session, _window, true);
+
+            Assert.AreSame(
+                _uiContext.GetTexture(_entityImagePath),
+                data.Participants[0].BackgroundTexture
+            );
+            Assert.IsTrue(data.Participants[0].UseInTransitBackground);
         }
 
         [Test]

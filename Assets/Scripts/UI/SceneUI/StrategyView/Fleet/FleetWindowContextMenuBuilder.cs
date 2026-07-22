@@ -16,13 +16,19 @@ internal static class FleetWindowContextMenuBuilder
     /// <param name="canMove">Whether the selected items can move.</param>
     /// <param name="canCreateMission">Whether the selected personnel can start a mission.</param>
     /// <param name="canRetire">Whether the selected personnel can retire.</param>
+    /// <param name="canBombard">Whether the selected fleet can bombard its current planet.</param>
+    /// <param name="canDestroySystem">Whether the selected fleet can destroy its current planet.</param>
+    /// <param name="canAssault">Whether the selected fleet can assault its current planet.</param>
     /// <returns>The ordered context-menu commands.</returns>
     public static List<StrategyMenuCommand> Build(
         IReadOnlyList<ISceneNode> items,
         bool playerControlsItems,
         bool canMove,
         bool canCreateMission,
-        bool canRetire
+        bool canRetire,
+        bool canBombard = false,
+        bool canDestroySystem = false,
+        bool canAssault = false
     )
     {
         if (items == null || items.Count == 0)
@@ -35,7 +41,10 @@ internal static class FleetWindowContextMenuBuilder
                 items,
                 fleetCount,
                 shipCount,
-                playerControlsItems
+                playerControlsItems,
+                canBombard,
+                canDestroySystem,
+                canAssault
             );
 
         int fighterCount = items.OfType<Starfighter>().Count();
@@ -58,12 +67,18 @@ internal static class FleetWindowContextMenuBuilder
     /// <param name="fleetCount">The selected fleet count.</param>
     /// <param name="shipCount">The selected capital-ship count.</param>
     /// <param name="playerControlsItems">Whether all selected items are player controlled.</param>
+    /// <param name="canBombard">Whether the selected fleet can bombard its current planet.</param>
+    /// <param name="canDestroySystem">Whether the selected fleet can destroy its current planet.</param>
+    /// <param name="canAssault">Whether the selected fleet can assault its current planet.</param>
     /// <returns>The ordered commands.</returns>
     private static List<StrategyMenuCommand> BuildFleetAndCapitalShipCommands(
         IReadOnlyList<ISceneNode> items,
         int fleetCount,
         int shipCount,
-        bool playerControlsItems
+        bool playerControlsItems,
+        bool canBombard,
+        bool canDestroySystem,
+        bool canAssault
     )
     {
         int itemCount = fleetCount + shipCount;
@@ -77,16 +92,21 @@ internal static class FleetWindowContextMenuBuilder
             ),
         };
 
-        if (fleetCount == 1 && shipCount == 0)
+        if (fleetCount > 0 && shipCount == 0)
         {
             commands.Add(
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.PlanetaryBombardment,
-                    "Planetary Bombardment",
-                    playerControlsItems
+                StrategyBombardmentMenuBuilder.Build(
+                    playerControlsItems && canBombard,
+                    playerControlsItems && canDestroySystem
                 )
             );
-            commands.Add(new StrategyMenuCommand(0, "Planetary Assault", playerControlsItems));
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyContextMenuActions.PlanetaryAssault,
+                    "Planetary Assault",
+                    playerControlsItems && canAssault
+                )
+            );
         }
         else if (fleetCount == 0)
         {

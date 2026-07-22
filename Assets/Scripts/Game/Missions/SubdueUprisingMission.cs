@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
@@ -103,6 +104,26 @@ namespace Rebellion.Game.Missions
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
+        /// Returns a participant's probability of subduing the target uprising.
+        /// </summary>
+        /// <param name="agent">The participant attempting to subdue the uprising.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>The configured success probability.</returns>
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
+        {
+            if (!(GetParent() is Planet planet))
+                throw new InvalidOperationException(
+                    "SubdueUprisingMission must be attached to a Planet."
+                );
+
+            int score =
+                GetUprisingMissionTroopState(planet, game)
+                - planet.GetOpposingPopularSupport(OwnerInstanceID)
+                + agent.GetEffectiveRating(OfficerRating.Leadership);
+            return LookupSuccessProbability(game, score);
+        }
+
+        /// <summary>
         /// Ends the uprising on the target planet.
         /// </summary>
         /// <param name="game">The current game state.</param>
@@ -110,20 +131,9 @@ namespace Rebellion.Game.Missions
         /// <returns>One PlanetUprisingEndedResult, or an empty list if the mission planet is null.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
-            Planet planet = GetParent() as Planet;
-            if (planet == null)
-                return new List<GameResult>();
-            planet.EndUprising();
-
-            return new List<GameResult>
-            {
-                new PlanetUprisingEndedResult
-                {
-                    Planet = planet,
-                    Faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
-                    Tick = game.CurrentTick,
-                },
-            };
+            throw new InvalidOperationException(
+                "Subdue Uprising must be resolved by MissionSystem."
+            );
         }
 
         /// <summary>

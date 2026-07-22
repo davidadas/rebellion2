@@ -12,11 +12,13 @@ namespace Rebellion.Systems
 {
     /// <summary>
     /// Enforces maintenance capacity limits each tick.
-    /// When a faction's unit maintenance cost exceeds its refined materials output,
+    /// When a faction's committed maintenance cost exceeds its resource-facility capacity,
     /// one random eligible unit is scrapped on each configured timer pulse until balance is restored.
     /// </summary>
     public class MaintenanceSystem : IGameSystem
     {
+        private const int _scrapRefundDivisor = 2;
+
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly FleetSystem _fleetSystem;
@@ -58,13 +60,13 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns the maintenance cost of completed units.
+        /// Returns the maintenance cost reserved by completed and committed units.
         /// </summary>
         /// <param name="faction">The faction to calculate maintenance for.</param>
         /// <returns>The total maintenance cost of owned units.</returns>
         public int GetMaintenanceRequired(Faction faction)
         {
-            return faction.GetTotalMaintenanceCost();
+            return faction.GetTotalProjectedMaintenanceCost();
         }
 
         /// <summary>
@@ -93,6 +95,7 @@ namespace Rebellion.Systems
                         ownerInstanceId,
                         System.StringComparison.Ordinal
                     )
+                    || liveItem.GetManufacturingStatus() != ManufacturingStatus.Complete
                 )
                     return false;
 
@@ -212,7 +215,6 @@ namespace Rebellion.Systems
                 .Where(m =>
                     IsAutoScrapEligibleType(m)
                     && m.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && m.Movement == null
                     && m.GetMaintenanceCost() > 0
                 )
                 .ToList();
@@ -260,8 +262,23 @@ namespace Rebellion.Systems
         {
             ISceneNode node = item as ISceneNode;
             Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
+            RefundScrapMaterials(item);
             _game.DetachNode(node);
             _fleetSystem.RemoveIfEmpty(parentFleet);
+        }
+
+        /// <summary>
+        /// Returns half of a completed item's construction material to its owner.
+        /// </summary>
+        /// <param name="item">The completed item being scrapped.</param>
+        private void RefundScrapMaterials(IManufacturable item)
+        {
+            int refund = item.GetConstructionCost() / _scrapRefundDivisor;
+            if (refund <= 0)
+                return;
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(item.GetOwnerInstanceID());
+            faction.RefinedMaterialStockpile += refund;
         }
     }
 }

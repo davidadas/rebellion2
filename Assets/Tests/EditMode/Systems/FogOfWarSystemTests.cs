@@ -205,6 +205,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "SD1",
                 OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             Regiment stormtroopers = CreateRegiment("REG1", _empire);
             Building starport = CreateBuilding("BLDG1", _empire);
@@ -990,6 +991,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "SD1",
                 OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(vader, _coruscant);
             _game.AttachNode(tarkin, _coruscant);
@@ -1165,8 +1167,116 @@ namespace Rebellion.Tests.Systems
             );
         }
 
+        [Test]
+        public void BuildFactionView_OwnPlanet_ManufacturingQueueVisible()
+        {
+            Building queuedBuilding = AddQueuedBuilding(_hoth, _alliance, "OWN_BUILDING", 25);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewHoth = view
+                .PlanetSystems.First(system => system.InstanceID == _outerRimSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _hoth.InstanceID);
+
+            Assert.AreSame(
+                queuedBuilding,
+                viewHoth.ManufacturingQueue[ManufacturingType.Building].Single()
+            );
+        }
+
+        [Test]
+        public void BuildFactionView_FleetAtEnemyPlanet_ManufacturingRemainsHidden()
+        {
+            AddQueuedBuilding(_coruscant, _empire, "HIDDEN_BUILDING", 25);
+            Fleet fleet = CreateFleet("OBSERVING_FLEET", _alliance);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _alliance, "OBSERVING_SHIP");
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsFalse(
+                viewCoruscant.Buildings.Any(building => building.InstanceID == "HIDDEN_BUILDING")
+            );
+            Assert.IsEmpty(viewCoruscant.ManufacturingQueue);
+        }
+
+        [Test]
+        public void CaptureSnapshot_OrdinaryObservation_ManufacturingRemainsHidden()
+        {
+            AddQueuedBuilding(_coruscant, _empire, "HIDDEN_BUILDING", 25);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
+            Assert.IsFalse(snapshot.HasManufacturingIntelligence);
+            Assert.IsEmpty(snapshot.ManufacturingQueueItems);
+            Assert.IsFalse(
+                snapshot.Buildings.Any(building => building.InstanceID == "HIDDEN_BUILDING")
+            );
+        }
+
+        [Test]
+        public void RecordPlanetManufacturingSnapshot_EspionageIntel_RevealsManufacturing()
+        {
+            AddQueuedBuilding(_coruscant, _empire, "REVEALED_BUILDING", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsTrue(
+                viewCoruscant.Buildings.Any(building => building.InstanceID == "REVEALED_BUILDING")
+            );
+            Assert.AreEqual(
+                "REVEALED_BUILDING",
+                viewCoruscant.ManufacturingQueue[ManufacturingType.Building].Single().InstanceID
+            );
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_PreservesStaleManufacturingIntel()
+        {
+            Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            knownBuilding.ManufacturingProgress = 75;
+            AddQueuedBuilding(_coruscant, _empire, "UNKNOWN_BUILDING", 10);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            List<IManufacturable> queue = viewCoruscant.ManufacturingQueue[
+                ManufacturingType.Building
+            ];
+
+            Assert.AreEqual(1, queue.Count);
+            Assert.AreEqual("KNOWN_BUILDING", queue[0].InstanceID);
+            Assert.AreEqual(25, queue[0].ManufacturingProgress);
+        }
+
         private Officer CreateOfficer(string id, Faction faction) =>
             EntityFactory.CreateOfficer(id, faction.InstanceID);
+
+        private Building AddQueuedBuilding(Planet planet, Faction faction, string id, int progress)
+        {
+            Building building = CreateBuilding(id, faction, ManufacturingStatus.Building);
+            building.ProducerOwnerID = faction.InstanceID;
+            building.ProducerPlanetID = planet.InstanceID;
+            building.ManufacturingProgress = progress;
+            planet.EnergyCapacity = planet.Buildings.Count + 1;
+            _game.AttachNode(building, planet);
+            planet.AddToManufacturingQueue(building);
+            return building;
+        }
 
         private void MakeTatooineImperial()
         {
@@ -1180,19 +1290,40 @@ namespace Rebellion.Tests.Systems
         private void AddCapitalShip(Fleet fleet, Faction faction, string id)
         {
             _game.AttachNode(
-                new CapitalShip { InstanceID = id, OwnerInstanceID = faction.InstanceID },
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    OwnerInstanceID = faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 fleet
             );
         }
 
-        private Regiment CreateRegiment(string id, Faction faction) =>
-            EntityFactory.CreateRegiment(id, faction.InstanceID);
+        private Regiment CreateRegiment(string id, Faction faction)
+        {
+            Regiment regiment = EntityFactory.CreateRegiment(id, faction.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            return regiment;
+        }
 
-        private Building CreateBuilding(string id, Faction faction) =>
-            EntityFactory.CreateBuilding(id, faction.InstanceID);
+        private Building CreateBuilding(
+            string id,
+            Faction faction,
+            ManufacturingStatus status = ManufacturingStatus.Complete
+        )
+        {
+            Building building = EntityFactory.CreateBuilding(id, faction.InstanceID);
+            building.ManufacturingStatus = status;
+            return building;
+        }
 
-        private Starfighter CreateStarfighter(string id, Faction faction) =>
-            EntityFactory.CreateStarfighter(id, faction.InstanceID);
+        private Starfighter CreateStarfighter(string id, Faction faction)
+        {
+            Starfighter starfighter = EntityFactory.CreateStarfighter(id, faction.InstanceID);
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            return starfighter;
+        }
 
         private StubMission CreateMission(string id, Faction owner, Planet target) =>
             EntityFactory.CreateMission(id, owner.InstanceID, target.InstanceID);
@@ -1357,7 +1488,11 @@ namespace Rebellion.Tests.Systems
             _coruscant.EnergyCapacity = 1;
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            Building queuedBuilding = CreateBuilding("BLDG_AFTER", _empire);
+            Building queuedBuilding = CreateBuilding(
+                "BLDG_AFTER",
+                _empire,
+                ManufacturingStatus.Building
+            );
             queuedBuilding.ConstructionCost = 100;
             queuedBuilding.BaseBuildSpeed = 1;
             queuedBuilding.BuildingType = BuildingType.Mine;
@@ -1419,6 +1554,7 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "SD1",
                 OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(empireFleet, _coruscant);
             _game.AttachNode(destroyer, empireFleet);
@@ -1528,7 +1664,12 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
             _game.AttachNode(empireFleet, _hoth);
             _game.AttachNode(
-                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _empire.InstanceID },
+                new CapitalShip
+                {
+                    InstanceID = "cs1",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 empireFleet
             );
 
@@ -1613,7 +1754,12 @@ namespace Rebellion.Tests.Systems
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
             _game.AttachNode(empireFleet, _hoth);
             _game.AttachNode(
-                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _empire.InstanceID },
+                new CapitalShip
+                {
+                    InstanceID = "cs1",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 empireFleet
             );
 

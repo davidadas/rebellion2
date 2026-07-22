@@ -24,6 +24,36 @@ namespace Rebellion.Game.FogOfWar
         public string OwnerInstanceID;
 
         /// <summary>
+        /// Whether the planet was colonized when observed.
+        /// </summary>
+        public bool IsColonized;
+
+        /// <summary>
+        /// Whether the planet was in uprising when observed.
+        /// </summary>
+        public bool IsInUprising;
+
+        /// <summary>
+        /// Whether the planet was destroyed when observed.
+        /// </summary>
+        public bool IsDestroyed;
+
+        /// <summary>
+        /// Whether the planet hosted a headquarters when observed.
+        /// </summary>
+        public bool IsHeadquarters;
+
+        /// <summary>
+        /// Energy capacity available when the planet was observed.
+        /// </summary>
+        public int EnergyCapacity;
+
+        /// <summary>
+        /// Energy allocated when the planet was observed.
+        /// </summary>
+        public int AllocatedEnergy;
+
+        /// <summary>
         /// Popular support by faction instance ID.
         /// </summary>
         public Dictionary<string, int> PopularSupport;
@@ -46,6 +76,11 @@ namespace Rebellion.Game.FogOfWar
         public List<Regiment> Regiments;
 
         /// <summary>
+        /// Special-forces units stationed at the planet.
+        /// </summary>
+        public List<SpecialForces> SpecialForces;
+
+        /// <summary>
         /// Buildings visible on the planet.
         /// </summary>
         public List<Building> Buildings;
@@ -60,6 +95,10 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         public List<Mission> Missions;
 
+        public bool HasManufacturingIntelligence;
+
+        public List<IManufacturable> ManufacturingQueueItems;
+
         /// <summary>
         /// Default constructor.
         /// </summary>
@@ -69,9 +108,11 @@ namespace Rebellion.Game.FogOfWar
             Officers = new List<Officer>();
             Fleets = new List<Fleet>();
             Regiments = new List<Regiment>();
+            SpecialForces = new List<SpecialForces>();
             Buildings = new List<Building>();
             Starfighters = new List<Starfighter>();
             Missions = new List<Mission>();
+            ManufacturingQueueItems = new List<IManufacturable>();
         }
     }
 }

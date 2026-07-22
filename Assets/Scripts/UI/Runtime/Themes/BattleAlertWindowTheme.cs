@@ -12,6 +12,14 @@ public class BattleAlertWindowTheme
 
     public string ResultSummaryImagePath { get; set; }
 
+    public string PlanetaryAssaultImagePath { get; set; }
+
+    public string BombardmentNoLossesImagePath { get; set; }
+
+    public string BombardmentAttackerLossesImagePath { get; set; }
+
+    public string BombardmentTargetLossesImagePath { get; set; }
+
     public string BattleMusicPath { get; set; }
 
     public string ResultMusicPath { get; set; }
@@ -79,6 +87,22 @@ public class BattleAlertWindowTheme
     public WindowButtonImageTheme ResultTroopsButton { get; set; }
 
     public WindowButtonImageTheme ResultPersonnelButton { get; set; }
+
+    public WindowButtonImageTheme ResultManufacturingButton { get; set; }
+
+    public WindowButtonImageTheme ResultDefenseButton { get; set; }
+
+    public SourceRectLayout PlanetaryResultCapitalShipsLayout { get; set; }
+
+    public SourceRectLayout PlanetaryResultStarfightersLayout { get; set; }
+
+    public SourceRectLayout PlanetaryResultManufacturingLayout { get; set; }
+
+    public SourceRectLayout PlanetaryResultDefenseLayout { get; set; }
+
+    public SourceRectLayout PlanetaryResultTroopsLayout { get; set; }
+
+    public SourceRectLayout PlanetaryResultPersonnelLayout { get; set; }
 
     public WindowButtonImageTheme ResultDirectSystemButton { get; set; }
 

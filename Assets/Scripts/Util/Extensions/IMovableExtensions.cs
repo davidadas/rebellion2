@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Util.Extensions
@@ -11,6 +12,20 @@ namespace Rebellion.Util.Extensions
     /// </summary>
     public static class IMovableExtensions
     {
+        /// <summary>
+        /// Returns the movement state that physically carries a unit, including movement inherited from its capital ship or fleet.
+        /// </summary>
+        /// <param name="movable">The movable entity to inspect.</param>
+        /// <returns>The active movement state, or null when the entity is stationary.</returns>
+        public static MovementState GetTransitMovement(this IMovable movable)
+        {
+            if (movable?.Movement != null)
+                return movable.Movement;
+
+            MovementState capitalShipMovement = movable?.GetParentOfType<CapitalShip>()?.Movement;
+            return capitalShipMovement ?? movable?.GetParentOfType<Fleet>()?.Movement;
+        }
+
         /// <summary>
         /// Returns the planet position if idle, or the current transit position if in transit.
         /// </summary>

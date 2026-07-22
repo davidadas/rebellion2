@@ -60,7 +60,11 @@ namespace Rebellion.Game.Units
         public ManufacturingStatus ManufacturingStatus { get; set; } = ManufacturingStatus.Building;
         public ManufacturingType ProductionType { get; set; }
         public double ProductionCycleProgress { get; set; }
+        public int ProductionCycleDuration { get; set; }
         public bool ProductionPointReady { get; set; }
+        public bool ProductionInputReserved { get; set; }
+        public int ResourceMaintenanceAllocation { get; set; }
+        public bool ResourceStartupCyclePending { get; set; } = true;
 
         // Movement Info.
         public MovementState Movement { get; set; }

@@ -207,6 +207,30 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Opens a completed combat result in the shared battle-result window.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    internal void OpenResult(GameResult result)
+    {
+        if (
+            result is not SpaceCombatResult and not BombardmentResult and not PlanetaryAssaultResult
+        )
+            throw new ArgumentException("Unsupported battle result.", nameof(result));
+
+        EnsureInitialized();
+        BattleAlertWindowView view = FindWindow() ?? OpenWindow();
+        if (view == null)
+            return;
+
+        SetCombatResult(view, result);
+        if (result is SpaceCombatResult spaceCombatResult)
+            PlayResultMusic(spaceCombatResult);
+        else if (result is PlanetaryAssaultResult)
+            playSfx(StrategyUISoundPaths.PlanetaryAssault);
+        markDirty();
+    }
+
+    /// <summary>
     /// Finds the registered battle-alert view.
     /// </summary>
     /// <returns>The open battle-alert view, or null when none is registered.</returns>
@@ -413,16 +437,16 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleOpenFleetRequested(BattleAlertWindowView view)
     {
-        if (
-            TryGetResultSession(view, out BattleAlertWindowSession session)
-            && session.Result.Planet != null
-        )
+        if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            actions.OpenBattleResultFleet(
-                session.Result.Planet,
-                session.Window.X,
-                session.Window.Y
-            );
+            Planet planet = GetResultPlanet(session.Result);
+            if (planet == null)
+            {
+                CloseWindow(view);
+                return;
+            }
+
+            actions.OpenBattleResultFleet(planet, session.Window.X, session.Window.Y);
         }
 
         CloseWindow(view);
@@ -434,11 +458,15 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleOpenSystemRequested(BattleAlertWindowView view)
     {
-        if (
-            TryGetResultSession(view, out BattleAlertWindowSession session)
-            && session.Result.Planet?.GetParent() is PlanetSystem system
-        )
+        if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
+            Planet planet = GetResultPlanet(session.Result);
+            if (planet?.GetParent() is not PlanetSystem system)
+            {
+                CloseWindow(view);
+                return;
+            }
+
             actions.OpenBattleResultSystem(system, session.Window.X, session.Window.Y);
         }
 
@@ -512,7 +540,7 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The result view.</param>
     /// <param name="result">The completed combat result.</param>
-    private void SetCombatResult(BattleAlertWindowView view, SpaceCombatResult result)
+    private void SetCombatResult(BattleAlertWindowView view, GameResult result)
     {
         sessions[view].Complete(result);
     }
@@ -588,13 +616,29 @@ public sealed class BattleAlertWindowController
     /// <returns>The mode that should be presented.</returns>
     private static BattleAlertWindowMode GetWindowMode(
         PendingCombatResult pending,
-        SpaceCombatResult result
+        GameResult result
     )
     {
         if (result != null)
             return BattleAlertWindowMode.Result;
 
         return pending == null ? BattleAlertWindowMode.Hidden : BattleAlertWindowMode.Pending;
+    }
+
+    /// <summary>
+    /// Returns the planet represented by a supported completed combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    /// <returns>The result planet, or null when unavailable.</returns>
+    private static Planet GetResultPlanet(GameResult result)
+    {
+        return result switch
+        {
+            SpaceCombatResult spaceCombat => spaceCombat.Planet,
+            BombardmentResult bombardment => bombardment.Planet,
+            PlanetaryAssaultResult assault => assault.Planet,
+            _ => null,
+        };
     }
 
     /// <summary>
@@ -689,7 +733,7 @@ public sealed class BattleAlertWindowController
 
         internal BattleResultPanel ResultPanel { get; private set; } = BattleResultPanel.Summary;
 
-        internal SpaceCombatResult Result { get; private set; }
+        internal GameResult Result { get; private set; }
 
         internal UIWindow Window { get; }
 
@@ -697,10 +741,14 @@ public sealed class BattleAlertWindowController
         /// Stores a completed combat result and restores default result selections.
         /// </summary>
         /// <param name="result">The completed combat result.</param>
-        internal void Complete(SpaceCombatResult result)
+        internal void Complete(GameResult result)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
             ReconcileMode(BattleAlertWindowMode.Result);
+            ResultCategory =
+                result is PlanetaryAssaultResult
+                    ? BattleResultCategory.Troops
+                    : BattleResultCategory.CapitalShips;
         }
 
         /// <summary>
@@ -739,7 +787,10 @@ public sealed class BattleAlertWindowController
         /// <returns>True when the selection changed.</returns>
         internal bool SelectResultCategory(BattleResultCategory category)
         {
-            if (ResultCategory == category)
+            if (
+                ResultCategory == category
+                || !BattleResultCategoryCatalog.GetForResult(Result).Contains(category)
+            )
                 return false;
 
             ResultCategory = category;

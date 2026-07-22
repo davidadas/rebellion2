@@ -83,6 +83,8 @@ namespace Rebellion.Game.Factions
             SupportShiftCondition.Positive;
 
         public bool HeadquartersCanBeBombarded { get; set; }
+
+        public string MissionReturnPlanetTypeID { get; set; }
     }
 
     /// <summary>

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -22,6 +23,8 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly PlanetaryControlSystem _planetaryControl;
+        private readonly Dictionary<Planet, int> _garrisonSurplusByPlanet =
+            new Dictionary<Planet, int>();
 
         /// <summary>
         /// Creates a new UprisingSystem.
@@ -38,6 +41,7 @@ namespace Rebellion.Systems
             _game = game;
             _provider = provider;
             _planetaryControl = planetaryControl;
+            InitializeGarrisonSurplus();
         }
 
         /// <summary>
@@ -52,15 +56,158 @@ namespace Rebellion.Systems
             {
                 Faction faction = GetControllingFaction(planet);
                 if (faction == null)
+                {
+                    _garrisonSurplusByPlanet[planet] = 0;
+                    if (planet.IsInUprising)
+                        planet.EndUprising();
                     continue;
+                }
 
                 if (planet.IsInUprising)
                     ResolveActiveUprising(planet, faction, results);
                 else
-                    CheckForNewUprising(planet, faction, results);
+                    ReconcileGarrison(planet, faction, results);
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Reconciles uprising state for one planet after its garrison changes.
+        /// </summary>
+        /// <param name="planet">The planet whose garrison changed.</param>
+        /// <returns>The uprising results produced by reconciliation.</returns>
+        public List<GameResult> ReconcileGarrison(Planet planet)
+        {
+            List<GameResult> results = new List<GameResult>();
+            Faction faction = GetControllingFaction(planet);
+            if (faction == null)
+            {
+                _garrisonSurplusByPlanet[planet] = 0;
+                return results;
+            }
+
+            if (planet.IsInUprising)
+            {
+                SynchronizeActiveUprising(planet, faction);
+                return results;
+            }
+
+            ReconcileGarrison(planet, faction, results);
+            return results;
+        }
+
+        /// <summary>
+        /// Applies one successful incite-uprising attempt and reconciles planetary control.
+        /// </summary>
+        /// <param name="mission">The incite-uprising mission being resolved.</param>
+        /// <param name="results">The result collection receiving uprising and control effects.</param>
+        /// <returns>True when the mission's control objective is achieved.</returns>
+        internal bool ResolveInciteMissionAttempt(
+            InciteUprisingMission mission,
+            List<GameResult> results
+        )
+        {
+            Planet planet = mission?.GetParentOfType<Planet>();
+            if (planet == null)
+                return false;
+
+            Faction controller = GetControllingFaction(planet);
+            if (controller != null)
+                ResolveUprisingIncident(planet, controller, results);
+
+            results.AddRange(_planetaryControl.ReconcilePlanet(planet));
+            results.AddRange(ReconcileGarrison(planet));
+
+            string opposingFactionId = _game
+                .GetFactions()
+                .Select(faction => faction.InstanceID)
+                .FirstOrDefault(instanceId => instanceId != mission.OwnerInstanceID);
+            bool opposingFactionControlsPlanet = planet.OwnerInstanceID == opposingFactionId;
+            bool missionFactionHasTroops = planet
+                .GetAllRegiments()
+                .Any(regiment =>
+                    regiment.OwnerInstanceID == mission.OwnerInstanceID
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
+            return !opposingFactionControlsPlanet && !missionFactionHasTroops;
+        }
+
+        /// <summary>
+        /// Applies one successful subdue-uprising attempt and reconciles planetary control.
+        /// </summary>
+        /// <param name="mission">The subdue-uprising mission being resolved.</param>
+        /// <param name="results">The result collection receiving uprising and control effects.</param>
+        /// <returns>True when the uprising ends.</returns>
+        internal bool ResolveSubdueMissionAttempt(
+            SubdueUprisingMission mission,
+            List<GameResult> results
+        )
+        {
+            Planet planet = mission?.GetParentOfType<Planet>();
+            if (planet?.IsInUprising != true)
+                return false;
+
+            Faction missionFaction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
+            int supportShift = RollSubdueSupportShift(mission, planet);
+            ApplyUprisingSupportShift(planet, missionFaction, supportShift);
+            results.AddRange(_planetaryControl.ReconcilePlanet(planet));
+
+            if (!planet.IsInUprising)
+                return true;
+
+            Faction controller = GetControllingFaction(planet);
+            if (controller == null || UpdateGarrisonSurplus(planet, controller) < 0)
+                return false;
+
+            planet.EndUprising();
+            results.Add(
+                new PlanetUprisingEndedResult
+                {
+                    Planet = planet,
+                    Faction = controller,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            return true;
+        }
+
+        /// <summary>
+        /// Rolls the popular-support shift caused by a subdue-uprising attempt.
+        /// </summary>
+        /// <param name="mission">The subdue-uprising mission.</param>
+        /// <param name="planet">The target planet.</param>
+        /// <returns>The support shift for the planet's current ownership state.</returns>
+        private int RollSubdueSupportShift(SubdueUprisingMission mission, Planet planet)
+        {
+            GameConfig.UprisingConfig config = _game.Config.Uprising;
+            if (planet.OwnerInstanceID == mission.OwnerInstanceID)
+            {
+                return config.SubdueOwnedSupportBase
+                    + _provider.NextInt(0, config.SubdueOwnedSupportRange + 1);
+            }
+
+            if (string.IsNullOrEmpty(planet.OwnerInstanceID))
+            {
+                return config.SubdueNeutralSupportBase
+                    + _provider.NextInt(0, config.SubdueNeutralSupportRange + 1);
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Captures the initial garrison surplus for every planet.
+        /// </summary>
+        private void InitializeGarrisonSurplus()
+        {
+            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
+            {
+                Faction faction = GetControllingFaction(planet);
+                _garrisonSurplusByPlanet[planet] =
+                    faction == null ? 0 : CalculateGarrisonSurplus(planet, faction);
+            }
         }
 
         /// <summary>
@@ -84,40 +231,212 @@ namespace Rebellion.Systems
         /// <param name="planet">The planet to evaluate.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <param name="results">Collection to append uprising results to.</param>
-        private void CheckForNewUprising(Planet planet, Faction faction, List<GameResult> results)
+        private void ReconcileGarrison(Planet planet, Faction faction, List<GameResult> results)
         {
-            int troopCount = planet.GetRegimentCount();
-            int garrisonRequired = CalculateGarrisonRequirement(
+            int previousSurplus = _garrisonSurplusByPlanet.TryGetValue(
                 planet,
-                faction,
-                _game.Config.AI.Garrison
-            );
+                out int storedSurplus
+            )
+                ? storedSurplus
+                : CalculateGarrisonSurplus(planet, faction);
+            int troopCount = CountControllingRegiments(planet, faction);
+            int currentSurplus = UpdateGarrisonSurplus(planet, faction);
 
-            if (troopCount >= garrisonRequired)
+            if (currentSurplus < 0)
+            {
+                planet.BeginUprising();
+                SynchronizeActiveUprising(planet, faction);
+                results.Add(
+                    new PlanetUprisingStartedResult
+                    {
+                        Planet = planet,
+                        InstigatorFaction = FindLeadingOpposingFaction(planet, faction.InstanceID),
+                        Tick = _game.CurrentTick,
+                    }
+                );
+                return;
+            }
+
+            if (troopCount == 0 || currentSurplus != 0 || previousSurplus == 0)
                 return;
 
-            planet.BeginUprising();
-            results.Add(
-                new PlanetUprisingStartedResult
-                {
-                    Planet = planet,
-                    InstigatorFaction = FindLeadingOpposingFaction(planet, faction.InstanceID),
-                    Tick = _game.CurrentTick,
-                }
-            );
+            results.Add(new PlanetNearUprisingResult { Planet = planet, Tick = _game.CurrentTick });
+        }
+
+        /// <summary>
+        /// Recalculates and stores one planet's garrison surplus.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <returns>The updated garrison surplus.</returns>
+        private int UpdateGarrisonSurplus(Planet planet, Faction faction)
+        {
+            int surplus = CalculateGarrisonSurplus(planet, faction);
+            _garrisonSurplusByPlanet[planet] = surplus;
+            return surplus;
+        }
+
+        /// <summary>
+        /// Calculates available controlling regiments beyond the planet's requirement.
+        /// </summary>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <returns>The signed garrison surplus.</returns>
+        private int CalculateGarrisonSurplus(Planet planet, Faction faction)
+        {
+            return CountControllingRegiments(planet, faction)
+                - CalculateGarrisonRequirement(planet, faction, _game.Config.AI.Garrison);
+        }
+
+        /// <summary>
+        /// Counts completed, stationary regiments belonging to a planet's controller.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <returns>The active controlling regiment count.</returns>
+        private static int CountControllingRegiments(Planet planet, Faction faction)
+        {
+            return planet
+                .GetAllRegiments()
+                .Count(regiment =>
+                    regiment.GetOwnerInstanceID() == faction.InstanceID
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
         }
 
         /// <summary>
         /// Rolls uprising dice, applies consequences, and shifts controller support.
-        /// If all controller buildings are destroyed, the planet goes neutral.
         /// </summary>
         /// <param name="planet">The planet in uprising.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <param name="results">Collection to append uprising results to.</param>
         private void ResolveActiveUprising(Planet planet, Faction faction, List<GameResult> results)
         {
+            results.AddRange(_planetaryControl.ReconcilePlanet(planet));
+            if (!planet.IsInUprising)
+                return;
+
+            SynchronizeActiveUprising(planet, faction);
+
+            while (planet.IsInUprising)
+            {
+                if (IsSupportDriftNext(planet))
+                {
+                    ResolveSupportDriftPulse(planet, faction, results);
+                    continue;
+                }
+
+                if (IsIncidentNext(planet))
+                {
+                    ResolveIncidentPulse(planet, faction, results);
+                    continue;
+                }
+
+                if (IsClearNext(planet))
+                {
+                    ResolveClearPulse(planet, faction, results);
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        /// <summary>
+        /// Applies a due uprising support shift and schedules the next support pulse.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="results">The result collection receiving control changes.</param>
+        private void ResolveSupportDriftPulse(
+            Planet planet,
+            Faction faction,
+            List<GameResult> results
+        )
+        {
+            int scheduledTick = planet.NextUprisingSupportDriftTick;
+            planet.NextUprisingSupportDriftTick = 0;
+            planet.UprisingSupportDriftTimerOrder = 0;
+
+            ApplyUprisingControllerSupportShift(planet, faction);
+            results.AddRange(_planetaryControl.ReconcilePlanet(planet));
+            if (!planet.IsInUprising)
+                return;
+
+            SynchronizeUprisingClearTimer(planet, faction);
+            GameConfig.UprisingConfig config = _game.Config.Uprising;
+            planet.NextUprisingSupportDriftTick = AdvanceTimer(
+                scheduledTick,
+                config.ActiveSupportDriftMinTicks,
+                config.ActiveSupportDriftMaxTicks
+            );
+            planet.UprisingSupportDriftTimerOrder = ClaimTimerOrder(planet);
+        }
+
+        /// <summary>
+        /// Resolves a due uprising incident and schedules the next incident pulse.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="results">The result collection receiving incident and control effects.</param>
+        private void ResolveIncidentPulse(Planet planet, Faction faction, List<GameResult> results)
+        {
+            int scheduledTick = planet.NextUprisingIncidentTick;
+            planet.NextUprisingIncidentTick = 0;
+            planet.UprisingIncidentTimerOrder = 0;
+
+            ResolveUprisingIncident(planet, faction, results);
+            results.AddRange(_planetaryControl.ReconcilePlanet(planet));
+            if (!planet.IsInUprising)
+                return;
+
+            SynchronizeUprisingClearTimer(planet, faction);
+            GameConfig.UprisingConfig config = _game.Config.Uprising;
+            planet.NextUprisingIncidentTick = AdvanceTimer(
+                scheduledTick,
+                config.IncidentPulseMinTicks,
+                config.IncidentPulseMaxTicks
+            );
+            planet.UprisingIncidentTimerOrder = ClaimTimerOrder(planet);
+        }
+
+        /// <summary>
+        /// Ends an uprising when its garrison-clear timer becomes due.
+        /// </summary>
+        /// <param name="planet">The planet whose uprising is ending.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="results">The result collection receiving the uprising-ended result.</param>
+        private void ResolveClearPulse(Planet planet, Faction faction, List<GameResult> results)
+        {
+            planet.NextUprisingClearTick = 0;
+            planet.UprisingClearTimerOrder = 0;
+
+            planet.EndUprising();
+            results.Add(
+                new PlanetUprisingEndedResult
+                {
+                    Planet = planet,
+                    Faction = faction,
+                    Tick = _game.CurrentTick,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Resolves one uprising incident and applies its consequences.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="results">The result collection receiving incident effects.</param>
+        private void ResolveUprisingIncident(
+            Planet planet,
+            Faction faction,
+            List<GameResult> results
+        )
+        {
             int ownerSupport = planet.GetPopularSupport(faction.InstanceID);
-            int troopCount = planet.GetRegimentCount();
+            int troopCount = CountControllingRegiments(planet, faction);
 
             ResolveUprisingTableResults(
                 planet,
@@ -131,13 +450,224 @@ namespace Rebellion.Systems
             ApplyUprisingConsequence(planet, faction.InstanceID, uprisingEffect, results);
             ApplyUprisingConsequence(planet, faction.InstanceID, uprisingSeverity, results);
 
-            ApplyUprisingControllerSupportShift(planet, faction);
+            if (HasActiveInciteMission(planet))
+                ApplyUprisingSupportShift(
+                    planet,
+                    faction,
+                    _game.Config.Uprising.InciteMissionSupportShift
+                );
+        }
 
-            if (!planet.Buildings.Any(b => b.GetOwnerInstanceID() == faction.InstanceID))
+        /// <summary>
+        /// Ensures every timer required by an active uprising is armed.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        private void SynchronizeActiveUprising(Planet planet, Faction faction)
+        {
+            GameConfig.UprisingConfig config = _game.Config.Uprising;
+            SynchronizeUprisingClearTimer(planet, faction);
+
+            if (planet.NextUprisingSupportDriftTick <= 0)
             {
-                results.Add(_planetaryControl.ClearPlanetOwnership(planet));
-                planet.EndUprising();
+                planet.NextUprisingSupportDriftTick = ArmTimer(
+                    config.ActiveSupportDriftMinTicks,
+                    config.ActiveSupportDriftMaxTicks
+                );
+                planet.UprisingSupportDriftTimerOrder = ClaimTimerOrder(planet);
             }
+
+            if (planet.NextUprisingIncidentTick <= 0)
+            {
+                planet.NextUprisingIncidentTick = ArmTimer(
+                    config.IncidentPulseMinTicks,
+                    config.IncidentPulseMaxTicks
+                );
+                planet.UprisingIncidentTimerOrder = ClaimTimerOrder(planet);
+            }
+        }
+
+        /// <summary>
+        /// Arms or clears the uprising-end timer according to current garrison strength.
+        /// </summary>
+        /// <param name="planet">The planet in uprising.</param>
+        /// <param name="faction">The controlling faction.</param>
+        private void SynchronizeUprisingClearTimer(Planet planet, Faction faction)
+        {
+            int surplus = UpdateGarrisonSurplus(planet, faction);
+            if (surplus < 0)
+            {
+                planet.NextUprisingClearTick = 0;
+                planet.UprisingClearTimerOrder = 0;
+                return;
+            }
+
+            if (planet.NextUprisingClearTick > 0)
+                return;
+
+            GameConfig.UprisingConfig config = _game.Config.Uprising;
+            planet.NextUprisingClearTick = ArmTimer(
+                config.ClearUprisingMinTicks,
+                config.ClearUprisingMaxTicks
+            );
+            planet.UprisingClearTimerOrder = ClaimTimerOrder(planet);
+        }
+
+        /// <summary>
+        /// Returns whether the support-drift timer is the next due uprising timer.
+        /// </summary>
+        /// <param name="planet">The planet whose timers are evaluated.</param>
+        /// <returns>True when support drift should resolve next.</returns>
+        private bool IsSupportDriftNext(Planet planet)
+        {
+            return IsNextDueTimer(
+                planet.NextUprisingSupportDriftTick,
+                planet.UprisingSupportDriftTimerOrder,
+                planet.NextUprisingIncidentTick,
+                planet.UprisingIncidentTimerOrder,
+                planet.NextUprisingClearTick,
+                planet.UprisingClearTimerOrder
+            );
+        }
+
+        /// <summary>
+        /// Returns whether the incident timer is the next due uprising timer.
+        /// </summary>
+        /// <param name="planet">The planet whose timers are evaluated.</param>
+        /// <returns>True when an incident should resolve next.</returns>
+        private bool IsIncidentNext(Planet planet)
+        {
+            return IsNextDueTimer(
+                planet.NextUprisingIncidentTick,
+                planet.UprisingIncidentTimerOrder,
+                planet.NextUprisingSupportDriftTick,
+                planet.UprisingSupportDriftTimerOrder,
+                planet.NextUprisingClearTick,
+                planet.UprisingClearTimerOrder
+            );
+        }
+
+        /// <summary>
+        /// Returns whether the uprising-clear timer is the next due uprising timer.
+        /// </summary>
+        /// <param name="planet">The planet whose timers are evaluated.</param>
+        /// <returns>True when the uprising should clear next.</returns>
+        private bool IsClearNext(Planet planet)
+        {
+            return IsNextDueTimer(
+                planet.NextUprisingClearTick,
+                planet.UprisingClearTimerOrder,
+                planet.NextUprisingSupportDriftTick,
+                planet.UprisingSupportDriftTimerOrder,
+                planet.NextUprisingIncidentTick,
+                planet.UprisingIncidentTimerOrder
+            );
+        }
+
+        /// <summary>
+        /// Returns whether a candidate timer is due before two competing timers.
+        /// </summary>
+        /// <param name="candidateTick">The candidate timer's scheduled tick.</param>
+        /// <param name="candidateOrder">The candidate timer's tie-break order.</param>
+        /// <param name="firstOtherTick">The first competing timer's scheduled tick.</param>
+        /// <param name="firstOtherOrder">The first competing timer's tie-break order.</param>
+        /// <param name="secondOtherTick">The second competing timer's scheduled tick.</param>
+        /// <param name="secondOtherOrder">The second competing timer's tie-break order.</param>
+        /// <returns>True when the candidate is due and no competing timer precedes it.</returns>
+        private bool IsNextDueTimer(
+            int candidateTick,
+            int candidateOrder,
+            int firstOtherTick,
+            int firstOtherOrder,
+            int secondOtherTick,
+            int secondOtherOrder
+        )
+        {
+            if (candidateTick <= 0 || candidateTick > _game.CurrentTick)
+                return false;
+
+            return !IsScheduledBefore(
+                    firstOtherTick,
+                    firstOtherOrder,
+                    candidateTick,
+                    candidateOrder
+                )
+                && !IsScheduledBefore(
+                    secondOtherTick,
+                    secondOtherOrder,
+                    candidateTick,
+                    candidateOrder
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a scheduled timer is due before a candidate timer.
+        /// </summary>
+        /// <param name="scheduledTick">The competing timer's scheduled tick.</param>
+        /// <param name="timerOrder">The competing timer's tie-break order.</param>
+        /// <param name="candidateTick">The candidate timer's scheduled tick.</param>
+        /// <param name="candidateOrder">The candidate timer's tie-break order.</param>
+        /// <returns>True when the competing timer should resolve first.</returns>
+        private bool IsScheduledBefore(
+            int scheduledTick,
+            int timerOrder,
+            int candidateTick,
+            int candidateOrder
+        )
+        {
+            return scheduledTick > 0
+                && scheduledTick <= _game.CurrentTick
+                && (
+                    scheduledTick < candidateTick
+                    || scheduledTick == candidateTick && timerOrder < candidateOrder
+                );
+        }
+
+        /// <summary>
+        /// Schedules a new uprising timer from the current tick.
+        /// </summary>
+        /// <param name="minimumDelay">The minimum timer delay.</param>
+        /// <param name="maximumDelay">The maximum timer delay.</param>
+        /// <returns>The scheduled tick.</returns>
+        private int ArmTimer(int minimumDelay, int maximumDelay)
+        {
+            return _game.CurrentTick + RollTimerDelay(minimumDelay, maximumDelay);
+        }
+
+        /// <summary>
+        /// Advances a recurring uprising timer from its prior scheduled tick.
+        /// </summary>
+        /// <param name="scheduledTick">The timer's prior scheduled tick.</param>
+        /// <param name="minimumDelay">The minimum recurrence delay.</param>
+        /// <param name="maximumDelay">The maximum recurrence delay.</param>
+        /// <returns>The next scheduled tick.</returns>
+        private int AdvanceTimer(int scheduledTick, int minimumDelay, int maximumDelay)
+        {
+            return scheduledTick + RollTimerDelay(minimumDelay, maximumDelay);
+        }
+
+        /// <summary>
+        /// Rolls an inclusive uprising timer delay within two configured bounds.
+        /// </summary>
+        /// <param name="minimumDelay">The first configured delay bound.</param>
+        /// <param name="maximumDelay">The second configured delay bound.</param>
+        /// <returns>The rolled delay.</returns>
+        private int RollTimerDelay(int minimumDelay, int maximumDelay)
+        {
+            int lowerBound = Math.Min(minimumDelay, maximumDelay);
+            int upperBound = Math.Max(minimumDelay, maximumDelay);
+            return _provider.NextInt(lowerBound, upperBound + 1);
+        }
+
+        /// <summary>
+        /// Claims the next deterministic tie-break order for a planet's uprising timers.
+        /// </summary>
+        /// <param name="planet">The planet owning the timers.</param>
+        /// <returns>The claimed timer order.</returns>
+        private static int ClaimTimerOrder(Planet planet)
+        {
+            planet.NextUprisingTimerOrder++;
+            return planet.NextUprisingTimerOrder;
         }
 
         /// <summary>
@@ -163,18 +693,20 @@ namespace Rebellion.Systems
 
             GameConfig.UprisingConfig config = _game.Config.Uprising;
 
-            int rollA = _provider.NextInt(0, config.DiceRange) + config.DiceAddend;
-            int rollB = _provider.NextInt(0, config.DiceRange) + config.DiceAddend;
+            int rollA = _provider.NextInt(0, config.DiceRange + 1) + config.DiceAddend;
+            int rollB = _provider.NextInt(0, config.DiceRange + 1) + config.DiceAddend;
 
             int troopMultiplier = GetUprisingTroopMultiplier(planet, faction);
             int threshold = CalculateUprisingThreshold(supportForController);
-            int hostilePresence = CountHostilePresence(planet, faction.InstanceID);
+            int missionAdjustment = CalculateUprisingMissionAdjustment(planet, config);
+            int resistanceRegimentCount = CountResistanceRegiments(planet, config);
 
             int combinedScore =
                 rollA
                 + rollB
                 + (threshold - troopMultiplier * controllerTroopCount)
-                + hostilePresence;
+                + missionAdjustment
+                - resistanceRegimentCount;
 
             uprisingEffect = GetThresholdTableValue(config.PrimaryConsequenceTable, combinedScore);
 
@@ -207,21 +739,79 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Counts hostile fleet and regiment presence on the planet.
+        /// Calculates the net incident adjustment from active uprising missions.
         /// </summary>
-        /// <param name="planet">The planet in uprising.</param>
-        /// <param name="factionId">The controlling faction instance ID.</param>
-        /// <returns>The combined hostile presence count.</returns>
-        private static int CountHostilePresence(Planet planet, string factionId)
+        /// <param name="planet">The planet whose missions are evaluated.</param>
+        /// <param name="config">The uprising configuration.</param>
+        /// <returns>The signed mission adjustment.</returns>
+        private int CalculateUprisingMissionAdjustment(
+            Planet planet,
+            GameConfig.UprisingConfig config
+        )
         {
-            int hostileFleetCount = planet
-                .GetFleets()
-                .Count(f => f.GetOwnerInstanceID() != null && f.GetOwnerInstanceID() != factionId);
-            int hostileTroopCount = planet
-                .GetAllRegiments()
-                .Count(r => r.GetOwnerInstanceID() != null && r.GetOwnerInstanceID() != factionId);
+            int adjustment = 0;
+            foreach (Mission mission in GetActiveUprisingMissions(planet))
+            {
+                int averageLeadership =
+                    mission.MainParticipants.Count == 0
+                        ? 0
+                        : mission.MainParticipants.Sum(participant =>
+                            participant.GetEffectiveRating(OfficerRating.Leadership)
+                        ) / mission.MainParticipants.Count;
+                int missionAdjustment = averageLeadership / config.MissionLeadershipDivisor;
 
-            return hostileFleetCount + hostileTroopCount;
+                if (mission is InciteUprisingMission)
+                    adjustment += missionAdjustment;
+                else if (mission is SubdueUprisingMission)
+                    adjustment -= missionAdjustment;
+            }
+
+            return adjustment;
+        }
+
+        /// <summary>
+        /// Returns initiated uprising missions whose participants have reached a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose missions are inspected.</param>
+        /// <returns>The active incite and subdue uprising missions.</returns>
+        private IEnumerable<Mission> GetActiveUprisingMissions(Planet planet)
+        {
+            return _game
+                .GetSceneNodesByType<Mission>()
+                .Where(mission =>
+                    mission.GetParentOfType<Planet>() == planet
+                    && mission.HasInitiated
+                    && !mission.IsWaitingForParticipants()
+                    && (mission is InciteUprisingMission || mission is SubdueUprisingMission)
+                );
+        }
+
+        /// <summary>
+        /// Returns whether a planet has an active incite-uprising mission.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when an active incite-uprising mission is present.</returns>
+        private bool HasActiveInciteMission(Planet planet)
+        {
+            return GetActiveUprisingMissions(planet)
+                .Any(mission => mission is InciteUprisingMission);
+        }
+
+        /// <summary>
+        /// Counts active resistance regiments on a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="config">The uprising configuration identifying resistance regiments.</param>
+        /// <returns>The active resistance regiment count.</returns>
+        private static int CountResistanceRegiments(Planet planet, GameConfig.UprisingConfig config)
+        {
+            return planet
+                .GetAllRegiments()
+                .Count(regiment =>
+                    regiment.TypeID == config.ResistanceRegimentTypeID
+                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                    && regiment.Movement == null
+                );
         }
 
         /// <summary>
@@ -272,7 +862,11 @@ namespace Rebellion.Systems
         {
             List<Building> facilities = planet
                 .GetAllBuildings()
-                .Where(b => b.GetOwnerInstanceID() == controllerInstanceId)
+                .Where(b =>
+                    b.GetOwnerInstanceID() == controllerInstanceId
+                    && b.ManufacturingStatus == ManufacturingStatus.Complete
+                    && b.Movement == null
+                )
                 .ToList();
 
             DestroyRandomIncidentTarget(facilities, planet, _buildingDestroyedSeverity, results);
@@ -292,7 +886,11 @@ namespace Rebellion.Systems
         {
             List<Regiment> regiments = planet
                 .GetAllRegiments()
-                .Where(r => r.GetOwnerInstanceID() == controllerInstanceId)
+                .Where(r =>
+                    r.GetOwnerInstanceID() == controllerInstanceId
+                    && r.ManufacturingStatus == ManufacturingStatus.Complete
+                    && r.Movement == null
+                )
                 .ToList();
 
             DestroyRandomIncidentTarget(regiments, planet, _regimentDestroyedSeverity, results);
@@ -343,7 +941,12 @@ namespace Rebellion.Systems
         {
             List<Officer> candidates = planet
                 .GetAllOfficers()
-                .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && !o.IsCaptured)
+                .Where(o =>
+                    o.GetOwnerInstanceID() == controllerInstanceId
+                    && o.Movement == null
+                    && !o.IsKilled
+                    && !o.IsCaptured
+                )
                 .ToList();
             if (candidates.Count == 0)
                 return;
@@ -377,7 +980,12 @@ namespace Rebellion.Systems
         {
             List<Officer> candidates = planet
                 .GetAllOfficers()
-                .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
+                .Where(o =>
+                    o.GetOwnerInstanceID() == controllerInstanceId
+                    && o.Movement == null
+                    && !o.IsKilled
+                    && o.IsCaptured
+                )
                 .ToList();
             if (candidates.Count == 0)
                 return;
@@ -410,7 +1018,12 @@ namespace Rebellion.Systems
         {
             List<Officer> captured = planet
                 .GetAllOfficers()
-                .Where(o => o.GetOwnerInstanceID() == controllerInstanceId && o.IsCaptured)
+                .Where(o =>
+                    o.GetOwnerInstanceID() == controllerInstanceId
+                    && o.Movement == null
+                    && !o.IsKilled
+                    && o.IsCaptured
+                )
                 .ToList();
             foreach (Officer target in captured)
             {
@@ -430,14 +1043,28 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the per-tick popular support shift to the controlling faction during uprising.
+        /// Applies a scheduled popular support shift to the controlling faction during uprising.
         /// On core systems the shift is halved when it moves against the faction's favor.
         /// </summary>
         /// <param name="planet">The planet in uprising.</param>
         /// <param name="faction">The controlling faction whose support is shifted.</param>
         private void ApplyUprisingControllerSupportShift(Planet planet, Faction faction)
         {
-            int shift = _game.Config.Uprising.ControllerSupportShift;
+            ApplyUprisingSupportShift(
+                planet,
+                faction,
+                _game.Config.Uprising.ControllerSupportShift
+            );
+        }
+
+        /// <summary>
+        /// Applies an uprising support shift with the controlling faction's configured penalty.
+        /// </summary>
+        /// <param name="planet">The planet whose support changes.</param>
+        /// <param name="faction">The controlling faction.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        private void ApplyUprisingSupportShift(Planet planet, Faction faction, int shift)
+        {
             if (shift == 0)
                 return;
 
@@ -454,10 +1081,7 @@ namespace Rebellion.Systems
                     shift /= _game.Config.SupportShift.WeakSupportPenaltyDivisor;
             }
 
-            int currentSupport = planet.GetPopularSupport(faction.InstanceID);
-            int newSupport = Math.Clamp(currentSupport + shift, 0, 100);
-            if (newSupport != currentSupport)
-                planet.SetPopularSupport(faction.InstanceID, newSupport);
+            _planetaryControl.ShiftPopularSupport(planet, faction, shift);
         }
 
         /// <summary>

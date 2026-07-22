@@ -86,6 +86,7 @@ namespace Rebellion.Game.Messages
                 deliveries
             );
             AddUprisingMessages(
+                resultArray.OfType<PlanetNearUprisingResult>(),
                 resultArray.OfType<PlanetUprisingStartedResult>(),
                 resultArray.OfType<PlanetUprisingEndedResult>(),
                 game,
@@ -93,6 +94,7 @@ namespace Rebellion.Game.Messages
             );
             AddPopularSupportOwnershipMessages(
                 resultArray.OfType<PlanetOwnershipChangedResult>(),
+                game,
                 deliveries
             );
             AddBlockadeMessages(
@@ -461,7 +463,7 @@ namespace Rebellion.Game.Messages
                 ),
                 target
             );
-            return WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel);
+            return WithAdvisorNotification(message, AdvisorNotificationCode.AgentReport);
         }
 
         /// <summary>
@@ -493,6 +495,11 @@ namespace Rebellion.Game.Messages
                     new Dictionary<string, string>
                     {
                         { "officer", officer.GetDisplayName() ?? string.Empty },
+                        {
+                            "captor",
+                            GetFaction(game, officer.CaptorInstanceID)?.GetDisplayName()
+                                ?? string.Empty
+                        },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
                     overlayImagePath: includeOfficerOverlay ? GetMessageImagePath(officer) : null,
@@ -504,6 +511,7 @@ namespace Rebellion.Game.Messages
             AdvisorSubjectNotification notification = resultType switch
             {
                 MessageResultType.OfficerCaptured => AdvisorSubjectNotification.Captured,
+                MessageResultType.EnemyOfficerCaptured => AdvisorSubjectNotification.Captured,
                 MessageResultType.OfficerReleased => AdvisorSubjectNotification.Released,
                 MessageResultType.OfficerRecruited => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerInjured => AdvisorSubjectNotification.Report,
@@ -823,6 +831,33 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
+        /// Creates a warning that a controlled planet is close to uprising.
+        /// </summary>
+        /// <param name="faction">The faction controlling the affected planet.</param>
+        /// <param name="result">The near-uprising result.</param>
+        /// <returns>The warning message, or null when no matching definition exists.</returns>
+        private Message CreateNearUprising(Faction faction, PlanetNearUprisingResult result)
+        {
+            if (result == null)
+                return null;
+
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.NearUprising),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                        }
+                    ),
+                    result.Planet
+                ),
+                AdvisorNotificationCode.NegativePopularSupport
+            );
+        }
+
+        /// <summary>
         /// Creates an uprising ended message.
         /// </summary>
         /// <param name="faction">The faction that should receive the message.</param>
@@ -887,20 +922,24 @@ namespace Rebellion.Game.Messages
         /// Creates a message for a planet joining an opposing faction through popular support.
         /// </summary>
         /// <param name="result">The planet ownership change result.</param>
+        /// <param name="recipient">The faction that observed the ownership change.</param>
         /// <returns>The planet joined enemy message, or null when no matching definition exists.</returns>
-        private Message CreatePlanetJoinedEnemyBySupport(PlanetOwnershipChangedResult result)
+        private Message CreatePlanetJoinedEnemyBySupport(
+            PlanetOwnershipChangedResult result,
+            Faction recipient
+        )
         {
-            if (result?.PreviousOwner == null || result.NewOwner == null)
+            if (result?.NewOwner == null || recipient == null)
                 return null;
 
-            if (result.PreviousOwner.InstanceID == result.NewOwner.InstanceID)
+            if (recipient.InstanceID == result.NewOwner.InstanceID)
                 return null;
 
             return WithAdvisorNotification(
                 WithEventLocation(
                     CreateMessage(
                         GetDefinition(MessageResultType.PlanetJoinedEnemyBySupport),
-                        result.PreviousOwner,
+                        recipient,
                         new Dictionary<string, string>
                         {
                             { "faction", result.NewOwner.GetDisplayName() ?? string.Empty },
@@ -918,17 +957,21 @@ namespace Rebellion.Game.Messages
         /// Creates a message for a planet becoming neutral through popular support.
         /// </summary>
         /// <param name="result">The planet ownership change result.</param>
+        /// <param name="recipient">The faction that observed the ownership change.</param>
         /// <returns>The planet neutrality message, or null when no matching definition exists.</returns>
-        private Message CreatePlanetDeclaredNeutralityBySupport(PlanetOwnershipChangedResult result)
+        private Message CreatePlanetDeclaredNeutralityBySupport(
+            PlanetOwnershipChangedResult result,
+            Faction recipient
+        )
         {
-            if (result?.PreviousOwner == null || result.NewOwner != null)
+            if (result?.PreviousOwner == null || result.NewOwner != null || recipient == null)
                 return null;
 
             return WithAdvisorNotification(
                 WithEventLocation(
                     CreateMessage(
                         GetDefinition(MessageResultType.PlanetDeclaredNeutralityBySupport),
-                        result.PreviousOwner,
+                        recipient,
                         new Dictionary<string, string>
                         {
                             { "faction", result.PreviousOwner.GetDisplayName() ?? string.Empty },
@@ -1173,24 +1216,27 @@ namespace Rebellion.Game.Messages
             if (result == null)
                 return null;
 
-            return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(
-                        MessageResultType.PlanetaryAssault,
-                        result.Success ? MessageResultOutcome.Success : MessageResultOutcome.Failed,
-                        GetAssaultPlanetOwnership(result)
-                    ),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", result.AttackingFaction?.GetDisplayName() ?? string.Empty },
-                        { "target", targetFaction?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    },
-                    result.AttackingFaction
+            Message message = CreateMessage(
+                GetDefinition(
+                    MessageResultType.PlanetaryAssault,
+                    result.Success ? MessageResultOutcome.Success : MessageResultOutcome.Failed,
+                    GetAssaultPlanetOwnership(result)
                 ),
-                result.Planet
+                faction,
+                new Dictionary<string, string>
+                {
+                    { "faction", result.AttackingFaction?.GetDisplayName() ?? string.Empty },
+                    { "target", targetFaction?.GetDisplayName() ?? string.Empty },
+                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                },
+                result.AttackingFaction
             );
+            AdvisorNotificationCode notification =
+                faction?.InstanceID == result.AttackingFaction?.InstanceID
+                    ? AdvisorNotificationCode.None
+                    : AdvisorNotificationCode.PlanetaryAssault;
+
+            return WithEventLocation(WithAdvisorNotification(message, notification), result.Planet);
         }
 
         /// <summary>
@@ -1450,16 +1496,35 @@ namespace Rebellion.Game.Messages
             foreach (OfficerCaptureStateResult result in captureResults)
             {
                 Officer officer = GetCaptureStateOfficer(result);
-                Faction faction = GetOwnerFaction(game, officer);
+                Faction ownerFaction = GetOwnerFaction(game, officer);
                 Planet planet = GetOfficerPlanet(officer, result.Context);
                 AddDelivery(
                     deliveries,
-                    faction,
+                    ownerFaction,
                     CreateOfficerMessage(
                         result.IsCaptured
                             ? MessageResultType.OfficerCaptured
                             : MessageResultType.OfficerReleased,
-                        faction,
+                        ownerFaction,
+                        officer,
+                        planet,
+                        game
+                    )
+                );
+
+                if (!result.IsCaptured)
+                    continue;
+
+                Faction captorFaction = GetFaction(game, officer?.CaptorInstanceID);
+                if (captorFaction?.InstanceID == ownerFaction?.InstanceID)
+                    continue;
+
+                AddDelivery(
+                    deliveries,
+                    captorFaction,
+                    CreateOfficerMessage(
+                        MessageResultType.EnemyOfficerCaptured,
+                        captorFaction,
                         officer,
                         planet,
                         game
@@ -1640,17 +1705,25 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Adds messages for uprising start and end results.
         /// </summary>
+        /// <param name="nearResults">The near-uprising results to process.</param>
         /// <param name="startedResults">The uprising started results to process.</param>
         /// <param name="endedResults">The uprising ended results to process.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddUprisingMessages(
+            IEnumerable<PlanetNearUprisingResult> nearResults,
             IEnumerable<PlanetUprisingStartedResult> startedResults,
             IEnumerable<PlanetUprisingEndedResult> endedResults,
             GameRoot game,
             List<(Faction faction, Message message)> deliveries
         )
         {
+            foreach (PlanetNearUprisingResult result in nearResults)
+            {
+                Faction controller = GetFaction(game, result.Planet?.OwnerInstanceID);
+                AddDelivery(deliveries, controller, CreateNearUprising(controller, result));
+            }
+
             foreach (PlanetUprisingStartedResult result in startedResults)
             {
                 Faction controller = GetFaction(game, result.Planet?.OwnerInstanceID);
@@ -1686,9 +1759,11 @@ namespace Rebellion.Game.Messages
         /// Adds messages for popular-support ownership changes.
         /// </summary>
         /// <param name="results">The planet ownership change results to process.</param>
+        /// <param name="game">The game state used to resolve observing factions.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddPopularSupportOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
+            GameRoot game,
             List<(Faction faction, Message message)> deliveries
         )
         {
@@ -1697,18 +1772,38 @@ namespace Rebellion.Game.Messages
                 if (result.Reason != PlanetOwnershipChangeReason.PopularSupport)
                     continue;
 
-                AddDelivery(deliveries, result.NewOwner, CreatePlanetJoinedBySupport(result));
-                AddDelivery(
-                    deliveries,
-                    result.PreviousOwner,
-                    CreatePlanetJoinedEnemyBySupport(result)
-                );
-                AddDelivery(
-                    deliveries,
-                    result.PreviousOwner,
-                    CreatePlanetDeclaredNeutralityBySupport(result)
-                );
+                foreach (Faction recipient in GetOwnershipChangeRecipients(result, game))
+                {
+                    Message message =
+                        recipient == result.NewOwner ? CreatePlanetJoinedBySupport(result)
+                        : result.NewOwner != null
+                            ? CreatePlanetJoinedEnemyBySupport(result, recipient)
+                        : CreatePlanetDeclaredNeutralityBySupport(result, recipient);
+                    AddDelivery(deliveries, recipient, message);
+                }
             }
+        }
+
+        /// <summary>
+        /// Resolves every faction entitled to observe a planet ownership change.
+        /// </summary>
+        /// <param name="result">The ownership-change result.</param>
+        /// <param name="game">The game state containing candidate factions.</param>
+        /// <returns>The observing factions, including the previous and new owners.</returns>
+        private static IEnumerable<Faction> GetOwnershipChangeRecipients(
+            PlanetOwnershipChangedResult result,
+            GameRoot game
+        )
+        {
+            HashSet<string> recipientIds = new HashSet<string>(
+                result.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
+            );
+            if (result.PreviousOwner != null)
+                recipientIds.Add(result.PreviousOwner.InstanceID);
+            if (result.NewOwner != null)
+                recipientIds.Add(result.NewOwner.InstanceID);
+
+            return game.GetFactions().Where(faction => recipientIds.Contains(faction.InstanceID));
         }
 
         /// <summary>
@@ -1833,8 +1928,14 @@ namespace Rebellion.Game.Messages
         {
             foreach (SpaceCombatResult result in battleResults)
             {
-                Faction attacker = GetFaction(game, result.AttackerFleet?.GetOwnerInstanceID());
-                Faction defender = GetFaction(game, result.DefenderFleet?.GetOwnerInstanceID());
+                Faction attacker = GetFaction(
+                    game,
+                    GetSpaceCombatOwnerInstanceId(result, CombatSide.Attacker)
+                );
+                Faction defender = GetFaction(
+                    game,
+                    GetSpaceCombatOwnerInstanceId(result, CombatSide.Defender)
+                );
                 AddDelivery(deliveries, attacker, CreateSpaceBattle(attacker, result, defender));
                 if (defender?.InstanceID != attacker?.InstanceID)
                     AddDelivery(
@@ -1846,6 +1947,9 @@ namespace Rebellion.Game.Messages
 
             foreach (BombardmentResult result in bombardmentResults)
             {
+                if (result?.AttackingFaction == null || result.Planet == null)
+                    continue;
+
                 Faction defender =
                     result.OwnershipChange?.PreviousOwner
                     ?? GetFaction(game, result.Planet?.OwnerInstanceID);
@@ -1864,6 +1968,9 @@ namespace Rebellion.Game.Messages
 
             foreach (PlanetaryAssaultResult result in assaultResults)
             {
+                if (result?.AttackingFaction == null || result.Planet == null)
+                    continue;
+
                 Faction defender =
                     result.OwnershipChange?.PreviousOwner
                     ?? GetFaction(game, result.Planet?.OwnerInstanceID);
@@ -2722,12 +2829,12 @@ namespace Rebellion.Game.Messages
             if (result.Winner == CombatSide.Draw)
                 return MessageResultOutcome.Stalemate;
 
-            if (faction?.InstanceID == result.AttackerFleet?.GetOwnerInstanceID())
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Attacker))
                 return result.Winner == CombatSide.Attacker
                     ? MessageResultOutcome.Victory
                     : MessageResultOutcome.Defeat;
 
-            if (faction?.InstanceID == result.DefenderFleet?.GetOwnerInstanceID())
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Defender))
                 return result.Winner == CombatSide.Defender
                     ? MessageResultOutcome.Victory
                     : MessageResultOutcome.Defeat;
@@ -2743,12 +2850,35 @@ namespace Rebellion.Game.Messages
         /// <returns>The faction's participating fleet, or null.</returns>
         private static Fleet GetSpaceBattleFleet(Faction faction, SpaceCombatResult result)
         {
-            if (faction?.InstanceID == result?.AttackerFleet?.GetOwnerInstanceID())
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Attacker))
                 return result.AttackerFleet;
 
-            return faction?.InstanceID == result?.DefenderFleet?.GetOwnerInstanceID()
+            return faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Defender)
                 ? result.DefenderFleet
                 : null;
+        }
+
+        /// <summary>
+        /// Returns the owner identifier captured for one completed space-combat side.
+        /// </summary>
+        /// <param name="result">The completed space-combat result.</param>
+        /// <param name="side">The represented combat side.</param>
+        /// <returns>The captured owner identifier, with the participating fleet as fallback.</returns>
+        private static string GetSpaceCombatOwnerInstanceId(
+            SpaceCombatResult result,
+            CombatSide side
+        )
+        {
+            return side switch
+            {
+                CombatSide.Attacker => string.IsNullOrEmpty(result?.AttackerOwnerInstanceID)
+                    ? result?.AttackerFleet?.GetOwnerInstanceID()
+                    : result.AttackerOwnerInstanceID,
+                CombatSide.Defender => string.IsNullOrEmpty(result?.DefenderOwnerInstanceID)
+                    ? result?.DefenderFleet?.GetOwnerInstanceID()
+                    : result.DefenderOwnerInstanceID,
+                _ => null,
+            };
         }
 
         /// <summary>

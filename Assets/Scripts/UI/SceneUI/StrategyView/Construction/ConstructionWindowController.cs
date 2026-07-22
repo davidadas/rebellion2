@@ -268,6 +268,7 @@ public sealed class ConstructionWindowController
         if (!boundViews.Add(view))
             return;
 
+        view.BuildCountSubmitted += HandleBuildCountSubmitted;
         view.CancelRequested += HandleCancelRequested;
         view.DecrementRequested += HandleDecrementRequested;
         view.Destroyed += HandleViewDestroyed;
@@ -463,6 +464,22 @@ public sealed class ConstructionWindowController
     }
 
     /// <summary>
+    /// Applies a submitted build count to the requesting construction session.
+    /// </summary>
+    /// <param name="view">The requesting construction view.</param>
+    /// <param name="value">The submitted build-count text.</param>
+    private void HandleBuildCountSubmitted(ConstructionWindowView view, string value)
+    {
+        if (!sessions.TryGetValue(view, out ConstructionWindowSession session))
+            return;
+
+        session.Window.RequestFocus();
+        if (int.TryParse(value, out int buildCount))
+            session.SetBuildCount(buildCount);
+        markDirty();
+    }
+
+    /// <summary>
     /// Decrements a construction session's build count within the supported byte range.
     /// </summary>
     /// <param name="view">The requesting construction view.</param>
@@ -588,6 +605,7 @@ public sealed class ConstructionWindowController
         if (ReferenceEquals(view, null) || !boundViews.Remove(view))
             return;
 
+        view.BuildCountSubmitted -= HandleBuildCountSubmitted;
         view.CancelRequested -= HandleCancelRequested;
         view.DecrementRequested -= HandleDecrementRequested;
         view.Destroyed -= HandleViewDestroyed;

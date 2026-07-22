@@ -58,6 +58,7 @@ namespace Rebellion.Tests.Systems
             Message message = faction.Messages[MessageType.Fleet].Single();
             Assert.AreEqual("Fleet 1 arrived", message.Title);
             Assert.AreEqual("Yavin", message.Body);
+            Assert.AreEqual(game.CurrentTick, message.CreatedTick);
         }
 
         [Test]
@@ -85,6 +86,25 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(faction.Messages.Values.All(messages => messages.Count == 0));
+        }
+
+        [Test]
+        public void ProcessResults_MessagesOlderThanRetention_RemovesExpiredMessages()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Messages.RetentionTicks = 300;
+            GameRoot game = new GameRoot(config) { CurrentTick = 401 };
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(faction);
+            Message expired = new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 };
+            Message retained = new Message(MessageType.Conflict, "Retained") { CreatedTick = 101 };
+            faction.AddMessage(expired);
+            faction.AddMessage(retained);
+            MessageSystem messageSystem = new MessageSystem(game, new List<MessageDefinition>());
+
+            messageSystem.ProcessResults(new List<GameResult>());
+
+            CollectionAssert.AreEqual(new[] { retained }, faction.Messages[MessageType.Conflict]);
         }
     }
 }

@@ -70,6 +70,10 @@ public class GameManager
 
     internal SpaceCombatSystem SpaceCombatSystem => _spaceCombatSystem;
 
+    internal BombardmentSystem BombardmentSystem => _bombardmentSystem;
+
+    internal PlanetaryAssaultSystem PlanetaryAssaultSystem => _planetaryAssaultSystem;
+
     internal MessageSystem MessageSystem => _messageSystem;
 
     internal MaintenanceSystem MaintenanceSystem => _maintenanceManager;
@@ -137,12 +141,7 @@ public class GameManager
             _fleetSystem,
             _blockadeManager
         );
-        _manufacturingManager = new ManufacturingSystem(
-            _game,
-            _fleetSystem,
-            _randomProvider,
-            _movementManager
-        );
+        _manufacturingManager = new ManufacturingSystem(_game, _fleetSystem, _movementManager);
         _maintenanceManager = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
         _resourceProductionManager = new ResourceProductionSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
@@ -151,8 +150,15 @@ public class GameManager
             _manufacturingManager,
             _fogOfWarManager
         );
+        _planetaryControlSystem.RegimentDeploymentResultsProduced += ProcessPlanetaryControlResults;
+        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
-        _missionManager = new MissionSystem(_game, _randomProvider, _movementManager);
+        _missionManager = new MissionSystem(
+            _game,
+            _randomProvider,
+            _movementManager,
+            _uprisingManager
+        );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementManager);
         _bombardmentSystem = new BombardmentSystem(
             _game,
@@ -167,7 +173,7 @@ public class GameManager
         );
         _researchManager = new ResearchSystem(_game, _randomProvider);
         _betrayalManager = new BetrayalSystem(_game);
-        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
+        _movementManager.RegimentDeploymentChanged += ReconcileUprisingGarrison;
         _victoryManager = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,
@@ -178,6 +184,24 @@ public class GameManager
             _planetaryAssaultSystem,
             _randomProvider
         );
+    }
+
+    /// <summary>
+    /// Reconciles uprising state after a regiment deployment changes.
+    /// </summary>
+    /// <param name="planet">The planet whose garrison changed.</param>
+    private void ReconcileUprisingGarrison(Planet planet)
+    {
+        ProcessResults(_uprisingManager.ReconcileGarrison(planet));
+    }
+
+    /// <summary>
+    /// Routes ownership results emitted by deployment-driven control reconciliation.
+    /// </summary>
+    /// <param name="results">The ownership results to process.</param>
+    private void ProcessPlanetaryControlResults(List<GameResult> results)
+    {
+        ProcessResults(results);
     }
 
     /// <summary>
@@ -346,7 +370,7 @@ public class GameManager
 
         List<Fleet> fleets =
             attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-        if (fleets.Count == 0)
+        if (!_bombardmentSystem.CanExecute(fleets, targetPlanet, type))
             return null;
 
         BombardmentResult result = _bombardmentSystem.Execute(fleets, targetPlanet, type);
@@ -354,6 +378,35 @@ public class GameManager
         results.AddRange(result.Events);
         if (result.OwnershipChange != null)
             results.Add(result.OwnershipChange);
+
+        ProcessResults(results);
+        return result;
+    }
+
+    /// <summary>
+    /// Executes a planetary assault and processes the resulting game effects.
+    /// </summary>
+    /// <param name="attackingFleets">The attacking fleets.</param>
+    /// <param name="targetPlanet">The assault target planet.</param>
+    /// <returns>The assault result, or null when the assault cannot execute.</returns>
+    public PlanetaryAssaultResult ExecutePlanetaryAssault(
+        IReadOnlyList<Fleet> attackingFleets,
+        Planet targetPlanet
+    )
+    {
+        if (targetPlanet == null)
+            return null;
+
+        List<Fleet> fleets =
+            attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
+        if (!_planetaryAssaultSystem.CanExecute(fleets, targetPlanet))
+            return null;
+
+        PlanetaryAssaultResult result = _planetaryAssaultSystem.Execute(fleets, targetPlanet);
+        List<GameResult> results = new List<GameResult> { result };
+        if (result.OwnershipChange != null)
+            results.Add(result.OwnershipChange);
+        results.AddRange(_uprisingManager.ReconcileGarrison(targetPlanet));
 
         ProcessResults(results);
         return result;
@@ -416,6 +469,13 @@ public class GameManager
     /// <param name="processMessages">Whether to create faction messages for this batch.</param>
     private void ProcessResults(List<GameResult> results, bool processMessages = true)
     {
+        List<GameResult> invalidatedMissionResults = results
+            .OfType<PlanetUprisingStartedResult>()
+            .Where(result => result.Planet != null)
+            .SelectMany(result => _missionManager.AbortInvalidMissions(result.Planet))
+            .ToList();
+        results.AddRange(invalidatedMissionResults);
+
         _fogOfWarManager.ProcessResults(results);
         if (processMessages)
             _messageSystem.ProcessResults(results);

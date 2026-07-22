@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 {
@@ -99,6 +100,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             rootRows[0].OnPointerEnter(new PointerEventData(null));
             ContextMenuPanelView[] panels = FindRenderedPanels();
             ContextMenuCommandView childRow = FindRenderedRows(panels[1]).Single();
+            RawImage parentIcon = rootRows[0]
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "IconImage");
+            RectInt parentIconRect = UILayout.GetSourceRect(parentIcon.rectTransform);
 
             Assert.IsTrue(_presenter.Open);
             Assert.AreSame(_window, _presenter.Window);
@@ -107,6 +112,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Fast", FindCommandText(rootRows[1]).text);
             Assert.AreEqual("Checked", FindCommandText(rootRows[2]).text);
             Assert.AreEqual("Child", FindCommandText(childRow).text);
+            Assert.AreEqual(new RectInt(6, 0, 17, 20), parentIconRect);
         }
 
         [Test]

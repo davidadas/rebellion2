@@ -5,6 +5,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -270,7 +271,8 @@ public sealed class UIContext
             return node.InjuredImagePath;
 
         if (
-            node is IMovable { Movement: not null }
+            node is IMovable movable
+            && movable.GetTransitMovement() != null
             && !string.IsNullOrEmpty(
                 SelectStatusPath(small, node.InTransitSmallImagePath, node.InTransitImagePath)
             )

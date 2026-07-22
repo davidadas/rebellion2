@@ -6,6 +6,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -269,6 +270,75 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_FleetArrivesAtPlanetaryStarfighters_CreatesPendingCombat()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction alliance = new Faction
+            {
+                InstanceID = "FNALL1",
+                DisplayName = "Alliance",
+                PlayerID = "player",
+            };
+            Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            game.Factions.Add(alliance);
+            game.Factions.Add(empire);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "SYS1", DisplayName = "System" };
+            game.AttachNode(system, game.GetGalaxyMap());
+            Planet origin = new Planet
+            {
+                InstanceID = "ORIGIN",
+                DisplayName = "Origin",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "DEST",
+                DisplayName = "Destination",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(destination, system);
+
+            Fleet arrivingFleet = CreateCombatFleet(
+                game,
+                "ARRIVING",
+                alliance.InstanceID,
+                origin,
+                hullStrength: 1000,
+                weaponPower: 100
+            );
+            Starfighter defender = new Starfighter
+            {
+                InstanceID = "DEFENDER",
+                OwnerInstanceID = empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 5,
+            };
+            game.AttachNode(defender, destination);
+
+            GameManager manager = new GameManager(game);
+            manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);
+
+            manager.ProcessTick();
+
+            Assert.IsTrue(
+                manager.SpaceCombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
+            );
+            Assert.AreSame(arrivingFleet, pending.AttackerFleet);
+            Assert.IsNull(pending.DefenderFleet);
+            Assert.AreEqual(alliance.InstanceID, pending.AttackerOwnerInstanceID);
+            Assert.AreEqual(empire.InstanceID, pending.DefenderOwnerInstanceID);
+            Assert.AreSame(destination, pending.Planet);
+        }
+
+        [Test]
         public void ProcessTick_PendingCombat_CompletesOnlyStartedTick()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
@@ -333,6 +403,168 @@ namespace Rebellion.Tests.Managers
             manager.ProcessTick();
 
             Assert.AreEqual(0, game.CurrentTick);
+        }
+
+        [Test]
+        public void RequestMove_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction
+            {
+                InstanceID = "OWNER",
+                DisplayName = "Owner",
+                Settings = new FactionSettings { MissionReturnPlanetTypeID = "HOME" },
+            };
+            Faction opposition = new Faction
+            {
+                InstanceID = "OPPOSITION",
+                DisplayName = "Opposition",
+            };
+            game.Factions.Add(owner);
+            game.Factions.Add(opposition);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "SYSTEM",
+                SystemType = PlanetSystemType.OuterRim,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                DisplayName = "Planet",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { owner.InstanceID, 10 },
+                    { opposition.InstanceID, 90 },
+                },
+            };
+            game.AttachNode(planet, system);
+            planet.AddVisitor(owner.InstanceID);
+            Planet home = new Planet
+            {
+                InstanceID = "HOME_PLANET",
+                TypeID = "HOME",
+                DisplayName = "Home",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+            };
+            game.AttachNode(home, system);
+
+            Officer diplomat = EntityFactory.CreateOfficer("DIPLOMAT", owner.InstanceID);
+            game.AttachNode(diplomat, home);
+
+            Regiment departingRegiment = null;
+            for (int i = 0; i < 5; i++)
+            {
+                Regiment regiment = EntityFactory.CreateRegiment($"REGIMENT_{i}", owner.InstanceID);
+                regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+                game.AttachNode(regiment, planet);
+                departingRegiment ??= regiment;
+            }
+
+            Fleet fleet = EntityFactory.CreateFleet("FLEET", owner.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                OwnerInstanceID = owner.InstanceID,
+                AllowedOwnerInstanceIDs = new List<string> { owner.InstanceID },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            GameManager manager = new GameManager(game);
+            Assert.IsTrue(
+                manager.MissionSystem.InitiateMission(
+                    new MissionStartRequest
+                    {
+                        MissionTypeID = MissionTypeIDs.Diplomacy,
+                        Location = planet,
+                        MainParticipants = new List<IMissionParticipant> { diplomat },
+                    }
+                )
+            );
+            Assert.IsNotNull(diplomat.Movement);
+
+            manager.MovementSystem.RequestMove(departingRegiment, ship);
+
+            Assert.AreEqual(0, game.CurrentTick);
+            Assert.IsTrue(planet.IsInUprising);
+            Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
+            Assert.AreSame(home, diplomat.GetParent());
+            Assert.IsNotNull(diplomat.Movement);
+            Assert.IsTrue(
+                owner
+                    .Messages[MessageType.PopularSupport]
+                    .Any(message => message.ResultType == MessageResultType.UprisingStarted)
+            );
+        }
+
+        [Test]
+        public void RequestMove_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
+            Faction opposition = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
+            game.Factions.Add(owner);
+            game.Factions.Add(opposition);
+
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "SYSTEM",
+                SystemType = PlanetSystemType.OuterRim,
+            };
+            game.AttachNode(system, game.GetGalaxyMap());
+
+            int ownershipThreshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                DisplayName = "Planet",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { owner.InstanceID, ownershipThreshold - 1 },
+                    { opposition.InstanceID, 100 - ownershipThreshold + 1 },
+                },
+            };
+            game.AttachNode(planet, system);
+
+            Regiment departingRegiment = EntityFactory.CreateRegiment("REGIMENT", owner.InstanceID);
+            departingRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(departingRegiment, planet);
+
+            Fleet fleet = EntityFactory.CreateFleet("FLEET", owner.InstanceID);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                OwnerInstanceID = owner.InstanceID,
+                AllowedOwnerInstanceIDs = new List<string> { owner.InstanceID },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+
+            GameManager manager = new GameManager(game);
+
+            manager.MovementSystem.RequestMove(departingRegiment, ship);
+
+            Assert.AreEqual(0, game.CurrentTick);
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsTrue(
+                owner
+                    .Messages[MessageType.PopularSupport]
+                    .Any(message =>
+                        message.ResultType == MessageResultType.PlanetDeclaredNeutralityBySupport
+                    )
+            );
         }
 
         private static Fleet CreateCombatFleet(

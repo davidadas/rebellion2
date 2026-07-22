@@ -172,6 +172,18 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns the ship's primary weapon strength for one weapon type.
+        /// </summary>
+        /// <param name="weaponType">The primary weapon type to inspect.</param>
+        /// <returns>The summed strength for the requested weapon type.</returns>
+        public int GetPrimaryWeaponStrength(PrimaryWeaponType weaponType)
+        {
+            return PrimaryWeapons.TryGetValue(weaponType, out int[] weaponValues)
+                ? GetWeaponStrength(weaponValues)
+                : 0;
+        }
+
+        /// <summary>
         /// Returns primary weapon strength from weapon values.
         /// </summary>
         /// <param name="weaponValues">The weapon values to inspect.</param>

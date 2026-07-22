@@ -219,6 +219,65 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void OpenResult_Bombardment_OpensSharedResultWindowWithoutBattleMusic()
+        {
+            _pending = null;
+            BombardmentResult result = new BombardmentResult
+            {
+                Planet = _resolveResult.Planet,
+                AttackingFaction = _game.GetFactionByOwnerInstanceID(_playerFactionId),
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
+
+            _controller.OpenResult(result);
+
+            BattleAlertWindowView view = _controller.FindWindow();
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                141,
+                73
+            );
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.IsTrue(_windowManager.Windows.Single().Modal);
+            Assert.AreEqual(BattleAlertWindowMode.Result, data.Mode);
+            Assert.AreEqual(BattleResultCategory.CapitalShips, data.Result.Category);
+            Assert.AreEqual("Orbital bombardment of Corellia", data.Result.Title);
+            Assert.IsEmpty(_playedTracks);
+        }
+
+        [Test]
+        public void OpenResult_PlanetaryAssault_DefaultsToTroopsWithoutBattleMusic()
+        {
+            _pending = null;
+            PlanetaryAssaultResult result = new PlanetaryAssaultResult
+            {
+                Planet = _resolveResult.Planet,
+                AttackingFaction = _game.GetFactionByOwnerInstanceID(_playerFactionId),
+                AttackerOwnerInstanceID = _playerFactionId,
+                DefenderOwnerInstanceID = _opponentFactionId,
+            };
+
+            _controller.OpenResult(result);
+
+            BattleAlertWindowView view = _controller.FindWindow();
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                141,
+                73
+            );
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.IsTrue(_windowManager.Windows.Single().Modal);
+            Assert.AreEqual(BattleAlertWindowMode.Result, data.Mode);
+            Assert.AreEqual(BattleResultCategory.Troops, data.Result.Category);
+            Assert.AreEqual("Assault on Corellia", data.Result.Title);
+            Assert.IsEmpty(_playedTracks);
+            CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.PlanetaryAssault }, _playedSfx);
+        }
+
+        [Test]
         public void ControlButton_InitializedView_PlaysSharedControlSound()
         {
             BattleAlertWindowView view = OpenWindow(out UIWindow _);

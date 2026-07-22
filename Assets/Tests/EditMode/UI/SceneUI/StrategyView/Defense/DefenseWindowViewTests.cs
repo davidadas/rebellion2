@@ -59,6 +59,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreSame(_texture, FindComponent<RawImage>("TitleImage").texture);
             Assert.AreEqual("Corellia", FindComponent<TextMeshProUGUI>("CaptionTextField").text);
             Assert.AreEqual("Personnel", FindComponent<TextMeshProUGUI>("TabTitleTextField").text);
+            Assert.AreEqual(
+                string.Empty,
+                FindComponent<TextMeshProUGUI>("GarrisonRequirementTextField").text
+            );
             Assert.AreSame(_texture, FindComponent<RawImage>("PersonnelTabButtonImage").texture);
             StrategyUnitCardView[] cards = FindItemCards();
             Assert.AreEqual(2, cards.Length);
@@ -107,11 +111,65 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 "Caption",
                 DefenseWindowTab.Personnel,
                 "Title",
+                string.Empty,
                 Array.Empty<DefenseWindowTabRenderData>(),
                 Array.Empty<StrategyUnitCardRenderData>()
             );
 
             Assert.Throws<ArgumentException>(() => _view.Render(data));
+        }
+
+        [Test]
+        public void Render_RegimentTab_AppliesGarrisonRequirement()
+        {
+            _view.Render(
+                CreateRenderData(
+                    DefenseWindowTab.Regiments,
+                    Array.Empty<StrategyUnitCardRenderData>()
+                )
+            );
+
+            Assert.AreEqual(
+                "Garrison Requirement: 3",
+                FindComponent<TextMeshProUGUI>("GarrisonRequirementTextField").text
+            );
+        }
+
+        [Test]
+        public void AuthoredRegimentLabels_MatchSourceBounds()
+        {
+            RectInt titleRect = UILayout.GetSourceRect(
+                FindComponent<TextMeshProUGUI>("TabTitleTextField").rectTransform
+            );
+            RectInt requirementRect = UILayout.GetSourceRect(
+                FindComponent<TextMeshProUGUI>("GarrisonRequirementTextField").rectTransform
+            );
+
+            Assert.AreEqual(new RectInt(2, 51, 231, 16), titleRect);
+            Assert.AreEqual(new RectInt(2, 63, 228, 15), requirementRect);
+        }
+
+        [Test]
+        public void ItemTemplate_ConstructionRendersBehindEntityAndStatusRendersAbove()
+        {
+            StrategyUnitCardView itemTemplate = _viewObject
+                .GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.name == "ItemCardTemplate");
+            Transform entity = FindCardObject(itemTemplate, "EntityImage").transform;
+
+            Assert.Less(
+                FindCardObject(itemTemplate, "ConstructionOverlayImage")
+                    .transform.GetSiblingIndex(),
+                entity.GetSiblingIndex()
+            );
+            Assert.Greater(
+                FindCardObject(itemTemplate, "EnrouteOverlayImage").transform.GetSiblingIndex(),
+                entity.GetSiblingIndex()
+            );
+            Assert.Greater(
+                FindCardObject(itemTemplate, "DamagedOverlayImage").transform.GetSiblingIndex(),
+                entity.GetSiblingIndex()
+            );
         }
 
         [Test]
@@ -130,6 +188,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 "Caption",
                 DefenseWindowTab.Personnel,
                 "Title",
+                string.Empty,
                 tabs,
                 Array.Empty<StrategyUnitCardRenderData>()
             );
@@ -325,6 +384,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 "Corellia",
                 activeTab,
                 activeTab.ToString(),
+                activeTab == DefenseWindowTab.Regiments ? "Garrison Requirement: 3" : string.Empty,
                 CreateTabs(),
                 items
             );
