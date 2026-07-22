@@ -73,6 +73,28 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Reconciles uprising state for planets affected by regiment deployment results.
+        /// </summary>
+        /// <param name="results">The result batch to inspect.</param>
+        /// <returns>Any uprising results caused by the deployment changes.</returns>
+        internal List<GameResult> ProcessResults(IEnumerable<GameResult> results)
+        {
+            List<GameResult> uprisingResults = new List<GameResult>();
+            if (results == null)
+                return uprisingResults;
+
+            IEnumerable<Planet> affectedPlanets = results
+                .OfType<RegimentDeploymentChangedResult>()
+                .Select(result => result.Planet)
+                .Where(planet => planet != null)
+                .Distinct();
+            foreach (Planet planet in affectedPlanets)
+                uprisingResults.AddRange(ReconcileGarrison(planet));
+
+            return uprisingResults;
+        }
+
+        /// <summary>
         /// Reconciles uprising state for one planet after its garrison changes.
         /// </summary>
         /// <param name="planet">The planet whose garrison changed.</param>

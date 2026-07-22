@@ -117,6 +117,31 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessResults_GarrisonDeficit_StartsUprising()
+        {
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 5
+            );
+            Regiment departingRegiment = planet.Regiments[0];
+            game.DetachNode(departingRegiment);
+
+            List<GameResult> results = system.ProcessResults(
+                new GameResult[]
+                {
+                    new RegimentDeploymentChangedResult
+                    {
+                        Regiment = departingRegiment,
+                        Planet = planet,
+                    },
+                }
+            );
+
+            Assert.IsTrue(planet.IsInUprising);
+            Assert.AreEqual(1, results.OfType<PlanetUprisingStartedResult>().Count());
+        }
+
+        [Test]
         public void ProcessTick_ExactGarrison_NoUprising()
         {
             // Garrison requirement is 5 at support 10. Five troops exactly meets it, no uprising.

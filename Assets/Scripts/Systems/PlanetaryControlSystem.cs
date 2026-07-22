@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -24,8 +23,6 @@ namespace Rebellion.Systems
         private readonly HashSet<string> _controlChangesInProgress = new HashSet<string>();
         private int _controlShiftTick = -1;
 
-        internal event Action<List<GameResult>> RegimentDeploymentResultsProduced;
-
         /// <summary>
         /// Creates a new PlanetaryControlSystem.
         /// </summary>
@@ -44,7 +41,6 @@ namespace Rebellion.Systems
             _movementSystem = movementSystem;
             _manufacturingSystem = manufacturingSystem;
             _fogOfWarSystem = fogOfWarSystem;
-            _movementSystem.RegimentDeploymentChanged += ReconcileRegimentDeployment;
         }
 
         /// <summary>
@@ -58,6 +54,28 @@ namespace Rebellion.Systems
             CheckOwnershipTransfers(results);
 
             return results;
+        }
+
+        /// <summary>
+        /// Reconciles planets affected by regiment deployment results.
+        /// </summary>
+        /// <param name="results">The result batch to inspect.</param>
+        /// <returns>Any ownership changes caused by the deployment changes.</returns>
+        internal List<GameResult> ProcessResults(IEnumerable<GameResult> results)
+        {
+            List<GameResult> controlResults = new List<GameResult>();
+            if (results == null)
+                return controlResults;
+
+            IEnumerable<Planet> affectedPlanets = results
+                .OfType<RegimentDeploymentChangedResult>()
+                .Select(result => result.Planet)
+                .Where(planet => planet != null)
+                .Distinct();
+            foreach (Planet planet in affectedPlanets)
+                controlResults.AddRange(ReconcilePlanet(planet));
+
+            return controlResults;
         }
 
         /// <summary>
@@ -96,17 +114,6 @@ namespace Rebellion.Systems
             }
 
             return results;
-        }
-
-        /// <summary>
-        /// Reconciles control and emits results after regiment deployment changes.
-        /// </summary>
-        /// <param name="planet">The planet whose regiment presence changed.</param>
-        private void ReconcileRegimentDeployment(Planet planet)
-        {
-            List<GameResult> results = ReconcilePlanet(planet);
-            if (results.Count > 0)
-                RegimentDeploymentResultsProduced?.Invoke(results);
         }
 
         /// <summary>

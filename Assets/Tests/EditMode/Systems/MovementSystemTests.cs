@@ -3360,6 +3360,48 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TryRequestMove_RegimentToShip_ReturnsDeploymentChange()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
+                BuildScene();
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "garrison-reg",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, origin);
+
+            Fleet fleet = new Fleet("empire", "pickup-fleet");
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "pickup-ship",
+                OwnerInstanceID = "empire",
+                AllowedOwnerInstanceIDs = new List<string> { "empire" },
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(ship, fleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { regiment },
+                ship,
+                "empire",
+                out List<GameResult> results
+            );
+
+            Assert.IsTrue(moved);
+            RegimentDeploymentChangedResult result = results
+                .OfType<RegimentDeploymentChangedResult>()
+                .Single();
+            Assert.AreSame(regiment, result.Regiment);
+            Assert.AreSame(origin, result.Planet);
+            Assert.IsEmpty(movement.ProcessTick().OfType<RegimentDeploymentChangedResult>());
+        }
+
+        [Test]
         public void TryRequestMove_FleetToFleet_MovesShipsAndRemovesSourceFleet()
         {
             (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
@@ -3376,7 +3418,8 @@ namespace Rebellion.Tests.Systems
             bool moved = movement.TryRequestMove(
                 new ISceneNode[] { sourceFleet },
                 destinationFleet,
-                "empire"
+                "empire",
+                out _
             );
 
             Assert.IsTrue(moved);
@@ -3400,7 +3443,8 @@ namespace Rebellion.Tests.Systems
             bool moved = movement.TryRequestMove(
                 new ISceneNode[] { ship },
                 destinationFleet,
-                "empire"
+                "empire",
+                out _
             );
 
             Assert.IsTrue(moved);
@@ -3419,7 +3463,12 @@ namespace Rebellion.Tests.Systems
             CapitalShip ship = CreateMovableCapitalShip("ship");
             game.AttachNode(ship, sourceFleet);
 
-            bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, destination, "empire");
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destination,
+                "empire",
+                out _
+            );
 
             Assert.IsTrue(moved);
             Assert.AreEqual(1, destination.Fleets.Count);
@@ -3439,7 +3488,12 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(ship, sourceFleet);
             Planet snapshot = new Planet { InstanceID = destination.InstanceID };
 
-            bool moved = movement.TryRequestMove(new ISceneNode[] { ship }, snapshot, "empire");
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                snapshot,
+                "empire",
+                out _
+            );
 
             Assert.IsTrue(moved);
             Assert.AreSame(destination, ship.GetParentOfType<Planet>());
@@ -3461,7 +3515,8 @@ namespace Rebellion.Tests.Systems
             bool moved = movement.TryRequestMove(
                 new ISceneNode[] { firstShip, secondShip },
                 destination,
-                "empire"
+                "empire",
+                out _
             );
 
             Assert.IsTrue(moved);
@@ -3488,7 +3543,8 @@ namespace Rebellion.Tests.Systems
             bool moved = movement.TryRequestMove(
                 new ISceneNode[] { originShip, destinationShip },
                 origin,
-                "empire"
+                "empire",
+                out _
             );
 
             Assert.IsFalse(moved);

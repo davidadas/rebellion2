@@ -343,7 +343,13 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
             : -1;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Tries to build a context menu for the current invocation.
+    /// </summary>
+    /// <param name="context">The active context-menu invocation.</param>
+    /// <param name="request">Receives the completed command request.</param>
+    /// <param name="width">Receives the authored menu width.</param>
+    /// <returns>True when the provider handled the invocation.</returns>
     public bool TryCreateContextMenu(
         StrategyContextMenuProviderContext context,
         out ContextMenuRequest request,

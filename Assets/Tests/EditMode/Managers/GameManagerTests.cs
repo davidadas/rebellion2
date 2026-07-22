@@ -10,6 +10,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Managers
@@ -406,7 +407,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void RequestMove_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
+        public void TryRequestMove_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
@@ -486,7 +487,13 @@ namespace Rebellion.Tests.Managers
             );
             Assert.IsNotNull(diplomat.Movement);
 
-            manager.MovementSystem.RequestMove(departingRegiment, ship);
+            Assert.IsTrue(
+                manager.TryRequestMove(
+                    new ISceneNode[] { departingRegiment },
+                    ship,
+                    owner.InstanceID
+                )
+            );
 
             Assert.AreEqual(0, game.CurrentTick);
             Assert.IsTrue(planet.IsInUprising);
@@ -501,7 +508,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void RequestMove_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
+        public void TryRequestMove_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
@@ -549,7 +556,13 @@ namespace Rebellion.Tests.Managers
 
             GameManager manager = new GameManager(game);
 
-            manager.MovementSystem.RequestMove(departingRegiment, ship);
+            Assert.IsTrue(
+                manager.TryRequestMove(
+                    new ISceneNode[] { departingRegiment },
+                    ship,
+                    owner.InstanceID
+                )
+            );
 
             Assert.AreEqual(0, game.CurrentTick);
             Assert.IsNull(planet.GetOwnerInstanceID());

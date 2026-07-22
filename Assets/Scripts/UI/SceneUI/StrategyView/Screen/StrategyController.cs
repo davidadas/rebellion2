@@ -1175,7 +1175,12 @@ public sealed class StrategyController
             messageSystem.MessageDelivered += HandleMessageDelivered;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Executes a released main HUD button at its source-space pointer position.
+    /// </summary>
+    /// <param name="action">The semantic HUD action.</param>
+    /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     void IStrategyHudActions.ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY)
     {
         if (action == StrategyHudAction.GalacticInformationDisplay)
@@ -1186,14 +1191,22 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the requested messages tab.
+    /// </summary>
+    /// <param name="tab">The semantic messages tab.</param>
     void IStrategyHudActions.OpenMessagesTab(MessagesTab tab)
     {
         messagesWindowController.Open(tab);
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the speed context menu at a source-space pointer position.
+    /// </summary>
+    /// <param name="request">The HUD-owned menu request.</param>
+    /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     void IStrategyHudActions.OpenSpeedContextMenu(
         ContextMenuRequest request,
         int sourceX,
@@ -1210,7 +1223,12 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the protocol advisor command menu at a source-space pointer position.
+    /// </summary>
+    /// <param name="request">The advisor-owned menu request.</param>
+    /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     void IStrategyHudActions.OpenAdvisorCommandContextMenu(
         ContextMenuRequest request,
         int sourceX,
@@ -1227,7 +1245,12 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the droid advisor notification menu at a source-space pointer position.
+    /// </summary>
+    /// <param name="request">The advisor-owned menu request.</param>
+    /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     void IStrategyHudActions.OpenAdvisorNotificationContextMenu(
         ContextMenuRequest request,
         int sourceX,
@@ -1244,7 +1267,12 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Begins advisor-directed construction targeting.
+    /// </summary>
+    /// <param name="manufacturingType">The requested manufacturing category.</param>
+    /// <param name="sourceX">The source-space horizontal request coordinate.</param>
+    /// <param name="sourceY">The source-space vertical request coordinate.</param>
     void IStrategyHudActions.BeginAdvisorConstruction(
         ManufacturingType manufacturingType,
         int sourceX,
@@ -1255,27 +1283,40 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens an advisor report in the requested mode.
+    /// </summary>
+    /// <param name="mode">The report mode to display.</param>
     void IStrategyHudActions.OpenAdvisorReport(AdvisorReportMode mode)
     {
         advisorReportWindowController.Open(mode);
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Sets the simulation speed selected from the HUD speed menu.
+    /// </summary>
+    /// <param name="speed">The selected simulation speed.</param>
     void IStrategyHudActions.SetGameSpeed(TickSpeed speed)
     {
         gameManager.SetGameSpeed(speed);
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Invalidates the current strategy HUD render.
+    /// </summary>
     void IStrategyHudActions.RequestHudRender()
     {
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the planet-system window requested from a galaxy-map cluster.
+    /// </summary>
+    /// <param name="system">The requested planet system.</param>
+    /// <param name="sourceX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="sourceY">The source-space vertical pointer coordinate.</param>
     void IGalaxyMapActions.OpenPlanetSystemWindow(PlanetSystem system, int sourceX, int sourceY)
     {
         if (!CanInteractWithGalaxy())
@@ -1285,55 +1326,78 @@ public sealed class StrategyController
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Requests a strategy render after galaxy-map interaction state changes.
+    /// </summary>
     void IGalaxyMapActions.RequestGalaxyMapRender()
     {
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Requests a strategy render after selector state or the active filter changes.
+    /// </summary>
     void IGalacticInformationDisplayActions.RequestGalacticInformationRender()
     {
         dirty = true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for a manufacturable template.
+    /// </summary>
+    /// <param name="item">The selected manufacturable template.</param>
     void IConstructionWindowActions.OpenConstructionInfo(ISceneNode item)
     {
         OpenEncyclopediaWindow(item);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens status information for the selected manufacturable template.
+    /// </summary>
+    /// <param name="target">The selected construction status target.</param>
     void IConstructionWindowActions.OpenConstructionStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Rebuilds strategy state after a successful construction order.
+    /// </summary>
     void IConstructionWindowActions.RefreshAfterConstruction()
     {
         RefreshStrategyState();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for the active facility selection.
+    /// </summary>
+    /// <param name="target">The resolved facility information target.</param>
     void IFacilityWindowActions.OpenFacilityInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens status information for the active facility selection.
+    /// </summary>
+    /// <param name="target">The resolved facility status target.</param>
     void IFacilityWindowActions.OpenFacilityStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Rebuilds shared strategy state after a facility command changes the game.
+    /// </summary>
     void IFacilityWindowActions.RefreshFacilityState()
     {
         RefreshStrategyState();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for one selected fleet item.
+    /// </summary>
+    /// <param name="items">The selected items.</param>
     void IFleetWindowActions.OpenFleetEncyclopediaWindow(IReadOnlyList<ISceneNode> items)
     {
         List<ISceneNode> sourceItems = CopySceneNodes(items);
@@ -1341,7 +1405,11 @@ public sealed class StrategyController
             OpenEncyclopediaWindow(sourceItems[0]);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens status information for one selected fleet item.
+    /// </summary>
+    /// <param name="sourceWindow">The requesting fleet window.</param>
+    /// <param name="items">The selected items.</param>
     void IFleetWindowActions.OpenFleetStatusWindow(
         UIWindow sourceWindow,
         IReadOnlyList<ISceneNode> items
@@ -1353,43 +1421,65 @@ public sealed class StrategyController
             TryOpenStatusWindow(new StrategyStatusTarget(planet, sourceItems[0]));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the completed planetary combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
     void IFleetWindowActions.OpenFleetBattleResult(GameResult result)
     {
         battleAlertWindowController.OpenResult(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Rebuilds shared strategy state after a fleet command changes the game.
+    /// </summary>
     void IFleetWindowActions.RefreshFleetState()
     {
         RefreshStrategyState();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for one Defense-window target.
+    /// </summary>
+    /// <param name="target">The selected information target.</param>
     void IDefenseWindowActions.OpenDefenseInfoWindow(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens status information for one Defense-window target.
+    /// </summary>
+    /// <param name="target">The selected status target.</param>
     void IDefenseWindowActions.OpenDefenseStatusWindow(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Rebuilds shared strategy state after a planet-system command changes the game.
+    /// </summary>
     void IPlanetSystemWindowActions.RefreshPlanetSystemState()
     {
         RefreshStrategyState();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the completed planetary combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
     void IPlanetSystemWindowActions.OpenPlanetSystemBattleResult(GameResult result)
     {
         battleAlertWindowController.OpenResult(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens one planet icon window at a source-space position.
+    /// </summary>
+    /// <param name="planet">The represented strategy planet.</param>
+    /// <param name="icon">The requested planet icon.</param>
+    /// <param name="sourceX">The source-space horizontal position.</param>
+    /// <param name="sourceY">The source-space vertical position.</param>
     void IPlanetSystemWindowActions.OpenPlanetSystemPlanetWindow(
         GalaxyMapPlanet planet,
         PlanetIcon icon,
@@ -1400,43 +1490,65 @@ public sealed class StrategyController
         OpenPlanetWindowAt(planet, icon, sourceX, sourceY);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for the active planet-system target.
+    /// </summary>
+    /// <param name="target">The resolved information target.</param>
     void IPlanetSystemWindowActions.OpenPlanetSystemInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens status information for the active planet-system target.
+    /// </summary>
+    /// <param name="target">The resolved status target.</param>
     void IPlanetSystemWindowActions.OpenPlanetSystemStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for one mission or participant.
+    /// </summary>
+    /// <param name="target">The selected mission information target.</param>
     void IMissionsWindowActions.OpenMissionsInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens status information for one mission or participant.
+    /// </summary>
+    /// <param name="target">The selected status target.</param>
     void IMissionsWindowActions.OpenMissionsStatus(StrategyStatusTarget target)
     {
         TryOpenStatusWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Rebuilds strategy state after a mission is created.
+    /// </summary>
     void IMissionCreateWindowActions.RefreshAfterMissionCreation()
     {
         RefreshStrategyState();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the Encyclopedia from the Mission Create information control.
+    /// </summary>
     void IMissionCreateWindowActions.OpenMissionCreateInfo()
     {
         encyclopediaWindowController.Open();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the strategy location represented by a message target.
+    /// </summary>
+    /// <param name="targetInstanceId">The preferred target instance identifier.</param>
+    /// <param name="secondaryTargetInstanceId">The fallback target instance identifier.</param>
+    /// <param name="locationInstanceId">The event location instance identifier.</param>
+    /// <returns>True when a target location was opened.</returns>
     bool IMessagesWindowActions.OpenMessageTarget(
         string targetInstanceId,
         string secondaryTargetInstanceId,
@@ -1446,19 +1558,32 @@ public sealed class StrategyController
         return OpenMessageTarget(targetInstanceId, secondaryTargetInstanceId, locationInstanceId);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens Encyclopedia information for a status target.
+    /// </summary>
+    /// <param name="target">The status target whose information should open.</param>
     void IStatusWindowActions.OpenStatusInfo(StrategyStatusTarget target)
     {
         OpenEncyclopediaWindow(target);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the fleet pane for a completed battle's planet.
+    /// </summary>
+    /// <param name="planet">The battle planet.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
     void IBattleAlertWindowActions.OpenBattleResultFleet(Planet planet, int sourceX, int sourceY)
     {
         OpenPlanetWindow(planet, PlanetIcon.Fleet, sourceX, sourceY);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens the system window for a completed battle.
+    /// </summary>
+    /// <param name="system">The battle's planetary system.</param>
+    /// <param name="sourceX">The source window's horizontal coordinate.</param>
+    /// <param name="sourceY">The source window's vertical coordinate.</param>
     void IBattleAlertWindowActions.OpenBattleResultSystem(
         PlanetSystem system,
         int sourceX,
@@ -1468,7 +1593,9 @@ public sealed class StrategyController
         OpenPlanetSystemWindow(system);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Rebuilds the visible strategy snapshot after combat changes game state.
+    /// </summary>
     void IBattleAlertWindowActions.RebuildBattleSnapshot()
     {
         RebuildSnapshot();

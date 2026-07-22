@@ -54,7 +54,11 @@ public sealed class StrategyWindowCommandController
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens mission creation for selected participants and a target.
+    /// </summary>
+    /// <param name="target">The selected mission target.</param>
+    /// <param name="items">The selected mission participants.</param>
     public void OpenMissionCreateWindow(
         StrategyMissionTarget target,
         IReadOnlyList<ISceneNode> items
@@ -63,7 +67,13 @@ public sealed class StrategyWindowCommandController
         missionCreateWindowController.Open(target, items);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Executes an immediate move for selected items.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="target">The selected move target.</param>
+    /// <param name="items">The selected movable items.</param>
+    /// <returns>True when the move was executed.</returns>
     public bool TryExecuteMove(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
@@ -78,7 +88,12 @@ public sealed class StrategyWindowCommandController
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens a confirmed move for selected items.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="target">The selected move target.</param>
+    /// <param name="items">The selected movable items.</param>
     public void OpenMoveConfirmWindow(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
@@ -107,7 +122,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens scrap confirmation for selected units.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected units.</param>
     public void OpenScrapConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items)
     {
         List<ISceneNode> sourceItems = CopyItems(items);
@@ -130,7 +149,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens stop-construction confirmation for selected queued items.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected queued items.</param>
     public void OpenStopConstructionConfirmWindow(
         UIWindow sourceWindow,
         IReadOnlyList<ISceneNode> items
@@ -159,7 +182,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens retirement confirmation for selected personnel.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected personnel.</param>
     public void OpenRetireConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items)
     {
         List<ISceneNode> sourceItems = CopyItems(items);
@@ -177,7 +204,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Determines whether the complete personnel selection may be retired.
+    /// </summary>
+    /// <param name="items">The selected personnel or their snapshots.</param>
+    /// <returns>True when every selected person may be retired.</returns>
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
         return gameManager.PersonnelSystem.CanRetire(items, GetPlayerFactionID());
@@ -191,7 +222,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when the movement order was accepted.</returns>
     private bool TryMove(StrategyMissionTarget target, IReadOnlyList<ISceneNode> items)
     {
-        bool moved = gameManager.MovementSystem.TryRequestMove(
+        bool moved = gameManager.TryRequestMove(
             items,
             target?.GetMoveDestination() as ContainerNode,
             GetPlayerFactionID()

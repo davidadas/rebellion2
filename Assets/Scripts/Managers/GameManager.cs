@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -150,7 +151,6 @@ public class GameManager
             _manufacturingManager,
             _fogOfWarManager
         );
-        _planetaryControlSystem.RegimentDeploymentResultsProduced += ProcessPlanetaryControlResults;
         _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
         _missionManager = new MissionSystem(
@@ -173,7 +173,6 @@ public class GameManager
         );
         _researchManager = new ResearchSystem(_game, _randomProvider);
         _betrayalManager = new BetrayalSystem(_game);
-        _movementManager.RegimentDeploymentChanged += ReconcileUprisingGarrison;
         _victoryManager = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,
@@ -184,24 +183,6 @@ public class GameManager
             _planetaryAssaultSystem,
             _randomProvider
         );
-    }
-
-    /// <summary>
-    /// Reconciles uprising state after a regiment deployment changes.
-    /// </summary>
-    /// <param name="planet">The planet whose garrison changed.</param>
-    private void ReconcileUprisingGarrison(Planet planet)
-    {
-        ProcessResults(_uprisingManager.ReconcileGarrison(planet));
-    }
-
-    /// <summary>
-    /// Routes ownership results emitted by deployment-driven control reconciliation.
-    /// </summary>
-    /// <param name="results">The ownership results to process.</param>
-    private void ProcessPlanetaryControlResults(List<GameResult> results)
-    {
-        ProcessResults(results);
     }
 
     /// <summary>
@@ -247,6 +228,33 @@ public class GameManager
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
     public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarManager;
+
+    /// <summary>
+    /// Executes a validated movement order and processes its immediate results.
+    /// </summary>
+    /// <param name="items">The selected scene nodes or their snapshots.</param>
+    /// <param name="destination">The requested destination or its snapshot.</param>
+    /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+    /// <returns>True when the complete movement order was accepted.</returns>
+    public bool TryRequestMove(
+        IReadOnlyList<ISceneNode> items,
+        ContainerNode destination,
+        string ownerInstanceId
+    )
+    {
+        if (
+            !_movementManager.TryRequestMove(
+                items,
+                destination,
+                ownerInstanceId,
+                out List<GameResult> results
+            )
+        )
+            return false;
+
+        ProcessResults(results);
+        return true;
+    }
 
     /// <summary>
     /// Sets the game speed and adjusts the tick interval accordingly.
@@ -469,6 +477,9 @@ public class GameManager
     /// <param name="processMessages">Whether to create faction messages for this batch.</param>
     private void ProcessResults(List<GameResult> results, bool processMessages = true)
     {
+        results.AddRange(_planetaryControlSystem.ProcessResults(results));
+        results.AddRange(_uprisingManager.ProcessResults(results));
+
         List<GameResult> invalidatedMissionResults = results
             .OfType<PlanetUprisingStartedResult>()
             .Where(result => result.Planet != null)

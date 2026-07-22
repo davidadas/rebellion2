@@ -28,8 +28,6 @@ namespace Rebellion.Systems
         private readonly FleetSystem _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
-        internal event Action<Planet> RegimentDeploymentChanged;
-
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
@@ -107,7 +105,7 @@ namespace Rebellion.Systems
                 }
             }
 
-            ExecuteMove(unit, destination);
+            ExecuteMove(unit, destination, _pendingResults);
         }
 
         /// <summary>
@@ -135,14 +133,14 @@ namespace Rebellion.Systems
                 && !CanEnterHostileOrbit(unit, destination)
             )
             {
-                ExecuteMove(unit, origin);
+                ExecuteMove(unit, origin, _pendingResults);
                 return;
             }
 
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
-                NotifyRegimentDeploymentChanged(unit, destinationPlanet);
+                AddRegimentDeploymentChangedResults(_pendingResults, unit, destinationPlanet);
                 return;
             }
 
@@ -173,7 +171,7 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            TryRequestMoveGroup(units, destination);
+            TryRequestMoveGroup(units, destination, _pendingResults);
         }
 
         /// <summary>
@@ -275,7 +273,7 @@ namespace Rebellion.Systems
             {
                 string movementGroupID = Guid.NewGuid().ToString("N");
                 foreach (IMovable unit in returnGroup.Value)
-                    ExecuteMove(unit, returnGroup.Key, movementGroupID);
+                    ExecuteMove(unit, returnGroup.Key, _pendingResults, movementGroupID);
             }
 
             return strandedUnits.Distinct().ToList();
@@ -419,13 +417,16 @@ namespace Rebellion.Systems
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="destination">The requested destination or its snapshot.</param>
         /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="results">Receives results produced while executing the order.</param>
         /// <returns>True when the complete movement order was accepted.</returns>
         public bool TryRequestMove(
             IReadOnlyList<ISceneNode> items,
             ContainerNode destination,
-            string ownerInstanceId
+            string ownerInstanceId,
+            out List<GameResult> results
         )
         {
+            results = new List<GameResult>();
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
                 liveDestination == null
@@ -461,7 +462,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            bool accepted = TryRequestMoveGroup(movables, liveDestination);
+            bool accepted = TryRequestMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
@@ -697,10 +698,15 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="units">The movable units in execution order.</param>
         /// <param name="destination">The shared destination.</param>
+        /// <param name="results">The collection receiving movement results.</param>
         /// <returns>True when the movement group was accepted.</returns>
-        private bool TryRequestMoveGroup(List<IMovable> units, ContainerNode destination)
+        private bool TryRequestMoveGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            ICollection<GameResult> results
+        )
         {
-            if (units == null || units.Count == 0 || destination == null)
+            if (units == null || units.Count == 0 || destination == null || results == null)
                 return false;
 
             destination = ResolveLiveContainer(destination);
@@ -709,7 +715,7 @@ namespace Rebellion.Systems
 
             string movementGroupID = Guid.NewGuid().ToString("N");
             foreach (IMovable unit in units)
-                ExecuteMove(unit, destination, movementGroupID);
+                ExecuteMove(unit, destination, results, movementGroupID);
 
             return true;
         }
@@ -998,7 +1004,7 @@ namespace Rebellion.Systems
 
             try
             {
-                CompleteArrival(movable, destination, destinationPlanet);
+                CompleteArrival(movable, destination, destinationPlanet, results);
                 AddArrivalResults(movable, destinationPlanet, movementGroupID, results);
             }
             catch (SceneAccessException ex)
@@ -1128,10 +1134,12 @@ namespace Rebellion.Systems
         /// <param name="movable">The arriving unit.</param>
         /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The collection receiving deployment results.</param>
         private void CompleteArrival(
             IMovable movable,
             ContainerNode destination,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            ICollection<GameResult> results
         )
         {
             _game.MoveNode(movable, destination);
@@ -1145,7 +1153,7 @@ namespace Rebellion.Systems
             if (!string.IsNullOrEmpty(arrivingOwner))
                 destinationPlanet.AddVisitor(arrivingOwner);
 
-            NotifyRegimentDeploymentChanged(movable, destinationPlanet);
+            AddRegimentDeploymentChangedResults(results, movable, destinationPlanet);
 
             if (movable is Fleet fleet)
                 CaptureFleetArrivalSnapshot(fleet, destinationPlanet);
@@ -1240,7 +1248,7 @@ namespace Rebellion.Systems
             Planet fallback = FindEvacuationDestination(owner, unit, currentPlanet);
             if (fallback != null)
             {
-                ExecuteMove(unit, fallback);
+                ExecuteMove(unit, fallback, _pendingResults);
             }
             else
             {
@@ -1274,7 +1282,7 @@ namespace Rebellion.Systems
             if (fallback != null)
             {
                 movable.Movement = null;
-                ExecuteMove(movable, fallback);
+                ExecuteMove(movable, fallback, _pendingResults);
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
                 );
@@ -1319,10 +1327,12 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target container to reparent into.</param>
+        /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         private void ExecuteMove(
             IMovable unit,
             ContainerNode destination,
+            ICollection<GameResult> results,
             string movementGroupID = null
         )
         {
@@ -1359,8 +1369,8 @@ namespace Rebellion.Systems
                 );
                 if (evacResult != null)
                 {
-                    _pendingResults.Add(evacResult);
-                    NotifyRegimentDeploymentChanged(unit, originPlanet);
+                    results.Add(evacResult);
+                    AddRegimentDeploymentChangedResults(results, unit, originPlanet);
                     return;
                 }
             }
@@ -1382,14 +1392,14 @@ namespace Rebellion.Systems
             if (destinationPlanet == originPlanet)
             {
                 _game.MoveNode(unit, destination);
-                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
+                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
                 unit.Movement = null;
-                NotifyRegimentDeploymentChanged(unit, originPlanet);
+                AddRegimentDeploymentChangedResults(results, unit, originPlanet);
                 return;
             }
 
             _game.MoveNode(unit, destination);
-            ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
+            ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
 
             unit.Movement = new MovementState
             {
@@ -1400,15 +1410,15 @@ namespace Rebellion.Systems
                 CurrentPosition = originPosition,
             };
 
-            NotifyRegimentDeploymentChanged(unit, originPlanet);
+            AddRegimentDeploymentChangedResults(results, unit, originPlanet);
 
             if (unit is Fleet movingFleet)
                 RetargetInTransitFleetJoiners(movingFleet, destinationPlanet);
 
-            _pendingResults.Add(
+            results.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
             );
-            _pendingResults.Add(
+            results.Add(
                 new GameObjectEnrouteActiveResult
                 {
                     GameObject = unit,
@@ -1419,7 +1429,7 @@ namespace Rebellion.Systems
 
             if (unit is IMissionParticipant missionParticipant && destination is Mission)
             {
-                _pendingResults.Add(
+                results.Add(
                     new RoleEnrouteActiveResult
                     {
                         Participant = missionParticipant,
@@ -1572,9 +1582,11 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The moving unit.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The collection receiving ownership results.</param>
         private void ClaimUncolonizedDestinationFromRegiment(
             IMovable unit,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            ICollection<GameResult> results
         )
         {
             if (unit is not Regiment regiment)
@@ -1605,7 +1617,7 @@ namespace Rebellion.Systems
                     destinationPlanet.SetPopularSupport(supportFaction.InstanceID, 0);
             }
 
-            _pendingResults.Add(
+            results.Add(
                 new PlanetOwnershipChangedResult
                 {
                     Planet = destinationPlanet,
@@ -1617,17 +1629,31 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Notifies listeners that a regiment deployment changed at the supplied planets.
+        /// Records each planet where a regiment's active deployment changed.
         /// </summary>
+        /// <param name="results">The collection receiving deployment results.</param>
         /// <param name="unit">The moved unit.</param>
         /// <param name="planets">The planets whose regiment presence may have changed.</param>
-        private void NotifyRegimentDeploymentChanged(IMovable unit, params Planet[] planets)
+        private void AddRegimentDeploymentChangedResults(
+            ICollection<GameResult> results,
+            IMovable unit,
+            params Planet[] planets
+        )
         {
-            if (unit is not Regiment)
+            if (results == null || unit is not Regiment regiment)
                 return;
 
             foreach (Planet planet in planets.Where(planet => planet != null).Distinct())
-                RegimentDeploymentChanged?.Invoke(planet);
+            {
+                results.Add(
+                    new RegimentDeploymentChangedResult
+                    {
+                        Regiment = regiment,
+                        Planet = planet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
         }
 
         /// <summary>

@@ -565,6 +565,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A regiment's active deployment changed at a planet.
+    /// </summary>
+    public class RegimentDeploymentChangedResult : GameResult
+    {
+        public Regiment Regiment { get; set; }
+        public Planet Planet { get; set; }
+    }
+
+    /// <summary>
     /// A game object was damaged.
     /// </summary>
     public class GameObjectDamagedResult : GameResult

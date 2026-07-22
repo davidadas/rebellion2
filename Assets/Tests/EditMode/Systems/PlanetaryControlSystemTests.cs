@@ -600,7 +600,7 @@ namespace Rebellion.Tests.Systems
         [TestCase("empire", 60, "empire")]
         [TestCase("empire", 59, null)]
         [TestCase("rebels", 60, "rebels")]
-        public void RequestMove_LastStationedRegiment_ReconcilesControlImmediately(
+        public void ProcessResults_LastStationedRegiment_ReconcilesControl(
             string supportFactionId,
             int support,
             string expectedOwnerId
@@ -626,12 +626,16 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(fleet, _targetPlanet);
             _game.AttachNode(ship, fleet);
 
-            List<GameResult> deploymentResults = new List<GameResult>();
-            _ownershipSystem.RegimentDeploymentResultsProduced += deploymentResults.AddRange;
-
             _movementSystem.RequestMove(regiment, ship);
+            List<GameResult> movementResults = _movementSystem.ProcessTick();
+            List<GameResult> deploymentResults = _ownershipSystem.ProcessResults(movementResults);
 
             Assert.AreEqual(expectedOwnerId, _targetPlanet.GetOwnerInstanceID());
+            Assert.IsTrue(
+                movementResults
+                    .OfType<RegimentDeploymentChangedResult>()
+                    .Any(result => result.Planet == _targetPlanet && result.Regiment == regiment)
+            );
 
             List<PlanetOwnershipChangedResult> changes = deploymentResults
                 .OfType<PlanetOwnershipChangedResult>()
@@ -657,7 +661,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
+        public void ProcessResults_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
         {
             _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.PopularSupport = new Dictionary<string, int>
@@ -696,6 +700,8 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(ship, fleet);
 
             _movementSystem.RequestMove(regiment, ship);
+            List<GameResult> movementResults = _movementSystem.ProcessTick();
+            _ownershipSystem.ProcessResults(movementResults);
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());
             Assert.IsNull(diplomacyMission.GetParent());
