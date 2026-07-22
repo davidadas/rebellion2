@@ -291,9 +291,7 @@ namespace Rebellion.AI.Scoring
         {
             if (targetFleet?.Order?.OrderType == FleetOrderType.Defend)
             {
-                int requiredDefense = context.Assessment.GetRequiredHeadquartersDefenseStrength(
-                    targetPlanet
-                );
+                int requiredDefense = context.Assessment.GetRequiredDefenseStrength(targetPlanet);
                 double defenseBefore = GetFulfillmentRatio(
                     context.Assessment.GetProjectedFleetCombatValue(targetFleet),
                     requiredDefense
@@ -327,11 +325,13 @@ namespace Rebellion.AI.Scoring
         )
         {
             AIAssessment assessment = context.Assessment;
-            int requiredRegimentCount = assessment.GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredRegimentCount = assessment.GetRequiredAttackCampaignRegimentCount(
+                targetPlanet
+            );
             double combatReadiness = GetFulfillmentRatio(
                 assessment.GetProjectedFleetCombatValue(targetFleet)
                     + assessment.GetProjectedCapitalShipCombatValue(capitalShip),
-                assessment.GetRequiredAttackCombatStrength(targetPlanet)
+                assessment.GetRequiredAttackCampaignCombatStrength(targetPlanet)
             );
             double regimentReadiness = GetFulfillmentRatio(
                 assessment.GetFleetLoadedRegimentCount(targetFleet)
@@ -349,7 +349,7 @@ namespace Rebellion.AI.Scoring
                         targetFleet,
                         capitalShip
                     ),
-                assessment.GetRequiredAttackRegimentStrength(targetPlanet)
+                assessment.GetRequiredAttackCampaignRegimentStrength(targetPlanet)
             );
             List<double> readiness = new List<double>
             {
@@ -358,7 +358,9 @@ namespace Rebellion.AI.Scoring
                 transportReadiness,
                 groundReadiness,
             };
-            int requiredBombardment = assessment.GetRequiredBombardmentStrength(targetPlanet);
+            int requiredBombardment = assessment.GetRequiredAttackCampaignBombardmentStrength(
+                targetPlanet
+            );
             if (requiredBombardment > 0)
             {
                 readiness.Add(
@@ -654,7 +656,8 @@ namespace Rebellion.AI.Scoring
                 return false;
 
             if (order.OrderType == FleetOrderType.Defend)
-                return context.Assessment.IsFactionHeadquarters(proposal.TargetPlanet);
+                return context.Assessment.IsOwnedPlanet(proposal.TargetPlanet)
+                    && context.Assessment.GetRequiredDefenseStrength(proposal.TargetPlanet) > 0;
 
             string targetOwnerId = proposal.TargetPlanet.GetOwnerInstanceID();
             return order.OrderType == FleetOrderType.Attack

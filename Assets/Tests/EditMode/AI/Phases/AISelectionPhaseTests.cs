@@ -133,6 +133,106 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
+        public void Select_WithTwoFreeProducerSlots_SelectsTwoManufactureProposals()
+        {
+            AITurnContext context = CreateManufacturingContext(
+                out Planet producer,
+                out PlanetSystem system
+            );
+            AIManufactureProposal highest = CreateDefenseProposal(
+                context,
+                producer,
+                system,
+                "highest",
+                1,
+                100
+            );
+            AIManufactureProposal middle = CreateDefenseProposal(
+                context,
+                producer,
+                system,
+                "middle",
+                1,
+                90
+            );
+            AIManufactureProposal lowest = CreateDefenseProposal(
+                context,
+                producer,
+                system,
+                "lowest",
+                1,
+                80
+            );
+            context.AddProposal(lowest);
+            context.AddProposal(highest);
+            context.AddProposal(middle);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { highest, middle }, selected);
+        }
+
+        [Test]
+        public void Select_WithCountedBatchFillingProducer_SelectsOnlyBatch()
+        {
+            AITurnContext context = CreateManufacturingContext(
+                out Planet producer,
+                out PlanetSystem system
+            );
+            AIManufactureProposal batch = CreateDefenseProposal(
+                context,
+                producer,
+                system,
+                "batch",
+                2,
+                100
+            );
+            AIManufactureProposal remaining = CreateDefenseProposal(
+                context,
+                producer,
+                system,
+                "remaining",
+                1,
+                90
+            );
+            context.AddProposal(remaining);
+            context.AddProposal(batch);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { batch }, selected);
+        }
+
+        [Test]
+        public void Select_WithFacilityExpansionAndSharedWork_SelectsOnlyHigherScoredExpansion()
+        {
+            AITurnContext context = CreateManufacturingContext(
+                out Planet producer,
+                out PlanetSystem system
+            );
+            AIManufactureProposal expansion = CreateFacilityExpansionProposal(
+                context,
+                producer,
+                system,
+                100
+            );
+            AIManufactureProposal defense = CreateDefenseProposal(
+                context,
+                producer,
+                system,
+                "defense",
+                1,
+                90
+            );
+            context.AddProposal(defense);
+            context.AddProposal(expansion);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { expansion }, selected);
+        }
+
+        [Test]
         public void Select_WithTwoNewAttackOrders_SelectsOnlyHigherScoredOrder()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -193,6 +293,106 @@ namespace Rebellion.Tests.AI.Phases
             ship.SetParent(fleet);
             game.AttachNode(fleet, planet);
             return fleet;
+        }
+
+        private static AITurnContext CreateManufacturingContext(
+            out Planet producer,
+            out PlanetSystem system
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            system = AITestSceneBuilder.AddSystem(game, "system");
+            producer = AITestSceneBuilder.AddPlanet(game, system, "producer", empire.InstanceID);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "construction-yard-1",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "construction-yard-2",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            return AITestSceneBuilder.CreateContext(game, empire);
+        }
+
+        private static AIManufactureProposal CreateDefenseProposal(
+            AITurnContext context,
+            Planet producer,
+            PlanetSystem system,
+            string id,
+            int quantity,
+            double score
+        )
+        {
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                system,
+                $"destination-{id}",
+                context.Faction.InstanceID
+            );
+            Building shield = AITestSceneBuilder.CreateBuildingTemplate(
+                $"shield-{id}",
+                BuildingType.Defense
+            );
+            shield.MaintenanceCost = 0;
+            AIProductionDemand demand = new AIProductionDemand(
+                $"demand-{id}",
+                AIProductionDemandKind.PlanetaryDefense,
+                ManufacturingType.Building,
+                BuildingType.Defense,
+                destination,
+                quantity,
+                score
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                producer,
+                new Technology(shield)
+            );
+            proposal.SetScore(score);
+            return proposal;
+        }
+
+        private static AIManufactureProposal CreateFacilityExpansionProposal(
+            AITurnContext context,
+            Planet producer,
+            PlanetSystem system,
+            double score
+        )
+        {
+            Planet destination = AITestSceneBuilder.AddPlanet(
+                context.Game,
+                system,
+                "facility-destination",
+                context.Faction.InstanceID
+            );
+            Building shipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            shipyard.MaintenanceCost = 0;
+            AIProductionDemand demand = new AIProductionDemand(
+                "facility-expansion",
+                AIProductionDemandKind.Shipyard,
+                ManufacturingType.Building,
+                BuildingType.Shipyard,
+                destination,
+                1,
+                score
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                producer,
+                new Technology(shipyard)
+            );
+            proposal.SetScore(score);
+            return proposal;
         }
 
         private static AITurnContext CreateEmptyContext()

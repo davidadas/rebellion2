@@ -135,8 +135,12 @@
                       type="PercentType"
                     />
                     <xs:element
-                      name="CapitalShipTieReplacementPercent"
-                      type="PercentType"
+                      name="CapitalShipTieRollRange"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="CapitalShipTieInsertBeforeThreshold"
+                      type="xs:nonNegativeInteger"
                     />
                     <xs:element name="StarfighterEscortWeight" type="xs:nonNegativeInteger" />
                     <xs:element
@@ -201,6 +205,50 @@
                       type="PositiveIntType"
                     />
                     <xs:element
+                      name="TrainingFacilityBacklogPressureBonus"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="ShipyardMaintenanceAllocationPercent"
+                      type="PercentType"
+                    />
+                    <xs:element
+                      name="ShipyardMaintenanceAllocationScalePercent"
+                      type="PercentType"
+                    />
+                    <xs:element
+                      name="TrainingFacilityMaintenanceAllocationPercent"
+                      type="PercentType"
+                    />
+                    <xs:element
+                      name="TrainingFacilityMaintenanceAllocationScalePercent"
+                      type="PercentType"
+                    />
+                    <xs:element
+                      name="ConstructionFacilityMaintenanceAllocationPercent"
+                      type="PercentType"
+                    />
+                    <xs:element
+                      name="FacilityConstructionLaneReserve"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="ProductionFacilityUpgradeMinimumRemainingCount"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="ProductionFacilityUpgradeDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="ProductionFacilityUpgradeValuePressureWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="ProductionFacilityUpgradeHeadquartersPressureBonus"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
                       name="FleetCapitalShipDemandPercent"
                       type="PositiveIntType"
                     />
@@ -229,32 +277,48 @@
                       type="PositiveIntType"
                     />
                     <xs:element
-                      name="StarfighterLocalReservePercent"
-                      type="PositiveIntType"
-                    />
-                    <xs:element
                       name="AssaultRegimentLoadPercent"
                       type="PositiveIntType"
                     />
                     <xs:element
-                      name="GarrisonRegimentReservePercent"
+                      name="PlanetaryWeaponTargetCount"
                       type="PositiveIntType"
                     />
                     <xs:element
-                      name="HeadquartersShieldTargetCount"
+                      name="PlanetaryDefenseSurplusBatchSize"
                       type="PositiveIntType"
                     />
                     <xs:element
-                      name="HeadquartersWeaponTargetCount"
+                      name="PlanetaryShieldDemandPercent"
                       type="PositiveIntType"
                     />
                     <xs:element
-                      name="HeadquartersShieldDemandPercent"
+                      name="PlanetaryWeaponDemandPercent"
                       type="PositiveIntType"
                     />
                     <xs:element
-                      name="HeadquartersWeaponDemandPercent"
+                      name="PlanetaryGarrisonDemandPercent"
                       type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="PlanetaryDefenseDeficitPressureWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="PlanetaryDefenseValuePressureWeight"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="PlanetaryDefenseHeadquartersPressureBonus"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="PlanetaryDefenseThreatPressureBonus"
+                      type="xs:nonNegativeInteger"
+                    />
+                    <xs:element
+                      name="PlanetaryDefenseMaintenanceReservePercent"
+                      type="PercentType"
                     />
                     <xs:element name="EconomyDefaultBatchSize" type="PositiveIntType" />
                     <xs:element name="EconomyDemandPercent" type="PositiveIntType" />

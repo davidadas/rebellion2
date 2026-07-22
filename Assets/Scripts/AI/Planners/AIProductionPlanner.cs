@@ -76,8 +76,17 @@ namespace Rebellion.AI.Planners
 
             foreach (Planet producerPlanet in FindProducerPlanets(context, demand))
             {
-                AIManufactureProposal proposal = new AIManufactureProposal(
+                AIProductionDemand proposalDemand = GetProposalDemand(
+                    context,
                     demand,
+                    producerPlanet,
+                    product
+                );
+                if (proposalDemand == null)
+                    continue;
+
+                AIManufactureProposal proposal = new AIManufactureProposal(
+                    proposalDemand,
                     producerPlanet,
                     product
                 );
@@ -105,14 +114,14 @@ namespace Rebellion.AI.Planners
                 or AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
                 or AIProductionDemandKind.TrainingFacility
-                or AIProductionDemandKind.HeadquartersDefense => GetUnlockedBuildingTechnology(
+                or AIProductionDemandKind.BuildingUpgrade
+                or AIProductionDemandKind.PlanetaryDefense => GetUnlockedBuildingTechnology(
                     context,
-                    demand.BuildingType
+                    demand
                 ),
                 AIProductionDemandKind.FleetCapitalShip
                 or AIProductionDemandKind.FleetStarfighter
                 or AIProductionDemandKind.FleetRegiment
-                or AIProductionDemandKind.LocalStarfighterReserve
                 or AIProductionDemandKind.GarrisonRegimentReserve
                 or AIProductionDemandKind.SpecialForces
                 or AIProductionDemandKind.FleetSeedCapitalShip => GetUnlockedUnitTechnology(
@@ -127,28 +136,28 @@ namespace Rebellion.AI.Planners
         /// Returns the unlocked building technology for a building type.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
-        /// <param name="buildingType">Building type to manufacture.</param>
+        /// <param name="demand">Building demand to satisfy.</param>
         /// <returns>The selected technology, or null.</returns>
         private Technology GetUnlockedBuildingTechnology(
             AITurnContext context,
-            BuildingType buildingType
+            AIProductionDemand demand
         )
         {
-            if (context?.Faction == null || buildingType == BuildingType.None)
+            if (context?.Faction == null || demand?.BuildingType == BuildingType.None)
                 return null;
 
-            int maintenanceBudget = System.Math.Max(
-                0,
-                context.Faction.ProjectedMaintenanceHeadroom
-                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
-            );
+            int maintenanceBudget = GetBuildingMaintenanceBudget(context, demand);
+            if (IsFacilityExpansionDemand(demand) && maintenanceBudget <= 0)
+                return null;
+
             return context
                 .Faction.GetUnlockedTechnologies(ManufacturingType.Building)
                 .Where(technology =>
                     technology.GetReference() is Building building
-                    && building.GetBuildingType() == buildingType
+                    && building.GetBuildingType() == demand.BuildingType
                     && building.HasAllowedOwnerInstanceID(context.Faction.InstanceID)
-                    && building.MaintenanceCost <= maintenanceBudget
+                    && IsEligibleBuildingUpgrade(demand, building)
+                    && GetBuildingMaintenanceCost(demand, building) <= maintenanceBudget
                 )
                 .OrderByDescending(technology =>
                     GetBuildingCapability((Building)technology.GetReference())
@@ -158,6 +167,247 @@ namespace Rebellion.AI.Planners
                 .ThenBy(technology => technology.GetReference().GetConstructionCost())
                 .ThenBy(technology => technology.GetReference().GetTypeID())
                 .FirstOrDefault();
+        }
+
+        private static bool IsEligibleBuildingUpgrade(AIProductionDemand demand, Building building)
+        {
+            return demand.Kind != AIProductionDemandKind.BuildingUpgrade
+                || building.IsProductionUpgradeFor(demand.ReplacementBuilding);
+        }
+
+        private static int GetBuildingMaintenanceCost(AIProductionDemand demand, Building building)
+        {
+            if (
+                demand.Kind != AIProductionDemandKind.BuildingUpgrade
+                || demand.ReplacementBuilding == null
+            )
+                return building.MaintenanceCost;
+
+            return System.Math.Max(
+                0,
+                building.MaintenanceCost - demand.ReplacementBuilding.MaintenanceCost
+            );
+        }
+
+        private int GetBuildingMaintenanceBudget(AITurnContext context, AIProductionDemand demand)
+        {
+            if (IsFacilityExpansionDemand(demand))
+                return GetFacilityMaintenanceBudget(context, demand);
+
+            if (demand.UsesDefensiveReserve)
+                return GetDefensiveMaintenanceBudget(context);
+
+            return System.Math.Max(
+                0,
+                context.Faction.ProjectedMaintenanceHeadroom
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+            );
+        }
+
+        private int GetFacilityMaintenanceBudget(AITurnContext context, AIProductionDemand demand)
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            int allocatedMaintenance = demand.Kind switch
+            {
+                AIProductionDemandKind.Shipyard => ScaleByPercent(
+                    ScaleByPercent(
+                        context.Faction.MaintenanceCapacity,
+                        config.ShipyardMaintenanceAllocationPercent
+                    ),
+                    config.ShipyardMaintenanceAllocationScalePercent
+                ),
+                AIProductionDemandKind.TrainingFacility => ScaleByPercent(
+                    ScaleByPercent(
+                        context.Faction.MaintenanceCapacity,
+                        config.TrainingFacilityMaintenanceAllocationPercent
+                    ),
+                    config.TrainingFacilityMaintenanceAllocationScalePercent
+                ),
+                AIProductionDemandKind.ConstructionFacility => ScaleByPercent(
+                    context.Faction.MaintenanceCapacity,
+                    config.ConstructionFacilityMaintenanceAllocationPercent
+                ),
+                _ => 0,
+            };
+            int availableMaintenance =
+                allocatedMaintenance - GetCommittedFacilityMaintenance(context, demand);
+            if (
+                availableMaintenance <= 0
+                || context.Faction.ProjectedMaintenanceHeadroom < availableMaintenance
+            )
+                return 0;
+
+            int headroomBudget = System.Math.Max(
+                0,
+                context.Faction.ProjectedMaintenanceHeadroom
+                    - context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor
+            );
+            return System.Math.Min(availableMaintenance, headroomBudget);
+        }
+
+        private int GetCommittedFacilityMaintenance(
+            AITurnContext context,
+            AIProductionDemand demand
+        )
+        {
+            BuildingType buildingType = demand.Kind switch
+            {
+                AIProductionDemandKind.Shipyard => BuildingType.Shipyard,
+                AIProductionDemandKind.TrainingFacility => BuildingType.TrainingFacility,
+                AIProductionDemandKind.ConstructionFacility => BuildingType.ConstructionFacility,
+                _ => BuildingType.None,
+            };
+
+            return context
+                .Assessment.OwnedPlanets.SelectMany(planet => planet.GetAllBuildings())
+                .Where(building =>
+                    building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && building.GetBuildingType() == buildingType
+                )
+                .Sum(building => building.MaintenanceCost);
+        }
+
+        private AIProductionDemand GetProposalDemand(
+            AITurnContext context,
+            AIProductionDemand demand,
+            Planet producerPlanet,
+            Technology product
+        )
+        {
+            if (demand.Kind == AIProductionDemandKind.BuildingUpgrade)
+                return demand;
+
+            if (!IsFacilityExpansionDemand(demand) && !demand.UsesDefensiveReserve)
+                return demand;
+
+            int quantity;
+            if (IsFacilityExpansionDemand(demand))
+            {
+                if (product.GetReference() is not Building building)
+                    return null;
+
+                quantity = GetFacilityBatchSize(context, demand, producerPlanet, building);
+            }
+            else
+            {
+                quantity = GetDefensiveBatchSize(context, demand, product.GetReference());
+            }
+
+            if (quantity <= 0)
+                return null;
+
+            return new AIProductionDemand(
+                demand.Id,
+                demand.Kind,
+                demand.ManufacturingType,
+                demand.BuildingType,
+                demand.Destination,
+                quantity,
+                demand.Pressure,
+                demand.ProductTypeId,
+                demand.CapitalShipRole
+            );
+        }
+
+        private int GetDefensiveBatchSize(
+            AITurnContext context,
+            AIProductionDemand demand,
+            IManufacturable product
+        )
+        {
+            int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
+            int maintenanceLimit =
+                product.GetMaintenanceCost() > 0
+                    ? maintenanceBudget / product.GetMaintenanceCost()
+                    : int.MaxValue;
+            int destinationLimit =
+                product is Building
+                    ? demand.DestinationPlanet?.GetAvailableEnergy() ?? 0
+                    : int.MaxValue;
+
+            return System.Math.Max(
+                0,
+                System.Math.Min(
+                    demand.QuantityNeeded,
+                    System.Math.Min(maintenanceLimit, destinationLimit)
+                )
+            );
+        }
+
+        private int GetDefensiveMaintenanceBudget(AITurnContext context)
+        {
+            return System.Math.Max(
+                0,
+                context.Faction.ProjectedMaintenanceHeadroom - GetDefensiveMaintenanceFloor(context)
+            );
+        }
+
+        private int GetDefensiveMaintenanceFloor(AITurnContext context)
+        {
+            return System.Math.Max(
+                context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor,
+                System.Math.Max(
+                    context.Game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction,
+                    ScaleByPercentRoundedUp(
+                        context.Faction.MaintenanceCapacity,
+                        context
+                            .Game
+                            .Config
+                            .AI
+                            .Infrastructure
+                            .PlanetaryDefenseMaintenanceReservePercent
+                    )
+                )
+            );
+        }
+
+        private static int ScaleByPercentRoundedUp(int value, int percent)
+        {
+            return (int)(((long)value * percent + _percentageScale - 1) / _percentageScale);
+        }
+
+        private int GetFacilityBatchSize(
+            AITurnContext context,
+            AIProductionDemand demand,
+            Planet producerPlanet,
+            Building building
+        )
+        {
+            int maintenanceBudget = GetFacilityMaintenanceBudget(context, demand);
+            int maintenanceLimit =
+                building.MaintenanceCost > 0
+                    ? maintenanceBudget / building.MaintenanceCost
+                    : int.MaxValue;
+            int facilityCount = producerPlanet.GetProductionFacilityCount(
+                ManufacturingType.Building
+            );
+            int laneReserve =
+                demand.Kind == AIProductionDemandKind.ConstructionFacility
+                    ? 0
+                    : System.Math.Max(
+                        0,
+                        context.Game.Config.AI.Infrastructure.FacilityConstructionLaneReserve
+                    );
+            int laneLimit =
+                facilityCount > laneReserve ? facilityCount - laneReserve : facilityCount;
+            int energyLimit = System.Math.Max(
+                0,
+                demand.DestinationPlanet.GetAvailableEnergy()
+                    - context.Assessment.GetPlanetaryDefenseEnergyDeficit(demand.DestinationPlanet)
+            );
+
+            return System.Math.Max(
+                0,
+                System.Math.Min(maintenanceLimit, System.Math.Min(laneLimit, energyLimit))
+            );
+        }
+
+        private static bool IsFacilityExpansionDemand(AIProductionDemand demand)
+        {
+            return demand?.Kind
+                is AIProductionDemandKind.ConstructionFacility
+                    or AIProductionDemandKind.Shipyard
+                    or AIProductionDemandKind.TrainingFacility;
         }
 
         private static int GetBuildingCapability(Building building)
@@ -209,14 +459,8 @@ namespace Rebellion.AI.Planners
                     context,
                     demand.DestinationFleet
                 ),
-                AIProductionDemandKind.LocalStarfighterReserve => GetUnlockedStarfighterTechnology(
-                    context,
-                    null
-                ),
-                AIProductionDemandKind.GarrisonRegimentReserve => GetUnlockedRegimentTechnology(
-                    context,
-                    null
-                ),
+                AIProductionDemandKind.GarrisonRegimentReserve =>
+                    GetUnlockedGarrisonRegimentTechnology(context),
                 AIProductionDemandKind.SpecialForces => GetUnlockedSpecialForcesTechnology(
                     context,
                     demand.ProductTypeId
@@ -252,10 +496,8 @@ namespace Rebellion.AI.Planners
             if (context?.Faction == null || demand == null)
                 return null;
 
-            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
             int maintenanceBudget = GetCapitalShipMaintenanceBudget(context);
-            Technology selectedTechnology = null;
-            long selectedMetric = long.MinValue;
+            List<Technology> rankedTechnologies = new List<Technology>();
 
             foreach (
                 Technology technology in context.Faction.GetUnlockedTechnologies(
@@ -272,25 +514,59 @@ namespace Rebellion.AI.Planners
                 if (!CanFillCapitalShipRole(context, capitalShip, demand.CapitalShipRole))
                     continue;
 
-                if (capitalShip.MaintenanceCost > maintenanceBudget)
-                    continue;
-
-                long metric = GetCapitalShipRoleMetric(capitalShip, demand.CapitalShipRole);
-                if (metric < selectedMetric)
-                    continue;
-
-                if (
-                    metric == selectedMetric
-                    && context.Random.NextInt(0, _percentageScale)
-                        >= config.CapitalShipTieReplacementPercent
-                )
-                    continue;
-
-                selectedTechnology = technology;
-                selectedMetric = metric;
+                InsertCapitalShipTechnology(
+                    context,
+                    rankedTechnologies,
+                    technology,
+                    demand.CapitalShipRole
+                );
             }
 
-            return selectedTechnology;
+            for (int index = rankedTechnologies.Count - 1; index >= 0; index--)
+            {
+                Technology technology = rankedTechnologies[index];
+                if (technology.GetReference().GetMaintenanceCost() <= maintenanceBudget)
+                    return technology;
+            }
+
+            return null;
+        }
+
+        private static void InsertCapitalShipTechnology(
+            AITurnContext context,
+            List<Technology> rankedTechnologies,
+            Technology candidate,
+            AICapitalShipProductionRole role
+        )
+        {
+            CapitalShip candidateShip = (CapitalShip)candidate.GetReference();
+            long candidateMetric = GetCapitalShipRoleMetric(candidateShip, role);
+
+            for (int index = 0; index < rankedTechnologies.Count; index++)
+            {
+                CapitalShip rankedShip = (CapitalShip)rankedTechnologies[index].GetReference();
+                long rankedMetric = GetCapitalShipRoleMetric(rankedShip, role);
+                if (
+                    candidateMetric < rankedMetric
+                    || (
+                        candidateMetric == rankedMetric
+                        && ShouldInsertCapitalShipBeforeEqual(context)
+                    )
+                )
+                {
+                    rankedTechnologies.Insert(index, candidate);
+                    return;
+                }
+            }
+
+            rankedTechnologies.Add(candidate);
+        }
+
+        private static bool ShouldInsertCapitalShipBeforeEqual(AITurnContext context)
+        {
+            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            return context.Random.NextInt(0, config.CapitalShipTieRollRange)
+                < config.CapitalShipTieInsertBeforeThreshold;
         }
 
         private int GetCapitalShipMaintenanceBudget(AITurnContext context)
@@ -492,6 +768,24 @@ namespace Rebellion.AI.Planners
                 .FirstOrDefault();
         }
 
+        private Technology GetUnlockedGarrisonRegimentTechnology(AITurnContext context)
+        {
+            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
+            return context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
+                .Where(technology =>
+                    technology.GetReference() is Regiment regiment
+                    && regiment.MaintenanceCost <= maintenanceBudget
+                )
+                .OrderByDescending(technology =>
+                    ScoreRegimentTechnology(config, null, (Regiment)technology.GetReference())
+                )
+                .ThenBy(technology => technology.GetReference().GetConstructionCost())
+                .ThenBy(technology => technology.GetReference().GetTypeID())
+                .FirstOrDefault();
+        }
+
         /// <summary>
         /// Returns the score for a starfighter technology.
         /// </summary>
@@ -562,13 +856,22 @@ namespace Rebellion.AI.Planners
             Planet destinationPlanet = GetDestinationPlanet(context, demand);
             return context
                 .Assessment.OwnedPlanets.Where(planet =>
-                    CanProduce(planet, demand.ManufacturingType)
+                    IsFacilityExpansionDemand(demand)
+                        ? CanQueueFacilityExpansion(planet)
+                        : CanProduce(planet, demand.ManufacturingType)
                 )
                 .OrderBy(planet =>
                     destinationPlanet == null ? 0 : destinationPlanet.GetRawDistanceTo(planet)
                 )
                 .ThenByDescending(planet => planet.GetProductionRate(demand.ManufacturingType))
                 .ThenBy(planet => planet.InstanceID);
+        }
+
+        private bool CanQueueFacilityExpansion(Planet planet)
+        {
+            return planet?.IsColonized == true
+                && !planet.IsDestroyed
+                && planet.GetProductionFacilityCount(ManufacturingType.Building) > 0;
         }
 
         /// <summary>

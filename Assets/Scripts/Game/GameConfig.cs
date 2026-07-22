@@ -240,7 +240,8 @@ namespace Rebellion.Game
             public int MaxDuplicateRegimentTypePerDestination { get; set; }
             public int CapitalMaintenanceAllocationPercent { get; set; } = 30;
             public int CapitalMaintenanceSafetyPercent { get; set; } = 90;
-            public int CapitalShipTieReplacementPercent { get; set; } = 50;
+            public int CapitalShipTieRollRange { get; set; } = 10;
+            public int CapitalShipTieInsertBeforeThreshold { get; set; } = 5;
             public int StarfighterEscortWeight { get; set; }
             public int StarfighterInterceptorWeight { get; set; }
             public int StarfighterBomberWeight { get; set; }
@@ -265,7 +266,18 @@ namespace Rebellion.Game
         {
             public int ConstructionFacilityDemandPercent { get; set; }
             public int ShipyardDemandPercent { get; set; }
-            public int TrainingFacilityDemandPercent { get; set; }
+            public int TrainingFacilityDemandPercent { get; set; } = 100;
+            public int TrainingFacilityBacklogPressureBonus { get; set; } = 5;
+            public int ShipyardMaintenanceAllocationPercent { get; set; } = 30;
+            public int ShipyardMaintenanceAllocationScalePercent { get; set; } = 10;
+            public int TrainingFacilityMaintenanceAllocationPercent { get; set; } = 4;
+            public int TrainingFacilityMaintenanceAllocationScalePercent { get; set; } = 50;
+            public int ConstructionFacilityMaintenanceAllocationPercent { get; set; } = 4;
+            public int FacilityConstructionLaneReserve { get; set; } = 1;
+            public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; } = 1;
+            public int ProductionFacilityUpgradeDemandPercent { get; set; } = 65;
+            public int ProductionFacilityUpgradeValuePressureWeight { get; set; } = 20;
+            public int ProductionFacilityUpgradeHeadquartersPressureBonus { get; set; } = 10;
             public int FleetCapitalShipDemandPercent { get; set; } = 80;
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
@@ -273,13 +285,17 @@ namespace Rebellion.Game
             public int SpecialForcesTargetCountPerType { get; set; } = 2;
             public int SpecialForcesDemandPercent { get; set; } = 25;
             public int StarfighterParentFillPercent { get; set; } = 100;
-            public int StarfighterLocalReservePercent { get; set; }
             public int AssaultRegimentLoadPercent { get; set; } = 100;
-            public int GarrisonRegimentReservePercent { get; set; }
-            public int HeadquartersShieldTargetCount { get; set; } = 1;
-            public int HeadquartersWeaponTargetCount { get; set; } = 1;
-            public int HeadquartersShieldDemandPercent { get; set; } = 100;
-            public int HeadquartersWeaponDemandPercent { get; set; } = 95;
+            public int PlanetaryWeaponTargetCount { get; set; } = 1;
+            public int PlanetaryDefenseSurplusBatchSize { get; set; } = 1;
+            public int PlanetaryShieldDemandPercent { get; set; } = 45;
+            public int PlanetaryWeaponDemandPercent { get; set; } = 35;
+            public int PlanetaryGarrisonDemandPercent { get; set; } = 30;
+            public int PlanetaryDefenseDeficitPressureWeight { get; set; } = 20;
+            public int PlanetaryDefenseValuePressureWeight { get; set; } = 25;
+            public int PlanetaryDefenseHeadquartersPressureBonus { get; set; } = 20;
+            public int PlanetaryDefenseThreatPressureBonus { get; set; } = 50;
+            public int PlanetaryDefenseMaintenanceReservePercent { get; set; } = 10;
             public int EconomyDefaultBatchSize { get; set; } = 1;
             public int EconomyDemandPercent { get; set; } = 90;
             public int EconomySevereDemandPercent { get; set; } = 100;

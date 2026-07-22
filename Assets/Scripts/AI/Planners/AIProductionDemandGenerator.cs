@@ -27,69 +27,112 @@ namespace Rebellion.AI.Planners
                 return demands;
 
             AddResourceBalanceDemand(context, demands);
-            AddHeadquartersDefenseDemands(context, demands);
+            AddPlanetaryDefenseDemands(context, demands);
             AddFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
-            AddLocalReserveDemands(context, demands);
+            AddPlanetaryGarrisonDemands(context, demands);
             AddSpecialForcesDemands(context, demands);
             AddProductionFacilityDemands(context, demands);
+            AddProductionFacilityUpgradeDemands(context, demands);
 
             return demands;
         }
 
-        private void AddHeadquartersDefenseDemands(
+        private void AddPlanetaryDefenseDemands(
             AITurnContext context,
             List<AIProductionDemand> demands
         )
         {
-            Planet headquarters = context.Assessment.OwnedPlanets.FirstOrDefault(
-                context.Assessment.IsFactionHeadquarters
-            );
-            if (headquarters?.IsColonized != true || headquarters.IsDestroyed)
-                return;
-
-            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            AddHeadquartersDefenseDemand(
-                context,
-                demands,
-                headquarters,
-                BuildingType.Defense,
-                config.HeadquartersShieldTargetCount,
-                config.HeadquartersShieldDemandPercent
-            );
-            AddHeadquartersDefenseDemand(
-                context,
-                demands,
-                headquarters,
-                BuildingType.Weapon,
-                config.HeadquartersWeaponTargetCount,
-                config.HeadquartersWeaponDemandPercent
-            );
+            foreach (
+                Planet planet in context
+                    .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
+                    .OrderByDescending(context.Assessment.GetPlanetValue)
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+            )
+                AddPlanetaryDefenseDemands(context, demands, planet);
         }
 
-        private void AddHeadquartersDefenseDemand(
+        private void AddPlanetaryDefenseDemands(
             AITurnContext context,
             List<AIProductionDemand> demands,
-            Planet headquarters,
-            BuildingType buildingType,
-            int targetCount,
-            int demandPercent
+            Planet planet
         )
         {
-            int currentCount = headquarters.GetTotalBuildingTypeCount(buildingType);
-            int deficit = targetCount - currentCount;
-            if (deficit <= 0)
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            int availableEnergy = planet.GetAvailableEnergy();
+            int shieldTarget = context.Game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+            int shieldCount = planet
+                .GetAllBuildings()
+                .Count(building =>
+                    building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+                );
+            int shieldDeficit = System.Math.Max(0, shieldTarget - shieldCount);
+            int shieldQuantity = System.Math.Min(shieldDeficit, availableEnergy);
+
+            if (shieldQuantity > 0)
+            {
+                demands.Add(
+                    CreatePlanetaryDefenseBuildingDemand(
+                        context,
+                        planet,
+                        BuildingType.Defense,
+                        shieldQuantity,
+                        shieldTarget,
+                        config.PlanetaryShieldDemandPercent
+                    )
+                );
+                availableEnergy -= shieldQuantity;
+            }
+
+            int weaponCount = planet
+                .GetAllBuildings()
+                .Count(building =>
+                    building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && building.GetBuildingType() == BuildingType.Weapon
+                );
+            int weaponTarget = System.Math.Max(
+                config.PlanetaryWeaponTargetCount,
+                weaponCount + config.PlanetaryDefenseSurplusBatchSize
+            );
+            int weaponDeficit = weaponTarget - weaponCount;
+            if (availableEnergy <= 0)
                 return;
 
             demands.Add(
-                CreateBuildingDemand(
+                CreatePlanetaryDefenseBuildingDemand(
                     context,
-                    AIProductionDemandKind.HeadquartersDefense,
-                    buildingType,
-                    headquarters,
+                    planet,
+                    BuildingType.Weapon,
+                    System.Math.Min(weaponDeficit, availableEnergy),
+                    weaponTarget,
+                    config.PlanetaryWeaponDemandPercent
+                )
+            );
+        }
+
+        private AIProductionDemand CreatePlanetaryDefenseBuildingDemand(
+            AITurnContext context,
+            Planet planet,
+            BuildingType buildingType,
+            int deficit,
+            int targetCount,
+            int baseDemandPercent
+        )
+        {
+            return new AIProductionDemand(
+                $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.PlanetaryDefense}:{buildingType}:{planet.InstanceID}",
+                AIProductionDemandKind.PlanetaryDefense,
+                ManufacturingType.Building,
+                buildingType,
+                planet,
+                deficit,
+                GetPlanetaryDefensePressure(
+                    context,
+                    planet,
+                    baseDemandPercent,
                     deficit,
-                    targetCount,
-                    demandPercent
+                    targetCount
                 )
             );
         }
@@ -288,6 +331,117 @@ namespace Rebellion.AI.Planners
             );
         }
 
+        private void AddProductionFacilityUpgradeDemands(
+            AITurnContext context,
+            List<AIProductionDemand> demands
+        )
+        {
+            foreach (
+                Planet planet in context
+                    .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
+                    .OrderByDescending(context.Assessment.GetPlanetValue)
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+            )
+            {
+                AddProductionFacilityUpgradeDemand(
+                    context,
+                    demands,
+                    planet,
+                    BuildingType.ConstructionFacility
+                );
+                AddProductionFacilityUpgradeDemand(context, demands, planet, BuildingType.Shipyard);
+                AddProductionFacilityUpgradeDemand(
+                    context,
+                    demands,
+                    planet,
+                    BuildingType.TrainingFacility
+                );
+            }
+        }
+
+        private void AddProductionFacilityUpgradeDemand(
+            AITurnContext context,
+            List<AIProductionDemand> demands,
+            Planet planet,
+            BuildingType buildingType
+        )
+        {
+            if (HasPendingFacility(context, planet, buildingType))
+                return;
+
+            List<Building> activeFacilities = planet
+                .GetAllBuildings()
+                .Where(building =>
+                    building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && building.GetBuildingType() == buildingType
+                    && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                    && building.Movement == null
+                    && building.GetProcessRate() > 0
+                )
+                .ToList();
+            if (
+                activeFacilities.Count
+                <= context
+                    .Game
+                    .Config
+                    .AI
+                    .Infrastructure
+                    .ProductionFacilityUpgradeMinimumRemainingCount
+            )
+                return;
+
+            List<Building> unlockedFacilities = context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Building)
+                .Select(technology => technology.GetReference())
+                .OfType<Building>()
+                .Where(building =>
+                    building.GetBuildingType() == buildingType
+                    && building.HasAllowedOwnerInstanceID(context.Faction.InstanceID)
+                )
+                .ToList();
+            Building replacement = activeFacilities
+                .Where(current =>
+                    unlockedFacilities.Any(candidate => candidate.IsProductionUpgradeFor(current))
+                )
+                .OrderByDescending(building => building.GetProcessRate())
+                .ThenBy(building => building.ResearchOrder)
+                .ThenBy(building => building.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (replacement == null)
+                return;
+
+            AIProductionDemand demand = new AIProductionDemand(
+                $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.BuildingUpgrade}:{buildingType}:{planet.InstanceID}:{replacement.InstanceID}",
+                AIProductionDemandKind.BuildingUpgrade,
+                ManufacturingType.Building,
+                buildingType,
+                planet,
+                1,
+                GetProductionFacilityUpgradePressure(context, planet)
+            );
+            demand.ReplacementBuilding = replacement;
+            demands.Add(demand);
+        }
+
+        private double GetProductionFacilityUpgradePressure(AITurnContext context, Planet planet)
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            double pressure = config.ProductionFacilityUpgradeDemandPercent;
+            double highestPlanetValue = context.Assessment.GetHighestOwnedPlanetValue();
+            if (highestPlanetValue > 0)
+            {
+                pressure +=
+                    config.ProductionFacilityUpgradeValuePressureWeight
+                    * context.Assessment.GetPlanetValue(planet)
+                    / highestPlanetValue;
+            }
+
+            if (context.Assessment.IsFactionHeadquarters(planet))
+                pressure += config.ProductionFacilityUpgradeHeadquartersPressureBonus;
+
+            return ClampPressure(pressure);
+        }
+
         private void AddProductionFacilityDemand(
             AITurnContext context,
             List<AIProductionDemand> demands,
@@ -303,101 +457,91 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(demand => demand.Pressure)
                 .ThenBy(demand => demand.Id, StringComparer.Ordinal)
                 .FirstOrDefault();
-            if (
-                primaryDemand == null
-                || HasAvailableProductionCapacity(context, manufacturingType)
-                || HasPendingFacility(context, buildingType)
-            )
+            if (primaryDemand == null)
                 return;
 
             Planet target = FindFacilityTargetPlanet(context, primaryDemand, manufacturingType);
-            if (target == null)
+            if (
+                target == null
+                || !NeedsProductionFacility(context, demands, manufacturingType)
+                || HasPendingFacility(context, target, buildingType)
+            )
                 return;
 
             int currentCount = GetOwnedFacilityCount(context, buildingType);
             demands.Add(
-                CreateBuildingDemand(
-                    context,
+                new AIProductionDemand(
+                    $"production:{context.Faction.InstanceID}:{kind}:{target.InstanceID}",
                     kind,
+                    ManufacturingType.Building,
                     buildingType,
                     target,
                     1,
-                    currentCount + 1,
-                    baseDemandPercent
+                    GetProductionFacilityPressure(context, kind, currentCount, baseDemandPercent),
+                    primaryDemand.ProductTypeId,
+                    primaryDemand.CapitalShipRole
                 )
             );
         }
 
-        private bool HasAvailableProductionCapacity(
+        private double GetProductionFacilityPressure(
             AITurnContext context,
+            AIProductionDemandKind kind,
+            int currentCount,
+            int baseDemandPercent
+        )
+        {
+            double pressure = GetDemandPressure(
+                context,
+                kind,
+                1,
+                currentCount + 1,
+                baseDemandPercent
+            );
+            return kind == AIProductionDemandKind.TrainingFacility
+                ? pressure
+                    + context.Game.Config.AI.Infrastructure.TrainingFacilityBacklogPressureBonus
+                : pressure;
+        }
+
+        private bool NeedsProductionFacility(
+            AITurnContext context,
+            IReadOnlyCollection<AIProductionDemand> demands,
             ManufacturingType manufacturingType
         )
         {
-            return context.Assessment.OwnedPlanets.Any(planet =>
-                planet.IsColonized
-                && !planet.IsDestroyed
-                && planet.GetAvailableManufacturingCapacity(manufacturingType) > 0
+            int demandLaneCount = demands.Count(demand =>
+                demand.ManufacturingType == manufacturingType && demand.QuantityNeeded > 0
             );
+            return demandLaneCount
+                > context.Assessment.GetAvailableProductionLaneCount(manufacturingType);
         }
 
-        private bool HasPendingFacility(AITurnContext context, BuildingType buildingType)
-        {
-            return context.Assessment.OwnedPlanets.Any(planet =>
-                planet
-                    .GetAllBuildings()
-                    .Any(building =>
-                        building.GetOwnerInstanceID() == context.Faction.InstanceID
-                        && building.GetBuildingType() == buildingType
-                        && (
-                            building.GetManufacturingStatus() != ManufacturingStatus.Complete
-                            || building.Movement != null
-                        )
-                    )
-            );
-        }
-
-        /// <summary>
-        /// Adds local reserve unit demands for owned planets.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        private void AddLocalReserveDemands(AITurnContext context, List<AIProductionDemand> demands)
-        {
-            foreach (Planet planet in context.Assessment.OwnedPlanets)
-            {
-                AddLocalStarfighterReserveDemand(context, demands, planet);
-                AddGarrisonRegimentReserveDemand(context, demands, planet);
-            }
-        }
-
-        /// <summary>
-        /// Adds local starfighter reserve demand for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="demands">The demand list to update.</param>
-        /// <param name="planet">The planet to inspect.</param>
-        private void AddLocalStarfighterReserveDemand(
+        private bool HasPendingFacility(
             AITurnContext context,
-            List<AIProductionDemand> demands,
-            Planet planet
+            Planet target,
+            BuildingType buildingType
         )
         {
-            int targetCount = GetTargetLocalStarfighterReserveCount(context, planet);
-            int deficit = targetCount - planet.GetAllStarfighters().Count;
-            if (deficit <= 0)
-                return;
+            return target
+                .GetAllBuildings()
+                .Any(building =>
+                    building.GetOwnerInstanceID() == context.Faction.InstanceID
+                    && building.GetBuildingType() == buildingType
+                    && (
+                        building.GetManufacturingStatus() != ManufacturingStatus.Complete
+                        || building.Movement != null
+                    )
+                );
+        }
 
-            demands.Add(
-                CreateUnitDemand(
-                    context,
-                    AIProductionDemandKind.LocalStarfighterReserve,
-                    ManufacturingType.Ship,
-                    planet,
-                    deficit,
-                    targetCount,
-                    context.Game.Config.AI.Infrastructure.FleetStarfighterDemandPercent
-                )
-            );
+        private void AddPlanetaryGarrisonDemands(
+            AITurnContext context,
+            List<AIProductionDemand> demands
+        )
+        {
+            foreach (Planet planet in context.Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet))
+                AddGarrisonRegimentReserveDemand(context, demands, planet);
         }
 
         /// <summary>
@@ -412,20 +556,34 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            int targetCount = GetTargetGarrisonRegimentReserveCount(context, planet);
-            int deficit = targetCount - planet.GetAllRegiments().Count;
+            int minimumTargetCount = GetTargetGarrisonRegimentReserveCount(context, planet);
+            int currentCount = planet
+                .GetAllRegiments()
+                .Count(regiment => regiment.GetOwnerInstanceID() == context.Faction.InstanceID);
+            int targetCount = System.Math.Max(
+                minimumTargetCount,
+                currentCount
+                    + context.Game.Config.AI.Infrastructure.PlanetaryDefenseSurplusBatchSize
+            );
+            int deficit = targetCount - currentCount;
             if (deficit <= 0)
                 return;
 
             demands.Add(
-                CreateUnitDemand(
-                    context,
+                new AIProductionDemand(
+                    $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.GarrisonRegimentReserve}:{planet.InstanceID}",
                     AIProductionDemandKind.GarrisonRegimentReserve,
                     ManufacturingType.Troop,
+                    BuildingType.None,
                     planet,
                     deficit,
-                    targetCount,
-                    context.Game.Config.AI.Infrastructure.FleetRegimentDemandPercent
+                    GetPlanetaryDefensePressure(
+                        context,
+                        planet,
+                        context.Game.Config.AI.Infrastructure.PlanetaryGarrisonDemandPercent,
+                        deficit,
+                        targetCount
+                    )
                 )
             );
         }
@@ -465,7 +623,7 @@ namespace Rebellion.AI.Planners
         {
             Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
             bool isColonizationOrder = fleet.Order?.OrderType == FleetOrderType.Colonize;
-            Planet defenseTarget = GetHeadquartersDefenseTarget(context, fleet);
+            Planet defenseTarget = GetDefenseTarget(context, fleet);
             bool isDefenseOrder = fleet.Order?.OrderType == FleetOrderType.Defend;
             if (
                 targetPlanet == null
@@ -478,9 +636,9 @@ namespace Rebellion.AI.Planners
             int projectedCombat = context.Assessment.GetProjectedFleetCombatValue(fleet);
             int targetCombat =
                 targetPlanet != null
-                    ? context.Assessment.GetRequiredAttackCombatStrength(targetPlanet)
+                    ? context.Assessment.GetRequiredAttackCampaignCombatStrength(targetPlanet)
                 : defenseTarget != null
-                    ? context.Assessment.GetRequiredHeadquartersDefenseStrength(defenseTarget)
+                    ? context.Assessment.GetRequiredDefenseStrength(defenseTarget)
                 : isColonizationOrder ? projectedCombat
                 : context.Game.Config.AI.FleetDeployment.MinimumAttackStrength;
             int combatDeficit = targetCombat - projectedCombat;
@@ -496,7 +654,7 @@ namespace Rebellion.AI.Planners
             int targetBombardment =
                 targetPlanet == null
                     ? 0
-                    : context.Assessment.GetRequiredBombardmentStrength(targetPlanet);
+                    : context.Assessment.GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
             int bombardmentDeficit = targetBombardment - projectedBombardment;
             AICapitalShipProductionRole capitalShipRole;
             int deficit;
@@ -808,38 +966,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Creates a planet unit production demand.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="kind">Demand kind.</param>
-        /// <param name="manufacturingType">Manufacturing type required.</param>
-        /// <param name="planet">Planet receiving the unit.</param>
-        /// <param name="deficit">Current deficit.</param>
-        /// <param name="targetCount">Target count.</param>
-        /// <param name="baseDemandPercent">Base pressure for the demand.</param>
-        /// <returns>The production demand.</returns>
-        private AIProductionDemand CreateUnitDemand(
-            AITurnContext context,
-            AIProductionDemandKind kind,
-            ManufacturingType manufacturingType,
-            Planet planet,
-            int deficit,
-            int targetCount,
-            int baseDemandPercent
-        )
-        {
-            return new AIProductionDemand(
-                $"production:{context.Faction.InstanceID}:{kind}:{planet.InstanceID}",
-                kind,
-                manufacturingType,
-                BuildingType.None,
-                planet,
-                deficit,
-                GetDemandPressure(context, kind, deficit, targetCount, baseDemandPercent)
-            );
-        }
-
-        /// <summary>
         /// Creates a fleet unit production demand.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -949,15 +1075,28 @@ namespace Rebellion.AI.Planners
             List<Planet> candidates = GetBuildingDestinationPlanets(context).ToList();
             Planet existingHub = candidates
                 .Where(planet => planet.GetProductionFacilityCount(manufacturingType) > 0)
-                .OrderBy(planet => demandPlanet == null ? 0 : demandPlanet.GetRawDistanceTo(planet))
+                .OrderByDescending(planet => GetAvailableFacilityExpansionEnergy(context, planet))
                 .ThenByDescending(planet => planet.GetProductionRate(manufacturingType))
+                .ThenBy(planet => demandPlanet == null ? 0 : demandPlanet.GetRawDistanceTo(planet))
                 .ThenBy(planet => planet.InstanceID)
                 .FirstOrDefault();
             if (existingHub != null)
                 return existingHub;
 
-            return candidates.FirstOrDefault(planet =>
-                planet.InstanceID == demandPlanet?.InstanceID
+            return candidates
+                .OrderByDescending(planet => GetAvailableFacilityExpansionEnergy(context, planet))
+                .ThenByDescending(context.Assessment.GetPlanetValue)
+                .ThenBy(planet => demandPlanet == null ? 0 : demandPlanet.GetRawDistanceTo(planet))
+                .ThenBy(planet => planet.InstanceID)
+                .FirstOrDefault();
+        }
+
+        private int GetAvailableFacilityExpansionEnergy(AITurnContext context, Planet planet)
+        {
+            return System.Math.Max(
+                0,
+                planet.GetAvailableEnergy()
+                    - context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
             );
         }
 
@@ -975,7 +1114,9 @@ namespace Rebellion.AI.Planners
         private IEnumerable<Planet> GetBuildingDestinationPlanets(AITurnContext context)
         {
             return context.Assessment.OwnedPlanets.Where(planet =>
-                IsOwnedUsablePlanet(planet) && planet.GetAvailableEnergy() > 0
+                IsOwnedUsablePlanet(planet)
+                && planet.GetAvailableEnergy()
+                    > context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
             );
         }
 
@@ -986,7 +1127,11 @@ namespace Rebellion.AI.Planners
         /// <returns>Economy destination planets.</returns>
         private IEnumerable<Planet> GetEconomyDestinationPlanets(AITurnContext context)
         {
-            return context.Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet);
+            return context.Assessment.OwnedPlanets.Where(planet =>
+                IsOwnedUsablePlanet(planet)
+                && planet.GetAvailableEnergy()
+                    > context.Assessment.GetPlanetaryDefenseEnergyDeficit(planet)
+            );
         }
 
         /// <summary>
@@ -996,7 +1141,7 @@ namespace Rebellion.AI.Planners
         /// <returns>True if the planet is usable.</returns>
         private bool IsOwnedUsablePlanet(Planet planet)
         {
-            return planet?.IsDestroyed == false;
+            return planet?.IsColonized == true && !planet.IsDestroyed;
         }
 
         /// <summary>
@@ -1033,6 +1178,39 @@ namespace Rebellion.AI.Planners
 
             if (kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery)
                 pressure += GetEconomyMaintenancePressure(context);
+
+            return ClampPressure(pressure);
+        }
+
+        private double GetPlanetaryDefensePressure(
+            AITurnContext context,
+            Planet planet,
+            int baseDemandPercent,
+            int deficit,
+            int targetCount
+        )
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            double highestPlanetValue = context.Assessment.GetHighestOwnedPlanetValue();
+            double pressure =
+                baseDemandPercent
+                + config.PlanetaryDefenseDeficitPressureWeight
+                    * deficit
+                    / System.Math.Max(1, targetCount);
+
+            if (highestPlanetValue > 0)
+            {
+                pressure +=
+                    config.PlanetaryDefenseValuePressureWeight
+                    * context.Assessment.GetPlanetValue(planet)
+                    / highestPlanetValue;
+            }
+
+            if (context.Assessment.IsFactionHeadquarters(planet))
+                pressure += config.PlanetaryDefenseHeadquartersPressureBonus;
+
+            if (context.Assessment.GetPlanetDefenseThreatStrength(planet) > 0)
+                pressure += config.PlanetaryDefenseThreatPressureBonus;
 
             return ClampPressure(pressure);
         }
@@ -1145,8 +1323,12 @@ namespace Rebellion.AI.Planners
         )
         {
             GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
-            int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredCombat = context.Assessment.GetRequiredAttackCampaignCombatStrength(
+                targetPlanet
+            );
+            int requiredRegiments = context.Assessment.GetRequiredAttackCampaignRegimentCount(
+                targetPlanet
+            );
             double combatReadiness = GetFulfillmentRatio(
                 context.Assessment.GetProjectedFleetCombatValue(fleet),
                 requiredCombat
@@ -1194,15 +1376,19 @@ namespace Rebellion.AI.Planners
             if (deficit > config.FleetFinalReadinessGateUnitCount)
                 return 0;
 
-            int requiredCombat = context.Assessment.GetRequiredAttackCombatStrength(targetPlanet);
-            int requiredRegiments = context.Assessment.GetRequiredAttackRegimentCount(targetPlanet);
+            int requiredCombat = context.Assessment.GetRequiredAttackCampaignCombatStrength(
+                targetPlanet
+            );
+            int requiredRegiments = context.Assessment.GetRequiredAttackCampaignRegimentCount(
+                targetPlanet
+            );
             bool combatReady =
                 context.Assessment.GetProjectedFleetCombatValue(fleet) >= requiredCombat;
             bool capacityReady =
                 context.Assessment.GetFleetRegimentCapacity(fleet) >= requiredRegiments;
             bool bombardmentReady =
                 context.Assessment.GetProjectedFleetBombardmentStrength(fleet)
-                >= context.Assessment.GetRequiredBombardmentStrength(targetPlanet);
+                >= context.Assessment.GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
 
             if (!combatReady || !capacityReady || !bombardmentReady)
                 return 0;
@@ -1273,13 +1459,17 @@ namespace Rebellion.AI.Planners
                 );
         }
 
-        private Planet GetHeadquartersDefenseTarget(AITurnContext context, Fleet fleet)
+        private Planet GetDefenseTarget(AITurnContext context, Fleet fleet)
         {
             if (fleet?.Order?.OrderType != FleetOrderType.Defend)
                 return null;
 
             Planet target = context.Assessment.GetKnownPlanet(fleet.Order.TargetPlanetId);
-            return context.Assessment.IsFactionHeadquarters(target) ? target : null;
+            return
+                context.Assessment.IsOwnedPlanet(target)
+                && context.Assessment.GetRequiredDefenseStrength(target) > 0
+                ? target
+                : null;
         }
 
         /// <summary>
@@ -1339,33 +1529,19 @@ namespace Rebellion.AI.Planners
             if (targetPlanet != null)
                 fillTarget = System.Math.Max(
                     fillTarget,
-                    context.Assessment.GetRequiredAttackRegimentCount(targetPlanet)
+                    context.Assessment.GetRequiredAttackCampaignRegimentCount(targetPlanet)
                 );
 
             if (
                 targetPlanet != null
                 && context.Assessment.GetProjectedFleetRegimentAttackStrength(fleet)
-                    < context.Assessment.GetRequiredAttackRegimentStrength(targetPlanet)
+                    < context.Assessment.GetRequiredAttackCampaignRegimentStrength(targetPlanet)
             )
             {
                 fillTarget = System.Math.Max(fillTarget, fleet.GetCurrentRegimentCount() + 1);
             }
 
             return fillTarget;
-        }
-
-        /// <summary>
-        /// Returns local starfighter reserve target for a planet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="planet">Planet to inspect.</param>
-        /// <returns>The target local starfighter reserve count.</returns>
-        private int GetTargetLocalStarfighterReserveCount(AITurnContext context, Planet planet)
-        {
-            return ScaleByPercent(
-                planet.GetProductionFacilityCount(ManufacturingType.Ship),
-                context.Game.Config.AI.Infrastructure.StarfighterLocalReservePercent
-            );
         }
 
         /// <summary>
@@ -1376,17 +1552,16 @@ namespace Rebellion.AI.Planners
         /// <returns>The target garrison regiment reserve count.</returns>
         private int GetTargetGarrisonRegimentReserveCount(AITurnContext context, Planet planet)
         {
-            int reserveTarget = ScaleByPercent(
-                planet.GetProductionFacilityCount(ManufacturingType.Troop),
-                context.Game.Config.AI.Infrastructure.GarrisonRegimentReservePercent
-            );
             int stabilityTarget = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
                 context.Faction,
                 context.Game.Config.AI.Garrison
             );
 
-            return System.Math.Max(reserveTarget, stabilityTarget);
+            return System.Math.Max(
+                context.Game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
+                stabilityTarget
+            );
         }
 
         /// <summary>

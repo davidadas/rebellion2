@@ -15,14 +15,14 @@ namespace Rebellion.AI.Planners
         ConstructionFacility,
         Shipyard,
         TrainingFacility,
-        HeadquartersDefense,
+        PlanetaryDefense,
         FleetCapitalShip,
         FleetStarfighter,
         FleetRegiment,
-        LocalStarfighterReserve,
         GarrisonRegimentReserve,
         SpecialForces,
         FleetSeedCapitalShip,
+        BuildingUpgrade,
     }
 
     public enum AICapitalShipProductionRole
@@ -84,5 +84,12 @@ namespace Rebellion.AI.Planners
         public double Pressure { get; }
         public string ProductTypeId { get; }
         public AICapitalShipProductionRole CapitalShipRole { get; }
+        public Building ReplacementBuilding { get; set; }
+        public bool UsesDefensiveReserve =>
+            Kind
+                is AIProductionDemandKind.PlanetaryDefense
+                    or AIProductionDemandKind.GarrisonRegimentReserve
+                    or AIProductionDemandKind.TrainingFacility
+                    or AIProductionDemandKind.BuildingUpgrade;
     }
 }

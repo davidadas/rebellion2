@@ -13,6 +13,14 @@
 
 # Unity Files
 *.meta
+!Assets/Prefabs/UI/Core/Components/IconButton.prefab.meta
+!Assets/Prefabs/UI/Core/Components/AnimatedButton.prefab.meta
+!Assets/Prefabs/UI/SettingsMenu/*.meta
+!Assets/Scripts/UI/Core/AnimatedButton.cs.meta
+!Assets/Scripts/UI/Core/IconButton.cs.meta
+!Assets/Scripts/UI/Core/UIButton.cs.meta
+!Assets/Scripts/UI/Core/UIButtonAudio.cs.meta
+!Assets/Scripts/UI/SettingsMenu/*.meta
 Unity_lic.alf
 /temp
 /[Ll]ibrary/

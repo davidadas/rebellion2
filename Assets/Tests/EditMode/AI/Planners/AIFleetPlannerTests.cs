@@ -42,20 +42,26 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithAssemblingAttackFleet_AddsDifferentAttackOrder()
+        public void Plan_WithAssemblingCampaign_AddsAttackOrderForDifferentSystem()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
-            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
-            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            PlanetSystem firstSystem = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(
+                game,
+                firstSystem,
+                "owned",
+                empire.InstanceID
+            );
             Planet firstEnemy = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                firstSystem,
                 "first-enemy",
                 rebels.InstanceID
             );
+            PlanetSystem secondSystem = AITestSceneBuilder.AddSystem(game, "sys2");
             Planet secondEnemy = AITestSceneBuilder.AddPlanet(
                 game,
-                system,
+                secondSystem,
                 "second-enemy",
                 rebels.InstanceID
             );
@@ -80,6 +86,65 @@ namespace Rebellion.Tests.AI.Planners
                         proposal.Fleet == idleFleet
                         && proposal.TargetPlanet.InstanceID == secondEnemy.InstanceID
                     )
+            );
+        }
+
+        [Test]
+        public void Plan_WithEnemySystems_PrioritizesGreatestFriendlyPresence()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem establishedSystem = AITestSceneBuilder.AddSystem(
+                game,
+                "established-system"
+            );
+            Planet fleetPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "fleet-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "established-owned-2",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "established-owned-3",
+                empire.InstanceID
+            );
+            Planet establishedEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "established-enemy",
+                rebels.InstanceID
+            );
+            PlanetSystem remoteSystem = AITestSceneBuilder.AddSystem(game, "remote-system");
+            AITestSceneBuilder.AddPlanet(game, remoteSystem, "remote-owned", empire.InstanceID);
+            Planet remoteEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                remoteSystem,
+                "remote-enemy",
+                rebels.InstanceID
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, establishedEnemy);
+            AITestSceneBuilder.RevealPlanet(game, empire, remoteEnemy);
+            Fleet fleet = AddBattleFleet(game, fleetPlanet, empire.InstanceID, "fleet");
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIFleetAttackProposal> proposals = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetAttackProposal>()
+                .Where(proposal => proposal.Fleet == fleet)
+                .ToList();
+
+            Assert.IsNotEmpty(proposals);
+            Assert.IsTrue(
+                proposals.All(proposal =>
+                    proposal.TargetPlanet.InstanceID == establishedEnemy.InstanceID
+                )
             );
         }
 
@@ -631,7 +696,13 @@ namespace Rebellion.Tests.AI.Planners
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
             AITestSceneBuilder.RevealPlanet(game, empire, enemy);
-            Fleet targetFleet = AddBattleFleet(game, staging, empire.InstanceID, "target-fleet");
+            Fleet targetFleet = AddBattleFleet(
+                game,
+                staging,
+                empire.InstanceID,
+                "target-fleet",
+                combatStrength: 200
+            );
             targetFleet.Order = new FleetOrder
             {
                 OrderType = FleetOrderType.Attack,
@@ -1071,6 +1142,53 @@ namespace Rebellion.Tests.AI.Planners
 
             Assert.AreSame(nearFleet, proposal.Fleet);
             Assert.AreSame(targetPlanet, proposal.TargetPlanet);
+        }
+
+        [Test]
+        public void Plan_WithInboundHostileFleet_DispatchesDefenseBeforeArrival()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet targetPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "target",
+                empire.InstanceID
+            );
+            Fleet hostileFleet = AddBattleFleet(
+                game,
+                targetPlanet,
+                rebels.InstanceID,
+                "hostile-fleet",
+                combatStrength: 500
+            );
+            hostileFleet.Movement = new MovementState { TransitTicks = 10 };
+            Planet reservePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "reserve",
+                empire.InstanceID,
+                positionX: 5
+            );
+            Fleet reserveFleet = AddBattleFleet(
+                game,
+                reservePlanet,
+                empire.InstanceID,
+                "reserve-fleet",
+                combatStrength: 700
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIFleetDefenseProposal proposal = new AIFleetPlanner()
+                .Plan(context)
+                .OfType<AIFleetDefenseProposal>()
+                .Single();
+
+            Assert.AreSame(reserveFleet, proposal.Fleet);
+            Assert.AreSame(targetPlanet, proposal.TargetPlanet);
+            Assert.AreEqual(0, context.Assessment.GetRequiredOrbitalStrength(targetPlanet));
+            Assert.AreEqual(625, context.Assessment.GetRequiredPlanetDefenseStrength(targetPlanet));
         }
 
         [Test]

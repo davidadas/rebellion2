@@ -198,7 +198,8 @@ namespace Rebellion.AI.Proposals
                 return false;
 
             if (order.OrderType == FleetOrderType.Defend)
-                return context.Assessment.IsFactionHeadquarters(TargetPlanet);
+                return context.Assessment.IsOwnedPlanet(TargetPlanet)
+                    && context.Assessment.GetRequiredDefenseStrength(TargetPlanet) > 0;
 
             string targetOwnerId = TargetPlanet.GetOwnerInstanceID();
             return order.OrderType == FleetOrderType.Attack

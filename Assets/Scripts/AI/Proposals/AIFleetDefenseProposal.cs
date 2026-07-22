@@ -103,7 +103,7 @@ namespace Rebellion.AI.Proposals
 
             if (
                 !context.Assessment.IsFactionHeadquarters(TargetPlanet)
-                && context.Assessment.GetRequiredOrbitalStrength(TargetPlanet) <= 0
+                && context.Assessment.GetRequiredPlanetDefenseStrength(TargetPlanet) <= 0
             )
                 return false;
 

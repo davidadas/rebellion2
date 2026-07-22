@@ -162,7 +162,7 @@ namespace Rebellion.AI.Proposals
 
             if (!IsReadyToLaunch(context))
             {
-                Fleet.Order.Status = FleetOrderStatus.Staging;
+                Fleet.Order.Status = FleetOrderStatus.Building;
                 return;
             }
 
@@ -351,7 +351,7 @@ namespace Rebellion.AI.Proposals
             if (order.TargetPlanetId == TargetPlanet.InstanceID)
                 return true;
 
-            return order.Status == FleetOrderStatus.Staging
+            return order.Status is FleetOrderStatus.Building or FleetOrderStatus.Staging
                 && Fleet.Movement == null
                 && !Fleet.IsInCombat;
         }

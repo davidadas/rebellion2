@@ -38,6 +38,191 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithLowestRefineryCountAtFullEnergy_TargetsEligiblePlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet fullPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "full-world",
+                empire.InstanceID,
+                energyCapacity: 1,
+                rawResourceNodes: 1
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                fullPlanet,
+                "full-world-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            Planet eligiblePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "eligible-world",
+                empire.InstanceID,
+                energyCapacity: 6,
+                rawResourceNodes: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                eligiblePlanet,
+                "eligible-world-mine",
+                BuildingType.Mine,
+                ManufacturingType.None
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                eligiblePlanet,
+                "eligible-world-refinery",
+                BuildingType.Refinery,
+                ManufacturingType.None
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIProductionDemandKind.Refinery);
+
+            Assert.AreSame(eligiblePlanet, demand.DestinationPlanet);
+        }
+
+        [Test]
+        public void Generate_WithOnlyStaticDefenseEnergyRemaining_DoesNotAddEconomyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "defense-reserve-world",
+                empire.InstanceID,
+                energyCapacity: game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                    + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount,
+                rawResourceNodes: 4
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(demand =>
+                    demand.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
+                )
+            );
+        }
+
+        [Test]
+        public void Generate_WithOnlyStaticDefenseEnergyRemaining_DoesNotAddFacilityExpansion()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            int staticDefenseEnergy =
+                game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "training-hub",
+                empire.InstanceID,
+                energyCapacity: staticDefenseEnergy + 1
+            );
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "colony",
+                empire.InstanceID,
+                energyCapacity: staticDefenseEnergy
+            );
+            hub.SetPopularSupport(empire.InstanceID, 100);
+            colony.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "training-facility",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(demand =>
+                    demand.Kind
+                        is AIProductionDemandKind.ConstructionFacility
+                            or AIProductionDemandKind.Shipyard
+                            or AIProductionDemandKind.TrainingFacility
+                )
+            );
+        }
+
+        [Test]
+        public void Generate_WithReservedHubAndEligibleWorld_TargetsEligibleWorldForExpansion()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            int staticDefenseEnergy =
+                game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit
+                + game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "training-hub",
+                empire.InstanceID,
+                energyCapacity: staticDefenseEnergy + 1
+            );
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID,
+                energyCapacity: staticDefenseEnergy
+            );
+            Planet expansionWorld = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "expansion-world",
+                empire.InstanceID,
+                energyCapacity: staticDefenseEnergy + 5,
+                rawResourceNodes: 4
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            hub.SetPopularSupport(empire.InstanceID, 100);
+            headquarters.SetPopularSupport(empire.InstanceID, 100);
+            expansionWorld.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "training-facility",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+            AIProductionDemand demand = demands.Single(item =>
+                item.Kind == AIProductionDemandKind.TrainingFacility
+            );
+            double economyPressure = demands
+                .Where(item =>
+                    item.Kind is AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery
+                )
+                .Max(item => item.Pressure);
+
+            Assert.AreSame(expansionWorld, demand.DestinationPlanet);
+            Assert.Greater(demand.Pressure, economyPressure);
+        }
+
+        [Test]
         public void Generate_WithPendingShipyard_DoesNotAddDuplicateDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -64,13 +249,174 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithoutProductionDemand_DoesNotAddFacilityDemand()
+        public void Generate_WithPendingShipyardAtAnotherPlanet_AddsShipyardAtDemandPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet demandPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "demand-planet",
+                empire.InstanceID
+            );
+            demandPlanet.IsHeadquarters = true;
+            empire.HQInstanceID = demandPlanet.InstanceID;
+            Planet pendingPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "pending-planet",
+                empire.InstanceID
+            );
+            Building shipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "pending-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            shipyard.OwnerInstanceID = empire.InstanceID;
+            shipyard.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(shipyard, pendingPlanet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIProductionDemandKind.Shipyard);
+
+            Assert.AreSame(demandPlanet, demand.DestinationPlanet);
+        }
+
+        [Test]
+        public void Generate_WithUnlockedFacilityUpgrade_SelectsSlowestFacilityDeterministically()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            Building second = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "legacy-b",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship,
+                processRate: 4
+            );
+            Building first = AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "legacy-a",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship,
+                processRate: 4
+            );
+            first.ResearchOrder = 0;
+            second.ResearchOrder = 0;
+            AddUnlockedShipyardUpgrade(empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIProductionDemandKind.BuildingUpgrade);
+
+            Assert.AreSame(planet, demand.DestinationPlanet);
+            Assert.AreEqual(BuildingType.Shipyard, demand.BuildingType);
+            Assert.AreSame(first, demand.ReplacementBuilding);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Generate_WithOnlyOneFacility_DoesNotAddUpgradeDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "only-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship,
+                processRate: 4
+            );
+            AddUnlockedShipyardUpgrade(empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(item => item.Kind == AIProductionDemandKind.BuildingUpgrade)
+            );
+        }
+
+        [Test]
+        public void Generate_WithPendingUpgradeAtOnePlanet_StillUpgradesAnotherPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet pendingPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "pending-world",
+                empire.InstanceID
+            );
+            Planet eligiblePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "eligible-world",
+                empire.InstanceID
+            );
+            for (int index = 0; index < 2; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    pendingPlanet,
+                    $"pending-legacy-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship,
+                    processRate: 4
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    eligiblePlanet,
+                    $"eligible-legacy-{index}",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship,
+                    processRate: 4
+                );
+            }
+            Building pendingUpgrade = AITestSceneBuilder.CreateBuildingTemplate(
+                "pending-upgrade",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            pendingUpgrade.OwnerInstanceID = empire.InstanceID;
+            pendingUpgrade.ManufacturingStatus = ManufacturingStatus.Building;
+            game.AttachNode(pendingUpgrade, pendingPlanet);
+            AddUnlockedShipyardUpgrade(empire);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> upgradeDemands = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Where(item => item.Kind == AIProductionDemandKind.BuildingUpgrade)
+                .ToList();
+
+            Assert.AreEqual(1, upgradeDemands.Count);
+            Assert.AreSame(eligiblePlanet, upgradeDemands[0].DestinationPlanet);
+        }
+
+        [Test]
+        public void Generate_WithStaticDefenseDemand_AddsConstructionFacilityDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
             game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
-            game.Config.AI.Infrastructure.StarfighterLocalReservePercent = 0;
-            game.Config.AI.Infrastructure.GarrisonRegimentReservePercent = 0;
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -83,7 +429,9 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(demands.Any(IsFacilityDemand));
+            Assert.IsTrue(
+                demands.Any(demand => demand.Kind == AIProductionDemandKind.ConstructionFacility)
+            );
         }
 
         [Test]
@@ -157,6 +505,38 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithMoreGarrisonDemandsThanTrainingLanes_AddsTrainingFacilityDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet hub = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "training-hub",
+                empire.InstanceID
+            );
+            Planet colony = AITestSceneBuilder.AddPlanet(game, system, "colony", empire.InstanceID);
+            hub.SetPopularSupport(empire.InstanceID, 100);
+            colony.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                hub,
+                "training-facility",
+                BuildingType.TrainingFacility,
+                ManufacturingType.Troop
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIProductionDemandKind.TrainingFacility);
+
+            Assert.AreSame(hub, demand.DestinationPlanet);
+        }
+
+        [Test]
         public void Generate_WithBuildingDemandAndNoConstructionCapacity_AddsConstructionFacility()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -180,7 +560,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithUndefendedHeadquarters_AddsShieldAndWeaponDemands()
+        public void Generate_WithUndefendedHeadquartersAndSurplus_AddsShieldAndWeaponDemands()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
@@ -192,6 +572,9 @@ namespace Rebellion.Tests.AI.Planners
             );
             headquarters.IsHeadquarters = true;
             empire.HQInstanceID = headquarters.InstanceID;
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            AddMaintenanceCapacity(game, headquarters, 1);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
@@ -199,9 +582,220 @@ namespace Rebellion.Tests.AI.Planners
             CollectionAssert.AreEquivalent(
                 new[] { BuildingType.Defense, BuildingType.Weapon },
                 demands
-                    .Where(demand => demand.Kind == AIProductionDemandKind.HeadquartersDefense)
+                    .Where(demand => demand.Kind == AIProductionDemandKind.PlanetaryDefense)
                     .Select(demand => demand.BuildingType)
             );
+        }
+
+        [Test]
+        public void Generate_WithDefensiveSurplus_AddsCompletePlanetaryDefensePackage()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "valuable-world",
+                empire.InstanceID
+            );
+            planet.IsHeadquarters = true;
+            empire.HQInstanceID = planet.InstanceID;
+            planet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, planet, 1);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            AIProductionDemand shieldDemand = demands.Single(demand =>
+                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                && demand.BuildingType == BuildingType.Defense
+                && demand.DestinationPlanet == planet
+            );
+            AIProductionDemand weaponDemand = demands.Single(demand =>
+                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                && demand.BuildingType == BuildingType.Weapon
+                && demand.DestinationPlanet == planet
+            );
+            AIProductionDemand garrisonDemand = demands.Single(demand =>
+                demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+                && demand.DestinationPlanet == planet
+            );
+            Assert.AreEqual(
+                game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit,
+                shieldDemand.QuantityNeeded
+            );
+            Assert.AreEqual(1, weaponDemand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
+                garrisonDemand.QuantityNeeded
+            );
+        }
+
+        [Test]
+        public void Generate_WithUnthreatenedNonProductionPlanet_AddsStaticDefense()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "non-production-world",
+                empire.InstanceID
+            );
+            planet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, planet, 1);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            CollectionAssert.AreEquivalent(
+                new[] { BuildingType.Defense, BuildingType.Weapon },
+                demands
+                    .Where(demand =>
+                        demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                        && demand.DestinationPlanet == planet
+                    )
+                    .Select(demand => demand.BuildingType)
+            );
+        }
+
+        [Test]
+        public void Generate_WithOneDefenseEnergySlot_PrioritizesPartialShieldNetwork()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "constrained-world",
+                empire.InstanceID,
+                energyCapacity: 3
+            );
+            planet.IsHeadquarters = true;
+            empire.HQInstanceID = planet.InstanceID;
+            planet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, planet, 1);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            AIProductionDemand shieldDemand = demands.Single(demand =>
+                demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                && demand.BuildingType == BuildingType.Defense
+                && demand.DestinationPlanet == planet
+            );
+            Assert.AreEqual(1, shieldDemand.QuantityNeeded);
+            Assert.IsFalse(
+                demands.Any(demand =>
+                    demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    && demand.BuildingType == BuildingType.Weapon
+                    && demand.DestinationPlanet == planet
+                )
+            );
+        }
+
+        [Test]
+        public void Generate_WithStaticDefenseCoverageAndSurplusEnergy_AddsConfiguredWeaponBatch()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Infrastructure.PlanetaryDefenseSurplusBatchSize = 2;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "defended-world",
+                empire.InstanceID,
+                energyCapacity: 5
+            );
+            for (
+                int index = 0;
+                index < game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+                index++
+            )
+                AddShield(game, planet, $"shield-{index}", empire.InstanceID, 40);
+
+            Building weapon = AITestSceneBuilder.CreateBuildingTemplate(
+                "weapon",
+                BuildingType.Weapon
+            );
+            weapon.OwnerInstanceID = empire.InstanceID;
+            game.AttachNode(weapon, planet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.PlanetaryDefense
+                    && item.BuildingType == BuildingType.Weapon
+                    && item.DestinationPlanet == planet
+                );
+
+            Assert.AreEqual(2, demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Generate_WithInboundThreat_RaisesThreatenedPlanetDefensePressure()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction = 0;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet valuablePlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "valuable-world",
+                empire.InstanceID,
+                rawResourceNodes: 4
+            );
+            valuablePlanet.SetPopularSupport(empire.InstanceID, 100);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                valuablePlanet,
+                "valuable-construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Planet threatenedPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "threatened-world",
+                empire.InstanceID
+            );
+            threatenedPlanet.SetPopularSupport(empire.InstanceID, 100);
+            AddMaintenanceCapacity(game, valuablePlanet, 1);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            hostileFleet.RoleType = FleetRoleType.Battle;
+            hostileFleet.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(hostileFleet, threatenedPlanet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip("hostile-ship", rebels.InstanceID),
+                hostileFleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            double valuablePressure = demands
+                .Single(demand =>
+                    demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    && demand.BuildingType == BuildingType.Defense
+                    && demand.DestinationPlanet == valuablePlanet
+                )
+                .Pressure;
+            double threatenedPressure = demands
+                .Single(demand =>
+                    demand.Kind == AIProductionDemandKind.PlanetaryDefense
+                    && demand.BuildingType == BuildingType.Defense
+                    && demand.DestinationPlanet == threatenedPlanet
+                )
+                .Pressure;
+            Assert.Greater(threatenedPressure, valuablePressure);
         }
 
         [Test]
@@ -241,6 +835,89 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 demands.Any(demand => demand.Kind == AIProductionDemandKind.FleetRegiment)
             );
+        }
+
+        [Test]
+        public void Generate_WithAttackCampaign_BuildsForCombinedSystemResistance()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet firstEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "enemy-1",
+                rebels.InstanceID
+            );
+            Planet secondEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "enemy-2",
+                rebels.InstanceID
+            );
+            firstEnemy.SetPopularSupport(
+                empire.InstanceID,
+                game.Config.AI.Garrison.SupportThreshold
+            );
+            secondEnemy.SetPopularSupport(
+                empire.InstanceID,
+                game.Config.AI.Garrison.SupportThreshold
+            );
+            Fleet firstDefense = EntityFactory.CreateFleet("defense-1", rebels.InstanceID);
+            Fleet secondDefense = EntityFactory.CreateFleet("defense-2", rebels.InstanceID);
+            game.AttachNode(firstDefense, firstEnemy);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "defense-ship-1",
+                    rebels.InstanceID,
+                    combatStrength: 200
+                ),
+                firstDefense
+            );
+            game.AttachNode(secondDefense, secondEnemy);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "defense-ship-2",
+                    rebels.InstanceID,
+                    combatStrength: 300
+                ),
+                secondDefense
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, firstEnemy);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondEnemy);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = firstEnemy.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "attacker",
+                    empire.InstanceID,
+                    combatStrength: 100,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                fleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(400, demand.QuantityNeeded);
+            Assert.AreEqual(AICapitalShipProductionRole.General, demand.CapitalShipRole);
         }
 
         [Test]
@@ -782,11 +1459,14 @@ namespace Rebellion.Tests.AI.Planners
                     && item.DestinationPlanet == planet
                 );
 
-            Assert.AreEqual(4, demand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount,
+                demand.QuantityNeeded
+            );
         }
 
         [Test]
-        public void Generate_WithSatisfiedGarrisonRequirement_DoesNotAddGarrisonDemand()
+        public void Generate_WithSatisfiedGarrisonRequirement_AddsSurplusGarrisonDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
@@ -797,7 +1477,11 @@ namespace Rebellion.Tests.AI.Planners
                 empire.InstanceID
             );
             planet.SetPopularSupport(empire.InstanceID, 20);
-            for (int index = 0; index < 4; index++)
+            for (
+                int index = 0;
+                index < game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount;
+                index++
+            )
             {
                 game.AttachNode(
                     AITestSceneBuilder.CreateRegiment($"regiment-{index}", empire.InstanceID),
@@ -808,11 +1492,13 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.IsFalse(
-                demands.Any(demand =>
-                    demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
-                    && demand.DestinationPlanet == planet
-                )
+            AIProductionDemand demand = demands.Single(item =>
+                item.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+                && item.DestinationPlanet == planet
+            );
+            Assert.AreEqual(
+                game.Config.AI.Infrastructure.PlanetaryDefenseSurplusBatchSize,
+                demand.QuantityNeeded
             );
         }
 
@@ -834,12 +1520,42 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(shield, planet);
         }
 
-        private static bool IsFacilityDemand(AIProductionDemand demand)
+        private static void AddMaintenanceCapacity(GameRoot game, Planet planet, int count)
         {
-            return demand.Kind
-                is AIProductionDemandKind.ConstructionFacility
-                    or AIProductionDemandKind.Shipyard
-                    or AIProductionDemandKind.TrainingFacility;
+            planet.NumRawResourceNodes += count;
+            for (int index = 0; index < count; index++)
+            {
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"maintenance-mine-{index}",
+                    BuildingType.Mine,
+                    ManufacturingType.None
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    planet,
+                    $"maintenance-refinery-{index}",
+                    BuildingType.Refinery,
+                    ManufacturingType.None
+                );
+            }
+        }
+
+        private static Building AddUnlockedShipyardUpgrade(Faction faction)
+        {
+            Building advancedShipyard = AITestSceneBuilder.CreateBuildingTemplate(
+                "advanced-shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            advancedShipyard.ProcessRate = 2;
+            advancedShipyard.ResearchOrder = 5;
+            faction.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(advancedShipyard),
+            };
+            return advancedShipyard;
         }
 
         private static (
@@ -857,7 +1573,6 @@ namespace Rebellion.Tests.AI.Planners
             game.Config.AI.FleetDeployment.MaximumConcurrentAttackOrders = 0;
             game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders = 0;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
-            game.Config.AI.Infrastructure.StarfighterLocalReservePercent = 0;
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
             Planet hub = AITestSceneBuilder.AddPlanet(
                 game,

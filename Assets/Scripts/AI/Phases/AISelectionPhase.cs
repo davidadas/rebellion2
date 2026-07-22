@@ -33,6 +33,9 @@ namespace Rebellion.AI.Phases
                 return selectedProposals;
 
             HashSet<string> claimedKeys = new HashSet<string>(StringComparer.Ordinal);
+            Dictionary<string, int> reservedProducerCapacity = new Dictionary<string, int>(
+                StringComparer.Ordinal
+            );
             int selectedMaintenanceCost = 0;
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             foreach (AIProposal proposal in GetSortedProposals(context.Proposals))
@@ -47,10 +50,14 @@ namespace Rebellion.AI.Phases
                 if (HasClaimConflict(claimedKeys, claimKeys))
                     continue;
 
+                if (!HasProducerCapacity(proposal, reservedProducerCapacity))
+                    continue;
+
                 if (WouldExceedMaintenanceHeadroom(context, proposal, selectedMaintenanceCost))
                     continue;
 
                 ClaimKeys(claimedKeys, claimKeys);
+                ReserveProducerCapacity(proposal, reservedProducerCapacity);
                 selectedProposals.Add(proposal);
                 selectedMaintenanceCost += GetMaintenanceCost(proposal);
             }
@@ -105,6 +112,59 @@ namespace Rebellion.AI.Phases
                 claimedKeys.Add(claimKey);
         }
 
+        private static bool HasProducerCapacity(
+            AIProposal proposal,
+            IReadOnlyDictionary<string, int> reservedProducerCapacity
+        )
+        {
+            if (proposal is not AIManufactureProposal manufactureProposal)
+                return true;
+
+            string capacityKey = manufactureProposal.GetProducerCapacityKey();
+            if (!manufactureProposal.UsesSharedProducerCapacity)
+                return !reservedProducerCapacity.ContainsKey(capacityKey);
+
+            int reservedCapacity = reservedProducerCapacity.TryGetValue(
+                capacityKey,
+                out int reserved
+            )
+                ? reserved
+                : 0;
+            int availableCapacity =
+                manufactureProposal.ProducerPlanet.GetAvailableManufacturingCapacity(
+                    manufactureProposal.Demand.ManufacturingType
+                );
+            return reservedCapacity < availableCapacity;
+        }
+
+        private static void ReserveProducerCapacity(
+            AIProposal proposal,
+            IDictionary<string, int> reservedProducerCapacity
+        )
+        {
+            if (proposal is not AIManufactureProposal manufactureProposal)
+                return;
+
+            string capacityKey = manufactureProposal.GetProducerCapacityKey();
+            if (!manufactureProposal.UsesSharedProducerCapacity)
+            {
+                reservedProducerCapacity[capacityKey] = int.MaxValue;
+                return;
+            }
+
+            int reservedCapacity = reservedProducerCapacity.TryGetValue(
+                capacityKey,
+                out int reserved
+            )
+                ? reserved
+                : 0;
+            long updatedCapacity =
+                (long)reservedCapacity
+                + System.Math.Max(1, manufactureProposal.GetManufacturingCount());
+            reservedProducerCapacity[capacityKey] =
+                updatedCapacity > int.MaxValue ? int.MaxValue : (int)updatedCapacity;
+        }
+
         /// <summary>
         /// Returns whether selecting a proposal would exceed maintenance reserve limits.
         /// </summary>
@@ -122,7 +182,9 @@ namespace Rebellion.AI.Phases
             if (maintenanceCost <= 0)
                 return false;
 
-            int minimumHeadroom = context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
+            int minimumHeadroom = proposal is AIManufactureProposal manufactureProposal
+                ? manufactureProposal.GetMinimumMaintenanceHeadroom(context)
+                : context.Game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
             int projectedHeadroom =
                 context.Faction.ProjectedMaintenanceHeadroom
                 - selectedMaintenanceCost

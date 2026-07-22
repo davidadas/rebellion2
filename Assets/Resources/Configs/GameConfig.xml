@@ -55,7 +55,8 @@
       <MaxDuplicateRegimentTypePerDestination>3</MaxDuplicateRegimentTypePerDestination>
       <CapitalMaintenanceAllocationPercent>30</CapitalMaintenanceAllocationPercent>
       <CapitalMaintenanceSafetyPercent>90</CapitalMaintenanceSafetyPercent>
-      <CapitalShipTieReplacementPercent>50</CapitalShipTieReplacementPercent>
+      <CapitalShipTieRollRange>10</CapitalShipTieRollRange>
+      <CapitalShipTieInsertBeforeThreshold>5</CapitalShipTieInsertBeforeThreshold>
       <StarfighterEscortWeight>6</StarfighterEscortWeight>
       <StarfighterInterceptorWeight>7</StarfighterInterceptorWeight>
       <StarfighterBomberWeight>9</StarfighterBomberWeight>
@@ -74,7 +75,18 @@
     <Infrastructure>
       <ConstructionFacilityDemandPercent>100</ConstructionFacilityDemandPercent>
       <ShipyardDemandPercent>90</ShipyardDemandPercent>
-      <TrainingFacilityDemandPercent>70</TrainingFacilityDemandPercent>
+      <TrainingFacilityDemandPercent>100</TrainingFacilityDemandPercent>
+      <TrainingFacilityBacklogPressureBonus>5</TrainingFacilityBacklogPressureBonus>
+      <ShipyardMaintenanceAllocationPercent>30</ShipyardMaintenanceAllocationPercent>
+      <ShipyardMaintenanceAllocationScalePercent>10</ShipyardMaintenanceAllocationScalePercent>
+      <TrainingFacilityMaintenanceAllocationPercent>4</TrainingFacilityMaintenanceAllocationPercent>
+      <TrainingFacilityMaintenanceAllocationScalePercent>50</TrainingFacilityMaintenanceAllocationScalePercent>
+      <ConstructionFacilityMaintenanceAllocationPercent>4</ConstructionFacilityMaintenanceAllocationPercent>
+      <FacilityConstructionLaneReserve>1</FacilityConstructionLaneReserve>
+      <ProductionFacilityUpgradeMinimumRemainingCount>1</ProductionFacilityUpgradeMinimumRemainingCount>
+      <ProductionFacilityUpgradeDemandPercent>65</ProductionFacilityUpgradeDemandPercent>
+      <ProductionFacilityUpgradeValuePressureWeight>20</ProductionFacilityUpgradeValuePressureWeight>
+      <ProductionFacilityUpgradeHeadquartersPressureBonus>10</ProductionFacilityUpgradeHeadquartersPressureBonus>
       <FleetCapitalShipDemandPercent>80</FleetCapitalShipDemandPercent>
       <FleetStarfighterDemandPercent>50</FleetStarfighterDemandPercent>
       <FleetRegimentDemandPercent>60</FleetRegimentDemandPercent>
@@ -82,13 +94,17 @@
       <SpecialForcesTargetCountPerType>2</SpecialForcesTargetCountPerType>
       <SpecialForcesDemandPercent>25</SpecialForcesDemandPercent>
       <StarfighterParentFillPercent>100</StarfighterParentFillPercent>
-      <StarfighterLocalReservePercent>20</StarfighterLocalReservePercent>
       <AssaultRegimentLoadPercent>100</AssaultRegimentLoadPercent>
-      <GarrisonRegimentReservePercent>20</GarrisonRegimentReservePercent>
-      <HeadquartersShieldTargetCount>1</HeadquartersShieldTargetCount>
-      <HeadquartersWeaponTargetCount>1</HeadquartersWeaponTargetCount>
-      <HeadquartersShieldDemandPercent>100</HeadquartersShieldDemandPercent>
-      <HeadquartersWeaponDemandPercent>95</HeadquartersWeaponDemandPercent>
+      <PlanetaryWeaponTargetCount>1</PlanetaryWeaponTargetCount>
+      <PlanetaryDefenseSurplusBatchSize>1</PlanetaryDefenseSurplusBatchSize>
+      <PlanetaryShieldDemandPercent>45</PlanetaryShieldDemandPercent>
+      <PlanetaryWeaponDemandPercent>35</PlanetaryWeaponDemandPercent>
+      <PlanetaryGarrisonDemandPercent>30</PlanetaryGarrisonDemandPercent>
+      <PlanetaryDefenseDeficitPressureWeight>20</PlanetaryDefenseDeficitPressureWeight>
+      <PlanetaryDefenseValuePressureWeight>25</PlanetaryDefenseValuePressureWeight>
+      <PlanetaryDefenseHeadquartersPressureBonus>20</PlanetaryDefenseHeadquartersPressureBonus>
+      <PlanetaryDefenseThreatPressureBonus>50</PlanetaryDefenseThreatPressureBonus>
+      <PlanetaryDefenseMaintenanceReservePercent>10</PlanetaryDefenseMaintenanceReservePercent>
       <EconomyDefaultBatchSize>1</EconomyDefaultBatchSize>
       <EconomyDemandPercent>90</EconomyDemandPercent>
       <EconomySevereDemandPercent>100</EconomySevereDemandPercent>

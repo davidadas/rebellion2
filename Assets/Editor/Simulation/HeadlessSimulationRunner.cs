@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Rebellion.AI.Director;
+using Rebellion.AI.Phases;
+using Rebellion.AI.Planners;
+using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
@@ -227,20 +231,50 @@ public static class HeadlessSimulationRunner
                     PlanetCount = game.GetSceneNodesByOwnerInstanceID<Planet>(
                         faction.InstanceID
                     ).Count,
+                    OperationalPlanetCount = GetOperationalOwnedPlanets(game, faction).Count,
                     FleetCount = game.GetSceneNodesByOwnerInstanceID<Fleet>(
                         faction.InstanceID
                     ).Count,
                     BuildingCount = game.GetSceneNodesByOwnerInstanceID<Building>(
                         faction.InstanceID
                     ).Count,
-                    DefenseFacilityCount = game.GetSceneNodesByOwnerInstanceID<Planet>(
-                            faction.InstanceID
-                        )
+                    DefenseFacilityCount = GetOperationalOwnedPlanets(game, faction)
                         .Sum(planet => planet.GetBuildingTypeCount(BuildingType.Defense)),
-                    WeaponFacilityCount = game.GetSceneNodesByOwnerInstanceID<Planet>(
-                            faction.InstanceID
-                        )
+                    WeaponFacilityCount = GetOperationalOwnedPlanets(game, faction)
                         .Sum(planet => planet.GetBuildingTypeCount(BuildingType.Weapon)),
+                    ProjectedDefenseFacilityCount = GetOperationalOwnedPlanets(game, faction)
+                        .Sum(planet => planet.GetTotalBuildingTypeCount(BuildingType.Defense)),
+                    ProjectedWeaponFacilityCount = GetOperationalOwnedPlanets(game, faction)
+                        .Sum(planet => planet.GetTotalBuildingTypeCount(BuildingType.Weapon)),
+                    ShieldedPlanetCount = CountShieldedPlanets(game, faction),
+                    FullyShieldedPlanetCount = CountFullyShieldedPlanets(game, faction),
+                    WeaponDefendedPlanetCount = CountWeaponDefendedPlanets(game, faction),
+                    FullyStaticDefendedPlanetCount = CountFullyStaticDefendedPlanets(game, faction),
+                    ProjectedFullyShieldedPlanetCount = CountProjectedFullyShieldedPlanets(
+                        game,
+                        faction
+                    ),
+                    ProjectedWeaponDefendedPlanetCount = CountProjectedWeaponDefendedPlanets(
+                        game,
+                        faction
+                    ),
+                    ProjectedFullyStaticDefendedPlanetCount =
+                        CountProjectedFullyStaticDefendedPlanets(game, faction),
+                    AdvancedConstructionFacilityCount = CountAdvancedProductionFacilities(
+                        game,
+                        faction,
+                        BuildingType.ConstructionFacility
+                    ),
+                    AdvancedShipyardCount = CountAdvancedProductionFacilities(
+                        game,
+                        faction,
+                        BuildingType.Shipyard
+                    ),
+                    AdvancedTrainingFacilityCount = CountAdvancedProductionFacilities(
+                        game,
+                        faction,
+                        BuildingType.TrainingFacility
+                    ),
                     CapitalShipCount = game.GetSceneNodesByOwnerInstanceID<CapitalShip>(
                         faction.InstanceID
                     ).Count,
@@ -264,7 +298,7 @@ public static class HeadlessSimulationRunner
                     MaintenanceCapacity = faction.MaintenanceCapacity,
                     MaintenanceHeadroom = faction.MaintenanceHeadroom,
                     Economy = BuildEconomySummary(faction),
-                    Energy = game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
+                    Energy = GetOperationalOwnedPlanets(game, faction)
                         .Sum(planet => planet.GetAvailableEnergy()),
                     UnitCost = faction.GetTotalMaintenanceCost(),
                     TotalManufacturedCapitalShips =
@@ -324,8 +358,197 @@ public static class HeadlessSimulationRunner
                         .Select(fleet => BuildFleetSummary(game, faction, fleet))
                         .ToArray(),
                 })
+                .Select(factionSummary => AddProductionPlanningSummary(game, factionSummary))
                 .ToArray(),
         };
+    }
+
+    private static FactionSimulationSummary AddProductionPlanningSummary(
+        GameRoot game,
+        FactionSimulationSummary summary
+    )
+    {
+        Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
+        FleetSystem fleetSystem = new FleetSystem(game);
+        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem, game.Random);
+        AITurnContext context = new AITurnContext(
+            game,
+            faction,
+            null,
+            null,
+            manufacturing,
+            null,
+            null,
+            game.Random
+        );
+        List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+        List<AIManufactureProposal> proposals = new AIProductionPlanner()
+            .Plan(context)
+            .OfType<AIManufactureProposal>()
+            .ToList();
+        context.AddProposals(proposals);
+        new AIScoringPhase().Execute(context);
+        List<AIManufactureProposal> selected = new AISelectionPhase()
+            .Select(context)
+            .OfType<AIManufactureProposal>()
+            .ToList();
+
+        summary.ProductionDemandCount = demands.Count;
+        summary.ProductionProposalCount = proposals.Count;
+        summary.SelectedProductionProposalCount = selected.Count;
+        summary.PlanetaryDefenseDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.PlanetaryDefense
+        );
+        summary.PlanetaryDefenseDemandQuantity = demands
+            .Where(demand => demand.Kind == AIProductionDemandKind.PlanetaryDefense)
+            .Sum(demand => demand.QuantityNeeded);
+        summary.PlanetaryDefenseProposalCount = proposals.Count(proposal =>
+            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+        );
+        summary.SelectedPlanetaryDefenseProposalCount = selected.Count(proposal =>
+            proposal.Demand.Kind == AIProductionDemandKind.PlanetaryDefense
+        );
+        summary.GarrisonDemandCount = demands.Count(demand =>
+            demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+        );
+        summary.GarrisonProposalCount = proposals.Count(proposal =>
+            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+        );
+        summary.SelectedGarrisonProposalCount = selected.Count(proposal =>
+            proposal.Demand.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+        );
+        summary.BuildingProductionProposalCount = proposals.Count(proposal =>
+            proposal.Demand.ManufacturingType == ManufacturingType.Building
+        );
+        summary.SelectedBuildingProductionProposalCount = selected.Count(proposal =>
+            proposal.Demand.ManufacturingType == ManufacturingType.Building
+        );
+        summary.SelectedProductionMaintenanceCost = selected.Sum(proposal =>
+            proposal.GetMaintenanceCost()
+        );
+        return summary;
+    }
+
+    private static int CountShieldedPlanets(GameRoot game, Faction faction)
+    {
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet => GetActiveOwnedBuildings(planet, faction).Any(IsShieldGenerator));
+    }
+
+    private static int CountFullyShieldedPlanets(GameRoot game, Faction faction)
+    {
+        int target = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet =>
+                GetActiveOwnedBuildings(planet, faction).Count(IsShieldGenerator) >= target
+            );
+    }
+
+    private static int CountWeaponDefendedPlanets(GameRoot game, Faction faction)
+    {
+        int target = game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet =>
+                GetActiveOwnedBuildings(planet, faction)
+                    .Count(building => building.GetBuildingType() == BuildingType.Weapon) >= target
+            );
+    }
+
+    private static int CountFullyStaticDefendedPlanets(GameRoot game, Faction faction)
+    {
+        int shieldTarget = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+        int weaponTarget = game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet =>
+            {
+                List<Building> buildings = GetActiveOwnedBuildings(planet, faction);
+                return buildings.Count(IsShieldGenerator) >= shieldTarget
+                    && buildings.Count(building =>
+                        building.GetBuildingType() == BuildingType.Weapon
+                    ) >= weaponTarget;
+            });
+    }
+
+    private static int CountAdvancedProductionFacilities(
+        GameRoot game,
+        Faction faction,
+        BuildingType buildingType
+    )
+    {
+        return game.GetSceneNodesByOwnerInstanceID<Building>(faction.InstanceID)
+            .Count(building =>
+                building.GetBuildingType() == buildingType
+                && building.ResearchOrder > 0
+                && building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                && building.Movement == null
+            );
+    }
+
+    private static int CountProjectedFullyShieldedPlanets(GameRoot game, Faction faction)
+    {
+        int target = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet => GetOwnedBuildings(planet, faction).Count(IsShieldGenerator) >= target);
+    }
+
+    private static int CountProjectedWeaponDefendedPlanets(GameRoot game, Faction faction)
+    {
+        int target = game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet =>
+                GetOwnedBuildings(planet, faction)
+                    .Count(building => building.GetBuildingType() == BuildingType.Weapon) >= target
+            );
+    }
+
+    private static int CountProjectedFullyStaticDefendedPlanets(GameRoot game, Faction faction)
+    {
+        int shieldTarget = game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit;
+        int weaponTarget = game.Config.AI.Infrastructure.PlanetaryWeaponTargetCount;
+        return GetOperationalOwnedPlanets(game, faction)
+            .Count(planet =>
+            {
+                List<Building> buildings = GetOwnedBuildings(planet, faction);
+                return buildings.Count(IsShieldGenerator) >= shieldTarget
+                    && buildings.Count(building =>
+                        building.GetBuildingType() == BuildingType.Weapon
+                    ) >= weaponTarget;
+            });
+    }
+
+    private static List<Planet> GetOwnedPlanets(GameRoot game, Faction faction)
+    {
+        return game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID);
+    }
+
+    private static List<Planet> GetOperationalOwnedPlanets(GameRoot game, Faction faction)
+    {
+        return GetOwnedPlanets(game, faction)
+            .Where(planet => planet.IsColonized && !planet.IsDestroyed)
+            .ToList();
+    }
+
+    private static List<Building> GetActiveOwnedBuildings(Planet planet, Faction faction)
+    {
+        return GetOwnedBuildings(planet, faction)
+            .Where(building =>
+                building.GetManufacturingStatus() == ManufacturingStatus.Complete
+                && building.Movement == null
+            )
+            .ToList();
+    }
+
+    private static List<Building> GetOwnedBuildings(Planet planet, Faction faction)
+    {
+        return planet
+            .GetAllBuildings()
+            .Where(building => building.GetOwnerInstanceID() == faction.InstanceID)
+            .ToList();
+    }
+
+    private static bool IsShieldGenerator(Building building)
+    {
+        return building.DefenseFacilityClass == DefenseFacilityClass.Shield;
     }
 
     /// <summary>
@@ -809,10 +1032,23 @@ public static class HeadlessSimulationRunner
         public string FactionId;
         public string DisplayName;
         public int PlanetCount;
+        public int OperationalPlanetCount;
         public int FleetCount;
         public int BuildingCount;
         public int DefenseFacilityCount;
         public int WeaponFacilityCount;
+        public int ProjectedDefenseFacilityCount;
+        public int ProjectedWeaponFacilityCount;
+        public int ShieldedPlanetCount;
+        public int FullyShieldedPlanetCount;
+        public int WeaponDefendedPlanetCount;
+        public int FullyStaticDefendedPlanetCount;
+        public int ProjectedFullyShieldedPlanetCount;
+        public int ProjectedWeaponDefendedPlanetCount;
+        public int ProjectedFullyStaticDefendedPlanetCount;
+        public int AdvancedConstructionFacilityCount;
+        public int AdvancedShipyardCount;
+        public int AdvancedTrainingFacilityCount;
         public int CapitalShipCount;
         public int StarfighterCount;
         public int RegimentCount;
@@ -838,6 +1074,19 @@ public static class HeadlessSimulationRunner
         public int TotalManufacturedTrainingFacilities;
         public int TotalManufacturedDefenseFacilities;
         public int TotalManufacturedWeapons;
+        public int ProductionDemandCount;
+        public int ProductionProposalCount;
+        public int SelectedProductionProposalCount;
+        public int PlanetaryDefenseDemandCount;
+        public int PlanetaryDefenseDemandQuantity;
+        public int PlanetaryDefenseProposalCount;
+        public int SelectedPlanetaryDefenseProposalCount;
+        public int GarrisonDemandCount;
+        public int GarrisonProposalCount;
+        public int SelectedGarrisonProposalCount;
+        public int BuildingProductionProposalCount;
+        public int SelectedBuildingProductionProposalCount;
+        public int SelectedProductionMaintenanceCost;
         public ConstructionFacilityExpansionSimulationSummary ConstructionFacilityExpansion;
         public TroopProductionSimulationSummary TroopProduction;
         public TroopReinforcementPackageSimulationSummary TroopReinforcementPackages;
@@ -1443,11 +1692,20 @@ public static class HeadlessSimulationRunner
         /// <param name="game">The game state to inspect.</param>
         public void RecordInitialState(GameRoot game)
         {
-            RecordSeenOnly(game.GetSceneNodesByType<CapitalShip>(), _seenCapitalShips);
-            RecordSeenOnly(game.GetSceneNodesByType<Starfighter>(), _seenStarfighters);
-            RecordSeenOnly(game.GetSceneNodesByType<Regiment>(), _seenRegiments);
-            RecordSeenOnly(game.GetSceneNodesByType<SpecialForces>(), _seenSpecialForces);
-            RecordSeenOnly(game.GetSceneNodesByType<Building>(), _seenBuildings);
+            RecordSeenOnly(
+                game.GetSceneNodesByType<CapitalShip>().Where(IsComplete),
+                _seenCapitalShips
+            );
+            RecordSeenOnly(
+                game.GetSceneNodesByType<Starfighter>().Where(IsComplete),
+                _seenStarfighters
+            );
+            RecordSeenOnly(game.GetSceneNodesByType<Regiment>().Where(IsComplete), _seenRegiments);
+            RecordSeenOnly(
+                game.GetSceneNodesByType<SpecialForces>().Where(IsComplete),
+                _seenSpecialForces
+            );
+            RecordSeenOnly(game.GetSceneNodesByType<Building>().Where(IsComplete), _seenBuildings);
         }
 
         /// <summary>
@@ -1538,7 +1796,7 @@ public static class HeadlessSimulationRunner
         /// <param name="units">The units to record.</param>
         /// <param name="seen">The set that receives unit IDs.</param>
         private static void RecordSeenOnly<T>(IEnumerable<T> units, HashSet<string> seen)
-            where T : ISceneNode
+            where T : ISceneNode, IManufacturable
         {
             foreach (T unit in units)
             {
@@ -1560,12 +1818,16 @@ public static class HeadlessSimulationRunner
             HashSet<string> seen,
             Action<ManufacturedUnitCounts> increment
         )
-            where T : ISceneNode
+            where T : ISceneNode, IManufacturable
         {
             foreach (T unit in units)
             {
                 string instanceId = unit.GetInstanceID();
-                if (string.IsNullOrEmpty(instanceId) || !seen.Add(instanceId))
+                if (
+                    !IsManufactured(unit)
+                    || string.IsNullOrEmpty(instanceId)
+                    || !seen.Add(instanceId)
+                )
                     continue;
 
                 string factionId = unit.GetOwnerInstanceID();
@@ -1585,7 +1847,11 @@ public static class HeadlessSimulationRunner
             foreach (Building building in buildings)
             {
                 string instanceId = building.GetInstanceID();
-                if (string.IsNullOrEmpty(instanceId) || !_seenBuildings.Add(instanceId))
+                if (
+                    !IsManufactured(building)
+                    || string.IsNullOrEmpty(instanceId)
+                    || !_seenBuildings.Add(instanceId)
+                )
                     continue;
 
                 string factionId = building.GetOwnerInstanceID();
@@ -1598,6 +1864,12 @@ public static class HeadlessSimulationRunner
                 counts.BuildingsByType[building.BuildingType] = count + 1;
             }
         }
+
+        private static bool IsComplete(IManufacturable item) =>
+            item.ManufacturingStatus == ManufacturingStatus.Complete;
+
+        private static bool IsManufactured(IManufacturable item) =>
+            IsComplete(item) && !string.IsNullOrEmpty(item.ProducerPlanetID);
 
         /// <summary>
         /// Gets or creates manufactured unit counts for a faction.
