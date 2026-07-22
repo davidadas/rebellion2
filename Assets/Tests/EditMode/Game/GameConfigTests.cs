@@ -81,6 +81,8 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(100, config.Production.ResourceCollectionBasePercent);
             Assert.AreEqual(50, config.Production.ResourceStartupBasePercent);
             Assert.AreEqual(100, config.Production.ResourceStartupRandomPercent);
+            Assert.AreEqual(5, config.Blockade.CapitalShipProductionPenaltyPercent);
+            Assert.AreEqual(2, config.Blockade.FighterProductionPenaltyPercent);
         }
 
         [Test]

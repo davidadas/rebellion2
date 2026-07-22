@@ -950,7 +950,7 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The visible mission target, location, or parent node.</returns>
     private ISceneNode ResolveMissionTarget(Mission mission)
     {
-        string targetInstanceId = GetMissionTargetInstanceId(mission);
+        string targetInstanceId = GetMissionTargetInstanceID(mission);
         if (!string.IsNullOrEmpty(targetInstanceId))
             return findVisibleNode(targetInstanceId);
 
@@ -965,7 +965,7 @@ internal sealed class StrategyStatusInfoBuilder
     /// </summary>
     /// <param name="mission">The mission to inspect.</param>
     /// <returns>The explicit target identifier, or <see langword="null"/>.</returns>
-    private static string GetMissionTargetInstanceId(Mission mission)
+    private static string GetMissionTargetInstanceID(Mission mission)
     {
         return mission switch
         {

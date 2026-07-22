@@ -112,7 +112,7 @@ internal sealed class ConstructionWindowSession
         if (SelectedItemIndex < 0 && items.Count > 0)
             SelectedItemIndex = Math.Max(0, Math.Min(previousIndex, items.Count - 1));
 
-        selectedItemTypeId = GetItemTypeId(SelectedItem);
+        selectedItemTypeId = GetItemTypeID(SelectedItem);
         if (items.Count == 0)
         {
             SelectedItemIndex = 0;
@@ -131,7 +131,7 @@ internal sealed class ConstructionWindowSession
             return false;
 
         SelectedItemIndex = index;
-        selectedItemTypeId = GetItemTypeId(items[index]);
+        selectedItemTypeId = GetItemTypeID(items[index]);
         DropdownOpen = false;
         return true;
     }
@@ -213,7 +213,7 @@ internal sealed class ConstructionWindowSession
     /// Gets the selected destination planet or falls back to the producing planet.
     /// </summary>
     /// <returns>The destination planet identifier, or null when neither planet is available.</returns>
-    public string GetDestinationPlanetId()
+    public string GetDestinationPlanetID()
     {
         return !string.IsNullOrEmpty(DestinationPlanetId)
             ? DestinationPlanetId
@@ -247,7 +247,7 @@ internal sealed class ConstructionWindowSession
         {
             if (
                 string.Equals(
-                    GetItemTypeId(availableItems[index]),
+                    GetItemTypeID(availableItems[index]),
                     typeId,
                     StringComparison.Ordinal
                 )
@@ -263,7 +263,7 @@ internal sealed class ConstructionWindowSession
     /// </summary>
     /// <param name="item">The build template.</param>
     /// <returns>The template type identifier, or null.</returns>
-    private static string GetItemTypeId(IManufacturable item)
+    private static string GetItemTypeID(IManufacturable item)
     {
         return item?.GetTypeID();
     }

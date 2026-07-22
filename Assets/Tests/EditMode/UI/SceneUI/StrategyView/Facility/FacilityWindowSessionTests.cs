@@ -254,7 +254,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void RebindPlanet_ReplacementBuildingWithSameId_PreservesSelection()
+        public void RebindPlanet_ReplacementBuildingWithSameID_PreservesSelection()
         {
             Building original = CreateBuilding("shipyard", "Original", BuildingType.Shipyard);
             _planet.Buildings.Add(original);
@@ -308,7 +308,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void SetDestination_EmptyPlanetId_ThrowsArgumentException()
+        public void SetDestination_EmptyPlanetID_ThrowsArgumentException()
         {
             Assert.Throws<ArgumentException>(() =>
                 _session.SetDestination(ManufacturingType.Building, string.Empty, null)

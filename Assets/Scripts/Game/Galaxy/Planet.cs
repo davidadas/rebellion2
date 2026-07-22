@@ -17,6 +17,7 @@ namespace Rebellion.Game.Galaxy
     public class Planet : ContainerNode
     {
         private const int _maximumPopularSupport = 100;
+        private const int _maximumProductionModifier = 100;
 
         // Planet Properties.
         public bool IsColonized { get; set; }
@@ -33,6 +34,10 @@ namespace Rebellion.Game.Galaxy
         // Planet Status.
         [PersistableIgnore]
         public bool IsUnexploredView { get; set; }
+        public bool IsDestroyed { get; set; }
+        public bool IsHeadquarters { get; set; }
+
+        // Uprising Status.
         public bool IsInUprising { get; set; }
         public int NextUprisingSupportDriftTick { get; set; }
         public int NextUprisingIncidentTick { get; set; }
@@ -41,8 +46,6 @@ namespace Rebellion.Game.Galaxy
         public int UprisingIncidentTimerOrder { get; set; }
         public int UprisingClearTimerOrder { get; set; }
         public int NextUprisingTimerOrder { get; set; }
-        public bool IsDestroyed { get; set; }
-        public bool IsHeadquarters { get; set; }
 
         // Popular Support.
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
@@ -99,10 +102,10 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns whether resource collection and manufacturing are suspended at this planet.
+        /// Returns whether resource collection is suspended at this planet.
         /// </summary>
         /// <returns>True during a blockade or uprising.</returns>
-        public bool IsProductionSuspended()
+        public bool IsResourceProductionSuspended()
         {
             return IsBlockaded() || IsInUprising;
         }
@@ -118,9 +121,7 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Begin uprising - set uprising flag then transfer ownership.
-        /// Order matters: uprising state is set before ownership changes.
-        /// Centralizes all uprising state mutations in one place.
+        /// Starts a fresh uprising and clears prior timer state.
         /// </summary>
         public void BeginUprising()
         {
@@ -128,22 +129,23 @@ namespace Rebellion.Game.Galaxy
                 return;
 
             IsInUprising = true;
-            NextUprisingSupportDriftTick = 0;
-            NextUprisingIncidentTick = 0;
-            NextUprisingClearTick = 0;
-            UprisingSupportDriftTimerOrder = 0;
-            UprisingIncidentTimerOrder = 0;
-            UprisingClearTimerOrder = 0;
-            NextUprisingTimerOrder = 0;
+            ResetUprisingTimers();
         }
 
         /// <summary>
-        /// End uprising - clear uprising flag.
-        /// Ownership remains with current owner.
+        /// Ends an uprising and clears its scheduled timer state.
         /// </summary>
         public void EndUprising()
         {
             IsInUprising = false;
+            ResetUprisingTimers();
+        }
+
+        /// <summary>
+        /// Clears all scheduled uprising ticks and their ordering state.
+        /// </summary>
+        private void ResetUprisingTimers()
+        {
             NextUprisingSupportDriftTick = 0;
             NextUprisingIncidentTick = 0;
             NextUprisingClearTick = 0;
@@ -197,7 +199,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The number of accessible resource nodes, or 0 while production is suspended.</returns>
         public int GetAvailableResourceNodes()
         {
-            return IsProductionSuspended() ? 0 : GetRawResourceNodes();
+            return IsResourceProductionSuspended() ? 0 : GetRawResourceNodes();
         }
 
         /// <summary>
@@ -239,7 +241,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The number of available mined resources, or 0 while production is suspended.</returns>
         public int GetAvailableMinedResources()
         {
-            return IsProductionSuspended() ? 0 : GetActiveMinedResources();
+            return IsResourceProductionSuspended() ? 0 : GetActiveMinedResources();
         }
 
         /// <summary>
@@ -267,7 +269,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>The available refinement capacity, or 0 while production is suspended.</returns>
         public int GetAvailableRefinementCapacity()
         {
-            return IsProductionSuspended() ? 0 : GetActiveRefinementCapacity();
+            return IsResourceProductionSuspended() ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>
@@ -602,6 +604,47 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Gets the manufacturing output percentage available during a blockade.
+        /// An active KDY defense prevents the blockade penalty.
+        /// </summary>
+        /// <param name="capitalShipPenalty">The percentage removed per active capital ship.</param>
+        /// <param name="fighterPenalty">The percentage removed per active fighter squadron.</param>
+        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
+        public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
+        {
+            if (!IsBlockaded() || HasActiveKdyDefense())
+                return _maximumProductionModifier;
+
+            List<CapitalShip> activeCapitalShips = Fleets
+                .Where(fleet => fleet.Movement == null)
+                .SelectMany(fleet => fleet.CapitalShips)
+                .Where(IsEntityActive)
+                .ToList();
+            int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
+                capitalShip.Starfighters.Count(IsEntityActive)
+            );
+            activeFighterCount += Starfighters.Count(IsEntityActive);
+
+            int modifier =
+                _maximumProductionModifier
+                - activeCapitalShips.Count * capitalShipPenalty
+                - activeFighterCount * fighterPenalty;
+            return Math.Clamp(modifier, 0, _maximumProductionModifier);
+        }
+
+        /// <summary>
+        /// Returns whether a complete, stationary KDY defense is active on this planet.
+        /// </summary>
+        /// <returns>True when an active KDY defense is present.</returns>
+        private bool HasActiveKdyDefense()
+        {
+            return Buildings.Any(building =>
+                building.DefenseFacilityClass == DefenseFacilityClass.KDY
+                && IsEntityActive(building)
+            );
+        }
+
+        /// <summary>
         /// Calculates defense strength from completed, stationary shield buildings.
         /// </summary>
         /// <returns>Sum of ShieldStrength across active shield buildings.</returns>
@@ -850,6 +893,23 @@ namespace Rebellion.Game.Galaxy
         public List<Regiment> GetAllRegiments()
         {
             return Regiments.ToList();
+        }
+
+        /// <summary>
+        /// Returns the number of completed, stationary regiments of a given type.
+        /// </summary>
+        /// <param name="regimentTypeID">The regiment type to count.</param>
+        /// <returns>The active regiment count.</returns>
+        public int GetActiveRegimentCount(string regimentTypeID)
+        {
+            if (string.IsNullOrEmpty(regimentTypeID))
+                return 0;
+
+            return Regiments.Count(regiment =>
+                regiment.TypeID == regimentTypeID
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null
+            );
         }
 
         /// <summary>

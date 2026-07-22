@@ -372,7 +372,7 @@ public sealed class ConstructionWindowController
 
         ConstructionWindowSession session = GetSession(view);
 
-        string playerFactionId = GetPlayerFactionId();
+        string playerFactionId = GetPlayerFactionID();
         IReadOnlyList<IManufacturable> items = session.Items;
         Planet producer = GetAuthoritativePlanet(session.Planet);
         ISceneNode destination = GetConstructionDestination(session);
@@ -564,7 +564,7 @@ public sealed class ConstructionWindowController
             return;
 
         session.Window.RequestFocus();
-        string playerFactionId = GetPlayerFactionId();
+        string playerFactionId = GetPlayerFactionID();
         IManufacturable selected = session.SelectedItem;
         bool started = orderController.TryStartConstruction(
             GetAuthoritativePlanet(session.Planet),
@@ -622,7 +622,7 @@ public sealed class ConstructionWindowController
     /// Gets the current player faction identifier.
     /// </summary>
     /// <returns>The player faction identifier, or null.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         return getGame()?.GetPlayerFaction()?.InstanceID;
     }
@@ -798,7 +798,7 @@ public sealed class ConstructionWindowController
     /// <returns>The authoritative destination planet, or null.</returns>
     private Planet GetConstructionDestinationPlanet(ConstructionWindowSession session)
     {
-        return GetAuthoritativePlanet(session?.GetDestinationPlanetId());
+        return GetAuthoritativePlanet(session?.GetDestinationPlanetID());
     }
 
     /// <summary>
@@ -854,7 +854,7 @@ public sealed class ConstructionWindowController
             return;
 
         session.SetItems(
-            orderController.GetBuildSelection(session.ManufacturingTab, GetPlayerFactionId())
+            orderController.GetBuildSelection(session.ManufacturingTab, GetPlayerFactionID())
         );
     }
 }

@@ -24,6 +24,7 @@ namespace Rebellion.Systems
         private readonly MovementSystem _movementManager;
         private readonly UprisingSystem _uprisingSystem;
         private readonly MissionFactory _missionFactory;
+        private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
         /// Creates a new MissionSystem.
@@ -65,7 +66,8 @@ namespace Rebellion.Systems
         /// <returns>All results produced by missions that executed this tick.</returns>
         public List<GameResult> ProcessTick()
         {
-            List<GameResult> results = new List<GameResult>();
+            List<GameResult> results = new List<GameResult>(_pendingResults);
+            _pendingResults.Clear();
             List<Mission> missions = _game.GetSceneNodesByType<Mission>();
             Dictionary<string, bool> recruitmentAvailabilityBefore =
                 GetRecruitmentAvailabilityByFaction();
@@ -233,7 +235,7 @@ namespace Rebellion.Systems
             if (mission.IsWaitingForParticipants())
                 return false;
 
-            TearDownMission(mission, null);
+            TearDownMission(mission, null, _pendingResults);
             return true;
         }
 
@@ -266,7 +268,7 @@ namespace Rebellion.Systems
                 );
                 result.MissionInstanceID = mission.InstanceID;
                 results.Add(result);
-                TearDownMission(mission, null);
+                TearDownMission(mission, null, results);
             }
 
             return results;
@@ -412,7 +414,7 @@ namespace Rebellion.Systems
                         mission.GetAllParticipants()
                     )
                 );
-                TearDownMission(mission, null);
+                TearDownMission(mission, null, results);
                 return results;
             }
 
@@ -465,10 +467,8 @@ namespace Rebellion.Systems
                 int attemptResultStart = results.Count;
                 objectiveAchieved = ResolveUprisingMissionAttempt(mission, results);
                 AbortMissionsInvalidatedByUprising(results, attemptResultStart);
-                if (!objectiveAchieved)
-                    continue;
-
-                mission.ImproveMissionParticipantRating(participant);
+                if (objectiveAchieved)
+                    mission.ImproveMissionParticipantRating(participant);
                 break;
             }
 
@@ -591,7 +591,7 @@ namespace Rebellion.Systems
             }
             else
             {
-                TearDownMission(mission, completedResult);
+                TearDownMission(mission, completedResult, results);
             }
 
             return true;
@@ -602,8 +602,14 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission to tear down and clean up.</param>
         /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
-        private void TearDownMission(Mission mission, MissionCompletedResult completedResult)
+        /// <param name="results">The result batch receiving teardown outcomes.</param>
+        private void TearDownMission(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            List<GameResult> results
+        )
         {
+            int resultStart = results.Count;
             Planet missionPlanet = mission.GetParent() as Planet;
             List<IMissionParticipant> returnParticipants = GetFreeMissionParticipants(mission)
                 .Distinct()
@@ -617,14 +623,46 @@ namespace Rebellion.Systems
                 .ToList();
 
             MoveCapturedParticipants(mission, missionPlanet);
-            if (!_movementManager.TryReturnFromMission(returnParticipants, additionalPassengers))
-            {
-                throw new InvalidOperationException(
-                    $"Mission {mission.InstanceID} could not return all participants."
-                );
-            }
+            List<IMovable> strandedUnits = _movementManager.ReturnFromMission(
+                returnParticipants,
+                additionalPassengers
+            );
+            ResolveStrandedMissionUnits(strandedUnits, missionPlanet, results);
+
+            foreach (GameResult result in results.Skip(resultStart))
+                result.MissionInstanceID = mission.InstanceID;
 
             _game.DetachNode(mission);
+        }
+
+        /// <summary>
+        /// Resolves units that have no friendly destination when a mission ends.
+        /// </summary>
+        /// <param name="units">The units that could not return.</param>
+        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <param name="results">The result batch receiving capture or destruction outcomes.</param>
+        private void ResolveStrandedMissionUnits(
+            IEnumerable<IMovable> units,
+            Planet missionPlanet,
+            List<GameResult> results
+        )
+        {
+            foreach (IMovable unit in units)
+            {
+                unit.Movement = null;
+                if (unit is Officer officer)
+                {
+                    if (!officer.IsCaptured)
+                        CaptureOfficer(officer, missionPlanet, results);
+
+                    if (missionPlanet != null)
+                        _movementManager.RequestMove(officer, missionPlanet);
+                }
+                else if (unit is SpecialForces specialForces)
+                {
+                    DestroySpecialForces(specialForces, missionPlanet, results);
+                }
+            }
         }
 
         /// <summary>
@@ -781,6 +819,21 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
+            DestroySpecialForces(specialForces, planet, results);
+        }
+
+        /// <summary>
+        /// Removes a special-forces unit and records its destruction.
+        /// </summary>
+        /// <param name="specialForces">The unit to destroy.</param>
+        /// <param name="planet">The planet where the unit was destroyed.</param>
+        /// <param name="results">Collection to append the destruction result to.</param>
+        private void DestroySpecialForces(
+            SpecialForces specialForces,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
             _game.DetachNode(specialForces);
             results.Add(
                 new GameObjectDestroyedResult
@@ -812,18 +865,7 @@ namespace Rebellion.Systems
 
             if (_provider.NextDouble() * 100 < captureProbability)
             {
-                officer.IsCaptured = true;
-                officer.CaptorInstanceID = planet?.OwnerInstanceID;
-                officer.CanEscape = true;
-                results.Add(
-                    new OfficerCaptureStateResult
-                    {
-                        TargetOfficer = officer,
-                        IsCaptured = true,
-                        Context = planet,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                CaptureOfficer(officer, planet, results);
             }
             else
             {
@@ -840,6 +882,28 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Marks an officer captured at a planet and records the capture state change.
+        /// </summary>
+        /// <param name="officer">The officer being captured.</param>
+        /// <param name="planet">The planet where the capture occurred.</param>
+        /// <param name="results">Collection to append the capture result to.</param>
+        private void CaptureOfficer(Officer officer, Planet planet, List<GameResult> results)
+        {
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = planet?.OwnerInstanceID;
+            officer.CanEscape = true;
+            results.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>

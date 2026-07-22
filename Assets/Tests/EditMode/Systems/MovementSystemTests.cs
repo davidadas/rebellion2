@@ -33,11 +33,7 @@ namespace Rebellion.Tests.Systems
             GameConfig config = ResourceManager.GetConfig<GameConfig>();
             GameRoot game = new GameRoot(config);
 
-            Faction empire = new Faction
-            {
-                InstanceID = "empire",
-                Settings = new FactionSettings { MissionReturnPlanetTypeID = "origin-type" },
-            };
+            Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(empire);
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
@@ -235,7 +231,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TryReturnFromMission_RecordedShipMoved_ReturnsToRecordedPlanet()
+        public void ReturnFromMission_RecordedShipMoved_ReturnsToRecordedShip()
         {
             (
                 GameRoot game,
@@ -260,17 +256,17 @@ namespace Rebellion.Tests.Systems
             officer.Movement = null;
             game.MoveNode(fleet, destination);
 
-            bool returned = movement.TryReturnFromMission(
+            List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0]
             );
 
-            Assert.IsTrue(returned);
-            Assert.AreEqual(origin, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(ship, officer.GetParent());
         }
 
         [Test]
-        public void TryReturnFromMission_MissingRecordedLocation_ReturnsToConfiguredPlanet()
+        public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
         {
             (
                 GameRoot game,
@@ -286,63 +282,107 @@ namespace Rebellion.Tests.Systems
             officer.MissionReturnParentInstanceID = "missing-parent";
             officer.MissionReturnLocationInstanceID = "missing-location";
 
-            bool returned = movement.TryReturnFromMission(
+            List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
                 new IMovable[0]
             );
 
-            Assert.IsTrue(returned);
-            Assert.AreEqual(origin, officer.GetParent());
+            Assert.IsEmpty(stranded);
+            Assert.AreEqual(destination, officer.GetParent());
         }
 
         [Test]
-        public void TryReturnFromMission_MissingFallback_ReturnsFalseWithoutMovingAnyParticipant()
+        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
         {
             (
                 GameRoot game,
                 Planet origin,
                 Planet destination,
-                Officer firstOfficer,
+                Officer officer,
                 MovementSystem movement
             ) = BuildScene();
-            Faction secondFaction = new Faction { InstanceID = "second-faction" };
-            game.Factions.Add(secondFaction);
-            Planet secondOrigin = new Planet
-            {
-                InstanceID = "second-origin",
-                OwnerInstanceID = secondFaction.InstanceID,
-                IsColonized = true,
-                PositionX = 200,
-                PositionY = 100,
-            };
-            game.AttachNode(secondOrigin, destination.GetParent());
-            Officer secondOfficer = EntityFactory.CreateOfficer("o2", secondFaction.InstanceID);
             StubMission mission = new StubMission("empire", destination.InstanceID);
             game.AttachNode(mission, destination);
-            game.AttachNode(secondOfficer, secondOrigin);
-            movement.SendToMission(firstOfficer, mission);
-            movement.SendToMission(secondOfficer, mission);
-            firstOfficer.Movement = null;
-            secondOfficer.Movement = null;
-            firstOfficer.MissionReturnParentInstanceID = "missing-first-parent";
-            firstOfficer.MissionReturnLocationInstanceID = "missing-first-location";
-            secondOfficer.MissionReturnParentInstanceID = "missing-second-parent";
-            secondOfficer.MissionReturnLocationInstanceID = "missing-second-location";
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            origin.OwnerInstanceID = "rebels";
 
-            bool returned = movement.TryReturnFromMission(
-                new IMissionParticipant[] { firstOfficer, secondOfficer },
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
                 new IMovable[0]
             );
 
-            Assert.IsFalse(returned);
-            Assert.AreSame(mission, firstOfficer.GetParent());
-            Assert.AreSame(mission, secondOfficer.GetParent());
-            Assert.IsNull(firstOfficer.Movement);
-            Assert.IsNull(secondOfficer.Movement);
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(destination, officer.GetParent());
         }
 
         [Test]
-        public void TryReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
+        public void ReturnFromMission_NearbyFriendlyFleetIsCloser_ReturnsToFleetShip()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, destination);
+            game.AttachNode(ship, fleet);
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0]
+            );
+
+            Assert.IsEmpty(stranded);
+            Assert.AreSame(ship, officer.GetParent());
+        }
+
+        [Test]
+        public void ReturnFromMission_NoFriendlyDestination_ReturnsParticipantAsStranded()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            origin.OwnerInstanceID = "rebels";
+            destination.OwnerInstanceID = "rebels";
+            StubMission mission = new StubMission("empire", destination.InstanceID);
+            game.AttachNode(mission, destination);
+            movement.SendToMission(officer, mission);
+            officer.Movement = null;
+            officer.MissionReturnParentInstanceID = "missing-parent";
+            officer.MissionReturnLocationInstanceID = "missing-location";
+
+            List<IMovable> stranded = movement.ReturnFromMission(
+                new IMissionParticipant[] { officer },
+                new IMovable[0]
+            );
+
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void ReturnFromMission_CapturedPassenger_ReturnsWithEscortGroup()
         {
             (
                 GameRoot game,
@@ -360,19 +400,19 @@ namespace Rebellion.Tests.Systems
             passenger.CaptorInstanceID = "empire";
             game.AttachNode(passenger, destination);
 
-            bool returned = movement.TryReturnFromMission(
+            List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { escort },
                 new IMovable[] { passenger }
             );
 
-            Assert.IsTrue(returned);
+            Assert.IsEmpty(stranded);
             Assert.AreSame(origin, escort.GetParent());
             Assert.AreSame(origin, passenger.GetParent());
             Assert.AreEqual(escort.Movement.MovementGroupID, passenger.Movement.MovementGroupID);
         }
 
         [Test]
-        public void TryReturnFromMission_PassengerWithoutParticipant_ReturnsFalseWithoutMovingPassenger()
+        public void ReturnFromMission_PassengerWithoutParticipant_ReturnsPassengerAsStranded()
         {
             (
                 GameRoot game,
@@ -386,18 +426,18 @@ namespace Rebellion.Tests.Systems
             passenger.CaptorInstanceID = "empire";
             game.AttachNode(passenger, destination);
 
-            bool returned = movement.TryReturnFromMission(
+            List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[0],
                 new IMovable[] { passenger }
             );
 
-            Assert.IsFalse(returned);
+            CollectionAssert.AreEqual(new IMovable[] { passenger }, stranded);
             Assert.AreSame(destination, passenger.GetParent());
             Assert.IsNull(passenger.Movement);
         }
 
         [Test]
-        public void TryReturnFromMission_ParticipantsWithDifferentOrigins_ReturnToTheirOwnLocations()
+        public void ReturnFromMission_ParticipantsWithDifferentOrigins_ReturnToTheirOwnLocations()
         {
             (
                 GameRoot game,
@@ -431,12 +471,12 @@ namespace Rebellion.Tests.Systems
             firstOfficer.Movement = null;
             secondOfficer.Movement = null;
 
-            bool returned = movement.TryReturnFromMission(
+            List<IMovable> stranded = movement.ReturnFromMission(
                 new IMissionParticipant[] { firstOfficer, secondOfficer },
                 new IMovable[0]
             );
 
-            Assert.IsTrue(returned);
+            Assert.IsEmpty(stranded);
             Assert.AreEqual(firstOrigin, firstOfficer.GetParent());
             Assert.AreEqual(secondOrigin, secondOfficer.GetParent());
             Assert.AreNotEqual(

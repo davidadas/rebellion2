@@ -151,7 +151,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void TryGetPlanetInstanceId_PointerOverRenderedMarker_ReturnsPlanetIdentity()
+        public void TryGetPlanetInstanceID_PointerOverRenderedMarker_ReturnsPlanetIdentity()
         {
             _view.Render(
                 CreateMap(
@@ -162,14 +162,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             PlanetSystemClusterView cluster = FindCluster("system-1");
             PointerEventData eventData = CreateClusterPointerEvent(cluster, new Vector2(7f, 9f));
 
-            bool found = _view.TryGetPlanetInstanceId(eventData, out string planetInstanceId);
+            bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
 
             Assert.IsTrue(found);
             Assert.AreEqual("planet-1", planetInstanceId);
         }
 
         [Test]
-        public void TryGetPlanetInstanceId_NullOrOutsidePointer_ReturnsFalse()
+        public void TryGetPlanetInstanceID_NullOrOutsidePointer_ReturnsFalse()
         {
             _view.Render(
                 CreateMap(
@@ -179,8 +179,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             PointerEventData outside = CreateMapPointerEvent(new Vector2(-1000f, -1000f));
 
-            bool nullFound = _view.TryGetPlanetInstanceId(null, out string nullIdentity);
-            bool outsideFound = _view.TryGetPlanetInstanceId(outside, out string outsideIdentity);
+            bool nullFound = _view.TryGetPlanetInstanceID(null, out string nullIdentity);
+            bool outsideFound = _view.TryGetPlanetInstanceID(outside, out string outsideIdentity);
 
             Assert.IsFalse(nullFound);
             Assert.IsNull(nullIdentity);
@@ -281,7 +281,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             cluster.OnPointerEnter(eventData);
             cluster.OnPointerExit(eventData);
             cluster.OnPointerClick(eventData);
-            bool found = _view.TryGetPlanetInstanceId(eventData, out string planetInstanceId);
+            bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
 
             Assert.AreSame(_view, destroyedView);
             Assert.AreEqual(0, hoverCount);

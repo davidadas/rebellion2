@@ -409,12 +409,7 @@ namespace Rebellion.Tests.Managers
         public void RequestMove_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            Faction owner = new Faction
-            {
-                InstanceID = "OWNER",
-                DisplayName = "Owner",
-                Settings = new FactionSettings { MissionReturnPlanetTypeID = "HOME" },
-            };
+            Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
             Faction opposition = new Faction
             {
                 InstanceID = "OPPOSITION",

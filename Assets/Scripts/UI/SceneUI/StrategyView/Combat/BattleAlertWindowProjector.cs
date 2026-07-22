@@ -162,7 +162,7 @@ internal sealed class BattleAlertWindowProjector
         bool detail = panel is BattleResultPanel.FirstForces or BattleResultPanel.SecondForces;
         bool direct = panel == BattleResultPanel.Direct;
         bool planetaryResult = result is BombardmentResult or PlanetaryAssaultResult;
-        string ownerInstanceId = GetResultOwnerId(theme, panel);
+        string ownerInstanceId = GetResultOwnerID(theme, panel);
         BattleResultTableRenderData table = detail
             ? resultTableProjector.Project(uiContext, result, ownerInstanceId, category)
             : null;
@@ -996,7 +996,7 @@ internal sealed class BattleAlertWindowProjector
     /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="panel">The selected result panel.</param>
     /// <returns>The represented owner identifier.</returns>
-    private static string GetResultOwnerId(BattleAlertWindowTheme theme, BattleResultPanel panel)
+    private static string GetResultOwnerID(BattleAlertWindowTheme theme, BattleResultPanel panel)
     {
         return panel == BattleResultPanel.SecondForces
             ? theme?.SecondForcesOwnerInstanceID

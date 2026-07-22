@@ -786,8 +786,10 @@
     <DiplomacyNeutralPlanetSupportBase>1</DiplomacyNeutralPlanetSupportBase>
     <DiplomacyNeutralPlanetSupportRange>9</DiplomacyNeutralPlanetSupportRange>
   </SupportShift>
-  <!-- Blockade-time penalties such as evacuation losses. -->
+  <!-- Manufacturing and evacuation penalties during blockades. -->
   <Blockade>
+    <CapitalShipProductionPenaltyPercent>5</CapitalShipProductionPenaltyPercent>
+    <FighterProductionPenaltyPercent>2</FighterProductionPenaltyPercent>
     <EvacuationLossPercent>25</EvacuationLossPercent>
   </Blockade>
   <!-- Victory-condition parameters. -->

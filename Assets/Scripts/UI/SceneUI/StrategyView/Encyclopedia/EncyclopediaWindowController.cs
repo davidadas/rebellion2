@@ -189,7 +189,7 @@ public sealed class EncyclopediaWindowController
             null,
             uiContext.GetPlayerFactionInstanceID()
         );
-        int entryIndex = FindEntryIndex(entries, GetEntryTypeId(target));
+        int entryIndex = FindEntryIndex(entries, GetEntryTypeID(target));
         EncyclopediaWindowSession session = GetSession(view);
         session.OpenEntry(
             entryIndex >= 0 && entryIndex < entries.Count ? entries[entryIndex] : null
@@ -223,7 +223,7 @@ public sealed class EncyclopediaWindowController
     /// </summary>
     /// <param name="target">The strategy node to translate.</param>
     /// <returns>The catalog type identifier associated with the node.</returns>
-    internal static string GetEntryTypeId(ISceneNode target)
+    internal static string GetEntryTypeID(ISceneNode target)
     {
         if (target == null)
             return null;

@@ -193,6 +193,9 @@ namespace Rebellion.Game.Results
         public Faction InstigatorFaction { get; set; }
     }
 
+    /// <summary>
+    /// A planet is approaching an uprising.
+    /// </summary>
     public class PlanetNearUprisingResult : GameResult
     {
         public Planet Planet { get; set; }
@@ -733,6 +736,9 @@ namespace Rebellion.Game.Results
         public bool DefenderCanRetreat { get; set; }
     }
 
+    /// <summary>
+    /// Describes one target affected by an orbital bombardment strike.
+    /// </summary>
     public class BombardmentStrikeEvent
     {
         public BombardmentTargetType TargetType { get; set; }

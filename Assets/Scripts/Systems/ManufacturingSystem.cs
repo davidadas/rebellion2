@@ -766,7 +766,7 @@ namespace Rebellion.Systems
         /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <returns>Facilities with a ready production point.</returns>
-        private static List<Building> AdvanceProductionFacilities(
+        private List<Building> AdvanceProductionFacilities(
             Planet planet,
             ManufacturingType type,
             Faction faction,
@@ -782,15 +782,29 @@ namespace Rebellion.Systems
                 )
                 .ToList();
 
+            double cycleIncrement = GetProductionCycleIncrement(planet);
             foreach (Building facility in productionFacilities)
-                AdvanceProductionFacility(
-                    facility,
-                    faction,
-                    hasQueuedItems,
-                    planet.IsProductionSuspended()
-                );
+                AdvanceProductionFacility(facility, faction, hasQueuedItems, cycleIncrement);
 
             return productionFacilities.Where(facility => facility.ProductionPointReady).ToList();
+        }
+
+        /// <summary>
+        /// Gets the production-cycle progress available to a planet during this tick.
+        /// </summary>
+        /// <param name="planet">The production planet.</param>
+        /// <returns>The progress available after uprising and blockade effects.</returns>
+        private double GetProductionCycleIncrement(Planet planet)
+        {
+            if (planet.IsInUprising)
+                return 0;
+
+            GameConfig.BlockadeConfig config = _game.Config.Blockade;
+            int modifier = planet.GetBlockadeModifier(
+                config.CapitalShipProductionPenaltyPercent,
+                config.FighterProductionPenaltyPercent
+            );
+            return (double)modifier / _productionRateScale;
         }
 
         /// <summary>
@@ -799,18 +813,18 @@ namespace Rebellion.Systems
         /// <param name="facility">The facility to advance.</param>
         /// <param name="faction">The owning faction.</param>
         /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
-        /// <param name="isSuspended">Whether production is suspended at the planet.</param>
+        /// <param name="cycleIncrement">The production progress available this tick.</param>
         private static void AdvanceProductionFacility(
             Building facility,
             Faction faction,
             bool hasQueuedItems,
-            bool isSuspended
+            double cycleIncrement
         )
         {
             if (facility.ProductionPointReady)
                 return;
 
-            if (isSuspended)
+            if (cycleIncrement <= 0)
                 return;
 
             if (!facility.ProductionInputReserved)
@@ -827,7 +841,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            facility.ProductionCycleProgress++;
+            facility.ProductionCycleProgress += cycleIncrement;
             if (facility.ProductionCycleProgress >= processRate)
             {
                 facility.ProductionCycleProgress = 0;

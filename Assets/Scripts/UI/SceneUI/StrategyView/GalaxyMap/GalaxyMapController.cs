@@ -157,7 +157,7 @@ public sealed class GalaxyMapController
         target = null;
         if (
             view == null
-            || !view.TryGetPlanetInstanceId(eventData, out string planetInstanceId)
+            || !view.TryGetPlanetInstanceID(eventData, out string planetInstanceId)
             || !planetsByInstanceId.TryGetValue(planetInstanceId, out GalaxyMapPlanet planet)
         )
             return false;

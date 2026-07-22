@@ -36,7 +36,7 @@ public static class GameLaunchContext
     /// <returns>The default launch summary.</returns>
     private static GameSummary CreateDefaultSummary()
     {
-        string[] startingFactionIds = GetDefaultStartingFactionIds();
+        string[] startingFactionIds = GetDefaultStartingFactionIDs();
         return new GameSummary
         {
             Difficulty = GameDifficulty.Easy,
@@ -53,7 +53,7 @@ public static class GameLaunchContext
     /// Loads the configured faction identifiers available to a new game.
     /// </summary>
     /// <returns>The configured faction identifiers, or an empty array when data is unavailable.</returns>
-    private static string[] GetDefaultStartingFactionIds()
+    private static string[] GetDefaultStartingFactionIDs()
     {
         try
         {

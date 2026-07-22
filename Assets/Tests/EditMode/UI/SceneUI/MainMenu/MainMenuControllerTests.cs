@@ -26,7 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void SelectFaction_ConfiguredId_UpdatesLaunchSummary()
+        public void SelectFaction_ConfiguredID_UpdatesLaunchSummary()
         {
             _controller.SelectFaction("faction-2");
 

@@ -9,54 +9,38 @@ namespace Rebellion.Game
     [PersistableObject]
     public class GameConfig
     {
-        /// <summary>AI scheduling, planning, and scoring settings.</summary>
         public AIConfig AI { get; set; } = new AIConfig();
 
-        /// <summary>Movement timing settings.</summary>
         public MovementConfig Movement { get; set; } = new MovementConfig();
 
-        /// <summary>Manufacturing and maintenance settings.</summary>
         public ProductionConfig Production { get; set; } = new ProductionConfig();
 
-        /// <summary>Planet limit settings.</summary>
         public PlanetConfig Planet { get; set; } = new PlanetConfig();
 
-        /// <summary>Combat resolution settings.</summary>
         public CombatConfig Combat { get; set; } = new CombatConfig();
 
-        /// <summary>Uprising resolution settings.</summary>
         public UprisingConfig Uprising { get; set; } = new UprisingConfig();
 
-        /// <summary>Popular support drift settings.</summary>
         public SupportShiftConfig SupportShift { get; set; } = new SupportShiftConfig();
 
-        /// <summary>Blockade resolution settings.</summary>
         public BlockadeConfig Blockade { get; set; } = new BlockadeConfig();
 
-        /// <summary>Victory condition settings.</summary>
         public VictoryConfig Victory { get; set; } = new VictoryConfig();
 
-        /// <summary>Force progression settings.</summary>
         public JediConfig Jedi { get; set; } = new JediConfig();
 
-        /// <summary>Research progression settings.</summary>
         public ResearchConfig Research { get; set; } = new ResearchConfig();
 
-        /// <summary>Assassination outcome settings.</summary>
         public AssassinationConfig Assassination { get; set; } = new AssassinationConfig();
 
-        /// <summary>Healing and repair settings.</summary>
         public RecoveryConfig Recovery { get; set; } = new RecoveryConfig();
 
-        /// <summary>Captive escape settings.</summary>
         public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
 
-        /// <summary>Game tick speed settings.</summary>
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
 
         public MessageConfig Messages { get; set; } = new MessageConfig();
 
-        /// <summary>Shared probability table settings.</summary>
         public ProbabilityTablesConfig ProbabilityTables { get; set; } =
             new ProbabilityTablesConfig();
 
@@ -66,46 +50,33 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIConfig
         {
-            /// <summary>Ticks between AI decision cycles.</summary>
             public int TickInterval { get; set; }
 
-            /// <summary>Whether AI combat planning may queue planetary assaults.</summary>
             public bool EnablePlanetaryAssaults { get; set; } = true;
 
-            /// <summary>Minimum diplomacy required for the AI to assign diplomacy.</summary>
             public int DiplomacyMinimumSkill { get; set; } = 69;
 
-            /// <summary>Minimum leadership required for the AI to assign recruitment.</summary>
             public int RecruitmentMinimumLeadership { get; set; } = 80;
 
-            /// <summary>Mission dispatch probability tables.</summary>
             public AIMissionTablesConfig MissionTables { get; set; } = new AIMissionTablesConfig();
 
-            /// <summary>Mission proposal candidate limits.</summary>
             public AIMissionPlanningConfig MissionPlanning { get; set; } =
                 new AIMissionPlanningConfig();
 
-            /// <summary>Garrison requirement parameters.</summary>
             public GarrisonConfig Garrison { get; set; } = new GarrisonConfig();
 
-            /// <summary>Lower bound for the fleet deployment probability gate.</summary>
             public int DeploymentGateLow { get; set; }
 
-            /// <summary>Upper bound for the fleet deployment probability gate.</summary>
             public int DeploymentGateHigh { get; set; }
 
-            /// <summary>Unit selection parameters for AI manufacturing.</summary>
             public AISelectionConfig Selection { get; set; } = new AISelectionConfig();
 
-            /// <summary>Non-capital strategic summary thresholds.</summary>
             public AINonCapitalSummaryConfig NonCapitalSummary { get; set; } =
                 new AINonCapitalSummaryConfig();
 
-            /// <summary>Infrastructure shortage parameters for AI manufacturing.</summary>
             public AIInfrastructureConfig Infrastructure { get; set; } =
                 new AIInfrastructureConfig();
 
-            /// <summary>Fleet attack and deployment scoring settings.</summary>
             public AIFleetDeploymentConfig FleetDeployment { get; set; } =
                 new AIFleetDeploymentConfig();
         }
@@ -116,16 +87,12 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionPlanningConfig
         {
-            /// <summary>Maximum diplomacy mission planet candidates to consider.</summary>
             public int DiplomacyCandidatePlanetLimit { get; set; } = 8;
 
-            /// <summary>Maximum research mission planet candidates to consider.</summary>
             public int ResearchCandidatePlanetLimit { get; set; } = 4;
 
-            /// <summary>Maximum sabotage mission planet candidates to consider.</summary>
             public int SabotageCandidatePlanetLimit { get; set; } = 5;
 
-            /// <summary>Maximum enemy officer candidates to consider.</summary>
             public int OfficerTargetCandidateLimit { get; set; } = 4;
         }
 
@@ -135,43 +102,30 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIFleetDeploymentConfig
         {
-            /// <summary>Minimum friendly attack strength required before attacking.</summary>
             public int MinimumAttackStrength { get; set; }
 
-            /// <summary>Minimum defensive strength a fleet should keep available.</summary>
             public int MinimumDefenseStrength { get; set; } = 1000;
 
-            /// <summary>Minimum loaded regiments required before attempting planet capture.</summary>
             public int MinimumPlanetaryAssaultRegimentCount { get; set; } = 1;
 
-            /// <summary>Required attack strength as a percent of planet defense.</summary>
             public int AttackStrengthPercentOfDefense { get; set; }
 
-            /// <summary>Required attack strength as a percent of the strongest hostile fleet.</summary>
             public int AttackStrengthPercentOfStrongestHostileFleet { get; set; }
 
-            /// <summary>Score weight for target strategic value.</summary>
             public int AttackStrategicValueWeight { get; set; } = 55;
 
-            /// <summary>Score weight for fleet readiness.</summary>
             public int AttackReadinessWeight { get; set; } = 35;
 
-            /// <summary>Score weight for capture viability.</summary>
             public int AttackCaptureViabilityWeight { get; set; } = 45;
 
-            /// <summary>Score weight for travel efficiency.</summary>
             public int AttackTravelEfficiencyWeight { get; set; } = 20;
 
-            /// <summary>Score penalty weight for expected losses.</summary>
             public int AttackExpectedLossPenaltyWeight { get; set; } = 50;
 
-            /// <summary>Score penalty weight for committing a fleet to an attack.</summary>
             public int AttackOpportunityCostPenaltyWeight { get; set; } = 30;
 
-            /// <summary>Score bonus for continuing an existing attack order.</summary>
             public int ExistingAttackOrderBonus { get; set; } = 25;
 
-            /// <summary>Score bonus for attacking an enemy headquarters.</summary>
             public int HeadquartersAttackBonus { get; set; } = 45;
         }
 
@@ -288,18 +242,12 @@ namespace Rebellion.Game
         [PersistableObject]
         public class GarrisonConfig
         {
-            /// <summary>Popular support threshold below which garrison troops are required.</summary>
             public int SupportThreshold { get; set; }
 
-            /// <summary>Divisor for the garrison requirement calculation.</summary>
             public int GarrisonDivisor { get; set; }
 
-            /// <summary>Multiplier applied to the garrison requirement during an uprising.</summary>
             public int UprisingMultiplier { get; set; }
 
-            /// <summary>
-            /// Maximum remaining planet garrison deficit that still allows loading regiments into fleets.
-            /// </summary>
             public int FleetLoadingDeficitThreshold { get; set; }
         }
 
@@ -309,10 +257,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class UprisingConfig
         {
-            /// <summary>Range for the uprising dice roll.</summary>
             public int DiceRange { get; set; }
 
-            /// <summary>Addend applied to each uprising dice roll.</summary>
             public int DiceAddend { get; set; }
 
             public int MissionLeadershipDivisor { get; set; }
@@ -329,27 +275,20 @@ namespace Rebellion.Game
 
             public int SubdueNeutralSupportRange { get; set; }
 
-            /// <summary>Maps an uprising score to a property damage consequence code.</summary>
             public Dictionary<int, int> PrimaryConsequenceTable { get; set; } =
                 new Dictionary<int, int>();
 
-            /// <summary>Maps an uprising score to a personnel consequence code.</summary>
             public Dictionary<int, int> SecondaryConsequenceTable { get; set; } =
                 new Dictionary<int, int>();
 
-            /// <summary>Popular support shift applied to the controlling faction on each uprising support pulse.</summary>
             public int ControllerSupportShift { get; set; }
 
-            /// <summary>Minimum ticks between active-uprising support drift pulses.</summary>
             public int ActiveSupportDriftMinTicks { get; set; }
 
-            /// <summary>Maximum ticks between active-uprising support drift pulses.</summary>
             public int ActiveSupportDriftMaxTicks { get; set; }
 
-            /// <summary>Minimum ticks between active-uprising incident pulses.</summary>
             public int IncidentPulseMinTicks { get; set; }
 
-            /// <summary>Maximum ticks between active-uprising incident pulses.</summary>
             public int IncidentPulseMaxTicks { get; set; }
 
             public int ClearUprisingMinTicks { get; set; }
@@ -363,34 +302,24 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SupportShiftConfig
         {
-            /// <summary>Support must be at or below this for a shift to apply.</summary>
             public int ShiftThreshold { get; set; }
 
-            /// <summary>Lower boundary of the middle bracket.</summary>
             public int LowBracketCeiling { get; set; }
 
-            /// <summary>Upper boundary of the middle bracket.</summary>
             public int MidBracketCeiling { get; set; }
 
-            /// <summary>Base shift for support in the low bracket.</summary>
             public int LowBracketShift { get; set; }
 
-            /// <summary>Base shift for support in the mid bracket.</summary>
             public int MidBracketShift { get; set; }
 
-            /// <summary>Base shift for support in the high bracket.</summary>
             public int HighBracketShift { get; set; }
 
-            /// <summary>Penalty per hostile fleet.</summary>
             public int FleetPenalty { get; set; }
 
-            /// <summary>Penalty per hostile fighter squadron.</summary>
             public int FighterPenalty { get; set; }
 
-            /// <summary>Penalty per hostile troop.</summary>
             public int TroopPenalty { get; set; }
 
-            /// <summary>Popular support threshold above which a neutral planet transfers to the faction.</summary>
             public int OwnershipTransferThreshold { get; set; }
 
             public int WeakSupportPenaltyDivisor { get; set; }
@@ -399,25 +328,18 @@ namespace Rebellion.Game
 
             public int ControlChangeSupportShift { get; set; }
 
-            /// <summary>Support shift when a blockading fleet matches the popular support side.</summary>
             public int BlockadeMatchShift { get; set; }
 
-            /// <summary>Support shift when a blockading fleet opposes the popular support side.</summary>
             public int BlockadeOpposeShift { get; set; }
 
-            /// <summary>Support shift applied after a successful diplomacy mission completes.</summary>
             public int DiplomacyCompletionSupportBonus { get; set; }
 
-            /// <summary>Base support shift for successful diplomacy on an owned planet.</summary>
             public int DiplomacyOwnedPlanetSupportBase { get; set; }
 
-            /// <summary>Random support shift range for successful diplomacy on an owned planet.</summary>
             public int DiplomacyOwnedPlanetSupportRange { get; set; }
 
-            /// <summary>Base support shift for successful diplomacy on a neutral planet.</summary>
             public int DiplomacyNeutralPlanetSupportBase { get; set; }
 
-            /// <summary>Random support shift range for successful diplomacy on a neutral planet.</summary>
             public int DiplomacyNeutralPlanetSupportRange { get; set; }
         }
 
@@ -427,34 +349,24 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIMissionTablesConfig
         {
-            /// <summary>Reconnaissance mission dispatch table.</summary>
             public Dictionary<int, int> Reconnaissance { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Diplomacy mission dispatch table.</summary>
             public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>SubdueUprising mission dispatch table.</summary>
             public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Espionage mission dispatch table.</summary>
             public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>InciteUprising mission dispatch table.</summary>
             public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Rescue mission dispatch table.</summary>
             public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Sabotage mission dispatch table.</summary>
             public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Abduction mission dispatch table.</summary>
             public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Assassination mission dispatch table.</summary>
             public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Recruitment mission dispatch table.</summary>
             public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
         }
 
@@ -464,16 +376,12 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MovementConfig
         {
-            /// <summary>Distance scaling factor for transit time.</summary>
             public double DistanceScale { get; set; }
 
-            /// <summary>Minimum transit ticks regardless of distance.</summary>
             public int MinTransitTicks { get; set; }
 
-            /// <summary>Minimum transit ticks for movement between planets in the same system.</summary>
             public int SameSystemMinTransitTicks { get; set; }
 
-            /// <summary>Default hyperdrive rating for fighters and troops.</summary>
             public int DefaultFighterHyperdrive { get; set; }
         }
 
@@ -483,19 +391,14 @@ namespace Rebellion.Game
         [PersistableObject]
         public class ProductionConfig
         {
-            /// <summary>Ticks between maintenance shortfall auto-scrap attempts.</summary>
             public int MaintenanceShortfallAutoscrapInterval { get; set; }
 
-            /// <summary>Share of a resource facility's capacity used to scale maintenance load.</summary>
             public int ResourceMaintenanceLoadPercent { get; set; }
 
-            /// <summary>Base percentage used to convert popular support into cycle duration.</summary>
             public int ResourceCollectionBasePercent { get; set; }
 
-            /// <summary>Fixed share of a normal cycle used by a resource facility's first cycle.</summary>
             public int ResourceStartupBasePercent { get; set; }
 
-            /// <summary>Random share of a normal cycle used by a resource facility's first cycle.</summary>
             public int ResourceStartupRandomPercent { get; set; }
         }
 
@@ -505,10 +408,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class PlanetConfig
         {
-            /// <summary>Maximum energy capacity per planet.</summary>
             public int MaxEnergy { get; set; }
 
-            /// <summary>Maximum raw resource nodes per planet.</summary>
             public int MaxRawMaterials { get; set; }
         }
 
@@ -526,6 +427,9 @@ namespace Rebellion.Game
             public SpaceCombatConfig SpaceCombat { get; set; } = new SpaceCombatConfig();
         }
 
+        /// <summary>
+        /// Orbital bombardment resolution parameters.
+        /// </summary>
         [PersistableObject]
         public class BombardmentConfig
         {
@@ -550,6 +454,9 @@ namespace Rebellion.Game
                 new List<string>();
         }
 
+        /// <summary>
+        /// Planetary assault resolution parameters.
+        /// </summary>
         [PersistableObject]
         public class PlanetaryAssaultConfig
         {
@@ -564,31 +471,33 @@ namespace Rebellion.Game
             public int CaptureGarrisonCount { get; set; }
         }
 
+        /// <summary>
+        /// Space combat damage and loss parameters.
+        /// </summary>
         [PersistableObject]
         public class SpaceCombatConfig
         {
             public int FighterTacticalDurability { get; set; }
 
-            /// <summary>Percent variance applied symmetrically to each weapon damage roll.</summary>
             public int WeaponDamageVariancePercent { get; set; }
 
-            /// <summary>Percent of each side's fighter squadrons that can be lost per dogfight round.</summary>
             public int FighterDogfightLossRatePercent { get; set; }
 
-            /// <summary>Minimum percent of nominal fighter damage applied per strike.</summary>
             public int FighterDamageBasePercent { get; set; }
 
-            /// <summary>Percent spread added to the minimum fighter damage.</summary>
             public int FighterDamageSpreadPercent { get; set; }
         }
 
         /// <summary>
-        /// Evacuation losses when units depart blockaded planets.
+        /// Manufacturing and evacuation penalties during blockades.
         /// </summary>
         [PersistableObject]
         public class BlockadeConfig
         {
-            /// <summary>Percent chance each regiment is destroyed when evacuating through a blockade.</summary>
+            public int CapitalShipProductionPenaltyPercent { get; set; }
+
+            public int FighterProductionPenaltyPercent { get; set; }
+
             public int EvacuationLossPercent { get; set; }
         }
 
@@ -604,49 +513,34 @@ namespace Rebellion.Game
         [PersistableObject]
         public class JediConfig
         {
-            /// <summary>ForceRank threshold to enter the discovering-force-user state.</summary>
             public int DiscoveringForceUserThreshold { get; set; }
 
-            /// <summary>ForceRank threshold for full Jedi qualification.</summary>
             public int ForceQualifiedThreshold { get; set; }
 
-            /// <summary>ForceRank threshold for Force-based fast healing.</summary>
             public int FastHealThreshold { get; set; }
 
-            /// <summary>ForceValue increment per successful mission.</summary>
             public int ForceGrowthPerMission { get; set; }
 
-            /// <summary>Training catch-up range percentage.</summary>
             public int TrainingCatchUpPercent { get; set; }
 
-            /// <summary>ForceRank threshold for Luke to learn his heritage.</summary>
             public int HeritageThreshold { get; set; }
 
-            /// <summary>Percent bonus to ForceRank on Dagobah mission completion.</summary>
             public int DagobahCompletionBonusPercent { get; set; }
 
-            /// <summary>Local force-user minimum rank for encounter eligibility.</summary>
             public int EncounterLocalMinRank { get; set; }
 
-            /// <summary>Cross-side force-user minimum rank for encounter eligibility.</summary>
             public int EncounterCrossSideMinRank { get; set; }
 
-            /// <summary>Offset applied to the encounter probability calculation.</summary>
             public int EncounterProbabilityOffset { get; set; }
 
-            /// <summary>ForceRank threshold for the Novice label.</summary>
             public int RankLabelNovice { get; set; }
 
-            /// <summary>ForceRank threshold for the Trainee label.</summary>
             public int RankLabelTrainee { get; set; }
 
-            /// <summary>ForceRank threshold for the ForceStudent label.</summary>
             public int RankLabelForceStudent { get; set; }
 
-            /// <summary>ForceRank threshold for the ForceKnight label.</summary>
             public int RankLabelForceKnight { get; set; }
 
-            /// <summary>ForceRank threshold for the ForceMaster label.</summary>
             public int RankLabelForceMaster { get; set; }
         }
 
@@ -656,16 +550,12 @@ namespace Rebellion.Game
         [PersistableObject]
         public class ResearchConfig
         {
-            /// <summary>Base research points awarded per successful research mission.</summary>
             public int BaseResearchPoints { get; set; }
 
-            /// <summary>Random bonus range added to the base research points on success.</summary>
             public int ResearchDiceRange { get; set; }
 
-            /// <summary>Base ticks between research capacity refresh pulses.</summary>
             public int RefreshIntervalBase { get; set; }
 
-            /// <summary>Random spread added to the base interval on each pulse.</summary>
             public int RefreshIntervalSpread { get; set; }
         }
 
@@ -675,16 +565,12 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AssassinationConfig
         {
-            /// <summary>Base injury always applied on a successful hit.</summary>
             public int BaseInjury { get; set; }
 
-            /// <summary>Upper bound of the primary injury roll.</summary>
             public int PrimaryInjuryRange { get; set; }
 
-            /// <summary>Upper bound of the secondary injury roll.</summary>
             public int SecondaryInjuryRange { get; set; }
 
-            /// <summary>Probability that a hit kills the target outright.</summary>
             public int KillProbability { get; set; }
         }
 
@@ -694,25 +580,18 @@ namespace Rebellion.Game
         [PersistableObject]
         public class RecoveryConfig
         {
-            /// <summary>Maximum injury points an officer can accumulate.</summary>
             public int MaxInjuryPoints { get; set; }
 
-            /// <summary>Injury points healed per tick for officers with FastHeal.</summary>
             public int FastHealAmount { get; set; }
 
-            /// <summary>Injury points healed per tick for normal officers.</summary>
             public int NormalHealAmount { get; set; }
 
-            /// <summary>Hull points repaired per tick for ships at a friendly shipyard.</summary>
             public int FastRepairAmount { get; set; }
 
-            /// <summary>Hull points repaired per tick for ships not at a shipyard.</summary>
             public int NormalRepairAmount { get; set; }
 
-            /// <summary>Fighters replaced per tick for squadrons at a friendly planet.</summary>
             public int FastReplacementAmount { get; set; }
 
-            /// <summary>Fighters replaced per tick for squadrons not at a friendly planet.</summary>
             public int NormalReplacementAmount { get; set; }
         }
 
@@ -722,10 +601,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class CaptiveConfig
         {
-            /// <summary>Maps an officer-versus-defense score to escape probability.</summary>
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Loyalty shift applied on a successful escape.</summary>
             public int EscapeLoyaltyShift { get; set; }
         }
 
@@ -735,19 +612,18 @@ namespace Rebellion.Game
         [PersistableObject]
         public class GameSpeedConfig
         {
-            /// <summary>Tick interval for fast speed.</summary>
             public float FastTickIntervalSeconds { get; set; } = 1f;
 
-            /// <summary>Tick interval for medium speed.</summary>
             public float MediumTickIntervalSeconds { get; set; } = 10f;
 
-            /// <summary>Tick interval for slow speed.</summary>
             public float SlowTickIntervalSeconds { get; set; } = 60f;
 
-            /// <summary>Tick interval for very slow speed.</summary>
             public float VerySlowTickIntervalSeconds { get; set; } = 120f;
         }
 
+        /// <summary>
+        /// Message retention settings.
+        /// </summary>
         [PersistableObject]
         public class MessageConfig
         {
@@ -760,10 +636,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class ProbabilityTablesConfig
         {
-            /// <summary>Uprising start probability table.</summary>
             public Dictionary<int, int> UprisingStart { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Mission-related probability tables.</summary>
             public MissionProbabilityTablesConfig Mission { get; set; } =
                 new MissionProbabilityTablesConfig();
         }
@@ -774,62 +648,43 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MissionProbabilityTablesConfig
         {
-            /// <summary>Abduction success probability table.</summary>
             public Dictionary<int, int> Abduction { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Assassination success probability table.</summary>
             public Dictionary<int, int> Assassination { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Decoy probability table.</summary>
             public Dictionary<int, int> Decoy { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Percentage of defender espionage subtracted from the decoy score.</summary>
             public int DecoyDefenderScalingPercent { get; set; }
 
-            /// <summary>Percentage of defender espionage applied to mission foil checks.</summary>
             public int FoilDefenderScalingPercent { get; set; }
 
-            /// <summary>Flat modifier applied to mission foil checks.</summary>
             public int FoilFlatScoreAdjustment { get; set; }
 
-            /// <summary>Diplomacy success probability table.</summary>
             public Dictionary<int, int> Diplomacy { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Death Star sabotage success probability table.</summary>
             public Dictionary<int, int> DeathStarSabotage { get; set; } =
                 new Dictionary<int, int>();
 
-            /// <summary>Espionage success probability table.</summary>
             public Dictionary<int, int> Espionage { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Mission foil probability table.</summary>
             public Dictionary<int, int> Foil { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Kill-or-capture outcome table.</summary>
             public Dictionary<int, int> KillOrCapture { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Fallback mission success probability when a table has no match.</summary>
             public int DefaultSuccessProbability { get; set; } = 50;
 
-            /// <summary>Fallback kill-or-capture probability when the table has no match.</summary>
             public int DefaultKillOrCaptureProbability { get; set; } = 50;
 
-            /// <summary>Incite uprising success probability table.</summary>
             public Dictionary<int, int> InciteUprising { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Recruitment success probability table.</summary>
             public Dictionary<int, int> Recruitment { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Rescue success probability table.</summary>
             public Dictionary<int, int> Rescue { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Sabotage success probability table.</summary>
             public Dictionary<int, int> Sabotage { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Subdue uprising success probability table.</summary>
             public Dictionary<int, int> SubdueUprising { get; set; } = new Dictionary<int, int>();
 
-            /// <summary>Per-mission tick ranges.</summary>
             public MissionTickRangesConfig TickRanges { get; set; } = new MissionTickRangesConfig();
 
             /// <summary>
@@ -862,10 +717,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MissionTickConfig
         {
-            /// <summary>Guaranteed minimum ticks before the mission executes.</summary>
             public int Base { get; set; }
 
-            /// <summary>Random spread added to the base.</summary>
             public int Spread { get; set; }
         }
 
@@ -875,40 +728,28 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MissionTickRangesConfig
         {
-            /// <summary>Tick range for Abduction.</summary>
             public MissionTickConfig Abduction { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Assassination.</summary>
             public MissionTickConfig Assassination { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Diplomacy.</summary>
             public MissionTickConfig Diplomacy { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Espionage.</summary>
             public MissionTickConfig Espionage { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for InciteUprising.</summary>
             public MissionTickConfig InciteUprising { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Reconnaissance.</summary>
             public MissionTickConfig Reconnaissance { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Recruitment.</summary>
             public MissionTickConfig Recruitment { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Rescue.</summary>
             public MissionTickConfig Rescue { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Sabotage.</summary>
             public MissionTickConfig Sabotage { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for SubdueUprising.</summary>
             public MissionTickConfig SubdueUprising { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for Research.</summary>
             public MissionTickConfig Research { get; set; } = new MissionTickConfig();
 
-            /// <summary>Tick range for JediTraining.</summary>
             public MissionTickConfig JediTraining { get; set; } = new MissionTickConfig();
 
             /// <summary>

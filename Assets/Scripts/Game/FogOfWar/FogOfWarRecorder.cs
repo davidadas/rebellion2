@@ -338,7 +338,7 @@ namespace Rebellion.Game.FogOfWar
                 return;
 
             snapshot.HasManufacturingIntelligence = true;
-            HashSet<string> observedIds = GetManufacturableIds(snapshot);
+            HashSet<string> observedIds = GetManufacturableIDs(snapshot);
             foreach (IManufacturable item in previousSnapshot.ManufacturingQueueItems)
             {
                 if (!observedIds.Contains(item.InstanceID))
@@ -446,7 +446,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="snapshot">The snapshot to inspect.</param>
         /// <returns>The represented manufacturable entity identifiers.</returns>
-        private static HashSet<string> GetManufacturableIds(PlanetSnapshot snapshot)
+        private static HashSet<string> GetManufacturableIDs(PlanetSnapshot snapshot)
         {
             return snapshot
                 .Regiments.Cast<IManufacturable>()

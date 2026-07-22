@@ -977,7 +977,7 @@ public sealed class StrategyController
         if (
             window == null
             || action == 0
-            || strategyWindowManager.GetWindowById(window.Id) != window
+            || strategyWindowManager.GetWindowByID(window.Id) != window
         )
             return;
 
@@ -2160,7 +2160,7 @@ public sealed class StrategyController
     /// <param name="playPlanetWindowSound">Whether to play the planet-window collapse sound.</param>
     private void CloseWindow(UIWindow window, bool playPlanetWindowSound)
     {
-        if (window == null || strategyWindowManager.GetWindowById(window.Id) != window)
+        if (window == null || strategyWindowManager.GetWindowByID(window.Id) != window)
             return;
 
         bool resumeMusic = strategyWindowManager.TryGetWindowView(

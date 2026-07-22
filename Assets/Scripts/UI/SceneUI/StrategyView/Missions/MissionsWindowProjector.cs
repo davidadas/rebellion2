@@ -198,7 +198,7 @@ internal sealed class MissionsWindowProjector
         if (mission == null)
             return null;
 
-        string targetInstanceId = GetMissionTargetInstanceId(mission);
+        string targetInstanceId = GetMissionTargetInstanceID(mission);
         if (!string.IsNullOrEmpty(targetInstanceId))
             return findVisibleNode(targetInstanceId);
 
@@ -212,7 +212,7 @@ internal sealed class MissionsWindowProjector
     /// </summary>
     /// <param name="mission">The mission to inspect.</param>
     /// <returns>The explicit target identifier, or null.</returns>
-    private static string GetMissionTargetInstanceId(Mission mission)
+    private static string GetMissionTargetInstanceID(Mission mission)
     {
         return mission switch
         {

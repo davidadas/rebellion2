@@ -1930,11 +1930,11 @@ namespace Rebellion.Game.Messages
             {
                 Faction attacker = GetFaction(
                     game,
-                    GetSpaceCombatOwnerInstanceId(result, CombatSide.Attacker)
+                    GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker)
                 );
                 Faction defender = GetFaction(
                     game,
-                    GetSpaceCombatOwnerInstanceId(result, CombatSide.Defender)
+                    GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender)
                 );
                 AddDelivery(deliveries, attacker, CreateSpaceBattle(attacker, result, defender));
                 if (defender?.InstanceID != attacker?.InstanceID)
@@ -2829,12 +2829,12 @@ namespace Rebellion.Game.Messages
             if (result.Winner == CombatSide.Draw)
                 return MessageResultOutcome.Stalemate;
 
-            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Attacker))
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker))
                 return result.Winner == CombatSide.Attacker
                     ? MessageResultOutcome.Victory
                     : MessageResultOutcome.Defeat;
 
-            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Defender))
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender))
                 return result.Winner == CombatSide.Defender
                     ? MessageResultOutcome.Victory
                     : MessageResultOutcome.Defeat;
@@ -2850,10 +2850,10 @@ namespace Rebellion.Game.Messages
         /// <returns>The faction's participating fleet, or null.</returns>
         private static Fleet GetSpaceBattleFleet(Faction faction, SpaceCombatResult result)
         {
-            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Attacker))
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker))
                 return result.AttackerFleet;
 
-            return faction?.InstanceID == GetSpaceCombatOwnerInstanceId(result, CombatSide.Defender)
+            return faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender)
                 ? result.DefenderFleet
                 : null;
         }
@@ -2864,7 +2864,7 @@ namespace Rebellion.Game.Messages
         /// <param name="result">The completed space-combat result.</param>
         /// <param name="side">The represented combat side.</param>
         /// <returns>The captured owner identifier, with the participating fleet as fallback.</returns>
-        private static string GetSpaceCombatOwnerInstanceId(
+        private static string GetSpaceCombatOwnerInstanceID(
             SpaceCombatResult result,
             CombatSide side
         )

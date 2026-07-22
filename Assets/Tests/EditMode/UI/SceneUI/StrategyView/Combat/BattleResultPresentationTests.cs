@@ -12,7 +12,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private const string _defenderId = "defender";
 
         [Test]
-        public void GetFleetForOwner_ResultOwnerIds_ReturnsMatchingFleet()
+        public void GetFleetForOwner_ResultOwnerIDs_ReturnsMatchingFleet()
         {
             GameFleet attacker = CreateFleet("attacking-fleet", "fleet-owner-a");
             GameFleet defender = CreateFleet("defending-fleet", "fleet-owner-b");
@@ -38,7 +38,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void GetFleetForOwner_MissingResultOwnerIds_UsesFleetOwners()
+        public void GetFleetForOwner_MissingResultOwnerIDs_UsesFleetOwners()
         {
             GameFleet attacker = CreateFleet("attacking-fleet", _attackerId);
             GameFleet defender = CreateFleet("defending-fleet", _defenderId);

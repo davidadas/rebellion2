@@ -148,7 +148,7 @@ internal static class BattleResultPresentation
         CombatSide side
     )
     {
-        string ownerInstanceId = GetOwnerIdForSide(result, side);
+        string ownerInstanceId = GetOwnerIDForSide(result, side);
         if (ownerInstanceId == theme.FirstForcesOwnerInstanceID)
             return theme.FirstForcesVictoriousImagePath;
         if (ownerInstanceId == theme.SecondForcesOwnerInstanceID)
@@ -169,7 +169,7 @@ internal static class BattleResultPresentation
         CombatSide side
     )
     {
-        string ownerInstanceId = GetOwnerIdForSide(result, side);
+        string ownerInstanceId = GetOwnerIDForSide(result, side);
         if (ownerInstanceId == theme.FirstForcesOwnerInstanceID)
             return theme.FirstForcesDefeatedImagePath;
         if (ownerInstanceId == theme.SecondForcesOwnerInstanceID)
@@ -183,7 +183,7 @@ internal static class BattleResultPresentation
     /// <param name="result">The completed combat result.</param>
     /// <param name="side">The requested combat side.</param>
     /// <returns>The represented owner identifier.</returns>
-    private static string GetOwnerIdForSide(SpaceCombatResult result, CombatSide side)
+    private static string GetOwnerIDForSide(SpaceCombatResult result, CombatSide side)
     {
         return side switch
         {

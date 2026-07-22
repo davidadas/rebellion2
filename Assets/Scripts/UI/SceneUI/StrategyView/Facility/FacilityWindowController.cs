@@ -470,7 +470,7 @@ public sealed class FacilityWindowController
         FacilityWindowTab? manufacturingTab = GetContextManufacturingTab(view);
         if (
             !manufacturingTab.HasValue
-            || !TryGetConstructionDestinationIds(
+            || !TryGetConstructionDestinationIDs(
                 view,
                 manufacturingTab.Value,
                 out string destinationPlanetId,
@@ -498,7 +498,7 @@ public sealed class FacilityWindowController
     /// <param name="destinationPlanetId">Receives the destination planet identifier.</param>
     /// <param name="destinationItemId">Receives the destination entity identifier.</param>
     /// <returns>True when the panel maps to a manufacturing category.</returns>
-    public bool TryGetConstructionDestinationIds(
+    public bool TryGetConstructionDestinationIDs(
         FacilityWindowView view,
         FacilityWindowTab manufacturingTab,
         out string destinationPlanetId,

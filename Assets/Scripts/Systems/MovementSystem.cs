@@ -200,8 +200,8 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="participants">The mission participants that are free to return.</param>
         /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
-        /// <returns>True when every return group was validated and accepted.</returns>
-        internal bool TryReturnFromMission(
+        /// <returns>Units that could not be assigned to a return destination.</returns>
+        internal List<IMovable> ReturnFromMission(
             IReadOnlyList<IMissionParticipant> participants,
             IReadOnlyList<IMovable> additionalPassengers
         )
@@ -214,36 +214,24 @@ namespace Rebellion.Systems
             Dictionary<ContainerNode, List<IMovable>> returnGroups =
                 new Dictionary<ContainerNode, List<IMovable>>();
             HashSet<IMovable> returningUnits = new HashSet<IMovable>();
-            ContainerNode passengerDestination = null;
+            List<IMovable> strandedUnits = new List<IMovable>();
 
             foreach (IMissionParticipant participant in participants)
             {
                 if (participant == null)
-                    return false;
-
-                ContainerNode destination = ResolveMissionReturnDestination(participant);
-                if (destination == null)
-                    return false;
+                    continue;
 
                 if (!returningUnits.Add(participant))
                     continue;
 
-                passengerDestination ??= destination;
-                AddToReturnGroup(returnGroups, destination, participant);
-            }
-
-            if (additionalPassengers.Count > 0 && passengerDestination == null)
-                return false;
-
-            foreach (IMovable passenger in additionalPassengers)
-            {
-                if (passenger == null || passenger.Movement != null)
-                    return false;
-
-                if (!returningUnits.Add(passenger))
+                ContainerNode destination = ResolveMissionReturnDestination(participant);
+                if (destination == null)
+                {
+                    strandedUnits.Add(participant);
                     continue;
+                }
 
-                AddToReturnGroup(returnGroups, passengerDestination, passenger);
+                AddToReturnGroup(returnGroups, destination, participant);
             }
 
             Dictionary<IMovable, MovementState> interruptedMovements = returningUnits
@@ -252,13 +240,34 @@ namespace Rebellion.Systems
             foreach (IMovable unit in interruptedMovements.Keys)
                 unit.Movement = null;
 
-            foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
+            foreach (
+                KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups.ToList()
+            )
             {
                 if (!CanMoveGroup(returnGroup.Value, returnGroup.Key))
                 {
-                    RestoreMovement(interruptedMovements);
-                    return false;
+                    strandedUnits.AddRange(returnGroup.Value);
+                    returnGroups.Remove(returnGroup.Key);
                 }
+            }
+
+            ContainerNode passengerDestination = returnGroups.Keys.FirstOrDefault();
+            List<IMovable> passengers = additionalPassengers
+                .Where(passenger => passenger != null && returningUnits.Add(passenger))
+                .ToList();
+            if (passengerDestination == null)
+            {
+                strandedUnits.AddRange(passengers);
+            }
+            else if (passengers.Count > 0)
+            {
+                List<IMovable> passengerGroup = returnGroups[passengerDestination]
+                    .Concat(passengers)
+                    .ToList();
+                if (CanMoveGroup(passengerGroup, passengerDestination))
+                    returnGroups[passengerDestination] = passengerGroup;
+                else
+                    strandedUnits.AddRange(passengers);
             }
 
             RestoreMovement(interruptedMovements);
@@ -269,7 +278,7 @@ namespace Rebellion.Systems
                     ExecuteMove(unit, returnGroup.Key, movementGroupID);
             }
 
-            return true;
+            return strandedUnits.Distinct().ToList();
         }
 
         /// <summary>
@@ -285,7 +294,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a participant's recorded container, recorded planet, or configured home planet.
+        /// Resolves a participant's recorded container, recorded planet, or nearest friendly destination.
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
@@ -298,53 +307,89 @@ namespace Rebellion.Systems
                 participant.MissionReturnParentInstanceID
             );
 
+            Planet returnParentPlanet =
+                returnParent as Planet ?? returnParent?.GetParentOfType<Planet>();
+            if (
+                returnParentPlanet?.IsDestroyed == false
+                && returnParent.CanAcceptChild(participant)
+            )
+                return returnParent;
+
             if (returnLocation?.IsDestroyed == false)
             {
-                if (
-                    returnParent != null
-                    && IsAtPlanet(returnParent, returnLocation)
-                    && returnParent.CanAcceptChild(participant)
-                )
-                    return returnParent;
-
                 if (returnLocation.CanAcceptChild(participant))
                     return returnLocation;
             }
 
-            return ResolveMissionReturnPlanet(participant);
+            return FindNearestMissionReturnDestination(participant);
         }
 
         /// <summary>
-        /// Resolves the faction-configured home planet used when a recorded return location is unavailable.
+        /// Finds the closest friendly planet or fleet that can receive a mission participant.
         /// </summary>
-        /// <param name="participant">The participant whose controlling faction supplies the fallback.</param>
-        /// <returns>The configured home planet, or null when it is unavailable.</returns>
-        private ContainerNode ResolveMissionReturnPlanet(IMissionParticipant participant)
+        /// <param name="participant">The participant that needs a return destination.</param>
+        /// <returns>The nearest valid destination, or null when the faction has none.</returns>
+        private ContainerNode FindNearestMissionReturnDestination(IMissionParticipant participant)
         {
             string ownerInstanceID = GetMovementControlOwner(participant);
-            Faction owner = _game
-                .GetFactions()
-                .FirstOrDefault(faction => faction.InstanceID == ownerInstanceID);
-            string returnPlanetTypeID = owner?.Settings.MissionReturnPlanetTypeID;
-            Planet returnPlanet = _game
-                .GetSceneNodesByType<Planet>()
-                .FirstOrDefault(planet => planet.TypeID == returnPlanetTypeID);
+            Planet sourcePlanet = participant.GetParentOfType<Planet>();
+            if (string.IsNullOrEmpty(ownerInstanceID) || sourcePlanet == null)
+                return null;
 
-            return returnPlanet?.IsDestroyed == false && returnPlanet.CanAcceptChild(participant)
-                ? returnPlanet
-                : null;
+            Planet nearestPlanet = _game
+                .GetSceneNodesByType<Planet>()
+                .Where(planet =>
+                    planet.IsColonized
+                    && !planet.IsDestroyed
+                    && planet.GetOwnerInstanceID() == ownerInstanceID
+                    && planet.CanAcceptChild(participant)
+                )
+                .OrderBy(planet => planet.GetRawDistanceTo(sourcePlanet.GetPosition()))
+                .ThenBy(planet => planet.InstanceID)
+                .FirstOrDefault();
+
+            var nearestFleet = _game
+                .GetSceneNodesByType<Fleet>()
+                .Where(fleet => fleet.GetOwnerInstanceID() == ownerInstanceID)
+                .Select(fleet => new
+                {
+                    Fleet = fleet,
+                    Destination = FindMissionReturnShip(participant, fleet),
+                })
+                .Where(candidate => candidate.Destination != null)
+                .OrderBy(candidate => sourcePlanet.GetRawDistanceTo(candidate.Fleet.GetPosition()))
+                .ThenBy(candidate => candidate.Fleet.InstanceID)
+                .FirstOrDefault();
+
+            if (nearestPlanet == null)
+                return nearestFleet?.Destination;
+            if (nearestFleet == null)
+                return nearestPlanet;
+
+            double planetDistance = nearestPlanet.GetRawDistanceTo(sourcePlanet.GetPosition());
+            double fleetDistance = sourcePlanet.GetRawDistanceTo(nearestFleet.Fleet.GetPosition());
+            return planetDistance <= fleetDistance ? nearestPlanet : nearestFleet.Destination;
         }
 
         /// <summary>
-        /// Returns whether a container is located at a specified planet.
+        /// Finds a usable ship in a friendly fleet for a returning mission participant.
         /// </summary>
-        /// <param name="container">The container to inspect.</param>
-        /// <param name="planet">The expected containing planet.</param>
-        /// <returns>True when the container is the planet or is contained by it.</returns>
-        private static bool IsAtPlanet(ContainerNode container, Planet planet)
+        /// <param name="participant">The participant that needs transport.</param>
+        /// <param name="fleet">The fleet being evaluated.</param>
+        /// <returns>A ship that can receive the participant, or null.</returns>
+        private static CapitalShip FindMissionReturnShip(
+            IMissionParticipant participant,
+            Fleet fleet
+        )
         {
-            return ReferenceEquals(container, planet)
-                || ReferenceEquals(container.GetParentOfType<Planet>(), planet);
+            return fleet
+                .CapitalShips.Where(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.GetParent() == fleet
+                    && ship.CanAcceptChild(participant)
+                )
+                .OrderBy(ship => ship.InstanceID)
+                .FirstOrDefault();
         }
 
         /// <summary>

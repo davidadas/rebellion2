@@ -27,11 +27,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            Faction faction = new Faction
-            {
-                InstanceID = "empire",
-                Settings = new FactionSettings { MissionReturnPlanetTypeID = "home-planet" },
-            };
+            Faction faction = new Faction { InstanceID = "empire" };
             game.Factions.Add(faction);
 
             PlanetSystem system = new PlanetSystem
@@ -185,13 +181,7 @@ namespace Rebellion.Tests.Systems
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(
-                new Faction
-                {
-                    InstanceID = "empire",
-                    Settings = new FactionSettings { MissionReturnPlanetTypeID = "empire-home" },
-                }
-            );
+            game.Factions.Add(new Faction { InstanceID = "empire" });
             game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem system = new PlanetSystem
@@ -307,7 +297,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_CompletedWithoutReturnDestination_ThrowsAndPreservesMission()
+        public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -351,12 +341,22 @@ namespace Rebellion.Tests.Systems
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            Assert.Throws<InvalidOperationException>(() => missionSystem.UpdateMission(mission));
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
-            Assert.AreSame(planet, mission.GetParent());
-            Assert.AreSame(mission, officer.GetParent());
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
             Assert.AreSame(officer, game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
             Assert.IsNull(officer.Movement);
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsTrue(officer.CanEscape);
+            Assert.IsTrue(
+                results.Any(result =>
+                    result is OfficerCaptureStateResult capture
+                    && capture.TargetOfficer == officer
+                    && capture.IsCaptured
+                    && capture.Context == planet
+                )
+            );
         }
 
         [Test]
@@ -413,19 +413,13 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToConfiguredPlanet()
+        public void UpdateMission_CompletedParticipantOnNeutralPlanet_ReturnsToNearestFriendlyPlanet()
         {
             // Regression: neutral planet (null owner) must not be used as reparent target —
             // AddOfficer rejects officers whose faction doesn't match the planet owner.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            game.Factions.Add(
-                new Faction
-                {
-                    InstanceID = "empire",
-                    Settings = new FactionSettings { MissionReturnPlanetTypeID = "home-planet" },
-                }
-            );
+            game.Factions.Add(new Faction { InstanceID = "empire" });
 
             PlanetSystem system = new PlanetSystem
             {
@@ -513,16 +507,8 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
 
-            Faction rebels = new Faction
-            {
-                InstanceID = "rebels",
-                Settings = new FactionSettings { MissionReturnPlanetTypeID = "rebels-home" },
-            };
-            Faction empire = new Faction
-            {
-                InstanceID = "empire",
-                Settings = new FactionSettings { MissionReturnPlanetTypeID = "empire-home" },
-            };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            Faction empire = new Faction { InstanceID = "empire" };
             game.Factions.Add(rebels);
             game.Factions.Add(empire);
 
@@ -770,9 +756,8 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToRecordedLocation()
+        public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToRecordedShip()
         {
-            // Fleet moved away mid-mission — officer falls back to its recorded location.
             (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
@@ -829,9 +814,9 @@ namespace Rebellion.Tests.Systems
             system.UpdateMission(mission);
 
             Assert.AreEqual(
-                planetA,
+                ship,
                 officer.GetParent(),
-                "Officer should return to its recorded location when the origin fleet has moved"
+                "Officer should return to its recorded ship when the origin fleet has moved"
             );
         }
 

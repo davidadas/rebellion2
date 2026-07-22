@@ -206,7 +206,7 @@ public sealed class BookmarkController
     private Texture2D GetBookmarkFleetTexture(Rebellion.Game.Galaxy.Planet planet)
     {
         return GetBookmarkFactionTexture(
-            SelectPresentFactionId(GetFleetOwnerFactionIds(planet), planet?.OwnerInstanceID),
+            SelectPresentFactionID(GetFleetOwnerFactionIDs(planet), planet?.OwnerInstanceID),
             PlanetIcon.Fleet
         );
     }
@@ -219,7 +219,7 @@ public sealed class BookmarkController
     private Texture2D GetBookmarkMissionTexture(Rebellion.Game.Galaxy.Planet planet)
     {
         return GetBookmarkFactionTexture(
-            SelectPresentFactionId(GetMissionOwnerFactionIds(planet), planet?.OwnerInstanceID),
+            SelectPresentFactionID(GetMissionOwnerFactionIDs(planet), planet?.OwnerInstanceID),
             PlanetIcon.Mission
         );
     }
@@ -295,7 +295,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The planet to inspect.</param>
     /// <returns>The faction identifiers in domain order.</returns>
-    private static List<string> GetFleetOwnerFactionIds(Rebellion.Game.Galaxy.Planet planet)
+    private static List<string> GetFleetOwnerFactionIDs(Rebellion.Game.Galaxy.Planet planet)
     {
         return planet
                 ?.Fleets?.Select(fleet => fleet.OwnerInstanceID)
@@ -310,7 +310,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The planet to inspect.</param>
     /// <returns>The faction identifiers in domain order.</returns>
-    private static List<string> GetMissionOwnerFactionIds(Rebellion.Game.Galaxy.Planet planet)
+    private static List<string> GetMissionOwnerFactionIDs(Rebellion.Game.Galaxy.Planet planet)
     {
         return planet
                 ?.Missions?.Select(mission => mission.OwnerInstanceID)
@@ -326,7 +326,7 @@ public sealed class BookmarkController
     /// <param name="presentFactionIds">The faction identifiers currently present.</param>
     /// <param name="ownerFactionId">The planet owner faction identifier.</param>
     /// <returns>The faction identifier whose bookmark art should be shown.</returns>
-    private static string SelectPresentFactionId(
+    private static string SelectPresentFactionID(
         IReadOnlyList<string> presentFactionIds,
         string ownerFactionId
     )

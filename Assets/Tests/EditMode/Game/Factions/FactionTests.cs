@@ -611,7 +611,6 @@ namespace Rebellion.Tests.Game.Factions
             _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
             _faction.TranslateCounterpart = false;
             _faction.AgentAdvice = false;
-            _faction.Settings.MissionReturnPlanetTypeID = "PLANET-TYPE";
             _faction.RawMaterialStockpile = 17;
             _faction.RefinedMaterialStockpile = 23;
             _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
@@ -647,10 +646,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsTrue(deserialized.IsAdvisorMessageNotificationEnabled(MessageType.Mission));
             Assert.IsFalse(deserialized.TranslateCounterpart);
             Assert.IsFalse(deserialized.AgentAdvice);
-            Assert.AreEqual(
-                _faction.Settings.MissionReturnPlanetTypeID,
-                deserialized.Settings.MissionReturnPlanetTypeID
-            );
             Assert.AreEqual(_faction.RawMaterialStockpile, deserialized.RawMaterialStockpile);
             Assert.AreEqual(
                 _faction.RefinedMaterialStockpile,
@@ -694,29 +689,6 @@ namespace Rebellion.Tests.Game.Factions
             Assert.AreEqual(1, _faction.RefinedMaterialStockpile);
             Assert.IsTrue(_building.ProductionInputReserved);
             Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
-        }
-
-        [Test]
-        public void ResourceData_MissionReturnPlanetsMatchConfiguredHomes()
-        {
-            Faction[] factions = ResourceManager.GetEntityData<Faction>();
-            Planet[] planets = ResourceManager
-                .GetEntityData<PlanetSystem>()
-                .SelectMany(system => system.Planets)
-                .ToArray();
-            Dictionary<string, string> expectedReturnPlanets = new Dictionary<string, string>
-            {
-                { "FNALL1", "PLSUM06" },
-                { "FNEMP1", "PLSEW05" },
-            };
-
-            foreach (Faction faction in factions)
-            {
-                string planetTypeID = faction.Settings.MissionReturnPlanetTypeID;
-
-                Assert.AreEqual(expectedReturnPlanets[faction.InstanceID], planetTypeID);
-                Assert.AreEqual(1, planets.Count(planet => planet.TypeID == planetTypeID));
-            }
         }
 
         [Test]

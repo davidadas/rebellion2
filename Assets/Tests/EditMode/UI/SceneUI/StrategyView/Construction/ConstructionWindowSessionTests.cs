@@ -53,7 +53,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         }
 
         [Test]
-        public void SetItems_ReorderedTemplates_PreservesSelectionByTypeId()
+        public void SetItems_ReorderedTemplates_PreservesSelectionByTypeID()
         {
             CapitalShip first = new CapitalShip { TypeID = "first" };
             CapitalShip selected = new CapitalShip { TypeID = "selected" };

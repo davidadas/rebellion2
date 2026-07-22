@@ -97,12 +97,12 @@ internal sealed class PlanetSystemWindowProjector
         string planetInstanceId = planet?.InstanceID;
         string ownerFactionId = planet?.OwnerInstanceID;
         bool unexplored = planet?.IsUnexploredView == true;
-        string fleetFactionId = SelectPresentFactionId(
-            GetFleetOwnerFactionIds(planet),
+        string fleetFactionId = SelectPresentFactionID(
+            GetFleetOwnerFactionIDs(planet),
             ownerFactionId
         );
-        string missionFactionId = SelectPresentFactionId(
-            GetMissionOwnerFactionIds(planet),
+        string missionFactionId = SelectPresentFactionID(
+            GetMissionOwnerFactionIDs(planet),
             ownerFactionId
         );
         bool showUprising = !unexplored && planet?.IsInUprising == true;
@@ -389,7 +389,7 @@ internal sealed class PlanetSystemWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The present fleet-owner identifiers.</returns>
-    private static List<string> GetFleetOwnerFactionIds(Planet planet)
+    private static List<string> GetFleetOwnerFactionIDs(Planet planet)
     {
         return planet
                 ?.Fleets?.Select(fleet => fleet.OwnerInstanceID)
@@ -404,7 +404,7 @@ internal sealed class PlanetSystemWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The present mission-owner identifiers.</returns>
-    private static List<string> GetMissionOwnerFactionIds(Planet planet)
+    private static List<string> GetMissionOwnerFactionIDs(Planet planet)
     {
         return planet
                 ?.Missions?.Select(mission => mission.OwnerInstanceID)
@@ -420,7 +420,7 @@ internal sealed class PlanetSystemWindowProjector
     /// <param name="presentFactionIds">The factions present at the planet.</param>
     /// <param name="ownerFactionId">The planet owner faction identifier.</param>
     /// <returns>The faction whose overlay should be shown, or null.</returns>
-    private static string SelectPresentFactionId(
+    private static string SelectPresentFactionID(
         IReadOnlyList<string> presentFactionIds,
         string ownerFactionId
     )

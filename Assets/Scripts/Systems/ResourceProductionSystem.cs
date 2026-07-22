@@ -203,7 +203,7 @@ namespace Rebellion.Systems
             List<Building> facilities = new List<Building>();
             foreach (Planet planet in faction.GetOwnedColonizedPlanets())
             {
-                if (planet.IsProductionSuspended())
+                if (planet.IsResourceProductionSuspended())
                     continue;
 
                 IEnumerable<Building> planetFacilities = planet.Buildings.Where(building =>

@@ -888,6 +888,83 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetBlockadeModifier_ActiveShipsAndFighters_ReducesProduction()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            CapitalShip activeShip = enemyFleet.CapitalShips.Single();
+            activeShip.Starfighters.Add(
+                new Starfighter
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            activeShip.Starfighters.Add(
+                new Starfighter
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            activeShip.Starfighters.Add(
+                new Starfighter
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+            enemyFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = new MovementState { TransitTicks = 10 },
+                }
+            );
+            _planet.AddChild(enemyFleet);
+            _planet.AddChild(
+                new Starfighter
+                {
+                    OwnerInstanceID = "FNALL1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            int modifier = _planet.GetBlockadeModifier(5, 2);
+
+            Assert.AreEqual(89, modifier);
+        }
+
+        [Test]
+        public void GetBlockadeModifier_ActiveKdyDefense_ReturnsFullProduction()
+        {
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+            _planet.AddChild(
+                new Building
+                {
+                    OwnerInstanceID = "FNALL1",
+                    BuildingType = BuildingType.Defense,
+                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            int modifier = _planet.GetBlockadeModifier(5, 2);
+
+            Assert.AreEqual(100, modifier);
+        }
+
+        [Test]
+        public void GetBlockadeModifier_HeavyBlockade_DoesNotReturnNegativeProduction()
+        {
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+
+            int modifier = _planet.GetBlockadeModifier(100, 2);
+
+            Assert.AreEqual(0, modifier);
+        }
+
+        [Test]
         public void BeginUprising_NonUprisingPlanet_SetsIsInUprisingFlag()
         {
             Planet planet = new Planet

@@ -41,7 +41,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     private readonly Func<UIWindow, IReadOnlyList<ISceneNode>> getContextItems;
     private readonly StrategyWindowDragPreviewResolver tryGetDragPreview;
     private readonly Func<PointerEventData, StrategyMissionTarget> getGalaxyMapDropTarget;
-    private readonly Func<string> getPlayerFactionId;
+    private readonly Func<string> getPlayerFactionID;
     private readonly IStrategyWindowCommandActions commands;
     private int candidateHotspotX;
     private int candidateHotspotY;
@@ -57,7 +57,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     /// <param name="getContextItems">Gets the semantic selection for a source window.</param>
     /// <param name="tryGetDragPreview">Builds the visual preview for a source window.</param>
     /// <param name="getGalaxyMapDropTarget">Resolves a galaxy-map target beneath a pointer.</param>
-    /// <param name="getPlayerFactionId">Returns the active player faction identifier.</param>
+    /// <param name="getPlayerFactionID">Returns the active player faction identifier.</param>
     /// <param name="commands">Executes move and mission commands.</param>
     public StrategyWindowItemDragController(
         TargetingController targetingController,
@@ -65,7 +65,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         Func<UIWindow, IReadOnlyList<ISceneNode>> getContextItems,
         StrategyWindowDragPreviewResolver tryGetDragPreview,
         Func<PointerEventData, StrategyMissionTarget> getGalaxyMapDropTarget,
-        Func<string> getPlayerFactionId,
+        Func<string> getPlayerFactionID,
         IStrategyWindowCommandActions commands
     )
     {
@@ -80,8 +80,8 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         this.getGalaxyMapDropTarget =
             getGalaxyMapDropTarget
             ?? throw new ArgumentNullException(nameof(getGalaxyMapDropTarget));
-        this.getPlayerFactionId =
-            getPlayerFactionId ?? throw new ArgumentNullException(nameof(getPlayerFactionId));
+        this.getPlayerFactionID =
+            getPlayerFactionID ?? throw new ArgumentNullException(nameof(getPlayerFactionID));
         this.commands = commands ?? throw new ArgumentNullException(nameof(commands));
     }
 
@@ -334,14 +334,14 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         StrategyMissionTarget target
     )
     {
-        string playerFactionId = getPlayerFactionId();
+        string playerFactionID = getPlayerFactionID();
         if (
             source == null
             || target?.Planet?.Planet == null
-            || string.IsNullOrEmpty(playerFactionId)
+            || string.IsNullOrEmpty(playerFactionID)
             || string.Equals(
                 target.Planet.Planet.GetOwnerInstanceID(),
-                playerFactionId,
+                playerFactionID,
                 StringComparison.Ordinal
             )
         )
@@ -349,7 +349,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
 
         return StrategyContextMenuAvailability.CanCreateMission(
             source.Items?.ToList(),
-            playerFactionId
+            playerFactionID
         );
     }
 

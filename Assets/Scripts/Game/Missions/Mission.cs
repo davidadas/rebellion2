@@ -153,7 +153,7 @@ namespace Rebellion.Game.Missions
         {
             CurrentProgress = 0;
             MaxProgress = maxProgress;
-            CaptureParticipantIds();
+            CaptureParticipantIDs();
             HasInitiated = true;
         }
 
@@ -197,9 +197,9 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Captures the current mission participant IDs.
         /// </summary>
-        private void CaptureParticipantIds()
+        private void CaptureParticipantIDs()
         {
-            _participantInstanceIds = GetParticipantIds();
+            _participantInstanceIds = GetParticipantIDs();
             _hasCapturedParticipantIds = true;
         }
 
@@ -211,11 +211,11 @@ namespace Rebellion.Game.Missions
         {
             if (!_hasCapturedParticipantIds)
             {
-                CaptureParticipantIds();
+                CaptureParticipantIDs();
                 return false;
             }
 
-            HashSet<string> currentParticipantIds = GetParticipantIds();
+            HashSet<string> currentParticipantIds = GetParticipantIDs();
             if (currentParticipantIds.Count != _participantInstanceIds.Count)
                 return true;
 
@@ -226,7 +226,7 @@ namespace Rebellion.Game.Missions
         /// Returns all current participant IDs.
         /// </summary>
         /// <returns>The current participant ID set.</returns>
-        private HashSet<string> GetParticipantIds() =>
+        private HashSet<string> GetParticipantIDs() =>
             GetAllParticipants()
                 .Where(participant => !string.IsNullOrEmpty(participant.InstanceID))
                 .Select(participant => participant.InstanceID)
@@ -387,7 +387,7 @@ namespace Rebellion.Game.Missions
             if (planet == null)
                 return null;
 
-            HashSet<string> participantIds = GetParticipantIds();
+            HashSet<string> participantIds = GetParticipantIDs();
             return planet
                 .GetAllOfficers()
                 .FirstOrDefault(o =>
@@ -428,7 +428,7 @@ namespace Rebellion.Game.Missions
             if (planet == null)
                 return 0;
 
-            return GetBestSupportRating(planet, locationOwnerId, GetContainerId(location));
+            return GetBestSupportRating(planet, locationOwnerId, GetContainerID(location));
         }
 
         /// <summary>
@@ -478,7 +478,7 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 int value = candidate.GetEffectiveRating(OfficerRating.Espionage);
-                if (GetContainerId(candidate) == locationContainer)
+                if (GetContainerID(candidate) == locationContainer)
                     sameContainerRating = Math.Max(sameContainerRating, value);
                 else
                     otherContainerRating = Math.Max(otherContainerRating, value);
@@ -511,7 +511,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="node">The node to inspect.</param>
         /// <returns>The parent ID when present; otherwise the node ID or an empty string.</returns>
-        private static string GetContainerId(ISceneNode node)
+        private static string GetContainerID(ISceneNode node)
         {
             return node?.GetParent()?.GetInstanceID() ?? node?.GetInstanceID() ?? string.Empty;
         }
@@ -562,27 +562,6 @@ namespace Rebellion.Game.Missions
             double successThreshold = GetAgentProbability(participant, game);
             double rolledValue = provider.NextDouble() * 100;
             return IsSuccessfulProbabilityRoll(rolledValue, successThreshold);
-        }
-
-        /// <summary>
-        /// Counts active resistance regiments used by uprising mission checks.
-        /// </summary>
-        /// <param name="planet">The mission planet.</param>
-        /// <param name="game">The current game state.</param>
-        /// <returns>The active resistance regiment count.</returns>
-        protected static int GetUprisingMissionTroopState(Planet planet, GameRoot game)
-        {
-            string regimentTypeId = game?.Config?.Uprising?.ResistanceRegimentTypeID;
-            if (planet == null || string.IsNullOrEmpty(regimentTypeId))
-                return 0;
-
-            return planet
-                .GetAllRegiments()
-                .Count(regiment =>
-                    regiment.TypeID == regimentTypeId
-                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
-                );
         }
 
         /// <summary>

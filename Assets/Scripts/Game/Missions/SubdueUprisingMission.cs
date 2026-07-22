@@ -116,8 +116,11 @@ namespace Rebellion.Game.Missions
                     "SubdueUprisingMission must be attached to a Planet."
                 );
 
+            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
+                game?.Config?.Uprising?.ResistanceRegimentTypeID
+            );
             int score =
-                GetUprisingMissionTroopState(planet, game)
+                uprisingResistanceRegimentCount
                 - planet.GetOpposingPopularSupport(OwnerInstanceID)
                 + agent.GetEffectiveRating(OfficerRating.Leadership);
             return LookupSuccessProbability(game, score);

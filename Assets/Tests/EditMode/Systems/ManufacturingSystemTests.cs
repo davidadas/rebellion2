@@ -3043,9 +3043,102 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Blockade_HaltsProductionWithoutReservingInput()
+        public void ProcessTick_Blockade_AppliesGraduatedRateAndKdyRestoresFullRate()
         {
             GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+            empire.RefinedMaterialStockpile = 1;
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planet);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
+            game.AttachNode(hostileFleet, planet);
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile_ship",
+                OwnerInstanceID = rebels.InstanceID,
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "hostile_fighter",
+                    OwnerInstanceID = rebels.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                hostileShip
+            );
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
+            );
+            manufacturing.Enqueue(planet, mine, planet, ignoreCost: true);
+
+            manufacturing.ProcessTick();
+
+            double expectedBlockadeProgress =
+                1.0
+                - (
+                    config.Blockade.CapitalShipProductionPenaltyPercent
+                    + config.Blockade.FighterProductionPenaltyPercent
+                ) / 100.0;
+            Assert.AreEqual(
+                expectedBlockadeProgress,
+                constructionYard.ProductionCycleProgress,
+                0.0001
+            );
+            Assert.AreEqual(0, empire.RefinedMaterialStockpile);
+            Assert.IsTrue(constructionYard.ProductionInputReserved);
+
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "kdy1",
+                    OwnerInstanceID = empire.InstanceID,
+                    BuildingType = BuildingType.Defense,
+                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(
+                expectedBlockadeProgress + 1,
+                constructionYard.ProductionCycleProgress,
+                0.0001
+            );
+        }
+
+        [Test]
+        public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };

@@ -600,6 +600,8 @@
         <xs:element name="Blockade">
           <xs:complexType>
             <xs:all>
+              <xs:element name="CapitalShipProductionPenaltyPercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterProductionPenaltyPercent" type="xs:nonNegativeInteger" />
               <xs:element name="EvacuationLossPercent" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>

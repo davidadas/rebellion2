@@ -192,7 +192,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void TryGetPlanetInstanceId_OverlappingMarkers_ReturnsTopmostRenderedPlanet()
+        public void TryGetPlanetInstanceID_OverlappingMarkers_ReturnsTopmostRenderedPlanet()
         {
             _view.Render(
                 CreateCluster(
@@ -208,14 +208,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             PointerEventData eventData = CreatePointerEvent(new Vector2(12f, 12f));
 
-            bool found = _view.TryGetPlanetInstanceId(eventData, out string planetInstanceId);
+            bool found = _view.TryGetPlanetInstanceID(eventData, out string planetInstanceId);
 
             Assert.IsTrue(found);
             Assert.AreEqual("planet-2", planetInstanceId);
         }
 
         [Test]
-        public void TryGetPlanetInstanceId_InvalidInputs_ReturnsFalseAndNullIdentity()
+        public void TryGetPlanetInstanceID_InvalidInputs_ReturnsFalseAndNullIdentity()
         {
             _view.Render(
                 CreateCluster(
@@ -227,10 +227,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             );
             PointerEventData outside = CreatePointerEvent(new Vector2(500f, 500f));
 
-            bool nullFound = _view.TryGetPlanetInstanceId(null, out string nullIdentity);
-            bool outsideFound = _view.TryGetPlanetInstanceId(outside, out string outsideIdentity);
+            bool nullFound = _view.TryGetPlanetInstanceID(null, out string nullIdentity);
+            bool outsideFound = _view.TryGetPlanetInstanceID(outside, out string outsideIdentity);
             _viewObject.SetActive(false);
-            bool inactiveFound = _view.TryGetPlanetInstanceId(
+            bool inactiveFound = _view.TryGetPlanetInstanceID(
                 CreatePointerEvent(new Vector2(15f, 15f)),
                 out string inactiveIdentity
             );

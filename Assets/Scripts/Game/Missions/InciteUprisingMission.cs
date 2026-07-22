@@ -94,7 +94,10 @@ namespace Rebellion.Game.Missions
 
             int leadershipSkill = agent.GetEffectiveRating(OfficerRating.Leadership);
             int enemySupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
-            int score = leadershipSkill - enemySupport - GetUprisingMissionTroopState(planet, game);
+            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
+                game?.Config?.Uprising?.ResistanceRegimentTypeID
+            );
+            int score = leadershipSkill - enemySupport - uprisingResistanceRegimentCount;
             return LookupSuccessProbability(game, score);
         }
 

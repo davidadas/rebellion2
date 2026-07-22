@@ -153,7 +153,7 @@ public sealed class BattleAlertWindowController
         if (window == null)
             throw new ArgumentNullException(nameof(window));
 
-        view.Render(CreateRenderData(view, GetPlayerFactionId(), window.X, window.Y));
+        view.Render(CreateRenderData(view, GetPlayerFactionID(), window.X, window.Y));
     }
 
     /// <summary>
@@ -277,7 +277,7 @@ public sealed class BattleAlertWindowController
 
         BattleAlertWindowSession session = GetSession(view);
         if (string.IsNullOrEmpty(playerFactionId))
-            playerFactionId = GetPlayerFactionId();
+            playerFactionId = GetPlayerFactionID();
 
         PendingCombatResult pending = getPendingCombat();
 
@@ -655,7 +655,7 @@ public sealed class BattleAlertWindowController
     /// <param name="result">The completed combat result.</param>
     private void PlayResultMusic(SpaceCombatResult result)
     {
-        string musicPath = GetBattleResultMusicPath(GetBattleTheme(), result, GetPlayerFactionId());
+        string musicPath = GetBattleResultMusicPath(GetBattleTheme(), result, GetPlayerFactionID());
         PlayMusicTrack(musicPath, true);
     }
 
@@ -687,7 +687,7 @@ public sealed class BattleAlertWindowController
     /// Returns the current player faction identifier with the saved-game fallback.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         UIContext uiContext = getUIContext();
         string playerFactionId = uiContext?.Game?.Summary?.PlayerFactionID;

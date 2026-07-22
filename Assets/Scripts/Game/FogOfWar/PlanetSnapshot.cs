@@ -11,92 +11,30 @@ namespace Rebellion.Game.FogOfWar
     [PersistableObject]
     public class PlanetSnapshot
     {
-        // Planet state.
-
-        /// <summary>
-        /// Tick when this snapshot was captured.
-        /// </summary>
+        // Planet State.
         public int TickCaptured;
-
-        /// <summary>
-        /// Faction instance ID that controlled the planet.
-        /// </summary>
         public string OwnerInstanceID;
-
-        /// <summary>
-        /// Whether the planet was colonized when observed.
-        /// </summary>
         public bool IsColonized;
-
-        /// <summary>
-        /// Whether the planet was in uprising when observed.
-        /// </summary>
         public bool IsInUprising;
-
-        /// <summary>
-        /// Whether the planet was destroyed when observed.
-        /// </summary>
         public bool IsDestroyed;
-
-        /// <summary>
-        /// Whether the planet hosted a headquarters when observed.
-        /// </summary>
         public bool IsHeadquarters;
-
-        /// <summary>
-        /// Energy capacity available when the planet was observed.
-        /// </summary>
         public int EnergyCapacity;
-
-        /// <summary>
-        /// Energy allocated when the planet was observed.
-        /// </summary>
         public int AllocatedEnergy;
 
-        /// <summary>
-        /// Popular support by faction instance ID.
-        /// </summary>
+        // Popular Support.
         public Dictionary<string, int> PopularSupport;
 
-        // Visible entities.
-
-        /// <summary>
-        /// Officers visible on the planet.
-        /// </summary>
+        // Visible Entities.
         public List<Officer> Officers;
-
-        /// <summary>
-        /// Fleets visible at the planet.
-        /// </summary>
         public List<Fleet> Fleets;
-
-        /// <summary>
-        /// Regiments stationed at the planet.
-        /// </summary>
         public List<Regiment> Regiments;
-
-        /// <summary>
-        /// Special-forces units stationed at the planet.
-        /// </summary>
         public List<SpecialForces> SpecialForces;
-
-        /// <summary>
-        /// Buildings visible on the planet.
-        /// </summary>
         public List<Building> Buildings;
-
-        /// <summary>
-        /// Starfighters stationed at the planet.
-        /// </summary>
         public List<Starfighter> Starfighters;
-
-        /// <summary>
-        /// Missions previously detected at the planet.
-        /// </summary>
         public List<Mission> Missions;
 
+        // Manufacturing Intelligence.
         public bool HasManufacturingIntelligence;
-
         public List<IManufacturable> ManufacturingQueueItems;
 
         /// <summary>

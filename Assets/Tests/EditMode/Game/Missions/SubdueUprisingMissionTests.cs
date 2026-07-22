@@ -224,6 +224,52 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void UpdateMission_FirstSuccessfulParticipantEndsAttemptSequence()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            empPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            empPlanet.SetPopularSupport("empire", 10);
+            empPlanet.SetPopularSupport("rebels", 90);
+            empPlanet.BeginUprising();
+            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { -200, 100 },
+            };
+            game.Config.Uprising.SubdueOwnedSupportBase = 1;
+            game.Config.Uprising.SubdueOwnedSupportRange = 0;
+
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, empPlanet);
+
+            Officer secondOfficer = EntityFactory.CreateOfficer("o2", "empire");
+            game.AttachNode(secondOfficer, empPlanet);
+            Mission mission = CreateSubdueUprisingMission(
+                "empire",
+                empPlanet,
+                new List<IMissionParticipant> { officer, secondOfficer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, empPlanet);
+            mission.Initiate(0);
+
+            List<GameResult> results = CreateMissionSystem(game, fog, new FixedRNG(0))
+                .UpdateMission(mission);
+
+            Assert.AreEqual(
+                MissionOutcome.Failed,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreEqual(11, empPlanet.GetPopularSupport("empire"));
+        }
+
+        [Test]
         public void UpdateMission_SuccessfulRollWithSufficientGarrison_EndsUprisingAndImprovesAgent()
         {
             (

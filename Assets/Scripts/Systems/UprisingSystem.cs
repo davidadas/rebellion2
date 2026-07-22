@@ -699,14 +699,16 @@ namespace Rebellion.Systems
             int troopMultiplier = GetUprisingTroopMultiplier(planet, faction);
             int threshold = CalculateUprisingThreshold(supportForController);
             int missionAdjustment = CalculateUprisingMissionAdjustment(planet, config);
-            int resistanceRegimentCount = CountResistanceRegiments(planet, config);
+            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
+                config.ResistanceRegimentTypeID
+            );
 
             int combinedScore =
                 rollA
                 + rollB
                 + (threshold - troopMultiplier * controllerTroopCount)
                 + missionAdjustment
-                - resistanceRegimentCount;
+                - uprisingResistanceRegimentCount;
 
             uprisingEffect = GetThresholdTableValue(config.PrimaryConsequenceTable, combinedScore);
 
@@ -795,23 +797,6 @@ namespace Rebellion.Systems
         {
             return GetActiveUprisingMissions(planet)
                 .Any(mission => mission is InciteUprisingMission);
-        }
-
-        /// <summary>
-        /// Counts active resistance regiments on a planet.
-        /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="config">The uprising configuration identifying resistance regiments.</param>
-        /// <returns>The active resistance regiment count.</returns>
-        private static int CountResistanceRegiments(Planet planet, GameConfig.UprisingConfig config)
-        {
-            return planet
-                .GetAllRegiments()
-                .Count(regiment =>
-                    regiment.TypeID == config.ResistanceRegimentTypeID
-                    && regiment.ManufacturingStatus == ManufacturingStatus.Complete
-                    && regiment.Movement == null
-                );
         }
 
         /// <summary>

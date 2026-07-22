@@ -90,7 +90,7 @@ public sealed class StrategyWindowCommandController
         int transitTimeInDays = gameManager.MovementSystem.TryGetSelectionTransitTicks(
             sourceItems,
             destination,
-            GetPlayerFactionId(),
+            GetPlayerFactionID(),
             out int transitTicks
         )
             ? transitTicks
@@ -121,7 +121,7 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && gameManager.MaintenanceSystem.Scrap(manufacturables, GetPlayerFactionId())
+                    && gameManager.MaintenanceSystem.Scrap(manufacturables, GetPlayerFactionID())
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -149,7 +149,7 @@ public sealed class StrategyWindowCommandController
                     manufacturables.Count == sourceItems.Count
                     && gameManager.ManufacturingSystem.CancelManufacturing(
                         manufacturables,
-                        GetPlayerFactionId()
+                        GetPlayerFactionID()
                     )
                 )
                 {
@@ -171,7 +171,7 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             () =>
             {
-                if (gameManager.PersonnelSystem.Retire(sourceItems, GetPlayerFactionId()))
+                if (gameManager.PersonnelSystem.Retire(sourceItems, GetPlayerFactionID()))
                     RefreshAfterMutation(sourceWindow);
             }
         );
@@ -180,7 +180,7 @@ public sealed class StrategyWindowCommandController
     /// <inheritdoc />
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
-        return gameManager.PersonnelSystem.CanRetire(items, GetPlayerFactionId());
+        return gameManager.PersonnelSystem.CanRetire(items, GetPlayerFactionID());
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public sealed class StrategyWindowCommandController
         bool moved = gameManager.MovementSystem.TryRequestMove(
             items,
             target?.GetMoveDestination() as ContainerNode,
-            GetPlayerFactionId()
+            GetPlayerFactionID()
         );
         if (moved)
             PlayMoveVoice(items);
@@ -237,7 +237,7 @@ public sealed class StrategyWindowCommandController
     /// Gets a non-null player faction identifier for command validation.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         return gameManager.GetPlayerFaction()?.InstanceID ?? string.Empty;
     }

@@ -240,7 +240,7 @@ public sealed class MessagesWindowController
                 session.ActiveTab,
                 session.DetailVisible,
                 session.SelectedMessageId,
-                session.GetSelectedMessageIds(),
+                session.GetSelectedMessageIDs(),
                 IsMessageNotificationEnabled(playerFaction, session.ActiveTab),
                 HasNavigationTarget(selectedMessage),
                 window.X,
@@ -285,7 +285,7 @@ public sealed class MessagesWindowController
     /// </summary>
     /// <param name="view">The Messages view whose session should be inspected.</param>
     /// <returns>The selected source message identifier, or null when none is selected.</returns>
-    internal string GetSelectedMessageId(MessagesWindowView view)
+    internal string GetSelectedMessageID(MessagesWindowView view)
     {
         return TryGetSession(view, out MessagesWindowSession session)
             ? session.SelectedMessageId
@@ -577,7 +577,7 @@ public sealed class MessagesWindowController
 
         FocusWindow(view);
         Faction playerFaction = GetPlayerFaction();
-        if (RemoveSelectedMessages(playerFaction, session.GetSelectedMessageIds()))
+        if (RemoveSelectedMessages(playerFaction, session.GetSelectedMessageIDs()))
         {
             session.ClearSelection();
             session.HideDetail();
