@@ -14,41 +14,61 @@ using Rebellion.Util.Common;
 /// </summary>
 public sealed class GameManager
 {
+    // Game State.
     private GameRoot _game;
     private IRandomNumberProvider _randomProvider;
 
+    // Messaging and Events.
     private MessageSystem _messageSystem;
     private GameEventSystem _eventSystem;
+
+    // Galaxy Systems.
     private FogOfWarSystem _fogOfWarSystem;
     private BlockadeSystem _blockadeSystem;
+
+    // Unit Systems.
     private FleetSystem _fleetSystem;
     private PersonnelSystem _personnelSystem;
     private MovementSystem _movementSystem;
+
+    // Economy Systems.
     private ManufacturingSystem _manufacturingSystem;
     private MaintenanceSystem _maintenanceSystem;
     private ResourceProductionSystem _resourceProductionSystem;
+
+    // Planetary Systems.
     private PlanetaryControlSystem _planetaryControlSystem;
     private UprisingSystem _uprisingSystem;
+
+    // Mission Systems.
     private JediSystem _jediSystem;
     private MissionSystem _missionSystem;
+
+    // Combat Systems.
     private SpaceCombatSystem _spaceCombatSystem;
     private BombardmentSystem _bombardmentSystem;
     private PlanetaryAssaultSystem _planetaryAssaultSystem;
+
+    // Strategic Systems.
     private ResearchSystem _researchSystem;
     private BetrayalSystem _betrayalSystem;
     private VictorySystem _victorySystem;
     private AISystem _aiSystem;
 
+    // Result Processing.
     private GameResultProcessor _resultProcessor;
     private readonly List<GameResult> _deferredMessageResults = new List<GameResult>();
 
+    // Tick State.
     private float? _tickInterval;
     private float _tickTimer;
 
+    // Game Events.
     public event Action GameSpeedChanged;
     public event Action TickCompleted;
     public event Action<GameRoot> GameReplaced;
 
+    // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
 
     internal FleetSystem FleetSystem => _fleetSystem;
