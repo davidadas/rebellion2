@@ -15,7 +15,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public class UprisingSystem : IGameResultHandler
+    public class UprisingSystem : IGameResultHandler<PlanetGarrisonChangedResult>
     {
         private const int _buildingDestroyedSeverity = 1;
         private const int _regimentDestroyedSeverity = 2;
@@ -77,14 +77,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="results">The result batch to inspect.</param>
         /// <returns>Any uprising results caused by the garrison changes.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetGarrisonChangedResult> results)
         {
             List<GameResult> uprisingResults = new List<GameResult>();
             if (results == null)
                 return uprisingResults;
 
             IEnumerable<Planet> affectedPlanets = results
-                .OfType<PlanetGarrisonChangedResult>()
                 .Select(result => result.Planet)
                 .Where(planet => planet != null)
                 .Distinct();

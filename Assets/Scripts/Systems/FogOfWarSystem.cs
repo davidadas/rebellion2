@@ -80,11 +80,9 @@ namespace Rebellion.Systems
         /// Applies fog-of-war side effects for a result batch.
         /// </summary>
         /// <param name="results">The game results to process.</param>
-        public void ProcessResults(List<GameResult> results)
+        public void ProcessResults(IReadOnlyList<GameObjectSabotagedResult> results)
         {
-            foreach (
-                GameObjectSabotagedResult result in results.OfType<GameObjectSabotagedResult>()
-            )
+            foreach (GameObjectSabotagedResult result in results)
                 RemoveSabotagedObjectFromActorSnapshot(result);
         }
 

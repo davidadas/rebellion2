@@ -17,7 +17,7 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem : IGameResultHandler
+    public class MissionSystem : IGameResultHandler<PlanetUprisingStartedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -77,14 +77,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="results">The result batch to inspect.</param>
         /// <returns>The terminal results produced by aborted missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetUprisingStartedResult> results)
         {
             List<GameResult> missionResults = new List<GameResult>();
             if (results == null)
                 return missionResults;
 
             IEnumerable<Planet> affectedPlanets = results
-                .OfType<PlanetUprisingStartedResult>()
                 .Select(result => result.Planet)
                 .Where(planet => planet != null)
                 .Distinct();
@@ -450,7 +449,9 @@ namespace Rebellion.Systems
         {
             if (_uprisingSystem.TryExecuteMission(mission, out List<GameResult> results))
             {
-                results.AddRange(HandleResults(results));
+                results.AddRange(
+                    HandleResults(results.OfType<PlanetUprisingStartedResult>().ToList())
+                );
                 return results;
             }
 

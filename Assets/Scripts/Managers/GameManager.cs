@@ -40,7 +40,7 @@ public class GameManager
     private VictorySystem _victoryManager;
     private MessageSystem _messageSystem;
     private IRandomNumberProvider _randomProvider;
-    private IReadOnlyList<IGameResultHandler> _resultHandlers;
+    private GameResultProcessor _resultProcessor;
     private readonly List<GameResult> _resultsWaitingForCombatResolution = new List<GameResult>();
     private float? _tickInterval;
     private float _tickTimer;
@@ -182,13 +182,12 @@ public class GameManager
             _planetaryAssaultSystem,
             _randomProvider
         );
-        _resultHandlers = new IGameResultHandler[]
-        {
-            _planetaryControlSystem,
-            _uprisingManager,
-            _missionManager,
-            _jediSystem,
-        };
+        _resultProcessor = new GameResultProcessor();
+        _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
+        _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingManager);
+        _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionManager);
+        _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
+        _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarManager.ProcessResults);
     }
 
     /// <summary>
@@ -507,25 +506,7 @@ public class GameManager
         bool processMessages = true
     )
     {
-        List<GameResult> resolvedResults =
-            results?.Where(result => result != null).ToList() ?? new List<GameResult>();
-        List<GameResult> pendingResults = new List<GameResult>(resolvedResults);
-
-        while (pendingResults.Count > 0)
-        {
-            List<GameResult> reactionResults = new List<GameResult>();
-            foreach (IGameResultHandler handler in _resultHandlers)
-            {
-                List<GameResult> handlerResults = handler.HandleResults(pendingResults);
-                if (handlerResults != null)
-                    reactionResults.AddRange(handlerResults.Where(result => result != null));
-            }
-
-            resolvedResults.AddRange(reactionResults);
-            pendingResults = reactionResults;
-        }
-
-        _fogOfWarManager.ProcessResults(resolvedResults);
+        List<GameResult> resolvedResults = _resultProcessor.Process(results);
         if (processMessages)
             _messageSystem.ProcessResults(resolvedResults);
 
