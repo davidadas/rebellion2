@@ -11,64 +11,57 @@ using Rebellion.Util.Common;
 
 /// <summary>
 /// Coordinates all game systems each tick and routes results through domain reactions and observers.
-/// Owned by GameRuntime — do not create directly.
 /// </summary>
-public class GameManager
+public sealed class GameManager
 {
     private GameRoot _game;
-    private AISystem _aiSystem;
-    private GameEventSystem _eventManager;
-    private MissionSystem _missionManager;
-    private MovementSystem _movementManager;
+    private IRandomNumberProvider _randomProvider;
+
+    private MessageSystem _messageSystem;
+    private GameEventSystem _eventSystem;
+    private FogOfWarSystem _fogOfWarSystem;
+    private BlockadeSystem _blockadeSystem;
     private FleetSystem _fleetSystem;
     private PersonnelSystem _personnelSystem;
-    private ManufacturingSystem _manufacturingManager;
-    private MaintenanceSystem _maintenanceManager;
-    private ResourceProductionSystem _resourceProductionManager;
+    private MovementSystem _movementSystem;
+    private ManufacturingSystem _manufacturingSystem;
+    private MaintenanceSystem _maintenanceSystem;
+    private ResourceProductionSystem _resourceProductionSystem;
+    private PlanetaryControlSystem _planetaryControlSystem;
+    private UprisingSystem _uprisingSystem;
+    private JediSystem _jediSystem;
+    private MissionSystem _missionSystem;
     private SpaceCombatSystem _spaceCombatSystem;
     private BombardmentSystem _bombardmentSystem;
     private PlanetaryAssaultSystem _planetaryAssaultSystem;
-    private FogOfWarSystem _fogOfWarManager;
-    private BlockadeSystem _blockadeManager;
-    private ResearchSystem _researchManager;
-    private JediSystem _jediSystem;
-    private BetrayalSystem _betrayalManager;
-    private PlanetaryControlSystem _planetaryControlSystem;
-    private UprisingSystem _uprisingManager;
-    private VictorySystem _victoryManager;
-    private MessageSystem _messageSystem;
-    private IRandomNumberProvider _randomProvider;
+    private ResearchSystem _researchSystem;
+    private BetrayalSystem _betrayalSystem;
+    private VictorySystem _victorySystem;
+    private AISystem _aiSystem;
+
     private GameResultProcessor _resultProcessor;
-    private readonly List<GameResult> _resultsWaitingForCombatResolution = new List<GameResult>();
+    private readonly List<GameResult> _deferredMessageResults = new List<GameResult>();
+
     private float? _tickInterval;
     private float _tickTimer;
 
-    /// <summary>
-    /// Raised when the active game speed changes.
-    /// </summary>
     public event Action GameSpeedChanged;
-
-    /// <summary>
-    /// Raised after a game tick advances, including when processing suspends for pending combat.
-    /// </summary>
     public event Action TickCompleted;
-
-    /// <summary>
-    /// Raised after a hot load replaces the active game and its systems.
-    /// </summary>
     public event Action<GameRoot> GameReplaced;
 
-    internal ManufacturingSystem ManufacturingSystem => _manufacturingManager;
-
-    internal MaintenanceSystem MaintenanceSystem => _maintenanceManager;
-
-    internal MovementSystem MovementSystem => _movementManager;
+    internal MessageSystem MessageSystem => _messageSystem;
 
     internal FleetSystem FleetSystem => _fleetSystem;
 
     internal PersonnelSystem PersonnelSystem => _personnelSystem;
 
-    internal MissionSystem MissionSystem => _missionManager;
+    internal MovementSystem MovementSystem => _movementSystem;
+
+    internal ManufacturingSystem ManufacturingSystem => _manufacturingSystem;
+
+    internal MaintenanceSystem MaintenanceSystem => _maintenanceSystem;
+
+    internal MissionSystem MissionSystem => _missionSystem;
 
     internal SpaceCombatSystem SpaceCombatSystem => _spaceCombatSystem;
 
@@ -76,142 +69,23 @@ public class GameManager
 
     internal PlanetaryAssaultSystem PlanetaryAssaultSystem => _planetaryAssaultSystem;
 
-    internal MessageSystem MessageSystem => _messageSystem;
-
     /// <summary>
     /// Creates a new GameManager for the given game instance.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
     public GameManager(GameRoot game)
     {
-        SetGame(game);
-        InitializeSystems();
-        RebuildDerivedState();
-        SetGameSpeed(_game.GetGameSpeed());
+        InitializeGame(game);
     }
 
     /// <summary>
     /// Replaces the current game instance and reinitializes all systems.
     /// </summary>
-    /// <param name="newGame">The replacement game instance.</param>
-    public void ReplaceGame(GameRoot newGame)
+    /// <param name="game">The replacement game instance.</param>
+    public void ReplaceGame(GameRoot game)
     {
-        SetGame(newGame);
-        InitializeSystems();
-        RebuildDerivedState();
-        _tickTimer = 0f;
-        SetGameSpeed(_game.GetGameSpeed());
+        InitializeGame(game);
         GameReplaced?.Invoke(_game);
-    }
-
-    /// <summary>
-    /// Sets the active game and ensures required runtime state exists.
-    /// </summary>
-    /// <param name="game">The game instance to make active.</param>
-    private void SetGame(GameRoot game)
-    {
-        if (game == null)
-            throw new InvalidOperationException("Cannot manage a null game.");
-
-        _game = game;
-
-        if (_game.Config == null)
-            _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
-
-        _randomProvider = _game.Random;
-    }
-
-    /// <summary>
-    /// Initializes all systems in dependency order.
-    /// </summary>
-    private void InitializeSystems()
-    {
-        _messageSystem = new MessageSystem(
-            _game,
-            ResourceManager.GetEntityData<MessageDefinition>()
-        );
-        _eventManager = new GameEventSystem(_game, _randomProvider);
-        _fogOfWarManager = new FogOfWarSystem(_game);
-        _blockadeManager = new BlockadeSystem(_game, _randomProvider);
-        _fleetSystem = new FleetSystem(_game);
-        _personnelSystem = new PersonnelSystem(_game);
-        _movementManager = new MovementSystem(
-            _game,
-            _fogOfWarManager,
-            _fleetSystem,
-            _blockadeManager
-        );
-        _manufacturingManager = new ManufacturingSystem(_game, _fleetSystem, _movementManager);
-        _maintenanceManager = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
-        _resourceProductionManager = new ResourceProductionSystem(_game);
-        _planetaryControlSystem = new PlanetaryControlSystem(
-            _game,
-            _movementManager,
-            _manufacturingManager,
-            _fogOfWarManager
-        );
-        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
-        _jediSystem = new JediSystem(_game, _randomProvider);
-        _missionManager = new MissionSystem(
-            _game,
-            _randomProvider,
-            _movementManager,
-            _uprisingManager
-        );
-        _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementManager);
-        _bombardmentSystem = new BombardmentSystem(
-            _game,
-            _randomProvider,
-            _movementManager,
-            _planetaryControlSystem
-        );
-        _planetaryAssaultSystem = new PlanetaryAssaultSystem(
-            _game,
-            _randomProvider,
-            _planetaryControlSystem
-        );
-        _researchManager = new ResearchSystem(_game, _randomProvider);
-        _betrayalManager = new BetrayalSystem(_game);
-        _victoryManager = new VictorySystem(_game);
-        _aiSystem = new AISystem(
-            _game,
-            _missionManager,
-            _movementManager,
-            _manufacturingManager,
-            _bombardmentSystem,
-            _planetaryAssaultSystem,
-            _randomProvider
-        );
-        _resultProcessor = new GameResultProcessor();
-        _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
-        _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingManager);
-        _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionManager);
-        _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
-        _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarManager.ProcessResults);
-        _movementManager.ResultsProduced += HandleSystemResultsProduced;
-        _maintenanceManager.ResultsProduced += HandleSystemResultsProduced;
-        _bombardmentSystem.ResultsProduced += HandleSystemResultsProduced;
-        _planetaryAssaultSystem.ResultsProduced += HandleSystemResultsProduced;
-    }
-
-    /// <summary>
-    /// Rebuilds derived state that is not persisted.
-    /// </summary>
-    private void RebuildDerivedState()
-    {
-        IManufacturable[] templates = ResourceManager
-            .GetEntityData<Building>()
-            .Cast<IManufacturable>()
-            .Concat(ResourceManager.GetEntityData<CapitalShip>())
-            .Concat(ResourceManager.GetEntityData<Starfighter>())
-            .Concat(ResourceManager.GetEntityData<Regiment>())
-            .Concat(ResourceManager.GetEntityData<SpecialForces>())
-            .ToArray();
-
-        foreach (Faction faction in _game.GetFactions())
-            faction.RebuildResearchCatalog(templates);
-
-        _manufacturingManager.RebuildQueues();
     }
 
     /// <summary>
@@ -236,7 +110,13 @@ public class GameManager
     /// Returns the fog of war system for building faction-specific galaxy views.
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
-    public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarManager;
+    public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarSystem;
+
+    /// <summary>
+    /// Returns the active game speed.
+    /// </summary>
+    /// <returns>The active game speed.</returns>
+    public TickSpeed GetGameSpeed() => _game.GetGameSpeed();
 
     /// <summary>
     /// Sets the game speed and adjusts the tick interval accordingly.
@@ -271,15 +151,6 @@ public class GameManager
     }
 
     /// <summary>
-    /// Returns the active game speed.
-    /// </summary>
-    /// <returns>The active game speed.</returns>
-    public TickSpeed GetGameSpeed()
-    {
-        return _game.GetGameSpeed();
-    }
-
-    /// <summary>
     /// Advances the tick timer by elapsed game-loop time and fires a tick when the interval is reached.
     /// No-ops while combat is pending player resolution or the game is paused.
     /// </summary>
@@ -296,6 +167,57 @@ public class GameManager
             _tickTimer = 0f;
             ProcessTick();
         }
+    }
+
+    /// <summary>
+    /// Runs one game tick.
+    /// </summary>
+    public void ProcessTick()
+    {
+        if (_spaceCombatSystem.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
+            return;
+
+        _game.CurrentTick++;
+        _messageSystem.ProcessTick();
+        GameLogger.Debug("Tick: " + _game.CurrentTick);
+
+        ProcessResults(_resourceProductionSystem.ProcessTick());
+        ProcessResults(_manufacturingSystem.ProcessTick());
+        ProcessResults(_maintenanceSystem.ProcessTick());
+
+        List<GameResult> movementResults = ProcessResults(
+            _movementSystem.ProcessTick(),
+            processMessages: false
+        );
+
+        List<GameResult> combatResults = ProcessResults(
+            _spaceCombatSystem.ProcessTick(),
+            processMessages: false
+        );
+
+        List<GameResult> messageResults = CombineResults(movementResults, combatResults);
+        if (_spaceCombatSystem.HasPendingDecision)
+        {
+            StoreDeferredMessageResults(messageResults);
+            TickCompleted?.Invoke();
+            return;
+        }
+
+        _messageSystem.ProcessResults(messageResults);
+
+        ProcessResults(_missionSystem.ProcessTick());
+        ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
+        ProcessResults(_aiSystem.ProcessTick());
+
+        ProcessResults(_blockadeSystem.ProcessTick());
+        ProcessResults(_planetaryControlSystem.ProcessTick());
+        ProcessResults(_uprisingSystem.ProcessTick());
+        ProcessResults(_betrayalSystem.ProcessTick());
+
+        ProcessResults(_researchSystem.ProcessTick());
+        ProcessResults(_jediSystem.ProcessTick());
+        ProcessResults(_victorySystem.ProcessTick());
+        TickCompleted?.Invoke();
     }
 
     /// <summary>
@@ -326,6 +248,124 @@ public class GameManager
     }
 
     /// <summary>
+    /// Initializes a game and rebuilds its runtime systems and derived state.
+    /// </summary>
+    /// <param name="game">The game instance to initialize.</param>
+    private void InitializeGame(GameRoot game)
+    {
+        if (game == null)
+            throw new InvalidOperationException("Cannot manage a null game.");
+
+        _game = game;
+        if (_game.Config == null)
+            _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
+
+        _randomProvider = _game.Random;
+        InitializeSystems();
+        RebuildDerivedState();
+        _tickTimer = 0f;
+        SetGameSpeed(_game.GetGameSpeed());
+    }
+
+    /// <summary>
+    /// Initializes all systems in dependency order.
+    /// </summary>
+    private void InitializeSystems()
+    {
+        _messageSystem = new MessageSystem(
+            _game,
+            ResourceManager.GetEntityData<MessageDefinition>()
+        );
+        _eventSystem = new GameEventSystem(_game, _randomProvider);
+        _fogOfWarSystem = new FogOfWarSystem(_game);
+        _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
+        _fleetSystem = new FleetSystem(_game);
+        _personnelSystem = new PersonnelSystem(_game);
+        _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
+        _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
+        _maintenanceSystem = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
+        _resourceProductionSystem = new ResourceProductionSystem(_game);
+        _planetaryControlSystem = new PlanetaryControlSystem(
+            _game,
+            _movementSystem,
+            _manufacturingSystem,
+            _fogOfWarSystem
+        );
+        _uprisingSystem = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
+        _jediSystem = new JediSystem(_game, _randomProvider);
+        _missionSystem = new MissionSystem(
+            _game,
+            _randomProvider,
+            _movementSystem,
+            _uprisingSystem
+        );
+        _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
+        _bombardmentSystem = new BombardmentSystem(
+            _game,
+            _randomProvider,
+            _movementSystem,
+            _planetaryControlSystem
+        );
+        _planetaryAssaultSystem = new PlanetaryAssaultSystem(
+            _game,
+            _randomProvider,
+            _planetaryControlSystem
+        );
+        _researchSystem = new ResearchSystem(_game, _randomProvider);
+        _betrayalSystem = new BetrayalSystem(_game);
+        _victorySystem = new VictorySystem(_game);
+        _aiSystem = new AISystem(
+            _game,
+            _missionSystem,
+            _movementSystem,
+            _manufacturingSystem,
+            _bombardmentSystem,
+            _planetaryAssaultSystem,
+            _randomProvider
+        );
+
+        InitializeResultProcessing();
+    }
+
+    /// <summary>
+    /// Connects result producers, typed reactions, and observers.
+    /// </summary>
+    private void InitializeResultProcessing()
+    {
+        _resultProcessor = new GameResultProcessor();
+        _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
+        _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
+        _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);
+        _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
+        _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
+
+        _movementSystem.ResultsProduced += HandleSystemResultsProduced;
+        _maintenanceSystem.ResultsProduced += HandleSystemResultsProduced;
+        _bombardmentSystem.ResultsProduced += HandleSystemResultsProduced;
+        _planetaryAssaultSystem.ResultsProduced += HandleSystemResultsProduced;
+    }
+
+    /// <summary>
+    /// Rebuilds derived state that is not persisted.
+    /// </summary>
+    private void RebuildDerivedState()
+    {
+        IManufacturable[] templates = ResourceManager
+            .GetEntityData<Building>()
+            .Cast<IManufacturable>()
+            .Concat(ResourceManager.GetEntityData<CapitalShip>())
+            .Concat(ResourceManager.GetEntityData<Starfighter>())
+            .Concat(ResourceManager.GetEntityData<Regiment>())
+            .Concat(ResourceManager.GetEntityData<SpecialForces>())
+            .ToArray();
+
+        foreach (Faction faction in _game.GetFactions())
+            faction.RebuildResearchCatalog(templates);
+
+        _manufacturingSystem.RebuildQueues();
+    }
+
+    /// <summary>
     /// Routes resolved combat results and restores the tick timer.
     /// </summary>
     /// <param name="combatResults">The results produced by combat resolution.</param>
@@ -334,66 +374,12 @@ public class GameManager
     {
         combatResults = ProcessResults(combatResults, processMessages: false);
 
-        List<GameResult> messageResults = FlushDeferredResults();
+        List<GameResult> messageResults = TakeDeferredMessageResults();
         messageResults.AddRange(combatResults);
         _messageSystem.ProcessResults(messageResults);
         _tickTimer = 0f;
 
         return combatResults.OfType<SpaceCombatResult>().FirstOrDefault();
-    }
-
-    /// <summary>
-    /// Runs one game tick.
-    /// </summary>
-    public void ProcessTick()
-    {
-        if (_spaceCombatSystem.HasPendingDecision || _game.GetGameSpeed() == TickSpeed.Paused)
-            return;
-
-        _game.CurrentTick++;
-        _messageSystem.ProcessTick();
-        GameLogger.Debug("Tick: " + _game.CurrentTick);
-
-        ProcessResults(_resourceProductionManager.ProcessTick());
-        ProcessResults(_manufacturingManager.ProcessTick());
-        ProcessResults(_maintenanceManager.ProcessTick());
-
-        List<GameResult> movementResults = ProcessResults(
-            _movementManager.ProcessTick(),
-            processMessages: false
-        );
-
-        List<GameResult> combatResults = ProcessResults(
-            _spaceCombatSystem.ProcessTick(),
-            processMessages: false
-        );
-
-        List<GameResult> resultsWaitingForCombatResolution = CombineResults(
-            movementResults,
-            combatResults
-        );
-        if (_spaceCombatSystem.HasPendingDecision)
-        {
-            DeferResultsUntilCombatResolution(resultsWaitingForCombatResolution);
-            TickCompleted?.Invoke();
-            return;
-        }
-
-        _messageSystem.ProcessResults(resultsWaitingForCombatResolution);
-
-        ProcessResults(_missionManager.ProcessTick());
-        ProcessResults(_eventManager.ProcessEvents(_game.GetEventPool()));
-        ProcessResults(_aiSystem.ProcessTick());
-
-        ProcessResults(_blockadeManager.ProcessTick());
-        ProcessResults(_planetaryControlSystem.ProcessTick());
-        ProcessResults(_uprisingManager.ProcessTick());
-        ProcessResults(_betrayalManager.ProcessTick());
-
-        ProcessResults(_researchManager.ProcessTick());
-        ProcessResults(_jediSystem.ProcessTick());
-        ProcessResults(_victoryManager.ProcessTick());
-        TickCompleted?.Invoke();
     }
 
     /// <summary>
@@ -425,6 +411,28 @@ public class GameManager
     }
 
     /// <summary>
+    /// Stores movement and combat results until the pending combat decision is resolved.
+    /// </summary>
+    /// <param name="results">The results whose messages must wait for combat resolution.</param>
+    private void StoreDeferredMessageResults(List<GameResult> results)
+    {
+        _deferredMessageResults.Clear();
+        if (results != null)
+            _deferredMessageResults.AddRange(results);
+    }
+
+    /// <summary>
+    /// Returns and clears movement and combat results waiting on a combat decision.
+    /// </summary>
+    /// <returns>The pending message result batch.</returns>
+    private List<GameResult> TakeDeferredMessageResults()
+    {
+        List<GameResult> results = new List<GameResult>(_deferredMessageResults);
+        _deferredMessageResults.Clear();
+        return results;
+    }
+
+    /// <summary>
     /// Combines result batches while preserving their original order.
     /// </summary>
     /// <param name="resultBatches">The result batches to combine.</param>
@@ -438,28 +446,6 @@ public class GameManager
                 results.AddRange(resultBatch);
         }
 
-        return results;
-    }
-
-    /// <summary>
-    /// Stores movement and combat results until the pending combat decision is resolved.
-    /// </summary>
-    /// <param name="results">The results whose messages must wait for combat resolution.</param>
-    private void DeferResultsUntilCombatResolution(List<GameResult> results)
-    {
-        _resultsWaitingForCombatResolution.Clear();
-        if (results != null)
-            _resultsWaitingForCombatResolution.AddRange(results);
-    }
-
-    /// <summary>
-    /// Returns and clears movement and combat results waiting on a combat decision.
-    /// </summary>
-    /// <returns>The pending message result batch.</returns>
-    private List<GameResult> FlushDeferredResults()
-    {
-        List<GameResult> results = new List<GameResult>(_resultsWaitingForCombatResolution);
-        _resultsWaitingForCombatResolution.Clear();
         return results;
     }
 }
