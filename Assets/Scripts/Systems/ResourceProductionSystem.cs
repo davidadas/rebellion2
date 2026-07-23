@@ -289,13 +289,16 @@ namespace Rebellion.Systems
             int totalCapacity
         )
         {
+            int currentAllocation = facilities.Sum(facility =>
+                facility.ResourceMaintenanceAllocation
+            );
             bool changed;
             do
             {
                 changed = false;
                 foreach (Building facility in facilities)
                 {
-                    int idealAllocation = remaining * facilityCapacity / totalCapacity;
+                    int idealAllocation = currentAllocation * facilityCapacity / totalCapacity;
                     int added = Math.Clamp(
                         idealAllocation - facility.ResourceMaintenanceAllocation + 1,
                         0,
@@ -308,6 +311,7 @@ namespace Rebellion.Systems
                         continue;
 
                     facility.ResourceMaintenanceAllocation += added;
+                    currentAllocation += added;
                     remaining -= added;
                     changed = true;
                     if (remaining == 0)

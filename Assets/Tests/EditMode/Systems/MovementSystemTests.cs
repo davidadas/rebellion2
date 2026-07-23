@@ -1243,6 +1243,55 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TryRequestMove_GroupUnderConstructionExceedsCapacity_NoneRetarget()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer officer,
+                MovementSystem movement
+            ) = BuildScene();
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            Starfighter firstStarfighter = new Starfighter
+            {
+                InstanceID = "first-starfighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            Starfighter secondStarfighter = new Starfighter
+            {
+                InstanceID = "second-starfighter",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(destinationFleet, destination);
+            game.AttachNode(carrier, destinationFleet);
+            game.AttachNode(firstStarfighter, origin);
+            game.AttachNode(secondStarfighter, origin);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { firstStarfighter, secondStarfighter },
+                destinationFleet,
+                "empire",
+                out List<GameResult> results
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, firstStarfighter.GetParent());
+            Assert.AreSame(origin, secondStarfighter.GetParent());
+            Assert.IsEmpty(carrier.Starfighters);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
         public void RequestMove_GroupCompletedBuilding_NoneMove()
         {
             (

@@ -977,6 +977,18 @@ namespace Rebellion.Game.Galaxy
             }
         }
 
+        internal override bool CanAcceptChild(
+            ISceneNode child,
+            IReadOnlyCollection<ISceneNode> plannedChildren
+        )
+        {
+            return CanAcceptChild(child)
+                && (
+                    child is not Building
+                    || GetAvailableEnergy() > plannedChildren.OfType<Building>().Count()
+                );
+        }
+
         /// <summary>
         /// Returns whether this planet can accept the supplied officer.
         /// </summary>

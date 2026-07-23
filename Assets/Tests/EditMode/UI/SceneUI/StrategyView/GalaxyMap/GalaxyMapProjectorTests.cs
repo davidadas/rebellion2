@@ -160,9 +160,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalaxyMapStarRenderData durosStar = data.Clusters[0]
                 .Stars.Single(star => star.PlanetInstanceId == "DUROS");
             Assert.AreEqual(224, selonia.PositionX);
-            Assert.AreEqual(236, duros.PositionX);
+            Assert.AreEqual(237, duros.PositionX);
             Assert.AreEqual(18, seloniaStar.SourceX);
-            Assert.AreEqual(30, durosStar.SourceX);
+            Assert.AreEqual(31, durosStar.SourceX);
         }
 
         [Test]

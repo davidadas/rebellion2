@@ -279,6 +279,28 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_MaintenanceAllocationAcrossMultipleMines_ReachesDemand()
+        {
+            Building firstMine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 2);
+            Building secondMine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 2);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "REGIMENT1",
+                    OwnerInstanceID = _faction.InstanceID,
+                    MaintenanceCost = 40,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(20, firstMine.ResourceMaintenanceAllocation);
+            Assert.AreEqual(20, secondMine.ResourceMaintenanceAllocation);
+        }
+
+        [Test]
         public void ProcessTick_MineAndRefineryOnDifferentPlanets_ShareMaintenanceDemand()
         {
             Planet secondPlanet = CreateOwnedPlanet("PLANET2");

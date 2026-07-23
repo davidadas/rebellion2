@@ -15,6 +15,14 @@ namespace Rebellion.SceneGraph
     /// </remarks>
     public abstract class ContainerNode : BaseSceneNode
     {
+        internal virtual bool CanAcceptChild(
+            ISceneNode child,
+            IReadOnlyCollection<ISceneNode> plannedChildren
+        )
+        {
+            return CanAcceptChild(child);
+        }
+
         /// <summary>
         /// Retrieves the children of the current node that match the specified predicate.
         /// </summary>

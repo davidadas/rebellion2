@@ -324,6 +324,29 @@ namespace Rebellion.Game.Units
             return false;
         }
 
+        internal override bool CanAcceptChild(
+            ISceneNode child,
+            IReadOnlyCollection<ISceneNode> plannedChildren
+        )
+        {
+            if (!CanAcceptChild(child))
+                return false;
+
+            if (child is Starfighter)
+            {
+                return plannedChildren.Count(candidate => candidate is Starfighter)
+                    < GetExcessStarfighterCapacity();
+            }
+
+            if (child is Regiment)
+            {
+                return plannedChildren.Count(candidate => candidate is Regiment)
+                    < GetExcessRegimentCapacity();
+            }
+
+            return true;
+        }
+
         /// <summary>
         /// Adds a child to the capital ship.
         /// </summary>

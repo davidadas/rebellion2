@@ -577,6 +577,18 @@ namespace Rebellion.Systems
         /// <returns>True if the whole group can move.</returns>
         private bool CanMoveGroup(List<IMovable> units, ContainerNode destination)
         {
+            return TryPlanMoveGroup(units, destination, out _);
+        }
+
+        private bool TryPlanMoveGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            out List<ContainerNode> resolvedDestinations
+        )
+        {
+            resolvedDestinations = new List<ContainerNode>();
+            Dictionary<ContainerNode, List<ISceneNode>> plannedChildren =
+                new Dictionary<ContainerNode, List<ISceneNode>>();
             Planet groupOrigin = null;
             foreach (IMovable unit in units)
             {
@@ -608,8 +620,29 @@ namespace Rebellion.Systems
                     return false;
                 }
 
-                if (!TryResolveAcceptedDestination(unit, destination, out _))
+                if (
+                    !TryResolveAcceptedDestination(
+                        unit,
+                        destination,
+                        plannedChildren,
+                        out ContainerNode resolvedDestination
+                    )
+                )
                     return false;
+
+                if (
+                    !plannedChildren.TryGetValue(
+                        resolvedDestination,
+                        out List<ISceneNode> destinationChildren
+                    )
+                )
+                {
+                    destinationChildren = new List<ISceneNode>();
+                    plannedChildren.Add(resolvedDestination, destinationChildren);
+                }
+
+                destinationChildren.Add(unit);
+                resolvedDestinations.Add(resolvedDestination);
             }
 
             foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
@@ -643,16 +676,18 @@ namespace Rebellion.Systems
                 return false;
 
             destination = ResolveLiveContainer(destination);
-            if (!CanMoveGroup(units, destination))
+            if (!TryPlanMoveGroup(units, destination, out List<ContainerNode> destinations))
                 return false;
 
             string movementGroupID = Guid.NewGuid().ToString("N");
-            foreach (IMovable unit in units)
+            for (int index = 0; index < units.Count; index++)
             {
+                IMovable unit = units[index];
+                ContainerNode resolvedDestination = destinations[index];
                 if (IsUnderConstruction(unit))
-                    RetargetManufacturingDestination(unit, destination);
+                    ApplyManufacturingDestination(unit, resolvedDestination);
                 else
-                    ExecuteMove(unit, destination, results, movementGroupID);
+                    ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
             }
 
             return true;
@@ -1274,8 +1309,16 @@ namespace Rebellion.Systems
             )
                 return;
 
-            destination = resolvedDestination;
+            ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
+        }
 
+        private void ExecuteAcceptedMove(
+            IMovable unit,
+            ContainerNode destination,
+            ICollection<GameResult> results,
+            string movementGroupID
+        )
+        {
             Planet destinationPlanet = RequireDestinationPlanet(destination);
 
             Planet originPlanet = unit.GetParentOfType<Planet>();
@@ -1412,11 +1455,16 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
+        /// <param name="plannedChildren">The children already reserved during group planning.</param>
         /// <returns>The node that should receive the unit, or null if none is available.</returns>
-        private ContainerNode ResolveMoveDestination(IMovable unit, ContainerNode destination)
+        private ContainerNode ResolveMoveDestination(
+            IMovable unit,
+            ContainerNode destination,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+        )
         {
             if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
-                return ResolveFleetTarget(unit, targetFleet);
+                return ResolveFleetTarget(unit, targetFleet, plannedChildren);
 
             return destination;
         }
@@ -1437,6 +1485,11 @@ namespace Rebellion.Systems
             )
                 return;
 
+            ApplyManufacturingDestination(unit, resolvedDestination);
+        }
+
+        private void ApplyManufacturingDestination(IMovable unit, ContainerNode resolvedDestination)
+        {
             _game.MoveNode(unit, resolvedDestination);
         }
 
@@ -1453,7 +1506,17 @@ namespace Rebellion.Systems
             out ContainerNode resolvedDestination
         )
         {
-            resolvedDestination = ResolveMoveDestination(unit, destination);
+            return TryResolveAcceptedDestination(unit, destination, null, out resolvedDestination);
+        }
+
+        private bool TryResolveAcceptedDestination(
+            IMovable unit,
+            ContainerNode destination,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren,
+            out ContainerNode resolvedDestination
+        )
+        {
+            resolvedDestination = ResolveMoveDestination(unit, destination, plannedChildren);
             if (resolvedDestination == null)
             {
                 GameLogger.Warning(
@@ -1470,7 +1533,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (resolvedDestination.CanAcceptChild(unit))
+            if (CanAcceptPlannedChild(resolvedDestination, unit, plannedChildren))
                 return true;
 
             GameLogger.Warning(
@@ -1582,16 +1645,58 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The non-fleet unit being assigned.</param>
         /// <param name="fleet">The fleet to find a suitable ship within.</param>
+        /// <param name="plannedChildren">The children already reserved during group planning.</param>
         /// <returns>The target ship, or null if no valid ship exists.</returns>
-        private ContainerNode ResolveFleetTarget(IMovable unit, Fleet fleet)
+        private ContainerNode ResolveFleetTarget(
+            IMovable unit,
+            Fleet fleet,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+        )
         {
             if (unit is Starfighter)
-                return fleet.FindShipForStarfighter();
+            {
+                if (fleet.Movement != null)
+                    return null;
+
+                return fleet.CapitalShips.FirstOrDefault(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                );
+            }
+
             if (unit is Regiment)
-                return fleet.FindShipForRegiment();
+            {
+                if (fleet.Movement != null)
+                    return null;
+
+                return fleet.CapitalShips.FirstOrDefault(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                );
+            }
+
             if ((unit is Officer || unit is SpecialForces) && fleet.CapitalShips.Count > 0)
                 return fleet.CapitalShips[0];
             return null;
+        }
+
+        private static bool CanAcceptPlannedChild(
+            ContainerNode destination,
+            ISceneNode child,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+        )
+        {
+            IReadOnlyCollection<ISceneNode> destinationChildren =
+                plannedChildren != null
+                && plannedChildren.TryGetValue(
+                    destination,
+                    out List<ISceneNode> existingDestinationChildren
+                )
+                    ? existingDestinationChildren
+                    : Array.Empty<ISceneNode>();
+            return destination.CanAcceptChild(child, destinationChildren);
         }
 
         /// <summary>
