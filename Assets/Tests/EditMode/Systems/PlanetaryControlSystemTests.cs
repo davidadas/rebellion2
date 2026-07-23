@@ -648,7 +648,9 @@ namespace Rebellion.Tests.Systems
 
             _movementSystem.RequestMove(regiment, ship);
             List<GameResult> movementResults = _movementSystem.ProcessTick();
-            List<GameResult> controlResults = _ownershipSystem.HandleResults(movementResults);
+            List<GameResult> controlResults = _ownershipSystem.HandleResults(
+                movementResults.OfType<PlanetGarrisonChangedResult>().ToList()
+            );
 
             Assert.AreEqual(expectedOwnerId, _targetPlanet.GetOwnerInstanceID());
             Assert.IsTrue(
@@ -721,7 +723,9 @@ namespace Rebellion.Tests.Systems
 
             _movementSystem.RequestMove(regiment, ship);
             List<GameResult> movementResults = _movementSystem.ProcessTick();
-            _ownershipSystem.HandleResults(movementResults);
+            _ownershipSystem.HandleResults(
+                movementResults.OfType<PlanetGarrisonChangedResult>().ToList()
+            );
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());
             Assert.IsNull(diplomacyMission.GetParent());

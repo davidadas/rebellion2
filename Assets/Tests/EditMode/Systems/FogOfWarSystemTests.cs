@@ -329,7 +329,7 @@ namespace Rebellion.Tests.Systems
             _game.DetachNode(mine);
 
             _fogSystem.ProcessResults(
-                new List<GameResult>
+                new List<GameObjectSabotagedResult>
                 {
                     new GameObjectSabotagedResult
                     {

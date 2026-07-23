@@ -13,7 +13,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary ownership and popular support.
     /// </summary>
-    public class PlanetaryControlSystem : IGameResultHandler
+    public class PlanetaryControlSystem : IGameResultHandler<PlanetGarrisonChangedResult>
     {
         private readonly GameRoot _game;
         private readonly MovementSystem _movementSystem;
@@ -61,14 +61,13 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="results">The result batch to inspect.</param>
         /// <returns>Any ownership changes caused by the garrison changes.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetGarrisonChangedResult> results)
         {
             List<GameResult> controlResults = new List<GameResult>();
             if (results == null)
                 return controlResults;
 
             IEnumerable<Planet> affectedPlanets = results
-                .OfType<PlanetGarrisonChangedResult>()
                 .Select(result => result.Planet)
                 .Where(planet => planet != null)
                 .Distinct();

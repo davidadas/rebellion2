@@ -13,15 +13,33 @@ using Rebellion.Systems;
 /// </summary>
 public sealed class StrategyFleetCommandController
 {
-    private readonly GameManager gameManager;
+    private readonly Func<GameRoot> getGame;
+    private readonly Func<FleetSystem> getFleetSystem;
+    private readonly Func<BombardmentSystem> getBombardmentSystem;
+    private readonly Func<PlanetaryAssaultSystem> getPlanetaryAssaultSystem;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
-    /// <param name="gameManager">The active game manager.</param>
-    public StrategyFleetCommandController(GameManager gameManager)
+    /// <param name="getGame">Returns the active game state.</param>
+    /// <param name="getFleetSystem">Returns the active fleet system.</param>
+    /// <param name="getBombardmentSystem">Returns the active bombardment system.</param>
+    /// <param name="getPlanetaryAssaultSystem">Returns the active planetary-assault system.</param>
+    public StrategyFleetCommandController(
+        Func<GameRoot> getGame,
+        Func<FleetSystem> getFleetSystem,
+        Func<BombardmentSystem> getBombardmentSystem,
+        Func<PlanetaryAssaultSystem> getPlanetaryAssaultSystem
+    )
     {
-        this.gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
+        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
+        this.getFleetSystem =
+            getFleetSystem ?? throw new ArgumentNullException(nameof(getFleetSystem));
+        this.getBombardmentSystem =
+            getBombardmentSystem ?? throw new ArgumentNullException(nameof(getBombardmentSystem));
+        this.getPlanetaryAssaultSystem =
+            getPlanetaryAssaultSystem
+            ?? throw new ArgumentNullException(nameof(getPlanetaryAssaultSystem));
     }
 
     /// <summary>
@@ -34,12 +52,14 @@ public sealed class StrategyFleetCommandController
         List<ISceneNode> sourceItems =
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
-        GameRoot game = gameManager.GetGame();
+        GameRoot game = getGame();
+        FleetSystem fleetSystem = getFleetSystem();
         string playerFactionId = game?.GetPlayerFaction()?.InstanceID;
         return game != null
+            && fleetSystem != null
             && ships.Count > 0
             && ships.Count == sourceItems.Count
-            && gameManager.FleetSystem.CreateFromCapitalShips(ships, playerFactionId) != null;
+            && fleetSystem.CreateFromCapitalShips(ships, playerFactionId) != null;
     }
 
     /// <summary>
@@ -59,10 +79,10 @@ public sealed class StrategyFleetCommandController
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return gameManager.BombardmentSystem.CanExecute(fleets, liveTarget, type);
+            return getBombardmentSystem()?.CanExecute(fleets, liveTarget, type) == true;
 
         return action == StrategyMenuAction.PlanetaryAssault
-            && gameManager.PlanetaryAssaultSystem.CanExecute(fleets, liveTarget);
+            && getPlanetaryAssaultSystem()?.CanExecute(fleets, liveTarget) == true;
     }
 
     /// <summary>
@@ -82,10 +102,10 @@ public sealed class StrategyFleetCommandController
             return null;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return gameManager.ExecuteOrbitalBombardment(fleets, liveTarget, type);
+            return getBombardmentSystem()?.TryExecute(fleets, liveTarget, type);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            ? gameManager.ExecutePlanetaryAssault(fleets, liveTarget)
+            ? getPlanetaryAssaultSystem()?.TryExecute(fleets, liveTarget)
             : null;
     }
 
@@ -98,7 +118,7 @@ public sealed class StrategyFleetCommandController
     {
         return string.IsNullOrEmpty(planet?.InstanceID)
             ? null
-            : gameManager.GetGame()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            : getGame()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
     }
 
     /// <summary>
@@ -118,7 +138,7 @@ public sealed class StrategyFleetCommandController
     {
         fleets = new List<Fleet>();
         liveTarget = null;
-        GameRoot game = gameManager.GetGame();
+        GameRoot game = getGame();
         if (game == null || items?.Count < 1 || string.IsNullOrEmpty(targetPlanet?.InstanceID))
             return false;
 

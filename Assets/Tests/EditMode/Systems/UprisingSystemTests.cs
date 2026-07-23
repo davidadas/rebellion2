@@ -127,7 +127,10 @@ namespace Rebellion.Tests.Systems
             game.DetachNode(departingRegiment);
 
             List<GameResult> results = system.HandleResults(
-                new GameResult[] { new PlanetGarrisonChangedResult { Planet = planet } }
+                new PlanetGarrisonChangedResult[]
+                {
+                    new PlanetGarrisonChangedResult { Planet = planet },
+                }
             );
 
             Assert.IsTrue(planet.IsInUprising);

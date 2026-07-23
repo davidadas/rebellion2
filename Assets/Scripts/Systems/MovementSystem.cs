@@ -29,6 +29,11 @@ namespace Rebellion.Systems
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
+        /// Raised after an immediate movement command produces results.
+        /// </summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
+
+        /// <summary>
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
         /// <param name="game">The game instance.</param>
@@ -349,16 +354,13 @@ namespace Rebellion.Systems
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="destination">The requested destination or its snapshot.</param>
         /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
-        /// <param name="results">Receives results produced while executing the order.</param>
         /// <returns>True when the complete movement order was accepted.</returns>
         public bool TryRequestMove(
             IReadOnlyList<ISceneNode> items,
             ContainerNode destination,
-            string ownerInstanceId,
-            out List<GameResult> results
+            string ownerInstanceId
         )
         {
-            results = new List<GameResult>();
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
                 liveDestination == null
@@ -394,6 +396,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            List<GameResult> results = new List<GameResult>();
             bool accepted = TryRequestMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
@@ -402,6 +405,9 @@ namespace Rebellion.Systems
             }
 
             _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+            if (accepted)
+                ResultsProduced?.Invoke(results);
+
             return accepted;
         }
 
@@ -580,6 +586,13 @@ namespace Rebellion.Systems
             return TryPlanMoveGroup(units, destination, out _);
         }
 
+        /// <summary>
+        /// Resolves destinations for a movement group without mutating scene state.
+        /// </summary>
+        /// <param name="units">The units being planned together.</param>
+        /// <param name="destination">The shared requested destination.</param>
+        /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
+        /// <returns>True when every unit has an accepted destination.</returns>
         private bool TryPlanMoveGroup(
             List<IMovable> units,
             ContainerNode destination,
@@ -1312,6 +1325,13 @@ namespace Rebellion.Systems
             ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
         }
 
+        /// <summary>
+        /// Executes a move whose destination and capacity have already been validated.
+        /// </summary>
+        /// <param name="unit">The unit receiving the movement order.</param>
+        /// <param name="destination">The accepted destination.</param>
+        /// <param name="results">The collection receiving movement results.</param>
+        /// <param name="movementGroupID">The shared movement order identifier.</param>
         private void ExecuteAcceptedMove(
             IMovable unit,
             ContainerNode destination,
@@ -1488,6 +1508,11 @@ namespace Rebellion.Systems
             ApplyManufacturingDestination(unit, resolvedDestination);
         }
 
+        /// <summary>
+        /// Reparents an under-construction unit to its accepted delivery destination.
+        /// </summary>
+        /// <param name="unit">The unit being manufactured.</param>
+        /// <param name="resolvedDestination">The accepted delivery destination.</param>
         private void ApplyManufacturingDestination(IMovable unit, ContainerNode resolvedDestination)
         {
             _game.MoveNode(unit, resolvedDestination);
@@ -1509,6 +1534,14 @@ namespace Rebellion.Systems
             return TryResolveAcceptedDestination(unit, destination, null, out resolvedDestination);
         }
 
+        /// <summary>
+        /// Resolves a destination against children already reserved by the current group plan.
+        /// </summary>
+        /// <param name="unit">The unit being moved.</param>
+        /// <param name="destination">The requested destination.</param>
+        /// <param name="plannedChildren">The children already reserved by the group plan.</param>
+        /// <param name="resolvedDestination">The resolved destination when accepted.</param>
+        /// <returns>True when the destination can receive the unit.</returns>
         private bool TryResolveAcceptedDestination(
             IMovable unit,
             ContainerNode destination,
@@ -1682,6 +1715,13 @@ namespace Rebellion.Systems
             return null;
         }
 
+        /// <summary>
+        /// Returns whether a destination can accept a child after current group reservations.
+        /// </summary>
+        /// <param name="destination">The destination being evaluated.</param>
+        /// <param name="child">The child proposed for the destination.</param>
+        /// <param name="plannedChildren">The children already reserved by the group plan.</param>
+        /// <returns>True when the destination has capacity for the proposed child.</returns>
         private static bool CanAcceptPlannedChild(
             ContainerNode destination,
             ISceneNode child,

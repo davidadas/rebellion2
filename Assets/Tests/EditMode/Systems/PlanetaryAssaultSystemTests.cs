@@ -105,6 +105,24 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
+            IReadOnlyList<GameResult> publishedResults = null;
+            system.ResultsProduced += results => publishedResults = results;
+
+            PlanetaryAssaultResult result = system.TryExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsNotNull(publishedResults);
+            Assert.AreSame(result, publishedResults[0]);
+            Assert.IsTrue(publishedResults.OfType<PlanetGarrisonChangedResult>().Any());
+            Assert.Contains(result.OwnershipChange, publishedResults.ToList());
+        }
+
+        [Test]
         public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
         {
             GameRoot game = CreateGame();
