@@ -921,6 +921,99 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithMultipleAttackFleets_ReinforcesHighestPresenceCampaignOnly()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 0;
+            game.Config.AI.Infrastructure.StarfighterParentFillPercent = 0;
+            PlanetSystem establishedSystem = AITestSceneBuilder.AddSystem(
+                game,
+                "established-system"
+            );
+            Planet establishedOwned = AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "established-owned",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "established-owned-2",
+                empire.InstanceID
+            );
+            Planet establishedEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                establishedSystem,
+                "established-enemy",
+                rebels.InstanceID
+            );
+            PlanetSystem remoteSystem = AITestSceneBuilder.AddSystem(game, "remote-system");
+            Planet remoteEnemy = AITestSceneBuilder.AddPlanet(
+                game,
+                remoteSystem,
+                "remote-enemy",
+                rebels.InstanceID
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, establishedEnemy);
+            AITestSceneBuilder.RevealPlanet(game, empire, remoteEnemy);
+
+            Fleet establishedFleet = EntityFactory.CreateFleet(
+                "established-fleet",
+                empire.InstanceID
+            );
+            establishedFleet.RoleType = FleetRoleType.Battle;
+            establishedFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = establishedEnemy.InstanceID,
+            };
+            game.AttachNode(establishedFleet, establishedOwned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "established-ship",
+                    empire.InstanceID,
+                    combatStrength: 100,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                establishedFleet
+            );
+
+            Fleet remoteFleet = EntityFactory.CreateFleet("remote-fleet", empire.InstanceID);
+            remoteFleet.RoleType = FleetRoleType.Battle;
+            remoteFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = remoteEnemy.InstanceID,
+            };
+            game.AttachNode(remoteFleet, establishedOwned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "remote-ship",
+                    empire.InstanceID,
+                    combatStrength: 100,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                remoteFleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            List<AIProductionDemand> capitalDemands = demands
+                .Where(demand => demand.Kind == AIProductionDemandKind.FleetCapitalShip)
+                .ToList();
+            Assert.AreEqual(1, capitalDemands.Count);
+            Assert.AreSame(establishedFleet, capitalDemands[0].DestinationFleet);
+        }
+
+        [Test]
         public void Generate_WithAttackRegimentStrengthGap_AddsFleetRegimentDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
@@ -1078,6 +1171,49 @@ namespace Rebellion.Tests.AI.Planners
                 );
 
             Assert.AreEqual(11, demand.QuantityNeeded);
+            Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
+        }
+
+        [Test]
+        public void Generate_WithCombatAndBombardmentGaps_PrioritizesBombardmentShip()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AddShield(game, enemy, "shield-1", rebels.InstanceID, 10);
+            AddShield(game, enemy, "shield-2", rebels.InstanceID, 10);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                "ship",
+                empire.InstanceID,
+                combatStrength: 100,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            ship.Bombardment = 10;
+            game.AttachNode(fleet, owned);
+            game.AttachNode(ship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.DestinationFleet == fleet
+                );
+
             Assert.AreEqual(AICapitalShipProductionRole.Bombardment, demand.CapitalShipRole);
         }
 
@@ -1256,6 +1392,97 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithColonizationFleetCapacity_AddsOnlyRequiredColonizationRegiment()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
+            game.Config.AI.Infrastructure.AssaultRegimentLoadPercent = 100;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
+            target.IsColonized = false;
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Colonize,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "ship",
+                    empire.InstanceID,
+                    regimentCapacity: 5,
+                    starfighterCapacity: 0
+                ),
+                fleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetRegiment
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(
+                game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount,
+                demand.QuantityNeeded
+            );
+        }
+
+        [Test]
+        public void Generate_WithDefenseFleetCapacity_DoesNotAddFleetRegimentDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", empire.InstanceID);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
+            hostileFleet.RoleType = FleetRoleType.Battle;
+            game.AttachNode(hostileFleet, target);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "hostile-ship",
+                    rebels.InstanceID,
+                    combatStrength: 500
+                ),
+                hostileFleet
+            );
+            Fleet defenseFleet = EntityFactory.CreateFleet("defense-fleet", empire.InstanceID);
+            defenseFleet.RoleType = FleetRoleType.Battle;
+            defenseFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Defend,
+                Status = FleetOrderStatus.Building,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(defenseFleet, target);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "defense-ship",
+                    empire.InstanceID,
+                    combatStrength: 100,
+                    regimentCapacity: 5,
+                    starfighterCapacity: 0
+                ),
+                defenseFleet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(item =>
+                    item.Kind == AIProductionDemandKind.FleetRegiment
+                    && item.DestinationFleet == defenseFleet
+                )
+            );
+        }
+
+        [Test]
         public void Generate_WithSpecialForcesDeficit_AddsDemandForUnlockedType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -1401,7 +1628,11 @@ namespace Rebellion.Tests.AI.Planners
                 .Single(item => item.Kind == AIProductionDemandKind.FleetSeedCapitalShip);
 
             Assert.AreSame(headquarters, demand.DestinationPlanet);
-            Assert.AreEqual(3, demand.QuantityNeeded);
+            Assert.AreEqual(
+                game.Config.AI.FleetDeployment.MaximumConcurrentAttackOrders
+                    + game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders,
+                demand.QuantityNeeded
+            );
         }
 
         [Test]
@@ -1466,7 +1697,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithSatisfiedGarrisonRequirement_AddsSurplusGarrisonDemand()
+        public void Generate_WithSatisfiedGarrisonRequirement_DoesNotAddGarrisonDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
@@ -1492,13 +1723,11 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            AIProductionDemand demand = demands.Single(item =>
-                item.Kind == AIProductionDemandKind.GarrisonRegimentReserve
-                && item.DestinationPlanet == planet
-            );
-            Assert.AreEqual(
-                game.Config.AI.Infrastructure.PlanetaryDefenseSurplusBatchSize,
-                demand.QuantityNeeded
+            Assert.IsFalse(
+                demands.Any(item =>
+                    item.Kind == AIProductionDemandKind.GarrisonRegimentReserve
+                    && item.DestinationPlanet == planet
+                )
             );
         }
 

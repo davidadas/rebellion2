@@ -120,7 +120,7 @@
       <FleetReinforcementTravelPenaltyWeight>1</FleetReinforcementTravelPenaltyWeight>
     </Infrastructure>
     <FleetDeployment>
-      <MaximumConcurrentAttackOrders>2</MaximumConcurrentAttackOrders>
+      <MaximumConcurrentAttackOrders>1</MaximumConcurrentAttackOrders>
       <MaximumConcurrentColonizationOrders>1</MaximumConcurrentColonizationOrders>
       <ColonizationCandidatePlanetLimit>6</ColonizationCandidatePlanetLimit>
       <MinimumBattleFleetCount>3</MinimumBattleFleetCount>

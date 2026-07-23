@@ -343,24 +343,21 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            bool canStartAttack = CanStartAttackOrder(context, fleet);
+            bool canStartAttack =
+                CanStartAttackOrder(context, fleet) && IsPriorityNewAttackFleet(context, fleet);
             string preferredSystemId = canStartAttack
                 ? FindPreferredAttackSystemId(context, fleet, currentPlanet)
                 : string.Empty;
 
             foreach (Planet targetPlanet in context.Assessment.EnemyPlanets)
             {
-                bool canRespond = CanStartOrbitalResponse(context, fleet, targetPlanet);
                 bool isPreferredCampaignTarget =
                     canStartAttack
                     && context.Assessment.GetPlanetSystemId(targetPlanet) == preferredSystemId;
-                if (!isPreferredCampaignTarget && !canRespond)
+                if (!isPreferredCampaignTarget)
                     continue;
 
-                if (
-                    HasAttackFleetForTarget(context, targetPlanet, fleet)
-                    && (!canRespond || HasCapableResponder(context, targetPlanet, fleet))
-                )
+                if (HasAttackFleetForTarget(context, targetPlanet, fleet))
                     continue;
 
                 proposals.Add(
@@ -386,6 +383,11 @@ namespace Rebellion.AI.Planners
                 .Distinct()
                 .Where(systemId => !HasAttackFleetForSystem(context, systemId, fleet))
                 .OrderByDescending(context.Assessment.GetOwnedSystemPresenceRatio)
+                .ThenByDescending(systemId =>
+                    context
+                        .Assessment.GetAttackCampaignPlanets(systemId)
+                        .Any(planet => planet.IsHeadquarters)
+                )
                 .ThenBy(context.Assessment.GetEnemyPlanetCountInSystem)
                 .ThenBy(context.Assessment.GetRequiredAttackCampaignCombatStrength)
                 .ThenBy(context.Assessment.GetRequiredAttackCampaignRegimentCount)
@@ -412,20 +414,6 @@ namespace Rebellion.AI.Planners
                 .Min();
         }
 
-        private bool CanStartOrbitalResponse(
-            AITurnContext context,
-            Fleet fleet,
-            Planet targetPlanet
-        )
-        {
-            return fleet.RoleType == FleetRoleType.Battle
-                && fleet.Movement == null
-                && !fleet.IsInCombat
-                && fleet.HasOperationalCapitalShips()
-                && context.Assessment.CanFleetDepartHeadquarters(fleet)
-                && context.Assessment.CanWinOrbitalCombat(fleet, targetPlanet);
-        }
-
         /// <summary>
         /// Returns whether a fleet can receive a new attack order.
         /// </summary>
@@ -443,6 +431,52 @@ namespace Rebellion.AI.Planners
                 && context.Assessment.CanFleetDepartHeadquarters(fleet)
                 && context.Assessment.AttackOrderedFleets.Count
                     < context.Game.Config.AI.FleetDeployment.MaximumConcurrentAttackOrders;
+        }
+
+        private bool IsPriorityNewAttackFleet(AITurnContext context, Fleet fleet)
+        {
+            int availableOrders =
+                context.Game.Config.AI.FleetDeployment.MaximumConcurrentAttackOrders
+                - context.Assessment.AttackOrderedFleets.Count;
+            if (availableOrders <= 0)
+                return false;
+
+            return context
+                .Assessment.OwnedFleets.Where(candidate =>
+                    candidate.Order == null && CanStartAttackOrder(context, candidate)
+                )
+                .Where(candidate =>
+                    !string.IsNullOrEmpty(
+                        FindPreferredAttackSystemId(
+                            context,
+                            candidate,
+                            context.Assessment.GetFleetPlanet(candidate)
+                        )
+                    )
+                )
+                .OrderByDescending(candidate =>
+                    GetPreferredAttackReadinessGateCount(context, candidate)
+                )
+                .ThenByDescending(context.Assessment.GetProjectedFleetCombatValue)
+                .ThenByDescending(context.Assessment.GetFleetLoadedRegimentCount)
+                .ThenByDescending(context.Assessment.GetFleetRegimentCapacity)
+                .ThenByDescending(context.Assessment.GetProjectedFleetBombardmentStrength)
+                .ThenBy(candidate => candidate.InstanceID, System.StringComparer.Ordinal)
+                .Take(availableOrders)
+                .Any(candidate => candidate.InstanceID == fleet.InstanceID);
+        }
+
+        private int GetPreferredAttackReadinessGateCount(AITurnContext context, Fleet fleet)
+        {
+            string systemId = FindPreferredAttackSystemId(
+                context,
+                fleet,
+                context.Assessment.GetFleetPlanet(fleet)
+            );
+            Planet targetPlanet = context
+                .Assessment.GetAttackCampaignPlanets(systemId)
+                .FirstOrDefault();
+            return context.Assessment.GetFleetAttackCampaignReadinessGateCount(fleet, targetPlanet);
         }
 
         private void AddColonizationOrderProposals(
@@ -488,14 +522,47 @@ namespace Rebellion.AI.Planners
 
         private bool CanStartColonizationOrder(AITurnContext context, Fleet fleet)
         {
-            return fleet.RoleType == FleetRoleType.Battle
-                && fleet.Movement == null
-                && !fleet.IsInCombat
-                && fleet.HasOperationalCapitalShips()
-                && fleet.GetRegimentCapacity() > 0
-                && context.Assessment.CanFleetDepartHeadquarters(fleet)
-                && context.Assessment.ColonizationOrderedFleets.Count
-                    < context.Game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders;
+            if (
+                fleet.RoleType != FleetRoleType.Battle
+                || fleet.Movement != null
+                || fleet.IsInCombat
+                || !fleet.HasOperationalCapitalShips()
+                || fleet.GetRegimentCapacity() <= 0
+                || !context.Assessment.CanFleetDepartHeadquarters(fleet)
+                || context.Assessment.ColonizationOrderedFleets.Count
+                    >= context.Game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders
+            )
+                return false;
+
+            return IsPriorityNewColonizationFleet(context, fleet);
+        }
+
+        private bool IsPriorityNewColonizationFleet(AITurnContext context, Fleet fleet)
+        {
+            int availableOrders =
+                context.Game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders
+                - context.Assessment.ColonizationOrderedFleets.Count;
+            if (availableOrders <= 0)
+                return false;
+
+            return context
+                .Assessment.OwnedFleets.Where(candidate =>
+                    candidate.RoleType == FleetRoleType.Battle
+                    && candidate.Order == null
+                    && candidate.Movement == null
+                    && !candidate.IsInCombat
+                    && candidate.HasOperationalCapitalShips()
+                    && candidate.GetRegimentCapacity() > 0
+                    && context.Assessment.CanFleetDepartHeadquarters(candidate)
+                    && !IsPriorityNewAttackFleet(context, candidate)
+                )
+                .OrderBy(context.Assessment.GetProjectedFleetCombatValue)
+                .ThenBy(candidate => candidate.GetOperationalCapitalShipCount())
+                .ThenByDescending(context.Assessment.GetReadyFleetRegimentCount)
+                .ThenBy(context.Assessment.GetFleetRegimentCapacity)
+                .ThenBy(candidate => candidate.InstanceID, System.StringComparer.Ordinal)
+                .Take(availableOrders)
+                .Any(candidate => candidate.InstanceID == fleet.InstanceID);
         }
 
         private bool HasColonizationFleetForTarget(
@@ -640,19 +707,6 @@ namespace Rebellion.AI.Planners
                 );
                 return context.Assessment.GetPlanetSystemId(targetPlanet) == systemId;
             });
-        }
-
-        private bool HasCapableResponder(
-            AITurnContext context,
-            Planet targetPlanet,
-            Fleet ignoredFleet
-        )
-        {
-            return context.Assessment.AttackOrderedFleets.Any(fleet =>
-                fleet != ignoredFleet
-                && IsAttackFleetAssignedToTarget(context, fleet, targetPlanet)
-                && context.Assessment.CanWinOrbitalCombat(fleet, targetPlanet)
-            );
         }
 
         /// <summary>
@@ -942,35 +996,7 @@ namespace Rebellion.AI.Planners
                     && context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip) > 0;
             }
 
-            int requiredCombat = context.Assessment.GetRequiredAttackCampaignCombatStrength(
-                targetPlanet
-            );
-            int requiredRegiments = context.Assessment.GetRequiredAttackCampaignRegimentCount(
-                targetPlanet
-            );
-            int requiredRegimentStrength =
-                context.Assessment.GetRequiredAttackCampaignRegimentStrength(targetPlanet);
-            int requiredBombardment =
-                context.Assessment.GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
-
-            return context.Assessment.GetProjectedFleetCombatValue(targetFleet) < requiredCombat
-                    && context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip) > 0
-                || context.Assessment.GetProjectedFleetBombardmentStrength(targetFleet)
-                    < requiredBombardment
-                    && context.Assessment.GetProjectedCapitalShipBombardmentStrength(
-                        targetFleet,
-                        capitalShip
-                    ) > 0
-                || context.Assessment.GetProjectedFleetRegimentAttackStrength(targetFleet)
-                    < requiredRegimentStrength
-                    && context.Assessment.GetProjectedCapitalShipRegimentAttackStrength(
-                        targetFleet,
-                        capitalShip
-                    ) > 0
-                || context.Assessment.GetFleetLoadedRegimentCount(targetFleet) < requiredRegiments
-                    && context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip) > 0
-                || context.Assessment.GetFleetRegimentCapacity(targetFleet) < requiredRegiments
-                    && context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip) > 0;
+            return GetCapitalShipTransferValue(context, targetFleet, targetPlanet, capitalShip) > 0;
         }
 
         /// <summary>
@@ -1011,37 +1037,60 @@ namespace Rebellion.AI.Planners
                 context.Assessment.GetRequiredAttackCampaignRegimentStrength(targetPlanet);
             int requiredBombardment =
                 context.Assessment.GetRequiredAttackCampaignBombardmentStrength(targetPlanet);
-            return GetFulfillmentGain(
-                    context.Assessment.GetProjectedFleetCombatValue(targetFleet),
-                    context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip),
-                    requiredCombat
-                )
-                + GetFulfillmentGain(
-                    context.Assessment.GetProjectedFleetBombardmentStrength(targetFleet),
+
+            int currentRegimentCapacity = context.Assessment.GetFleetRegimentCapacity(targetFleet);
+            if (currentRegimentCapacity < requiredRegiments)
+            {
+                return GetFulfillmentGain(
+                    currentRegimentCapacity,
+                    context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip),
+                    requiredRegiments
+                );
+            }
+
+            int currentBombardment = context.Assessment.GetProjectedFleetBombardmentStrength(
+                targetFleet
+            );
+            if (currentBombardment < requiredBombardment)
+            {
+                return GetFulfillmentGain(
+                    currentBombardment,
                     context.Assessment.GetProjectedCapitalShipBombardmentStrength(
                         targetFleet,
                         capitalShip
                     ),
                     requiredBombardment
-                )
-                + GetFulfillmentGain(
-                    context.Assessment.GetProjectedFleetRegimentAttackStrength(targetFleet),
-                    context.Assessment.GetProjectedCapitalShipRegimentAttackStrength(
-                        targetFleet,
-                        capitalShip
-                    ),
-                    requiredRegimentStrength
-                )
-                + GetFulfillmentGain(
-                    context.Assessment.GetFleetLoadedRegimentCount(targetFleet),
-                    context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip),
-                    requiredRegiments
-                )
-                + GetFulfillmentGain(
-                    context.Assessment.GetFleetRegimentCapacity(targetFleet),
-                    context.Assessment.GetReadyCapitalShipRegimentCapacity(capitalShip),
-                    requiredRegiments
                 );
+            }
+
+            int currentRegimentCount = context.Assessment.GetFleetLoadedRegimentCount(targetFleet);
+            int currentRegimentStrength =
+                context.Assessment.GetProjectedFleetRegimentAttackStrength(targetFleet);
+            if (
+                currentRegimentCount < requiredRegiments
+                || currentRegimentStrength < requiredRegimentStrength
+            )
+            {
+                return GetFulfillmentGain(
+                        currentRegimentCount,
+                        context.Assessment.GetReadyCapitalShipRegimentCount(capitalShip),
+                        requiredRegiments
+                    )
+                    + GetFulfillmentGain(
+                        currentRegimentStrength,
+                        context.Assessment.GetProjectedCapitalShipRegimentAttackStrength(
+                            targetFleet,
+                            capitalShip
+                        ),
+                        requiredRegimentStrength
+                    );
+            }
+
+            return GetFulfillmentGain(
+                context.Assessment.GetProjectedFleetCombatValue(targetFleet),
+                context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip),
+                requiredCombat
+            );
         }
 
         private double GetFulfillmentGain(double current, double contribution, double target)

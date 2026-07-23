@@ -151,19 +151,7 @@ namespace Rebellion.Systems
                         : new List<string>();
 
                     MergeOwnLiveUnits(viewPlanet, masterPlanet, faction);
-
-                    foreach (
-                        Mission mission in masterPlanet.Missions.Where(mission =>
-                            mission.GetOwnerInstanceID() == faction.InstanceID
-                        )
-                    )
-                    {
-                        Mission viewMission = mission.GetShallowCopy(CloneMode.Full);
-                        ClearParentReferences(viewMission);
-                        viewMission.SetParent(viewPlanet);
-                        viewPlanet.Missions.Add(viewMission);
-                    }
-
+                    AddOwnedMissions(viewPlanet, masterPlanet, faction);
                     AttachDetachedChildrenToView(viewPlanet);
                     viewPlanet.SetParent(viewSystem);
                     viewSystem.Planets.Add(viewPlanet);
@@ -173,6 +161,87 @@ namespace Rebellion.Systems
             }
 
             return factionView;
+        }
+
+        internal List<Planet> GetFactionKnowledgePlanets(Faction faction)
+        {
+            List<Planet> planets = new List<Planet>();
+
+            foreach (
+                PlanetSystem masterSystem in _game
+                    .Galaxy.PlanetSystems.OrderBy(system => system.PositionX)
+                    .ThenBy(system => system.InstanceID)
+            )
+            {
+                faction.Fog.Snapshots.TryGetValue(
+                    masterSystem.InstanceID,
+                    out SystemSnapshot systemSnapshot
+                );
+
+                foreach (
+                    Planet masterPlanet in masterSystem.Planets.OrderBy(planet => planet.InstanceID)
+                )
+                {
+                    PlanetSnapshot planetSnapshot = null;
+                    systemSnapshot?.Planets.TryGetValue(
+                        masterPlanet.InstanceID,
+                        out planetSnapshot
+                    );
+
+                    Planet viewPlanet;
+                    if (IsPlanetVisible(masterPlanet, faction))
+                    {
+                        viewPlanet = BlankPlanetView(masterPlanet);
+                        ApplyRealTimeView(viewPlanet, masterPlanet, faction);
+                    }
+                    else if (planetSnapshot != null)
+                    {
+                        viewPlanet = BlankPlanetView(masterPlanet);
+                        ApplySnapshotKnowledgeView(
+                            viewPlanet,
+                            masterPlanet,
+                            masterSystem,
+                            faction,
+                            planetSnapshot
+                        );
+                    }
+                    else
+                    {
+                        viewPlanet = UnexploredPlanetView(masterPlanet, faction);
+                    }
+
+                    viewPlanet.VisitingFactionIDs = masterPlanet.WasVisitedBy(faction.InstanceID)
+                        ? new List<string> { faction.InstanceID }
+                        : new List<string>();
+
+                    MergeOwnLiveUnits(viewPlanet, masterPlanet, faction);
+                    AddOwnedMissions(viewPlanet, masterPlanet, faction);
+                    AttachDetachedChildrenToView(viewPlanet);
+                    viewPlanet.SetParent(masterSystem);
+                    planets.Add(viewPlanet);
+                }
+            }
+
+            return planets;
+        }
+
+        private static void AddOwnedMissions(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            Faction faction
+        )
+        {
+            foreach (
+                Mission mission in masterPlanet.Missions.Where(mission =>
+                    mission.GetOwnerInstanceID() == faction.InstanceID
+                )
+            )
+            {
+                Mission viewMission = mission.GetShallowCopy(CloneMode.Full);
+                ClearParentReferences(viewMission);
+                viewMission.SetParent(viewPlanet);
+                viewPlanet.Missions.Add(viewMission);
+            }
         }
 
         private static void AttachDetachedChildrenToView(Planet viewPlanet)
@@ -286,20 +355,7 @@ namespace Rebellion.Systems
         /// <returns>A blank planet view with empty entity lists.</returns>
         private Planet BlankPlanetView(Planet masterPlanet)
         {
-            Planet viewPlanet = masterPlanet.GetShallowCopy(CloneMode.Full);
-            viewPlanet.Officers = new List<Officer>();
-            viewPlanet.Fleets = new List<Fleet>();
-            viewPlanet.Regiments = new List<Regiment>();
-            viewPlanet.SpecialForces = new List<SpecialForces>();
-            viewPlanet.Buildings = new List<Building>();
-            viewPlanet.Starfighters = new List<Starfighter>();
-            viewPlanet.Missions = new List<Mission>();
-            viewPlanet.ManufacturingQueue =
-                new Dictionary<ManufacturingType, List<IManufacturable>>();
-            viewPlanet.VisitingFactionIDs = new List<string>();
-            viewPlanet.PopularSupport = new Dictionary<string, int>();
-            ClearParentReferences(viewPlanet);
-            return viewPlanet;
+            return masterPlanet.CreateViewShell();
         }
 
         /// <summary>
@@ -361,19 +417,7 @@ namespace Rebellion.Systems
             PlanetSnapshot planetSnapshot
         )
         {
-            viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
-            viewPlanet.IsColonized = planetSnapshot.IsColonized;
-            viewPlanet.IsInUprising = planetSnapshot.IsInUprising;
-            viewPlanet.IsDestroyed = planetSnapshot.IsDestroyed;
-            viewPlanet.IsHeadquarters = planetSnapshot.IsHeadquarters;
-            viewPlanet.EnergyCapacity = planetSnapshot.EnergyCapacity;
-            viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
-            viewPlanet.NumRawResourceNodes = 0;
-
-            viewPlanet.PopularSupport =
-                masterSystem.SystemType == PlanetSystemType.CoreSystem
-                    ? new Dictionary<string, int>(masterPlanet.PopularSupport)
-                    : new Dictionary<string, int>();
+            ApplySnapshotPlanetState(viewPlanet, masterPlanet, masterSystem, planetSnapshot);
 
             viewPlanet.Officers.AddRange(
                 planetSnapshot.Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot)
@@ -398,6 +442,75 @@ namespace Rebellion.Systems
             viewPlanet.Buildings.AddRange(
                 planetSnapshot.Buildings.Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
+        }
+
+        private static void ApplySnapshotPlanetState(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            PlanetSystem masterSystem,
+            PlanetSnapshot planetSnapshot
+        )
+        {
+            viewPlanet.OwnerInstanceID = planetSnapshot.OwnerInstanceID;
+            viewPlanet.IsColonized = planetSnapshot.IsColonized;
+            viewPlanet.IsInUprising = planetSnapshot.IsInUprising;
+            viewPlanet.IsDestroyed = planetSnapshot.IsDestroyed;
+            viewPlanet.IsHeadquarters = planetSnapshot.IsHeadquarters;
+            viewPlanet.EnergyCapacity = planetSnapshot.EnergyCapacity;
+            viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
+            viewPlanet.NumRawResourceNodes = 0;
+
+            viewPlanet.PopularSupport =
+                masterSystem.SystemType == PlanetSystemType.CoreSystem
+                    ? new Dictionary<string, int>(masterPlanet.PopularSupport)
+                    : new Dictionary<string, int>();
+        }
+
+        private void ApplySnapshotKnowledgeView(
+            Planet viewPlanet,
+            Planet masterPlanet,
+            PlanetSystem masterSystem,
+            Faction faction,
+            PlanetSnapshot planetSnapshot
+        )
+        {
+            ApplySnapshotPlanetState(viewPlanet, masterPlanet, masterSystem, planetSnapshot);
+
+            viewPlanet.Officers.AddRange(planetSnapshot.Officers);
+            viewPlanet.Officers.AddRange(
+                masterPlanet
+                    .Officers.Where(o => o.IsCaptured && o.OwnerInstanceID == faction.InstanceID)
+                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+            );
+            viewPlanet.Fleets.AddRange(planetSnapshot.Fleets);
+            viewPlanet.Regiments.AddRange(planetSnapshot.Regiments);
+            viewPlanet.SpecialForces.AddRange(planetSnapshot.SpecialForces);
+            viewPlanet.Starfighters.AddRange(planetSnapshot.Starfighters);
+            viewPlanet.Buildings.AddRange(planetSnapshot.Buildings);
+
+            AttachSnapshotChildrenToView(viewPlanet, planetSnapshot);
+        }
+
+        private static void AttachSnapshotChildrenToView(
+            Planet viewPlanet,
+            PlanetSnapshot planetSnapshot
+        )
+        {
+            IEnumerable<ISceneNode> snapshotChildren = planetSnapshot
+                .Officers.Cast<ISceneNode>()
+                .Concat(planetSnapshot.Fleets)
+                .Concat(planetSnapshot.Regiments)
+                .Concat(planetSnapshot.SpecialForces)
+                .Concat(planetSnapshot.Starfighters)
+                .Concat(planetSnapshot.Buildings);
+
+            foreach (ISceneNode child in snapshotChildren)
+            {
+                child.ParentInstanceID = viewPlanet.InstanceID;
+                child.LastParentInstanceID = null;
+                child.ParentNode = viewPlanet;
+                child.LastParentNode = null;
+            }
         }
 
         /// <summary>

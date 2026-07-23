@@ -19,6 +19,29 @@ namespace Rebellion.Tests.SceneGraph
         }
 
         [Test]
+        public void InstanceID_WithSameDeterministicSeed_RepeatsUniqueSequence()
+        {
+            try
+            {
+                BaseGameEntity.SetInstanceIdSeed(1234);
+                string first = new BaseGameEntity().InstanceID;
+                string second = new BaseGameEntity().InstanceID;
+
+                BaseGameEntity.SetInstanceIdSeed(1234);
+                string repeatedFirst = new BaseGameEntity().InstanceID;
+                string repeatedSecond = new BaseGameEntity().InstanceID;
+
+                Assert.AreNotEqual(first, second);
+                Assert.AreEqual(first, repeatedFirst);
+                Assert.AreEqual(second, repeatedSecond);
+            }
+            finally
+            {
+                BaseGameEntity.SetInstanceIdSeed(null);
+            }
+        }
+
+        [Test]
         public void InstanceID_WhenSet_ReturnsSetValue()
         {
             BaseGameEntity entity = new BaseGameEntity();

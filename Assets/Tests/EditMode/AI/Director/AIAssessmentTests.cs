@@ -222,6 +222,33 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
+        public void Constructor_WithStaleSnapshot_ReusesRecordedEntities()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            Building observed = AITestSceneBuilder.CreateBuildingTemplate(
+                "observed",
+                BuildingType.Mine
+            );
+            observed.OwnerInstanceID = rebels.InstanceID;
+            observed.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(observed, enemy);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            Building recorded = empire
+                .Fog.Snapshots[system.InstanceID]
+                .Planets[enemy.InstanceID]
+                .Buildings.Single();
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+            Planet knownEnemy = assessment.GetKnownPlanet(enemy.InstanceID);
+
+            Assert.AreSame(recorded, knownEnemy.Buildings.Single());
+            Assert.AreSame(knownEnemy, recorded.GetParentOfType<Planet>());
+        }
+
+        [Test]
         public void CanFleetDepartHeadquarters_WithOnlyLocalFleet_ReturnsFalse()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
@@ -295,7 +322,7 @@ namespace Rebellion.Tests.AI.Director
         }
 
         [Test]
-        public void GetRequiredHeadquartersDefenseStrength_WithKnownRemoteHostileFleet_UsesThreatStrength()
+        public void GetRequiredHeadquartersDefenseStrength_WithUncommittedRemoteHostileFleet_UsesMinimum()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
@@ -316,6 +343,49 @@ namespace Rebellion.Tests.AI.Director
                 rebels.InstanceID
             );
             Fleet hostileFleet = EntityFactory.CreateFleet("hostile", rebels.InstanceID);
+            game.AttachNode(hostileFleet, enemyPlanet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "hostile-ship",
+                    rebels.InstanceID,
+                    combatStrength: 2000
+                ),
+                hostileFleet
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, enemyPlanet);
+
+            AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
+
+            Assert.AreEqual(1000, assessment.GetRequiredHeadquartersDefenseStrength(headquarters));
+        }
+
+        [Test]
+        public void GetRequiredHeadquartersDefenseStrength_WithRemoteHeadquartersAttack_UsesThreatStrength()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet headquarters = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "headquarters",
+                empire.InstanceID
+            );
+            headquarters.IsHeadquarters = true;
+            empire.HQInstanceID = headquarters.InstanceID;
+            Planet enemyPlanet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "enemy",
+                rebels.InstanceID
+            );
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile", rebels.InstanceID);
+            hostileFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = headquarters.InstanceID,
+            };
             game.AttachNode(hostileFleet, enemyPlanet);
             game.AttachNode(
                 AITestSceneBuilder.CreateCapitalShip(

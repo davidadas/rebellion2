@@ -560,12 +560,7 @@ namespace Rebellion.AI.Planners
             int currentCount = planet
                 .GetAllRegiments()
                 .Count(regiment => regiment.GetOwnerInstanceID() == context.Faction.InstanceID);
-            int targetCount = System.Math.Max(
-                minimumTargetCount,
-                currentCount
-                    + context.Game.Config.AI.Infrastructure.PlanetaryDefenseSurplusBatchSize
-            );
-            int deficit = targetCount - currentCount;
+            int deficit = minimumTargetCount - currentCount;
             if (deficit <= 0)
                 return;
 
@@ -582,7 +577,7 @@ namespace Rebellion.AI.Planners
                         planet,
                         context.Game.Config.AI.Infrastructure.PlanetaryGarrisonDemandPercent,
                         deficit,
-                        targetCount
+                        minimumTargetCount
                     )
                 )
             );
@@ -598,15 +593,100 @@ namespace Rebellion.AI.Planners
             List<AIProductionDemand> demands
         )
         {
-            foreach (Fleet fleet in context.Assessment.OwnedFleets)
+            foreach (Fleet fleet in GetPriorityReinforcementFleets(context))
             {
-                if (!CanReinforceFleet(fleet))
-                    continue;
-
                 AddFleetCapitalShipDemand(context, demands, fleet);
                 AddFleetStarfighterDemand(context, demands, fleet);
                 AddFleetRegimentDemand(context, demands, fleet);
             }
+        }
+
+        private IReadOnlyList<Fleet> GetPriorityReinforcementFleets(AITurnContext context)
+        {
+            List<Fleet> fleets = new List<Fleet>();
+            AddPriorityFleet(fleets, GetPriorityDefenseFleet(context));
+
+            Fleet attackFleet = GetPrimaryAttackFleet(context);
+            AddPriorityFleet(fleets, attackFleet);
+            AddPriorityFleet(fleets, GetPrimaryColonizationFleet(context));
+
+            if (attackFleet == null)
+                AddPriorityFleet(fleets, GetPrimaryFleetAssemblyFleet(context));
+
+            return fleets;
+        }
+
+        private void AddPriorityFleet(List<Fleet> fleets, Fleet fleet)
+        {
+            if (fleet != null && fleets.All(candidate => candidate.InstanceID != fleet.InstanceID))
+                fleets.Add(fleet);
+        }
+
+        private Fleet GetPriorityDefenseFleet(AITurnContext context)
+        {
+            return context
+                .Assessment.OwnedFleets.Where(CanReinforceFleet)
+                .Select(fleet => new { Fleet = fleet, Target = GetDefenseTarget(context, fleet) })
+                .Where(candidate => candidate.Target != null)
+                .OrderByDescending(candidate =>
+                    context.Assessment.GetRequiredDefenseStrength(candidate.Target)
+                    - context.Assessment.GetProjectedFleetCombatValue(candidate.Fleet)
+                )
+                .ThenBy(candidate => candidate.Fleet.InstanceID, StringComparer.Ordinal)
+                .Select(candidate => candidate.Fleet)
+                .FirstOrDefault();
+        }
+
+        private Fleet GetPrimaryAttackFleet(AITurnContext context)
+        {
+            return context
+                .Assessment.AttackOrderedFleets.Where(CanReinforceFleet)
+                .Select(fleet => new
+                {
+                    Fleet = fleet,
+                    Target = GetAttackTargetPlanet(context, fleet),
+                })
+                .OrderByDescending(candidate => candidate.Target != null)
+                .ThenByDescending(candidate =>
+                    context.Assessment.GetOwnedSystemPresenceRatio(
+                        context.Assessment.GetPlanetSystemId(candidate.Target)
+                    )
+                )
+                .ThenByDescending(candidate => candidate.Target?.IsHeadquarters == true)
+                .ThenByDescending(candidate =>
+                    context.Assessment.GetFleetAttackCampaignReadinessGateCount(
+                        candidate.Fleet,
+                        candidate.Target
+                    )
+                )
+                .ThenByDescending(candidate => context.Assessment.GetPlanetValue(candidate.Target))
+                .ThenBy(candidate => candidate.Fleet.InstanceID, StringComparer.Ordinal)
+                .Select(candidate => candidate.Fleet)
+                .FirstOrDefault();
+        }
+
+        private Fleet GetPrimaryColonizationFleet(AITurnContext context)
+        {
+            return context
+                .Assessment.ColonizationOrderedFleets.Where(CanReinforceFleet)
+                .OrderByDescending(fleet => fleet.GetCurrentRegimentCount())
+                .ThenByDescending(fleet => fleet.GetRegimentCapacity())
+                .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
+        }
+
+        private Fleet GetPrimaryFleetAssemblyFleet(AITurnContext context)
+        {
+            return context
+                .Assessment.OwnedFleets.Where(fleet =>
+                    CanReinforceFleet(fleet)
+                    && fleet.Order == null
+                    && context.Assessment.CanFleetDepartHeadquarters(fleet)
+                )
+                .OrderByDescending(context.Assessment.GetProjectedFleetCombatValue)
+                .ThenByDescending(fleet => fleet.GetRegimentCapacity())
+                .ThenBy(fleet => fleet.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -665,17 +745,17 @@ namespace Rebellion.AI.Planners
                 deficit = regimentCapacityDeficit;
                 target = targetRegimentCapacity;
             }
-            else if (combatDeficit > 0)
-            {
-                capitalShipRole = AICapitalShipProductionRole.General;
-                deficit = combatDeficit;
-                target = targetCombat;
-            }
             else if (bombardmentDeficit > 0)
             {
                 capitalShipRole = AICapitalShipProductionRole.Bombardment;
                 deficit = bombardmentDeficit;
                 target = targetBombardment;
+            }
+            else if (combatDeficit > 0)
+            {
+                capitalShipRole = AICapitalShipProductionRole.General;
+                deficit = combatDeficit;
+                target = targetCombat;
             }
             else
             {
@@ -1520,6 +1600,14 @@ namespace Rebellion.AI.Planners
         /// <returns>The desired regiment count.</returns>
         private int GetDesiredRegimentCount(AITurnContext context, Fleet fleet)
         {
+            if (fleet.Order?.OrderType == FleetOrderType.Defend)
+                return 0;
+
+            if (fleet.Order?.OrderType == FleetOrderType.Colonize)
+            {
+                return context.Game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount;
+            }
+
             int capacity = fleet.GetRegimentCapacity();
             int fillTarget = ScaleByPercent(
                 capacity,

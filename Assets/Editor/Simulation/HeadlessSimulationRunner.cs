@@ -77,6 +77,7 @@ public static class HeadlessSimulationRunner
         string logPath = GetLogPath(options.OutputPath);
         GameLogger.Configure(logPath, enableFileLogging: true);
         GameLogger.SetMinimumLevel(GameLogger.LogLevel.Warning);
+        BaseGameEntity.SetInstanceIdSeed(options.Seed);
 
         try
         {
@@ -88,6 +89,8 @@ public static class HeadlessSimulationRunner
                 ResourceAvailability = GameResourceAvailability.Normal,
                 StartingResearchLevel = 1,
             };
+            if (options.Seed.HasValue)
+                summary.Seed = options.Seed.Value;
 
             string startMessage =
                 $"[HeadlessSim] starting ticks={options.TickCount} seed={options.Seed?.ToString() ?? "random"} galaxySize={summary.GalaxySize}";
@@ -137,6 +140,7 @@ public static class HeadlessSimulationRunner
         }
         finally
         {
+            BaseGameEntity.SetInstanceIdSeed(null);
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
             GameLogger.Configure(enableFileLogging: false);
         }

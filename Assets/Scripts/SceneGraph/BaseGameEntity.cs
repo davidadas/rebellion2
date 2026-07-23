@@ -12,14 +12,36 @@ namespace Rebellion.SceneGraph
     [PersistableObject]
     public class BaseGameEntity : IGameEntity
     {
+        private static readonly object _instanceIdLock = new object();
+        private static Random _deterministicInstanceIdProvider;
+
         [CloneIgnore]
         private string _instanceId;
 
         [CloneIgnore]
         public string InstanceID
         {
-            get => _instanceId ??= Guid.NewGuid().ToString().Replace("-", "");
+            get => _instanceId ??= CreateInstanceId();
             set => _instanceId = value;
+        }
+
+        public static void SetInstanceIdSeed(int? seed)
+        {
+            lock (_instanceIdLock)
+                _deterministicInstanceIdProvider = seed.HasValue ? new Random(seed.Value) : null;
+        }
+
+        private static string CreateInstanceId()
+        {
+            lock (_instanceIdLock)
+            {
+                if (_deterministicInstanceIdProvider == null)
+                    return Guid.NewGuid().ToString("N");
+
+                byte[] bytes = new byte[16];
+                _deterministicInstanceIdProvider.NextBytes(bytes);
+                return new Guid(bytes).ToString("N");
+            }
         }
 
         internal string PeekInstanceID()

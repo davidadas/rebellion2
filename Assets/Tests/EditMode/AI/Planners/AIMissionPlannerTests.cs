@@ -135,6 +135,70 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithActiveSabotageMission_ExcludesItsSelectedTarget()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            Building activeTarget = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "active-target",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Building availableTarget = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "available-target",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            SpecialForces activeParticipant = CreateSpecialForces(
+                "active-saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            SpecialForces availableParticipant = CreateSpecialForces(
+                "available-saboteur",
+                empire.InstanceID,
+                MissionTypeIDs.Sabotage
+            );
+            game.AttachNode(activeParticipant, origin);
+            game.AttachNode(availableParticipant, origin);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITurnContext initialContext = AITestSceneBuilder.CreateContext(game, empire);
+            new AIMissionProposal(
+                new[] { activeParticipant },
+                MissionTypeIDs.Sabotage,
+                target,
+                selectedTarget: activeTarget
+            ).Execute(initialContext);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIMissionProposal[] proposals = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal =>
+                    proposal.MissionTypeID == MissionTypeIDs.Sabotage
+                    && proposal.Participant == availableParticipant
+                )
+                .ToArray();
+
+            Assert.IsFalse(
+                proposals.Any(proposal =>
+                    proposal.SelectedTarget.InstanceID == activeTarget.InstanceID
+                )
+            );
+            Assert.IsTrue(
+                proposals.Any(proposal =>
+                    proposal.SelectedTarget.InstanceID == availableTarget.InstanceID
+                )
+            );
+        }
+
+        [Test]
         public void Plan_WithShieldBlockedAttack_PrioritizesBlockingShield()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

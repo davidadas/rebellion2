@@ -735,9 +735,7 @@ namespace Rebellion.AI.Planners
 
         private IEnumerable<Mission> GetActiveMissions(AITurnContext context)
         {
-            return context
-                .Game.GetSceneNodesByType<Mission>()
-                .Where(mission => mission.GetOwnerInstanceID() == context.Faction.InstanceID);
+            return context.Assessment.ActiveMissions;
         }
 
         private static bool IsHostileMission(string missionTypeId)

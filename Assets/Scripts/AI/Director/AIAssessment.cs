@@ -39,7 +39,6 @@ namespace Rebellion.AI.Director
             string,
             int
         >(StringComparer.Ordinal);
-        private int? _strongestKnownHostileFleetStrength;
         private readonly Dictionary<string, List<Fleet>> _friendlyFleetsByPlanetId = new Dictionary<
             string,
             List<Fleet>
@@ -81,6 +80,7 @@ namespace Rebellion.AI.Director
         public AIAssessment(AITurnContext context)
         {
             _context = context;
+            ActiveMissions = BuildActiveMissions();
             FactionViewPlanets = BuildFactionViewPlanets();
             UnexploredPlanets = FactionViewPlanets
                 .Where(planet => planet.IsUnexploredView)
@@ -129,6 +129,8 @@ namespace Rebellion.AI.Director
         public IReadOnlyList<Planet> NeutralPlanets { get; }
 
         public IReadOnlyList<IMissionParticipant> AvailableMissionParticipants { get; }
+
+        internal IReadOnlyList<Mission> ActiveMissions { get; }
 
         public IReadOnlyList<(
             Planet Planet,
@@ -469,23 +471,29 @@ namespace Rebellion.AI.Director
 
             GameConfig.AIFleetDeploymentConfig config = _context.Game.Config.AI.FleetDeployment;
             int hostileFleetRequirement = ScaleByPercent(
-                GetStrongestKnownHostileFleetStrength(),
+                GetHeadquartersThreatStrength(planet),
                 config.AttackStrengthPercentOfStrongestHostileFleet
             );
             return Math.Max(config.MinimumDefenseStrength, hostileFleetRequirement);
         }
 
-        private int GetStrongestKnownHostileFleetStrength()
+        private int GetHeadquartersThreatStrength(Planet headquarters)
         {
-            if (_strongestKnownHostileFleetStrength.HasValue)
-                return _strongestKnownHostileFleetStrength.Value;
-
-            _strongestKnownHostileFleetStrength = FactionViewPlanets
-                .SelectMany(GetHostileFleets)
+            return FactionViewPlanets
+                .SelectMany(planet => GetHostileFleets(planet))
+                .Where(fleet =>
+                    (
+                        fleet.Movement == null
+                        && GetFleetPlanet(fleet)?.InstanceID == headquarters.InstanceID
+                    )
+                    || (
+                        fleet.Order?.OrderType == FleetOrderType.Attack
+                        && fleet.Order.TargetPlanetId == headquarters.InstanceID
+                    )
+                )
                 .Select(GetFleetCombatValue)
                 .DefaultIfEmpty()
                 .Max();
-            return _strongestKnownHostileFleetStrength.Value;
         }
 
         public bool CanFleetDepartHeadquarters(Fleet fleet)
@@ -1300,12 +1308,7 @@ namespace Rebellion.AI.Director
             if (_context?.FogOfWar == null || _context.Faction == null)
                 return new List<Planet>();
 
-            return _context
-                .FogOfWar.BuildFactionView(_context.Faction)
-                .PlanetSystems.OrderBy(system => system.PositionX)
-                .ThenBy(system => system.InstanceID)
-                .SelectMany(system => system.Planets.OrderBy(planet => planet.InstanceID))
-                .ToList();
+            return _context.FogOfWar.GetFactionKnowledgePlanets(_context.Faction);
         }
 
         /// <summary>
@@ -1353,6 +1356,16 @@ namespace Rebellion.AI.Director
                 return new List<IMissionParticipant>();
 
             return _context.Faction.GetAvailableMissionParticipants();
+        }
+
+        private List<Mission> BuildActiveMissions()
+        {
+            if (_context?.Game == null || _context.Faction == null)
+                return new List<Mission>();
+
+            return _context.Game.GetSceneNodesByType<Mission>(mission =>
+                mission.GetOwnerInstanceID() == _context.Faction.InstanceID
+            );
         }
 
         /// <summary>

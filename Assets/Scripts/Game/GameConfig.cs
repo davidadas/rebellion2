@@ -160,7 +160,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class AIFleetDeploymentConfig
         {
-            public int MaximumConcurrentAttackOrders { get; set; } = 2;
+            public int MaximumConcurrentAttackOrders { get; set; } = 1;
 
             public int MaximumConcurrentColonizationOrders { get; set; } = 1;
 

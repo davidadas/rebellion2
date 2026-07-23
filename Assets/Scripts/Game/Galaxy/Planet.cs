@@ -65,6 +65,26 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         public Planet() { }
 
+        internal Planet CreateViewShell()
+        {
+            Planet view = (Planet)MemberwiseClone();
+            view.ParentInstanceID = null;
+            view.LastParentInstanceID = null;
+            view.ParentNode = null;
+            view.LastParentNode = null;
+            view.PopularSupport = new Dictionary<string, int>();
+            view.Fleets = new List<Fleet>();
+            view.Officers = new List<Officer>();
+            view.Regiments = new List<Regiment>();
+            view.SpecialForces = new List<SpecialForces>();
+            view.Starfighters = new List<Starfighter>();
+            view.Missions = new List<Mission>();
+            view.Buildings = new List<Building>();
+            view.ManufacturingQueue = new Dictionary<ManufacturingType, List<IManufacturable>>();
+            view.VisitingFactionIDs = new List<string>();
+            return view;
+        }
+
         /// <summary>
         /// Checks if the planet is blockaded.
         /// A planet is blockaded only when a stationary hostile fleet has an operational capital
