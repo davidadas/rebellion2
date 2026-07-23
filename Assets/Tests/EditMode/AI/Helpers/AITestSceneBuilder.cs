@@ -108,6 +108,7 @@ namespace Rebellion.Tests.AI.Helpers
             int starfighterCapacity = 1
         )
         {
+            int durabilityStrength = System.Math.Max(1, combatStrength);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = instanceId,
@@ -115,8 +116,8 @@ namespace Rebellion.Tests.AI.Helpers
                 AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                MaxHullStrength = 100,
-                CurrentHullStrength = 100,
+                MaxHullStrength = durabilityStrength,
+                CurrentHullStrength = durabilityStrength,
                 RegimentCapacity = regimentCapacity,
                 StarfighterCapacity = starfighterCapacity,
             };

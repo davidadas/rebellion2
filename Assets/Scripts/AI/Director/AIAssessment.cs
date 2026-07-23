@@ -1504,19 +1504,11 @@ namespace Rebellion.AI.Director
             if (capitalShip == null)
                 return 0;
 
-            int primaryWeaponStrength = capitalShip.GetPrimaryWeaponStrength();
-            int capitalShipCombat =
-                capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
-                && capitalShip.MaxHullStrength > 0
-                    ? primaryWeaponStrength
-                        * capitalShip.CurrentHullStrength
-                        / capitalShip.MaxHullStrength
-                    : primaryWeaponStrength;
             int starfighterCombat = capitalShip
                 .Starfighters.Where(starfighter => starfighter != null)
                 .Sum(GetProjectedStarfighterCombatValue);
 
-            return capitalShipCombat + starfighterCombat;
+            return capitalShip.GetProjectedCombatValue() + starfighterCombat;
         }
 
         public int GetReadyCapitalShipCombatValue(CapitalShip capitalShip)
