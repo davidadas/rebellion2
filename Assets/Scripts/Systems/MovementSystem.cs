@@ -29,6 +29,11 @@ namespace Rebellion.Systems
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
+        /// Raised after an immediate movement command produces results.
+        /// </summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
+
+        /// <summary>
         /// Initializes a new instance of the MovementSystem class.
         /// </summary>
         /// <param name="game">The game instance.</param>
@@ -349,16 +354,13 @@ namespace Rebellion.Systems
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="destination">The requested destination or its snapshot.</param>
         /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
-        /// <param name="results">Receives results produced while executing the order.</param>
         /// <returns>True when the complete movement order was accepted.</returns>
         public bool TryRequestMove(
             IReadOnlyList<ISceneNode> items,
             ContainerNode destination,
-            string ownerInstanceId,
-            out List<GameResult> results
+            string ownerInstanceId
         )
         {
-            results = new List<GameResult>();
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
                 liveDestination == null
@@ -394,6 +396,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            List<GameResult> results = new List<GameResult>();
             bool accepted = TryRequestMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
@@ -402,6 +405,9 @@ namespace Rebellion.Systems
             }
 
             _fleetSystem.RemoveIfEmpty(createdDestinationFleet);
+            if (accepted)
+                ResultsProduced?.Invoke(results);
+
             return accepted;
         }
 

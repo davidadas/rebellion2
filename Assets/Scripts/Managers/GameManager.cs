@@ -3,11 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -61,6 +59,8 @@ public class GameManager
     public event Action<GameRoot> GameReplaced;
 
     internal ManufacturingSystem ManufacturingSystem => _manufacturingManager;
+
+    internal MaintenanceSystem MaintenanceSystem => _maintenanceManager;
 
     internal MovementSystem MovementSystem => _movementManager;
 
@@ -188,6 +188,10 @@ public class GameManager
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionManager);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarManager.ProcessResults);
+        _movementManager.ResultsProduced += HandleSystemResultsProduced;
+        _maintenanceManager.ResultsProduced += HandleSystemResultsProduced;
+        _bombardmentSystem.ResultsProduced += HandleSystemResultsProduced;
+        _planetaryAssaultSystem.ResultsProduced += HandleSystemResultsProduced;
     }
 
     /// <summary>
@@ -233,48 +237,6 @@ public class GameManager
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
     public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarManager;
-
-    /// <summary>
-    /// Executes a validated movement order and processes its immediate results.
-    /// </summary>
-    /// <param name="items">The selected scene nodes or their snapshots.</param>
-    /// <param name="destination">The requested destination or its snapshot.</param>
-    /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
-    /// <returns>True when the complete movement order was accepted.</returns>
-    public bool TryRequestMove(
-        IReadOnlyList<ISceneNode> items,
-        ContainerNode destination,
-        string ownerInstanceId
-    )
-    {
-        if (
-            !_movementManager.TryRequestMove(
-                items,
-                destination,
-                ownerInstanceId,
-                out List<GameResult> results
-            )
-        )
-            return false;
-
-        ProcessResults(results);
-        return true;
-    }
-
-    /// <summary>
-    /// Scraps a validated unit selection and processes its immediate results.
-    /// </summary>
-    /// <param name="items">The units selected for scrapping.</param>
-    /// <param name="ownerInstanceId">The faction authorized to scrap the selection.</param>
-    /// <returns>True when every selected unit was scrapped.</returns>
-    public bool TryScrap(IReadOnlyList<IManufacturable> items, string ownerInstanceId)
-    {
-        if (!_maintenanceManager.TryScrap(items, ownerInstanceId, out List<GameResult> results))
-            return false;
-
-        ProcessResults(results);
-        return true;
-    }
 
     /// <summary>
     /// Sets the game speed and adjusts the tick interval accordingly.
@@ -381,66 +343,6 @@ public class GameManager
     }
 
     /// <summary>
-    /// Executes orbital bombardment and processes the resulting game effects.
-    /// </summary>
-    /// <param name="attackingFleets">The attacking fleets.</param>
-    /// <param name="targetPlanet">The bombardment target planet.</param>
-    /// <param name="type">The bombardment target profile.</param>
-    /// <returns>The bombardment result, or null when bombardment cannot execute.</returns>
-    public BombardmentResult ExecuteOrbitalBombardment(
-        IReadOnlyList<Fleet> attackingFleets,
-        Planet targetPlanet,
-        BombardmentType type
-    )
-    {
-        if (targetPlanet == null)
-            return null;
-
-        List<Fleet> fleets =
-            attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-        if (!_bombardmentSystem.CanExecute(fleets, targetPlanet, type))
-            return null;
-
-        BombardmentResult result = _bombardmentSystem.Execute(fleets, targetPlanet, type);
-        List<GameResult> results = new List<GameResult> { result };
-        results.AddRange(result.Events);
-        if (result.OwnershipChange != null)
-            results.Add(result.OwnershipChange);
-
-        ProcessResults(results);
-        return result;
-    }
-
-    /// <summary>
-    /// Executes a planetary assault and processes the resulting game effects.
-    /// </summary>
-    /// <param name="attackingFleets">The attacking fleets.</param>
-    /// <param name="targetPlanet">The assault target planet.</param>
-    /// <returns>The assault result, or null when the assault cannot execute.</returns>
-    public PlanetaryAssaultResult ExecutePlanetaryAssault(
-        IReadOnlyList<Fleet> attackingFleets,
-        Planet targetPlanet
-    )
-    {
-        if (targetPlanet == null)
-            return null;
-
-        List<Fleet> fleets =
-            attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-        if (!_planetaryAssaultSystem.CanExecute(fleets, targetPlanet))
-            return null;
-
-        PlanetaryAssaultResult result = _planetaryAssaultSystem.Execute(fleets, targetPlanet);
-        List<GameResult> results = new List<GameResult> { result };
-        results.AddRange(result.Events);
-        if (result.OwnershipChange != null)
-            results.Add(result.OwnershipChange);
-
-        ProcessResults(results);
-        return result;
-    }
-
-    /// <summary>
     /// Runs one game tick.
     /// </summary>
     public void ProcessTick()
@@ -511,6 +413,15 @@ public class GameManager
             _messageSystem.ProcessResults(resolvedResults);
 
         return resolvedResults;
+    }
+
+    /// <summary>
+    /// Routes results emitted by an immediate system command.
+    /// </summary>
+    /// <param name="results">The results emitted by the system.</param>
+    private void HandleSystemResultsProduced(IReadOnlyList<GameResult> results)
+    {
+        ProcessResults(results);
     }
 
     /// <summary>

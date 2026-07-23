@@ -423,7 +423,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void TryRequestMove_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
+        public void MovementCommand_SurfaceRegimentCreatesGarrisonDeficit_StartsUprisingImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
@@ -504,7 +504,7 @@ namespace Rebellion.Tests.Managers
             Assert.IsNotNull(diplomat.Movement);
 
             Assert.IsTrue(
-                manager.TryRequestMove(
+                manager.MovementSystem.TryRequestMove(
                     new ISceneNode[] { departingRegiment },
                     ship,
                     owner.InstanceID
@@ -524,7 +524,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void TryRequestMove_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
+        public void MovementCommand_LastSurfaceRegimentNeutralizesPlanet_ReportsImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
@@ -573,7 +573,7 @@ namespace Rebellion.Tests.Managers
             GameManager manager = new GameManager(game);
 
             Assert.IsTrue(
-                manager.TryRequestMove(
+                manager.MovementSystem.TryRequestMove(
                     new ISceneNode[] { departingRegiment },
                     ship,
                     owner.InstanceID
@@ -592,7 +592,7 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void TryScrap_LastSurfaceRegiment_ReconcilesPlanetImmediately()
+        public void ScrapCommand_LastSurfaceRegiment_ReconcilesPlanetImmediately()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
@@ -624,7 +624,10 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(regiment, planet);
             GameManager manager = new GameManager(game);
 
-            bool scrapped = manager.TryScrap(new IManufacturable[] { regiment }, owner.InstanceID);
+            bool scrapped = manager.MaintenanceSystem.TryScrap(
+                new IManufacturable[] { regiment },
+                owner.InstanceID
+            );
 
             Assert.IsTrue(scrapped);
             Assert.IsNull(planet.GetOwnerInstanceID());

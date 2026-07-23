@@ -22,6 +22,11 @@ namespace Rebellion.Systems
         private readonly PlanetaryControlSystem _ownership;
 
         /// <summary>
+        /// Raised after an immediate planetary-assault command produces results.
+        /// </summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
+
+        /// <summary>
         /// Creates the planetary-assault system.
         /// </summary>
         /// <param name="game">Active game state.</param>
@@ -36,6 +41,35 @@ namespace Rebellion.Systems
             _game = game;
             _provider = provider;
             _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+        }
+
+        /// <summary>
+        /// Executes a validated planetary-assault command and publishes its results.
+        /// </summary>
+        /// <param name="attackingFleets">The attacking fleets.</param>
+        /// <param name="targetPlanet">The assault target planet.</param>
+        /// <returns>The assault result, or null when the assault cannot execute.</returns>
+        public PlanetaryAssaultResult TryExecute(
+            IReadOnlyList<Fleet> attackingFleets,
+            Planet targetPlanet
+        )
+        {
+            if (targetPlanet == null)
+                return null;
+
+            List<Fleet> fleets =
+                attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
+            if (!CanExecute(fleets, targetPlanet))
+                return null;
+
+            PlanetaryAssaultResult result = Execute(fleets, targetPlanet);
+            List<GameResult> results = new List<GameResult> { result };
+            results.AddRange(result.Events);
+            if (result.OwnershipChange != null)
+                results.Add(result.OwnershipChange);
+
+            ResultsProduced?.Invoke(results);
+            return result;
         }
 
         /// <summary>
