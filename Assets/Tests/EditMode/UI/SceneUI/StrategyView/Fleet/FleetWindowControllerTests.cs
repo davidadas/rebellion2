@@ -20,6 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
     [TestFixture]
     public class FleetWindowControllerTests
     {
+        private const string _opposingFactionId = "FNALL2";
         private const string _playerFactionId = "FNALL1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
@@ -28,6 +29,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         private TestActions _actions;
         private int _dirtyCount;
         private GameRoot _game;
+        private GameManager _gameManager;
         private GameFleet _fleet;
         private Officer _officer;
         private GalaxyMapPlanet _planet;
@@ -52,18 +54,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
             _planet.Planet.Fleets.Add(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
+            _gameManager = new GameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
-            _fleetCommandController = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => false,
-                (_, _, _) => null,
-                (_, _) => false,
-                (_, _) => null
-            );
+            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
             _controller = CreateController();
             _actions = new TestActions();
             _controller.Initialize(
@@ -250,23 +246,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void ContextMenu_BombardmentLeaf_ExecutesAndRoutesBattleResult()
         {
-            BombardmentResult expected = new BombardmentResult();
-            BombardmentType? executedType = null;
+            _planet.Planet.OwnerInstanceID = _opposingFactionId;
+            _fleet.CapitalShips[0].Bombardment = 1;
             _planet.Planet.Fleets.Remove(_fleet);
             _fleet.SetParent(null);
             _game.AttachNode(_fleet, _planet.Planet);
-            _fleetCommandController = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => true,
-                (_, _, type) =>
-                {
-                    executedType = type;
-                    return expected;
-                },
-                (_, _) => true,
-                (_, _) => null
-            );
+            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
             _controller = CreateController();
             _controller.Initialize(
                 _actions,
@@ -298,8 +283,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             bool selected = contextMenuController.TrySelectCommand(command);
 
             Assert.IsTrue(selected);
-            Assert.AreEqual(BombardmentType.General, executedType);
-            Assert.AreSame(expected, _actions.LastBattleResult);
+            Assert.IsInstanceOf<BombardmentResult>(_actions.LastBattleResult);
+            Assert.AreEqual(
+                BombardmentType.General,
+                ((BombardmentResult)_actions.LastBattleResult).Type
+            );
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
@@ -330,6 +318,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }
@@ -360,6 +349,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 InstanceID = $"{instanceId}-ship",
                 DisplayName = "Capital Ship",
                 OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
             };
             officer = new Officer
             {

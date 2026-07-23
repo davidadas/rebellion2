@@ -15,7 +15,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages unit and facility production during each game tick.
     /// </summary>
-    public class ManufacturingSystem : IGameSystem
+    public class ManufacturingSystem
     {
         private const int _productionRateScale = 100;
 

@@ -185,28 +185,6 @@ public sealed class DefenseWindowController
     }
 
     /// <summary>
-    /// Rebinds Defense sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
-    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
-    {
-        if (findPlanet == null)
-            return;
-
-        windowManager.ForEachWindow<DefenseWindowView>(
-            (_, view) =>
-            {
-                if (!sessions.TryGetValue(view, out DefenseWindowSession session))
-                    return;
-
-                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
-                if (planet != null)
-                    session.RebindPlanet(planet);
-            }
-        );
-    }
-
-    /// <summary>
     /// Subscribes to one authored Defense view exactly once.
     /// </summary>
     /// <param name="view">The Defense view to bind.</param>

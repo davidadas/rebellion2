@@ -358,7 +358,7 @@ namespace Rebellion.Game.FogOfWar
         /// <typeparam name="T">The manufacturable scene-node type.</typeparam>
         /// <param name="destination">The snapshot list receiving unfinished entities.</param>
         /// <param name="source">The previously observed entities to inspect.</param>
-        private static void MergeManufacturingEntities<T>(
+        internal static void MergeManufacturingEntities<T>(
             List<T> destination,
             IEnumerable<T> source
         )

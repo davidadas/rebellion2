@@ -450,6 +450,7 @@ public class GameManager
             return;
 
         _game.CurrentTick++;
+        _messageSystem.ProcessTick();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
         ProcessResults(_resourceProductionManager.ProcessTick());

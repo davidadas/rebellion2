@@ -124,7 +124,11 @@ namespace Rebellion.Tests.Game.Missions
             reconTeam.Movement = null;
             mission.Initiate(1);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 

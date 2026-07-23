@@ -157,30 +157,6 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
     }
 
     /// <summary>
-    /// Rebinds Missions sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
-    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
-    {
-        if (findPlanet == null)
-            return;
-
-        windowManager.ForEachWindow<MissionsWindowView>(
-            (_, view) =>
-            {
-                if (!sessions.TryGetValue(view, out MissionsWindowSession session))
-                    return;
-
-                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
-                if (planet == null)
-                    return;
-
-                session.RebindPlanet(planet);
-            }
-        );
-    }
-
-    /// <summary>
     /// Subscribes to one authored Missions view exactly once.
     /// </summary>
     /// <param name="view">The Missions view to bind.</param>

@@ -263,7 +263,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -308,7 +308,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -339,7 +339,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -370,7 +370,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.CapitalShips,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -382,7 +382,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.FirstForces,
                 BattleResultCategory.Manufacturing,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -435,7 +435,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Summary,
                 BattleResultCategory.Troops,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -472,7 +472,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.FirstForces,
                 BattleResultCategory.Personnel,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -512,7 +512,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 BattleResultPanel.Direct,
                 BattleResultCategory.CapitalShips,
                 null,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 0,
                 0,
@@ -524,6 +524,45 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsTrue(data.Result.ResultDirectButtons.All(button => button.Interactable));
             Assert.IsNull(data.Result.ResultTable);
             Assert.IsEmpty(data.Result.ResultCategories);
+        }
+
+        [Test]
+        public void GetBombardmentSummaryImagePath_CombatSnapshots_SelectLossArtwork()
+        {
+            BattleAlertWindowTheme theme = new BattleAlertWindowTheme
+            {
+                BombardmentAttackerLossesImagePath = "attacker-loss",
+                BombardmentTargetLossesImagePath = "target-loss",
+                BombardmentNoLossesImagePath = "no-loss",
+            };
+            BombardmentResult attackerLoss = new BombardmentResult();
+            attackerLoss.AttackingUnits.Add(
+                new CombatUnitSnapshot(new CapitalShip { InstanceID = "ship" }) { Damaged = true }
+            );
+            BombardmentResult targetLoss = new BombardmentResult();
+            targetLoss.DefendingUnits.Add(
+                new CombatUnitSnapshot(new Building { InstanceID = "building" })
+                {
+                    Destroyed = true,
+                }
+            );
+
+            string attackerPath = BattleAlertWindowProjector.GetBombardmentSummaryImagePath(
+                theme,
+                attackerLoss
+            );
+            string targetPath = BattleAlertWindowProjector.GetBombardmentSummaryImagePath(
+                theme,
+                targetLoss
+            );
+            string noLossPath = BattleAlertWindowProjector.GetBombardmentSummaryImagePath(
+                theme,
+                new BombardmentResult()
+            );
+
+            Assert.AreEqual("attacker-loss", attackerPath);
+            Assert.AreEqual("target-loss", targetPath);
+            Assert.AreEqual("no-loss", noLossPath);
         }
 
         private static (
@@ -686,7 +725,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             SpaceCombatSideOutcome opponentOutcome
         )
         {
-            return new SpaceCombatResult
+            SpaceCombatResult result = new SpaceCombatResult
             {
                 Planet = planet,
                 AttackerFleet = playerFleet,
@@ -697,6 +736,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 AttackerOutcome = playerOutcome,
                 DefenderOutcome = opponentOutcome,
             };
+            result.AttackingUnits.AddRange(
+                CombatUnitSnapshot.CaptureFleetUnits(new[] { playerFleet })
+            );
+            result.DefendingUnits.AddRange(
+                CombatUnitSnapshot.CaptureFleetUnits(new[] { opponentFleet })
+            );
+            return result;
         }
     }
 }

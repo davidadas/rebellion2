@@ -77,6 +77,22 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_ExpiredMessage_RemovesMessageAfterTickAdvances()
+        {
+            GameConfig config = TestConfig.Create();
+            config.Messages.RetentionTicks = 300;
+            GameRoot game = new GameRoot(config) { CurrentTick = 400 };
+            Faction faction = new Faction { InstanceID = "FACTION" };
+            game.Factions.Add(faction);
+            faction.AddMessage(new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 });
+            GameManager manager = new GameManager(game);
+
+            manager.ProcessTick();
+
+            Assert.IsEmpty(faction.Messages[MessageType.Conflict]);
+        }
+
+        [Test]
         public void AdvanceTime_CompletedInterval_ProcessesTickAndRaisesTickCompleted()
         {
             GameConfig config = TestConfig.Create();

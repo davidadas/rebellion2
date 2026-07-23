@@ -34,8 +34,6 @@ namespace Rebellion.Systems
         /// <param name="results">The game results to process.</param>
         public void ProcessResults(IEnumerable<GameResult> results)
         {
-            RemoveExpiredMessages();
-
             foreach (
                 (Faction faction, Message message) delivery in _messageFactory.CreateMessages(
                     results,
@@ -50,6 +48,14 @@ namespace Rebellion.Systems
                 delivery.faction.AddMessage(delivery.message);
                 MessageDelivered?.Invoke(delivery.faction, delivery.message);
             }
+        }
+
+        /// <summary>
+        /// Advances time-based message lifecycle state for the current game tick.
+        /// </summary>
+        public void ProcessTick()
+        {
+            RemoveExpiredMessages();
         }
 
         /// <summary>

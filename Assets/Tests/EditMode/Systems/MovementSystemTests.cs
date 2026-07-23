@@ -266,7 +266,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ReturnFromMission_MissingRecordedLocation_ReturnsToNearestFriendlyPlanet()
+        public void ReturnFromMission_MissingRecordedLocation_ReturnsParticipantAsStranded()
         {
             (
                 GameRoot game,
@@ -287,12 +287,12 @@ namespace Rebellion.Tests.Systems
                 new IMovable[0]
             );
 
-            Assert.IsEmpty(stranded);
-            Assert.AreEqual(destination, officer.GetParent());
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreEqual(mission, officer.GetParent());
         }
 
         [Test]
-        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsToNearestFriendlyPlanet()
+        public void ReturnFromMission_RecordedPlanetCaptured_ReturnsParticipantAsStranded()
         {
             (
                 GameRoot game,
@@ -312,12 +312,12 @@ namespace Rebellion.Tests.Systems
                 new IMovable[0]
             );
 
-            Assert.IsEmpty(stranded);
-            Assert.AreSame(destination, officer.GetParent());
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
         }
 
         [Test]
-        public void ReturnFromMission_NearbyFriendlyFleetIsCloser_ReturnsToFleetShip()
+        public void ReturnFromMission_MissingRecordedLocation_DoesNotChooseAnotherFleet()
         {
             (
                 GameRoot game,
@@ -348,8 +348,8 @@ namespace Rebellion.Tests.Systems
                 new IMovable[0]
             );
 
-            Assert.IsEmpty(stranded);
-            Assert.AreSame(ship, officer.GetParent());
+            CollectionAssert.AreEqual(new IMovable[] { officer }, stranded);
+            Assert.AreSame(mission, officer.GetParent());
         }
 
         [Test]

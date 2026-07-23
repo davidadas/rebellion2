@@ -91,8 +91,10 @@ namespace Rebellion.Systems
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
             result.AttackerOwnerInstanceID = attackerId;
             result.DefenderOwnerInstanceID = defenderId;
-            result.AttackingUnits.AddRange(SnapshotFleetUnits(attackingFleets));
-            result.DefendingUnits.AddRange(SnapshotPlanetUnits(targetPlanet, defenderId));
+            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(attackingFleets));
+            result.DefendingUnits.AddRange(
+                CombatUnitSnapshot.CapturePlanetUnits(targetPlanet, defenderId)
+            );
 
             SetBombardmentCombatState(attackingFleets, targetPlanet, true);
             try
@@ -162,6 +164,7 @@ namespace Rebellion.Systems
             }
             finally
             {
+                RecordUnitOutcomes(result);
                 SetBombardmentCombatState(attackingFleets, targetPlanet, false);
             }
         }
@@ -215,31 +218,28 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Captures the units carried by the attacking fleets before combat mutates the scene graph.
+        /// Records which captured units were damaged or destroyed by bombardment.
         /// </summary>
-        /// <param name="fleets">The attacking fleets.</param>
-        /// <returns>The attacking unit snapshot.</returns>
-        private static List<ISceneNode> SnapshotFleetUnits(IEnumerable<Fleet> fleets)
+        /// <param name="result">The completed bombardment result.</param>
+        private static void RecordUnitOutcomes(BombardmentResult result)
         {
-            return fleets
-                .Where(fleet => fleet != null)
-                .SelectMany(fleet => fleet.GetChildren<ISceneNode>(_ => true))
-                .Distinct()
-                .ToList();
-        }
-
-        /// <summary>
-        /// Captures the target owner's units before combat mutates the scene graph.
-        /// </summary>
-        /// <param name="planet">The target planet.</param>
-        /// <param name="ownerInstanceId">The target owner identifier.</param>
-        /// <returns>The defending unit snapshot.</returns>
-        private static List<ISceneNode> SnapshotPlanetUnits(Planet planet, string ownerInstanceId)
-        {
-            return planet
-                .GetChildren<ISceneNode>(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
-                .Distinct()
-                .ToList();
+            CombatUnitSnapshot.RecordOutcomes(
+                result.AttackingUnits,
+                result.AttackerShipDamage.Select(damage => damage.Ship),
+                result.DestroyedCapitalShips
+            );
+            CombatUnitSnapshot.RecordOutcomes(
+                result.DefendingUnits,
+                null,
+                result
+                    .DestroyedBuildings.Cast<ISceneNode>()
+                    .Concat(result.DestroyedRegiments)
+                    .Concat(
+                        result
+                            .Events.OfType<OfficerKilledResult>()
+                            .Select(killed => killed.TargetOfficer)
+                    )
+            );
         }
 
         /// <summary>

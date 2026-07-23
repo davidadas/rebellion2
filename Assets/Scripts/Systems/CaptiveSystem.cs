@@ -16,7 +16,7 @@ namespace Rebellion.Systems
     /// Escape probability is based on the officer's skills vs the planet's
     /// garrison strength, looked up in the escape table.
     /// </summary>
-    public class CaptiveSystem : IGameSystem
+    public class CaptiveSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

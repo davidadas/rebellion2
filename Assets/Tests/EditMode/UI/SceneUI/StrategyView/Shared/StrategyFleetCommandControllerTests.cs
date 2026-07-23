@@ -16,9 +16,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
     [TestFixture]
     public class StrategyFleetCommandControllerTests
     {
+        private const string _opposingFactionId = "opponent";
         private const string _playerFactionId = "player";
 
         private GameRoot _game;
+        private GameManager _gameManager;
         private Planet _planet;
 
         [SetUp]
@@ -26,6 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         {
             _game = new GameRoot(TestConfig.Create());
             _game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            _game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
             _game.Summary.PlayerFactionID = _playerFactionId;
             GamePlanetSystem system = new GamePlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
@@ -38,71 +41,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 NumRawResourceNodes = 10,
             };
             _game.AttachNode(_planet, system);
+            _gameManager = new GameManager(_game);
         }
 
         [Test]
-        public void Constructor_NullDependencies_ThrowArgumentNullException()
+        public void Constructor_NullGameManager_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    null,
-                    () => new FleetSystem(_game),
-                    (_, _, _) => false,
-                    (_, _, _) => null,
-                    (_, _) => false,
-                    (_, _) => null
-                )
-            );
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    () => _game,
-                    null,
-                    (_, _, _) => false,
-                    (_, _, _) => null,
-                    (_, _) => false,
-                    (_, _) => null
-                )
-            );
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    () => _game,
-                    () => new FleetSystem(_game),
-                    null,
-                    (_, _, _) => null,
-                    (_, _) => false,
-                    (_, _) => null
-                )
-            );
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    () => _game,
-                    () => new FleetSystem(_game),
-                    (_, _, _) => false,
-                    null,
-                    (_, _) => false,
-                    (_, _) => null
-                )
-            );
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    () => _game,
-                    () => new FleetSystem(_game),
-                    (_, _, _) => false,
-                    (_, _, _) => null,
-                    null,
-                    (_, _) => null
-                )
-            );
-            Assert.Throws<ArgumentNullException>(() =>
-                new StrategyFleetCommandController(
-                    () => _game,
-                    () => new FleetSystem(_game),
-                    (_, _, _) => false,
-                    (_, _, _) => null,
-                    (_, _) => false,
-                    null
-                )
-            );
+            Assert.Throws<ArgumentNullException>(() => new StrategyFleetCommandController(null));
         }
 
         [Test]
@@ -145,52 +90,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void TryCreateFleetFromCapitalShips_NoActiveGame_ReturnsFalse()
-        {
-            StrategyFleetCommandController controller = new StrategyFleetCommandController(
-                () => null,
-                () => new FleetSystem(_game),
-                (_, _, _) => false,
-                (_, _, _) => null,
-                (_, _) => false,
-                (_, _) => null
-            );
-
-            bool created = controller.TryCreateFleetFromCapitalShips(
-                new ISceneNode[] { CreateShip("ship", _playerFactionId) }
-            );
-
-            Assert.IsFalse(created);
-        }
-
-        [Test]
         public void ExecutePlanetaryCombat_BombardmentSnapshot_UsesLiveGraphObjects()
         {
-            GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
-            _game.AttachNode(fleet, _planet);
+            _planet.OwnerInstanceID = _opposingFactionId;
+            GameFleet fleet = AddCombatFleet("fleet", bombardment: 1);
             GameFleet requestedFleet = new GameFleet(_playerFactionId, "fleet snapshot")
             {
                 InstanceID = fleet.InstanceID,
             };
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
-            Planet receivedTarget = null;
-            IReadOnlyList<GameFleet> receivedFleets = null;
-            BombardmentType? receivedType = null;
-            BombardmentResult expected = new BombardmentResult();
-            StrategyFleetCommandController controller = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => true,
-                (target, fleets, type) =>
-                {
-                    receivedTarget = target;
-                    receivedFleets = fleets;
-                    receivedType = type;
-                    return expected;
-                },
-                (_, _) => false,
-                (_, _) => null
-            );
+            StrategyFleetCommandController controller = CreateController();
 
             GameResult result = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
@@ -198,11 +107,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 StrategyMenuAction.BombardCivilianFacilities
             );
 
-            Assert.AreSame(expected, result);
-            Assert.AreSame(_planet, receivedTarget);
-            Assert.AreEqual(1, receivedFleets.Count);
-            Assert.AreSame(fleet, receivedFleets[0]);
-            Assert.AreEqual(BombardmentType.Civilian, receivedType);
+            Assert.IsInstanceOf<BombardmentResult>(result);
+            BombardmentResult bombardment = (BombardmentResult)result;
+            Assert.AreSame(_planet, bombardment.Planet);
+            Assert.AreEqual(BombardmentType.Civilian, bombardment.Type);
+            Assert.AreEqual(1, bombardment.AttackingUnits.Count);
+            Assert.AreEqual(
+                fleet.CapitalShips[0].InstanceID,
+                bombardment.AttackingUnits[0].Unit.InstanceID
+            );
         }
 
         [Test]
@@ -235,29 +148,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         [Test]
         public void ExecutePlanetaryCombat_AssaultSnapshot_UsesLiveGraphObjects()
         {
-            GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
-            _game.AttachNode(fleet, _planet);
+            _planet.OwnerInstanceID = _opposingFactionId;
+            GameFleet fleet = AddCombatFleet("fleet", includeRegiment: true);
             GameFleet requestedFleet = new GameFleet(_playerFactionId, "fleet snapshot")
             {
                 InstanceID = fleet.InstanceID,
             };
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
-            Planet receivedTarget = null;
-            IReadOnlyList<GameFleet> receivedFleets = null;
-            PlanetaryAssaultResult expected = new PlanetaryAssaultResult();
-            StrategyFleetCommandController controller = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => false,
-                (_, _, _) => null,
-                (_, _) => true,
-                (target, fleets) =>
-                {
-                    receivedTarget = target;
-                    receivedFleets = fleets;
-                    return expected;
-                }
-            );
+            StrategyFleetCommandController controller = CreateController();
 
             GameResult result = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
@@ -265,50 +163,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 StrategyMenuAction.PlanetaryAssault
             );
 
-            Assert.AreSame(expected, result);
-            Assert.AreSame(_planet, receivedTarget);
-            Assert.AreEqual(1, receivedFleets.Count);
-            Assert.AreSame(fleet, receivedFleets[0]);
+            Assert.IsInstanceOf<PlanetaryAssaultResult>(result);
+            PlanetaryAssaultResult assault = (PlanetaryAssaultResult)result;
+            Assert.AreSame(_planet, assault.Planet);
+            Assert.AreEqual(1, assault.InitialAttackerRegimentCount);
         }
 
         [Test]
         public void ExecutePlanetaryCombat_AssaultWithMultipleFleets_UsesFullLiveSelection()
         {
-            GameFleet eligibleFleet = new GameFleet(_playerFactionId, "eligible");
-            GameFleet ineligibleFleet = new GameFleet(_playerFactionId, "ineligible");
-            _game.AttachNode(eligibleFleet, _planet);
-            _game.AttachNode(ineligibleFleet, _planet);
+            _planet.OwnerInstanceID = _opposingFactionId;
+            GameFleet firstFleet = AddCombatFleet("first", includeRegiment: true);
+            GameFleet secondFleet = AddCombatFleet("second", includeRegiment: true);
             GameFleet requestedEligibleFleet = new GameFleet(_playerFactionId, "eligible snapshot")
             {
-                InstanceID = eligibleFleet.InstanceID,
+                InstanceID = firstFleet.InstanceID,
             };
             GameFleet requestedIneligibleFleet = new GameFleet(
                 _playerFactionId,
                 "ineligible snapshot"
             )
             {
-                InstanceID = ineligibleFleet.InstanceID,
+                InstanceID = secondFleet.InstanceID,
             };
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
-            IReadOnlyList<GameFleet> receivedFleets = null;
-            IReadOnlyList<GameFleet> validatedFleets = null;
-            PlanetaryAssaultResult expected = new PlanetaryAssaultResult();
-            StrategyFleetCommandController controller = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => false,
-                (_, _, _) => null,
-                (_, fleets) =>
-                {
-                    validatedFleets = fleets;
-                    return true;
-                },
-                (_, fleets) =>
-                {
-                    receivedFleets = fleets;
-                    return expected;
-                }
-            );
+            StrategyFleetCommandController controller = CreateController();
 
             bool canExecute = controller.CanExecutePlanetaryCombat(
                 new ISceneNode[] { requestedEligibleFleet, requestedIneligibleFleet },
@@ -322,40 +201,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             );
 
             Assert.IsTrue(canExecute);
-            Assert.AreSame(expected, result);
-            Assert.AreEqual(2, validatedFleets.Count);
-            Assert.AreSame(eligibleFleet, validatedFleets[0]);
-            Assert.AreSame(ineligibleFleet, validatedFleets[1]);
-            Assert.AreEqual(2, receivedFleets.Count);
-            Assert.AreSame(eligibleFleet, receivedFleets[0]);
-            Assert.AreSame(ineligibleFleet, receivedFleets[1]);
+            Assert.IsInstanceOf<PlanetaryAssaultResult>(result);
+            Assert.AreEqual(2, ((PlanetaryAssaultResult)result).InitialAttackerRegimentCount);
         }
 
         [Test]
         public void CanExecutePlanetaryCommands_NeutralSnapshotTarget_UsesLiveGraphObjects()
         {
             _planet.OwnerInstanceID = null;
-            GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
-            _game.AttachNode(fleet, _planet);
+            GameFleet fleet = AddCombatFleet("fleet", bombardment: 1, includeRegiment: true);
             GameFleet requestedFleet = new GameFleet(_playerFactionId, "fleet snapshot")
             {
                 InstanceID = fleet.InstanceID,
             };
             Planet requestedTarget = new Planet { InstanceID = _planet.InstanceID };
-            StrategyFleetCommandController controller = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (target, fleets, _) =>
-                    ReferenceEquals(target, _planet)
-                    && fleets.Count == 1
-                    && ReferenceEquals(fleets[0], fleet),
-                (_, _, _) => null,
-                (target, fleets) =>
-                    ReferenceEquals(target, _planet)
-                    && fleets.Count == 1
-                    && ReferenceEquals(fleets[0], fleet),
-                (_, _) => null
-            );
+            StrategyFleetCommandController controller = CreateController();
 
             bool canBombard = controller.CanExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
@@ -419,14 +279,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => false,
-                (_, _, _) => null,
-                (_, _) => false,
-                (_, _) => null
-            );
+            return new StrategyFleetCommandController(_gameManager);
+        }
+
+        private GameFleet AddCombatFleet(
+            string instanceId,
+            int bombardment = 0,
+            bool includeRegiment = false
+        )
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = instanceId,
+                OwnerInstanceID = _playerFactionId,
+            };
+            _game.AttachNode(fleet, _planet);
+            CapitalShip ship = CreateShip($"{instanceId}-ship", _playerFactionId);
+            ship.Bombardment = bombardment;
+            ship.MaxHullStrength = 100;
+            ship.CurrentHullStrength = 100;
+            ship.RegimentCapacity = includeRegiment ? 1 : 0;
+            _game.AttachNode(ship, fleet);
+            if (includeRegiment)
+            {
+                _game.AttachNode(
+                    new Regiment
+                    {
+                        InstanceID = $"{instanceId}-regiment",
+                        OwnerInstanceID = _playerFactionId,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    ship
+                );
+            }
+
+            return fleet;
         }
 
         private static CapitalShip CreateShip(string instanceId, string ownerId)

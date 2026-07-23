@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
 {
@@ -124,19 +123,6 @@ namespace Rebellion.Game.Missions
                 - planet.GetOpposingPopularSupport(OwnerInstanceID)
                 + agent.GetEffectiveRating(OfficerRating.Leadership);
             return LookupSuccessProbability(game, score);
-        }
-
-        /// <summary>
-        /// Ends the uprising on the target planet.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for subdue uprising).</param>
-        /// <returns>One PlanetUprisingEndedResult, or an empty list if the mission planet is null.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
-        {
-            throw new InvalidOperationException(
-                "Subdue Uprising must be resolved by MissionSystem."
-            );
         }
 
         /// <summary>

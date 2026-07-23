@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
 {
@@ -99,19 +97,6 @@ namespace Rebellion.Game.Missions
             );
             int score = leadershipSkill - enemySupport - uprisingResistanceRegimentCount;
             return LookupSuccessProbability(game, score);
-        }
-
-        /// <summary>
-        /// Starts an uprising on the target planet.
-        /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for incite uprising).</param>
-        /// <returns>One PlanetUprisingStartedResult.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
-        {
-            throw new InvalidOperationException(
-                "Incite Uprising must be resolved by MissionSystem."
-            );
         }
 
         /// <summary>

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Results;
 using UnityEngine;
 
 /// <summary>
@@ -123,11 +122,11 @@ internal static class BattleResultCategoryCatalog
     /// </summary>
     /// <param name="result">The completed result.</param>
     /// <returns>The supported categories in authored order.</returns>
-    internal static IReadOnlyList<BattleResultCategory> GetForResult(GameResult result)
+    internal static IReadOnlyList<BattleResultCategory> GetForResult(
+        BattleResultPresentation result
+    )
     {
-        return result is BombardmentResult or PlanetaryAssaultResult
-            ? _planetaryCategories
-            : _spaceCategories;
+        return result?.UsesPlanetaryLayout == true ? _planetaryCategories : _spaceCategories;
     }
 }
 

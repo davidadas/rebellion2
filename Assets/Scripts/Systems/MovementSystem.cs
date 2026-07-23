@@ -20,7 +20,7 @@ namespace Rebellion.Systems
     /// The only system that calls game.MoveNode() for movement purposes.
     /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
-    public class MovementSystem : IGameSystem
+    public class MovementSystem
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -292,7 +292,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves a participant's recorded container, recorded planet, or nearest friendly destination.
+        /// Resolves a participant's recorded container or recorded planet.
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
@@ -319,75 +319,7 @@ namespace Rebellion.Systems
                     return returnLocation;
             }
 
-            return FindNearestMissionReturnDestination(participant);
-        }
-
-        /// <summary>
-        /// Finds the closest friendly planet or fleet that can receive a mission participant.
-        /// </summary>
-        /// <param name="participant">The participant that needs a return destination.</param>
-        /// <returns>The nearest valid destination, or null when the faction has none.</returns>
-        private ContainerNode FindNearestMissionReturnDestination(IMissionParticipant participant)
-        {
-            string ownerInstanceID = GetMovementControlOwner(participant);
-            Planet sourcePlanet = participant.GetParentOfType<Planet>();
-            if (string.IsNullOrEmpty(ownerInstanceID) || sourcePlanet == null)
-                return null;
-
-            Planet nearestPlanet = _game
-                .GetSceneNodesByType<Planet>()
-                .Where(planet =>
-                    planet.IsColonized
-                    && !planet.IsDestroyed
-                    && planet.GetOwnerInstanceID() == ownerInstanceID
-                    && planet.CanAcceptChild(participant)
-                )
-                .OrderBy(planet => planet.GetRawDistanceTo(sourcePlanet.GetPosition()))
-                .ThenBy(planet => planet.InstanceID)
-                .FirstOrDefault();
-
-            var nearestFleet = _game
-                .GetSceneNodesByType<Fleet>()
-                .Where(fleet => fleet.GetOwnerInstanceID() == ownerInstanceID)
-                .Select(fleet => new
-                {
-                    Fleet = fleet,
-                    Destination = FindMissionReturnShip(participant, fleet),
-                })
-                .Where(candidate => candidate.Destination != null)
-                .OrderBy(candidate => sourcePlanet.GetRawDistanceTo(candidate.Fleet.GetPosition()))
-                .ThenBy(candidate => candidate.Fleet.InstanceID)
-                .FirstOrDefault();
-
-            if (nearestPlanet == null)
-                return nearestFleet?.Destination;
-            if (nearestFleet == null)
-                return nearestPlanet;
-
-            double planetDistance = nearestPlanet.GetRawDistanceTo(sourcePlanet.GetPosition());
-            double fleetDistance = sourcePlanet.GetRawDistanceTo(nearestFleet.Fleet.GetPosition());
-            return planetDistance <= fleetDistance ? nearestPlanet : nearestFleet.Destination;
-        }
-
-        /// <summary>
-        /// Finds a usable ship in a friendly fleet for a returning mission participant.
-        /// </summary>
-        /// <param name="participant">The participant that needs transport.</param>
-        /// <param name="fleet">The fleet being evaluated.</param>
-        /// <returns>A ship that can receive the participant, or null.</returns>
-        private static CapitalShip FindMissionReturnShip(
-            IMissionParticipant participant,
-            Fleet fleet
-        )
-        {
-            return fleet
-                .CapitalShips.Where(ship =>
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.GetParent() == fleet
-                    && ship.CanAcceptChild(participant)
-                )
-                .OrderBy(ship => ship.InstanceID)
-                .FirstOrDefault();
+            return null;
         }
 
         /// <summary>

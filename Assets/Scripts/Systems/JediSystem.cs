@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages Force discovery state and force user scanning each tick.
     /// </summary>
-    public class JediSystem : IGameSystem, IGameResultHandler
+    public class JediSystem : IGameResultHandler
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

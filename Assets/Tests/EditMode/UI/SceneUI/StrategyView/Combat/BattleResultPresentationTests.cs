@@ -1,7 +1,5 @@
 using NUnit.Framework;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
-using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
@@ -12,81 +10,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private const string _defenderId = "defender";
 
         [Test]
-        public void GetFleetForOwner_ResultOwnerIDs_ReturnsMatchingFleet()
+        public void GetSideForOwner_ResultOwnerIDs_ReturnsRepresentedSide()
         {
-            GameFleet attacker = CreateFleet("attacking-fleet", "fleet-owner-a");
-            GameFleet defender = CreateFleet("defending-fleet", "fleet-owner-b");
             SpaceCombatResult result = new SpaceCombatResult
             {
-                AttackerFleet = attacker,
-                DefenderFleet = defender,
                 AttackerOwnerInstanceID = _attackerId,
                 DefenderOwnerInstanceID = _defenderId,
-            };
-
-            GameFleet attackerResult = BattleResultPresentation.GetFleetForOwner(
-                result,
-                _attackerId
-            );
-            GameFleet defenderResult = BattleResultPresentation.GetFleetForOwner(
-                result,
-                _defenderId
-            );
-
-            Assert.AreSame(attacker, attackerResult);
-            Assert.AreSame(defender, defenderResult);
-        }
-
-        [Test]
-        public void GetFleetForOwner_MissingResultOwnerIDs_UsesFleetOwners()
-        {
-            GameFleet attacker = CreateFleet("attacking-fleet", _attackerId);
-            GameFleet defender = CreateFleet("defending-fleet", _defenderId);
-            SpaceCombatResult result = new SpaceCombatResult
-            {
-                AttackerFleet = attacker,
-                DefenderFleet = defender,
-            };
-
-            GameFleet attackerResult = BattleResultPresentation.GetFleetForOwner(
-                result,
-                _attackerId
-            );
-            GameFleet defenderResult = BattleResultPresentation.GetFleetForOwner(
-                result,
-                _defenderId
-            );
-
-            Assert.AreSame(attacker, attackerResult);
-            Assert.AreSame(defender, defenderResult);
-        }
-
-        [Test]
-        public void GetFleetForOwner_UnknownOrInvalidOwner_ReturnsNull()
-        {
-            SpaceCombatResult result = new SpaceCombatResult
-            {
-                AttackerFleet = CreateFleet("attacking-fleet", _attackerId),
-                DefenderFleet = CreateFleet("defending-fleet", _defenderId),
-            };
-
-            GameFleet unknown = BattleResultPresentation.GetFleetForOwner(result, "unknown");
-            GameFleet missingOwner = BattleResultPresentation.GetFleetForOwner(result, null);
-            GameFleet missingResult = BattleResultPresentation.GetFleetForOwner(null, _attackerId);
-
-            Assert.IsNull(unknown);
-            Assert.IsNull(missingOwner);
-            Assert.IsNull(missingResult);
-        }
-
-        [Test]
-        public void GetSideForOwner_ResultAndFleetOwners_ReturnsRepresentedSide()
-        {
-            SpaceCombatResult result = new SpaceCombatResult
-            {
-                AttackerFleet = CreateFleet("attacking-fleet", "fleet-attacker"),
-                DefenderFleet = CreateFleet("defending-fleet", _defenderId),
-                AttackerOwnerInstanceID = _attackerId,
             };
 
             CombatSide? attacker = BattleResultPresentation.GetSideForOwner(result, _attackerId);
@@ -209,11 +138,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             );
 
             Assert.AreEqual("value", value);
-        }
-
-        private static GameFleet CreateFleet(string instanceId, string ownerId)
-        {
-            return new GameFleet(ownerId, instanceId) { InstanceID = instanceId };
         }
 
         private static BattleAlertWindowTheme CreateTheme()

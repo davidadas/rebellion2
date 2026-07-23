@@ -206,30 +206,6 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
-    /// Rebinds fleet sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
-    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
-    {
-        if (findPlanet == null)
-            return;
-
-        windowManager.ForEachWindow<FleetWindowView>(
-            (_, view) =>
-            {
-                if (!sessions.TryGetValue(view, out FleetWindowSession session))
-                    return;
-
-                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
-                if (planet == null)
-                    return;
-
-                session.RebindPlanet(planet);
-            }
-        );
-    }
-
-    /// <summary>
     /// Projects current domain state and renders one fleet window.
     /// </summary>
     /// <param name="view">The destination fleet view.</param>

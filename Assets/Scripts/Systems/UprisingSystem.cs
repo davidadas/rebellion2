@@ -15,7 +15,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public class UprisingSystem : IGameSystem, IGameResultHandler
+    public class UprisingSystem : IGameResultHandler
     {
         private const int _buildingDestroyedSeverity = 1;
         private const int _regimentDestroyedSeverity = 2;
@@ -120,12 +120,75 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Resolves an uprising mission when the supplied mission belongs to this system.
+        /// </summary>
+        /// <param name="mission">The completed mission to inspect.</param>
+        /// <param name="results">The uprising mission results when handled; otherwise an empty list.</param>
+        /// <returns>True when this system handled the mission.</returns>
+        internal bool TryExecuteMission(Mission mission, out List<GameResult> results)
+        {
+            if (mission is not InciteUprisingMission && mission is not SubdueUprisingMission)
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
+            results = ExecuteMission(mission);
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves one uprising mission attempt sequence.
+        /// </summary>
+        /// <param name="mission">The uprising mission ready to execute.</param>
+        /// <returns>The uprising effects followed by the terminal mission result.</returns>
+        private List<GameResult> ExecuteMission(Mission mission)
+        {
+            List<GameResult> results = new List<GameResult>();
+            bool objectiveAchieved = false;
+
+            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
+            {
+                if (!mission.RollParticipantSuccess(participant, _provider, _game))
+                    continue;
+
+                objectiveAchieved = ResolveMissionAttempt(mission, results);
+                if (objectiveAchieved)
+                    mission.ImproveMissionParticipantRating(participant);
+                break;
+            }
+
+            MissionOutcome outcome = objectiveAchieved
+                ? MissionOutcome.Success
+                : MissionOutcome.Failed;
+            MissionCompletionReason completionReason = objectiveAchieved
+                ? MissionCompletionReason.Success
+                : MissionCompletionReason.Failure;
+            results.Add(mission.BuildCompletedResult(outcome, completionReason, _game));
+            return results;
+        }
+
+        /// <summary>
+        /// Applies one successful participant attempt for an uprising mission.
+        /// </summary>
+        /// <param name="mission">The uprising mission being attempted.</param>
+        /// <param name="results">The result collection receiving uprising effects.</param>
+        /// <returns>True when the mission objective was achieved.</returns>
+        private bool ResolveMissionAttempt(Mission mission, List<GameResult> results)
+        {
+            if (mission is InciteUprisingMission inciteMission)
+                return ResolveInciteMissionAttempt(inciteMission, results);
+
+            return ResolveSubdueMissionAttempt((SubdueUprisingMission)mission, results);
+        }
+
+        /// <summary>
         /// Applies one successful incite-uprising attempt and reconciles planetary control.
         /// </summary>
         /// <param name="mission">The incite-uprising mission being resolved.</param>
         /// <param name="results">The result collection receiving uprising and control effects.</param>
         /// <returns>True when the mission's control objective is achieved.</returns>
-        internal bool ResolveInciteMissionAttempt(
+        private bool ResolveInciteMissionAttempt(
             InciteUprisingMission mission,
             List<GameResult> results
         )
@@ -162,7 +225,7 @@ namespace Rebellion.Systems
         /// <param name="mission">The subdue-uprising mission being resolved.</param>
         /// <param name="results">The result collection receiving uprising and control effects.</param>
         /// <returns>True when the uprising ends.</returns>
-        internal bool ResolveSubdueMissionAttempt(
+        private bool ResolveSubdueMissionAttempt(
             SubdueUprisingMission mission,
             List<GameResult> results
         )

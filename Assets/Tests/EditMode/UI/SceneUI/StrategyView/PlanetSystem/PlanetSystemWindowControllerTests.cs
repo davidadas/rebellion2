@@ -33,6 +33,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private GameFleet _fleet;
         private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
+        private GameManager _gameManager;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -53,6 +54,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sector = CreateSector();
+            _gameManager = new GameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -246,15 +248,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         [Test]
         public void ContextMenu_PlanetaryAssault_ExecutesAndRoutesBattleResult()
         {
-            PlanetaryAssaultResult expected = new PlanetaryAssaultResult();
-            _fleetCommandController = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => true,
-                (_, _, _) => null,
-                (_, _) => true,
-                (_, _) => expected
+            _planet.Planet.OwnerInstanceID = _opposingFactionId;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "assault-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                RegimentCapacity = 1,
+            };
+            _game.AttachNode(ship, _fleet);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "assault-regiment",
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
             );
+            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
             _controller = CreateController();
             _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
             PlanetSystemWindowView view = OpenWindow(out UIWindow window);
@@ -276,7 +290,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             bool selected = contextMenuController.TrySelectCommand(command);
 
             Assert.IsTrue(selected);
-            Assert.AreSame(expected, _actions.LastBattleResult);
+            Assert.IsInstanceOf<PlanetaryAssaultResult>(_actions.LastBattleResult);
             Assert.AreEqual(1, _actions.RefreshCount);
         }
 
@@ -435,14 +449,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _, _) => false,
-                (_, _, _) => null,
-                (_, _) => false,
-                (_, _) => null
-            );
+            return new StrategyFleetCommandController(_gameManager);
         }
 
         private GameRoot CreateGame()

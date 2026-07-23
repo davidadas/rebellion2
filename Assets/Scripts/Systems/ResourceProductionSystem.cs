@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Processes mine and refinery cycles and the material requests that feed them.
     /// </summary>
-    public class ResourceProductionSystem : IGameSystem
+    public class ResourceProductionSystem
     {
         private const int _percentScale = 100;
 

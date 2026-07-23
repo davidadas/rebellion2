@@ -156,7 +156,7 @@ namespace Rebellion.Tests.AI.Helpers
             MovementSystem movementSystem =
                 movement ?? new MovementSystem(game, fog, new FleetSystem(game));
             MissionSystem missionSystem =
-                missions ?? new MissionSystem(game, provider, movementSystem);
+                missions ?? TestSystems.CreateMissionSystem(game, provider, movementSystem);
             ManufacturingSystem manufacturingSystem =
                 manufacturing
                 ?? new ManufacturingSystem(game, new FleetSystem(game), movementSystem);

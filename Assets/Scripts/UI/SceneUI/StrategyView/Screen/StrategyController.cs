@@ -201,13 +201,7 @@ public sealed class StrategyController
     {
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
-            () => gameManager.GetGame(),
-            () => gameManager.FleetSystem,
-            (target, fleets, type) =>
-                gameManager.BombardmentSystem.CanExecute(fleets, target, type),
-            (target, fleets, type) => gameManager.ExecuteOrbitalBombardment(fleets, target, type),
-            (target, fleets) => gameManager.PlanetaryAssaultSystem.CanExecute(fleets, target),
-            (target, fleets) => gameManager.ExecutePlanetaryAssault(fleets, target)
+            gameManager
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -831,14 +825,71 @@ public sealed class StrategyController
         galaxyMapController.RebuildSnapshot(gameManager);
         bookmarkController.ReconcilePlanets(Sectors);
         statusWindowController.ReconcileWindows(Sectors);
-        constructionWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
-        facilityWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
-        fleetWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
-        defenseWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
-        missionsWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
+        ReconcilePlanetWindows();
         planetSystemWindowController.ReconcileWindows(Sectors);
         messagesWindowController.ReconcileWindows();
         finderWindowController.ReconcileWindows();
+    }
+
+    /// <summary>
+    /// Rebinds every planet-backed window by stable planet identity.
+    /// </summary>
+    private void ReconcilePlanetWindows()
+    {
+        foreach (UIWindow window in strategyWindowManager.Windows.ToList())
+        {
+            GalaxyMapPlanet currentPlanet = GetWindowPlanet(window);
+            string planetInstanceId = currentPlanet?.Planet?.InstanceID;
+            if (string.IsNullOrEmpty(planetInstanceId))
+                continue;
+
+            GalaxyMapPlanet freshPlanet = galaxyMapController.FindPlanet(planetInstanceId);
+            if (freshPlanet == null)
+            {
+                CloseWindow(window, false);
+                continue;
+            }
+
+            ReconcilePlanetWindow(window, freshPlanet);
+        }
+    }
+
+    /// <summary>
+    /// Routes a refreshed planet projection to the controller that owns one window.
+    /// </summary>
+    /// <param name="window">The planet-backed window being reconciled.</param>
+    /// <param name="planet">The refreshed visible planet projection.</param>
+    private void ReconcilePlanetWindow(UIWindow window, GalaxyMapPlanet planet)
+    {
+        if (
+            strategyWindowManager.TryGetWindowView(
+                window,
+                out ConstructionWindowView constructionView
+            )
+        )
+        {
+            constructionWindowController.ReconcileWindow(constructionView, planet);
+        }
+        else if (
+            strategyWindowManager.TryGetWindowView(window, out FacilityWindowView facilityView)
+        )
+        {
+            facilityWindowController.ReconcileWindow(facilityView, planet);
+        }
+        else if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView fleetView))
+        {
+            fleetWindowController.ReconcileWindow(fleetView, planet);
+        }
+        else if (strategyWindowManager.TryGetWindowView(window, out DefenseWindowView defenseView))
+        {
+            defenseWindowController.ReconcileWindow(defenseView, planet);
+        }
+        else if (
+            strategyWindowManager.TryGetWindowView(window, out MissionsWindowView missionsView)
+        )
+        {
+            missionsWindowController.ReconcileWindow(missionsView, planet);
+        }
     }
 
     /// <summary>

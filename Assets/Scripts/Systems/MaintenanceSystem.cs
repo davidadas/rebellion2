@@ -15,7 +15,7 @@ namespace Rebellion.Systems
     /// When a faction's committed maintenance cost exceeds its resource-facility capacity,
     /// one random eligible unit is scrapped on each configured timer pulse until balance is restored.
     /// </summary>
-    public class MaintenanceSystem : IGameSystem
+    public class MaintenanceSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;

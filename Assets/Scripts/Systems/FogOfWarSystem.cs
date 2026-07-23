@@ -516,35 +516,17 @@ namespace Rebellion.Systems
             if (snapshot?.HasManufacturingIntelligence != true)
                 return;
 
-            MergeManufacturingEntities(viewPlanet.Regiments, snapshot.Regiments);
-            MergeManufacturingEntities(viewPlanet.SpecialForces, snapshot.SpecialForces);
-            MergeManufacturingEntities(viewPlanet.Buildings, snapshot.Buildings);
-            MergeManufacturingEntities(viewPlanet.Starfighters, snapshot.Starfighters);
+            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet.Regiments, snapshot.Regiments);
+            FogOfWarRecorder.MergeManufacturingEntities(
+                viewPlanet.SpecialForces,
+                snapshot.SpecialForces
+            );
+            FogOfWarRecorder.MergeManufacturingEntities(viewPlanet.Buildings, snapshot.Buildings);
+            FogOfWarRecorder.MergeManufacturingEntities(
+                viewPlanet.Starfighters,
+                snapshot.Starfighters
+            );
             ApplyManufacturingQueue(viewPlanet, snapshot);
-        }
-
-        /// <summary>
-        /// Adds missing unfinished snapshot entities to a faction-view list.
-        /// </summary>
-        /// <typeparam name="T">The manufacturable scene-node type.</typeparam>
-        /// <param name="destination">The faction-view list receiving copied entities.</param>
-        /// <param name="source">The snapshot entities to inspect.</param>
-        private static void MergeManufacturingEntities<T>(
-            List<T> destination,
-            IEnumerable<T> source
-        )
-            where T : class, IManufacturable
-        {
-            HashSet<string> existingIds = destination.Select(item => item.InstanceID).ToHashSet();
-            foreach (
-                T item in source.Where(item =>
-                    item.GetManufacturingStatus() == ManufacturingStatus.Building
-                )
-            )
-            {
-                if (existingIds.Add(item.InstanceID))
-                    destination.Add(FogOfWarRecorder.CopyEntityForSnapshot(item));
-            }
         }
 
         /// <summary>

@@ -17,7 +17,7 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem : IGameSystem, IGameResultHandler
+    public class MissionSystem : IGameResultHandler
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -27,20 +27,7 @@ namespace Rebellion.Systems
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
-        /// Creates a new MissionSystem.
-        /// </summary>
-        /// <param name="game">The active game state.</param>
-        /// <param name="provider">Random number provider for mission execution and duration rolls.</param>
-        /// <param name="movementManager">Used to move participants to and from missions.</param>
-        public MissionSystem(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            MovementSystem movementManager
-        )
-            : this(game, provider, movementManager, null) { }
-
-        /// <summary>
-        /// Creates a mission system with uprising-specific mission resolution support.
+        /// Creates a mission system with all mission-resolution dependencies.
         /// </summary>
         /// <param name="game">The active game state.</param>
         /// <param name="provider">The random number provider for mission resolution.</param>
@@ -56,7 +43,8 @@ namespace Rebellion.Systems
             _game = game;
             _provider = provider;
             _movementManager = movementManager;
-            _uprisingSystem = uprisingSystem;
+            _uprisingSystem =
+                uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
             _missionFactory = new MissionFactory(game);
         }
 
@@ -460,79 +448,13 @@ namespace Rebellion.Systems
         /// <returns>The results produced by mission resolution.</returns>
         private List<GameResult> ExecuteMission(Mission mission)
         {
-            if (mission is InciteUprisingMission || mission is SubdueUprisingMission)
-                return ExecuteUprisingMission(mission);
-
-            return mission.Execute(_game, _provider);
-        }
-
-        /// <summary>
-        /// Resolves an uprising mission one successful participant attempt at a time.
-        /// </summary>
-        /// <param name="mission">The uprising mission ready to execute.</param>
-        /// <returns>The uprising effects followed by the terminal mission result.</returns>
-        private List<GameResult> ExecuteUprisingMission(Mission mission)
-        {
-            if (_uprisingSystem == null)
-                throw new InvalidOperationException(
-                    $"{mission.GetType().Name} requires an UprisingSystem."
-                );
-
-            List<GameResult> results = new List<GameResult>();
-            bool objectiveAchieved = false;
-
-            foreach (IMissionParticipant participant in mission.MainParticipants.ToList())
+            if (_uprisingSystem.TryExecuteMission(mission, out List<GameResult> results))
             {
-                if (!mission.RollParticipantSuccess(participant, _provider, _game))
-                    continue;
-
-                int attemptResultStart = results.Count;
-                objectiveAchieved = ResolveUprisingMissionAttempt(mission, results);
-                AbortMissionsInvalidatedByUprising(results, attemptResultStart);
-                if (objectiveAchieved)
-                    mission.ImproveMissionParticipantRating(participant);
-                break;
+                results.AddRange(HandleResults(results));
+                return results;
             }
 
-            MissionOutcome outcome = objectiveAchieved
-                ? MissionOutcome.Success
-                : MissionOutcome.Failed;
-            MissionCompletionReason completionReason = objectiveAchieved
-                ? MissionCompletionReason.Success
-                : MissionCompletionReason.Failure;
-            results.Add(mission.BuildCompletedResult(outcome, completionReason, _game));
-            return results;
-        }
-
-        /// <summary>
-        /// Routes one uprising mission attempt to its concrete uprising operation.
-        /// </summary>
-        /// <param name="mission">The uprising mission being attempted.</param>
-        /// <param name="results">The result collection receiving uprising effects.</param>
-        /// <returns>True when the mission objective was achieved.</returns>
-        private bool ResolveUprisingMissionAttempt(Mission mission, List<GameResult> results)
-        {
-            if (mission is InciteUprisingMission inciteMission)
-                return _uprisingSystem.ResolveInciteMissionAttempt(inciteMission, results);
-
-            return _uprisingSystem.ResolveSubdueMissionAttempt(
-                (SubdueUprisingMission)mission,
-                results
-            );
-        }
-
-        /// <summary>
-        /// Aborts other missions invalidated by uprisings started during an attempt.
-        /// </summary>
-        /// <param name="results">The result collection containing the attempt effects.</param>
-        /// <param name="attemptResultStart">The first result index produced by the attempt.</param>
-        private void AbortMissionsInvalidatedByUprising(
-            List<GameResult> results,
-            int attemptResultStart
-        )
-        {
-            List<GameResult> attemptResults = results.Skip(attemptResultStart).ToList();
-            results.AddRange(HandleResults(attemptResults));
+            return mission.Execute(_game, _provider);
         }
 
         /// <summary>

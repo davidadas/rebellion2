@@ -230,29 +230,6 @@ public sealed class ConstructionWindowController
     }
 
     /// <summary>
-    /// Rebinds construction sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
-    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
-    {
-        if (findPlanet == null)
-            return;
-
-        windowManager.ForEachWindow<ConstructionWindowView>(
-            (_, view) =>
-            {
-                if (!sessions.TryGetValue(view, out ConstructionWindowSession session))
-                    return;
-
-                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
-                if (planet != null)
-                    session.RebindPlanet(planet);
-                RefreshSessionItems(session);
-            }
-        );
-    }
-
-    /// <summary>
     /// Subscribes the controller to one construction view exactly once.
     /// </summary>
     /// <param name="view">The view to bind.</param>

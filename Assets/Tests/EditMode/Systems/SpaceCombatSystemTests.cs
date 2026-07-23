@@ -151,6 +151,7 @@ namespace Rebellion.Tests.Systems
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 10);
             CapitalShip empireShip = empireFleet.CapitalShips[0];
             CapitalShip allianceShip = allianceFleet.CapitalShips[0];
+            empireShip.DisplayName = "Empire Ship";
 
             QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
             SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
@@ -169,6 +170,12 @@ namespace Rebellion.Tests.Systems
                     .Last(result => result.GameObject == damage.Ship);
                 Assert.AreEqual(damage.HullBefore - damage.HullAfter, lastDamageEvent.DamageValue);
             }
+            CombatUnitSnapshot empireShipSnapshot = combatResult.AttackingUnits.Single(unit =>
+                unit.Unit.GetInstanceID() == empireShip.GetInstanceID()
+            );
+            Assert.AreNotSame(empireShip, empireShipSnapshot.Unit);
+            empireShip.DisplayName = "Renamed Ship";
+            Assert.AreEqual("Empire Ship", empireShipSnapshot.Unit.GetDisplayName());
             Assert.IsFalse(results.OfType<GameObjectDamagedResult>().Any());
         }
 

@@ -98,7 +98,11 @@ namespace Rebellion.Tests.Game.Missions
                 mission.IncrementProgress();
 
             MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = new MissionSystem(game, new FixedRNG(0.0), movement);
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
 
             missionSystem.UpdateMission(mission);
 

@@ -619,7 +619,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for all probability rolls.</param>
         /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
-        public virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome;

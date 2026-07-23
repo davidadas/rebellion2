@@ -212,21 +212,15 @@ public sealed class BattleAlertWindowController
     /// <param name="result">The completed combat result.</param>
     internal void OpenResult(GameResult result)
     {
-        if (
-            result is not SpaceCombatResult and not BombardmentResult and not PlanetaryAssaultResult
-        )
-            throw new ArgumentException("Unsupported battle result.", nameof(result));
+        BattleResultPresentation presentation = BattleResultPresentation.Create(result);
 
         EnsureInitialized();
         BattleAlertWindowView view = FindWindow() ?? OpenWindow();
         if (view == null)
             return;
 
-        SetCombatResult(view, result);
-        if (result is SpaceCombatResult spaceCombatResult)
-            PlayResultMusic(spaceCombatResult);
-        else if (result is PlanetaryAssaultResult)
-            playSfx(StrategyUISoundPaths.PlanetaryAssault);
+        SetCombatResult(view, presentation);
+        PlayResultAudio(presentation);
         markDirty();
     }
 
@@ -296,54 +290,6 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Returns completed-result music from the player's perspective.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="playerFactionId">The current player faction identifier.</param>
-    /// <returns>The configured result music path, or null when none applies.</returns>
-    internal static string GetBattleResultMusicPath(
-        BattleAlertWindowTheme theme,
-        SpaceCombatResult result,
-        string playerFactionId
-    )
-    {
-        if (theme == null || result == null)
-            return null;
-
-        CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
-        if (!playerSide.HasValue || result.Winner == CombatSide.Draw)
-            return BattleResultPresentation.FirstNonBlank(
-                theme.ResultDrawMusicPath,
-                theme.ResultMusicPath
-            );
-
-        return result.Winner == playerSide.Value
-            ? BattleResultPresentation.FirstNonBlank(
-                theme.ResultVictoryMusicPath,
-                theme.ResultMusicPath
-            )
-            : BattleResultPresentation.FirstNonBlank(
-                theme.ResultDefeatMusicPath,
-                theme.ResultMusicPath
-            );
-    }
-
-    /// <summary>
-    /// Returns victory artwork, or the withdrawing faction's defeated artwork for withdrawal.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <returns>The selected summary artwork path.</returns>
-    internal static string GetResultSummaryImagePath(
-        BattleAlertWindowTheme theme,
-        SpaceCombatResult result
-    )
-    {
-        return BattleResultPresentation.GetSummaryImagePath(theme, result);
-    }
-
-    /// <summary>
     /// Handles a semantic battle choice from a bound view.
     /// </summary>
     /// <param name="view">The requesting battle-alert view.</param>
@@ -377,7 +323,7 @@ public sealed class BattleAlertWindowController
         if (result == null)
             return;
 
-        SetCombatResult(view, result);
+        SetCombatResult(view, BattleResultPresentation.Create(result));
         stopMusic();
         actions.RebuildBattleSnapshot();
         markDirty();
@@ -392,8 +338,9 @@ public sealed class BattleAlertWindowController
         SpaceCombatResult result = autoResolve();
         if (result != null)
         {
-            SetCombatResult(view, result);
-            PlayResultMusic(result);
+            BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+            SetCombatResult(view, presentation);
+            PlayResultAudio(presentation);
             actions.RebuildBattleSnapshot();
             markDirty();
             return;
@@ -439,7 +386,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = GetResultPlanet(session.Result);
+            Planet planet = session.Result.Planet;
             if (planet == null)
             {
                 CloseWindow(view);
@@ -460,7 +407,7 @@ public sealed class BattleAlertWindowController
     {
         if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            Planet planet = GetResultPlanet(session.Result);
+            Planet planet = session.Result.Planet;
             if (planet?.GetParent() is not PlanetSystem system)
             {
                 CloseWindow(view);
@@ -540,7 +487,7 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The result view.</param>
     /// <param name="result">The completed combat result.</param>
-    private void SetCombatResult(BattleAlertWindowView view, GameResult result)
+    private void SetCombatResult(BattleAlertWindowView view, BattleResultPresentation result)
     {
         sessions[view].Complete(result);
     }
@@ -616,29 +563,13 @@ public sealed class BattleAlertWindowController
     /// <returns>The mode that should be presented.</returns>
     private static BattleAlertWindowMode GetWindowMode(
         PendingCombatResult pending,
-        GameResult result
+        BattleResultPresentation result
     )
     {
         if (result != null)
             return BattleAlertWindowMode.Result;
 
         return pending == null ? BattleAlertWindowMode.Hidden : BattleAlertWindowMode.Pending;
-    }
-
-    /// <summary>
-    /// Returns the planet represented by a supported completed combat result.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <returns>The result planet, or null when unavailable.</returns>
-    private static Planet GetResultPlanet(GameResult result)
-    {
-        return result switch
-        {
-            SpaceCombatResult spaceCombat => spaceCombat.Planet,
-            BombardmentResult bombardment => bombardment.Planet,
-            PlanetaryAssaultResult assault => assault.Planet,
-            _ => null,
-        };
     }
 
     /// <summary>
@@ -650,13 +581,15 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Plays configured completed-result music from the player's perspective.
+    /// Plays configured completed-result audio.
     /// </summary>
     /// <param name="result">The completed combat result.</param>
-    private void PlayResultMusic(SpaceCombatResult result)
+    private void PlayResultAudio(BattleResultPresentation result)
     {
-        string musicPath = GetBattleResultMusicPath(GetBattleTheme(), result, GetPlayerFactionID());
-        PlayMusicTrack(musicPath, true);
+        BattleAlertWindowTheme theme = GetBattleTheme();
+        PlayMusicTrack(result.GetMusicPath(theme, GetPlayerFactionID()), true);
+        if (!string.IsNullOrWhiteSpace(result.SoundEffectPath))
+            playSfx(result.SoundEffectPath);
     }
 
     /// <summary>
@@ -733,7 +666,7 @@ public sealed class BattleAlertWindowController
 
         internal BattleResultPanel ResultPanel { get; private set; } = BattleResultPanel.Summary;
 
-        internal GameResult Result { get; private set; }
+        internal BattleResultPresentation Result { get; private set; }
 
         internal UIWindow Window { get; }
 
@@ -741,14 +674,11 @@ public sealed class BattleAlertWindowController
         /// Stores a completed combat result and restores default result selections.
         /// </summary>
         /// <param name="result">The completed combat result.</param>
-        internal void Complete(GameResult result)
+        internal void Complete(BattleResultPresentation result)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
             ReconcileMode(BattleAlertWindowMode.Result);
-            ResultCategory =
-                result is PlanetaryAssaultResult
-                    ? BattleResultCategory.Troops
-                    : BattleResultCategory.CapitalShips;
+            ResultCategory = result.DefaultCategory;
         }
 
         /// <summary>

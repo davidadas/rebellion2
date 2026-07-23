@@ -91,9 +91,26 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.DoesNotContain(result.DestroyedBuildings, mine);
             Assert.AreEqual("alliance", result.AttackerOwnerInstanceID);
             Assert.AreEqual("empire", result.DefenderOwnerInstanceID);
-            CollectionAssert.Contains(result.AttackingUnits, fleet.CapitalShips[0]);
-            CollectionAssert.Contains(result.DefendingUnits, regiment);
-            CollectionAssert.Contains(result.DefendingUnits, mine);
+            CollectionAssert.Contains(
+                result.AttackingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                fleet.CapitalShips[0].GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                regiment.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                mine.GetInstanceID()
+            );
+            Assert.AreNotSame(
+                fleet.CapitalShips[0],
+                result
+                    .AttackingUnits.Single(unit =>
+                        unit.Unit.GetInstanceID() == fleet.CapitalShips[0].GetInstanceID()
+                    )
+                    .Unit
+            );
             Assert.AreSame(
                 planet,
                 result.Events.OfType<PlanetGarrisonChangedResult>().Single().Planet

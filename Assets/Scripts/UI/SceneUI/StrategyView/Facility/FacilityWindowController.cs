@@ -211,28 +211,6 @@ public sealed class FacilityWindowController
     }
 
     /// <summary>
-    /// Rebinds facility sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
-    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
-    {
-        if (findPlanet == null)
-            return;
-
-        windowManager.ForEachWindow<FacilityWindowView>(
-            (_, view) =>
-            {
-                if (!sessions.TryGetValue(view, out FacilityWindowSession session))
-                    return;
-
-                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
-                if (planet != null)
-                    session.RebindPlanet(planet);
-            }
-        );
-    }
-
-    /// <summary>
     /// Gets the planet represented by one facility view.
     /// </summary>
     /// <param name="view">The facility view.</param>

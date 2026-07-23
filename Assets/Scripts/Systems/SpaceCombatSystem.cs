@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -25,7 +26,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Detects and resolves hostile fleet encounters.
     /// </summary>
-    public class SpaceCombatSystem : IGameSystem
+    public class SpaceCombatSystem
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -274,8 +275,7 @@ namespace Rebellion.Systems
         )
         {
             bool attackerRetreated = retreatingFleetInstanceId == decision.AttackerFleetInstanceID;
-
-            return new SpaceCombatResult
+            SpaceCombatResult result = new SpaceCombatResult
             {
                 AttackerFleet = attacker,
                 DefenderFleet = defender,
@@ -291,6 +291,23 @@ namespace Rebellion.Systems
                     : SpaceCombatSideOutcome.Withdrawn,
                 Tick = _game.CurrentTick,
             };
+
+            (List<ShipSnap> attackerShips, List<FighterSnap> attackerFighters) = SnapshotForce(
+                attacker,
+                planet,
+                decision.AttackerOwnerInstanceID,
+                _game.Config.Combat.SpaceCombat
+            );
+            (List<ShipSnap> defenderShips, List<FighterSnap> defenderFighters) = SnapshotForce(
+                defender,
+                planet,
+                decision.DefenderOwnerInstanceID,
+                _game.Config.Combat.SpaceCombat
+            );
+            result.AttackingUnits.AddRange(CaptureCombatUnits(attackerShips, attackerFighters));
+            result.DefendingUnits.AddRange(CaptureCombatUnits(defenderShips, defenderFighters));
+
+            return result;
         }
 
         /// <summary>
@@ -558,7 +575,37 @@ namespace Rebellion.Systems
             encounterResult.DefenderOutcome = roundResult.DefenderOutcome;
             AddShipDamage(encounterResult.ShipDamage, roundResult.ShipDamage);
             AddFighterLosses(encounterResult.FighterLosses, roundResult.FighterLosses);
+            AddCombatUnitSnapshots(encounterResult.AttackingUnits, roundResult.AttackingUnits);
+            AddCombatUnitSnapshots(encounterResult.DefendingUnits, roundResult.DefendingUnits);
             encounterResult.Events.AddRange(roundResult.Events);
+        }
+
+        /// <summary>
+        /// Merges one round's captured units into an encounter-level snapshot.
+        /// </summary>
+        /// <param name="encounterUnits">The encounter-level units to update.</param>
+        /// <param name="roundUnits">The round-level units to merge.</param>
+        private static void AddCombatUnitSnapshots(
+            List<CombatUnitSnapshot> encounterUnits,
+            IEnumerable<CombatUnitSnapshot> roundUnits
+        )
+        {
+            foreach (CombatUnitSnapshot roundUnit in roundUnits)
+            {
+                string instanceId = roundUnit?.Unit?.GetInstanceID();
+                CombatUnitSnapshot encounterUnit = encounterUnits.FirstOrDefault(unit =>
+                    unit?.Unit?.GetInstanceID() == instanceId
+                );
+                if (encounterUnit == null)
+                {
+                    encounterUnits.Add(roundUnit);
+                    continue;
+                }
+
+                encounterUnit.Damaged |= roundUnit.Damaged;
+                encounterUnit.Destroyed |= roundUnit.Destroyed;
+                encounterUnit.Captured |= roundUnit.Captured;
+            }
         }
 
         /// <summary>
@@ -1663,8 +1710,52 @@ namespace Rebellion.Systems
             CollectShipDamage(result.ShipDamage, defShips);
             CollectFighterLosses(result.FighterLosses, atkFighters);
             CollectFighterLosses(result.FighterLosses, defFighters);
+            result.AttackingUnits.AddRange(CaptureCombatUnits(atkShips, atkFighters));
+            result.DefendingUnits.AddRange(CaptureCombatUnits(defShips, defFighters));
 
             return result;
+        }
+
+        /// <summary>
+        /// Captures the ships, fighters, and carried units present in one combat force.
+        /// </summary>
+        /// <param name="ships">The participating capital ships.</param>
+        /// <param name="fighters">The participating fighter squadrons.</param>
+        /// <returns>The detached unit snapshots for the force.</returns>
+        private static List<CombatUnitSnapshot> CaptureCombatUnits(
+            List<ShipSnap> ships,
+            List<FighterSnap> fighters
+        )
+        {
+            List<CombatUnitSnapshot> units = ships
+                .SelectMany(ship =>
+                    new[] { ship.Ship }
+                        .Cast<ISceneNode>()
+                        .Concat(ship.Ship.GetChildren<ISceneNode>(_ => true))
+                )
+                .Concat(fighters.Select(fighter => fighter.Fighter))
+                .Where(unit => unit != null)
+                .Distinct()
+                .Select(unit => new CombatUnitSnapshot(unit))
+                .ToList();
+            IEnumerable<ISceneNode> damagedUnits = ships
+                .Where(ship => ship.HullCurrent < ship.HullMax)
+                .Select(ship => (ISceneNode)ship.Ship)
+                .Concat(
+                    fighters
+                        .Where(fighter => fighter.CurrentSquadronSize < fighter.InitialSquadronSize)
+                        .Select(fighter => fighter.Fighter)
+                );
+            IEnumerable<ISceneNode> destroyedUnits = ships
+                .Where(ship => ship.HullCurrent <= 0)
+                .Select(ship => (ISceneNode)ship.Ship)
+                .Concat(
+                    fighters
+                        .Where(fighter => fighter.CurrentSquadronSize <= 0)
+                        .Select(fighter => fighter.Fighter)
+                );
+            CombatUnitSnapshot.RecordOutcomes(units, damagedUnits, destroyedUnits);
+            return units;
         }
 
         /// <summary>

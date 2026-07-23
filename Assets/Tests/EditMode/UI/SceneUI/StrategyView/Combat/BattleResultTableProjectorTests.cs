@@ -35,6 +35,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
                 AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                AttackingUnits =
+                {
+                    Capture(intact),
+                    Capture(damaged, damaged: true),
+                    Capture(destroyed, damaged: true, destroyed: true),
+                },
                 ShipDamage =
                 {
                     new ShipDamageResult
@@ -55,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.CapitalShips
             );
@@ -87,6 +93,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 AttackerFleet = fleet,
                 AttackerOwnerInstanceID = _playerFactionId,
                 AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(ship, damaged: true) },
                 ShipDamage =
                 {
                     new ShipDamageResult
@@ -101,7 +108,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.CapitalShips
             );
@@ -133,6 +140,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = fleet,
                 DefenderOwnerInstanceID = _playerFactionId,
                 DefenderOutcome = SpaceCombatSideOutcome.Withdrawn,
+                DefendingUnits =
+                {
+                    Capture(damaged, damaged: true),
+                    Capture(destroyed, damaged: true, destroyed: true),
+                },
                 FighterLosses =
                 {
                     new FighterLossResult
@@ -153,7 +165,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.Starfighters
             );
@@ -187,12 +199,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 Planet = planet,
                 DefenderOwnerInstanceID = _opponentFactionId,
                 DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefendingUnits = { Capture(fighter) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _opponentFactionId,
                 BattleResultCategory.Starfighters
             );
@@ -217,12 +230,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 AttackerFleet = fleet,
                 AttackerOwnerInstanceID = _playerFactionId,
                 AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(first), Capture(second) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.Troops
             );
@@ -254,12 +268,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = fleet,
                 DefenderOwnerInstanceID = _playerFactionId,
                 DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefendingUnits = { Capture(officer), Capture(specialForces) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.Personnel
             );
@@ -285,12 +300,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = fleet,
                 DefenderOwnerInstanceID = _playerFactionId,
                 DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefendingUnits = { Capture(officer) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.Personnel
             );
@@ -319,14 +335,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                DefendingUnits = { operational, destroyed },
+                DefendingUnits = { Capture(operational), Capture(destroyed, destroyed: true) },
                 DestroyedBuildings = { destroyed },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _opponentFactionId,
                 BattleResultCategory.Manufacturing
             );
@@ -362,14 +378,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                AttackingUnits = { operational, destroyed },
+                AttackingUnits = { Capture(operational), Capture(destroyed, destroyed: true) },
                 DestroyedAttackerRegiments = { destroyed },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
 
             BattleResultTableRenderData table = projector.Project(
                 context,
-                result,
+                BattleResultPresentation.Create(result),
                 _playerFactionId,
                 BattleResultCategory.Troops
             );
@@ -392,7 +408,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             BattleResultTableRenderData table = projector.Project(
                 CreateContext(),
-                new SpaceCombatResult(),
+                BattleResultPresentation.Create(new SpaceCombatResult()),
                 "unknown",
                 BattleResultCategory.CapitalShips
             );
@@ -401,6 +417,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("None", table.Operational[0].Text);
             Assert.AreEqual(1, table.Destroyed.Count);
             Assert.AreEqual("No Casualties", table.Destroyed[0].Text);
+        }
+
+        [Test]
+        public void Project_LiveUnitChangesAfterCapture_DoNotRewriteResultRows()
+        {
+            UIContext context = CreateContext();
+            Officer officer = CreateOfficer("captured", _playerFactionId, "Captured Officer");
+            officer.IsCaptured = true;
+            SpaceCombatResult result = new SpaceCombatResult
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(officer) },
+            };
+            officer.DisplayName = "Renamed Officer";
+            officer.IsCaptured = false;
+            BattleResultTableProjector projector = new BattleResultTableProjector();
+
+            BattleResultTableRenderData table = projector.Project(
+                context,
+                BattleResultPresentation.Create(result),
+                _playerFactionId,
+                BattleResultCategory.Personnel
+            );
+
+            Assert.AreEqual("Captured Officer", table.Operational[0].Text);
+            Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
+            Assert.AreNotSame(officer, result.AttackingUnits[0].Unit);
         }
 
         private static UIContext CreateContext()
@@ -440,6 +484,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 TypeID = definition.TypeID,
                 OwnerInstanceID = ownerId,
                 DisplayName = displayName,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
 
@@ -458,6 +503,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 TypeID = definition.TypeID,
                 OwnerInstanceID = ownerId,
                 DisplayName = displayName,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
 
@@ -502,6 +548,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DisplayName = displayName,
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
 
@@ -543,7 +590,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DisplayName = displayName,
                 DisplayImagePath = definition.DisplayImagePath,
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
+        }
+
+        private static CombatUnitSnapshot Capture(
+            Rebellion.SceneGraph.ISceneNode unit,
+            bool damaged = false,
+            bool destroyed = false
+        )
+        {
+            return new CombatUnitSnapshot(unit) { Damaged = damaged, Destroyed = destroyed };
         }
     }
 }

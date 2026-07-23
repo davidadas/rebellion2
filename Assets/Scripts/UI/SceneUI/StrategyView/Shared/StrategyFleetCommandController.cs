@@ -13,45 +13,15 @@ using Rebellion.Systems;
 /// </summary>
 public sealed class StrategyFleetCommandController
 {
-    private readonly Func<GameRoot> getGame;
-    private readonly Func<FleetSystem> getFleetSystem;
-    private readonly Func<Planet, IReadOnlyList<Fleet>, BombardmentType, bool> canBombard;
-    private readonly Func<Planet, IReadOnlyList<Fleet>, bool> canAssault;
-    private readonly Func<
-        Planet,
-        IReadOnlyList<Fleet>,
-        BombardmentType,
-        BombardmentResult
-    > executeBombardment;
-    private readonly Func<Planet, IReadOnlyList<Fleet>, PlanetaryAssaultResult> executeAssault;
+    private readonly GameManager gameManager;
 
     /// <summary>
     /// Creates a fleet command controller for the active game.
     /// </summary>
-    /// <param name="getGame">Returns the active game.</param>
-    /// <param name="getFleetSystem">Returns the active fleet system.</param>
-    /// <param name="canBombard">Determines whether a bombardment command can execute.</param>
-    /// <param name="executeBombardment">Executes and routes one bombardment command.</param>
-    /// <param name="canAssault">Determines whether an assault command can execute.</param>
-    /// <param name="executeAssault">Executes and routes one assault command.</param>
-    public StrategyFleetCommandController(
-        Func<GameRoot> getGame,
-        Func<FleetSystem> getFleetSystem,
-        Func<Planet, IReadOnlyList<Fleet>, BombardmentType, bool> canBombard,
-        Func<Planet, IReadOnlyList<Fleet>, BombardmentType, BombardmentResult> executeBombardment,
-        Func<Planet, IReadOnlyList<Fleet>, bool> canAssault,
-        Func<Planet, IReadOnlyList<Fleet>, PlanetaryAssaultResult> executeAssault
-    )
+    /// <param name="gameManager">The active game manager.</param>
+    public StrategyFleetCommandController(GameManager gameManager)
     {
-        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
-        this.getFleetSystem =
-            getFleetSystem ?? throw new ArgumentNullException(nameof(getFleetSystem));
-        this.canBombard = canBombard ?? throw new ArgumentNullException(nameof(canBombard));
-        this.executeBombardment =
-            executeBombardment ?? throw new ArgumentNullException(nameof(executeBombardment));
-        this.canAssault = canAssault ?? throw new ArgumentNullException(nameof(canAssault));
-        this.executeAssault =
-            executeAssault ?? throw new ArgumentNullException(nameof(executeAssault));
+        this.gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
     }
 
     /// <summary>
@@ -64,12 +34,12 @@ public sealed class StrategyFleetCommandController
         List<ISceneNode> sourceItems =
             items?.Where(item => item != null).ToList() ?? new List<ISceneNode>();
         List<CapitalShip> ships = sourceItems.OfType<CapitalShip>().ToList();
-        GameRoot game = getGame();
+        GameRoot game = gameManager.GetGame();
         string playerFactionId = game?.GetPlayerFaction()?.InstanceID;
         return game != null
             && ships.Count > 0
             && ships.Count == sourceItems.Count
-            && getFleetSystem().CreateFromCapitalShips(ships, playerFactionId) != null;
+            && gameManager.FleetSystem.CreateFromCapitalShips(ships, playerFactionId) != null;
     }
 
     /// <summary>
@@ -89,9 +59,10 @@ public sealed class StrategyFleetCommandController
             return false;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return canBombard(liveTarget, fleets, type);
+            return gameManager.BombardmentSystem.CanExecute(fleets, liveTarget, type);
 
-        return action == StrategyMenuAction.PlanetaryAssault && canAssault(liveTarget, fleets);
+        return action == StrategyMenuAction.PlanetaryAssault
+            && gameManager.PlanetaryAssaultSystem.CanExecute(fleets, liveTarget);
     }
 
     /// <summary>
@@ -111,10 +82,10 @@ public sealed class StrategyFleetCommandController
             return null;
 
         if (action.TryGetBombardmentType(out BombardmentType type))
-            return executeBombardment(liveTarget, fleets, type);
+            return gameManager.ExecuteOrbitalBombardment(fleets, liveTarget, type);
 
         return action == StrategyMenuAction.PlanetaryAssault
-            ? executeAssault(liveTarget, fleets)
+            ? gameManager.ExecutePlanetaryAssault(fleets, liveTarget)
             : null;
     }
 
@@ -127,7 +98,7 @@ public sealed class StrategyFleetCommandController
     {
         return string.IsNullOrEmpty(planet?.InstanceID)
             ? null
-            : getGame()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
+            : gameManager.GetGame()?.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
     }
 
     /// <summary>
@@ -147,7 +118,7 @@ public sealed class StrategyFleetCommandController
     {
         fleets = new List<Fleet>();
         liveTarget = null;
-        GameRoot game = getGame();
+        GameRoot game = gameManager.GetGame();
         if (game == null || items?.Count < 1 || string.IsNullOrEmpty(targetPlanet?.InstanceID))
             return false;
 

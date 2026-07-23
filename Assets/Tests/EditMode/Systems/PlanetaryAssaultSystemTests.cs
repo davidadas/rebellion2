@@ -127,9 +127,25 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(result.Success);
             Assert.AreEqual("empire", result.AttackerOwnerInstanceID);
             Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
-            CollectionAssert.Contains(result.AttackingUnits, attacker);
-            CollectionAssert.Contains(result.DefendingUnits, first);
-            CollectionAssert.Contains(result.DefendingUnits, second);
+            CollectionAssert.Contains(
+                result.AttackingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                attacker.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                first.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                second.GetInstanceID()
+            );
+            Assert.IsTrue(
+                result
+                    .AttackingUnits.Single(unit =>
+                        unit.Unit.GetInstanceID() == attacker.GetInstanceID()
+                    )
+                    .Destroyed
+            );
         }
 
         [TestCase(4, true, false)]
