@@ -222,7 +222,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessProbability_UsesRegimentDefenseMinusOpposingSupportPlusDiplomacyRating()
+        public void Execute_SuccessProbability_UsesResistanceTroopCountMinusOpposingSupportPlusDiplomacyRating()
         {
             GameRoot game = BuildGame(out Planet planet, empireSupport: 80, planetOwner: "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
@@ -231,8 +231,9 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "r1",
                 OwnerInstanceID = "empire",
+                TypeID = game.Config.Uprising.ResistanceRegimentTypeID,
                 ManufacturingStatus = ManufacturingStatus.Complete,
-                UprisingDefense = 20,
+                UprisingDefense = 500,
             };
             game.AttachNode(officer, planet);
             game.AttachNode(regiment, planet);
@@ -245,9 +246,9 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, planet);
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
             {
-                { -20, 0 },
-                { 40, 100 },
-                { 41, 0 },
+                { 20, 0 },
+                { 21, 100 },
+                { 22, 0 },
             };
             mission.Initiate(0);
 

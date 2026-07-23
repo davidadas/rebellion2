@@ -5,6 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -166,7 +167,7 @@ internal sealed class MissionCreateWindowProjector
             if (participants[index] is not ISceneNode node)
                 continue;
 
-            bool isInTransit = node is IMovable { Movement: not null };
+            bool isInTransit = node is IMovable movable && movable.GetTransitMovement() != null;
             Texture backgroundTexture = isInTransit
                 ? uiContext.GetEntityStatusTexture(node, true)
                 : null;

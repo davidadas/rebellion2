@@ -170,6 +170,45 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void FindShipForStarfighter_SkipsUnavailableShips()
+        {
+            _capitalShip1.ManufacturingStatus = ManufacturingStatus.Building;
+            _capitalShip2.ManufacturingStatus = ManufacturingStatus.Complete;
+            _fleet.AddChild(_capitalShip1);
+            _fleet.AddChild(_capitalShip2);
+
+            CapitalShip result = _fleet.FindShipForStarfighter();
+
+            Assert.AreSame(_capitalShip2, result);
+        }
+
+        [Test]
+        public void FindShipForRegiment_SkipsUnavailableShips()
+        {
+            _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
+            _capitalShip1.Movement = new MovementState();
+            _capitalShip2.ManufacturingStatus = ManufacturingStatus.Complete;
+            _fleet.AddChild(_capitalShip1);
+            _fleet.AddChild(_capitalShip2);
+
+            CapitalShip result = _fleet.FindShipForRegiment();
+
+            Assert.AreSame(_capitalShip2, result);
+        }
+
+        [Test]
+        public void FindShipForStarfighter_FleetInTransit_ReturnsNull()
+        {
+            _capitalShip1.ManufacturingStatus = ManufacturingStatus.Complete;
+            _fleet.AddChild(_capitalShip1);
+            _fleet.Movement = new MovementState();
+
+            CapitalShip result = _fleet.FindShipForStarfighter();
+
+            Assert.IsNull(result);
+        }
+
+        [Test]
         public void IsMovable_WhenIdle_ReturnsTrue()
         {
             _fleet.Movement = null;

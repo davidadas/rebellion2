@@ -1,8 +1,8 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Missions
 {
@@ -103,27 +103,26 @@ namespace Rebellion.Game.Missions
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
-        /// Ends the uprising on the target planet.
+        /// Returns a participant's probability of subduing the target uprising.
         /// </summary>
+        /// <param name="agent">The participant attempting to subdue the uprising.</param>
         /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for subdue uprising).</param>
-        /// <returns>One PlanetUprisingEndedResult, or an empty list if the mission planet is null.</returns>
-        protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
+        /// <returns>The configured success probability.</returns>
+        protected override double GetAgentProbability(IMissionParticipant agent, GameRoot game)
         {
-            Planet planet = GetParent() as Planet;
-            if (planet == null)
-                return new List<GameResult>();
-            planet.EndUprising();
+            if (!(GetParent() is Planet planet))
+                throw new InvalidOperationException(
+                    "SubdueUprisingMission must be attached to a Planet."
+                );
 
-            return new List<GameResult>
-            {
-                new PlanetUprisingEndedResult
-                {
-                    Planet = planet,
-                    Faction = game.GetFactionByOwnerInstanceID(OwnerInstanceID),
-                    Tick = game.CurrentTick,
-                },
-            };
+            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
+                game?.Config?.Uprising?.ResistanceRegimentTypeID
+            );
+            int score =
+                uprisingResistanceRegimentCount
+                - planet.GetOpposingPopularSupport(OwnerInstanceID)
+                + agent.GetEffectiveRating(OfficerRating.Leadership);
+            return LookupSuccessProbability(game, score);
         }
 
         /// <summary>

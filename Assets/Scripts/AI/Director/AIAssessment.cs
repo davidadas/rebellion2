@@ -844,6 +844,39 @@ namespace Rebellion.AI.Director
         }
 
         /// <summary>
+        /// Returns the active enemy attack target assigned to a fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>The attack target planet, or null when the order is not actionable.</returns>
+        public Planet GetAttackTargetPlanet(Fleet fleet)
+        {
+            string targetPlanetId = fleet?.Order?.TargetPlanetId;
+            if (
+                fleet?.Order?.OrderType != FleetOrderType.Attack
+                || string.IsNullOrEmpty(targetPlanetId)
+            )
+                return null;
+
+            Planet targetPlanet = _context?.Game?.GetSceneNodeByInstanceID<Planet>(targetPlanetId);
+            return IsEnemyPlanet(targetPlanet) ? targetPlanet : null;
+        }
+
+        /// <summary>
+        /// Returns whether a fleet is an idle battle fleet.
+        /// </summary>
+        /// <param name="fleet">The fleet to inspect.</param>
+        /// <returns>True if the fleet is an idle battle fleet.</returns>
+        public bool IsIdleBattleFleet(Fleet fleet)
+        {
+            return fleet != null
+                && fleet.RoleType == FleetRoleType.Battle
+                && fleet.Movement == null
+                && !fleet.IsInCombat
+                && fleet.Order == null
+                && fleet.HasOperationalCapitalShips();
+        }
+
+        /// <summary>
         /// Returns whether a fleet has an attack order.
         /// </summary>
         /// <param name="fleet">The fleet to inspect.</param>

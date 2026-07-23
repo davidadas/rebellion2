@@ -11,68 +11,38 @@ namespace Rebellion.Game.FogOfWar
     [PersistableObject]
     public class PlanetSnapshot
     {
-        // Planet state.
-
-        /// <summary>
-        /// Tick when this snapshot was captured.
-        /// </summary>
+        // Planet State.
         public int TickCaptured;
-
-        /// <summary>
-        /// Faction instance ID that controlled the planet.
-        /// </summary>
         public string OwnerInstanceID;
-
         public bool IsColonized;
-
         public bool IsInUprising;
-
         public bool IsDestroyed;
-
         public bool IsHeadquarters;
-
         public int EnergyCapacity;
-
         public int AllocatedEnergy;
 
+        // Popular Support.
         /// <summary>
         /// Popular support by faction instance ID.
         /// </summary>
         public Dictionary<string, int> PopularSupport;
 
-        // Visible entities.
-
-        /// <summary>
-        /// Officers visible on the planet.
-        /// </summary>
+        // Visible Entities.
         public List<Officer> Officers;
-
-        /// <summary>
-        /// Fleets visible at the planet.
-        /// </summary>
         public List<Fleet> Fleets;
-
-        /// <summary>
-        /// Regiments stationed at the planet.
-        /// </summary>
         public List<Regiment> Regiments;
-
         public List<SpecialForces> SpecialForces;
 
         /// <summary>
         /// Buildings visible on the planet.
         /// </summary>
         public List<Building> Buildings;
-
-        /// <summary>
-        /// Starfighters stationed at the planet.
-        /// </summary>
         public List<Starfighter> Starfighters;
-
-        /// <summary>
-        /// Missions previously detected at the planet.
-        /// </summary>
         public List<Mission> Missions;
+
+        // Manufacturing Intelligence.
+        public bool HasManufacturingIntelligence;
+        public List<IManufacturable> ManufacturingQueueItems;
 
         /// <summary>
         /// Default constructor.
@@ -87,6 +57,7 @@ namespace Rebellion.Game.FogOfWar
             Buildings = new List<Building>();
             Starfighters = new List<Starfighter>();
             Missions = new List<Mission>();
+            ManufacturingQueueItems = new List<IManufacturable>();
         }
     }
 }

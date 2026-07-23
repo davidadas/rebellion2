@@ -374,7 +374,7 @@ public static class HeadlessSimulationRunner
     {
         Faction faction = game.GetFactionByOwnerInstanceID(summary.FactionId);
         FleetSystem fleetSystem = new FleetSystem(game);
-        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem, game.Random);
+        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleetSystem);
         AITurnContext context = new AITurnContext(
             game,
             faction,

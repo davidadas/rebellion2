@@ -39,6 +39,7 @@ public class SaveGameManager
 
     // Singleton instance.
     private static SaveGameManager _instance;
+    private readonly string _saveDirectoryPath;
 
     // Initialize singleton.
     public static SaveGameManager Instance
@@ -54,6 +55,27 @@ public class SaveGameManager
     }
 
     public int SaveSlotCount => _saveSlotCount;
+
+    /// <summary>
+    /// Creates the singleton save manager for the application's persistent save directory.
+    /// </summary>
+    private SaveGameManager()
+        : this(Path.Combine(UnityEngine.Application.persistentDataPath, "saves")) { }
+
+    /// <summary>
+    /// Creates a save manager for a specified directory.
+    /// </summary>
+    /// <param name="saveDirectoryPath">The directory containing save files.</param>
+    internal SaveGameManager(string saveDirectoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(saveDirectoryPath))
+            throw new ArgumentException(
+                "A save directory path is required.",
+                nameof(saveDirectoryPath)
+            );
+
+        _saveDirectoryPath = saveDirectoryPath;
+    }
 
     /// <summary>
     /// Returns whether the supplied save slot index is valid.
@@ -97,7 +119,7 @@ public class SaveGameManager
     /// <returns>The directory path for saving game data.</returns>
     public string GetSaveDirectoryPath()
     {
-        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves");
+        return _saveDirectoryPath;
     }
 
     /// <summary>
@@ -107,7 +129,7 @@ public class SaveGameManager
     /// <returns>The full path to the save file.</returns>
     public string GetSaveFilePath(string fileName)
     {
-        return Path.Combine(UnityEngine.Application.persistentDataPath, "saves", $"{fileName}.sav");
+        return Path.Combine(GetSaveDirectoryPath(), $"{fileName}.sav");
     }
 
     /// <summary>

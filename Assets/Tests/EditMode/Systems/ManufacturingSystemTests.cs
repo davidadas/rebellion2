@@ -19,7 +19,6 @@ namespace Rebellion.Tests.Systems
         private GameRoot _game;
         private ManufacturingSystem _manager;
         private MovementSystem _movement;
-        private FixedRNG _provider;
         private Faction _empire;
         private Planet _coruscant;
         private Building _shipyard;
@@ -34,6 +33,7 @@ namespace Rebellion.Tests.Systems
 
             // Create faction
             _empire = new Faction { InstanceID = "EMPIRE" };
+            _empire.RefinedMaterialStockpile = 1000;
             _game.Factions.Add(_empire);
 
             // Create planet system
@@ -96,8 +96,7 @@ namespace Rebellion.Tests.Systems
                 new FogOfWarSystem(_game),
                 new FleetSystem(_game)
             );
-            _provider = new FixedRNG();
-            _manager = new ManufacturingSystem(_game, new FleetSystem(_game), _provider, _movement);
+            _manager = new ManufacturingSystem(_game, new FleetSystem(_game), _movement);
         }
 
         [Test]
@@ -130,7 +129,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem emptyManager = new ManufacturingSystem(
                 emptyGame,
                 new FleetSystem(emptyGame),
-                new FixedRNG(),
                 new MovementSystem(
                     emptyGame,
                     new FogOfWarSystem(emptyGame),
@@ -313,6 +311,44 @@ namespace Rebellion.Tests.Systems
                 .FirstOrDefault();
             Assert.IsNotNull(created);
             Assert.AreEqual(mine, created.GameObject);
+        }
+
+        [Test]
+        public void ProcessTick_BuildingComplete_DoesNotChangePopularSupport()
+        {
+            _coruscant.SetPopularSupport(_empire.InstanceID, 47);
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 1,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+            _manager.ProcessTick();
+
+            Assert.AreEqual(47, _coruscant.GetPopularSupport(_empire.InstanceID));
+        }
+
+        [Test]
+        public void Enqueue_OrderUsingRemainingMaintenanceCapacity_Succeeds()
+        {
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = _empire.InstanceID,
+                ConstructionCost = 100,
+                MaintenanceCost = _empire.ProjectedMaintenanceHeadroom,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            bool enqueued = _manager.Enqueue(_coruscant, mine, _coruscant);
+
+            Assert.IsTrue(enqueued);
+            Assert.AreEqual(0, _empire.ProjectedMaintenanceHeadroom);
         }
 
         [Test]
@@ -635,7 +671,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_OverflowProgress_CarriesToNextItem()
         {
-            AddResourceSupply(1);
             _shipyard.ProcessRate = 1;
 
             Building _shipyard2 = new Building
@@ -919,7 +954,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_MultipleProductionSources_StackCorrectly()
         {
-            AddResourceSupply(1);
             _shipyard.ProcessRate = 4;
 
             // Add second construction facility
@@ -935,7 +969,6 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(_shipyard2, _coruscant);
 
             Assert.AreEqual(2, _coruscant.GetProductionFacilityCount(ManufacturingType.Building));
-            Assert.GreaterOrEqual(_empire.RefinedMaterialSupply, 2);
 
             Building mine = new Building
             {
@@ -971,7 +1004,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_FasterProductionSource_CompletesCycleFirst()
         {
-            AddResourceSupply(1);
             _shipyard.ProcessRate = 4;
 
             Building fasterFacility = new Building
@@ -986,7 +1018,6 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(fasterFacility, _coruscant);
 
             Assert.AreEqual(2, _coruscant.GetProductionFacilityCount(ManufacturingType.Building));
-            Assert.GreaterOrEqual(_empire.RefinedMaterialSupply, 2);
 
             Building mine = new Building
             {
@@ -1016,45 +1047,10 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(3, mine.ManufacturingProgress);
         }
 
-        private void AddResourceSupply(int count)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                _game.AttachNode(
-                    new Building
-                    {
-                        InstanceID = $"EXTRA_RESOURCE_MINE_{i}",
-                        OwnerInstanceID = "EMPIRE",
-                        BuildingType = BuildingType.Mine,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    },
-                    _coruscant
-                );
-                _game.AttachNode(
-                    new Building
-                    {
-                        InstanceID = $"EXTRA_RESOURCE_REFINERY_{i}",
-                        OwnerInstanceID = "EMPIRE",
-                        BuildingType = BuildingType.Refinery,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    },
-                    _coruscant
-                );
-            }
-        }
-
         [Test]
-        public void ProcessTick_WithNoRefinedSupply_KeepsFacilityPointReady()
+        public void ProcessTick_WithNoRefinedMaterials_QueuesFacilityWithoutProgress()
         {
-            foreach (
-                Building refinery in _coruscant
-                    .GetAllBuildings()
-                    .Where(building => building.BuildingType == BuildingType.Refinery)
-            )
-            {
-                refinery.ManufacturingStatus = ManufacturingStatus.Building;
-            }
-
+            _empire.RefinedMaterialStockpile = 0;
             Building mine = new Building
             {
                 InstanceID = "MINE1",
@@ -1069,21 +1065,70 @@ namespace Rebellion.Tests.Systems
             _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
 
             _manager.ProcessTick();
-            Assert.AreEqual(0, mine.ManufacturingProgress);
-            Assert.IsTrue(_shipyard.ProductionPointReady);
 
-            foreach (
-                Building refinery in _coruscant
-                    .GetAllBuildings()
-                    .Where(building => building.BuildingType == BuildingType.Refinery)
-            )
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+            Assert.IsFalse(_shipyard.ProductionPointReady);
+            Assert.IsFalse(_shipyard.ProductionInputReserved);
+            CollectionAssert.AreEqual(
+                new[] { _shipyard.InstanceID },
+                _empire.PendingRefinedMaterialFacilityIDs
+            );
+        }
+
+        [Test]
+        public void ProcessTick_AvailableRefinedMaterial_IsConsumedPerFacilityCycle()
+        {
+            _empire.RefinedMaterialStockpile = 1;
+            Building mine = new Building
             {
-                refinery.ManufacturingStatus = ManufacturingStatus.Complete;
-            }
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                BaseBuildSpeed = 10,
+                ManufacturingProgress = 0,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
 
             _manager.ProcessTick();
+
             Assert.AreEqual(1, mine.ManufacturingProgress);
+            Assert.AreEqual(0, _empire.RefinedMaterialStockpile);
             Assert.IsFalse(_shipyard.ProductionPointReady);
+            Assert.IsFalse(_shipyard.ProductionInputReserved);
+            CollectionAssert.AreEqual(
+                new[] { _shipyard.InstanceID },
+                _empire.PendingRefinedMaterialFacilityIDs
+            );
+        }
+
+        [Test]
+        public void CancelManufacturing_ReservedInput_CompletesAndDiscardsFacilityCycle()
+        {
+            _empire.RefinedMaterialStockpile = 1;
+            _shipyard.ProcessRate = 2;
+            Building mine = new Building
+            {
+                InstanceID = "MINE1",
+                OwnerInstanceID = "EMPIRE",
+                ConstructionCost = 2,
+                BaseBuildSpeed = 10,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                BuildingType = BuildingType.Mine,
+            };
+            _manager.Enqueue(_coruscant, mine, _coruscant, ignoreCost: true);
+
+            _manager.ProcessTick();
+            bool cancelled = _manager.CancelManufacturing(mine, _empire.InstanceID);
+            _manager.ProcessTick();
+
+            Assert.IsTrue(cancelled);
+            Assert.AreEqual(0, _empire.RefinedMaterialStockpile);
+            Assert.IsFalse(_shipyard.ProductionInputReserved);
+            Assert.IsFalse(_shipyard.ProductionPointReady);
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
         }
 
         [Test]
@@ -1636,6 +1681,8 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(trainingFacility, planet);
 
             AddResourceSupply(_game, planet, factionId, 1);
+            Faction faction = _game.GetFactionByOwnerInstanceID(factionId);
+            faction.RefinedMaterialStockpile = Math.Max(faction.RefinedMaterialStockpile, 1000);
 
             return planet;
         }
@@ -1713,7 +1760,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
@@ -1746,7 +1792,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             bool result = mfg.Enqueue(planet, ship, planet, ignoreCost: true);
@@ -1787,7 +1832,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, newShip, existingFleet, ignoreCost: true);
@@ -1829,7 +1873,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                _provider,
                 _movement
             );
 
@@ -1867,7 +1910,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                _provider,
                 _movement
             );
 
@@ -1907,7 +1949,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                _provider,
                 _movement
             );
 
@@ -1947,7 +1988,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                _provider,
                 _movement
             );
 
@@ -1985,11 +2025,47 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                _provider,
                 _movement
             );
 
             Assert.IsFalse(mfg.Enqueue(planet, fighter, carrier, ignoreCost: true));
+            Assert.IsNull(fighter.GetParent());
+        }
+
+        [Test]
+        public void Enqueue_FleetDestinationWithOnlyUnfinishedCarrier_ReturnsFalse()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            game.Factions.Add(new Faction { InstanceID = "empire" });
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+
+            Fleet fleet = EntityFactory.CreateFleet("f1", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip carrier = new CapitalShip
+            {
+                InstanceID = "cs1",
+                OwnerInstanceID = "empire",
+                StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(carrier, fleet);
+
+            Starfighter fighter = new Starfighter
+            {
+                InstanceID = "sf1",
+                OwnerInstanceID = "empire",
+                ConstructionCost = 1,
+                BaseBuildSpeed = 1,
+            };
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                new FleetSystem(game),
+                _movement
+            );
+
+            Assert.IsFalse(manufacturing.Enqueue(planet, fighter, fleet, ignoreCost: true));
             Assert.IsNull(fighter.GetParent());
         }
 
@@ -2023,7 +2099,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             bool result = mfg.Enqueue(planet, newShip, planet, ignoreCost: true);
@@ -2065,7 +2140,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             bool result = mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
@@ -2103,7 +2177,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
@@ -2117,6 +2190,59 @@ namespace Rebellion.Tests.Systems
                 "Ship should be in a fleet during production."
             );
             Assert.AreEqual(planet, fleet.GetParent(), "Fleet should be at production planet.");
+        }
+
+        [Test]
+        public void ProcessTick_CapitalShip_ConsumesOneRefinedMaterialPerFacilityCycle()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction faction = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 2 };
+            game.Factions.Add(faction);
+            Planet planet = BuildShipyardPlanet(game, "p1", faction.InstanceID);
+            faction.RefinedMaterialStockpile = 2;
+            Building secondShipyard = new Building
+            {
+                InstanceID = "p1_second_shipyard",
+                OwnerInstanceID = faction.InstanceID,
+                BuildingType = BuildingType.Shipyard,
+                ProductionType = ManufacturingType.Ship,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(secondShipyard, planet);
+            Fleet fleet = EntityFactory.CreateFleet("f1", faction.InstanceID);
+            game.AttachNode(fleet, planet);
+            CapitalShip anchor = new CapitalShip
+            {
+                InstanceID = "anchor",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(anchor, fleet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = faction.InstanceID,
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
+            );
+            manufacturing.Enqueue(planet, ship, fleet, ignoreCost: true);
+
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(0, faction.RefinedMaterialStockpile);
+            Assert.AreEqual(2, ship.ManufacturingProgress);
+            CollectionAssert.AreEquivalent(
+                new[] { "p1__shipyard", secondShipyard.InstanceID },
+                faction.PendingRefinedMaterialFacilityIDs
+            );
         }
 
         [Test]
@@ -2149,7 +2275,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
@@ -2192,7 +2317,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship, fleet, ignoreCost: true);
@@ -2236,7 +2360,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
@@ -2292,7 +2415,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(originPlanet, ship, fleet, ignoreCost: true);
@@ -2350,7 +2472,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship1, fleet, ignoreCost: true);
@@ -2389,7 +2510,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship1, targetFleet, ignoreCost: true);
@@ -2419,6 +2539,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(destShip, destFleet);
 
@@ -2433,7 +2554,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
@@ -2465,6 +2585,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(destShip, destFleet);
 
@@ -2479,7 +2600,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(originPlanet, fighter, destFleet, ignoreCost: true);
@@ -2516,7 +2636,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(originPlanet, regiment, destPlanet, ignoreCost: true);
@@ -2547,7 +2666,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
@@ -2585,6 +2703,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(destShip, destFleet);
 
@@ -2599,7 +2718,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
@@ -2644,7 +2762,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 game,
                 fleetSystem,
-                _provider,
                 new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
             );
             manufacturing.Enqueue(productionPlanet, fighter, destinationCarrier, ignoreCost: true);
@@ -2691,7 +2808,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, mine, destPlanet, ignoreCost: true);
@@ -2721,6 +2837,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(destShip, destFleet);
 
@@ -2735,7 +2852,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, fighter, destFleet, ignoreCost: true);
@@ -2770,7 +2886,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, regiment, destPlanet, ignoreCost: true);
@@ -2819,7 +2934,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(originPlanet, mine, destPlanet, ignoreCost: true);
@@ -2880,8 +2994,9 @@ namespace Rebellion.Tests.Systems
             // planetA has capacity — mine should redirect there and be in transit.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            Faction empire = new Faction { InstanceID = "empire" };
+            Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
             _game.Factions.Add(empire);
+            _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -2940,7 +3055,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(planetA, mine, planetB, ignoreCost: true);
@@ -2968,8 +3082,9 @@ namespace Rebellion.Tests.Systems
             // planetA has no remaining capacity — mine stays at hostile planetB.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            Faction empire = new Faction { InstanceID = "empire" };
+            Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
             _game.Factions.Add(empire);
+            _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -3037,7 +3152,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(planetA, mine, planetB, ignoreCost: true);
@@ -3055,17 +3169,16 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_Blockade_ReducesProductionRate()
+        public void ProcessTick_Blockade_AppliesGraduatedRateAndKdyRestoresFullRate()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(rebels);
-            Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
-
-            // Enqueue a building that costs 100
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+            empire.RefinedMaterialStockpile = 1;
             Building mine = new Building
             {
                 InstanceID = "mine1",
@@ -3074,70 +3187,99 @@ namespace Rebellion.Tests.Systems
                 ConstructionCost = 100,
                 BaseBuildSpeed = 1,
             };
-
-            // Add a construction facility
             Building constructionYard = new Building
             {
                 InstanceID = "cy1",
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.ConstructionFacility,
                 ProductionType = ManufacturingType.Building,
-                ProcessRate = 1,
+                ProcessRate = 2,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            _game.AttachNode(constructionYard, planet);
-
-            ManufacturingSystem mfg = new ManufacturingSystem(
-                _game,
-                new FleetSystem(_game),
-                _provider,
-                _movement
-            );
-            mfg.Enqueue(planet, mine, planet, ignoreCost: true);
-
-            // Tick once without blockade to get baseline progress
-            mfg.ProcessTick();
-            int progressWithout = mine.ManufacturingProgress;
-
-            // Reset progress
-            mine.ManufacturingProgress = 0;
-
-            // Now add hostile fleet to create blockade (10 capital ships = 50% penalty)
+            game.AttachNode(constructionYard, planet);
             Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
-            _game.AttachNode(hostileFleet, planet);
-            for (int i = 0; i < 10; i++)
+            game.AttachNode(hostileFleet, planet);
+            CapitalShip hostileShip = new CapitalShip
             {
-                CapitalShip ship = new CapitalShip
+                InstanceID = "hostile_ship",
+                OwnerInstanceID = rebels.InstanceID,
+                StarfighterCapacity = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(
+                new Starfighter
                 {
-                    InstanceID = $"hs{i}",
-                    OwnerInstanceID = "rebels",
+                    InstanceID = "hostile_fighter",
+                    OwnerInstanceID = rebels.InstanceID,
                     ManufacturingStatus = ManufacturingStatus.Complete,
-                };
-                _game.AttachNode(ship, hostileFleet);
-            }
+                },
+                hostileShip
+            );
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
+            );
+            manufacturing.Enqueue(planet, mine, planet, ignoreCost: true);
 
-            // Tick with blockade
-            mfg.ProcessTick();
-            int progressWith = mine.ManufacturingProgress;
+            manufacturing.ProcessTick();
 
-            Assert.Greater(
-                progressWithout,
-                progressWith,
-                "Blockade should reduce production progress"
+            double expectedBlockadeProgress =
+                1.0
+                - (
+                    config.Blockade.CapitalShipProductionPenaltyPercent
+                    + config.Blockade.FighterProductionPenaltyPercent
+                ) / 100.0;
+            Assert.AreEqual(
+                expectedBlockadeProgress,
+                constructionYard.ProductionCycleProgress,
+                0.0001
+            );
+            Assert.AreEqual(0, empire.RefinedMaterialStockpile);
+            Assert.IsTrue(constructionYard.ProductionInputReserved);
+
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "kdy1",
+                    OwnerInstanceID = empire.InstanceID,
+                    BuildingType = BuildingType.Defense,
+                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                planet
+            );
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(
+                expectedBlockadeProgress + 1,
+                constructionYard.ProductionCycleProgress,
+                0.0001
             );
         }
 
         [Test]
-        public void ProcessTick_HeavyBlockade_ZeroesProduction()
+        public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
         {
             GameConfig config = TestConfig.Create();
-            GameRoot _game = new GameRoot(config);
+            config.Blockade.CapitalShipProductionPenaltyPercent = 100;
+            GameRoot game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
-            _game.Factions.Add(empire);
-            _game.Factions.Add(rebels);
-            Planet planet = BuildShipyardPlanet(_game, "p1", "empire");
-
+            game.Factions.Add(empire);
+            game.Factions.Add(rebels);
+            Planet planet = BuildShipyardPlanet(game, "p1", "empire");
+            empire.RefinedMaterialStockpile = 1;
+            Building mine = new Building
+            {
+                InstanceID = "mine1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ConstructionCost = 100,
+                BaseBuildSpeed = 1,
+            };
             Building constructionYard = new Building
             {
                 InstanceID = "cy1",
@@ -3147,8 +3289,54 @@ namespace Rebellion.Tests.Systems
                 ProcessRate = 1,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            _game.AttachNode(constructionYard, planet);
+            game.AttachNode(constructionYard, planet);
+            Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
+            game.AttachNode(hostileFleet, planet);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "hostile_ship",
+                    OwnerInstanceID = rebels.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                hostileFleet
+            );
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
+            );
+            manufacturing.Enqueue(planet, mine, planet, ignoreCost: true);
 
+            manufacturing.ProcessTick();
+
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.IsFalse(constructionYard.ProductionInputReserved);
+            Assert.IsEmpty(empire.PendingRefinedMaterialFacilityIDs);
+        }
+
+        [Test]
+        public void ProcessTick_Uprising_HaltsProductionWithoutReservingInput()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 1 };
+            game.Factions.Add(empire);
+            Planet planet = BuildShipyardPlanet(game, "p1", empire.InstanceID);
+            empire.RefinedMaterialStockpile = 1;
+            planet.IsInUprising = true;
+            Building constructionYard = new Building
+            {
+                InstanceID = "cy1",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.ConstructionFacility,
+                ProductionType = ManufacturingType.Building,
+                ProcessRate = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(constructionYard, planet);
             Building mine = new Building
             {
                 InstanceID = "mine1",
@@ -3158,36 +3346,20 @@ namespace Rebellion.Tests.Systems
                 ConstructionCost = 100,
                 BaseBuildSpeed = 1,
             };
-
-            ManufacturingSystem mfg = new ManufacturingSystem(
-                _game,
-                new FleetSystem(_game),
-                _provider,
-                _movement
+            FleetSystem fleetSystem = new FleetSystem(game);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                game,
+                fleetSystem,
+                new MovementSystem(game, new FogOfWarSystem(game), fleetSystem)
             );
-            mfg.Enqueue(planet, mine, planet, ignoreCost: true);
+            manufacturing.Enqueue(planet, mine, planet, ignoreCost: true);
 
-            // 20 hostile capital ships apply a 100% blockade penalty, halting all production.
-            Fleet hostileFleet = EntityFactory.CreateFleet("hf1", "rebels");
-            _game.AttachNode(hostileFleet, planet);
-            for (int i = 0; i < 20; i++)
-            {
-                CapitalShip ship = new CapitalShip
-                {
-                    InstanceID = $"hs{i}",
-                    OwnerInstanceID = "rebels",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                };
-                _game.AttachNode(ship, hostileFleet);
-            }
+            manufacturing.ProcessTick();
 
-            mfg.ProcessTick();
-
-            Assert.AreEqual(
-                0,
-                mine.ManufacturingProgress,
-                "Heavy blockade should completely stop production"
-            );
+            Assert.AreEqual(0, mine.ManufacturingProgress);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.IsFalse(constructionYard.ProductionInputReserved);
+            Assert.IsEmpty(empire.PendingRefinedMaterialFacilityIDs);
         }
 
         [Test]
@@ -3246,6 +3418,7 @@ namespace Rebellion.Tests.Systems
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 10,
                 RegimentCapacity = 10,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(anchor, fleet);
 
@@ -3257,7 +3430,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
@@ -3323,7 +3495,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, ship, planet, ignoreCost: true);
@@ -3389,7 +3560,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, regiment, planet, ignoreCost: true);
@@ -3444,7 +3614,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 _movement
             );
             mfg.Enqueue(planet, mine, planet, ignoreCost: true);
@@ -3575,7 +3744,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(productionPlanet, capitalShip, destFleet, ignoreCost: true);
@@ -3606,6 +3774,7 @@ namespace Rebellion.Tests.Systems
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.Factions.Add(empire);
+            _game.Factions.Add(new Faction { InstanceID = "rebels" });
             Planet productionPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -3616,6 +3785,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 StarfighterCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(carrier, destFleet);
 
@@ -3635,7 +3805,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(productionPlanet, fighter, destFleet, ignoreCost: true);
@@ -3663,6 +3832,7 @@ namespace Rebellion.Tests.Systems
             GameRoot _game = new GameRoot(config);
             Faction empire = new Faction { InstanceID = "empire" };
             _game.Factions.Add(empire);
+            _game.Factions.Add(new Faction { InstanceID = "rebels" });
             Planet productionPlanet = BuildShipyardPlanet(_game, "p1", "empire");
 
             Planet destPlanet = BuildShipyardPlanet(_game, "p2", "empire");
@@ -3673,6 +3843,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 RegimentCapacity = 2,
+                ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(carrier, destFleet);
 
@@ -3692,7 +3863,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
             mfg.Enqueue(productionPlanet, regiment, destFleet, ignoreCost: true);
@@ -3721,8 +3891,9 @@ namespace Rebellion.Tests.Systems
             // Expected: all 3 mines redirect to A and are marked complete.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            Faction empire = new Faction { InstanceID = "empire" };
+            Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
             _game.Factions.Add(empire);
+            _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -3805,7 +3976,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
 
@@ -3847,8 +4017,9 @@ namespace Rebellion.Tests.Systems
             // at their current location (planetB) rather than being destroyed.
             GameConfig config = TestConfig.Create();
             GameRoot _game = new GameRoot(config);
-            Faction empire = new Faction { InstanceID = "empire" };
+            Faction empire = new Faction { InstanceID = "empire", RefinedMaterialStockpile = 3 };
             _game.Factions.Add(empire);
+            _game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem sys = new PlanetSystem { InstanceID = "sys1" };
             _game.AttachNode(sys, _game.Galaxy);
@@ -3947,7 +4118,6 @@ namespace Rebellion.Tests.Systems
             ManufacturingSystem mfg = new ManufacturingSystem(
                 _game,
                 new FleetSystem(_game),
-                _provider,
                 localMovement
             );
 
@@ -4195,11 +4365,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             CapitalShip template = CreateOrderTestCapitalShipTemplate(
                 "dreadnaught",
                 "Dreadnaught",
@@ -4228,11 +4394,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             CapitalShip template = CreateOrderTestCapitalShipTemplate(
                 "dreadnaught",
                 "Dreadnaught",
@@ -4253,11 +4415,7 @@ namespace Rebellion.Tests.Systems
             Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
             Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
             destination.EnergyCapacity = 1;
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             Building template = CreateOrderTestBuildingTemplate("mine");
 
             bool started = manager.StartManufacturing(producer, template, destination, 2, "empire");
@@ -4275,11 +4433,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateOrderTestGame();
             Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
             Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             Building template = CreateOrderTestBuildingTemplate("mine");
 
             bool started = manager.StartManufacturing(producer, template, destination, 2, "empire");
@@ -4304,11 +4458,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestConstructionPlanet(game, "p1", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
 
             bool stopped = manager.ClearQueue(planet, ManufacturingType.Building);
 
@@ -4336,11 +4486,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateOrderTestGame();
             Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
             Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             Building template = CreateOrderTestBuildingTemplate("mine");
             Assert.IsTrue(manager.StartManufacturing(producer, template, destination, 2, "empire"));
             List<IManufacturable> queue = producer.GetManufacturingQueue()[
@@ -4364,11 +4510,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateOrderTestGame();
             Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
             Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             Building template = CreateOrderTestBuildingTemplate("mine");
             Assert.IsTrue(manager.StartManufacturing(producer, template, destination, 2, "empire"));
             List<IManufacturable> queued = producer
@@ -4389,11 +4531,7 @@ namespace Rebellion.Tests.Systems
         {
             GameRoot game = CreateOrderTestGame();
             Planet planet = CreateOrderTestShipyardPlanet(game, "p1", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             CapitalShip template = CreateOrderTestCapitalShipTemplate(
                 "dreadnaught",
                 "Dreadnaught",
@@ -4415,11 +4553,7 @@ namespace Rebellion.Tests.Systems
             GameRoot game = CreateOrderTestGame();
             Planet producer = CreateOrderTestConstructionPlanet(game, "p1", "empire");
             Planet destination = CreateOrderTestPlanet(game, "p2", "empire");
-            ManufacturingSystem manager = new ManufacturingSystem(
-                game,
-                new FleetSystem(game),
-                game.Random
-            );
+            ManufacturingSystem manager = new ManufacturingSystem(game, new FleetSystem(game));
             Building template = CreateOrderTestBuildingTemplate("mine");
             Assert.IsTrue(manager.StartManufacturing(producer, template, destination, 1, "empire"));
             IManufacturable queued = producer.GetManufacturingQueue()[ManufacturingType.Building][

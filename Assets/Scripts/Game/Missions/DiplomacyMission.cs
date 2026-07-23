@@ -121,8 +121,11 @@ namespace Rebellion.Game.Missions
                 return base.GetAgentProbability(agent, game);
 
             int opposingSupport = planet.GetOpposingPopularSupport(OwnerInstanceID);
+            int uprisingResistanceRegimentCount = planet.GetActiveRegimentCount(
+                game?.Config?.Uprising?.ResistanceRegimentTypeID
+            );
             int score =
-                GetTargetTroopState(planet)
+                uprisingResistanceRegimentCount
                 - opposingSupport
                 + agent.GetEffectiveRating(OfficerRating.Diplomacy);
             return LookupSuccessProbability(game, score);

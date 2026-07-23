@@ -157,6 +157,46 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_SurfaceRegiment_ReturnsGarrisonChange()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "regiment",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, enemyPlanet);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                regiment
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreSame(
+                enemyPlanet,
+                results.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
+        }
+
+        [Test]
         public void Execute_BuildingRemovedBeforeExecution_ReturnsFailed()
         {
             (

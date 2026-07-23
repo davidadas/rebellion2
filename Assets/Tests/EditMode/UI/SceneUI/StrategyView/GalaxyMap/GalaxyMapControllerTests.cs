@@ -152,6 +152,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void FindPlanet_CurrentSnapshot_ReturnsProjectedPlanet()
+        {
+            _controller.Render(
+                new[] { _sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff
+            );
+
+            GalaxyMapPlanet planet = _controller.FindPlanet(_sector.Planets[0].Planet.InstanceID);
+
+            Assert.AreSame(_sector.Planets[0], planet);
+            Assert.IsNull(_controller.FindPlanet("missing"));
+        }
+
+        [Test]
         public void ClearHover_NoHoveredSystem_ReturnsFalse()
         {
             Assert.IsFalse(_controller.ClearHover());

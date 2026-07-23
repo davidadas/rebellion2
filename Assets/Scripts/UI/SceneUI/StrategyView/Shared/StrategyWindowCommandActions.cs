@@ -7,6 +7,13 @@ using Rebellion.SceneGraph;
 public interface IStrategyWindowCommandActions
 {
     /// <summary>
+    /// Executes the semantic command completed by one targeting request.
+    /// </summary>
+    /// <param name="source">The targeting source command and selection.</param>
+    /// <param name="target">The selected strategy target.</param>
+    void ExecuteTargetedCommand(StrategyWindowTargetingSource source, StrategyMissionTarget target);
+
+    /// <summary>
     /// Opens mission creation for selected participants and a target.
     /// </summary>
     /// <param name="target">The selected mission target.</param>

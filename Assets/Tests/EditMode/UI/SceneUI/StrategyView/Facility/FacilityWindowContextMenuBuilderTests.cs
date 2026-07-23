@@ -23,7 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
 
             StrategyMenuCommand stop = commands.Single(command =>
-                command.Action == StrategyContextMenuActions.Stop
+                command.Action == StrategyMenuAction.Stop
             );
             Assert.IsTrue(stop.Enabled);
         }
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
 
             StrategyMenuCommand stop = commands.Single(command =>
-                command.Action == StrategyContextMenuActions.Stop
+                command.Action == StrategyMenuAction.Stop
             );
             Assert.IsFalse(stop.Enabled);
         }
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
 
             StrategyMenuCommand stop = commands.Single(command =>
-                command.Action == StrategyContextMenuActions.Stop
+                command.Action == StrategyMenuAction.Stop
             );
             Assert.IsFalse(stop.Enabled);
         }
@@ -81,7 +81,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
 
             StrategyMenuCommand command = commands.Single(item =>
-                item.Action == StrategyContextMenuActions.Stop
+                item.Action == StrategyMenuAction.Stop
             );
             Assert.AreEqual("Stop", command.Text);
             Assert.IsTrue(command.Enabled);
@@ -102,7 +102,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
 
             StrategyMenuCommand command = commands.Single(item =>
-                item.Action == StrategyContextMenuActions.Scrap
+                item.Action == StrategyMenuAction.Scrap
             );
             Assert.AreEqual("Scrap", command.Text);
             Assert.IsTrue(command.Enabled);
@@ -123,7 +123,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             );
 
             StrategyMenuCommand command = commands.Single(item =>
-                item.Action == StrategyContextMenuActions.Scrap
+                item.Action == StrategyMenuAction.Scrap
             );
             Assert.IsFalse(command.Enabled);
         }

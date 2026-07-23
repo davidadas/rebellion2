@@ -593,23 +593,13 @@ namespace Rebellion.Generation
             int resourceProcessingPointsPerFacility = faction
                 .Settings
                 .ResourceProcessingPointsPerFacility;
-            return systems
-                    .SelectMany(s => s.Planets)
-                    .Where(p => p.OwnerInstanceID == faction.InstanceID && p.IsColonized)
-                    .Sum(GetPlanetMaintenanceCapacity) * resourceProcessingPointsPerFacility;
-        }
-
-        /// <summary>
-        /// Gets the maintenance capacity contributed by one planet before faction multiplier.
-        /// </summary>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The planet's maintenance capacity.</returns>
-        private static int GetPlanetMaintenanceCapacity(Planet planet)
-        {
-            int resourceNodes = planet.NumRawResourceNodes;
-            int mines = planet.GetRawMinedResources();
-            int refineries = planet.GetRawRefinementCapacity();
-            return Math.Min(Math.Min(resourceNodes, mines), refineries);
+            List<Planet> ownedPlanets = systems
+                .SelectMany(system => system.Planets)
+                .Where(planet => planet.OwnerInstanceID == faction.InstanceID && planet.IsColonized)
+                .ToList();
+            int mines = ownedPlanets.Sum(planet => planet.GetRawMinedResources());
+            int refineries = ownedPlanets.Sum(planet => planet.GetRawRefinementCapacity());
+            return Math.Min(mines, refineries) * resourceProcessingPointsPerFacility;
         }
 
         /// <summary>

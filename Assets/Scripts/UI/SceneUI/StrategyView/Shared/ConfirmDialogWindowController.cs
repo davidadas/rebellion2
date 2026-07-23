@@ -74,167 +74,6 @@ public sealed class ConfirmDialogWindowController
     }
 
     /// <summary>
-    /// Starts a scrap confirmation session for a non-empty selection.
-    /// </summary>
-    /// <param name="view">The destination confirmation view.</param>
-    /// <param name="sourceWindow">The originating strategy window.</param>
-    /// <param name="sourceItems">The units selected for scrapping.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    /// <returns>True when a valid session was created.</returns>
-    public bool TryInitializeScrapConfirmWindow(
-        ConfirmDialogWindowView view,
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> sourceItems,
-        Action confirmedAction
-    )
-    {
-        List<ISceneNode> items = CopyItems(sourceItems);
-        UIWindow dialogWindow = view == null ? null : view.GetComponent<UIWindow>();
-        if (
-            view == null
-            || dialogWindow == null
-            || sourceWindow == null
-            || items.Count == 0
-            || confirmedAction == null
-        )
-            return false;
-
-        SetSession(
-            view,
-            new ConfirmDialogSession(
-                dialogWindow,
-                ConfirmDialogKind.Scrap,
-                items,
-                -1,
-                confirmedAction
-            )
-        );
-        PlayPromptSound(ConfirmDialogKind.Scrap);
-        return true;
-    }
-
-    /// <summary>
-    /// Starts a retirement confirmation session for a personnel selection.
-    /// </summary>
-    /// <param name="view">The destination confirmation view.</param>
-    /// <param name="sourceWindow">The originating strategy window.</param>
-    /// <param name="sourceItems">The personnel selected for retirement.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    /// <returns>True when a valid session was created.</returns>
-    public bool TryInitializeRetireConfirmWindow(
-        ConfirmDialogWindowView view,
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> sourceItems,
-        Action confirmedAction
-    )
-    {
-        List<ISceneNode> items = CopyItems(sourceItems);
-        UIWindow dialogWindow = view == null ? null : view.GetComponent<UIWindow>();
-        if (
-            view == null
-            || dialogWindow == null
-            || sourceWindow == null
-            || items.Count == 0
-            || confirmedAction == null
-        )
-            return false;
-
-        SetSession(
-            view,
-            new ConfirmDialogSession(
-                dialogWindow,
-                ConfirmDialogKind.Retire,
-                items,
-                -1,
-                confirmedAction
-            )
-        );
-        PlayPromptSound(ConfirmDialogKind.Retire);
-        return true;
-    }
-
-    /// <summary>
-    /// Starts a stop-construction confirmation session for queued items.
-    /// </summary>
-    /// <param name="view">The destination confirmation view.</param>
-    /// <param name="sourceWindow">The originating strategy window.</param>
-    /// <param name="sourceItems">The queued items selected for cancellation.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    /// <returns>True when a valid session was created.</returns>
-    public bool TryInitializeStopConstructionConfirmWindow(
-        ConfirmDialogWindowView view,
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> sourceItems,
-        Action confirmedAction
-    )
-    {
-        List<ISceneNode> items = CopyItems(sourceItems);
-        UIWindow dialogWindow = view == null ? null : view.GetComponent<UIWindow>();
-        if (
-            view == null
-            || dialogWindow == null
-            || sourceWindow == null
-            || items.Count == 0
-            || confirmedAction == null
-        )
-            return false;
-
-        SetSession(
-            view,
-            new ConfirmDialogSession(
-                dialogWindow,
-                ConfirmDialogKind.StopConstruction,
-                items,
-                -1,
-                confirmedAction
-            )
-        );
-        PlayPromptSound(ConfirmDialogKind.StopConstruction);
-        return true;
-    }
-
-    /// <summary>
-    /// Starts a movement confirmation session for a unit selection.
-    /// </summary>
-    /// <param name="view">The destination confirmation view.</param>
-    /// <param name="sourceWindow">The originating strategy window.</param>
-    /// <param name="sourceItems">The units selected for movement.</param>
-    /// <param name="transitTimeInDays">The displayed transit duration.</param>
-    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
-    /// <returns>True when a valid session was created.</returns>
-    public bool TryInitializeMoveConfirmWindow(
-        ConfirmDialogWindowView view,
-        UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> sourceItems,
-        int transitTimeInDays,
-        Action confirmedAction
-    )
-    {
-        List<ISceneNode> items = CopyItems(sourceItems);
-        UIWindow dialogWindow = view == null ? null : view.GetComponent<UIWindow>();
-        if (
-            view == null
-            || dialogWindow == null
-            || sourceWindow == null
-            || items.Count == 0
-            || confirmedAction == null
-        )
-            return false;
-
-        SetSession(
-            view,
-            new ConfirmDialogSession(
-                dialogWindow,
-                ConfirmDialogKind.Move,
-                items,
-                transitTimeInDays,
-                confirmedAction
-            )
-        );
-        return true;
-    }
-
-    /// <summary>
     /// Opens scrap confirmation for a resolved non-empty selection.
     /// </summary>
     /// <param name="sourceWindow">The originating strategy window.</param>
@@ -246,14 +85,7 @@ public sealed class ConfirmDialogWindowController
         Action confirmedAction
     )
     {
-        ConfirmDialogWindowView view = CreateWindow(out UIWindow window);
-        if (!TryInitializeScrapConfirmWindow(view, sourceWindow, sourceItems, confirmedAction))
-        {
-            windowManager.DestroyWindow(window);
-            return;
-        }
-
-        markDirty();
+        Open(sourceWindow, sourceItems, ConfirmDialogKind.Scrap, -1, confirmedAction);
     }
 
     /// <summary>
@@ -268,21 +100,7 @@ public sealed class ConfirmDialogWindowController
         Action confirmedAction
     )
     {
-        ConfirmDialogWindowView view = CreateWindow(out UIWindow window);
-        if (
-            !TryInitializeStopConstructionConfirmWindow(
-                view,
-                sourceWindow,
-                sourceItems,
-                confirmedAction
-            )
-        )
-        {
-            windowManager.DestroyWindow(window);
-            return;
-        }
-
-        markDirty();
+        Open(sourceWindow, sourceItems, ConfirmDialogKind.StopConstruction, -1, confirmedAction);
     }
 
     /// <summary>
@@ -297,14 +115,7 @@ public sealed class ConfirmDialogWindowController
         Action confirmedAction
     )
     {
-        ConfirmDialogWindowView view = CreateWindow(out UIWindow window);
-        if (!TryInitializeRetireConfirmWindow(view, sourceWindow, sourceItems, confirmedAction))
-        {
-            windowManager.DestroyWindow(window);
-            return;
-        }
-
-        markDirty();
+        Open(sourceWindow, sourceItems, ConfirmDialogKind.Retire, -1, confirmedAction);
     }
 
     /// <summary>
@@ -321,12 +132,42 @@ public sealed class ConfirmDialogWindowController
         Action confirmedAction
     )
     {
+        Open(sourceWindow, sourceItems, ConfirmDialogKind.Move, transitTimeInDays, confirmedAction);
+    }
+
+    /// <summary>
+    /// Renders every registered confirmation window.
+    /// </summary>
+    public void RenderWindows()
+    {
+        windowManager.ForEachWindow<ConfirmDialogWindowView>(
+            (window, view) => RenderWindow(view, window)
+        );
+    }
+
+    /// <summary>
+    /// Creates and initializes one semantic confirmation window.
+    /// </summary>
+    /// <param name="sourceWindow">The originating strategy window.</param>
+    /// <param name="sourceItems">The selected scene nodes.</param>
+    /// <param name="kind">The confirmed action kind.</param>
+    /// <param name="transitTimeInDays">The displayed movement duration.</param>
+    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    private void Open(
+        UIWindow sourceWindow,
+        IReadOnlyList<ISceneNode> sourceItems,
+        ConfirmDialogKind kind,
+        int transitTimeInDays,
+        Action confirmedAction
+    )
+    {
         ConfirmDialogWindowView view = CreateWindow(out UIWindow window);
         if (
-            !TryInitializeMoveConfirmWindow(
+            !TryInitializeWindow(
                 view,
                 sourceWindow,
                 sourceItems,
+                kind,
                 transitTimeInDays,
                 confirmedAction
             )
@@ -340,15 +181,41 @@ public sealed class ConfirmDialogWindowController
     }
 
     /// <summary>
-    /// Renders every registered confirmation window.
+    /// Starts one confirmation session for a non-empty selection.
     /// </summary>
-    public void RenderWindows()
+    /// <param name="view">The destination confirmation view.</param>
+    /// <param name="sourceWindow">The originating strategy window.</param>
+    /// <param name="sourceItems">The selected scene nodes.</param>
+    /// <param name="kind">The confirmed action kind.</param>
+    /// <param name="transitTimeInDays">The displayed movement duration.</param>
+    /// <param name="confirmedAction">The action to invoke after confirmation.</param>
+    /// <returns>True when a valid session was created.</returns>
+    private bool TryInitializeWindow(
+        ConfirmDialogWindowView view,
+        UIWindow sourceWindow,
+        IReadOnlyList<ISceneNode> sourceItems,
+        ConfirmDialogKind kind,
+        int transitTimeInDays,
+        Action confirmedAction
+    )
     {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view))
-                RenderWindow(view, window);
-        }
+        List<ISceneNode> items = CopyItems(sourceItems);
+        UIWindow dialogWindow = view == null ? null : view.GetComponent<UIWindow>();
+        if (
+            dialogWindow == null
+            || sourceWindow == null
+            || items.Count == 0
+            || confirmedAction == null
+        )
+            return false;
+
+        SetSession(
+            view,
+            new ConfirmDialogSession(dialogWindow, kind, items, transitTimeInDays, confirmedAction)
+        );
+        if (kind != ConfirmDialogKind.Move)
+            PlayPromptSound(kind);
+        return true;
     }
 
     /// <summary>

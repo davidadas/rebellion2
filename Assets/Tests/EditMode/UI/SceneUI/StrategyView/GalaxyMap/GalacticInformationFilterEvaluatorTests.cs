@@ -325,6 +325,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.IsFalse(marker.Mixed);
         }
 
+        [Test]
+        public void Evaluate_PersonnelCarriedByMovingFleet_CountsAsActive()
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            GameFleet fleet = new GameFleet
+            {
+                OwnerInstanceID = _playerFactionId,
+                Movement = new MovementState(),
+            };
+            CapitalShip ship = new CapitalShip { OwnerInstanceID = _playerFactionId };
+            Officer officer = new Officer { OwnerInstanceID = _playerFactionId };
+            planet.Fleets.Add(fleet);
+            fleet.CapitalShips.Add(ship);
+            ship.Officers.Add(officer);
+            fleet.SetParent(planet);
+            ship.SetParent(fleet);
+            officer.SetParent(ship);
+
+            GalacticInformationMarker idleMarker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.IdlePersonnel)
+            );
+            GalacticInformationMarker activeMarker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.ActivePersonnel)
+            );
+
+            Assert.AreEqual(0, idleMarker.Index);
+            Assert.AreEqual(1, activeMarker.Index);
+        }
+
         private static GalacticInformationFilterTheme CreateFilter(
             GalacticInformationFilterMode mode = GalacticInformationFilterMode.PopularSupport
         )

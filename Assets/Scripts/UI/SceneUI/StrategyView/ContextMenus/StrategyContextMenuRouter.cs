@@ -169,12 +169,8 @@ public sealed class StrategyContextMenuRouter : ICancelable
                 contextMenuPresenter.Layout.FallbackMenuWidth,
                 new List<StrategyMenuCommand>
                 {
-                    new StrategyMenuCommand(
-                        StrategyContextMenuActions.Encyclopedia,
-                        "Encyclopedia",
-                        false
-                    ),
-                    new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", false),
+                    new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
+                    new StrategyMenuCommand(StrategyMenuAction.Status, "Status", false),
                 }
             )
         );

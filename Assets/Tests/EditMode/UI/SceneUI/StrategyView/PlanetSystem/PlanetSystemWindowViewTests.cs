@@ -292,6 +292,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 null,
                 null,
                 null,
+                null,
                 _fleetTexture,
                 _pressedTexture,
                 null,

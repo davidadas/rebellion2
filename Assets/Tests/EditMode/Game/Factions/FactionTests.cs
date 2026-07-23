@@ -611,6 +611,10 @@ namespace Rebellion.Tests.Game.Factions
             _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
             _faction.TranslateCounterpart = false;
             _faction.AgentAdvice = false;
+            _faction.RawMaterialStockpile = 17;
+            _faction.RefinedMaterialStockpile = 23;
+            _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
+            _faction.PendingRefinedMaterialFacilityIDs.AddRange(new[] { "SHIPYARD1", "SHIPYARD2" });
 
             string serialized = SerializationHelper.Serialize(_faction);
             Console.WriteLine("=== SERIALIZED XML ===");
@@ -642,6 +646,49 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsTrue(deserialized.IsAdvisorMessageNotificationEnabled(MessageType.Mission));
             Assert.IsFalse(deserialized.TranslateCounterpart);
             Assert.IsFalse(deserialized.AgentAdvice);
+            Assert.AreEqual(_faction.RawMaterialStockpile, deserialized.RawMaterialStockpile);
+            Assert.AreEqual(
+                _faction.RefinedMaterialStockpile,
+                deserialized.RefinedMaterialStockpile
+            );
+            CollectionAssert.AreEqual(
+                _faction.PendingRawMaterialFacilityIDs,
+                deserialized.PendingRawMaterialFacilityIDs
+            );
+            CollectionAssert.AreEqual(
+                _faction.PendingRefinedMaterialFacilityIDs,
+                deserialized.PendingRefinedMaterialFacilityIDs
+            );
+        }
+
+        [Test]
+        public void RequestRawMaterial_NoStockpile_QueuesFacilityOnce()
+        {
+            _building.InstanceID = "REFINERY1";
+
+            bool firstRequest = _faction.RequestRawMaterial(_building);
+            bool secondRequest = _faction.RequestRawMaterial(_building);
+
+            Assert.IsFalse(firstRequest);
+            Assert.IsFalse(secondRequest);
+            CollectionAssert.AreEqual(
+                new[] { _building.InstanceID },
+                _faction.PendingRawMaterialFacilityIDs
+            );
+        }
+
+        [Test]
+        public void RequestRefinedMaterial_AvailableStockpile_ReservesMaterialImmediately()
+        {
+            _building.InstanceID = "SHIPYARD1";
+            _faction.RefinedMaterialStockpile = 2;
+
+            bool reserved = _faction.RequestRefinedMaterial(_building);
+
+            Assert.IsTrue(reserved);
+            Assert.AreEqual(1, _faction.RefinedMaterialStockpile);
+            Assert.IsTrue(_building.ProductionInputReserved);
+            Assert.IsEmpty(_faction.PendingRefinedMaterialFacilityIDs);
         }
 
         [Test]

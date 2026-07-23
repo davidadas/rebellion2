@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -18,8 +19,8 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class MissionSystemTests
     {
-        // Builds a game with one planet, one officer parented to the planet (not the mission),
-        // and optionally assigns the planet to the faction so GetNearestFriendlyPlanetTo returns it.
+        // Builds a game with one planet and one officer whose recorded mission return location
+        // is that planet. The officer remains parented to the planet until each test moves it.
         private (GameRoot game, Planet planet, Officer officer, MovementSystem movement) BuildScene(
             bool factionOwnsPlanet
         )
@@ -40,6 +41,7 @@ namespace Rebellion.Tests.Systems
             Planet planet = new Planet
             {
                 InstanceID = "p1",
+                TypeID = "home-planet",
                 OwnerInstanceID = factionOwnsPlanet ? "empire" : null,
                 IsColonized = true,
                 PositionX = 0,
@@ -53,6 +55,8 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "o1",
                 OwnerInstanceID = "empire",
                 Movement = null,
+                MissionReturnParentInstanceID = planet.InstanceID,
+                MissionReturnLocationInstanceID = planet.InstanceID,
             };
             // Parent to planet so IsOnMission() = false and IsMovable() = true.
             game.AttachNode(officer, planet);
@@ -190,6 +194,17 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(system, game.Galaxy);
 
+            Planet homePlanet = new Planet
+            {
+                InstanceID = "empire-home",
+                TypeID = "empire-home",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = -100,
+                PositionY = 0,
+            };
+            game.AttachNode(homePlanet, system);
+
             Planet planet = new Planet
             {
                 InstanceID = "p1",
@@ -202,6 +217,8 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(planet, system);
 
             Officer spy = EntityFactory.CreateOfficer("spy", "empire");
+            spy.MissionReturnParentInstanceID = homePlanet.InstanceID;
+            spy.MissionReturnLocationInstanceID = homePlanet.InstanceID;
             Officer defender = EntityFactory.CreateOfficer("defender", "rebels");
             game.AttachNode(defender, planet);
 
@@ -279,16 +296,17 @@ namespace Rebellion.Tests.Systems
                 new FogOfWarSystem(game),
                 new FleetSystem(game)
             );
-            MissionSystem missions = new MissionSystem(game, new FixedRNG(0.0), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
             return (game, origin, targetPlanet, participant, target, missions);
         }
 
         [Test]
-        public void UpdateMission_CompletedNoFriendlyPlanet_SkipsMovement()
+        public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
-            // Faction owns no planets and mission planet is unowned — no valid destination,
-            // movement skipped. Officer is not attached to the scene graph so the planet
-            // ownership check is never triggered during setup.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -312,8 +330,6 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, planetSystem);
 
-            // Officer is NOT attached to the scene graph — just in MainParticipants so
-            // IncrementProgress counts down and IsOnMission() returns false.
             Officer officer = new Officer
             {
                 InstanceID = "o1",
@@ -323,24 +339,35 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fogOfWar = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fogOfWar, new FleetSystem(game));
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new StubRNG(),
+                movement
+            );
 
             StubMission mission = new StubMission("empire", planet.InstanceID);
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(officer);
+            game.AttachNode(officer, mission);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            List<GameResult> results = null;
-            Assert.DoesNotThrow(
-                () => results = missionSystem.UpdateMission(mission),
-                "Should not throw when faction owns no planets"
-            );
+            List<GameResult> results = missionSystem.UpdateMission(mission);
 
-            Assert.IsNull(
-                officer.Movement,
-                "Officer should not have movement queued when no valid destination exists"
+            Assert.IsNull(mission.GetParent());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(officer, game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.IsNull(officer.Movement);
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsTrue(officer.CanEscape);
+            Assert.IsTrue(
+                results.Any(result =>
+                    result is OfficerCaptureStateResult capture
+                    && capture.TargetOfficer == officer
+                    && capture.IsCaptured
+                    && capture.Context == planet
+                )
             );
         }
 
@@ -370,7 +397,11 @@ namespace Rebellion.Tests.Systems
                 new FogOfWarSystem(game),
                 new FleetSystem(game)
             );
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new StubRNG(),
+                movement
+            );
 
             Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
             Assert.IsFalse(game.GetSceneNodesByType<StubMission>().Contains(mission));
@@ -387,10 +418,9 @@ namespace Rebellion.Tests.Systems
             StubMission mission = CreateMission(game, planet, officer);
 
             // Simulate the officer having arrived at the mission mid-execution.
-            game.DetachNode(officer);
-            officer.SetParent(mission);
+            game.MoveNode(officer, mission);
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -399,10 +429,9 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateMission_CompletedParticipantOnNeutralPlanet_DoesNotThrow()
+        public void UpdateMission_CompletedParticipantOnNeutralPlanet_DoesNotChooseAnotherPlanet()
         {
-            // Regression: neutral planet (null owner) must not be used as reparent target —
-            // AddOfficer rejects officers whose faction doesn't match the planet owner.
+            // A missing recorded return location must not be replaced with another friendly planet.
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -425,6 +454,17 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
+            Planet homePlanet = new Planet
+            {
+                InstanceID = "home",
+                TypeID = "home-planet",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(homePlanet, system);
+
             Officer officer = new Officer { InstanceID = "o1", OwnerInstanceID = "empire" };
             MovementSystem movement = new MovementSystem(
                 game,
@@ -437,12 +477,19 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(officer);
             officer.SetParent(mission);
 
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new StubRNG(),
+                movement
+            );
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
             Assert.DoesNotThrow(() => missionSystem.UpdateMission(mission));
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreNotSame(homePlanet, officer.GetParent());
+            Assert.IsTrue(officer.IsCaptured);
         }
 
         [Test]
@@ -452,7 +499,7 @@ namespace Rebellion.Tests.Systems
                 factionOwnsPlanet: true
             );
             StubMission mission = CreateMission(game, planet, officer);
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -476,7 +523,7 @@ namespace Rebellion.Tests.Systems
             Mission diplomacyMission,
             Mission inciteMission,
             MissionSystem missionSystem
-        ) BuildConcurrentMissionsScene()
+        ) BuildConcurrentMissionsScene(int ownerSupport = 50, bool hasGarrison = true)
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -497,17 +544,25 @@ namespace Rebellion.Tests.Systems
             Planet rebelsPlanet = new Planet
             {
                 InstanceID = "rebels_planet",
+                TypeID = "rebels-home",
                 OwnerInstanceID = "rebels",
                 IsColonized = true,
                 PositionX = 0,
                 PositionY = 0,
-                PopularSupport = new Dictionary<string, int> { { "rebels", 60 } },
+                PopularSupport = new Dictionary<string, int> { { "rebels", ownerSupport } },
             };
             game.AttachNode(rebelsPlanet, system);
+
+            if (hasGarrison)
+            {
+                Regiment garrison = CreateCompletedRegiment("rebels_garrison", "rebels");
+                game.AttachNode(garrison, rebelsPlanet);
+            }
 
             Planet empirePlanet = new Planet
             {
                 InstanceID = "empire_planet",
+                TypeID = "empire-home",
                 OwnerInstanceID = "empire",
                 IsColonized = true,
                 PositionX = 100,
@@ -535,7 +590,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(diplomacyMission, rebelsPlanet);
             game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
             {
-                { -200, 100 },
+                { -200, 0 },
             };
 
             Mission inciteMission = MissionTestFactory.TryCreate(
@@ -551,6 +606,8 @@ namespace Rebellion.Tests.Systems
                 { -200, 100 },
             };
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { 0, 0 } };
+            game.Config.Uprising.PrimaryConsequenceTable.Clear();
+            game.Config.Uprising.SecondaryConsequenceTable.Clear();
             game.AttachNode(inciteMission, rebelsPlanet);
 
             diplomacyMission.Initiate(0);
@@ -561,9 +618,19 @@ namespace Rebellion.Tests.Systems
             while (inciteMission.CurrentProgress < inciteMission.MaxProgress - 1)
                 inciteMission.IncrementProgress();
 
+            StubRNG rng = new StubRNG();
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+            FleetSystem fleet = new FleetSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog, fleet);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
+            PlanetaryControlSystem control = new PlanetaryControlSystem(
+                game,
+                movement,
+                manufacturing,
+                fog
+            );
+            UprisingSystem uprising = new UprisingSystem(game, rng, control);
+            MissionSystem missionSystem = new MissionSystem(game, rng, movement, uprising);
 
             return (game, diplomacyMission, inciteMission, missionSystem);
         }
@@ -571,10 +638,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMission_DiploBeforeIncite_DiploCanceledAfterUprisingFires()
         {
-            // Diplo completes before incite on the same turn: it re-initiates because the
-            // uprising hasn't fired yet when its ShouldRepeatAfterCompletion is evaluated.
-            // Incite then fires, starting the uprising.
-            // On the following UpdateMission, the pre-tick abort check cancels diplo.
             (
                 GameRoot game,
                 Mission diplomacyMission,
@@ -582,26 +645,26 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene();
 
-            missionSystem.UpdateMission(diplomacyMission); // diplo completes, re-initiates
-            missionSystem.UpdateMission(inciteMission); // incite completes, uprising starts
-
-            // Diplo survived this turn (uprising fired after it ran), but is now re-initiated.
-            // The next UpdateMission triggers the pre-tick abort check.
+            Planet planet = inciteMission.GetParentOfType<Planet>();
+            IMissionParticipant participant = inciteMission.MainParticipants.Single();
+            int leadershipBefore = participant.GetEffectiveRating(OfficerRating.Leadership);
             missionSystem.UpdateMission(diplomacyMission);
+            List<GameResult> results = missionSystem.UpdateMission(inciteMission);
 
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Last();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
+            Assert.IsNull(diplomacyMission.GetParent());
+            Assert.IsTrue(planet.IsInUprising);
             Assert.AreEqual(
-                0,
-                game.GetSceneNodesByType<Mission>().Count,
-                "Mission should be canceled on the tick after the uprising fires"
+                leadershipBefore,
+                participant.GetEffectiveRating(OfficerRating.Leadership)
             );
         }
 
         [Test]
         public void UpdateMission_InciteBeforeDiplo_DiploCanceledImmediately()
         {
-            // Incite completes first: uprising fires before diplo gets its turn this turn.
-            // When UpdateMission runs for diplo, the pre-tick abort check catches it
-            // immediately — diplo never executes.
             (
                 GameRoot game,
                 Mission diplomacyMission,
@@ -609,13 +672,33 @@ namespace Rebellion.Tests.Systems
                 MissionSystem missionSystem
             ) = BuildConcurrentMissionsScene();
 
-            missionSystem.UpdateMission(inciteMission); // incite completes, uprising starts
-            missionSystem.UpdateMission(diplomacyMission); // pre-tick guard fires, diplo canceled
+            List<GameResult> results = missionSystem.UpdateMission(inciteMission);
 
+            Assert.IsTrue(results.OfType<PlanetUprisingStartedResult>().Any());
+            Assert.IsNull(diplomacyMission.GetParent());
+            Assert.IsEmpty(missionSystem.UpdateMission(diplomacyMission));
+        }
+
+        [Test]
+        public void UpdateMission_InciteRemovesOpposingControlWithoutOwnTroops_SucceedsAndImprovesAgent()
+        {
+            (
+                GameRoot game,
+                Mission diplomacyMission,
+                Mission inciteMission,
+                MissionSystem missionSystem
+            ) = BuildConcurrentMissionsScene(ownerSupport: 60, hasGarrison: false);
+            Officer participant = (Officer)inciteMission.MainParticipants.Single();
+            int leadershipBefore = participant.GetBaseRating(OfficerRating.Leadership);
+
+            List<GameResult> results = missionSystem.UpdateMission(inciteMission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Last();
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Planet>("rebels_planet").OwnerInstanceID);
             Assert.AreEqual(
-                0,
-                game.GetSceneNodesByType<Mission>().Count,
-                "Mission should be canceled immediately when uprising fires before its turn"
+                leadershipBefore + 1,
+                participant.GetBaseRating(OfficerRating.Leadership)
             );
         }
 
@@ -634,7 +717,7 @@ namespace Rebellion.Tests.Systems
             game.DetachNode(officer);
             game.AttachNode(officer, mission);
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -674,10 +757,12 @@ namespace Rebellion.Tests.Systems
 
             // Simulate BeginMission: record the ship as origin, then move officer to mission.
             mission.OriginInstanceID = ship.InstanceID;
+            officer.MissionReturnParentInstanceID = ship.InstanceID;
+            officer.MissionReturnLocationInstanceID = planet.InstanceID;
             game.DetachNode(officer);
             game.AttachNode(officer, mission);
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -692,9 +777,8 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToNearestFriendlyPlanet()
+        public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToRecordedShip()
         {
-            // Fleet moved away mid-mission — officer falls back to nearest friendly planet.
             (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
@@ -732,6 +816,8 @@ namespace Rebellion.Tests.Systems
 
             StubMission mission = CreateMission(game, planetA, officer);
             mission.OriginInstanceID = ship.InstanceID;
+            officer.MissionReturnParentInstanceID = ship.InstanceID;
+            officer.MissionReturnLocationInstanceID = planetA.InstanceID;
             game.DetachNode(officer);
             game.AttachNode(officer, mission);
 
@@ -741,7 +827,7 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(fleet, planetB);
             game.AttachNode(ship, fleet);
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -749,9 +835,39 @@ namespace Rebellion.Tests.Systems
             system.UpdateMission(mission);
 
             Assert.AreEqual(
-                planetA,
+                ship,
                 officer.GetParent(),
-                "Officer should return to the nearest friendly planet when the origin fleet has moved"
+                "Officer should return to its recorded ship when the origin fleet has moved"
+            );
+        }
+
+        [Test]
+        public void TearDownMission_RecordedPlanetCaptured_CapturesOfficerAtMissionPlanet()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            StubMission mission = CreateMission(game, planet, officer);
+            officer.MissionReturnParentInstanceID = planet.InstanceID;
+            officer.MissionReturnLocationInstanceID = planet.InstanceID;
+            game.MoveNode(officer, mission);
+            planet.OwnerInstanceID = "rebels";
+
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("rebels", officer.CaptorInstanceID);
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsTrue(
+                results
+                    .OfType<OfficerCaptureStateResult>()
+                    .Any(result => ReferenceEquals(result.TargetOfficer, officer))
             );
         }
 
@@ -793,7 +909,7 @@ namespace Rebellion.Tests.Systems
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            MissionSystem missionSystem = new MissionSystem(
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new StubRNG(),
                 new MovementSystem(game, new FogOfWarSystem(game), new FleetSystem(game))
@@ -851,7 +967,7 @@ namespace Rebellion.Tests.Systems
             while (!mission.IsComplete())
                 mission.IncrementProgress();
 
-            MissionSystem missionSystem = new MissionSystem(
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
                 game,
                 new StubRNG(),
                 new MovementSystem(game, new FogOfWarSystem(game), new FleetSystem(game))
@@ -904,7 +1020,11 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new StubRNG(),
+                movement
+            );
 
             missionSystem.InitiateMission(
                 CreateRequest(
@@ -922,6 +1042,8 @@ namespace Rebellion.Tests.Systems
                 officer.GetParent(),
                 "Participant should be parented to the mission after BeginMission"
             );
+            Assert.AreEqual(empirePlanet.InstanceID, officer.MissionReturnParentInstanceID);
+            Assert.AreEqual(empirePlanet.InstanceID, officer.MissionReturnLocationInstanceID);
         }
 
         [Test]
@@ -967,7 +1089,11 @@ namespace Rebellion.Tests.Systems
 
             FogOfWarSystem fog = new FogOfWarSystem(game);
             MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
-            MissionSystem missionSystem = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missionSystem = TestSystems.CreateMissionSystem(
+                game,
+                new StubRNG(),
+                movement
+            );
 
             missionSystem.InitiateMission(
                 CreateRequest(
@@ -991,7 +1117,7 @@ namespace Rebellion.Tests.Systems
                 factionOwnsPlanet: true
             );
             StubMission mission = CreateMission(game, planet, officer);
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -1045,7 +1171,11 @@ namespace Rebellion.Tests.Systems
             firstMission.Initiate(0);
             secondMission.Initiate(0);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.0), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
             List<GameResult> results = system.ProcessTick();
 
             RecruitmentExhaustedResult exhausted = results
@@ -1143,7 +1273,7 @@ namespace Rebellion.Tests.Systems
             traveler.SetParent(mission);
             mission.Initiate(0);
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1174,7 +1304,11 @@ namespace Rebellion.Tests.Systems
             traveler.SetParent(mission);
             mission.Initiate(0);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1196,7 +1330,7 @@ namespace Rebellion.Tests.Systems
             StubMission mission = CreateMission(game, planet, officer);
             mission.Initiate(0);
             mission.RemoveChild(officer);
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1217,9 +1351,14 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 10 } });
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
+            game.AttachNode(spy, mission);
             mission.Initiate(1);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.99), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.99),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1253,7 +1392,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1293,7 +1436,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1318,7 +1465,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1359,9 +1510,13 @@ namespace Rebellion.Tests.Systems
             SetFoilTable(game, new Dictionary<int, int> { { 0, 100 } });
             SetKillOrCaptureTable(game, new Dictionary<int, int> { { -200, 100 } });
             game.AttachNode(mission, planet);
-            spy.SetParent(mission);
+            game.AttachNode(spy, mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1393,7 +1548,11 @@ namespace Rebellion.Tests.Systems
             spy.SetParent(mission);
             mission.Initiate(0);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1420,7 +1579,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1450,7 +1613,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1473,7 +1640,7 @@ namespace Rebellion.Tests.Systems
 
             officer.InjuryPoints = 1;
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             system.UpdateMission(mission);
 
@@ -1499,7 +1666,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1522,7 +1693,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1545,7 +1720,11 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             spy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1576,8 +1755,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
+            game.AttachNode(spy, mission);
+            game.AttachNode(decoy, mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1613,8 +1798,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
+            game.AttachNode(spy, mission);
+            game.AttachNode(decoy, mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1652,9 +1843,14 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(mission, planet);
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(decoy);
-            spy.SetParent(mission);
+            game.AttachNode(spy, mission);
+            game.AttachNode(decoy, mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1688,9 +1884,15 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(spy);
             mission.DecoyParticipants.Add(weakDecoy);
             mission.DecoyParticipants.Add(strongDecoy);
-            spy.SetParent(mission);
+            game.AttachNode(spy, mission);
+            game.AttachNode(weakDecoy, mission);
+            game.AttachNode(strongDecoy, mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             system.UpdateMission(mission);
 
@@ -1717,7 +1919,11 @@ namespace Rebellion.Tests.Systems
             spy.SetParent(mission);
             secondSpy.SetParent(mission);
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1749,7 +1955,11 @@ namespace Rebellion.Tests.Systems
             sf.SetParent(mission);
             string missionInstanceID = mission.InstanceID;
 
-            MissionSystem system = new MissionSystem(game, new FixedRNG(0.01), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.01),
+                movement
+            );
 
             List<GameResult> results = system.UpdateMission(mission);
 
@@ -1774,7 +1984,7 @@ namespace Rebellion.Tests.Systems
             mission.OriginInstanceID = planet.InstanceID;
             game.MoveNode(officer, mission);
             mission.Initiate(1);
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             bool aborted = system.AbortMission(mission.InstanceID);
 
@@ -1792,7 +2002,7 @@ namespace Rebellion.Tests.Systems
             StubMission mission = CreateMission(game, planet, officer);
             game.MoveNode(officer, mission);
             officer.Movement = new MovementState { TransitTicks = 10 };
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             bool aborted = system.AbortMission(mission.InstanceID);
 
@@ -1810,7 +2020,7 @@ namespace Rebellion.Tests.Systems
             officer.FacilityResearch = 1;
             AddResearchFacilities(game, planet);
             FogOfWarSystem fog = new FogOfWarSystem(game);
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             system.InitiateMission(
                 CreateRequest(
@@ -1849,7 +2059,7 @@ namespace Rebellion.Tests.Systems
             student.IsForceEligible = true;
             student.ForceValue = 40;
             game.AttachNode(student, planet);
-            MissionSystem system = new MissionSystem(
+            MissionSystem system = TestSystems.CreateMissionSystem(
                 game,
                 new SequenceRNG(intValues: new[] { rolledSpread }),
                 movement
@@ -1881,7 +2091,7 @@ namespace Rebellion.Tests.Systems
             officer.TroopResearch = 1;
             officer.FacilityResearch = 1;
             AddResearchFacilities(game, planet);
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, officer, planet)
@@ -1910,7 +2120,7 @@ namespace Rebellion.Tests.Systems
             );
             officer.ShipResearch = 1;
             AddResearchFacilities(game, planet);
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, officer, planet)
@@ -1930,7 +2140,7 @@ namespace Rebellion.Tests.Systems
                 factionOwnsPlanet: true
             );
             officer.TroopResearch = 1;
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, officer, planet)
@@ -1945,7 +2155,7 @@ namespace Rebellion.Tests.Systems
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, officer, planet)
@@ -1965,7 +2175,7 @@ namespace Rebellion.Tests.Systems
             officer.FacilityResearch = 1;
             AddResearchFacilities(game, planet);
             game.Factions.Single().DisallowedMissionTypeIDs.Add(MissionTypeIDs.Research);
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, officer, planet)
@@ -2055,7 +2265,7 @@ namespace Rebellion.Tests.Systems
             officer.IsJediTrainer = true;
             officer.IsForceEligible = true;
             officer.ForceValue = 120;
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, officer, planet)
@@ -2115,7 +2325,7 @@ namespace Rebellion.Tests.Systems
                 new FogOfWarSystem(game),
                 new FleetSystem(game)
             );
-            MissionSystem missions = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem missions = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             List<MissionOption> options = missions.GetAvailableMissionOptions(
                 CreateRequest(null, specialForces, target)
@@ -2611,7 +2821,7 @@ namespace Rebellion.Tests.Systems
             officer.SetParent(mission);
             officer.IsCaptured = true;
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();
@@ -2647,7 +2857,7 @@ namespace Rebellion.Tests.Systems
             officer.IsCaptured = true;
             officer.CaptorInstanceID = "rebels";
 
-            MissionSystem system = new MissionSystem(game, new StubRNG(), movement);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
             while (!mission.IsComplete())
                 mission.IncrementProgress();

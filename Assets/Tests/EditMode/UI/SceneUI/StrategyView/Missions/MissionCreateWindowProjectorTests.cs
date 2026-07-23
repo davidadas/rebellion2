@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
+using GameFleet = Rebellion.Game.Units.Fleet;
 using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
@@ -190,6 +191,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             Assert.IsTrue(data.AgentRows[1].UseInTransitBackground);
             Assert.IsEmpty(data.DecoyRows);
+        }
+
+        [Test]
+        public void Build_PersonnelCarriedByMovingFleet_UsesTransitPresentation()
+        {
+            Officer officer = CreateOfficer("officer", "Officer", false);
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            officer.SetParent(ship);
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, null),
+                new IMissionParticipant[] { officer }
+            );
+            session.SelectTab(MissionCreateWindowTab.Personnel);
+
+            MissionCreateWindowRenderData data = _projector.Build(session, _window);
+
+            Assert.AreSame(
+                _uiContext.GetTexture(_entityImagePath),
+                data.AgentRows[0].BackgroundTexture
+            );
+            Assert.IsTrue(data.AgentRows[0].UseInTransitBackground);
         }
 
         [Test]

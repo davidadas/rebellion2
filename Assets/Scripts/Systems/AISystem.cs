@@ -11,7 +11,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Runs AI faction turns after world systems finish each tick.
     /// </summary>
-    public class AISystem : IGameSystem
+    public class AISystem
     {
         private readonly GameRoot _game;
         private readonly AIDirector _director;

@@ -169,21 +169,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void TryInitializeStopConstruction_NullAction_ReturnsFalseWithoutAudio()
+        public void OpenStopConstruction_NullAction_DoesNotKeepWindowOrPlayAudio()
         {
-            ConfirmDialogWindowView view = UnityEngine.Object.Instantiate(
-                _windowLayer.ConfirmDialogWindowPrefab,
-                _rootObject.transform
-            );
+            _controller.OpenStopConstruction(_sourceWindow, new ISceneNode[] { _sourceShip }, null);
 
-            bool initialized = _controller.TryInitializeStopConstructionConfirmWindow(
-                view,
-                _sourceWindow,
-                new ISceneNode[] { _sourceShip },
-                null
-            );
-
-            Assert.IsFalse(initialized);
+            Assert.IsEmpty(_windowManager.Windows);
             Assert.IsEmpty(_playedSounds);
         }
 

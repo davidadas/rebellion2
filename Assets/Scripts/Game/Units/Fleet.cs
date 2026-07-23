@@ -132,7 +132,14 @@ namespace Rebellion.Game.Units
         /// <returns>A capital ship with excess starfighter capacity, or null if none has room.</returns>
         public CapitalShip FindShipForStarfighter()
         {
-            return CapitalShips.FirstOrDefault(s => s.GetExcessStarfighterCapacity() > 0);
+            if (Movement != null)
+                return null;
+
+            return CapitalShips.FirstOrDefault(ship =>
+                ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.GetExcessStarfighterCapacity() > 0
+            );
         }
 
         /// <summary>
@@ -141,7 +148,14 @@ namespace Rebellion.Game.Units
         /// <returns>A capital ship with excess regiment capacity, or null if none has room.</returns>
         public CapitalShip FindShipForRegiment()
         {
-            return CapitalShips.FirstOrDefault(s => s.GetExcessRegimentCapacity() > 0);
+            if (Movement != null)
+                return null;
+
+            return CapitalShips.FirstOrDefault(ship =>
+                ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.GetExcessRegimentCapacity() > 0
+            );
         }
 
         /// <summary>

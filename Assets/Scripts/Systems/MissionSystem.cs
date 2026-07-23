@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -8,6 +10,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -16,28 +19,34 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem : IGameSystem
+    public class MissionSystem : IGameResultHandler
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementManager;
+        private readonly UprisingSystem _uprisingSystem;
         private readonly MissionFactory _missionFactory;
+        private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
-        /// Creates a new MissionSystem.
+        /// Creates a mission system with all mission-resolution dependencies.
         /// </summary>
         /// <param name="game">The active game state.</param>
-        /// <param name="provider">Random number provider for mission execution and duration rolls.</param>
-        /// <param name="movementManager">Used to move participants to and from missions.</param>
+        /// <param name="provider">The random number provider for mission resolution.</param>
+        /// <param name="movementManager">The movement system used for participant travel.</param>
+        /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
-            MovementSystem movementManager
+            MovementSystem movementManager,
+            UprisingSystem uprisingSystem
         )
         {
             _game = game;
             _provider = provider;
             _movementManager = movementManager;
+            _uprisingSystem =
+                uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
             _missionFactory = new MissionFactory(game);
         }
 
@@ -47,18 +56,44 @@ namespace Rebellion.Systems
         /// <returns>All results produced by missions that executed this tick.</returns>
         public List<GameResult> ProcessTick()
         {
-            List<GameResult> results = new List<GameResult>();
+            List<GameResult> results = new List<GameResult>(_pendingResults);
+            _pendingResults.Clear();
             List<Mission> missions = _game.GetSceneNodesByType<Mission>();
             Dictionary<string, bool> recruitmentAvailabilityBefore =
                 GetRecruitmentAvailabilityByFaction();
 
             foreach (Mission mission in missions)
             {
+                if (mission.GetParent() == null)
+                    continue;
+
                 results.AddRange(UpdateMission(mission));
             }
 
             AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
             return results;
+        }
+
+        /// <summary>
+        /// Aborts missions invalidated by uprisings reported in a result batch.
+        /// </summary>
+        /// <param name="results">The result batch to inspect.</param>
+        /// <returns>The terminal results produced by aborted missions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            IEnumerable<Planet> affectedPlanets = results
+                .OfType<PlanetUprisingStartedResult>()
+                .Select(result => result.Planet)
+                .Where(planet => planet != null)
+                .Distinct();
+            foreach (Planet planet in affectedPlanets)
+                missionResults.AddRange(AbortInvalidMissions(planet));
+
+            return missionResults;
         }
 
         /// <summary>
@@ -212,8 +247,43 @@ namespace Rebellion.Systems
             if (mission.IsWaitingForParticipants())
                 return false;
 
-            TearDownMission(mission, null);
+            TearDownMission(mission, null, _pendingResults);
             return true;
+        }
+
+        /// <summary>
+        /// Aborts active missions whose target conditions became invalid on a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose missions must be re-evaluated.</param>
+        /// <returns>The terminal mission results produced by the aborted missions.</returns>
+        internal List<GameResult> AbortInvalidMissions(Planet planet)
+        {
+            List<GameResult> results = new List<GameResult>();
+            if (planet == null)
+                return results;
+
+            List<Mission> missions = _game
+                .GetSceneNodesByType<Mission>()
+                .Where(mission => mission.GetParentOfType<Planet>() == planet)
+                .ToList();
+            foreach (Mission mission in missions)
+            {
+                MissionCompletionReason? reason = mission.GetAbortReason(_game);
+                if (!reason.HasValue)
+                    continue;
+
+                MissionCompletedResult result = BuildTerminatingMissionResult(
+                    mission,
+                    MissionOutcome.Failed,
+                    reason.Value,
+                    mission.GetAllParticipants()
+                );
+                result.MissionInstanceID = mission.InstanceID;
+                results.Add(result);
+                TearDownMission(mission, null, results);
+            }
+
+            return results;
         }
 
         /// <summary>
@@ -237,6 +307,7 @@ namespace Rebellion.Systems
             List<IMissionParticipant> decoyParticipants = ResolveMissionParticipants(
                 request.DecoyParticipants ?? new List<IMissionParticipant>()
             );
+
             if (mainParticipants == null || decoyParticipants == null)
                 return null;
 
@@ -322,6 +393,9 @@ namespace Rebellion.Systems
         /// <returns>Results produced by detection or execution this tick; empty otherwise.</returns>
         public List<GameResult> UpdateMission(Mission mission)
         {
+            if (mission == null || mission.GetParent() == null)
+                return new List<GameResult>();
+
             List<GameResult> results = AdvanceMission(mission);
             foreach (GameResult result in results)
                 result.MissionInstanceID = mission.InstanceID;
@@ -352,7 +426,7 @@ namespace Rebellion.Systems
                         mission.GetAllParticipants()
                     )
                 );
-                TearDownMission(mission, null);
+                TearDownMission(mission, null, results);
                 return results;
             }
 
@@ -364,9 +438,25 @@ namespace Rebellion.Systems
             if (!mission.IsComplete())
                 return results;
 
-            results.AddRange(mission.Execute(_game, _provider));
+            results.AddRange(ExecuteMission(mission));
             FinishMissionIfCompleted(mission, results);
             return results;
+        }
+
+        /// <summary>
+        /// Executes a completed mission through its appropriate resolution system.
+        /// </summary>
+        /// <param name="mission">The mission ready to execute.</param>
+        /// <returns>The results produced by mission resolution.</returns>
+        private List<GameResult> ExecuteMission(Mission mission)
+        {
+            if (_uprisingSystem.TryExecuteMission(mission, out List<GameResult> results))
+            {
+                results.AddRange(HandleResults(results));
+                return results;
+            }
+
+            return mission.Execute(_game, _provider);
         }
 
         /// <summary>
@@ -439,117 +529,131 @@ namespace Rebellion.Systems
             }
             else
             {
-                TearDownMission(mission, completedResult);
+                TearDownMission(mission, completedResult, results);
             }
 
             return true;
         }
 
         /// <summary>
-        /// Moves all participants back to their recorded origin (planet or fleet), falling back to
-        /// the nearest friendly planet if the origin has moved away or no longer exists, then
-        /// detaches the mission. Called when a mission completion result cannot continue.
+        /// Resolves participant capture state, delegates return travel, and detaches the mission.
         /// </summary>
         /// <param name="mission">The mission to tear down and clean up.</param>
         /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
-        private void TearDownMission(Mission mission, MissionCompletedResult completedResult)
+        /// <param name="results">The result batch receiving teardown outcomes.</param>
+        private void TearDownMission(
+            Mission mission,
+            MissionCompletedResult completedResult,
+            List<GameResult> results
+        )
         {
+            int resultStart = results.Count;
             Planet missionPlanet = mission.GetParent() as Planet;
-            Faction faction = _game
-                .GetFactions()
-                .FirstOrDefault(faction => faction.InstanceID == mission.OwnerInstanceID);
-            ContainerNode origin = ResolveReturnOrigin(mission, missionPlanet, faction);
+            List<IMissionParticipant> returnParticipants = GetFreeMissionParticipants(mission)
+                .Distinct()
+                .ToList();
+            List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
+                    mission,
+                    completedResult
+                )
+                .Except(returnParticipants.Cast<IMovable>())
+                .Where(passenger => passenger.Movement == null)
+                .Distinct()
+                .ToList();
 
             MoveCapturedParticipants(mission, missionPlanet);
-            MoveReturnPassengersToOrigin(mission, completedResult, origin);
+            List<IMovable> strandedUnits = _movementManager.ReturnFromMission(
+                returnParticipants,
+                additionalPassengers
+            );
+            ResolveStrandedMissionUnits(strandedUnits, mission, missionPlanet, results);
+
+            foreach (GameResult result in results.Skip(resultStart))
+                result.MissionInstanceID = mission.InstanceID;
+
             _game.DetachNode(mission);
         }
 
         /// <summary>
-        /// Resolves the location mission participants should return to.
+        /// Resolves units that have no friendly destination when a mission ends.
         /// </summary>
-        /// <param name="mission">The mission being torn down.</param>
-        /// <param name="missionPlanet">The planet that hosts the mission.</param>
-        /// <param name="faction">The faction that owns the mission.</param>
-        /// <returns>The return location, or null if no valid location exists.</returns>
-        private ContainerNode ResolveReturnOrigin(
+        /// <param name="units">The units that could not return.</param>
+        /// <param name="mission">The completed mission.</param>
+        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <param name="results">The result batch receiving capture or destruction outcomes.</param>
+        private void ResolveStrandedMissionUnits(
+            IEnumerable<IMovable> units,
             Mission mission,
             Planet missionPlanet,
-            Faction faction
+            List<GameResult> results
         )
         {
-            ContainerNode origin = GetMissionReturnOrigin(mission, missionPlanet);
-
-            if (origin == null && faction != null)
+            foreach (IMovable unit in units)
             {
-                origin = faction
-                    .GetOwnedColonizedPlanets()
-                    .Where(planet => !planet.IsDestroyed)
-                    .OrderBy(planet => planet.GetRawDistanceTo(missionPlanet.GetPosition()))
-                    .ThenBy(planet => planet.InstanceID)
-                    .FirstOrDefault();
+                unit.Movement = null;
+                if (
+                    HasFriendlyReturnContext(mission, missionPlanet)
+                    && TryReturnToFriendlyPlanet(unit, mission.OwnerInstanceID, missionPlanet)
+                )
+                    continue;
+
+                if (unit is Officer officer)
+                {
+                    if (!officer.IsCaptured)
+                        CaptureOfficer(officer, missionPlanet, results);
+
+                    if (missionPlanet != null)
+                        _movementManager.RequestMove(officer, missionPlanet);
+                }
+                else if (unit is SpecialForces specialForces)
+                {
+                    DestroySpecialForces(specialForces, missionPlanet, results);
+                }
             }
-
-            if (
-                origin == null
-                && missionPlanet?.IsColonized == true
-                && missionPlanet.OwnerInstanceID == mission.OwnerInstanceID
-            )
-                origin = missionPlanet;
-
-            return origin;
         }
 
         /// <summary>
-        /// Returns the recorded origin when it is still at the mission planet.
+        /// Returns whether a mission has enough origin context to choose a friendly fallback.
         /// </summary>
-        /// <param name="mission">The mission being torn down.</param>
-        /// <param name="missionPlanet">The planet that hosts the mission.</param>
-        /// <returns>The recorded origin, or null if it is unavailable or no longer local.</returns>
-        private ContainerNode GetMissionReturnOrigin(Mission mission, Planet missionPlanet)
+        /// <param name="mission">The completed mission.</param>
+        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <returns>True when the mission recorded an origin or completed on an owned planet.</returns>
+        private static bool HasFriendlyReturnContext(Mission mission, Planet missionPlanet)
         {
-            if (mission.OriginInstanceID == null)
-                return null;
-
-            ContainerNode origin = _game.GetSceneNodeByInstanceID<ContainerNode>(
-                mission.OriginInstanceID
-            );
-            if (origin == null)
-                return null;
-
-            if (origin.GetOwnerInstanceID() != mission.OwnerInstanceID)
-                return null;
-
-            Planet originPlanet = origin is Planet planet
-                ? planet
-                : origin.GetParentOfType<Planet>();
-            if (origin is Planet && originPlanet?.IsColonized != true)
-                return null;
-
-            return originPlanet == missionPlanet ? origin : null;
+            return !string.IsNullOrEmpty(mission.OriginInstanceID)
+                || missionPlanet?.OwnerInstanceID == mission.OwnerInstanceID;
         }
 
         /// <summary>
-        /// Moves all eligible mission return passengers to the resolved return location.
+        /// Returns a stranded mission unit to the nearest valid planet owned by the mission faction.
         /// </summary>
-        /// <param name="mission">The mission being torn down.</param>
-        /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
-        /// <param name="origin">The location passengers should return to.</param>
-        private void MoveReturnPassengersToOrigin(
-            Mission mission,
-            MissionCompletedResult completedResult,
-            ContainerNode origin
+        /// <param name="unit">The stranded unit to return.</param>
+        /// <param name="ownerInstanceID">The faction that owns the completed mission.</param>
+        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <returns>True when the unit was returned to a friendly planet.</returns>
+        private bool TryReturnToFriendlyPlanet(
+            IMovable unit,
+            string ownerInstanceID,
+            Planet missionPlanet
         )
         {
-            if (origin == null)
-                return;
+            Faction owner = _game.GetFactionByOwnerInstanceID(ownerInstanceID);
+            Point origin = missionPlanet?.GetPosition() ?? unit.GetPosition();
+            Planet destination = owner
+                ?.GetOwnedColonizedPlanets()
+                .Where(planet =>
+                    !planet.IsDestroyed
+                    && planet.GetOwnerInstanceID() == ownerInstanceID
+                    && planet.CanAcceptChild(unit)
+                )
+                .OrderBy(planet => planet.GetRawDistanceTo(origin))
+                .ThenBy(planet => planet.InstanceID)
+                .FirstOrDefault();
+            if (destination == null)
+                return false;
 
-            List<IMovable> returnPassengers = GetReturnPassengers(mission, completedResult)
-                .Where(passenger => passenger.Movement == null)
-                .Distinct()
-                .ToList();
-            if (returnPassengers.Count > 0)
-                _movementManager.RequestMove(returnPassengers, origin);
+            _movementManager.RequestMove(unit, destination);
+            return unit.GetParent() == destination;
         }
 
         /// <summary>
@@ -571,29 +675,22 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <returns>The movable participants that are neither killed nor captured.</returns>
-        private IEnumerable<IMovable> GetFreeMissionParticipants(Mission mission)
+        private IEnumerable<IMissionParticipant> GetFreeMissionParticipants(Mission mission)
         {
-            return mission
-                .GetAllParticipants()
-                .OfType<IMovable>()
-                .Where(IsFreeParticipant)
-                .Distinct();
+            return mission.GetAllParticipants().Where(IsFreeParticipant).Distinct();
         }
 
         /// <summary>
-        /// Returns all units that should return with a completed mission group.
+        /// Returns extra units that should travel with a successful mission's participants.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="completedResult">The completed mission result, or null before execution.</param>
-        /// <returns>The movable units that should return to the mission origin.</returns>
-        private IEnumerable<IMovable> GetReturnPassengers(
+        /// <returns>The additional movable units that should return with the mission.</returns>
+        private IEnumerable<IMovable> GetAdditionalReturnPassengers(
             Mission mission,
             MissionCompletedResult completedResult
         )
         {
-            foreach (IMovable participant in GetFreeMissionParticipants(mission))
-                yield return participant;
-
             if (completedResult?.Outcome != MissionOutcome.Success)
                 yield break;
 
@@ -713,6 +810,21 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
+            DestroySpecialForces(specialForces, planet, results);
+        }
+
+        /// <summary>
+        /// Removes a special-forces unit and records its destruction.
+        /// </summary>
+        /// <param name="specialForces">The unit to destroy.</param>
+        /// <param name="planet">The planet where the unit was destroyed.</param>
+        /// <param name="results">Collection to append the destruction result to.</param>
+        private void DestroySpecialForces(
+            SpecialForces specialForces,
+            Planet planet,
+            List<GameResult> results
+        )
+        {
             _game.DetachNode(specialForces);
             results.Add(
                 new GameObjectDestroyedResult
@@ -744,18 +856,7 @@ namespace Rebellion.Systems
 
             if (_provider.NextDouble() * 100 < captureProbability)
             {
-                officer.IsCaptured = true;
-                officer.CaptorInstanceID = planet?.OwnerInstanceID;
-                officer.CanEscape = true;
-                results.Add(
-                    new OfficerCaptureStateResult
-                    {
-                        TargetOfficer = officer,
-                        IsCaptured = true,
-                        Context = planet,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                CaptureOfficer(officer, planet, results);
             }
             else
             {
@@ -772,6 +873,28 @@ namespace Rebellion.Systems
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Marks an officer captured at a planet and records the capture state change.
+        /// </summary>
+        /// <param name="officer">The officer being captured.</param>
+        /// <param name="planet">The planet where the capture occurred.</param>
+        /// <param name="results">Collection to append the capture result to.</param>
+        private void CaptureOfficer(Officer officer, Planet planet, List<GameResult> results)
+        {
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = planet?.OwnerInstanceID;
+            officer.CanEscape = true;
+            results.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = true,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -803,7 +926,7 @@ namespace Rebellion.Systems
                 {
                     if (mission.OriginInstanceID == null)
                         mission.OriginInstanceID = participant.GetParent()?.GetInstanceID();
-                    _movementManager.RequestMove(participant, mission);
+                    _movementManager.SendToMission(participant, mission);
                 }
             }
 

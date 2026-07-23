@@ -10,30 +10,20 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class GameGenerationConfig
     {
-        /// <summary>
-        /// Planet type ID used by config entries that resolve to a faction headquarters.
-        /// </summary>
         public const string FactionHqSentinel = "FACTION_HQ";
 
-        /// <summary>Officer generation settings.</summary>
         public OfficerSection Officers;
 
-        /// <summary>Galaxy ownership and faction placement settings.</summary>
         public GalaxyClassificationSection GalaxyClassification;
 
-        /// <summary>Planet energy and raw material settings.</summary>
         public SystemResourcesSection SystemResources;
 
-        /// <summary>Popular support generation settings.</summary>
         public SystemSupportSection SystemSupport;
 
-        /// <summary>Starting facility placement settings.</summary>
         public FacilityGenerationSection FacilityGeneration;
 
-        /// <summary>Starting unit placement settings.</summary>
         public UnitDeploymentSection UnitDeployment;
 
-        /// <summary>Post-generation balance settings.</summary>
         public BalanceSection Balance;
     }
 
@@ -94,14 +84,8 @@ namespace Rebellion.Generation
     {
         public string Name;
 
-        /// <summary>
-        /// The faction the player chose. Null or empty means any (fallback).
-        /// </summary>
         public string PlayerFactionID;
 
-        /// <summary>
-        /// The difficulty level this profile applies to. -1 means any (fallback).
-        /// </summary>
         public int Difficulty = -1;
 
         public List<FactionBucketConfig> FactionBuckets;
@@ -239,10 +223,6 @@ namespace Rebellion.Generation
     {
         public int UprisingPreventionThreshold;
 
-        /// <summary>
-        /// Each garrison troop counters this much popular-support deficit when seeding
-        /// uprising-prevention garrisons.
-        /// </summary>
         public int SupportDeficitPerGarrisonTroop = 10;
         public List<BudgetDifficultyMapping> BudgetDifficultyMappings;
         public List<FixedGarrison> FixedGarrisons;
@@ -284,6 +264,9 @@ namespace Rebellion.Generation
         public List<FixedFleetShip> ShipEntries;
     }
 
+    /// <summary>
+    /// Defines one capital ship entry and its starting cargo.
+    /// </summary>
     [PersistableObject]
     public class FixedFleetShip
     {
@@ -321,15 +304,8 @@ namespace Rebellion.Generation
     {
         public int GalaxySize;
 
-        /// <summary>
-        /// The difficulty level this budget level applies to. -1 means any (fallback).
-        /// </summary>
         public int Difficulty = -1;
 
-        /// <summary>
-        /// If true, this entry applies when the faction is AI-controlled.
-        /// If false, applies when the faction is the player's faction (or on Easy where both are equal).
-        /// </summary>
         public bool IsAI;
         public int Percentage;
     }
@@ -354,16 +330,8 @@ namespace Rebellion.Generation
     [PersistableObject]
     public class BalanceSection
     {
-        /// <summary>
-        /// Each unit of military presence (regiment, fleet, or starfighter) boosts the
-        /// owner's popular support by this many points.
-        /// </summary>
         public int SupportBoostPerUnit = 2;
 
-        /// <summary>
-        /// Upper bound on the total support boost a single planet can receive from
-        /// military presence, regardless of how many units are stationed there.
-        /// </summary>
         public int MaxMilitaryPresenceBoost = 10;
     }
 

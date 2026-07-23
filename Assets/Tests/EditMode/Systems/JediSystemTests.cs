@@ -507,6 +507,35 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_SuccessfulMission_AppliesForceGrowth()
+        {
+            Officer luke = new Officer
+            {
+                InstanceID = "LUKE",
+                OwnerInstanceID = _alliance.InstanceID,
+                GrowsForceOnMission = true,
+                IsForceEligible = true,
+                ForceValue = 10,
+            };
+            Mission mission = new DiplomacyMission();
+            mission.MainParticipants.Add(luke);
+
+            List<GameResult> results = _system.HandleResults(
+                new GameResult[]
+                {
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                    },
+                }
+            );
+
+            Assert.AreEqual(10 + _game.Config.Jedi.ForceGrowthPerMission, luke.ForceValue);
+            Assert.AreEqual(1, results.OfType<ForceExperienceResult>().Count());
+        }
+
+        [Test]
         public void ApplyForceGrowth_NotForceEligible_NoGrowth()
         {
             Officer officer = new Officer

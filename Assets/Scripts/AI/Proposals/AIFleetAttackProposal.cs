@@ -194,7 +194,13 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (context.Bombardment == null)
+            if (
+                context.Bombardment?.CanExecute(
+                    new List<Fleet> { Fleet },
+                    TargetPlanet,
+                    BombardmentType.Military
+                ) != true
+            )
                 return;
 
             BombardmentResult bombardmentResult = context.Bombardment.Execute(
@@ -294,7 +300,9 @@ namespace Rebellion.AI.Proposals
 
             return context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0
                 && context.Assessment.GetReadyFleetRegimentAttackStrength(Fleet)
-                    >= context.Assessment.GetRequiredAttackRegimentStrength(liveTarget);
+                    >= context.Assessment.GetRequiredAttackRegimentStrength(liveTarget)
+                && context.PlanetaryAssault.CanExecute(new List<Fleet> { Fleet }, liveTarget)
+                    == true;
         }
 
         /// <summary>

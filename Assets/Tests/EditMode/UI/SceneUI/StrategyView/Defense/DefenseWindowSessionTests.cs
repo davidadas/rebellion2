@@ -316,7 +316,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void RebindPlanet_ReplacementItemsWithSameIds_PreservesInteractionTargets()
+        public void RebindPlanet_ReplacementItemsWithSameIDs_PreservesInteractionTargets()
         {
             Officer original = new Officer { InstanceID = "officer" };
             _planet.Officers.Add(original);

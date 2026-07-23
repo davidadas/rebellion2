@@ -22,11 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             );
 
             CollectionAssert.AreEqual(
-                new[]
-                {
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                },
+                new[] { StrategyMenuAction.Encyclopedia, StrategyMenuAction.Status },
                 commands.Select(command => command.Action)
             );
             Assert.IsTrue(commands.All(command => !command.Enabled));
@@ -49,12 +45,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.CreateMission,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Retire,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Retire,
                 },
                 commands.Select(command => command.Action)
             );
@@ -78,7 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 false
             );
 
-            Assert.AreEqual(StrategyContextMenuActions.Stop, commands.Last().Action);
+            Assert.AreEqual(StrategyMenuAction.Stop, commands.Last().Action);
             Assert.AreEqual("Stop", commands.Last().Text);
             Assert.IsTrue(commands.Last().Enabled);
         }
@@ -100,7 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 false
             );
 
-            Assert.AreEqual(StrategyContextMenuActions.Scrap, commands.Last().Action);
+            Assert.AreEqual(StrategyMenuAction.Scrap, commands.Last().Action);
             Assert.AreEqual("Scrap", commands.Last().Text);
             Assert.IsFalse(commands.Last().Enabled);
         }
@@ -122,9 +118,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Stop,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Stop,
                 },
                 commands.Select(command => command.Action)
             );
@@ -145,7 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 false
             );
 
-            Assert.AreEqual(StrategyContextMenuActions.Scrap, commands.Last().Action);
+            Assert.AreEqual(StrategyMenuAction.Scrap, commands.Last().Action);
             Assert.AreEqual("Scrap", commands.Last().Text);
             Assert.IsTrue(commands.Last().Enabled);
         }

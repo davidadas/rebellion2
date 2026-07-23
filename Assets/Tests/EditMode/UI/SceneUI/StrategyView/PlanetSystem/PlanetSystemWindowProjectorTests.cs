@@ -221,10 +221,99 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         [Test]
+        public void CreateRenderData_UprisingPlanet_ReturnsUprisingAndMissionOverlays()
+        {
+            Planet planet = CreatePlanet("planet", _opposingFactionId, 10, 20);
+            planet.IsInUprising = true;
+            planet.Missions.Add(new TestMission(_opposingFactionId));
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+            );
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+            FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
+
+            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.PlanetOverlayTheme.PlanetSystemUprisingImagePath),
+                data.Planets[0].UprisingTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.NormalImagePath
+                ),
+                data.Planets[0].MissionTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    opposingTheme.PlanetOverlayTheme.PlanetOverlayIcons.Missions.HoverImagePath
+                ),
+                data.Planets[0].MissionPressedTexture
+            );
+        }
+
+        [Test]
+        public void CreateRenderData_NeutralPlanet_ReturnsNeutralFacilityAndDefenseTextures()
+        {
+            Planet planet = CreatePlanet("planet", null, 10, 20);
+            planet.Buildings.Add(CreateBuilding(BuildingType.Mine));
+            planet.Buildings.Add(CreateBuilding(BuildingType.Defense));
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSystem, planet, string.Empty)
+            );
+            FactionTheme neutralTheme = _uiContext.GetTheme(null);
+
+            PlanetSystemWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            PlanetSystemPlanetRenderData presentation = data.Planets[0];
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.NormalImagePath
+                ),
+                presentation.FacilityTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Buildings.HoverImagePath
+                ),
+                presentation.FacilityPressedTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.NormalImagePath
+                ),
+                presentation.DefenseTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    neutralTheme.PlanetOverlayTheme.PlanetOverlayIcons.Defenses.HoverImagePath
+                ),
+                presentation.DefensePressedTexture
+            );
+            Assert.IsNull(presentation.FleetTexture);
+            Assert.IsNull(presentation.FleetPressedTexture);
+            Assert.IsNull(presentation.MissionTexture);
+            Assert.IsNull(presentation.MissionPressedTexture);
+        }
+
+        [Test]
         public void CreateRenderData_UnexploredPlanet_ReturnsHiddenDetails()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 10, 20);
             planet.IsUnexploredView = true;
+            planet.IsInUprising = true;
             planet.IsHeadquarters = true;
             planet.EnergyCapacity = 3;
             planet.NumRawResourceNodes = 4;
@@ -249,6 +338,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.IsNull(presentation.DefenseTexture);
             Assert.IsNull(presentation.DefensePressedTexture);
             Assert.IsNull(presentation.HeadquartersTexture);
+            Assert.IsNull(presentation.UprisingTexture);
             Assert.IsFalse(presentation.EnergyBar.Visible);
             Assert.IsFalse(presentation.RawResourceBar.Visible);
             Assert.IsFalse(presentation.SupportBar.Visible);
@@ -330,6 +420,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.AreEqual(string.Empty, data.Planets[0].Name);
             Assert.AreEqual(new Vector2Int(-10, -20), data.Planets[0].GalaxyOffset);
             Assert.IsNull(data.Planets[0].PlanetTexture);
+            Assert.IsNull(data.Planets[0].UprisingTexture);
             Assert.IsNull(data.Planets[0].FacilityTexture);
             Assert.IsNull(data.Planets[0].DefenseTexture);
             Assert.IsNull(data.Planets[0].FleetTexture);

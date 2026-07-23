@@ -1559,6 +1559,10 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("empire-image", FirstMessageFor(deliveries, empire).DisplayImagePath);
             Assert.AreEqual("agent-card", FirstMessageFor(deliveries, alliance).OverlayImagePath);
             Assert.IsNull(FirstMessageFor(deliveries, empire).OverlayImagePath);
+            Assert.AreEqual(
+                (int)AdvisorNotificationCode.AgentReport,
+                FirstMessageFor(deliveries, empire).AdvisorNotificationCode
+            );
         }
 
         [Test]
@@ -1649,6 +1653,65 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("captured:Target:Coruscant", message.Title);
             Assert.AreEqual("fallback-card", message.DisplayImagePath);
             Assert.AreEqual("target-card", message.OverlayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_OfficerCapture_NotifiesOwnerAndCaptor()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, _) =
+                BuildTwoFactionMessageScene();
+            Officer target = new Officer
+            {
+                TypeID = "OFAL001",
+                DisplayName = "Target",
+                OwnerInstanceID = alliance.InstanceID,
+                CaptorInstanceID = empire.InstanceID,
+                MessageImagePath = "target-card",
+            };
+            game.AttachNode(target, origin);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "owner:{officer}",
+                        "owner:{officer}:{captor}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                    Definition(
+                        MessageResultType.EnemyOfficerCaptured,
+                        MessageType.Mission,
+                        "captor:{officer}",
+                        "captor:{officer}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = target,
+                    IsCaptured = true,
+                    Context = origin,
+                }
+            );
+
+            Message ownerMessage = FirstMessageFor(deliveries, alliance);
+            Message captorMessage = FirstMessageFor(deliveries, empire);
+
+            Assert.AreEqual(2, deliveries.Count);
+            Assert.AreEqual("owner:Target:Empire:Coruscant", ownerMessage.Body);
+            Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
+            Assert.AreEqual("alliance-image", ownerMessage.DisplayImagePath);
+            Assert.AreEqual("empire-image", captorMessage.DisplayImagePath);
+            Assert.AreEqual("target-card", ownerMessage.OverlayImagePath);
+            Assert.AreEqual("target-card", captorMessage.OverlayImagePath);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Captured,
+                captorMessage.AdvisorSubjectNotification
+            );
+            Assert.AreEqual(target.TypeID, captorMessage.AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -2117,6 +2180,50 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_NearUprising_ReturnsControllerPopularSupportReport()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.NearUprising,
+                        MessageType.PopularSupport,
+                        "{system} Near Uprising",
+                        "Unrest has pushed {system} close to uprising.",
+                        imagePaths: FactionImages(),
+                        voicePaths: new Dictionary<string, string>
+                        {
+                            { "FNALL1", "alliance-unrest" },
+                            { "FNEMP1", "empire-unrest" },
+                        }
+                    ),
+                },
+                new PlanetNearUprisingResult { Planet = target }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual(empire, deliveries[0].faction);
+            Assert.AreNotEqual(alliance, deliveries[0].faction);
+            Assert.AreEqual(MessageType.PopularSupport, deliveries[0].message.Type);
+            Assert.AreEqual("Yavin Near Uprising", deliveries[0].message.Title);
+            Assert.AreEqual(
+                "Unrest has pushed Yavin close to uprising.",
+                deliveries[0].message.Body
+            );
+            Assert.AreEqual("empire-image", deliveries[0].message.DisplayImagePath);
+            Assert.AreEqual("empire-unrest", deliveries[0].message.MessageVoicePath);
+            Assert.AreEqual(
+                (int)AdvisorNotificationCode.NegativePopularSupport,
+                deliveries[0].message.AdvisorNotificationCode
+            );
+            Assert.AreEqual(target.InstanceID, deliveries[0].message.EventLocationInstanceID);
+        }
+
+        [Test]
         public void CreateMessages_UprisingEnded_UsesControllerImage()
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
@@ -2225,6 +2332,54 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_PlanetJoinedEnemyBySupport_ReportsObserver()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.PlanetJoinedBySupport,
+                            MessageType.PopularSupport,
+                            "{system} joins",
+                            "support:{system}:{faction}",
+                            imagePaths: FactionImages()
+                        ),
+                        Definition(
+                            MessageResultType.PlanetJoinedEnemyBySupport,
+                            MessageType.PopularSupport,
+                            "{system} joins enemy",
+                            "dissent:{system}:{faction}",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new PlanetOwnershipChangedResult
+                    {
+                        Planet = target,
+                        PreviousOwner = null,
+                        NewOwner = empire,
+                        Reason = PlanetOwnershipChangeReason.PopularSupport,
+                        ObserverFactionInstanceIDs = new List<string>
+                        {
+                            alliance.InstanceID,
+                            empire.InstanceID,
+                        },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.PopularSupport, message.Type);
+            Assert.AreEqual("Yavin joins enemy", message.Title);
+            Assert.AreEqual("dissent:Yavin:Empire", message.Body);
+            Assert.AreEqual("empire-image", message.DisplayImagePath);
+        }
+
+        [Test]
         public void CreateMessages_PlanetDeclaredNeutralityBySupport_ReportsPreviousOwner()
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
@@ -2239,7 +2394,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.PopularSupport,
                             "{system} neutral",
                             "neutral:{system}:{faction}",
-                            imagePaths: FactionImages()
+                            imagePath: "support-image",
+                            voicePath: "neutral-audio"
                         ),
                     },
                     new PlanetOwnershipChangedResult
@@ -2256,7 +2412,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.PopularSupport, message.Type);
             Assert.AreEqual("Yavin neutral", message.Title);
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
-            Assert.AreEqual("empire-image", message.DisplayImagePath);
+            Assert.AreEqual("support-image", message.DisplayImagePath);
+            Assert.AreEqual("neutral-audio", message.MessageVoicePath);
         }
 
         [Test]
@@ -2448,6 +2605,45 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SpaceBattleWithPlanetaryStarfighters_DeliversToDefender()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "planetary-defender",
+                    OwnerInstanceID = empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    CurrentSquadronSize = 12,
+                },
+                target
+            );
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                SpaceBattleDefinitions(),
+                new SpaceCombatResult
+                {
+                    AttackerFleet = new Fleet { OwnerInstanceID = alliance.InstanceID },
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
+                    Planet = target,
+                    Winner = CombatSide.Attacker,
+                }
+            );
+
+            Assert.AreEqual(
+                "victory:Alliance:Empire:Yavin",
+                FirstMessageFor(deliveries, alliance).Title
+            );
+            Assert.AreEqual(
+                "defeat:Empire:Alliance:Yavin",
+                FirstMessageFor(deliveries, empire).Title
+            );
+        }
+
+        [Test]
         public void CreateMessages_Bombardment_UsesOwnershipAndLossSelectors()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
@@ -2467,6 +2663,7 @@ namespace Rebellion.Tests.Game.Messages
             Message defendingMessage = FirstMessageFor(deliveries, empire);
 
             Assert.AreEqual(MessageType.Conflict, message.Type);
+            Assert.AreEqual(MessageResultType.Bombardment, message.ResultType);
             Assert.AreEqual("owned-target:Alliance:Empire:Yavin", message.Title);
             Assert.AreEqual("target-losses-image", message.DisplayImagePath);
             Assert.AreEqual(0, message.AdvisorNotificationCode);
@@ -2482,23 +2679,45 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    AssaultDefinitions(),
-                    new PlanetaryAssaultResult
-                    {
-                        AttackingFaction = alliance,
-                        Planet = target,
-                        Success = false,
-                    }
-                ),
-                empire
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                AssaultDefinitions(),
+                new PlanetaryAssaultResult
+                {
+                    AttackingFaction = alliance,
+                    Planet = target,
+                    Success = false,
+                }
+            );
+            Message attackerMessage = FirstMessageFor(deliveries, alliance);
+            Message defenderMessage = FirstMessageFor(deliveries, empire);
+
+            Assert.AreEqual(MessageType.Conflict, defenderMessage.Type);
+            Assert.AreEqual(MessageResultType.PlanetaryAssault, defenderMessage.ResultType);
+            Assert.AreEqual("owned-failed:Alliance:Empire:Yavin", defenderMessage.Title);
+            Assert.AreEqual("alliance-image", defenderMessage.DisplayImagePath);
+            Assert.AreEqual(0, attackerMessage.AdvisorNotificationCode);
+            Assert.AreEqual(
+                (int)AdvisorNotificationCode.PlanetaryAssault,
+                defenderMessage.AdvisorNotificationCode
+            );
+        }
+
+        [Test]
+        public void CreateMessages_InvalidPlanetaryCombatResults_DoNotCreateMessages()
+        {
+            (GameRoot game, _, _, _, Planet target) = BuildTwoFactionMessageScene();
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                BombardmentDefinitions().Concat(AssaultDefinitions()).ToArray(),
+                new BombardmentResult { Planet = target },
+                new BombardmentResult(),
+                new PlanetaryAssaultResult { Planet = target },
+                new PlanetaryAssaultResult()
             );
 
-            Assert.AreEqual(MessageType.Conflict, message.Type);
-            Assert.AreEqual("owned-failed:Alliance:Empire:Yavin", message.Title);
-            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+            Assert.IsEmpty(deliveries);
         }
 
         private static List<(Faction faction, Message message)> CreateMessages(

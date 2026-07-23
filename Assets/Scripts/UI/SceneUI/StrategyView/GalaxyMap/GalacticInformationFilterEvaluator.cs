@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Contains the evaluated marker intensity and faction presentation for one visible planet.
@@ -232,7 +233,11 @@ public static class GalacticInformationFilterEvaluator
     /// <returns>True when the participant is available, stationary, and not assigned.</returns>
     private static bool IsIdle(IMissionParticipant participant)
     {
-        if (participant == null || participant.Movement != null || participant.IsOnMission())
+        if (
+            participant == null
+            || participant.GetTransitMovement() != null
+            || participant.IsOnMission()
+        )
             return false;
 
         if (
@@ -348,6 +353,6 @@ public static class GalacticInformationFilterEvaluator
     {
         return entity != null
             && entity.GetManufacturingStatus() == ManufacturingStatus.Complete
-            && entity.Movement == null;
+            && entity.GetTransitMovement() == null;
     }
 }

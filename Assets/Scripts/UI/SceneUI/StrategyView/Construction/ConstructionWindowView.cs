@@ -44,7 +44,7 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
     private TextMeshProUGUI buildCountLabelTextField;
 
     [SerializeField]
-    private TextMeshProUGUI buildCountTextField;
+    private TMP_InputField buildCountInputField;
 
     [SerializeField]
     private RawImage incrementButtonImage;
@@ -202,6 +202,8 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
     private bool renderedDropdownOpen;
     private ConstructionWindowRenderData lastData;
 
+    public event Action<ConstructionWindowView, string> BuildCountSubmitted;
+
     /// <summary>
     /// Occurs when a cancel request is raised.
     /// </summary>
@@ -259,6 +261,7 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
         infoButton.onClick.AddListener(RequestInfo);
         okButton.onClick.AddListener(RequestStart);
         cancelButton.onClick.AddListener(RequestCancel);
+        buildCountInputField.onEndEdit.AddListener(RequestBuildCount);
     }
 
     /// <summary>
@@ -278,6 +281,8 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
             okButton.onClick.RemoveListener(RequestStart);
         if (cancelButton != null)
             cancelButton.onClick.RemoveListener(RequestCancel);
+        if (buildCountInputField != null)
+            buildCountInputField.onEndEdit.RemoveListener(RequestBuildCount);
         UnbindDropdownRows();
         Destroyed?.Invoke(this);
     }
@@ -308,7 +313,18 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (eventData.button == PointerEventData.InputButton.Left && lastData?.DropdownOpen == true)
+        GameObject pressTarget = eventData.pointerPress ?? eventData.rawPointerPress;
+        bool pressedInsideDropdown =
+            pressTarget != null
+            && (
+                pressTarget.transform == dropdownRoot
+                || pressTarget.transform.IsChildOf(dropdownRoot)
+            );
+        if (
+            eventData.button == PointerEventData.InputButton.Left
+            && lastData?.DropdownOpen == true
+            && !pressedInsideDropdown
+        )
             DismissDropdownRequested?.Invoke(this);
     }
 
@@ -336,6 +352,15 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
     internal void RequestDecrement()
     {
         DecrementRequested?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Emits a request to apply submitted build-count text.
+    /// </summary>
+    /// <param name="value">The submitted build-count text.</param>
+    internal void RequestBuildCount(string value)
+    {
+        BuildCountSubmitted?.Invoke(this, value);
     }
 
     /// <summary>
@@ -406,7 +431,8 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
         if (!data.HasSelection)
             return;
 
-        UILayout.SetTextContent(buildCountTextField, data.BuildCount.ToString());
+        if (!buildCountInputField.isFocused)
+            buildCountInputField.SetTextWithoutNotify(data.BuildCount.ToString());
         UILayout.SetTextContent(constructionCostTextField, data.ConstructionCost);
         UILayout.SetTextContent(maintenanceCostTextField, data.MaintenanceCost);
         RenderEstimate(
@@ -454,7 +480,7 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
         GameObject[] objects =
         {
             buildCountLabelTextField.gameObject,
-            buildCountTextField.gameObject,
+            buildCountInputField.gameObject,
             constructionCostTextField.gameObject,
             maintenanceCostTextField.gameObject,
             completionLabelTextField.gameObject,
@@ -672,8 +698,8 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
             throw new MissingReferenceException($"{name}/SelectedNameTextField is missing.");
         if (buildCountLabelTextField == null)
             throw new MissingReferenceException($"{name}/BuildCountLabelTextField is missing.");
-        if (buildCountTextField == null)
-            throw new MissingReferenceException($"{name}/BuildCountTextField is missing.");
+        if (buildCountInputField == null)
+            throw new MissingReferenceException($"{name}/BuildCountInputField is missing.");
         if (incrementButtonImage == null)
             throw new MissingReferenceException($"{name}/IncrementButtonImage is missing.");
         if (incrementButtonPressVisual == null)

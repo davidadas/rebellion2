@@ -122,7 +122,7 @@ public sealed class GalaxyMapView : MonoBehaviour
     /// <param name="eventData">The current pointer event.</param>
     /// <param name="planetInstanceId">Receives the rendered planet identifier.</param>
     /// <returns>True when the pointer is over a visible planet marker.</returns>
-    internal bool TryGetPlanetInstanceId(PointerEventData eventData, out string planetInstanceId)
+    internal bool TryGetPlanetInstanceID(PointerEventData eventData, out string planetInstanceId)
     {
         planetInstanceId = null;
         if (eventData == null)
@@ -132,7 +132,7 @@ public sealed class GalaxyMapView : MonoBehaviour
         {
             if (
                 clusterView != null
-                && clusterView.TryGetPlanetInstanceId(eventData, out planetInstanceId)
+                && clusterView.TryGetPlanetInstanceID(eventData, out planetInstanceId)
             )
                 return true;
         }

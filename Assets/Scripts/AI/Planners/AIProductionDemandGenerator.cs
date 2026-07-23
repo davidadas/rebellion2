@@ -1315,7 +1315,7 @@ namespace Rebellion.AI.Planners
         )
         {
             double pressure = GetBasePressure(baseDemandPercent, deficit, targetCount);
-            Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
+            Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
 
             if (targetPlanet != null)
             {
@@ -1613,7 +1613,7 @@ namespace Rebellion.AI.Planners
                 capacity,
                 context.Game.Config.AI.Infrastructure.AssaultRegimentLoadPercent
             );
-            Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
+            Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
             if (targetPlanet != null)
                 fillTarget = System.Math.Max(
                     fillTarget,

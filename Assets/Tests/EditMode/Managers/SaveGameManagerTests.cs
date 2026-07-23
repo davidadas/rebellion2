@@ -14,20 +14,32 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public class SaveGameManagerTests
     {
-        private string _saveFileName = "SaveGameManagerTest";
+        private const string _defaultSaveFileName = "SaveGameManagerTest";
 
         // Empty factions list - tests that need factions create them locally
         private List<Faction> _factions = new List<Faction>();
+        private string _saveDirectoryPath;
+        private string _saveFileName;
+        private SaveGameManager _saveGameManager;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                nameof(SaveGameManagerTests),
+                Guid.NewGuid().ToString("N")
+            );
+            _saveFileName = _defaultSaveFileName;
+            _saveGameManager = new SaveGameManager(_saveDirectoryPath);
+        }
 
         [TearDown]
         public void Teardown()
         {
             // Cleanup code after each test.
-            string filePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
+            if (Directory.Exists(_saveDirectoryPath))
+                Directory.Delete(_saveDirectoryPath, true);
         }
 
         [Test]
@@ -50,10 +62,10 @@ namespace Rebellion.Tests.Managers
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
 
             // Check if the file was created.
-            string filePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
+            string filePath = _saveGameManager.GetSaveFilePath(_saveFileName);
             bool fileExists = File.Exists(filePath);
             Assert.IsTrue(fileExists, "Save file was not created.");
         }
@@ -61,7 +73,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SaveSlotAccessors_ReturnCanonicalNamesAndValidateBounds()
         {
-            SaveGameManager manager = SaveGameManager.Instance;
+            SaveGameManager manager = _saveGameManager;
 
             Assert.AreEqual(6, manager.SaveSlotCount);
             Assert.IsFalse(manager.IsValidSaveSlot(-1));
@@ -79,7 +91,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void SaveSlotGameData_CustomDisplayName_StoresDisplayName()
         {
-            SaveGameManager manager = SaveGameManager.Instance;
+            SaveGameManager manager = _saveGameManager;
             _saveFileName = manager.GetSaveSlotFileName(0);
             GameRoot game = new GameRoot
             {
@@ -109,10 +121,10 @@ namespace Rebellion.Tests.Managers
             // Save the game to disk.
             GameRoot game = new GameRoot { Summary = summary, Galaxy = new GalaxyMap() };
             string serializedShit = SerializationHelper.Serialize(game);
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
 
             // Load the game from file.
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(
                 loadedGame.Summary.GalaxySize,
@@ -186,10 +198,10 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(officer, capitalShip);
 
             // Save the game to disk.
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
 
             // Load the game from file.
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             // // Verify the scene graph is reconstituted.
             PlanetSystem loadedPlanetSystem = loadedGame.Galaxy.PlanetSystems[0];
@@ -224,8 +236,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(150, loadedGame.CurrentTick);
             Assert.AreEqual(TickSpeed.Fast, loadedGame.GameSpeed);
@@ -254,8 +266,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(2, loadedGame.EventPool.Count);
             Assert.AreEqual("EVENT1", loadedGame.EventPool[0].InstanceID);
@@ -282,8 +294,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(3, loadedGame.CompletedEventIDs.Count);
             Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT1"));
@@ -316,8 +328,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(1, loadedGame.Factions.Count);
             Assert.AreEqual("FNALL1", loadedGame.Factions[0].InstanceID);
@@ -351,8 +363,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.IsNotNull(loadedGame.Metadata);
             Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
@@ -378,8 +390,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual("FNEMP1", loadedGame.Metadata.PlayerFactionID);
         }
@@ -404,8 +416,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual("Quicksave", loadedGame.Metadata.SaveDisplayName);
         }
@@ -431,8 +443,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(GameSize.Large, loadedGame.Summary.GalaxySize);
             Assert.AreEqual(GameDifficulty.Hard, loadedGame.Summary.Difficulty);
@@ -470,8 +482,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.IsNotNull(loadedGame.Factions);
             Assert.AreEqual(0, loadedGame.Factions.Count);
@@ -509,8 +521,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(10, loadedGame.EventPool.Count);
             for (int i = 0; i < 10; i++)
@@ -546,8 +558,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(50, loadedGame.CompletedEventIDs.Count);
             for (int i = 0; i < 50; i++)
@@ -587,8 +599,8 @@ namespace Rebellion.Tests.Managers
                     Galaxy = new GalaxyMap(),
                 };
 
-                SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-                GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+                _saveGameManager.SaveGameData(game, _saveFileName);
+                GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
                 Assert.AreEqual(
                     speed,
@@ -618,8 +630,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(999999, loadedGame.CurrentTick);
         }
@@ -648,6 +660,17 @@ namespace Rebellion.Tests.Managers
                         {
                             TickCaptured = 100,
                             OwnerInstanceID = "FNEMP1",
+                            HasManufacturingIntelligence = true,
+                            ManufacturingQueueItems = new List<IManufacturable>
+                            {
+                                new Building
+                                {
+                                    InstanceID = "BUILDING_1",
+                                    DisplayName = "Queued Shipyard",
+                                    ManufacturingProgress = 25,
+                                    ManufacturingStatus = ManufacturingStatus.Building,
+                                },
+                            },
                             PopularSupport = new Dictionary<string, int>
                             {
                                 { "FNEMP1", 90 },
@@ -667,8 +690,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
             Assert.IsNotNull(loadedAlliance);
@@ -685,6 +708,14 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedPlanetSnapshot.PopularSupport.Count);
             Assert.AreEqual(90, loadedPlanetSnapshot.PopularSupport["FNEMP1"]);
             Assert.AreEqual(10, loadedPlanetSnapshot.PopularSupport["FNALL1"]);
+            Assert.IsTrue(loadedPlanetSnapshot.HasManufacturingIntelligence);
+            Assert.AreEqual(1, loadedPlanetSnapshot.ManufacturingQueueItems.Count);
+            Building queuedBuilding = loadedPlanetSnapshot.ManufacturingQueueItems[0] as Building;
+            Assert.IsNotNull(queuedBuilding);
+            Assert.AreEqual("BUILDING_1", queuedBuilding.InstanceID);
+            Assert.AreEqual("Queued Shipyard", queuedBuilding.DisplayName);
+            Assert.AreEqual(25, queuedBuilding.ManufacturingProgress);
+            Assert.AreEqual(ManufacturingStatus.Building, queuedBuilding.ManufacturingStatus);
 
             Assert.AreEqual(1, loadedAlliance.Fog.PlanetToSystem.Count);
             Assert.AreEqual("SYS1", loadedAlliance.Fog.PlanetToSystem["CORUSCANT"]);
@@ -711,8 +742,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
             Assert.IsNotNull(loadedAlliance);
@@ -759,8 +790,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
             PlanetSnapshot loadedSnapshot = loadedAlliance.Fog.Snapshots["SYS1"].Planets["PLANET1"];
@@ -824,8 +855,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Faction loadedAlliance = loadedGame.Factions.Find(f => f.InstanceID == "FNALL1");
 
@@ -870,8 +901,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
         }
@@ -896,8 +927,8 @@ namespace Rebellion.Tests.Managers
                 Galaxy = new GalaxyMap(),
             };
 
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
-            GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(_saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
             Assert.AreEqual(GameMetadata.CurrentSaveVersion, loadedGame.Metadata.SaveVersion);
         }
@@ -920,9 +951,9 @@ namespace Rebellion.Tests.Managers
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
 
-            string saveFilePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
+            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
             string xml = File.ReadAllText(saveFilePath);
             int futureVersion = GameMetadata.CurrentSaveVersion + 99;
             string bumped = xml.Replace(
@@ -932,7 +963,7 @@ namespace Rebellion.Tests.Managers
             File.WriteAllText(saveFilePath, bumped);
 
             InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
-                SaveGameManager.Instance.LoadGameData(_saveFileName)
+                _saveGameManager.LoadGameData(_saveFileName)
             );
 
             Assert.That(thrown.Message, Does.Contain(futureVersion.ToString()));
@@ -957,9 +988,9 @@ namespace Rebellion.Tests.Managers
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
-            SaveGameManager.Instance.SaveGameData(game, _saveFileName);
+            _saveGameManager.SaveGameData(game, _saveFileName);
 
-            string saveFilePath = SaveGameManager.Instance.GetSaveFilePath(_saveFileName);
+            string saveFilePath = _saveGameManager.GetSaveFilePath(_saveFileName);
             string xml = File.ReadAllText(saveFilePath);
             string stripped = System.Text.RegularExpressions.Regex.Replace(
                 xml,
@@ -969,7 +1000,7 @@ namespace Rebellion.Tests.Managers
             File.WriteAllText(saveFilePath, stripped);
 
             InvalidOperationException thrown = Assert.Throws<InvalidOperationException>(() =>
-                SaveGameManager.Instance.LoadGameData(_saveFileName)
+                _saveGameManager.LoadGameData(_saveFileName)
             );
 
             Assert.That(thrown.Message, Does.Contain("0"));

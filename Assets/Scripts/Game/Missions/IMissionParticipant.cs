@@ -21,6 +21,9 @@ namespace Rebellion.Game.Missions
     /// </summary>
     public interface IMissionParticipant : ISceneNode, IMovable
     {
+        public string MissionReturnParentInstanceID { get; set; }
+        public string MissionReturnLocationInstanceID { get; set; }
+
         // Mission ratings.
         public Dictionary<OfficerRating, int> Ratings { get; set; }
         public bool CanImproveMissionRating { get; }

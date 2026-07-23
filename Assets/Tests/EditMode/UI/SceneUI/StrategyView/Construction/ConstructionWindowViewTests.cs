@@ -62,7 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 "Selected",
                 FindComponent<TextMeshProUGUI>("SelectedNameTextField").text
             );
-            Assert.AreEqual("4", FindComponent<TextMeshProUGUI>("BuildCountTextField").text);
+            Assert.AreEqual("4", FindComponent<TMP_InputField>("BuildCountInputField").text);
             Assert.AreEqual(
                 "120",
                 FindComponent<TextMeshProUGUI>("ConstructionCostTextField").text
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
             Assert.IsFalse(FindObject("SelectedItemImage").activeSelf);
             Assert.IsFalse(FindObject("SelectedNameTextField").activeSelf);
-            Assert.IsFalse(FindObject("BuildCountTextField").activeSelf);
+            Assert.IsFalse(FindObject("BuildCountInputField").activeSelf);
             Assert.IsFalse(FindObject("CompletionDaysTextField").activeSelf);
             Assert.IsFalse(FindObject("DeploymentDaysTextField").activeSelf);
             Assert.IsFalse(FindObject("Dropdown").activeSelf);
@@ -148,12 +148,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         public void RequestMethods_SubscribedHandlers_EmitSemanticRequests()
         {
             int cancelCount = 0;
+            string buildCount = null;
             int decrementCount = 0;
             int incrementCount = 0;
             int infoCount = 0;
             int startCount = 0;
             int toggleCount = 0;
             _view.CancelRequested += _ => cancelCount++;
+            _view.BuildCountSubmitted += (_, value) => buildCount = value;
             _view.DecrementRequested += _ => decrementCount++;
             _view.IncrementRequested += _ => incrementCount++;
             _view.InfoRequested += _ => infoCount++;
@@ -161,6 +163,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _view.ToggleDropdownRequested += _ => toggleCount++;
 
             _view.RequestCancel();
+            _view.RequestBuildCount("12");
             _view.RequestDecrement();
             _view.RequestIncrement();
             _view.RequestInfo();
@@ -168,6 +171,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _view.RequestToggleDropdown();
 
             Assert.AreEqual(1, cancelCount);
+            Assert.AreEqual("12", buildCount);
             Assert.AreEqual(1, decrementCount);
             Assert.AreEqual(1, incrementCount);
             Assert.AreEqual(1, infoCount);
@@ -200,6 +204,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _view.OnPointerClick(leftClick);
 
             Assert.AreEqual(1, dismissCount);
+        }
+
+        [Test]
+        public void OnPointerClick_ScrollbarPressWithOpenDropdown_DoesNotRequestDismissal()
+        {
+            int dismissCount = 0;
+            _view.DismissDropdownRequested += _ => dismissCount++;
+            _view.Render(
+                CreateRenderData(
+                    new[] { new StrategyDropdownItemRenderData(_texture, "First", Color.white) },
+                    true,
+                    true
+                )
+            );
+            Scrollbar scrollbar = _viewObject.GetComponentInChildren<Scrollbar>(true);
+            PointerEventData scrollbarRelease = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerPress = scrollbar.gameObject,
+            };
+
+            _view.OnPointerClick(scrollbarRelease);
+
+            Assert.AreEqual(0, dismissCount);
         }
 
         [Test]
@@ -251,12 +279,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         [Test]
         public void AwakeThenOnDestroy_AuthoredControls_BindsThenUnbindsAndRaisesDestroyed()
         {
+            string buildCount = null;
             int incrementCount = 0;
             int itemSelectedCount = 0;
             ConstructionWindowView destroyedView = null;
+            _view.BuildCountSubmitted += (_, value) => buildCount = value;
             _view.IncrementRequested += _ => incrementCount++;
             _view.ItemSelected += (_, _) => itemSelectedCount++;
             _view.Destroyed += view => destroyedView = view;
+            TMP_InputField buildCountInput = FindComponent<TMP_InputField>("BuildCountInputField");
             Button incrementButton = FindComponent<Button>("IncrementButtonImage");
 
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
@@ -271,11 +302,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
                 .GetComponentsInChildren<StrategyDropdownItemView>(true)
                 .Single(item => item.name == "DropdownItemRow0");
             UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            buildCountInput.onEndEdit.Invoke("12");
             incrementButton.onClick.Invoke();
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            buildCountInput.onEndEdit.Invoke("17");
             incrementButton.onClick.Invoke();
             row.GetComponentInChildren<Button>(true).onClick.Invoke();
 
+            Assert.AreEqual("12", buildCount);
             Assert.AreEqual(1, incrementCount);
             Assert.AreEqual(0, itemSelectedCount);
             Assert.AreSame(_view, destroyedView);

@@ -621,6 +621,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
         private sealed class WindowCommandActions : IStrategyWindowCommandActions
         {
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) { }
+
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items

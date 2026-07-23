@@ -211,7 +211,7 @@ internal static class MessagesWindowProjector
                     messageId,
                     GetHeader(message),
                     message?.Type ?? default,
-                    ContainsMessageId(selectedMessageIds, messageId),
+                    ContainsMessageID(selectedMessageIds, messageId),
                     message?.Read == false
                 )
             );
@@ -434,7 +434,7 @@ internal static class MessagesWindowProjector
     /// <param name="selectedMessageIds">The selected message identifiers.</param>
     /// <param name="messageId">The identifier to find.</param>
     /// <returns>True when the message is selected.</returns>
-    private static bool ContainsMessageId(
+    private static bool ContainsMessageID(
         IReadOnlyCollection<string> selectedMessageIds,
         string messageId
     )

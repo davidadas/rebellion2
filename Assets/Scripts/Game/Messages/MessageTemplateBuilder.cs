@@ -37,6 +37,7 @@ namespace Rebellion.Game.Messages
 
             return new Message(definition.MessageType, title, body)
             {
+                ResultType = definition.ResultType,
                 DisplayName = title,
                 DisplayImageKey = definition.ImageKey,
                 DisplayImagePath =

@@ -149,7 +149,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void RebindPlanet_RecreatedNodes_PreservesSelectionByIdentity()
         {
-            _session.SelectFleet(1);
+            _session.SelectItem(_secondFleet);
             CapitalShip replacementShip = CreateCapitalShip("second-ship", "Replacement Ship");
             GameFleet replacementFleet = CreateFleet(
                 "second-fleet",
@@ -181,7 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Reconcile_SelectedFleetRemoved_SelectsNearestRemainingFleet()
         {
-            _session.SelectFleet(1);
+            _session.SelectItem(_secondFleet);
             _planet.Fleets.Remove(_secondFleet);
 
             _session.Reconcile();
@@ -194,7 +194,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Reconcile_AllFleetsRemoved_ClearsFleetAndDetailState()
         {
-            _session.CaptureDetailContext(0);
+            _session.CaptureContext(_capitalShip);
             _session.BeginRename(_capitalShip);
             _planet.Fleets.Clear();
 
@@ -261,9 +261,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void CaptureFleetContext_Row_SelectsFleetAndReturnsContextItems()
+        public void CaptureContext_Fleet_SelectsFleetAndReturnsContextItems()
         {
-            bool captured = _session.CaptureFleetContext(1);
+            bool captured = _session.CaptureContext(_secondFleet);
 
             List<ISceneNode> items = _session.GetContextItems();
 
@@ -275,9 +275,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void CaptureDetailContext_Card_SelectsItemAndReturnsContextItems()
+        public void CaptureContext_DetailItem_SelectsItemAndReturnsContextItems()
         {
-            bool captured = _session.CaptureDetailContext(0);
+            bool captured = _session.CaptureContext(_capitalShip);
 
             List<ISceneNode> items = _session.GetContextItems();
 
@@ -288,29 +288,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void CaptureContext_InvalidIndexes_ReturnFalse()
+        public void CaptureContext_InvalidTargets_ReturnFalse()
         {
-            Assert.IsFalse(_session.CaptureFleetContext(-1));
-            Assert.IsFalse(_session.CaptureFleetContext(2));
-            Assert.IsFalse(_session.CaptureDetailContext(-1));
-            Assert.IsFalse(_session.CaptureDetailContext(1));
+            Assert.IsFalse(_session.CaptureContext(null));
+            Assert.IsFalse(_session.CaptureContext(CreateFleet("missing", "Missing")));
+            Assert.IsFalse(
+                _session.CaptureContext(CreateCapitalShip("missing-ship", "Missing Ship"))
+            );
             Assert.AreEqual(-1, _session.ContextFleetIndex);
             Assert.AreEqual(-1, _session.ContextDetailItemIndex);
         }
 
         [Test]
-        public void PrepareFleetDragSelection_SelectedRow_PreservesSelectionForDrag()
+        public void PrepareDragSelection_SelectedFleet_PreservesSelectionForDrag()
         {
-            bool canStartDrag = _session.PrepareFleetDragSelection(0);
+            bool canStartDrag = _session.PrepareDragSelection(_fleet);
 
             Assert.IsTrue(canStartDrag);
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedFleetItems);
         }
 
         [Test]
-        public void PrepareFleetDragSelection_UnselectedRow_SelectsRowBeforeDrag()
+        public void PrepareDragSelection_UnselectedFleet_SelectsFleetBeforeDrag()
         {
-            bool canStartDrag = _session.PrepareFleetDragSelection(1);
+            bool canStartDrag = _session.PrepareDragSelection(_secondFleet);
 
             Assert.IsFalse(canStartDrag);
             Assert.AreSame(_secondFleet, _session.SelectedFleet);
@@ -319,10 +320,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void PrepareDetailDragSelection_SelectedAndInvalidCards_ReturnExpectedState()
+        public void PrepareDragSelection_SelectedAndInvalidDetails_ReturnExpectedState()
         {
-            bool selectedCanDrag = _session.PrepareDetailDragSelection(0);
-            bool invalidCanDrag = _session.PrepareDetailDragSelection(1);
+            bool selectedCanDrag = _session.PrepareDragSelection(_capitalShip);
+            bool invalidCanDrag = _session.PrepareDragSelection(
+                CreateCapitalShip("missing-ship", "Missing Ship")
+            );
 
             Assert.IsTrue(selectedCanDrag);
             Assert.IsFalse(invalidCanDrag);
@@ -330,9 +333,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void SelectFleet_Row_ChangesDisplayedFleetAndRequiredSelections()
+        public void SelectItem_Fleet_ChangesDisplayedFleetAndRequiredSelections()
         {
-            bool selected = _session.SelectFleet(1);
+            bool selected = _session.SelectItem(_secondFleet);
 
             Assert.IsTrue(selected);
             Assert.AreSame(_secondFleet, _session.SelectedFleet);
@@ -342,9 +345,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void SelectDetailItem_InvalidIndex_ReturnsFalseWithoutChangingSelection()
+        public void SelectItem_InvalidDetail_ReturnsFalseWithoutChangingSelection()
         {
-            bool selected = _session.SelectDetailItem(1);
+            bool selected = _session.SelectItem(CreateCapitalShip("missing-ship", "Missing Ship"));
 
             Assert.IsFalse(selected);
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems);
@@ -353,7 +356,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void SelectTab_ValidTab_RefreshesItemsAndRequiredSelection()
         {
-            _session.CaptureDetailContext(0);
+            _session.CaptureContext(_capitalShip);
             _session.BeginRename(_capitalShip);
 
             bool selected = _session.SelectTab(FleetWindowTab.Personnel);
@@ -421,7 +424,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void ClearContext_ActiveTarget_PreservesSelectionAndClearsContext()
         {
-            _session.CaptureFleetContext(1);
+            _session.CaptureContext(_secondFleet);
 
             _session.ClearContext();
 
@@ -441,7 +444,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(_session.HasDetailItems(FleetWindowTab.Personnel));
             Assert.IsFalse(_session.HasDetailItems((FleetWindowTab)99));
 
-            _session.SelectFleet(1);
+            _session.SelectItem(_secondFleet);
 
             Assert.IsTrue(_session.HasDetailItems(FleetWindowTab.CapitalShips));
             Assert.IsFalse(_session.HasDetailItems(FleetWindowTab.Starfighters));

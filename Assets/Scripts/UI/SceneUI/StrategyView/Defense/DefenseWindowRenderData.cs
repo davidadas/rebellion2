@@ -69,6 +69,7 @@ public sealed class DefenseWindowRenderData
     /// <param name="caption">The displayed planet name.</param>
     /// <param name="activeTab">The selected Defense tab.</param>
     /// <param name="tabTitle">The selected tab title.</param>
+    /// <param name="garrisonRequirementText">The selected planet's garrison requirement text.</param>
     /// <param name="tabs">The ordered tab presentations.</param>
     /// <param name="items">The ordered unit-card presentations.</param>
     public DefenseWindowRenderData(
@@ -78,6 +79,7 @@ public sealed class DefenseWindowRenderData
         string caption,
         DefenseWindowTab activeTab,
         string tabTitle,
+        string garrisonRequirementText,
         IReadOnlyList<DefenseWindowTabRenderData> tabs,
         IReadOnlyList<StrategyUnitCardRenderData> items
     )
@@ -88,6 +90,7 @@ public sealed class DefenseWindowRenderData
         Caption = caption ?? string.Empty;
         ActiveTab = activeTab;
         TabTitle = tabTitle ?? string.Empty;
+        GarrisonRequirementText = garrisonRequirementText ?? string.Empty;
         Tabs = Copy(tabs, nameof(tabs));
         Items = Copy(items, nameof(items));
     }
@@ -103,6 +106,8 @@ public sealed class DefenseWindowRenderData
     public DefenseWindowTab ActiveTab { get; }
 
     public string TabTitle { get; }
+
+    public string GarrisonRequirementText { get; }
 
     public IReadOnlyList<DefenseWindowTabRenderData> Tabs { get; }
 

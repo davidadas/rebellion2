@@ -190,16 +190,10 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
-            int ratingBefore = officer.GetBaseRating(OfficerRating.Leadership);
+            int ratingBefore = officer.GetBaseRating(OfficerRating.Diplomacy);
 
-            Mission mission = MissionTestFactory.TryCreate(
-                MissionTypeIDs.InciteUprising,
-                null,
-                "empire",
-                enemyPlanet,
-                new List<IMissionParticipant> { officer },
-                new List<IMissionParticipant>()
-            );
+            Mission mission = new StubMission("empire", enemyPlanet.InstanceID);
+            mission.MainParticipants.Add(officer);
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
@@ -209,8 +203,8 @@ namespace Rebellion.Tests.Game.Missions
 
             Assert.AreEqual(
                 ratingBefore + 1,
-                officer.GetBaseRating(OfficerRating.Leadership),
-                "Officer leadership rating should improve by 1 on mission success"
+                officer.GetBaseRating(OfficerRating.Diplomacy),
+                "Officer mission rating should improve by 1 on mission success"
             );
         }
 

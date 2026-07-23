@@ -848,6 +848,23 @@
     <ResultType>OfficerCaptured</ResultType>
     <MessageType>Mission</MessageType>
     <TitleTemplate>{officer} Captured</TitleTemplate>
+    <BodyTemplate>{officer} was captured by the {captor} at {system}.</BodyTemplate>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_character_captured_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_character_captured_empire</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+  <MessageDefinition>
+    <DisplayName>Enemy Officer Captured</DisplayName>
+    <ResultType>EnemyOfficerCaptured</ResultType>
+    <MessageType>Mission</MessageType>
+    <TitleTemplate>{officer} Captured</TitleTemplate>
     <BodyTemplate>{officer} was captured at {system}.</BodyTemplate>
     <ImagePaths>
       <Entry>
@@ -1033,6 +1050,33 @@
     <ImagePath>Art/HD/UI/Messages/ui_message_research_report</ImagePath>
   </MessageDefinition>
   <MessageDefinition>
+    <DisplayName>Near Uprising</DisplayName>
+    <ResultType>NearUprising</ResultType>
+    <MessageType>PopularSupport</MessageType>
+    <TitleTemplate>{system} Near Uprising</TitleTemplate>
+    <BodyTemplate>Unrest has pushed {system} close to uprising.</BodyTemplate>
+    <VoicePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_near_uprising_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_near_uprising_empire</Value>
+      </Entry>
+    </VoicePaths>
+    <ImagePaths>
+      <Entry>
+        <Key>FNALL1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_near_uprising_alliance</Value>
+      </Entry>
+      <Entry>
+        <Key>FNEMP1</Key>
+        <Value>Art/HD/UI/Messages/ui_message_near_uprising_empire</Value>
+      </Entry>
+    </ImagePaths>
+  </MessageDefinition>
+  <MessageDefinition>
     <DisplayName>Uprising Started</DisplayName>
     <ResultType>UprisingStarted</ResultType>
     <MessageType>PopularSupport</MessageType>
@@ -1083,7 +1127,7 @@
     <MessageType>PopularSupport</MessageType>
     <TitleTemplate>{system} Declares Neutrality</TitleTemplate>
     <BodyTemplate>Divided loyalty on {system} has caused that world to abandon the {faction} cause.</BodyTemplate>
-    <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_joins</VoicePath>
+    <VoicePath>Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planet_declares_neutrality</VoicePath>
     <ImageKey>planet_allegiance_evolves</ImageKey>
   </MessageDefinition>
   <MessageDefinition>

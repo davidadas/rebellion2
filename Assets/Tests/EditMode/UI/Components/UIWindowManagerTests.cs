@@ -135,6 +135,54 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(window);
         }
 
+        [Test]
+        public void FindWindowView_MatchingPredicate_ReturnsAuthoredContent()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow first = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            UIWindow second = CreateWindow(windowManager, 2, modal: false, canFocus: true);
+            TestCancelableContent firstContent =
+                first.gameObject.AddComponent<TestCancelableContent>();
+            TestCancelableContent expected =
+                second.gameObject.AddComponent<TestCancelableContent>();
+            first.SetContent(firstContent);
+            second.SetContent(expected);
+
+            TestCancelableContent result = windowManager.FindWindowView<TestCancelableContent>(
+                content => ReferenceEquals(content, expected)
+            );
+
+            Assert.AreSame(expected, result);
+        }
+
+        [Test]
+        public void ForEachWindow_MixedContent_VisitsMatchingWindowsOnly()
+        {
+            UIWindowManager windowManager = CreateWindowManager();
+            UIWindow expectedWindow = CreateWindow(windowManager, 1, modal: false, canFocus: true);
+            UIWindow otherWindow = CreateWindow(windowManager, 2, modal: false, canFocus: true);
+            TestCancelableContent expected =
+                expectedWindow.gameObject.AddComponent<TestCancelableContent>();
+            expectedWindow.SetContent(expected);
+            otherWindow.SetContent(otherWindow.gameObject.AddComponent<TestContent>());
+            int visitCount = 0;
+            UIWindow visitedWindow = null;
+            TestCancelableContent visitedContent = null;
+
+            windowManager.ForEachWindow<TestCancelableContent>(
+                (window, content) =>
+                {
+                    visitCount++;
+                    visitedWindow = window;
+                    visitedContent = content;
+                }
+            );
+
+            Assert.AreEqual(1, visitCount);
+            Assert.AreSame(expectedWindow, visitedWindow);
+            Assert.AreSame(expected, visitedContent);
+        }
+
         private UIWindowManager CreateWindowManager()
         {
             _windowManagerObject = new GameObject(
@@ -176,5 +224,7 @@ namespace Rebellion.Tests.UI.Components
                 return true;
             }
         }
+
+        private sealed class TestContent : MonoBehaviour { }
     }
 }

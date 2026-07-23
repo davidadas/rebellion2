@@ -49,6 +49,7 @@ namespace Rebellion.Game.Messages
     public class Message : BaseGameEntity
     {
         public MessageType Type;
+        public MessageResultType ResultType;
         public string Title;
         public string Text;
         public string Body;
@@ -63,6 +64,7 @@ namespace Rebellion.Game.Messages
         public AdvisorSubjectNotification AdvisorSubjectNotification;
         public string AdvisorSubjectTypeID;
         public string MissionInstanceID;
+        public int CreatedTick;
         public bool Read;
 
         /// <summary>

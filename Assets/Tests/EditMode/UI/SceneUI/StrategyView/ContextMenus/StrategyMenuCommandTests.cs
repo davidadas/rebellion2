@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 {
@@ -14,11 +15,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         [Test]
         public void Constructor_CompleteCommand_CopiesChildrenAndDerivesIconColumn()
         {
-            StrategyMenuCommand child = new StrategyMenuCommand(2, "Child", true);
+            StrategyMenuCommand child = new StrategyMenuCommand(
+                StrategyMenuAction.Encyclopedia,
+                "Child",
+                true
+            );
             List<StrategyMenuCommand> children = new List<StrategyMenuCommand> { child };
 
             StrategyMenuCommand command = new StrategyMenuCommand(
-                1,
+                StrategyMenuAction.Status,
                 "Parent",
                 true,
                 StrategyContextMenuIconKeys.CheckMark,
@@ -26,7 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
             children.Clear();
 
-            Assert.AreEqual(1, command.Action);
+            Assert.AreEqual(StrategyMenuAction.Status, command.Action);
             Assert.AreEqual("Parent", command.Text);
             Assert.IsTrue(command.Enabled);
             Assert.AreEqual(StrategyContextMenuIconKeys.CheckMark, command.IconKey);
@@ -47,21 +52,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 Array.Empty<StrategyMenuCommand>()
             );
 
-            Assert.AreEqual(StrategyContextMenuActions.Submenu, command.Action);
+            Assert.AreEqual(StrategyMenuAction.None, command.Action);
             Assert.IsFalse(command.Enabled);
             Assert.IsFalse(command.HasIcon);
             Assert.IsTrue(command.IsSubmenu);
             Assert.IsTrue(command.UsesIconColumn);
         }
 
-        [TestCase(StrategyContextMenuActions.GameSpeedPause, TickSpeed.Paused)]
-        [TestCase(StrategyContextMenuActions.GameSpeedVerySlow, TickSpeed.VerySlow)]
-        [TestCase(StrategyContextMenuActions.GameSpeedSlow, TickSpeed.Slow)]
-        [TestCase(StrategyContextMenuActions.GameSpeedMedium, TickSpeed.Medium)]
-        [TestCase(StrategyContextMenuActions.GameSpeedFast, TickSpeed.Fast)]
-        public void TryGetGameSpeed_SpeedAction_ReturnsMappedSpeed(int action, TickSpeed expected)
+        [TestCase(StrategyMenuAction.GameSpeedPause, TickSpeed.Paused)]
+        [TestCase(StrategyMenuAction.GameSpeedVerySlow, TickSpeed.VerySlow)]
+        [TestCase(StrategyMenuAction.GameSpeedSlow, TickSpeed.Slow)]
+        [TestCase(StrategyMenuAction.GameSpeedMedium, TickSpeed.Medium)]
+        [TestCase(StrategyMenuAction.GameSpeedFast, TickSpeed.Fast)]
+        public void TryGetGameSpeed_SpeedAction_ReturnsMappedSpeed(
+            StrategyMenuAction action,
+            TickSpeed expected
+        )
         {
-            bool matched = StrategyContextMenuActions.TryGetGameSpeed(action, out TickSpeed speed);
+            bool matched = action.TryGetGameSpeed(out TickSpeed speed);
 
             Assert.IsTrue(matched);
             Assert.AreEqual(expected, speed);
@@ -70,10 +78,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         [Test]
         public void TryGetGameSpeed_NonSpeedAction_ReturnsFalse()
         {
-            bool matched = StrategyContextMenuActions.TryGetGameSpeed(
-                StrategyContextMenuActions.Status,
-                out TickSpeed speed
-            );
+            bool matched = StrategyMenuAction.Status.TryGetGameSpeed(out TickSpeed speed);
 
             Assert.IsFalse(matched);
             Assert.AreEqual(default(TickSpeed), speed);
@@ -152,6 +157,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
+        public void CanMoveItems_ItemCarriedByMovingFleet_ReturnsFalse()
+        {
+            Officer officer = CreateOfficer("player");
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            officer.SetParent(ship);
+
+            bool canMove = StrategyContextMenuAvailability.CanMoveItems(
+                new ISceneNode[] { officer },
+                "player"
+            );
+
+            Assert.IsFalse(canMove);
+        }
+
+        [Test]
         public void CanMoveItems_CapturedOfficer_RequiresPlayerEscort()
         {
             Officer captive = CreateOfficer("enemy");
@@ -173,20 +195,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
-        public void CanMoveItems_ItemUnderConstruction_ReturnsFalse()
+        public void CanMoveItems_CapitalShipUnderConstruction_ReturnsTrue()
         {
-            Regiment regiment = new Regiment
+            CapitalShip capitalShip = new CapitalShip
             {
                 OwnerInstanceID = "player",
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
 
             bool canMove = StrategyContextMenuAvailability.CanMoveItems(
-                new ISceneNode[] { regiment },
+                new ISceneNode[] { capitalShip },
                 "player"
             );
 
-            Assert.IsFalse(canMove);
+            Assert.IsTrue(canMove);
         }
 
         [Test]
@@ -218,6 +240,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             );
 
             Assert.IsTrue(canCreate);
+        }
+
+        [Test]
+        public void CanCreateMission_OfficerCarriedByMovingFleet_ReturnsFalse()
+        {
+            Officer officer = CreateOfficer("player");
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            officer.SetParent(ship);
+
+            bool canCreate = StrategyContextMenuAvailability.CanCreateMission(
+                new ISceneNode[] { officer },
+                "player"
+            );
+
+            Assert.IsFalse(canCreate);
         }
 
         [Test]

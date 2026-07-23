@@ -32,6 +32,9 @@ public sealed class PlanetSystemPlanetView
     private RawImage planetImage;
 
     [SerializeField]
+    private RawImage uprisingImage;
+
+    [SerializeField]
     private RawImage facilityImage;
 
     [SerializeField]
@@ -155,6 +158,8 @@ public sealed class PlanetSystemPlanetView
         );
 
         SetImage(planetImage, data.PlanetTexture);
+        SetImage(uprisingImage, data.UprisingTexture);
+        uprisingImage.raycastTarget = false;
         RenderIcon(
             facilityImage,
             PlanetIcon.Facility,
@@ -595,6 +600,8 @@ public sealed class PlanetSystemPlanetView
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
         if (planetImage == null)
             throw new MissingReferenceException($"{name}/PlanetImage is missing.");
+        if (uprisingImage == null)
+            throw new MissingReferenceException($"{name}/UprisingImage is missing.");
         if (facilityImage == null)
             throw new MissingReferenceException($"{name}/FacilityImage is missing.");
         if (defenseImage == null)

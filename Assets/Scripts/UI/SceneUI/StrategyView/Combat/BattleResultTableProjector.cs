@@ -24,275 +24,251 @@ internal sealed class BattleResultTableProjector
     /// <returns>The operational and destroyed result columns.</returns>
     internal BattleResultTableRenderData Project(
         UIContext uiContext,
+        BattleResultPresentation result,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        return result?.ProjectTable(this, uiContext, ownerInstanceId, category)
+            ?? CreateEmptyTable();
+    }
+
+    /// <summary>
+    /// Creates result-table presentation for one side of completed space combat.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="result">The completed space-combat result.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    internal BattleResultTableRenderData ProjectSpaceCombat(
+        UIContext uiContext,
         SpaceCombatResult result,
         string ownerInstanceId,
         BattleResultCategory category
     )
     {
-        Fleet fleet = BattleResultPresentation.GetFleetForOwner(result, ownerInstanceId);
+        CombatSide? side = BattleResultPresentation.GetSideForOwner(result, ownerInstanceId);
+        if (!side.HasValue)
+            return CreateEmptyTable();
+
+        bool withdrawing =
+            BattleResultPresentation.GetOutcome(result, side.Value)
+            == SpaceCombatSideOutcome.Withdrawn;
+        return ProjectUnits(
+            uiContext,
+            side == CombatSide.Attacker ? result.AttackingUnits : result.DefendingUnits,
+            category,
+            withdrawing
+        );
+    }
+
+    /// <summary>
+    /// Creates result-table presentation for one side of an orbital bombardment.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="result">The completed bombardment result.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    internal BattleResultTableRenderData ProjectBombardment(
+        UIContext uiContext,
+        BombardmentResult result,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        bool attacker = ownerInstanceId == result?.AttackerOwnerInstanceID;
+        bool defender = ownerInstanceId == result?.DefenderOwnerInstanceID;
+        if (!attacker && !defender)
+            return CreateEmptyTable();
+
+        return ProjectUnits(
+            uiContext,
+            attacker ? result.AttackingUnits : result.DefendingUnits,
+            category,
+            withdrawing: false
+        );
+    }
+
+    /// <summary>
+    /// Creates result-table presentation for one side of a planetary assault.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="result">The completed planetary-assault result.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    internal BattleResultTableRenderData ProjectPlanetaryAssault(
+        UIContext uiContext,
+        PlanetaryAssaultResult result,
+        string ownerInstanceId,
+        BattleResultCategory category
+    )
+    {
+        bool attacker = ownerInstanceId == result?.AttackerOwnerInstanceID;
+        bool defender = ownerInstanceId == result?.DefenderOwnerInstanceID;
+        if (!attacker && !defender)
+            return CreateEmptyTable();
+
+        return ProjectUnits(
+            uiContext,
+            attacker ? result.AttackingUnits : result.DefendingUnits,
+            category,
+            withdrawing: false
+        );
+    }
+
+    /// <summary>
+    /// Creates category rows from detached combat-unit snapshots.
+    /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="units">The units captured by the completed combat result.</param>
+    /// <param name="category">The selected result category.</param>
+    /// <param name="withdrawing">Whether surviving units withdrew from combat.</param>
+    /// <returns>The operational and destroyed result columns.</returns>
+    private BattleResultTableRenderData ProjectUnits(
+        UIContext uiContext,
+        IEnumerable<CombatUnitSnapshot> units,
+        BattleResultCategory category,
+        bool withdrawing
+    )
+    {
         List<BattleResultItemRenderData> operational = new List<BattleResultItemRenderData>();
         List<BattleResultItemRenderData> destroyed = new List<BattleResultItemRenderData>();
+        HashSet<string> addedOperational = new HashSet<string>();
+        HashSet<string> addedDestroyed = new HashSet<string>();
 
-        switch (category)
+        foreach (CombatUnitSnapshot unit in FilterCategory(units, category))
         {
-            case BattleResultCategory.CapitalShips:
-                AddCapitalShips(operational, destroyed, result, fleet, ownerInstanceId, uiContext);
-                break;
-            case BattleResultCategory.Starfighters:
-                AddStarfighters(operational, destroyed, result, fleet, ownerInstanceId, uiContext);
-                break;
-            case BattleResultCategory.Troops:
-                AddCurrentUnits(
-                    operational,
-                    GetRegiments(fleet),
-                    GetOperationalState(result, ownerInstanceId, false),
-                    uiContext
-                );
-                break;
-            case BattleResultCategory.Personnel:
-                AddCurrentUnits(
-                    operational,
-                    GetPersonnel(fleet),
-                    GetOperationalState(result, ownerInstanceId, false),
-                    uiContext
-                );
-                break;
+            if (!unit.WasOperational && !unit.Destroyed)
+                continue;
+
+            BattleResultUnitState state = BattleResultUnitState.Operational;
+            if (unit.Damaged)
+                state |= BattleResultUnitState.Damaged;
+            if (unit.Destroyed)
+                state |= BattleResultUnitState.Destroyed;
+            else if (withdrawing)
+                state |= BattleResultUnitState.Withdrawing;
+
+            AddItem(
+                unit.Destroyed ? destroyed : operational,
+                unit,
+                state,
+                unit.Destroyed ? addedDestroyed : addedOperational,
+                uiContext
+            );
         }
 
-        if (operational.Count == 0)
-            operational.Add(new BattleResultItemRenderData("None", null));
-        if (destroyed.Count == 0)
-            destroyed.Add(new BattleResultItemRenderData("No Casualties", null));
-
+        AddEmptyRows(operational, destroyed);
         return new BattleResultTableRenderData(operational, destroyed);
     }
 
     /// <summary>
-    /// Adds surviving, damaged, and destroyed capital ships.
+    /// Filters captured units to one result-table category.
     /// </summary>
-    /// <param name="operational">The operational destination column.</param>
-    /// <param name="destroyed">The destroyed destination column.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="fleet">The represented result fleet.</param>
-    /// <param name="ownerInstanceId">The represented owner identifier.</param>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    private void AddCapitalShips(
-        List<BattleResultItemRenderData> operational,
-        List<BattleResultItemRenderData> destroyed,
-        SpaceCombatResult result,
-        Fleet fleet,
-        string ownerInstanceId,
-        UIContext uiContext
+    /// <param name="units">The candidate unit snapshots.</param>
+    /// <param name="category">The requested result category.</param>
+    /// <returns>The matching unit snapshots.</returns>
+    private static IEnumerable<CombatUnitSnapshot> FilterCategory(
+        IEnumerable<CombatUnitSnapshot> units,
+        BattleResultCategory category
     )
     {
-        Dictionary<string, ShipDamageResult> damageByShipId = IndexShipDamage(
-            result,
-            ownerInstanceId
-        );
-        HashSet<string> addedOperational = new HashSet<string>();
-
-        IEnumerable<CapitalShip> currentShips =
-            fleet?.CapitalShips ?? Enumerable.Empty<CapitalShip>();
-        foreach (CapitalShip ship in currentShips)
-        {
-            damageByShipId.TryGetValue(ship.GetInstanceID(), out ShipDamageResult damage);
-            BattleResultUnitState state = GetOperationalState(
-                result,
-                ownerInstanceId,
-                damage != null && damage.HullAfter < damage.HullBefore
-            );
-            AddItem(operational, ship, state, addedOperational, uiContext);
-        }
-
-        foreach (ShipDamageResult damage in damageByShipId.Values)
-        {
-            if (damage?.Ship == null)
-                continue;
-
-            if (damage.HullAfter <= 0)
-            {
-                AddItem(destroyed, damage.Ship, BattleResultUnitState.Destroyed, null, uiContext);
-                continue;
-            }
-
-            AddItem(
-                operational,
-                damage.Ship,
-                GetOperationalState(result, ownerInstanceId, true),
-                addedOperational,
-                uiContext
-            );
-        }
-    }
-
-    /// <summary>
-    /// Adds surviving, damaged, and destroyed starfighters.
-    /// </summary>
-    /// <param name="operational">The operational destination column.</param>
-    /// <param name="destroyed">The destroyed destination column.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="fleet">The represented result fleet.</param>
-    /// <param name="ownerInstanceId">The represented owner identifier.</param>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    private void AddStarfighters(
-        List<BattleResultItemRenderData> operational,
-        List<BattleResultItemRenderData> destroyed,
-        SpaceCombatResult result,
-        Fleet fleet,
-        string ownerInstanceId,
-        UIContext uiContext
-    )
-    {
-        Dictionary<string, FighterLossResult> lossByFighterId = IndexFighterLosses(
-            result,
-            ownerInstanceId
-        );
-        HashSet<string> addedOperational = new HashSet<string>();
-
-        IEnumerable<Starfighter> currentFighters =
-            fleet?.GetStarfighters() ?? Enumerable.Empty<Starfighter>();
-        foreach (Starfighter fighter in currentFighters)
-        {
-            lossByFighterId.TryGetValue(fighter.GetInstanceID(), out FighterLossResult loss);
-            BattleResultUnitState state = GetOperationalState(
-                result,
-                ownerInstanceId,
-                loss != null && loss.SquadsAfter < loss.SquadsBefore
-            );
-            AddItem(operational, fighter, state, addedOperational, uiContext);
-        }
-
-        foreach (FighterLossResult loss in lossByFighterId.Values)
-        {
-            if (loss?.Fighter == null)
-                continue;
-
-            if (loss.SquadsAfter <= 0)
-            {
-                AddItem(destroyed, loss.Fighter, BattleResultUnitState.Destroyed, null, uiContext);
-                continue;
-            }
-
-            AddItem(
-                operational,
-                loss.Fighter,
-                GetOperationalState(result, ownerInstanceId, true),
-                addedOperational,
-                uiContext
-            );
-        }
-    }
-
-    /// <summary>
-    /// Indexes capital-ship damage for the represented owner.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="ownerInstanceId">The represented owner identifier.</param>
-    /// <returns>Damage records keyed by ship identifier.</returns>
-    private static Dictionary<string, ShipDamageResult> IndexShipDamage(
-        SpaceCombatResult result,
-        string ownerInstanceId
-    )
-    {
-        Dictionary<string, ShipDamageResult> damageByShipId =
-            new Dictionary<string, ShipDamageResult>();
-        if (result?.ShipDamage == null)
-            return damageByShipId;
-
-        foreach (ShipDamageResult damage in result.ShipDamage)
-        {
-            CapitalShip ship = damage?.Ship;
-            string instanceId = ship?.GetInstanceID();
-            if (
-                ship == null
-                || ship.GetOwnerInstanceID() != ownerInstanceId
-                || string.IsNullOrEmpty(instanceId)
+        return (units ?? Enumerable.Empty<CombatUnitSnapshot>()).Where(unit =>
+            unit?.Unit != null
+            && (
+                category switch
+                {
+                    BattleResultCategory.CapitalShips => unit.Unit is CapitalShip,
+                    BattleResultCategory.Starfighters => unit.Unit is Starfighter,
+                    BattleResultCategory.Manufacturing => unit.Unit is Building building
+                        && IsManufacturingFacility(building),
+                    BattleResultCategory.Defense => unit.Unit is Building building
+                        && IsDefenseFacility(building),
+                    BattleResultCategory.Troops => unit.Unit is Regiment,
+                    BattleResultCategory.Personnel => unit.Unit is Officer or SpecialForces,
+                    _ => false,
+                }
             )
-                continue;
-
-            damageByShipId[instanceId] = damage;
-        }
-
-        return damageByShipId;
+        );
     }
 
     /// <summary>
-    /// Indexes starfighter losses for the represented owner.
+    /// Returns whether a building belongs to the manufacturing-facility result category.
     /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="ownerInstanceId">The represented owner identifier.</param>
-    /// <returns>Loss records keyed by starfighter identifier.</returns>
-    private static Dictionary<string, FighterLossResult> IndexFighterLosses(
-        SpaceCombatResult result,
-        string ownerInstanceId
+    /// <param name="building">The building to classify.</param>
+    /// <returns>True for shipyards, training facilities, and construction yards.</returns>
+    private static bool IsManufacturingFacility(Building building)
+    {
+        return building.BuildingType
+            is BuildingType.Shipyard
+                or BuildingType.TrainingFacility
+                or BuildingType.ConstructionFacility;
+    }
+
+    /// <summary>
+    /// Returns whether a building belongs to the defensive-facility result category.
+    /// </summary>
+    /// <param name="building">The building to classify.</param>
+    /// <returns>True for planetary shields and weapon facilities.</returns>
+    private static bool IsDefenseFacility(Building building)
+    {
+        return building.BuildingType is BuildingType.Defense or BuildingType.Weapon
+            || building.DefenseFacilityClass != DefenseFacilityClass.None;
+    }
+
+    /// <summary>
+    /// Adds the standard empty-state row to any empty result column.
+    /// </summary>
+    /// <param name="operational">The operational result column.</param>
+    /// <param name="destroyed">The destroyed result column.</param>
+    private static void AddEmptyRows(
+        List<BattleResultItemRenderData> operational,
+        List<BattleResultItemRenderData> destroyed
     )
     {
-        Dictionary<string, FighterLossResult> lossByFighterId =
-            new Dictionary<string, FighterLossResult>();
-        if (result?.FighterLosses == null)
-            return lossByFighterId;
-
-        foreach (FighterLossResult loss in result.FighterLosses)
-        {
-            Starfighter fighter = loss?.Fighter;
-            string instanceId = fighter?.GetInstanceID();
-            if (
-                fighter == null
-                || fighter.GetOwnerInstanceID() != ownerInstanceId
-                || string.IsNullOrEmpty(instanceId)
-            )
-                continue;
-
-            lossByFighterId[instanceId] = loss;
-        }
-
-        return lossByFighterId;
+        if (operational.Count == 0)
+            operational.Add(new BattleResultItemRenderData("None", null));
+        if (destroyed.Count == 0)
+            destroyed.Add(new BattleResultItemRenderData("No Casualties", null));
     }
 
     /// <summary>
-    /// Adds current scene nodes without duplicate instance identifiers.
+    /// Creates an empty result table using the established empty-state labels.
+    /// </summary>
+    /// <returns>The empty result table.</returns>
+    private static BattleResultTableRenderData CreateEmptyTable()
+    {
+        return new BattleResultTableRenderData(
+            new[] { new BattleResultItemRenderData("None", null) },
+            new[] { new BattleResultItemRenderData("No Casualties", null) }
+        );
+    }
+
+    /// <summary>
+    /// Adds one captured unit with its base and status-overlay textures.
     /// </summary>
     /// <param name="items">The destination result column.</param>
-    /// <param name="nodes">The current scene nodes.</param>
-    /// <param name="state">The presentation state applied to each node.</param>
-    /// <param name="uiContext">The current strategy UI context.</param>
-    private void AddCurrentUnits(
-        List<BattleResultItemRenderData> items,
-        IEnumerable<ISceneNode> nodes,
-        BattleResultUnitState state,
-        UIContext uiContext
-    )
-    {
-        HashSet<string> addedInstanceIds = new HashSet<string>();
-        foreach (ISceneNode node in nodes ?? Enumerable.Empty<ISceneNode>())
-            AddItem(items, node, state, addedInstanceIds, uiContext);
-    }
-
-    /// <summary>
-    /// Adds one scene node with its base and status-overlay textures.
-    /// </summary>
-    /// <param name="items">The destination result column.</param>
-    /// <param name="node">The scene node to represent.</param>
+    /// <param name="unit">The captured unit to represent.</param>
     /// <param name="state">The unit's completed-result state.</param>
-    /// <param name="addedInstanceIds">Optional duplicate-suppression identifiers.</param>
+    /// <param name="addedInstanceIds">The duplicate-suppression identifiers.</param>
     /// <param name="uiContext">The current strategy UI context.</param>
     private void AddItem(
         List<BattleResultItemRenderData> items,
-        ISceneNode node,
+        CombatUnitSnapshot unit,
         BattleResultUnitState state,
         HashSet<string> addedInstanceIds,
         UIContext uiContext
     )
     {
+        ISceneNode node = unit?.Unit;
         if (node == null)
             return;
 
         string instanceId = node.GetInstanceID();
-        if (
-            addedInstanceIds != null
-            && !string.IsNullOrEmpty(instanceId)
-            && !addedInstanceIds.Add(instanceId)
-        )
+        if (!string.IsNullOrEmpty(instanceId) && !addedInstanceIds.Add(instanceId))
             return;
 
         items.Add(
@@ -300,36 +276,10 @@ internal sealed class BattleResultTableProjector
                 node.GetDisplayName(),
                 GetBaseTexture(uiContext, node),
                 GetWithdrawingOverlayTexture(uiContext, node, state),
-                GetDamagedOverlayTexture(uiContext, node, state)
+                GetDamagedOverlayTexture(uiContext, node, state),
+                unit.Captured ? GetTexture(uiContext, node.CapturedOverlayImagePath) : null
             )
         );
-    }
-
-    /// <summary>
-    /// Returns the combined operational, damage, and withdrawal state for a surviving unit.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="ownerInstanceId">The unit owner identifier.</param>
-    /// <param name="damaged">Whether the unit sustained damage.</param>
-    /// <returns>The unit's result-table presentation state.</returns>
-    private static BattleResultUnitState GetOperationalState(
-        SpaceCombatResult result,
-        string ownerInstanceId,
-        bool damaged
-    )
-    {
-        CombatSide? side = BattleResultPresentation.GetSideForOwner(result, ownerInstanceId);
-        BattleResultUnitState state = damaged
-            ? BattleResultUnitState.Damaged
-            : BattleResultUnitState.Operational;
-        if (
-            side.HasValue
-            && BattleResultPresentation.GetOutcome(result, side.Value)
-                == SpaceCombatSideOutcome.Withdrawn
-        )
-            state |= BattleResultUnitState.Withdrawing;
-
-        return state;
     }
 
     /// <summary>
@@ -525,33 +475,6 @@ internal sealed class BattleResultTableProjector
             .ToDictionary(definition => definition.GetTypeID());
         starfighterDefinitionsByTypeId.TryGetValue(typeId, out Starfighter definition);
         return definition;
-    }
-
-    /// <summary>
-    /// Returns officers and special-forces units carried by a fleet.
-    /// </summary>
-    /// <param name="fleet">The fleet to inspect.</param>
-    /// <returns>The fleet personnel in scene-graph order.</returns>
-    private static IEnumerable<ISceneNode> GetPersonnel(Fleet fleet)
-    {
-        return fleet == null
-            ? Enumerable.Empty<ISceneNode>()
-            : fleet
-                .GetOfficers()
-                .Cast<ISceneNode>()
-                .Concat(fleet.GetSpecialForces().Cast<ISceneNode>());
-    }
-
-    /// <summary>
-    /// Returns regiments carried by a fleet.
-    /// </summary>
-    /// <param name="fleet">The fleet to inspect.</param>
-    /// <returns>The fleet regiments in scene-graph order.</returns>
-    private static IEnumerable<ISceneNode> GetRegiments(Fleet fleet)
-    {
-        return fleet == null
-            ? Enumerable.Empty<ISceneNode>()
-            : fleet.GetRegiments().Cast<ISceneNode>();
     }
 
     /// <summary>

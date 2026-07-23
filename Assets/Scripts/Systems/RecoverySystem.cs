@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// Officers heal based on CanHeal/FastHeal flags. Ships repair hull damage
     /// at a rate determined by whether they are at a friendly planet.
     /// </summary>
-    public class RecoverySystem : IGameSystem
+    public class RecoverySystem
     {
         private readonly GameRoot _game;
         private readonly GameConfig.RecoveryConfig _config;

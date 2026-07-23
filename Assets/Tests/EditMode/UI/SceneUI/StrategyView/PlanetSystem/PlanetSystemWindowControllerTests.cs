@@ -7,6 +7,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
@@ -30,7 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private PlanetSystemWindowController _controller;
         private int _dirtyCount;
         private GameFleet _fleet;
+        private StrategyFleetCommandController _fleetCommandController;
         private GameRoot _game;
+        private GameManager _gameManager;
         private GalaxyMapPlanet _planet;
         private GameObject _rootObject;
         private GalaxyMapSector _sector;
@@ -51,11 +54,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sector = CreateSector();
+            _gameManager = new GameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
             _actions = new TestActions();
+            _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
         }
@@ -241,6 +246,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         [Test]
+        public void ContextMenu_PlanetaryAssault_ExecutesAndRoutesBattleResult()
+        {
+            _planet.Planet.OwnerInstanceID = _opposingFactionId;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "assault-ship",
+                OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                RegimentCapacity = 1,
+            };
+            _game.AttachNode(ship, _fleet);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "assault-regiment",
+                    OwnerInstanceID = _playerFactionId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
+            );
+            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
+            _controller = CreateController();
+            _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
+            PlanetSystemWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 2, 3, 177, 4, 6, 7),
+                CreateFleetPointerEvent(view),
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out _);
+            StrategyMenuCommand command = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(item => item.Action == StrategyMenuAction.PlanetaryAssault);
+            ContextMenuController contextMenuController = new ContextMenuController();
+            contextMenuController.Open(request);
+
+            bool selected = contextMenuController.TrySelectCommand(command);
+
+            Assert.IsTrue(selected);
+            Assert.IsInstanceOf<PlanetaryAssaultResult>(_actions.LastBattleResult);
+            Assert.AreEqual(1, _actions.RefreshCount);
+        }
+
+        [Test]
         public void ClearSelection_SelectedFleet_ClearsContextAndStatus()
         {
             PlanetSystemWindowView view = OpenWindow(out UIWindow window);
@@ -260,22 +314,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             IReadOnlyList<ISceneNode> items = new ISceneNode[] { _fleet };
 
             _controller.OnTargetSelected(
-                CreateRequest(StrategyContextMenuActions.CreateMission, items),
+                CreateRequest(StrategyMenuAction.CreateMission, items),
                 target
             );
+            _controller.OnTargetSelected(CreateRequest(StrategyMenuAction.Move, items), target);
             _controller.OnTargetSelected(
-                CreateRequest(StrategyContextMenuActions.Move, items),
-                target
-            );
-            _controller.OnTargetSelected(
-                CreateRequest(StrategyContextMenuActions.MoveConfirm, items),
+                CreateRequest(StrategyMenuAction.MoveConfirm, items),
                 target
             );
 
-            Assert.AreEqual(1, _actions.MissionCreateCount);
-            Assert.AreEqual(1, _actions.MoveCount);
-            Assert.AreEqual(1, _actions.MoveConfirmCount);
-            CollectionAssert.AreEqual(items, _actions.LastItems);
+            Assert.AreEqual(3, _actions.TargetedCommandCount);
+            Assert.AreEqual(StrategyMenuAction.MoveConfirm, _actions.LastTargetingSource.Action);
+            CollectionAssert.AreEqual(items, _actions.LastTargetingSource.Items);
+            Assert.AreSame(target, _actions.LastTarget);
         }
 
         [Test]
@@ -294,7 +345,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Facility, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyContextMenuActions.CreateMission);
+            TargetingRequest request = CreateRequest(StrategyMenuAction.CreateMission);
 
             StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
                 hit,
@@ -312,7 +363,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyContextMenuActions.Destination);
+            TargetingRequest request = CreateRequest(StrategyMenuAction.Destination);
 
             StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
                 hit,
@@ -330,7 +381,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyContextMenuActions.Move);
+            TargetingRequest request = CreateRequest(StrategyMenuAction.Move);
 
             StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
                 hit,
@@ -348,7 +399,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);
             GameFleet fleet = new GameFleet();
-            TargetingRequest request = CreateRequest(StrategyContextMenuActions.MoveConfirm);
+            TargetingRequest request = CreateRequest(StrategyMenuAction.MoveConfirm);
 
             StrategyMissionTarget target = PlanetSystemWindowController.CreateTargetForHit(
                 hit,
@@ -368,12 +419,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
             StrategyMissionTarget missingHit = PlanetSystemWindowController.CreateTargetForHit(
                 null,
-                CreateRequest(StrategyContextMenuActions.Move),
+                CreateRequest(StrategyMenuAction.Move),
                 _fleet
             );
             StrategyMissionTarget emptyHit = PlanetSystemWindowController.CreateTargetForHit(
                 hit,
-                CreateRequest(StrategyContextMenuActions.Move),
+                CreateRequest(StrategyMenuAction.Move),
                 _fleet
             );
 
@@ -384,7 +435,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         private PlanetSystemWindowController CreateController()
         {
             return new PlanetSystemWindowController(
-                CreateFleetCommandController(),
+                _fleetCommandController,
                 () => _uiContext,
                 _targetingController,
                 _windowLayer,
@@ -398,11 +449,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _) => null
-            );
+            return new StrategyFleetCommandController(_gameManager);
         }
 
         private GameRoot CreateGame()
@@ -522,12 +569,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _dirtyCount++;
         }
 
-        private static TargetingRequest CreateRequest(int action)
+        private static TargetingRequest CreateRequest(StrategyMenuAction action)
         {
             return CreateRequest(action, Array.Empty<ISceneNode>());
         }
 
-        private static TargetingRequest CreateRequest(int action, IReadOnlyList<ISceneNode> items)
+        private static TargetingRequest CreateRequest(
+            StrategyMenuAction action,
+            IReadOnlyList<ISceneNode> items
+        )
         {
             return new TargetingRequest(
                 StrategyWindowTargetingSource.GetPrompt(action),
@@ -558,12 +608,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
-            public int MissionCreateCount { get; private set; }
-            public int MoveConfirmCount { get; private set; }
-            public int MoveCount { get; private set; }
+            public int RefreshCount { get; private set; }
+            public int TargetedCommandCount { get; private set; }
+            public GameResult LastBattleResult { get; private set; }
             public IReadOnlyList<ISceneNode> LastItems { get; private set; }
+            public StrategyMissionTarget LastTarget { get; private set; }
+            public StrategyWindowTargetingSource LastTargetingSource { get; private set; }
 
-            public void RefreshPlanetSystemState() { }
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            )
+            {
+                TargetedCommandCount++;
+                LastTargetingSource = source;
+                LastTarget = target;
+            }
+
+            public void OpenPlanetSystemBattleResult(GameResult result)
+            {
+                LastBattleResult = result;
+            }
+
+            public void RefreshPlanetSystemState()
+            {
+                RefreshCount++;
+            }
 
             public void OpenPlanetSystemPlanetWindow(
                 GalaxyMapPlanet planet,
@@ -596,7 +666,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 IReadOnlyList<ISceneNode> items
             )
             {
-                MissionCreateCount++;
                 LastItems = items;
             }
 
@@ -606,7 +675,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 IReadOnlyList<ISceneNode> items
             )
             {
-                MoveCount++;
                 LastItems = items;
                 return true;
             }
@@ -617,7 +685,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 IReadOnlyList<ISceneNode> items
             )
             {
-                MoveConfirmCount++;
                 LastItems = items;
             }
         }

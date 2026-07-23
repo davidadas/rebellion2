@@ -54,12 +54,14 @@ namespace Rebellion.Tests.Game.Messages
             Message message = new Message(MessageType.PopularSupport, "Support gained")
             {
                 InstanceID = "MSG1",
+                ResultType = MessageResultType.Bombardment,
                 DisplayImageKey = "mission_report",
                 OverlayImagePath = "overlay-card",
                 EventLocationInstanceID = "PLANET1",
                 NavigationTargetInstanceID = "OFFICER1",
                 NavigationSecondaryTargetInstanceID = "MISSION1",
                 MissionInstanceID = "mission-1",
+                CreatedTick = 42,
                 Read = true,
             };
 
@@ -75,6 +77,11 @@ namespace Rebellion.Tests.Game.Messages
                 message.Type,
                 deserialized.Type,
                 "Type should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.ResultType,
+                deserialized.ResultType,
+                "ResultType should be correctly deserialized."
             );
             Assert.AreEqual(
                 message.Text,
@@ -115,6 +122,11 @@ namespace Rebellion.Tests.Game.Messages
                 message.MissionInstanceID,
                 deserialized.MissionInstanceID,
                 "MissionInstanceID should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                message.CreatedTick,
+                deserialized.CreatedTick,
+                "CreatedTick should be correctly deserialized."
             );
         }
     }

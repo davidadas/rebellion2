@@ -45,25 +45,43 @@ public sealed class BattleAlertWindowView : MonoBehaviour
 
     [Header("Result Header")]
     [SerializeField]
-    private TextMeshProUGUI resultTitleTextField;
+    private TextMeshProUGUI resultPlanetaryTitleTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI resultFleetTitleTextField;
 
     [SerializeField]
     private TextMeshProUGUI resultSummaryTextField;
 
     [SerializeField]
-    private TextMeshProUGUI resultForceHeaderTextField;
+    private TextMeshProUGUI resultPlanetaryForceHeaderTextField;
 
     [SerializeField]
-    private TextMeshProUGUI resultFiltersTextField;
+    private TextMeshProUGUI resultFleetForceHeaderTextField;
 
     [SerializeField]
-    private TextMeshProUGUI resultTableTitleTextField;
+    private TextMeshProUGUI resultFleetFiltersTextField;
 
     [SerializeField]
-    private TextMeshProUGUI[] resultStandardColumnHeaderTextFields = Array.Empty<TextMeshProUGUI>();
+    private TextMeshProUGUI resultPlanetaryTableTitleTextField;
 
     [SerializeField]
-    private TextMeshProUGUI[] resultPersonnelColumnHeaderTextFields =
+    private TextMeshProUGUI resultFleetTableTitleTextField;
+
+    [SerializeField]
+    private TextMeshProUGUI[] resultPlanetaryStandardColumnHeaderTextFields =
+        Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resultFleetStandardColumnHeaderTextFields =
+        Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resultPlanetaryPersonnelColumnHeaderTextFields =
+        Array.Empty<TextMeshProUGUI>();
+
+    [SerializeField]
+    private TextMeshProUGUI[] resultFleetPersonnelColumnHeaderTextFields =
         Array.Empty<TextMeshProUGUI>();
 
     [Header("Result Table")]
@@ -465,7 +483,12 @@ public sealed class BattleAlertWindowView : MonoBehaviour
 
         HidePendingPresentation();
         HideButtons(commandButtonImages, commandButtonPressVisuals, commandButtons);
-        RenderButton(resultCloseButtonPressVisual, resultCloseButton, result.ResultCloseButton);
+        RenderButton(
+            resultCloseButtonImage,
+            resultCloseButtonPressVisual,
+            resultCloseButton,
+            result.ResultCloseButton
+        );
 
         switch (result.Panel)
         {
@@ -494,7 +517,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         HideResultDetailLabels();
         HideResultCategoryButtons();
         HideResultDirectButtons();
-        UILayout.SetTextContent(resultTitleTextField, result.Title, titleColor);
+        RenderResultTitle(titleColor, result);
         UILayout.SetTextContent(resultSummaryTextField, result.Summary, titleColor);
     }
 
@@ -507,7 +530,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         HideRows();
         HideResultDirectButtons();
-        UILayout.SetTextContent(resultTitleTextField, result.Title, titleColor);
+        RenderResultTitle(titleColor, result);
         resultSummaryTextField.gameObject.SetActive(false);
         RenderResultDetailLabels(result);
         RenderResultCategoryButtons(result.ResultCategories);
@@ -525,7 +548,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         HideResultItems();
         HideResultDetailLabels();
         HideResultCategoryButtons();
-        UILayout.SetTextContent(resultTitleTextField, result.Title, titleColor);
+        RenderResultTitle(titleColor, result);
         UILayout.SetTextContent(resultSummaryTextField, result.Summary, titleColor);
         RenderButtons(
             resultDirectButtonImages,
@@ -576,24 +599,57 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// <param name="result">The completed-result presentation.</param>
     private void RenderResultDetailLabels(BattleAlertResultRenderData result)
     {
+        HideResultDetailLabels();
+        bool planetary = result.UsesPlanetaryCategoryLayout;
+        TextMeshProUGUI forceHeaderTextField = planetary
+            ? resultPlanetaryForceHeaderTextField
+            : resultFleetForceHeaderTextField;
+        TextMeshProUGUI tableTitleTextField = planetary
+            ? resultPlanetaryTableTitleTextField
+            : resultFleetTableTitleTextField;
+        IReadOnlyList<TextMeshProUGUI> standardColumnHeaderTextFields = planetary
+            ? resultPlanetaryStandardColumnHeaderTextFields
+            : resultFleetStandardColumnHeaderTextFields;
+        IReadOnlyList<TextMeshProUGUI> personnelColumnHeaderTextFields = planetary
+            ? resultPlanetaryPersonnelColumnHeaderTextFields
+            : resultFleetPersonnelColumnHeaderTextFields;
+
         UILayout.SetTextContent(
-            resultForceHeaderTextField,
+            forceHeaderTextField,
             result.ResultForceHeader,
             result.ResultForceHeaderColor
         );
-        resultFiltersTextField.gameObject.SetActive(true);
-        UILayout.SetTextContent(resultTableTitleTextField, result.ResultTableTitle);
+        resultFleetFiltersTextField.gameObject.SetActive(!planetary);
+        UILayout.SetTextContent(tableTitleTextField, result.ResultTableTitle);
 
         if (result.UsesPersonnelColumns)
         {
-            HideTextFields(resultStandardColumnHeaderTextFields);
-            SetTextFields(resultPersonnelColumnHeaderTextFields, result.ResultColumnHeaders);
+            HideTextFields(standardColumnHeaderTextFields);
+            SetTextFields(personnelColumnHeaderTextFields, result.ResultColumnHeaders);
         }
         else
         {
-            HideTextFields(resultPersonnelColumnHeaderTextFields);
-            SetTextFields(resultStandardColumnHeaderTextFields, result.ResultColumnHeaders);
+            HideTextFields(personnelColumnHeaderTextFields);
+            SetTextFields(standardColumnHeaderTextFields, result.ResultColumnHeaders);
         }
+    }
+
+    /// <summary>
+    /// Applies the completed-result title to its planetary or fleet layout.
+    /// </summary>
+    /// <param name="titleColor">The faction-themed title color.</param>
+    /// <param name="result">The completed-result presentation.</param>
+    private void RenderResultTitle(Color titleColor, BattleAlertResultRenderData result)
+    {
+        resultPlanetaryTitleTextField.gameObject.SetActive(false);
+        resultFleetTitleTextField.gameObject.SetActive(false);
+        UILayout.SetTextContent(
+            result.UsesPlanetaryCategoryLayout
+                ? resultPlanetaryTitleTextField
+                : resultFleetTitleTextField,
+            result.Title,
+            titleColor
+        );
     }
 
     /// <summary>
@@ -606,9 +662,44 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         for (int i = 0; i < resultCategoryButtons.Length; i++)
         {
-            BattleAlertButtonRenderData button = i < categories.Count ? categories[i].Button : null;
-            RenderButton(resultCategoryButtonPressVisuals[i], resultCategoryButtons[i], button);
+            RenderButton(
+                resultCategoryButtonImages[i],
+                resultCategoryButtonPressVisuals[i],
+                resultCategoryButtons[i],
+                null
+            );
         }
+
+        foreach (BattleResultCategoryRenderData category in categories)
+        {
+            int index = GetCategoryButtonIndex(category.Category);
+            if (index < 0 || index >= resultCategoryButtons.Length)
+                continue;
+
+            RenderButton(
+                resultCategoryButtonImages[index],
+                resultCategoryButtonPressVisuals[index],
+                resultCategoryButtons[index],
+                category.Button
+            );
+        }
+    }
+
+    /// <summary>
+    /// Returns the authored button-array index for a result category.
+    /// </summary>
+    /// <param name="category">The result category.</param>
+    /// <returns>The authored array index, or negative one when absent.</returns>
+    private static int GetCategoryButtonIndex(BattleResultCategory category)
+    {
+        IReadOnlyList<BattleResultCategory> ordered = BattleResultCategoryCatalog.Ordered;
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            if (ordered[i] == category)
+                return i;
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -739,16 +830,20 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         int count = Math.Min(images.Count, Math.Min(pressVisuals.Count, buttons.Count));
         for (int i = 0; i < count; i++)
-            RenderButton(pressVisuals[i], buttons[i], i < data.Count ? data[i] : null);
+        {
+            RenderButton(images[i], pressVisuals[i], buttons[i], i < data.Count ? data[i] : null);
+        }
     }
 
     /// <summary>
     /// Applies one button presentation to an authored control.
     /// </summary>
+    /// <param name="image">The authored button image.</param>
     /// <param name="pressVisual">The authored pressed-state visual.</param>
     /// <param name="button">The authored button control.</param>
     /// <param name="data">The presentation to apply, or null to hide the control.</param>
     private static void RenderButton(
+        RawImage image,
         RawImagePressVisual pressVisual,
         Button button,
         BattleAlertButtonRenderData data
@@ -756,6 +851,16 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         bool visible = data != null;
         button.interactable = data?.Interactable == true;
+        if (data?.Bounds is RectInt bounds)
+        {
+            UILayout.SetSourceRect(
+                image.rectTransform,
+                bounds.x,
+                bounds.y,
+                bounds.width,
+                bounds.height
+            );
+        }
 
         pressVisual.SetInteractiveTextures(
             visible ? data.Texture : null,
@@ -777,7 +882,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         int count = Math.Min(images.Count, Math.Min(pressVisuals.Count, buttons.Count));
         for (int i = 0; i < count; i++)
-            RenderButton(pressVisuals[i], buttons[i], null);
+            RenderButton(images[i], pressVisuals[i], buttons[i], null);
     }
 
     /// <summary>
@@ -825,13 +930,14 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// </summary>
     private void HideResultPresentation()
     {
-        resultTitleTextField.gameObject.SetActive(false);
+        resultPlanetaryTitleTextField.gameObject.SetActive(false);
+        resultFleetTitleTextField.gameObject.SetActive(false);
         resultSummaryTextField.gameObject.SetActive(false);
         HideResultDetailLabels();
         HideResultItems();
         HideResultCategoryButtons();
         HideResultDirectButtons();
-        RenderButton(resultCloseButtonPressVisual, resultCloseButton, null);
+        RenderButton(resultCloseButtonImage, resultCloseButtonPressVisual, resultCloseButton, null);
     }
 
     /// <summary>
@@ -839,11 +945,15 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// </summary>
     private void HideResultDetailLabels()
     {
-        resultForceHeaderTextField.gameObject.SetActive(false);
-        resultFiltersTextField.gameObject.SetActive(false);
-        resultTableTitleTextField.gameObject.SetActive(false);
-        HideTextFields(resultStandardColumnHeaderTextFields);
-        HideTextFields(resultPersonnelColumnHeaderTextFields);
+        resultPlanetaryForceHeaderTextField.gameObject.SetActive(false);
+        resultFleetForceHeaderTextField.gameObject.SetActive(false);
+        resultFleetFiltersTextField.gameObject.SetActive(false);
+        resultPlanetaryTableTitleTextField.gameObject.SetActive(false);
+        resultFleetTableTitleTextField.gameObject.SetActive(false);
+        HideTextFields(resultPlanetaryStandardColumnHeaderTextFields);
+        HideTextFields(resultFleetStandardColumnHeaderTextFields);
+        HideTextFields(resultPlanetaryPersonnelColumnHeaderTextFields);
+        HideTextFields(resultFleetPersonnelColumnHeaderTextFields);
     }
 
     /// <summary>
@@ -852,7 +962,14 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     private void HideResultCategoryButtons()
     {
         for (int i = 0; i < resultCategoryButtons.Length; i++)
-            RenderButton(resultCategoryButtonPressVisuals[i], resultCategoryButtons[i], null);
+        {
+            RenderButton(
+                resultCategoryButtonImages[i],
+                resultCategoryButtonPressVisuals[i],
+                resultCategoryButtons[i],
+                null
+            );
+        }
     }
 
     /// <summary>
@@ -954,23 +1071,47 @@ public sealed class BattleAlertWindowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/RowsScrollArea is missing.");
         if (rowTemplate == null)
             throw new MissingReferenceException($"{name}/RowTemplate is missing.");
-        if (resultTitleTextField == null)
-            throw new MissingReferenceException($"{name}/ResultTitleTextField is missing.");
+        if (resultPlanetaryTitleTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResultPlanetaryTitleTextField is missing."
+            );
+        if (resultFleetTitleTextField == null)
+            throw new MissingReferenceException($"{name}/ResultFleetTitleTextField is missing.");
         if (resultSummaryTextField == null)
             throw new MissingReferenceException($"{name}/ResultSummaryTextField is missing.");
-        if (resultForceHeaderTextField == null)
-            throw new MissingReferenceException($"{name}/ResultForceHeaderTextField is missing.");
-        if (resultFiltersTextField == null)
-            throw new MissingReferenceException($"{name}/ResultFiltersTextField is missing.");
-        if (resultTableTitleTextField == null)
-            throw new MissingReferenceException($"{name}/ResultTableTitleTextField is missing.");
-        if (resultStandardColumnHeaderTextFields?.Length != _standardResultColumnCount)
+        if (resultPlanetaryForceHeaderTextField == null)
             throw new MissingReferenceException(
-                $"{name}/ResultStandardColumnHeaderTextFields are missing."
+                $"{name}/ResultPlanetaryForceHeaderTextField is missing."
             );
-        if (resultPersonnelColumnHeaderTextFields?.Length != _personnelResultColumnCount)
+        if (resultFleetForceHeaderTextField == null)
             throw new MissingReferenceException(
-                $"{name}/ResultPersonnelColumnHeaderTextFields are missing."
+                $"{name}/ResultFleetForceHeaderTextField is missing."
+            );
+        if (resultFleetFiltersTextField == null)
+            throw new MissingReferenceException($"{name}/ResultFleetFiltersTextField is missing.");
+        if (resultPlanetaryTableTitleTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResultPlanetaryTableTitleTextField is missing."
+            );
+        if (resultFleetTableTitleTextField == null)
+            throw new MissingReferenceException(
+                $"{name}/ResultFleetTableTitleTextField is missing."
+            );
+        if (resultPlanetaryStandardColumnHeaderTextFields?.Length != _standardResultColumnCount)
+            throw new MissingReferenceException(
+                $"{name}/ResultPlanetaryStandardColumnHeaderTextFields are missing."
+            );
+        if (resultFleetStandardColumnHeaderTextFields?.Length != _standardResultColumnCount)
+            throw new MissingReferenceException(
+                $"{name}/ResultFleetStandardColumnHeaderTextFields are missing."
+            );
+        if (resultPlanetaryPersonnelColumnHeaderTextFields?.Length != _personnelResultColumnCount)
+            throw new MissingReferenceException(
+                $"{name}/ResultPlanetaryPersonnelColumnHeaderTextFields are missing."
+            );
+        if (resultFleetPersonnelColumnHeaderTextFields?.Length != _personnelResultColumnCount)
+            throw new MissingReferenceException(
+                $"{name}/ResultFleetPersonnelColumnHeaderTextFields are missing."
             );
         if (resultRowsScrollArea == null)
             throw new MissingReferenceException($"{name}/ResultRowsScrollArea is missing.");

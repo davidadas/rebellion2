@@ -4,6 +4,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -168,7 +169,7 @@ internal sealed class MissionsWindowProjector
             if (participant is not ISceneNode node)
                 continue;
 
-            bool isInTransit = node is IMovable { Movement: not null };
+            bool isInTransit = node is IMovable movable && movable.GetTransitMovement() != null;
             Texture backgroundTexture = isInTransit
                 ? uiContext.GetEntityStatusTexture(node, true)
                 : null;
@@ -197,7 +198,7 @@ internal sealed class MissionsWindowProjector
         if (mission == null)
             return null;
 
-        string targetInstanceId = GetMissionTargetInstanceId(mission);
+        string targetInstanceId = GetMissionTargetInstanceID(mission);
         if (!string.IsNullOrEmpty(targetInstanceId))
             return findVisibleNode(targetInstanceId);
 
@@ -211,7 +212,7 @@ internal sealed class MissionsWindowProjector
     /// </summary>
     /// <param name="mission">The mission to inspect.</param>
     /// <returns>The explicit target identifier, or null.</returns>
-    private static string GetMissionTargetInstanceId(Mission mission)
+    private static string GetMissionTargetInstanceID(Mission mission)
     {
         return mission switch
         {

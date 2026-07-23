@@ -210,7 +210,11 @@ namespace Rebellion.Tests.Game.Units
                 ManufacturingStatus = ManufacturingStatus.Building,
                 ProductionType = ManufacturingType.Building,
                 ProductionCycleProgress = 1.5,
+                ProductionCycleDuration = 4,
                 ProductionPointReady = true,
+                ProductionInputReserved = true,
+                ResourceMaintenanceAllocation = 12,
+                ResourceStartupCyclePending = false,
                 Movement = null,
             };
 
@@ -239,8 +243,24 @@ namespace Rebellion.Tests.Game.Units
                 deserializedBuilding.ProductionCycleProgress
             );
             Assert.AreEqual(
+                building.ProductionCycleDuration,
+                deserializedBuilding.ProductionCycleDuration
+            );
+            Assert.AreEqual(
                 building.ProductionPointReady,
                 deserializedBuilding.ProductionPointReady
+            );
+            Assert.AreEqual(
+                building.ProductionInputReserved,
+                deserializedBuilding.ProductionInputReserved
+            );
+            Assert.AreEqual(
+                building.ResourceMaintenanceAllocation,
+                deserializedBuilding.ResourceMaintenanceAllocation
+            );
+            Assert.AreEqual(
+                building.ResourceStartupCyclePending,
+                deserializedBuilding.ResourceStartupCyclePending
             );
             Assert.AreEqual(building.GetPosition().X, deserializedBuilding.GetPosition().X);
             Assert.AreEqual(building.GetPosition().Y, deserializedBuilding.GetPosition().Y);

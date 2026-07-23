@@ -53,7 +53,7 @@ internal sealed class MessagesWindowSession
         if (currentMessages != null)
             messages.AddRange(currentMessages);
 
-        HashSet<string> availableMessageIds = GetMessageIds(messages);
+        HashSet<string> availableMessageIds = GetMessageIDs(messages);
         selectedMessageIds.RemoveWhere(messageId => !availableMessageIds.Contains(messageId));
         if (!availableMessageIds.Contains(selectedMessageId))
             selectedMessageId = null;
@@ -76,7 +76,7 @@ internal sealed class MessagesWindowSession
     public void SelectOnly(Message message)
     {
         selectedMessageIds.Clear();
-        selectedMessageId = GetMessageId(message);
+        selectedMessageId = GetMessageID(message);
         if (selectedMessageId != null)
             selectedMessageIds.Add(selectedMessageId);
     }
@@ -87,7 +87,7 @@ internal sealed class MessagesWindowSession
     public void SelectAll()
     {
         selectedMessageIds.Clear();
-        foreach (string messageId in GetMessageIds(messages))
+        foreach (string messageId in GetMessageIDs(messages))
             selectedMessageIds.Add(messageId);
     }
 
@@ -95,7 +95,7 @@ internal sealed class MessagesWindowSession
     /// Gets an immutable snapshot of all selected message identifiers.
     /// </summary>
     /// <returns>The selected message identifiers.</returns>
-    public IReadOnlyCollection<string> GetSelectedMessageIds()
+    public IReadOnlyCollection<string> GetSelectedMessageIDs()
     {
         string[] result = new string[selectedMessageIds.Count];
         selectedMessageIds.CopyTo(result);
@@ -113,7 +113,7 @@ internal sealed class MessagesWindowSession
 
         for (int index = 0; index < messages.Count; index++)
         {
-            if (GetMessageId(messages[index]) == selectedMessageId)
+            if (GetMessageID(messages[index]) == selectedMessageId)
                 return messages[index];
         }
 
@@ -171,7 +171,7 @@ internal sealed class MessagesWindowSession
     /// </summary>
     /// <param name="messages">The messages to inspect.</param>
     /// <returns>The available message identifiers.</returns>
-    private static HashSet<string> GetMessageIds(IReadOnlyList<Message> messages)
+    private static HashSet<string> GetMessageIDs(IReadOnlyList<Message> messages)
     {
         HashSet<string> messageIds = new HashSet<string>(StringComparer.Ordinal);
         if (messages == null)
@@ -179,7 +179,7 @@ internal sealed class MessagesWindowSession
 
         for (int index = 0; index < messages.Count; index++)
         {
-            string messageId = GetMessageId(messages[index]);
+            string messageId = GetMessageID(messages[index]);
             if (messageId != null)
                 messageIds.Add(messageId);
         }
@@ -219,7 +219,7 @@ internal sealed class MessagesWindowSession
 
         for (int index = 0; index < messages.Count; index++)
         {
-            if (GetMessageId(messages[index]) == messageId)
+            if (GetMessageID(messages[index]) == messageId)
                 return index;
         }
 
@@ -231,7 +231,7 @@ internal sealed class MessagesWindowSession
     /// </summary>
     /// <param name="message">The message to inspect.</param>
     /// <returns>The message identifier, or null.</returns>
-    private static string GetMessageId(Message message)
+    private static string GetMessageID(Message message)
     {
         return message?.InstanceID;
     }

@@ -4,7 +4,9 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
+using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
 {
@@ -141,6 +143,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
         public void BuildGalaxyOverview_NullFaction_ReturnsEmpty()
         {
             IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(null);
+
+            Assert.IsEmpty(rows);
+        }
+
+        [Test]
+        public void BuildGalaxyOverview_UnitCarriedByMovingFleet_ExcludesUnit()
+        {
+            Faction faction = new Faction { InstanceID = "faction" };
+            Regiment regiment = new Regiment
+            {
+                TypeID = "regiment",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            CapitalShip ship = new CapitalShip();
+            GameFleet fleet = new GameFleet { Movement = new MovementState() };
+            ship.SetParent(fleet);
+            regiment.SetParent(ship);
+            faction.AddOwnedUnit(regiment);
+
+            IReadOnlyList<AdvisorReportRow> rows = AdvisorReportBuilder.BuildGalaxyOverview(
+                faction
+            );
 
             Assert.IsEmpty(rows);
         }

@@ -27,7 +27,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
 
             StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
                 window,
-                StrategyContextMenuActions.Move,
+                StrategyMenuAction.Move,
                 12,
                 34,
                 items
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             items.Clear();
 
             Assert.AreSame(window, source.Window);
-            Assert.AreEqual(StrategyContextMenuActions.Move, source.Action);
+            Assert.AreEqual(StrategyMenuAction.Move, source.Action);
             Assert.AreEqual(12, source.SourceX);
             Assert.AreEqual(34, source.SourceY);
             Assert.AreEqual(1, source.Items.Count);
@@ -47,7 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
         {
             StrategyWindowTargetingSource source = new StrategyWindowTargetingSource(
                 null,
-                StrategyContextMenuActions.Status,
+                StrategyMenuAction.Status,
                 0,
                 0,
                 null
@@ -57,12 +57,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             Assert.IsEmpty(source.Items);
         }
 
-        [TestCase(StrategyContextMenuActions.CreateMission, "Select mission target")]
-        [TestCase(StrategyContextMenuActions.Destination, "Select destination")]
-        [TestCase(StrategyContextMenuActions.Move, "Select move destination")]
-        [TestCase(StrategyContextMenuActions.MoveConfirm, "Select move destination")]
-        [TestCase(StrategyContextMenuActions.Status, "Select target")]
-        public void GetPrompt_Action_ReturnsExpectedPrompt(int action, string expectedPrompt)
+        [TestCase(StrategyMenuAction.CreateMission, "Select mission target")]
+        [TestCase(StrategyMenuAction.Destination, "Select destination")]
+        [TestCase(StrategyMenuAction.Move, "Select move destination")]
+        [TestCase(StrategyMenuAction.MoveConfirm, "Select move destination")]
+        [TestCase(StrategyMenuAction.Status, "Select target")]
+        public void GetPrompt_Action_ReturnsExpectedPrompt(
+            StrategyMenuAction action,
+            string expectedPrompt
+        )
         {
             string prompt = StrategyWindowTargetingSource.GetPrompt(action);
 

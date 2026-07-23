@@ -272,7 +272,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_WithInitialParentId_OfficerAddedToDesignatedPlanet()
+        public void Seed_WithInitialParentID_OfficerAddedToDesignatedPlanet()
         {
             Planet other = new Planet
             {
@@ -300,7 +300,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_WithInitialParentTypeId_DeploysPinnedOfficerOutsideRecruitableLimit()
+        public void Seed_WithInitialParentTypeID_DeploysPinnedOfficerOutsideRecruitableLimit()
         {
             _rules.Officers.NumInitialOfficers.Small = 0;
 

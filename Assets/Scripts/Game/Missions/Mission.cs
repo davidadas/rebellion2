@@ -153,7 +153,7 @@ namespace Rebellion.Game.Missions
         {
             CurrentProgress = 0;
             MaxProgress = maxProgress;
-            CaptureParticipantIds();
+            CaptureParticipantIDs();
             HasInitiated = true;
         }
 
@@ -197,9 +197,9 @@ namespace Rebellion.Game.Missions
         /// <summary>
         /// Captures the current mission participant IDs.
         /// </summary>
-        private void CaptureParticipantIds()
+        private void CaptureParticipantIDs()
         {
-            _participantInstanceIds = GetParticipantIds();
+            _participantInstanceIds = GetParticipantIDs();
             _hasCapturedParticipantIds = true;
         }
 
@@ -211,11 +211,11 @@ namespace Rebellion.Game.Missions
         {
             if (!_hasCapturedParticipantIds)
             {
-                CaptureParticipantIds();
+                CaptureParticipantIDs();
                 return false;
             }
 
-            HashSet<string> currentParticipantIds = GetParticipantIds();
+            HashSet<string> currentParticipantIds = GetParticipantIDs();
             if (currentParticipantIds.Count != _participantInstanceIds.Count)
                 return true;
 
@@ -226,7 +226,7 @@ namespace Rebellion.Game.Missions
         /// Returns all current participant IDs.
         /// </summary>
         /// <returns>The current participant ID set.</returns>
-        private HashSet<string> GetParticipantIds() =>
+        private HashSet<string> GetParticipantIDs() =>
             GetAllParticipants()
                 .Where(participant => !string.IsNullOrEmpty(participant.InstanceID))
                 .Select(participant => participant.InstanceID)
@@ -387,7 +387,7 @@ namespace Rebellion.Game.Missions
             if (planet == null)
                 return null;
 
-            HashSet<string> participantIds = GetParticipantIds();
+            HashSet<string> participantIds = GetParticipantIDs();
             return planet
                 .GetAllOfficers()
                 .FirstOrDefault(o =>
@@ -428,7 +428,7 @@ namespace Rebellion.Game.Missions
             if (planet == null)
                 return 0;
 
-            return GetBestSupportRating(planet, locationOwnerId, GetContainerId(location));
+            return GetBestSupportRating(planet, locationOwnerId, GetContainerID(location));
         }
 
         /// <summary>
@@ -478,7 +478,7 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 int value = candidate.GetEffectiveRating(OfficerRating.Espionage);
-                if (GetContainerId(candidate) == locationContainer)
+                if (GetContainerID(candidate) == locationContainer)
                     sameContainerRating = Math.Max(sameContainerRating, value);
                 else
                     otherContainerRating = Math.Max(otherContainerRating, value);
@@ -511,7 +511,7 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="node">The node to inspect.</param>
         /// <returns>The parent ID when present; otherwise the node ID or an empty string.</returns>
-        private static string GetContainerId(ISceneNode node)
+        private static string GetContainerID(ISceneNode node)
         {
             return node?.GetParent()?.GetInstanceID() ?? node?.GetInstanceID() ?? string.Empty;
         }
@@ -540,12 +540,28 @@ namespace Rebellion.Game.Missions
         {
             foreach (IMissionParticipant participant in MainParticipants)
             {
-                double successThreshold = GetAgentProbability(participant, game);
-                double rolledValue = provider.NextDouble() * 100;
-                if (IsSuccessfulProbabilityRoll(rolledValue, successThreshold))
+                if (RollParticipantSuccess(participant, provider, game))
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Rolls one main participant against this mission's success probability.
+        /// </summary>
+        /// <param name="participant">The participant attempting the mission.</param>
+        /// <param name="provider">The random number provider for the roll.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>True when the participant succeeds.</returns>
+        internal bool RollParticipantSuccess(
+            IMissionParticipant participant,
+            IRandomNumberProvider provider,
+            GameRoot game
+        )
+        {
+            double successThreshold = GetAgentProbability(participant, game);
+            double rolledValue = provider.NextDouble() * 100;
+            return IsSuccessfulProbabilityRoll(rolledValue, successThreshold);
         }
 
         /// <summary>
@@ -603,7 +619,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for all probability rolls.</param>
         /// <returns>All results produced by the outcome, with a MissionCompletedResult appended last.</returns>
-        public virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome;
@@ -714,10 +730,17 @@ namespace Rebellion.Game.Missions
         protected virtual void ImproveMissionParticipantRatings()
         {
             foreach (IMissionParticipant participant in MainParticipants.Concat(DecoyParticipants))
-            {
-                if (participant is Officer officer && participant.CanImproveMissionRating)
-                    officer.IncrementBaseRating(ParticipantRating);
-            }
+                ImproveMissionParticipantRating(participant);
+        }
+
+        /// <summary>
+        /// Improves an eligible officer's base rating for this mission.
+        /// </summary>
+        /// <param name="participant">The successful mission participant.</param>
+        internal void ImproveMissionParticipantRating(IMissionParticipant participant)
+        {
+            if (participant is Officer officer && participant.CanImproveMissionRating)
+                officer.IncrementBaseRating(ParticipantRating);
         }
 
         /// <summary>

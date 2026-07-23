@@ -262,6 +262,9 @@ public sealed class ContextMenuCommandView
         if (size.x <= 0 || size.y <= 0)
             return iconTemplateRect;
 
+        if (size.y >= rootTemplateRect.height)
+            return new RectInt(textTemplateRect.x, 0, size.x, size.y);
+
         return new RectInt(
             iconTemplateRect.x,
             iconTemplateRect.y + Mathf.Max(0, (rootTemplateRect.height - size.y) / 2),

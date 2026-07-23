@@ -120,14 +120,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void Render_ResultSummary_AppliesSummaryAndCloseControl()
         {
-            BattleAlertResultRenderData result = CreateResult(BattleResultPanel.Summary);
+            BattleAlertResultRenderData result = CreateResult(
+                BattleResultPanel.Summary,
+                planetary: true
+            );
 
             _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
 
-            Assert.AreEqual("Battle at Corellia", FindText("ResultTitleTextField").text);
-            Assert.AreEqual("Victory", FindText("ResultSummaryTextField").text);
+            TextMeshProUGUI title = FindText("ResultPlanetaryTitleTextField");
+            TextMeshProUGUI summary = FindText("ResultSummaryTextField");
+            Assert.AreEqual("Battle at Corellia", title.text);
+            Assert.AreEqual(
+                new RectInt(12, 13, 400, 24),
+                UILayout.GetSourceRect(title.rectTransform)
+            );
+            Assert.AreEqual(24f, title.fontSize);
+            Assert.AreEqual(FontStyles.Normal, title.fontStyle);
+            Assert.AreEqual(TextAlignmentOptions.Top, title.alignment);
+            Assert.IsFalse(title.GetComponent<Shadow>().enabled);
+            Assert.AreEqual("Victory", summary.text);
+            Assert.AreEqual(
+                new RectInt(25, 225, 350, 70),
+                UILayout.GetSourceRect(summary.rectTransform)
+            );
+            Assert.AreEqual(18f, summary.fontSize);
+            Assert.AreEqual(FontStyles.Normal, summary.fontStyle);
+            Assert.AreEqual(TextAlignmentOptions.TopLeft, summary.alignment);
+            Assert.AreEqual(TextWrappingModes.Normal, summary.textWrappingMode);
+            Assert.IsTrue(summary.GetComponent<Shadow>().enabled);
             Assert.IsTrue(FindObject("ResultSummaryTextField").activeSelf);
             Assert.IsTrue(FindObject("ResultCloseButtonImage").activeSelf);
+            Assert.AreEqual(
+                new RectInt(418, 88, 41, 41),
+                UILayout.GetSourceRect(FindComponent<RawImage>("SummaryButtonImage").rectTransform)
+            );
             Assert.IsFalse(FindObject("ResultRowsScrollArea").activeSelf);
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultDirectSystemButtonImage").activeSelf);
@@ -143,6 +169,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                         "Operational Ship",
                         _texture,
                         _texture,
+                        _texture,
                         _texture
                     ),
                 },
@@ -156,15 +183,54 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
 
-            Assert.AreEqual("Alliance Forces", FindText("ResultForceHeaderTextField").text);
-            Assert.AreEqual("Capital Ships", FindText("ResultTableTitleTextField").text);
-            Assert.AreEqual("Operational", FindText("ResultOperationalHeaderTextField").text);
-            Assert.AreEqual("Destroyed", FindText("ResultDestroyedHeaderTextField").text);
+            TextMeshProUGUI title = FindText("ResultFleetTitleTextField");
+            TextMeshProUGUI forceHeader = FindText("ResultFleetForceHeaderTextField");
+            TextMeshProUGUI filters = FindText("ResultFleetFiltersTextField");
+            TextMeshProUGUI tableTitle = FindText("ResultFleetTableTitleTextField");
+            TextMeshProUGUI operationalHeader = FindText("ResultFleetOperationalHeaderTextField");
+            TextMeshProUGUI destroyedHeader = FindText("ResultFleetDestroyedHeaderTextField");
+            Assert.AreEqual("Battle at Corellia", title.text);
+            Assert.AreEqual(
+                new RectInt(12, 13, 400, 24),
+                UILayout.GetSourceRect(title.rectTransform)
+            );
+            Assert.AreEqual("Alliance Forces", forceHeader.text);
+            Assert.AreEqual(
+                new RectInt(12, 36, 347, 20),
+                UILayout.GetSourceRect(forceHeader.rectTransform)
+            );
+            Assert.AreEqual(18f, forceHeader.fontSize);
+            Assert.AreEqual(FontStyles.Normal, forceHeader.fontStyle);
+            Assert.AreEqual(TextAlignmentOptions.Top, forceHeader.alignment);
+            Assert.IsFalse(forceHeader.GetComponent<Shadow>().enabled);
+            Assert.AreEqual(
+                new RectInt(86, 70, 165, 18),
+                UILayout.GetSourceRect(filters.rectTransform)
+            );
+            Assert.AreEqual(16f, filters.fontSize);
+            Assert.AreEqual("Capital Ships", tableTitle.text);
+            Assert.AreEqual(
+                new RectInt(38, 100, 400, 18),
+                UILayout.GetSourceRect(tableTitle.rectTransform)
+            );
+            Assert.AreEqual(16f, tableTitle.fontSize);
+            Assert.AreEqual("Operational", operationalHeader.text);
+            Assert.AreEqual(
+                new RectInt(38, 117, 165, 18),
+                UILayout.GetSourceRect(operationalHeader.rectTransform)
+            );
+            Assert.AreEqual("Destroyed", destroyedHeader.text);
+            Assert.AreEqual(
+                new RectInt(204, 117, 165, 18),
+                UILayout.GetSourceRect(destroyedHeader.rectTransform)
+            );
             Assert.IsTrue(FindObject("ResultStandardOperationalColumn").activeSelf);
             Assert.IsTrue(FindObject("ResultStandardDestroyedColumn").activeSelf);
             Assert.IsFalse(FindObject("ResultPersonnelOperationalColumn").activeSelf);
             Assert.IsTrue(FindObject("ResultCapitalShipsButtonImage").activeSelf);
             Assert.IsFalse(FindComponent<Button>("ResultPersonnelButtonImage").interactable);
+            Assert.IsTrue(FindObject("ResultFleetFiltersTextField").activeSelf);
+            Assert.IsFalse(FindObject("ResultPlanetaryForceHeaderTextField").activeSelf);
             BattleResultItemView operational = FindResultItems("ResultStandardOperationalColumn")
                 .Single();
             BattleResultItemView destroyed = FindResultItems("ResultStandardDestroyedColumn")
@@ -173,7 +239,66 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreSame(_texture, FindItemImage(operational, "BaseImage").texture);
             Assert.AreSame(_texture, FindItemImage(operational, "WithdrawingOverlayImage").texture);
             Assert.AreSame(_texture, FindItemImage(operational, "DamagedOverlayImage").texture);
+            Assert.AreSame(_texture, FindItemImage(operational, "CapturedOverlayImage").texture);
+            TextMeshProUGUI operationalName = FindItemText(operational, "NameTextField");
+            Assert.AreEqual(14f, operationalName.fontSize);
+            Assert.AreEqual(FontStyles.Normal, operationalName.fontStyle);
+            Assert.IsFalse(operationalName.GetComponent<Shadow>().enabled);
             Assert.AreEqual("Destroyed Ship", FindItemText(destroyed, "NameTextField").text);
+        }
+
+        [Test]
+        public void Render_PlanetaryResultDetail_UsesSourceLabelsWithoutFilters()
+        {
+            BattleAlertResultRenderData result = CreateResult(
+                BattleResultPanel.FirstForces,
+                BattleResultCategory.Manufacturing,
+                planetary: true
+            );
+
+            _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
+
+            TextMeshProUGUI forceHeader = FindText("ResultPlanetaryForceHeaderTextField");
+            TextMeshProUGUI tableTitle = FindText("ResultPlanetaryTableTitleTextField");
+            TextMeshProUGUI operationalHeader = FindText(
+                "ResultPlanetaryOperationalHeaderTextField"
+            );
+            TextMeshProUGUI destroyedHeader = FindText("ResultPlanetaryDestroyedHeaderTextField");
+            Assert.IsFalse(FindObject("ResultFleetFiltersTextField").activeSelf);
+            Assert.IsFalse(FindObject("ResultFleetForceHeaderTextField").activeSelf);
+            Assert.AreEqual("Alliance Forces", forceHeader.text);
+            Assert.AreEqual(
+                new RectInt(12, 36, 347, 20),
+                UILayout.GetSourceRect(forceHeader.rectTransform)
+            );
+            Assert.AreEqual(18f, forceHeader.fontSize);
+            Assert.AreEqual(FontStyles.Normal, forceHeader.fontStyle);
+            Assert.AreEqual("Capital Ships", tableTitle.text);
+            Assert.AreEqual(
+                new RectInt(38, 100, 400, 18),
+                UILayout.GetSourceRect(tableTitle.rectTransform)
+            );
+            Assert.AreEqual(16f, tableTitle.fontSize);
+            Assert.AreEqual(
+                new RectInt(38, 117, 165, 18),
+                UILayout.GetSourceRect(operationalHeader.rectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(204, 117, 165, 18),
+                UILayout.GetSourceRect(destroyedHeader.rectTransform)
+            );
+            Assert.AreEqual(
+                new RectInt(36, 59, 49, 41),
+                UILayout.GetSourceRect(
+                    FindComponent<RawImage>("ResultCapitalShipsButtonImage").rectTransform
+                )
+            );
+            Assert.AreEqual(
+                new RectInt(348, 59, 49, 41),
+                UILayout.GetSourceRect(
+                    FindComponent<RawImage>("ResultPersonnelButtonImage").rectTransform
+                )
+            );
         }
 
         [Test]
@@ -195,14 +320,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(FindObject("ResultStandardDestroyedColumn").activeSelf);
             Assert.IsTrue(FindObject("ResultPersonnelOperationalColumn").activeSelf);
             Assert.IsTrue(FindObject("ResultPersonnelDestroyedColumn").activeSelf);
-            Assert.AreEqual("Survivors", FindText("ResultSurvivorsHeaderTextField").text);
-            Assert.AreEqual("Captured", FindText("ResultCapturedHeaderTextField").text);
-            Assert.AreEqual("Killed", FindText("ResultKilledHeaderTextField").text);
+            Assert.AreEqual("Survivors", FindText("ResultFleetSurvivorsHeaderTextField").text);
+            Assert.AreEqual("Captured", FindText("ResultFleetCapturedHeaderTextField").text);
+            Assert.AreEqual("Killed", FindText("ResultFleetKilledHeaderTextField").text);
             BattleResultItemView emptyItem = FindResultItems("ResultPersonnelDestroyedColumn")
                 .Single();
             Assert.IsFalse(FindItemObject(emptyItem, "NameTextField").activeSelf);
             Assert.IsTrue(FindItemObject(emptyItem, "EmptyTextField").activeSelf);
-            Assert.AreEqual("No Casualties", FindItemText(emptyItem, "EmptyTextField").text);
+            TextMeshProUGUI emptyText = FindItemText(emptyItem, "EmptyTextField");
+            Assert.AreEqual("No Casualties", emptyText.text);
+            Assert.AreEqual(18f, emptyText.fontSize);
+            Assert.AreEqual(FontStyles.Normal, emptyText.fontStyle);
+            Assert.AreEqual(TextAlignmentOptions.Center, emptyText.alignment);
         }
 
         [Test]
@@ -441,7 +570,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _texture,
                 _texture,
                 Color.yellow,
-                CreateButtons(BattleAlertPanelCatalog.Ordered.Count),
+                CreateViewButtons(mode),
                 pending,
                 result
             );
@@ -471,17 +600,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         private BattleAlertResultRenderData CreateResult(
             BattleResultPanel panel,
             BattleResultCategory category = BattleResultCategory.CapitalShips,
-            BattleResultTableRenderData table = null
+            BattleResultTableRenderData table = null,
+            bool planetary = false
         )
         {
             string[] headers =
                 category == BattleResultCategory.Personnel
                     ? new[] { "Survivors", "Captured", "Killed" }
                     : new[] { "Operational", "Destroyed" };
-            BattleResultCategoryRenderData[] categories = BattleResultCategoryCatalog
-                .Ordered.Select(
+            BattleResultCategory[] categoryOrder = planetary
+                ? BattleResultCategoryCatalog.Ordered.ToArray()
+                : new[]
+                {
+                    BattleResultCategory.CapitalShips,
+                    BattleResultCategory.Starfighters,
+                    BattleResultCategory.Troops,
+                    BattleResultCategory.Personnel,
+                };
+            int[] categoryXs = planetary
+                ? new[] { 36, 98, 160, 222, 284, 348 }
+                : new[] { 130, 179, 228, 277 };
+            BattleResultCategoryRenderData[] categories = categoryOrder
+                .Select(
                     (value, index) =>
-                        new BattleResultCategoryRenderData(value, CreateButton(index != 3))
+                        new BattleResultCategoryRenderData(
+                            value,
+                            CreateButton(index != 3, new RectInt(categoryXs[index], 59, 49, 41))
+                        )
                 )
                 .ToArray();
             return new BattleAlertResultRenderData(
@@ -495,9 +640,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 category == BattleResultCategory.Personnel ? "Personnel" : "Capital Ships",
                 headers,
                 categories,
+                planetary,
                 CreateButtons(2),
                 table
             );
+        }
+
+        private BattleAlertButtonRenderData[] CreateViewButtons(BattleAlertWindowMode mode)
+        {
+            int[] yPositions =
+                mode == BattleAlertWindowMode.Result
+                    ? new[] { 88, 141, 196, 250 }
+                    : new[] { 21, 81, 141, 201 };
+            return yPositions
+                .Select(y => CreateButton(true, new RectInt(418, y, 41, 41)))
+                .ToArray();
         }
 
         private BattleAlertButtonRenderData[] CreateButtons(int count)
@@ -505,9 +662,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             return Enumerable.Range(0, count).Select(_ => CreateButton(true)).ToArray();
         }
 
-        private BattleAlertButtonRenderData CreateButton(bool interactable)
+        private BattleAlertButtonRenderData CreateButton(bool interactable, RectInt? bounds = null)
         {
-            return new BattleAlertButtonRenderData(interactable, _texture, _texture);
+            return new BattleAlertButtonRenderData(interactable, _texture, _texture, bounds);
         }
 
         private BattleAlertRowView[] FindRows()

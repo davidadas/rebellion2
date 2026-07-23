@@ -269,6 +269,29 @@ namespace Rebellion.Tests.UI.Components.ContextMenu
         }
 
         [Test]
+        public void ParentCommandPointerEnter_WithLeftSideAvailable_OpensSubmenuToTheLeft()
+        {
+            ContextMenuCommandItem parent = new ContextMenuCommandItem(
+                new TestCommand("Parent", true),
+                submenuCommands: new[]
+                {
+                    new ContextMenuCommandItem(new TestCommand("Child", true)),
+                }
+            );
+            _view.OpenAt(null, 300, 10, 100, new[] { parent });
+            _view.RenderCurrent();
+            ContextMenuPanelView rootPanel = FindRenderedPanels().Single();
+
+            FindRenderedRows(rootPanel).Single().OnPointerEnter(new PointerEventData(null));
+
+            ContextMenuPanelView[] panels = FindRenderedPanels();
+            RectInt parentRect = UILayout.GetSourceRect(panels[0].transform as RectTransform);
+            RectInt submenuRect = UILayout.GetSourceRect(panels[1].transform as RectTransform);
+            Assert.Less(submenuRect.x, parentRect.x);
+            Assert.Greater(submenuRect.xMax, parentRect.x);
+        }
+
+        [Test]
         public void RenderCurrent_ShorterReplacementMenu_HidesUnusedRowsAndPanels()
         {
             ContextMenuCommandItem parent = new ContextMenuCommandItem(

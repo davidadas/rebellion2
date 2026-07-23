@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI.Director;
@@ -715,28 +716,13 @@ namespace Rebellion.AI.Planners
         private Technology GetUnlockedStarfighterTechnology(AITurnContext context, Fleet fleet)
         {
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
-            List<Technology> technologies = context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Ship)
-                .Where(technology => technology.GetReference() is Starfighter)
-                .ToList();
-            List<Technology> preferredTechnologies = technologies
-                .Where(technology =>
-                    CountFleetUnitsByType<Starfighter>(fleet, technology.GetReference().GetTypeID())
-                    < config.MaxDuplicateStarfighterTypePerFleet
-                )
-                .ToList();
-
-            return (preferredTechnologies.Count > 0 ? preferredTechnologies : technologies)
-                .OrderByDescending(technology =>
-                    ScoreStarfighterTechnology(
-                        config,
-                        fleet,
-                        (Starfighter)technology.GetReference()
-                    )
-                )
-                .ThenBy(technology => technology.GetReference().GetConstructionCost())
-                .ThenBy(technology => technology.GetReference().GetTypeID())
-                .FirstOrDefault();
+            return GetUnlockedFleetTechnology<Starfighter>(
+                context,
+                fleet,
+                ManufacturingType.Ship,
+                config.MaxDuplicateStarfighterTypePerFleet,
+                starfighter => ScoreStarfighterTechnology(config, fleet, starfighter)
+            );
         }
 
         /// <summary>
@@ -748,21 +734,47 @@ namespace Rebellion.AI.Planners
         private Technology GetUnlockedRegimentTechnology(AITurnContext context, Fleet fleet)
         {
             GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            return GetUnlockedFleetTechnology<Regiment>(
+                context,
+                fleet,
+                ManufacturingType.Troop,
+                config.MaxDuplicateRegimentTypePerDestination,
+                regiment => ScoreRegimentTechnology(config, fleet, regiment)
+            );
+        }
+
+        /// <summary>
+        /// Selects an unlocked fleet-unit technology through shared diversity and tie-break rules.
+        /// </summary>
+        /// <typeparam name="T">The fleet-unit type referenced by eligible technologies.</typeparam>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="fleet">The fleet receiving the manufactured unit.</param>
+        /// <param name="manufacturingType">The technology catalog to inspect.</param>
+        /// <param name="maximumDuplicateCount">The preferred per-type duplicate limit.</param>
+        /// <param name="getScore">Returns the unit-specific selection score.</param>
+        /// <returns>The selected technology, or null when none is unlocked.</returns>
+        private Technology GetUnlockedFleetTechnology<T>(
+            AITurnContext context,
+            Fleet fleet,
+            ManufacturingType manufacturingType,
+            int maximumDuplicateCount,
+            Func<T, double> getScore
+        )
+            where T : class, IManufacturable
+        {
             List<Technology> technologies = context
-                .Faction.GetUnlockedTechnologies(ManufacturingType.Troop)
-                .Where(technology => technology.GetReference() is Regiment)
+                .Faction.GetUnlockedTechnologies(manufacturingType)
+                .Where(technology => technology.GetReference() is T)
                 .ToList();
             List<Technology> preferredTechnologies = technologies
                 .Where(technology =>
-                    CountFleetUnitsByType<Regiment>(fleet, technology.GetReference().GetTypeID())
-                    < config.MaxDuplicateRegimentTypePerDestination
+                    CountFleetUnitsByType<T>(fleet, technology.GetReference().GetTypeID())
+                    < maximumDuplicateCount
                 )
                 .ToList();
 
             return (preferredTechnologies.Count > 0 ? preferredTechnologies : technologies)
-                .OrderByDescending(technology =>
-                    ScoreRegimentTechnology(config, fleet, (Regiment)technology.GetReference())
-                )
+                .OrderByDescending(technology => getScore((T)technology.GetReference()))
                 .ThenBy(technology => technology.GetReference().GetConstructionCost())
                 .ThenBy(technology => technology.GetReference().GetTypeID())
                 .FirstOrDefault();

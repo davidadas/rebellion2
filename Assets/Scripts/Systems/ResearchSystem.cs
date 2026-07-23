@@ -13,7 +13,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages research and technology advancement during each game tick.
     /// </summary>
-    public class ResearchSystem : IGameSystem
+    public class ResearchSystem
     {
         private static readonly ResearchDiscipline[] _researchDisciplines = new[]
         {

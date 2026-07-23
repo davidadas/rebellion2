@@ -41,6 +41,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "sf1",
                 OwnerInstanceID = owner,
+                ManufacturingStatus = ManufacturingStatus.Complete,
                 AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.Reconnaissance },
             };
         }
@@ -118,12 +119,15 @@ namespace Rebellion.Tests.Game.Missions
                 new List<IMissionParticipant>()
             );
             game.AttachNode(mission, enemyPlanet);
+            MovementSystem movement = new MovementSystem(game, fog, new FleetSystem(game));
+            movement.SendToMission(reconTeam, mission);
+            reconTeam.Movement = null;
             mission.Initiate(1);
 
-            MissionSystem system = new MissionSystem(
+            MissionSystem system = TestSystems.CreateMissionSystem(
                 game,
                 new FixedRNG(0.01),
-                new MovementSystem(game, fog, new FleetSystem(game))
+                movement
             );
 
             List<GameResult> results = system.UpdateMission(mission);

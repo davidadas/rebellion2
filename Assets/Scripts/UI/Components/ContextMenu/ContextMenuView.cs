@@ -365,11 +365,8 @@ public sealed class ContextMenuView : MonoBehaviour, ICancelable
         int parentWidth = GetMenuWidth(parent);
         int submenuWidth = GetMenuWidth(submenu);
         Vector2Int surfaceSize = GetSurfaceSize();
-        int rightX = parent.X + parentWidth - metrics.BorderSize;
-        submenu.X =
-            surfaceSize.x <= 0 || rightX + submenuWidth < surfaceSize.x
-                ? rightX
-                : parent.X - submenuWidth + metrics.BorderSize;
+        int leftX = parent.X - submenuWidth + metrics.BorderSize;
+        submenu.X = leftX >= 0 ? leftX : parent.X + parentWidth - metrics.BorderSize;
         submenu.Y = parent.Y + metrics.BorderSize + rowIndex * metrics.RowHeight;
         AdjustSubmenuPosition(submenu, surfaceSize, metrics);
         panels.Add(submenu);

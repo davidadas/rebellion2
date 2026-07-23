@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
@@ -25,6 +26,8 @@ namespace Rebellion.Tests.Game.Units
                 Movement = null,
                 ManufacturingStatus = ManufacturingStatus.Building,
                 ManufacturingProgress = 0,
+                MissionReturnParentInstanceID = "return-parent",
+                MissionReturnLocationInstanceID = "return-location",
             };
 
             _specialForces.Ratings[OfficerRating.Diplomacy] = 10;
@@ -133,6 +136,19 @@ namespace Rebellion.Tests.Game.Units
             int ratingValue = _specialForces.GetBaseRating(OfficerRating.Leadership);
 
             Assert.AreEqual(15, ratingValue, "Leadership rating should return the correct value");
+        }
+
+        [Test]
+        public void GetEntityData_ConfiguredSpecialForces_LoadsMissionRatings()
+        {
+            SpecialForces specialForces = ResourceManager
+                .GetEntityData<SpecialForces>()
+                .Single(item => item.TypeID == "SPAL001");
+
+            Assert.AreEqual(0, specialForces.GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(55, specialForces.GetBaseRating(OfficerRating.Espionage));
+            Assert.AreEqual(20, specialForces.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(50, specialForces.GetBaseRating(OfficerRating.Leadership));
         }
 
         [Test]
@@ -326,6 +342,14 @@ namespace Rebellion.Tests.Game.Units
                 _specialForces.ResearchDifficulty,
                 deserialized.ResearchDifficulty,
                 "ResearchDifficulty should be correctly deserialized."
+            );
+            Assert.AreEqual(
+                _specialForces.MissionReturnParentInstanceID,
+                deserialized.MissionReturnParentInstanceID
+            );
+            Assert.AreEqual(
+                _specialForces.MissionReturnLocationInstanceID,
+                deserialized.MissionReturnLocationInstanceID
             );
             Assert.AreEqual(
                 _specialForces.Movement,

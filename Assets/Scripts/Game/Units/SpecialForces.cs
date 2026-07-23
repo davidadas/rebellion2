@@ -25,6 +25,8 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
+        public string MissionReturnParentInstanceID { get; set; }
+        public string MissionReturnLocationInstanceID { get; set; }
 
         // Mission Qualification.
         public List<string> AllowedMissionTypeIDs { get; set; } = new List<string>();
