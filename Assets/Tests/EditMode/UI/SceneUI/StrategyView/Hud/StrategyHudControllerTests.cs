@@ -104,11 +104,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.GameSpeedPause,
-                    StrategyContextMenuActions.GameSpeedVerySlow,
-                    StrategyContextMenuActions.GameSpeedSlow,
-                    StrategyContextMenuActions.GameSpeedMedium,
-                    StrategyContextMenuActions.GameSpeedFast,
+                    StrategyMenuAction.GameSpeedPause,
+                    StrategyMenuAction.GameSpeedVerySlow,
+                    StrategyMenuAction.GameSpeedSlow,
+                    StrategyMenuAction.GameSpeedMedium,
+                    StrategyMenuAction.GameSpeedFast,
                 },
                 commands.Select(command => command.Action)
             );
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void OnContextMenuCommandSelected_OwnedEnabledSpeedCommand_SetsGameSpeed()
         {
             StrategyMenuCommand command = new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedFast,
+                StrategyMenuAction.GameSpeedFast,
                 "Fast",
                 true
             );
@@ -168,7 +168,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void OnContextMenuCommandSelected_ForeignRequest_IgnoresCommand()
         {
             StrategyMenuCommand command = new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedFast,
+                StrategyMenuAction.GameSpeedFast,
                 "Fast",
                 true
             );

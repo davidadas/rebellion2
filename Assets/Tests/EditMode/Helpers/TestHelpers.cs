@@ -261,6 +261,8 @@ public static class MissionSceneBuilder
 
         Officer officer = EntityFactory.CreateOfficer("o1", "empire");
         game.AttachNode(officer, empPlanet);
+        officer.MissionReturnParentInstanceID = empPlanet.InstanceID;
+        officer.MissionReturnLocationInstanceID = empPlanet.InstanceID;
 
         FogOfWarSystem fog = new FogOfWarSystem(game);
         return (game, empPlanet, enemyPlanet, officer, fog);
@@ -271,6 +273,38 @@ public static class MissionSceneBuilder
         while (!mission.IsComplete())
             mission.IncrementProgress();
         mission.Execute(game, new FixedRNG(0.0));
+    }
+}
+
+/// <summary>
+/// Builds complete system dependency graphs used by focused system tests.
+/// </summary>
+public static class TestSystems
+{
+    /// <summary>
+    /// Creates a mission system with the uprising resolution path available.
+    /// </summary>
+    /// <param name="game">The game state used by every system in the graph.</param>
+    /// <param name="provider">The random number provider used by missions and uprisings.</param>
+    /// <param name="movement">The movement system used by mission and control behavior.</param>
+    /// <returns>A mission system with all required dependencies.</returns>
+    public static MissionSystem CreateMissionSystem(
+        GameRoot game,
+        IRandomNumberProvider provider,
+        MovementSystem movement
+    )
+    {
+        FogOfWarSystem fog = new FogOfWarSystem(game);
+        FleetSystem fleet = new FleetSystem(game);
+        ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
+        PlanetaryControlSystem control = new PlanetaryControlSystem(
+            game,
+            movement,
+            manufacturing,
+            fog
+        );
+        UprisingSystem uprising = new UprisingSystem(game, provider, control);
+        return new MissionSystem(game, provider, movement, uprising);
     }
 }
 

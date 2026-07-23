@@ -134,7 +134,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         UpdateContentHostLayout();
         saveMenuWindow.Render(
             dataBuilder.CreateRenderData(
-                GetPlayerFactionId(),
+                GetPlayerFactionID(),
                 IsSavingAvailable(),
                 audioManager.MusicVolume,
                 audioManager.SfxVolume,
@@ -362,7 +362,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// Resolves the current player's faction identifier from the active game.
     /// </summary>
     /// <returns>The current player's faction identifier, or null.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         GameRoot game = runtime?.GetActiveGame();
         return game?.Summary?.PlayerFactionID;

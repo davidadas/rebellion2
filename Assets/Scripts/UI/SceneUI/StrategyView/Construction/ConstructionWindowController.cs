@@ -224,35 +224,9 @@ public sealed class ConstructionWindowController
     /// </summary>
     public void RenderWindows()
     {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out ConstructionWindowView view))
-                RenderWindow(view, window, window.ActiveWindow);
-        }
-    }
-
-    /// <summary>
-    /// Rebinds construction sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    public void ReconcileWindows(IReadOnlyList<GalaxyMapSector> sectors)
-    {
-        if (sectors == null)
-            return;
-
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                !windowManager.TryGetWindowView(window, out ConstructionWindowView view)
-                || !sessions.TryGetValue(view, out ConstructionWindowSession session)
-            )
-                continue;
-
-            GalaxyMapPlanet planet = FindFreshPlanet(session.Planet, sectors);
-            if (planet != null)
-                session.RebindPlanet(planet);
-            RefreshSessionItems(session);
-        }
+        windowManager.ForEachWindow<ConstructionWindowView>(
+            (window, view) => RenderWindow(view, window, window.ActiveWindow)
+        );
     }
 
     /// <summary>
@@ -268,6 +242,7 @@ public sealed class ConstructionWindowController
         if (!boundViews.Add(view))
             return;
 
+        view.BuildCountSubmitted += HandleBuildCountSubmitted;
         view.CancelRequested += HandleCancelRequested;
         view.DecrementRequested += HandleDecrementRequested;
         view.Destroyed += HandleViewDestroyed;
@@ -304,12 +279,8 @@ public sealed class ConstructionWindowController
         bool hasSelection = session.SelectedItem != null;
         List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
-                "Encyclopedia",
-                hasSelection
-            ),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", hasSelection),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", hasSelection),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", hasSelection),
         };
         request = new ContextMenuRequest(
             context,
@@ -341,10 +312,10 @@ public sealed class ConstructionWindowController
         ISceneNode item = session.SelectedItem as ISceneNode;
         switch (strategyCommand.Action)
         {
-            case StrategyContextMenuActions.Encyclopedia when item != null:
+            case StrategyMenuAction.Encyclopedia when item != null:
                 actions.OpenConstructionInfo(item);
                 break;
-            case StrategyContextMenuActions.Status when item != null:
+            case StrategyMenuAction.Status when item != null:
                 actions.OpenConstructionStatus(new StrategyStatusTarget(session.Planet, item));
                 break;
         }
@@ -371,7 +342,7 @@ public sealed class ConstructionWindowController
 
         ConstructionWindowSession session = GetSession(view);
 
-        string playerFactionId = GetPlayerFactionId();
+        string playerFactionId = GetPlayerFactionID();
         IReadOnlyList<IManufacturable> items = session.Items;
         Planet producer = GetAuthoritativePlanet(session.Planet);
         ISceneNode destination = GetConstructionDestination(session);
@@ -463,6 +434,22 @@ public sealed class ConstructionWindowController
     }
 
     /// <summary>
+    /// Applies a submitted build count to the requesting construction session.
+    /// </summary>
+    /// <param name="view">The requesting construction view.</param>
+    /// <param name="value">The submitted build-count text.</param>
+    private void HandleBuildCountSubmitted(ConstructionWindowView view, string value)
+    {
+        if (!sessions.TryGetValue(view, out ConstructionWindowSession session))
+            return;
+
+        session.Window.RequestFocus();
+        if (int.TryParse(value, out int buildCount))
+            session.SetBuildCount(buildCount);
+        markDirty();
+    }
+
+    /// <summary>
     /// Decrements a construction session's build count within the supported byte range.
     /// </summary>
     /// <param name="view">The requesting construction view.</param>
@@ -547,7 +534,7 @@ public sealed class ConstructionWindowController
             return;
 
         session.Window.RequestFocus();
-        string playerFactionId = GetPlayerFactionId();
+        string playerFactionId = GetPlayerFactionID();
         IManufacturable selected = session.SelectedItem;
         bool started = orderController.TryStartConstruction(
             GetAuthoritativePlanet(session.Planet),
@@ -588,6 +575,7 @@ public sealed class ConstructionWindowController
         if (ReferenceEquals(view, null) || !boundViews.Remove(view))
             return;
 
+        view.BuildCountSubmitted -= HandleBuildCountSubmitted;
         view.CancelRequested -= HandleCancelRequested;
         view.DecrementRequested -= HandleDecrementRequested;
         view.Destroyed -= HandleViewDestroyed;
@@ -604,7 +592,7 @@ public sealed class ConstructionWindowController
     /// Gets the current player faction identifier.
     /// </summary>
     /// <returns>The player faction identifier, or null.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         return getGame()?.GetPlayerFaction()?.InstanceID;
     }
@@ -683,7 +671,11 @@ public sealed class ConstructionWindowController
         if (producer?.Planet == null)
             return;
 
-        ConstructionWindowView existing = FindWindow(producer.Planet.InstanceID);
+        ConstructionWindowView existing = windowManager.FindWindowView<ConstructionWindowView>(
+            view =>
+                sessions.TryGetValue(view, out ConstructionWindowSession session)
+                && session.Planet?.Planet?.InstanceID == producer.Planet.InstanceID
+        );
         if (
             existing != null
             && sessions.TryGetValue(existing, out ConstructionWindowSession existingSession)
@@ -735,52 +727,13 @@ public sealed class ConstructionWindowController
     }
 
     /// <summary>
-    /// Finds a construction window for a producing planet.
-    /// </summary>
-    /// <param name="planetId">The producing planet identifier.</param>
-    /// <returns>The matching construction view, or null when none is open.</returns>
-    private ConstructionWindowView FindWindow(string planetId)
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                windowManager.TryGetWindowView(window, out ConstructionWindowView view)
-                && sessions.TryGetValue(view, out ConstructionWindowSession session)
-                && session.Planet?.Planet?.InstanceID == planetId
-            )
-                return view;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resolves a projected planet against a refreshed sector collection.
-    /// </summary>
-    /// <param name="planet">The previous projected planet.</param>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    /// <returns>The refreshed planet, or null when it is no longer represented.</returns>
-    private static GalaxyMapPlanet FindFreshPlanet(
-        GalaxyMapPlanet planet,
-        IReadOnlyList<GalaxyMapSector> sectors
-    )
-    {
-        string planetId = planet?.Planet?.InstanceID;
-        return planetId == null
-            ? null
-            : sectors
-                .SelectMany(sector => sector.Planets)
-                .FirstOrDefault(item => item.Planet?.InstanceID == planetId);
-    }
-
-    /// <summary>
     /// Resolves the destination planet for a construction session.
     /// </summary>
     /// <param name="session">The construction session.</param>
     /// <returns>The authoritative destination planet, or null.</returns>
     private Planet GetConstructionDestinationPlanet(ConstructionWindowSession session)
     {
-        return GetAuthoritativePlanet(session?.GetDestinationPlanetId());
+        return GetAuthoritativePlanet(session?.GetDestinationPlanetID());
     }
 
     /// <summary>
@@ -836,7 +789,7 @@ public sealed class ConstructionWindowController
             return;
 
         session.SetItems(
-            orderController.GetBuildSelection(session.ManufacturingTab, GetPlayerFactionId())
+            orderController.GetBuildSelection(session.ManufacturingTab, GetPlayerFactionID())
         );
     }
 }

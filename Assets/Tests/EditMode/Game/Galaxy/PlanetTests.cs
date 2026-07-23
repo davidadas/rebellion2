@@ -888,6 +888,83 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void GetBlockadeModifier_ActiveShipsAndFighters_ReducesProduction()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            CapitalShip activeShip = enemyFleet.CapitalShips.Single();
+            activeShip.Starfighters.Add(
+                new Starfighter
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            activeShip.Starfighters.Add(
+                new Starfighter
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            activeShip.Starfighters.Add(
+                new Starfighter
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Building,
+                }
+            );
+            enemyFleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = "ENEMY",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = new MovementState { TransitTicks = 10 },
+                }
+            );
+            _planet.AddChild(enemyFleet);
+            _planet.AddChild(
+                new Starfighter
+                {
+                    OwnerInstanceID = "FNALL1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            int modifier = _planet.GetBlockadeModifier(5, 2);
+
+            Assert.AreEqual(91, modifier);
+        }
+
+        [Test]
+        public void GetBlockadeModifier_ActiveKdyDefense_ReturnsFullProduction()
+        {
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+            _planet.AddChild(
+                new Building
+                {
+                    OwnerInstanceID = "FNALL1",
+                    BuildingType = BuildingType.Defense,
+                    DefenseFacilityClass = DefenseFacilityClass.KDY,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+
+            int modifier = _planet.GetBlockadeModifier(5, 2);
+
+            Assert.AreEqual(100, modifier);
+        }
+
+        [Test]
+        public void GetBlockadeModifier_HeavyBlockade_DoesNotReturnNegativeProduction()
+        {
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+
+            int modifier = _planet.GetBlockadeModifier(100, 2);
+
+            Assert.AreEqual(0, modifier);
+        }
+
+        [Test]
         public void BeginUprising_NonUprisingPlanet_SetsIsInUprisingFlag()
         {
             Planet planet = new Planet
@@ -933,72 +1010,6 @@ namespace Rebellion.Tests.Game.Galaxy
             bool populated = planet.IsPopulated();
 
             Assert.IsTrue(populated);
-        }
-
-        [Test]
-        public void IsBlockadePenalized_NotBlockaded_ReturnsFalse()
-        {
-            Planet planet = new Planet { OwnerInstanceID = "empire" };
-
-            Assert.IsFalse(planet.IsBlockadePenalized());
-        }
-
-        [Test]
-        public void IsBlockadePenalized_BlockadedWithoutKDY_ReturnsTrue()
-        {
-            Planet planet = new Planet { OwnerInstanceID = "empire" };
-            Fleet hostileFleet = CreateOperationalFleet("rebels");
-            planet.AddChild(hostileFleet);
-
-            Assert.IsTrue(planet.IsBlockadePenalized());
-        }
-
-        [Test]
-        public void IsBlockadePenalized_BlockadedWithKDY_ReturnsFalse()
-        {
-            Planet planet = new Planet
-            {
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                EnergyCapacity = 5,
-            };
-            Fleet hostileFleet = CreateOperationalFleet("rebels");
-            planet.AddChild(hostileFleet);
-            Building kdy = new Building
-            {
-                OwnerInstanceID = "empire",
-                DefenseFacilityClass = DefenseFacilityClass.KDY,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            planet.AddChild(kdy);
-
-            Assert.IsFalse(planet.IsBlockadePenalized());
-        }
-
-        [Test]
-        public void GetBlockadeModifier_UnitsInTransit_IgnoresTheirStrength()
-        {
-            Fleet hostileFleet = new Fleet { OwnerInstanceID = "ENEMY" };
-            hostileFleet.AddChild(new CapitalShip { OwnerInstanceID = "ENEMY" });
-            hostileFleet.AddChild(
-                new CapitalShip
-                {
-                    OwnerInstanceID = "ENEMY",
-                    Movement = new MovementState { TransitTicks = 10 },
-                }
-            );
-            Fleet incomingFleet = new Fleet
-            {
-                OwnerInstanceID = "ENEMY",
-                Movement = new MovementState { TransitTicks = 10 },
-            };
-            incomingFleet.AddChild(new CapitalShip { OwnerInstanceID = "ENEMY" });
-            _planet.AddChild(hostileFleet);
-            _planet.AddChild(incomingFleet);
-
-            int modifier = _planet.GetBlockadeModifier(5, 5);
-
-            Assert.AreEqual(95, modifier);
         }
 
         [Test]

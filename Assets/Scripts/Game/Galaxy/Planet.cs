@@ -17,6 +17,7 @@ namespace Rebellion.Game.Galaxy
     public class Planet : ContainerNode
     {
         private const int _maximumPopularSupport = 100;
+        private const int _maximumProductionModifier = 100;
 
         // Planet Properties.
         public bool IsColonized { get; set; }
@@ -33,9 +34,18 @@ namespace Rebellion.Game.Galaxy
         // Planet Status.
         [PersistableIgnore]
         public bool IsUnexploredView { get; set; }
-        public bool IsInUprising { get; set; }
         public bool IsDestroyed { get; set; }
         public bool IsHeadquarters { get; set; }
+
+        // Uprising Status.
+        public bool IsInUprising { get; set; }
+        public int NextUprisingSupportDriftTick { get; set; }
+        public int NextUprisingIncidentTick { get; set; }
+        public int NextUprisingClearTick { get; set; }
+        public int UprisingSupportDriftTimerOrder { get; set; }
+        public int UprisingIncidentTimerOrder { get; set; }
+        public int UprisingClearTimerOrder { get; set; }
+        public int NextUprisingTimerOrder { get; set; }
 
         // Popular Support.
         public Dictionary<string, int> PopularSupport = new Dictionary<string, int>();
@@ -51,8 +61,11 @@ namespace Rebellion.Game.Galaxy
 
         // Manufacturing Status.
         [PersistableIgnore]
-        public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue { get; } =
-            new Dictionary<ManufacturingType, List<IManufacturable>>();
+        public Dictionary<ManufacturingType, List<IManufacturable>> ManufacturingQueue
+        {
+            get;
+            internal set;
+        } = new Dictionary<ManufacturingType, List<IManufacturable>>();
 
         // Visitor Status.
         public List<string> VisitingFactionIDs = new List<string>();
@@ -89,20 +102,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// True when the planet should suffer blockade economic penalties. A blockade
-        /// with an active KDY defense on the planet does not penalize production.
+        /// Returns whether resource collection is suspended at this planet.
         /// </summary>
-        /// <returns>True if blockaded and no KDY facility is present on the planet.</returns>
-        public bool IsBlockadePenalized()
+        /// <returns>True during a blockade or uprising.</returns>
+        public bool IsResourceProductionSuspended()
         {
-            if (!IsBlockaded())
-                return false;
-
-            return !Buildings.Any(b =>
-                b.DefenseFacilityClass == DefenseFacilityClass.KDY
-                && b.GetManufacturingStatus() == ManufacturingStatus.Complete
-                && b.Movement == null
-            );
+            return IsBlockaded() || IsInUprising;
         }
 
         /// <summary>
@@ -116,22 +121,38 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Begin uprising - set uprising flag then transfer ownership.
-        /// Order matters: uprising state is set before ownership changes.
-        /// Centralizes all uprising state mutations in one place.
+        /// Starts a fresh uprising and clears prior timer state.
         /// </summary>
         public void BeginUprising()
         {
+            if (IsInUprising)
+                return;
+
             IsInUprising = true;
+            ResetUprisingTimers();
         }
 
         /// <summary>
-        /// End uprising - clear uprising flag.
-        /// Ownership remains with current owner.
+        /// Ends an uprising and clears its scheduled timer state.
         /// </summary>
         public void EndUprising()
         {
             IsInUprising = false;
+            ResetUprisingTimers();
+        }
+
+        /// <summary>
+        /// Clears all scheduled uprising ticks and their ordering state.
+        /// </summary>
+        private void ResetUprisingTimers()
+        {
+            NextUprisingSupportDriftTick = 0;
+            NextUprisingIncidentTick = 0;
+            NextUprisingClearTick = 0;
+            UprisingSupportDriftTimerOrder = 0;
+            UprisingIncidentTimerOrder = 0;
+            UprisingClearTimerOrder = 0;
+            NextUprisingTimerOrder = 0;
         }
 
         /// <summary>
@@ -173,13 +194,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the number of available resource nodes that are not blockaded. A KDY
-        /// defense on the planet negates the blockade for resource access.
+        /// Gets the number of resource nodes available while production is active.
         /// </summary>
-        /// <returns>The number of accessible resource nodes, or 0 if blockade-penalized.</returns>
+        /// <returns>The number of accessible resource nodes, or 0 while production is suspended.</returns>
         public int GetAvailableResourceNodes()
         {
-            return IsBlockadePenalized() ? 0 : GetRawResourceNodes();
+            return IsResourceProductionSuspended() ? 0 : GetRawResourceNodes();
         }
 
         /// <summary>
@@ -207,8 +227,6 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the number of mined resources counting only completed, stationary mines.
-        /// Does not apply any blockade cut; callers that need the blockade penalty
-        /// should apply it separately or use <see cref="GetAvailableMinedResources"/>.
         /// </summary>
         /// <returns>The number of active mined resources, capped by resource nodes.</returns>
         public int GetActiveMinedResources()
@@ -218,13 +236,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the number of mined resources that are available and not under construction.
-        /// A blockade without a KDY defense blocks access entirely.
+        /// Gets the number of mined resources available while production is active.
         /// </summary>
-        /// <returns>The number of available mined resources, or 0 if blockade-penalized.</returns>
+        /// <returns>The number of available mined resources, or 0 while production is suspended.</returns>
         public int GetAvailableMinedResources()
         {
-            return IsBlockadePenalized() ? 0 : GetActiveMinedResources();
+            return IsResourceProductionSuspended() ? 0 : GetActiveMinedResources();
         }
 
         /// <summary>
@@ -239,8 +256,6 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Gets the refinement capacity counting only completed, stationary refineries.
-        /// Does not apply any blockade cut; callers that need the blockade penalty
-        /// should apply it separately or use <see cref="GetAvailableRefinementCapacity"/>.
         /// </summary>
         /// <returns>The number of active refineries.</returns>
         public int GetActiveRefinementCapacity()
@@ -249,13 +264,12 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the available refinement capacity, excluding refineries under construction.
-        /// A blockade without a KDY defense blocks capacity entirely.
+        /// Gets the completed refinement capacity available while production is active.
         /// </summary>
-        /// <returns>The available refinement capacity, or 0 if blockade-penalized.</returns>
+        /// <returns>The available refinement capacity, or 0 while production is suspended.</returns>
         public int GetAvailableRefinementCapacity()
         {
-            return IsBlockadePenalized() ? 0 : GetActiveRefinementCapacity();
+            return IsResourceProductionSuspended() ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>
@@ -590,35 +604,43 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Calculates the production modifier applied when this planet is under blockade.
-        /// Returns a value from 0 to 100, where 100 means no reduction and 0 means fully
-        /// suppressed. Each stationary hostile capital ship and starfighter reduces the modifier
-        /// by the supplied penalty values.
+        /// Gets the manufacturing output percentage available during a blockade.
+        /// An active KDY defense prevents the blockade penalty.
         /// </summary>
-        /// <param name="capitalShipPenalty">Reduction per hostile capital ship.</param>
-        /// <param name="fighterPenalty">Reduction per hostile starfighter.</param>
-        /// <returns>A production modifier percentage in the range [0, 100].</returns>
+        /// <param name="capitalShipPenalty">The percentage removed per active capital ship.</param>
+        /// <param name="fighterPenalty">The percentage removed per active fighter squadron.</param>
+        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
         public int GetBlockadeModifier(int capitalShipPenalty, int fighterPenalty)
         {
-            string ownerId = GetOwnerInstanceID();
+            if (!IsBlockaded() || HasActiveKdyDefense())
+                return _maximumProductionModifier;
 
-            int hostileCapitalShips = Fleets
-                .Where(f =>
-                    f.Movement == null
-                    && f.GetOwnerInstanceID() != null
-                    && f.GetOwnerInstanceID() != ownerId
-                )
-                .Sum(f => f.CapitalShips.Count(ship => ship.Movement == null));
-
-            int hostileFighters = Starfighters.Count(s =>
-                s.Movement == null
-                && s.GetOwnerInstanceID() != null
-                && s.GetOwnerInstanceID() != ownerId
+            List<CapitalShip> activeCapitalShips = Fleets
+                .Where(fleet => fleet.Movement == null)
+                .SelectMany(fleet => fleet.CapitalShips)
+                .Where(IsEntityActive)
+                .ToList();
+            int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
+                capitalShip.Starfighters.Count(IsEntityActive)
             );
 
             int modifier =
-                100 - hostileCapitalShips * capitalShipPenalty - hostileFighters * fighterPenalty;
-            return Math.Max(0, modifier);
+                _maximumProductionModifier
+                - activeCapitalShips.Count * capitalShipPenalty
+                - activeFighterCount * fighterPenalty;
+            return Math.Clamp(modifier, 0, _maximumProductionModifier);
+        }
+
+        /// <summary>
+        /// Returns whether a complete, stationary KDY defense is active on this planet.
+        /// </summary>
+        /// <returns>True when an active KDY defense is present.</returns>
+        private bool HasActiveKdyDefense()
+        {
+            return Buildings.Any(building =>
+                building.DefenseFacilityClass == DefenseFacilityClass.KDY
+                && IsEntityActive(building)
+            );
         }
 
         /// <summary>
@@ -873,6 +895,23 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Returns the number of completed, stationary regiments of a given type.
+        /// </summary>
+        /// <param name="regimentTypeID">The regiment type to count.</param>
+        /// <returns>The active regiment count.</returns>
+        public int GetActiveRegimentCount(string regimentTypeID)
+        {
+            if (string.IsNullOrEmpty(regimentTypeID))
+                return 0;
+
+            return Regiments.Count(regiment =>
+                regiment.TypeID == regimentTypeID
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null
+            );
+        }
+
+        /// <summary>
         /// Returns the number of officers on the planet.
         /// </summary>
         /// <returns>The count of officers currently on this planet.</returns>
@@ -936,6 +975,18 @@ namespace Rebellion.Game.Galaxy
                 default:
                     return false;
             }
+        }
+
+        internal override bool CanAcceptChild(
+            ISceneNode child,
+            IReadOnlyCollection<ISceneNode> plannedChildren
+        )
+        {
+            return CanAcceptChild(child)
+                && (
+                    child is not Building
+                    || GetAvailableEnergy() > plannedChildren.OfType<Building>().Count()
+                );
         }
 
         /// <summary>

@@ -181,7 +181,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
         }
 
         [Test]
-        public void ReconcilePlanets_MatchingPersistentId_ReplacesStaleProjection()
+        public void ReconcilePlanets_MatchingPersistentID_ReplacesStaleProjection()
         {
             GalaxyMapPlanet original = CreatePlanet("planet-1", "Old Coruscant");
             GalaxyMapPlanet replacement = CreatePlanet("planet-1", "Coruscant");

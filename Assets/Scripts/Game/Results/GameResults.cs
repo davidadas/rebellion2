@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -6,6 +8,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Results
 {
@@ -194,6 +197,14 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A planet is approaching an uprising.
+    /// </summary>
+    public class PlanetNearUprisingResult : GameResult
+    {
+        public Planet Planet { get; set; }
+    }
+
+    /// <summary>
     /// An uprising ended on a planet.
     /// </summary>
     public class PlanetUprisingEndedResult : GameResult
@@ -211,6 +222,15 @@ namespace Rebellion.Game.Results
         public Faction PreviousOwner { get; set; }
         public Faction NewOwner { get; set; }
         public PlanetOwnershipChangeReason Reason { get; set; }
+        public List<string> ObserverFactionInstanceIDs { get; set; } = new List<string>();
+    }
+
+    /// <summary>
+    /// The active regiment garrison at a planet changed.
+    /// </summary>
+    public class PlanetGarrisonChangedResult : GameResult
+    {
+        public Planet Planet { get; set; }
     }
 
     /// <summary>
@@ -695,6 +715,118 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// Detached presentation state for one unit present when combat began.
+    /// </summary>
+    public class CombatUnitSnapshot
+    {
+        public ISceneNode Unit { get; set; }
+        public bool WasOperational { get; set; }
+        public bool Damaged { get; set; }
+        public bool Destroyed { get; set; }
+        public bool Captured { get; set; }
+
+        /// <summary>
+        /// Captures one unit without retaining its live scene-graph identity.
+        /// </summary>
+        /// <param name="unit">The unit to capture.</param>
+        public CombatUnitSnapshot(ISceneNode unit)
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+
+            Unit = unit.GetShallowCopy();
+            Unit.InstanceID = unit.GetInstanceID();
+            Unit.AllowedOwnerInstanceIDs =
+                unit.AllowedOwnerInstanceIDs == null
+                    ? null
+                    : new List<string>(unit.AllowedOwnerInstanceIDs);
+            Unit.OwnerInstanceID = unit.GetOwnerInstanceID();
+            Unit.ParentInstanceID = unit.ParentInstanceID;
+            Unit.LastParentInstanceID = unit.LastParentInstanceID;
+            WasOperational =
+                unit is not IManufacturable manufacturable
+                || (
+                    manufacturable.ManufacturingStatus == ManufacturingStatus.Complete
+                    && manufacturable.Movement == null
+                );
+            Captured = unit is Officer { IsCaptured: true };
+        }
+
+        /// <summary>
+        /// Captures every unit carried by the supplied fleets.
+        /// </summary>
+        /// <param name="fleets">The fleets whose units will be captured.</param>
+        /// <returns>The detached unit snapshots in scene-graph order.</returns>
+        public static List<CombatUnitSnapshot> CaptureFleetUnits(IEnumerable<Fleet> fleets)
+        {
+            return (fleets ?? Enumerable.Empty<Fleet>())
+                .Where(fleet => fleet != null)
+                .SelectMany(fleet => fleet.GetChildren<ISceneNode>(_ => true))
+                .Distinct()
+                .Select(unit => new CombatUnitSnapshot(unit))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Captures one owner's units stationed on a planet.
+        /// </summary>
+        /// <param name="planet">The planet whose units will be captured.</param>
+        /// <param name="ownerInstanceId">The owner whose units will be captured.</param>
+        /// <returns>The detached unit snapshots in scene-graph order.</returns>
+        public static List<CombatUnitSnapshot> CapturePlanetUnits(
+            Planet planet,
+            string ownerInstanceId
+        )
+        {
+            return planet
+                    ?.GetChildren<ISceneNode>(unit => unit.GetOwnerInstanceID() == ownerInstanceId)
+                    .Distinct()
+                    .Select(unit => new CombatUnitSnapshot(unit))
+                    .ToList()
+                ?? new List<CombatUnitSnapshot>();
+        }
+
+        /// <summary>
+        /// Applies completed combat damage and destruction to captured unit state.
+        /// </summary>
+        /// <param name="units">The captured units to update.</param>
+        /// <param name="damagedUnits">The units damaged during combat.</param>
+        /// <param name="destroyedUnits">The units destroyed during combat.</param>
+        public static void RecordOutcomes(
+            IEnumerable<CombatUnitSnapshot> units,
+            IEnumerable<ISceneNode> damagedUnits,
+            IEnumerable<ISceneNode> destroyedUnits
+        )
+        {
+            HashSet<string> damagedIds = GetInstanceIDs(damagedUnits);
+            HashSet<string> destroyedIds = GetInstanceIDs(destroyedUnits);
+
+            foreach (CombatUnitSnapshot unit in units ?? Enumerable.Empty<CombatUnitSnapshot>())
+            {
+                string instanceId = unit?.Unit?.GetInstanceID();
+                if (string.IsNullOrEmpty(instanceId))
+                    continue;
+
+                unit.Damaged |= damagedIds.Contains(instanceId);
+                unit.Destroyed |= destroyedIds.Contains(instanceId);
+            }
+        }
+
+        /// <summary>
+        /// Collects the stable identifiers of non-null scene nodes.
+        /// </summary>
+        /// <param name="units">The scene nodes whose identifiers will be collected.</param>
+        /// <returns>The nonblank scene-node identifiers.</returns>
+        private static HashSet<string> GetInstanceIDs(IEnumerable<ISceneNode> units)
+        {
+            return (units ?? Enumerable.Empty<ISceneNode>())
+                .Where(unit => unit != null && !string.IsNullOrEmpty(unit.GetInstanceID()))
+                .Select(unit => unit.GetInstanceID())
+                .ToHashSet();
+        }
+    }
+
+    /// <summary>
     /// Outcome of space combat between two fleets.
     /// </summary>
     public class SpaceCombatResult : GameResult
@@ -709,6 +841,10 @@ namespace Rebellion.Game.Results
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
+        public List<CombatUnitSnapshot> AttackingUnits { get; set; } =
+            new List<CombatUnitSnapshot>();
+        public List<CombatUnitSnapshot> DefendingUnits { get; set; } =
+            new List<CombatUnitSnapshot>();
         public List<GameResult> Events { get; set; } = new List<GameResult>();
     }
 
@@ -720,11 +856,16 @@ namespace Rebellion.Game.Results
     {
         public Fleet AttackerFleet { get; set; }
         public Fleet DefenderFleet { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public Planet Planet { get; set; }
         public bool AttackerCanRetreat { get; set; }
         public bool DefenderCanRetreat { get; set; }
     }
 
+    /// <summary>
+    /// Describes one target affected by an orbital bombardment strike.
+    /// </summary>
     public class BombardmentStrikeEvent
     {
         public BombardmentTargetType TargetType { get; set; }
@@ -739,6 +880,8 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public BombardmentType Type { get; set; }
         public int BombardmentStrength { get; set; }
         public int ShieldStrength { get; set; }
@@ -753,6 +896,10 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedRegiments { get; set; } = new List<Regiment>();
         public List<Building> DestroyedBuildings { get; set; } = new List<Building>();
         public List<CapitalShip> DestroyedCapitalShips { get; set; } = new List<CapitalShip>();
+        public List<CombatUnitSnapshot> AttackingUnits { get; set; } =
+            new List<CombatUnitSnapshot>();
+        public List<CombatUnitSnapshot> DefendingUnits { get; set; } =
+            new List<CombatUnitSnapshot>();
         public List<ShipDamageResult> AttackerShipDamage { get; set; } =
             new List<ShipDamageResult>();
         public List<GameResult> Events { get; set; } = new List<GameResult>();
@@ -766,6 +913,8 @@ namespace Rebellion.Game.Results
     {
         public Planet Planet { get; set; }
         public Faction AttackingFaction { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
         public bool Success { get; set; }
         public bool BlockedByShields { get; set; }
         public int InitialAttackerRegimentCount { get; set; }
@@ -778,6 +927,11 @@ namespace Rebellion.Game.Results
         public List<Regiment> DestroyedDefenderRegiments { get; set; } = new List<Regiment>();
         public List<Building> CollateralDestroyedBuildings { get; set; } = new List<Building>();
         public List<Regiment> LandedRegiments { get; set; } = new List<Regiment>();
+        public List<CombatUnitSnapshot> AttackingUnits { get; set; } =
+            new List<CombatUnitSnapshot>();
+        public List<CombatUnitSnapshot> DefendingUnits { get; set; } =
+            new List<CombatUnitSnapshot>();
+        public List<GameResult> Events { get; set; } = new List<GameResult>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
     }
 

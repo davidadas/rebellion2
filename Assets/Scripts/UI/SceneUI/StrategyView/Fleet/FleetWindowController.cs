@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -24,6 +25,12 @@ public interface IFleetWindowActions
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="items">The selected items.</param>
     void OpenFleetStatusWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items);
+
+    /// <summary>
+    /// Opens the completed planetary combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    void OpenFleetBattleResult(GameResult result);
 
     /// <summary>
     /// Rebuilds shared strategy state after a fleet command changes the game.
@@ -153,11 +160,14 @@ public sealed class FleetWindowController
         if (planet?.Planet == null)
             return null;
 
-        FleetWindowSession existing = FindWindow(planet.Planet.InstanceID);
-        if (existing != null)
+        FleetWindowView existing = windowManager.FindWindowView<FleetWindowView>(view =>
+            sessions.TryGetValue(view, out FleetWindowSession session)
+            && session.Planet?.Planet?.InstanceID == planet.Planet.InstanceID
+        );
+        if (existing != null && sessions.TryGetValue(existing, out FleetWindowSession session))
         {
-            windowManager.Focus(existing.Window);
-            return existing.Window;
+            windowManager.Focus(session.Window);
+            return session.Window;
         }
 
         Vector2Int position = getWindowPosition(sourceX, sourceY);
@@ -190,36 +200,9 @@ public sealed class FleetWindowController
     /// </summary>
     public void RenderWindows()
     {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out FleetWindowView view))
-                RenderWindow(view, window, window.ActiveWindow);
-        }
-    }
-
-    /// <summary>
-    /// Rebinds fleet sessions to a refreshed galaxy snapshot.
-    /// </summary>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    public void ReconcileWindows(IReadOnlyList<GalaxyMapSector> sectors)
-    {
-        if (sectors == null)
-            return;
-
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                !windowManager.TryGetWindowView(window, out FleetWindowView view)
-                || !sessions.TryGetValue(view, out FleetWindowSession session)
-            )
-                continue;
-
-            GalaxyMapPlanet planet = FindFreshPlanet(session.Planet, sectors);
-            if (planet == null)
-                continue;
-
-            session.RebindPlanet(planet);
-        }
+        windowManager.ForEachWindow<FleetWindowView>(
+            (window, view) => RenderWindow(view, window, window.ActiveWindow)
+        );
     }
 
     /// <summary>
@@ -389,12 +372,31 @@ public sealed class FleetWindowController
         CaptureContextTarget(view, session, context.EventData);
         List<ISceneNode> items = session.GetContextItems();
         string playerFactionId = getUIContext()?.GetPlayerFactionInstanceID();
+        Planet targetPlanet = GetFleetCommandTargetPlanet(
+            context.Window,
+            items.OfType<Fleet>().ToList()
+        );
         List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
             items,
             StrategyContextMenuAvailability.PlayerControlsItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanMoveItems(items, playerFactionId),
             StrategyContextMenuAvailability.CanCreateMission(items, playerFactionId),
-            confirmationActions.CanRetire(items)
+            confirmationActions.CanRetire(items),
+            fleetCommandController.CanExecutePlanetaryCombat(
+                items,
+                targetPlanet,
+                StrategyMenuAction.BombardMilitaryFacilities
+            ),
+            fleetCommandController.CanExecutePlanetaryCombat(
+                items,
+                targetPlanet,
+                StrategyMenuAction.DestroySystem
+            ),
+            fleetCommandController.CanExecutePlanetaryCombat(
+                items,
+                targetPlanet,
+                StrategyMenuAction.PlanetaryAssault
+            )
         );
         FleetContextMenuSource source = new FleetContextMenuSource(
             context.Window,
@@ -408,7 +410,7 @@ public sealed class FleetWindowController
             this
         );
         bool hasBombardment = commands.Any(command =>
-            command.Action == StrategyContextMenuActions.PlanetaryBombardment
+            command.Action == StrategyMenuAction.PlanetaryBombardment
         );
         width = hasBombardment
             ? context.Layout.FleetBombardmentMenuWidth
@@ -434,33 +436,37 @@ public sealed class FleetWindowController
 
         switch (menuCommand.Action)
         {
-            case StrategyContextMenuActions.Encyclopedia:
+            case StrategyMenuAction.BombardMilitaryFacilities:
+            case StrategyMenuAction.BombardCivilianFacilities:
+            case StrategyMenuAction.GeneralBombardment:
+            case StrategyMenuAction.DestroySystem:
+            case StrategyMenuAction.PlanetaryAssault:
+                TryExecutePlanetaryCombat(source.Window, source.Items, menuCommand.Action);
+                break;
+            case StrategyMenuAction.Encyclopedia:
                 actions.OpenFleetEncyclopediaWindow(source.Items);
                 break;
-            case StrategyContextMenuActions.Status:
+            case StrategyMenuAction.Status:
                 actions.OpenFleetStatusWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.Rename:
+            case StrategyMenuAction.Rename:
                 BeginRename(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.Scrap:
+            case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.Stop:
+            case StrategyMenuAction.Stop:
                 confirmationActions.OpenStopConstructionConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.Retire:
+            case StrategyMenuAction.Retire:
                 confirmationActions.OpenRetireConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.CreateFleet:
+            case StrategyMenuAction.CreateFleet:
                 TryCreateFleetFromCapitalShips(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.PlanetaryBombardment:
-                TryExecutePlanetaryBombardment(source.Window, source.Items);
-                break;
-            case StrategyContextMenuActions.CreateMission:
-            case StrategyContextMenuActions.Move:
-            case StrategyContextMenuActions.MoveConfirm:
+            case StrategyMenuAction.CreateMission:
+            case StrategyMenuAction.Move:
+            case StrategyMenuAction.MoveConfirm:
                 targetingController.Begin(
                     new TargetingRequest(
                         StrategyWindowTargetingSource.GetPrompt(menuCommand.Action),
@@ -500,39 +506,46 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
-    /// Executes planetary bombardment for the selected fleets.
+    /// Executes planetary combat for the selected fleets.
     /// </summary>
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="items">The selected fleets.</param>
-    /// <returns>True when bombardment was executed.</returns>
-    private bool TryExecutePlanetaryBombardment(
+    /// <param name="action">The selected planetary combat action.</param>
+    /// <returns>True when planetary combat was executed.</returns>
+    private bool TryExecutePlanetaryCombat(
         UIWindow sourceWindow,
-        IReadOnlyList<ISceneNode> items
+        IReadOnlyList<ISceneNode> items,
+        StrategyMenuAction action
     )
     {
         List<Fleet> fleets = items?.OfType<Fleet>().ToList() ?? new List<Fleet>();
         if (fleets.Count == 0)
             return false;
 
-        Planet targetPlanet = GetBombardmentTargetPlanet(sourceWindow, fleets);
+        Planet targetPlanet = GetFleetCommandTargetPlanet(sourceWindow, fleets);
         if (targetPlanet == null)
             return false;
 
-        if (!fleetCommandController.TryExecutePlanetaryBombardment(items, targetPlanet))
+        GameResult result = fleetCommandController.ExecutePlanetaryCombat(
+            items,
+            targetPlanet,
+            action
+        );
+        if (result == null)
             return false;
 
-        ClearSelection(sourceWindow);
         actions.RefreshFleetState();
+        actions.OpenFleetBattleResult(result);
         return true;
     }
 
     /// <summary>
-    /// Resolves the authoritative planet targeted by fleet bombardment.
+    /// Resolves the authoritative planet targeted by a fleet combat command.
     /// </summary>
     /// <param name="sourceWindow">The requesting fleet window.</param>
     /// <param name="fleets">The selected fleets.</param>
     /// <returns>The authoritative target planet, or null.</returns>
-    private Planet GetBombardmentTargetPlanet(UIWindow sourceWindow, IReadOnlyList<Fleet> fleets)
+    private Planet GetFleetCommandTargetPlanet(UIWindow sourceWindow, IReadOnlyList<Fleet> fleets)
     {
         Planet fleetPlanet = fleets
             ?.Select(fleet => fleet?.GetParentOfType<Planet>())
@@ -565,18 +578,7 @@ public sealed class FleetWindowController
         )
             return;
 
-        switch (source.Action)
-        {
-            case StrategyContextMenuActions.CreateMission:
-                commandActions.OpenMissionCreateWindow(missionTarget, source.Items);
-                break;
-            case StrategyContextMenuActions.Move:
-                commandActions.TryExecuteMove(source.Window, missionTarget, source.Items);
-                break;
-            case StrategyContextMenuActions.MoveConfirm:
-                commandActions.OpenMoveConfirmWindow(source.Window, missionTarget, source.Items);
-                break;
-        }
+        commandActions.ExecuteTargetedCommand(source, missionTarget);
     }
 
     /// <summary>
@@ -598,12 +600,12 @@ public sealed class FleetWindowController
             return;
 
         view.Destroyed += HandleViewDestroyed;
-        view.DetailItemDoubleClicked += HandleDetailItemDoubleClicked;
+        view.DetailItemDoubleClicked += HandleItemDoubleClicked;
         view.DetailItemDropped += HandleDetailItemDropped;
         view.DetailItemPressed += HandleDetailItemPressed;
         view.DetailItemReleased += HandleDetailItemReleased;
         view.FleetListDropped += HandleFleetListDropped;
-        view.FleetRowDoubleClicked += HandleFleetRowDoubleClicked;
+        view.FleetRowDoubleClicked += HandleItemDoubleClicked;
         view.FleetRowDropped += HandleFleetRowDropped;
         view.FleetRowPressed += HandleFleetRowPressed;
         view.FleetRowReleased += HandleFleetRowReleased;
@@ -648,13 +650,15 @@ public sealed class FleetWindowController
     {
         if (view.TryGetFleetRowIndex(eventData, out int fleetIndex))
         {
-            session.CaptureFleetContext(fleetIndex);
+            if (session.TryGetFleet(fleetIndex, out Fleet fleet))
+                session.CaptureContext(fleet);
             return;
         }
 
         if (view.TryGetDetailItemIndex(eventData, out int detailItemIndex))
         {
-            session.CaptureDetailContext(detailItemIndex);
+            if (session.TryGetDetailItem(detailItemIndex, out ISceneNode item))
+                session.CaptureContext(item);
             return;
         }
 
@@ -673,44 +677,13 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (!TryGetSession(view, out FleetWindowSession session) || eventData == null)
-            return;
-
-        if (!session.TryGetFleet(fleetIndex, out _))
-            return;
-
-        if (eventData.button == PointerEventData.InputButton.Left)
-            session.Window.RequestFocus();
         if (
-            targetingController.IsTargeting
-            && eventData.button == PointerEventData.InputButton.Left
+            !TryGetSession(view, out FleetWindowSession session)
+            || !session.TryGetFleet(fleetIndex, out Fleet fleet)
         )
             return;
 
-        view.ClearDragSource();
-        if (eventData.button == PointerEventData.InputButton.Right)
-        {
-            session.CaptureFleetContext(fleetIndex);
-            markDirty();
-            session.Window.RequestContext(eventData);
-            return;
-        }
-        if (eventData.button != PointerEventData.InputButton.Left)
-            return;
-
-        bool canStartDrag = session.PrepareFleetDragSelection(fleetIndex);
-        if (
-            canStartDrag
-            && view.FleetRowContainsDragSource(fleetIndex, eventData)
-            && TryGetDesktopPosition(session, eventData, out int x, out int y)
-        )
-        {
-            view.SetFleetRowDragSource(fleetIndex);
-            startItemDrag(session.Window, x, y);
-            return;
-        }
-
-        markDirty();
+        HandleItemPressed(view, session, fleet, fleetIndex, eventData);
     }
 
     /// <summary>
@@ -726,21 +699,12 @@ public sealed class FleetWindowController
     )
     {
         if (
-            eventData?.button != PointerEventData.InputButton.Left
-            || !TryGetSession(view, out FleetWindowSession session)
+            !TryGetSession(view, out FleetWindowSession session)
+            || !session.TryGetFleet(fleetIndex, out Fleet fleet)
         )
             return;
 
-        if (!session.TryGetFleet(fleetIndex, out Fleet fleet))
-            return;
-        if (TrySelectTarget(session, fleet))
-            return;
-        if (SelectableListSelection.HasSelectionModifier())
-            return;
-
-        view.ClearDragSource();
-        session.SelectFleet(fleetIndex);
-        markDirty();
+        HandleItemReleased(view, session, fleet, eventData);
     }
 
     /// <summary>
@@ -755,26 +719,11 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (!TryGetSession(view, out FleetWindowSession session))
-            return;
-
-        if (session.TryGetFleet(fleetIndex, out Fleet fleet))
-            TrySelectTarget(session, fleet);
-    }
-
-    /// <summary>
-    /// Handles a fleet-row double click as a status request.
-    /// </summary>
-    /// <param name="view">The source fleet view.</param>
-    /// <param name="fleetIndex">The double-clicked fleet-row index.</param>
-    /// <param name="eventData">The pointer event.</param>
-    private void HandleFleetRowDoubleClicked(
-        FleetWindowView view,
-        int fleetIndex,
-        PointerEventData eventData
-    )
-    {
-        OpenStatusWindow(view, eventData);
+        if (
+            TryGetSession(view, out FleetWindowSession session)
+            && session.TryGetFleet(fleetIndex, out Fleet fleet)
+        )
+            HandleItemDropped(session, fleet);
     }
 
     /// <summary>
@@ -789,43 +738,13 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (!TryGetSession(view, out FleetWindowSession session) || eventData == null)
-            return;
-
-        if (!session.TryGetDetailItem(itemIndex, out _))
-            return;
-        if (eventData.button == PointerEventData.InputButton.Left)
-            session.Window.RequestFocus();
         if (
-            targetingController.IsTargeting
-            && eventData.button == PointerEventData.InputButton.Left
+            !TryGetSession(view, out FleetWindowSession session)
+            || !session.TryGetDetailItem(itemIndex, out ISceneNode item)
         )
             return;
 
-        view.ClearDragSource();
-        if (eventData.button == PointerEventData.InputButton.Right)
-        {
-            session.CaptureDetailContext(itemIndex);
-            markDirty();
-            session.Window.RequestContext(eventData);
-            return;
-        }
-        if (eventData.button != PointerEventData.InputButton.Left)
-            return;
-
-        bool canStartDrag = session.PrepareDetailDragSelection(itemIndex);
-        if (
-            canStartDrag
-            && view.DetailItemContainsDragSource(itemIndex, eventData)
-            && TryGetDesktopPosition(session, eventData, out int x, out int y)
-        )
-        {
-            view.SetDetailItemDragSource(itemIndex);
-            startItemDrag(session.Window, x, y);
-            return;
-        }
-
-        markDirty();
+        HandleItemPressed(view, session, item, itemIndex, eventData);
     }
 
     /// <summary>
@@ -841,21 +760,12 @@ public sealed class FleetWindowController
     )
     {
         if (
-            eventData?.button != PointerEventData.InputButton.Left
-            || !TryGetSession(view, out FleetWindowSession session)
+            !TryGetSession(view, out FleetWindowSession session)
+            || !session.TryGetDetailItem(itemIndex, out ISceneNode item)
         )
             return;
 
-        if (!session.TryGetDetailItem(itemIndex, out ISceneNode item))
-            return;
-        if (TrySelectTarget(session, item))
-            return;
-        if (SelectableListSelection.HasSelectionModifier())
-            return;
-
-        view.ClearDragSource();
-        session.SelectDetailItem(itemIndex);
-        markDirty();
+        HandleItemReleased(view, session, item, eventData);
     }
 
     /// <summary>
@@ -870,20 +780,116 @@ public sealed class FleetWindowController
         PointerEventData eventData
     )
     {
-        if (!TryGetSession(view, out FleetWindowSession session))
-            return;
-
-        if (session.TryGetDetailItem(itemIndex, out ISceneNode item))
-            TrySelectTarget(session, item);
+        if (
+            TryGetSession(view, out FleetWindowSession session)
+            && session.TryGetDetailItem(itemIndex, out ISceneNode item)
+        )
+            HandleItemDropped(session, item);
     }
 
     /// <summary>
-    /// Handles a detail-card double click as a status request.
+    /// Handles a fleet or detail item press and starts selection, context, or drag flow.
     /// </summary>
     /// <param name="view">The source fleet view.</param>
-    /// <param name="itemIndex">The double-clicked detail-card index.</param>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <param name="item">The pressed fleet or detail item.</param>
+    /// <param name="itemIndex">The item's visual index in its collection.</param>
     /// <param name="eventData">The pointer event.</param>
-    private void HandleDetailItemDoubleClicked(
+    private void HandleItemPressed(
+        FleetWindowView view,
+        FleetWindowSession session,
+        ISceneNode item,
+        int itemIndex,
+        PointerEventData eventData
+    )
+    {
+        if (eventData == null)
+            return;
+
+        if (eventData.button == PointerEventData.InputButton.Left)
+            session.Window.RequestFocus();
+        if (
+            targetingController.IsTargeting
+            && eventData.button == PointerEventData.InputButton.Left
+        )
+            return;
+
+        view.ClearDragSource();
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            session.CaptureContext(item);
+            markDirty();
+            session.Window.RequestContext(eventData);
+            return;
+        }
+        if (eventData.button != PointerEventData.InputButton.Left)
+            return;
+
+        bool canStartDrag = session.PrepareDragSelection(item);
+        bool containsDragSource =
+            item is Fleet
+                ? view.FleetRowContainsDragSource(itemIndex, eventData)
+                : view.DetailItemContainsDragSource(itemIndex, eventData);
+        if (
+            canStartDrag
+            && containsDragSource
+            && TryGetDesktopPosition(session, eventData, out int x, out int y)
+        )
+        {
+            if (item is Fleet)
+                view.SetFleetRowDragSource(itemIndex);
+            else
+                view.SetDetailItemDragSource(itemIndex);
+            startItemDrag(session.Window, x, y);
+            return;
+        }
+
+        markDirty();
+    }
+
+    /// <summary>
+    /// Handles a fleet or detail item release and resolves targeting or final selection.
+    /// </summary>
+    /// <param name="view">The source fleet view.</param>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <param name="item">The released fleet or detail item.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleItemReleased(
+        FleetWindowView view,
+        FleetWindowSession session,
+        ISceneNode item,
+        PointerEventData eventData
+    )
+    {
+        if (
+            eventData?.button != PointerEventData.InputButton.Left
+            || TrySelectTarget(session, item)
+            || SelectableListSelection.HasSelectionModifier()
+        )
+            return;
+
+        view.ClearDragSource();
+        session.SelectItem(item);
+        markDirty();
+    }
+
+    /// <summary>
+    /// Handles a drop over one fleet or detail item as a targeting selection.
+    /// </summary>
+    /// <param name="session">The controller-owned fleet session.</param>
+    /// <param name="item">The drop target.</param>
+    private void HandleItemDropped(FleetWindowSession session, ISceneNode item)
+    {
+        TrySelectTarget(session, item);
+    }
+
+    /// <summary>
+    /// Handles a fleet or detail item double click as a status request.
+    /// </summary>
+    /// <param name="view">The source fleet view.</param>
+    /// <param name="itemIndex">The double-clicked item's visual index.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleItemDoubleClicked(
         FleetWindowView view,
         int itemIndex,
         PointerEventData eventData
@@ -1054,45 +1060,6 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
-    /// Finds the fleet window session representing a planet.
-    /// </summary>
-    /// <param name="planetId">The represented planet identifier.</param>
-    /// <returns>The matching fleet session, or null when none is open.</returns>
-    private FleetWindowSession FindWindow(string planetId)
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                windowManager.TryGetWindowView(window, out FleetWindowView view)
-                && sessions.TryGetValue(view, out FleetWindowSession session)
-                && session.Planet?.Planet?.InstanceID == planetId
-            )
-                return session;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resolves a projected planet against a refreshed sector collection.
-    /// </summary>
-    /// <param name="planet">The previous projected planet.</param>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    /// <returns>The refreshed planet, or null when it is no longer represented.</returns>
-    private static GalaxyMapPlanet FindFreshPlanet(
-        GalaxyMapPlanet planet,
-        IReadOnlyList<GalaxyMapSector> sectors
-    )
-    {
-        string planetId = planet?.Planet?.InstanceID;
-        return planetId == null
-            ? null
-            : sectors
-                .SelectMany(sector => sector.Planets)
-                .FirstOrDefault(item => item.Planet?.InstanceID == planetId);
-    }
-
-    /// <summary>
     /// Finds a controller-owned fleet session by its authored view.
     /// </summary>
     /// <param name="view">The fleet view.</param>
@@ -1181,12 +1148,12 @@ public sealed class FleetWindowController
             return;
 
         view.Destroyed -= HandleViewDestroyed;
-        view.DetailItemDoubleClicked -= HandleDetailItemDoubleClicked;
+        view.DetailItemDoubleClicked -= HandleItemDoubleClicked;
         view.DetailItemDropped -= HandleDetailItemDropped;
         view.DetailItemPressed -= HandleDetailItemPressed;
         view.DetailItemReleased -= HandleDetailItemReleased;
         view.FleetListDropped -= HandleFleetListDropped;
-        view.FleetRowDoubleClicked -= HandleFleetRowDoubleClicked;
+        view.FleetRowDoubleClicked -= HandleItemDoubleClicked;
         view.FleetRowDropped -= HandleFleetRowDropped;
         view.FleetRowPressed -= HandleFleetRowPressed;
         view.FleetRowReleased -= HandleFleetRowReleased;

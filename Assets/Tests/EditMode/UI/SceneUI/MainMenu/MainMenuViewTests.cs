@@ -147,7 +147,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void FactionLaunchButtons_Click_RaiseConfiguredFactionIds()
+        public void FactionLaunchButtons_Click_RaiseConfiguredFactionIDs()
         {
             Array bindings = GetBindings("factionLaunchBindings");
             string firstRequestedId = null;

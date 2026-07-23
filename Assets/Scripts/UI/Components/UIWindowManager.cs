@@ -110,7 +110,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         if (size.x <= 0 || size.y <= 0)
             throw new ArgumentOutOfRangeException(nameof(size));
 
-        int id = AllocateWindowId();
+        int id = AllocateWindowID();
         view = Instantiate(prefab, parent);
         view.name = GetUniqueHierarchyName(parent, hierarchyName, prefab.name, id);
         view.gameObject.SetActive(false);
@@ -136,7 +136,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// <param name="window">The registered window to destroy.</param>
     public void DestroyWindow(UIWindow window)
     {
-        if (window == null || GetWindowById(window.Id) != window)
+        if (window == null || GetWindowByID(window.Id) != window)
             return;
 
         MonoBehaviour view = window.Content;
@@ -160,7 +160,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         if (window == null)
             return;
 
-        UIWindow registeredWindow = GetWindowById(window.Id);
+        UIWindow registeredWindow = GetWindowByID(window.Id);
         if (registeredWindow != null && registeredWindow != window)
             throw new InvalidOperationException($"Window ID {window.Id} is already registered.");
 
@@ -251,7 +251,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="windowId">The runtime window identifier.</param>
     /// <returns>The matching window, or null when it is not registered.</returns>
-    public UIWindow GetWindowById(int windowId)
+    public UIWindow GetWindowByID(int windowId)
     {
         foreach (UIWindow window in windows)
         {
@@ -274,7 +274,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     {
         view = null;
         return window != null
-            && GetWindowById(window.Id) == window
+            && GetWindowByID(window.Id) == window
             && window.TryGetContent(out view);
     }
 
@@ -293,6 +293,45 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Finds the first authored view of a requested type that satisfies a feature predicate.
+    /// </summary>
+    /// <typeparam name="TView">The requested authored view type.</typeparam>
+    /// <param name="predicate">Determines whether a hosted view is the requested instance.</param>
+    /// <returns>The matching authored view, or null when none exists.</returns>
+    public TView FindWindowView<TView>(Predicate<TView> predicate)
+        where TView : class
+    {
+        if (predicate == null)
+            throw new ArgumentNullException(nameof(predicate));
+
+        foreach (UIWindow window in windows)
+        {
+            if (TryGetWindowView(window, out TView view) && predicate(view))
+                return view;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Visits every registered window hosting a requested authored view type.
+    /// </summary>
+    /// <typeparam name="TView">The requested authored view type.</typeparam>
+    /// <param name="visitor">Receives each matching window and its authored view.</param>
+    public void ForEachWindow<TView>(Action<UIWindow, TView> visitor)
+        where TView : class
+    {
+        if (visitor == null)
+            throw new ArgumentNullException(nameof(visitor));
+
+        foreach (UIWindow window in new List<UIWindow>(windows))
+        {
+            if (TryGetWindowView(window, out TView view))
+                visitor(window, view);
+        }
     }
 
     /// <summary>
@@ -465,9 +504,9 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     /// Allocates the next unused runtime window identifier.
     /// </summary>
     /// <returns>The allocated identifier.</returns>
-    private int AllocateWindowId()
+    private int AllocateWindowID()
     {
-        while (GetWindowById(nextWindowId) != null)
+        while (GetWindowByID(nextWindowId) != null)
             nextWindowId++;
 
         return nextWindowId++;

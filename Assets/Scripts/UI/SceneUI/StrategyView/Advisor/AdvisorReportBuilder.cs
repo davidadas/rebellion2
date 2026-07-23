@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Identifies the report displayed by the advisor utility window.
@@ -154,7 +155,7 @@ public static class AdvisorReportBuilder
     {
         return item != null
             && item.GetManufacturingStatus() == ManufacturingStatus.Complete
-            && item.Movement == null;
+            && item.GetTransitMovement() == null;
     }
 
     /// <summary>

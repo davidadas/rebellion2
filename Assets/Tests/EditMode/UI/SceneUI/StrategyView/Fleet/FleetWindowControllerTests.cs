@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
@@ -19,13 +20,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
     [TestFixture]
     public class FleetWindowControllerTests
     {
+        private const string _opposingFactionId = "FNALL2";
         private const string _playerFactionId = "FNALL1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
         private FleetWindowController _controller;
+        private TestActions _actions;
         private int _dirtyCount;
         private GameRoot _game;
+        private GameManager _gameManager;
         private GameFleet _fleet;
         private Officer _officer;
         private GalaxyMapPlanet _planet;
@@ -50,18 +54,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
             _planet.Planet.Fleets.Add(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
+            _gameManager = new GameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
-            _fleetCommandController = new StrategyFleetCommandController(
-                () => _game,
-                () => new FleetSystem(_game),
-                (_, _) => null
-            );
+            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
             _controller = CreateController();
-            TestActions actions = new TestActions();
-            _controller.Initialize(actions, actions, actions, (_, _, _) => { }, _ => { }, _ => { });
+            _actions = new TestActions();
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                (_, _, _) => { },
+                _ => { },
+                _ => { }
+            );
         }
 
         [TearDown]
@@ -236,6 +244,54 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void ContextMenu_BombardmentLeaf_ExecutesAndRoutesBattleResult()
+        {
+            _planet.Planet.OwnerInstanceID = _opposingFactionId;
+            _fleet.CapitalShips[0].Bombardment = 1;
+            _planet.Planet.Fleets.Remove(_fleet);
+            _fleet.SetParent(null);
+            _game.AttachNode(_fleet, _planet.Planet);
+            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
+            _controller = CreateController();
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                (_, _, _) => { },
+                _ => { },
+                _ => { }
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window, true);
+            StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+                window,
+                new StrategyContextMenuLayout(1, 177, 188, 4, 5, 6, 7),
+                CreateFleetPointerEvent(view),
+                10,
+                20
+            );
+            _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out _);
+            StrategyMenuCommand parent = request
+                .Commands.Cast<StrategyMenuCommand>()
+                .Single(command => command.Action == StrategyMenuAction.PlanetaryBombardment);
+            StrategyMenuCommand command = parent.SubmenuCommands.Single(item =>
+                item.Action == StrategyMenuAction.GeneralBombardment
+            );
+            ContextMenuController contextMenuController = new ContextMenuController();
+            contextMenuController.Open(request);
+
+            bool selected = contextMenuController.TrySelectCommand(command);
+
+            Assert.IsTrue(selected);
+            Assert.IsInstanceOf<BombardmentResult>(_actions.LastBattleResult);
+            Assert.AreEqual(
+                BombardmentType.General,
+                ((BombardmentResult)_actions.LastBattleResult).Type
+            );
+            Assert.AreEqual(1, _actions.RefreshCount);
+        }
+
+        [Test]
         public void ViewDestroyed_InitializedSession_ReleasesPlanetAssociation()
         {
             FleetWindowView view = OpenWindow(out UIWindow _);
@@ -262,6 +318,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
+            game.Factions.Add(new Faction { InstanceID = _opposingFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
             return game;
         }
@@ -292,6 +349,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 InstanceID = $"{instanceId}-ship",
                 DisplayName = "Capital Ship",
                 OwnerInstanceID = _playerFactionId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
             };
             officer = new Officer
             {
@@ -324,12 +384,44 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             return view;
         }
 
+        private static PointerEventData CreateFleetPointerEvent(FleetWindowView view)
+        {
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.gameObject.activeInHierarchy);
+            return new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Right,
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = row.transform.GetChild(0).gameObject,
+                },
+                pointerPressRaycast = new RaycastResult
+                {
+                    gameObject = row.transform.GetChild(0).gameObject,
+                },
+            };
+        }
+
         private sealed class TestActions
             : IFleetWindowActions,
                 IStrategyWindowCommandActions,
                 IStrategyConfirmationActions
         {
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) { }
+
+            public GameResult LastBattleResult { get; private set; }
+
+            public int RefreshCount { get; private set; }
+
+            public void OpenFleetBattleResult(GameResult result)
+            {
+                LastBattleResult = result;
+            }
 
             public void OpenFleetEncyclopediaWindow(IReadOnlyList<ISceneNode> items) { }
 
@@ -353,7 +445,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IReadOnlyList<ISceneNode> items
             ) { }
 
-            public void RefreshFleetState() { }
+            public void RefreshFleetState()
+            {
+                RefreshCount++;
+            }
 
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,

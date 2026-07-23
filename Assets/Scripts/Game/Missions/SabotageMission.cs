@@ -166,9 +166,17 @@ namespace Rebellion.Game.Missions
             if (target == null)
                 return new List<GameResult>();
 
+            bool garrisonChanged =
+                target is Regiment regiment
+                && regiment.GetParent() == planet
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null;
+            Fleet targetFleet = target is CapitalShip ? target.GetParentOfType<Fleet>() : null;
             game.DetachNode(target);
+            if (targetFleet?.CapitalShips.Count == 0)
+                game.DetachNode(targetFleet);
 
-            return new List<GameResult>
+            List<GameResult> results = new List<GameResult>
             {
                 new GameObjectSabotagedResult
                 {
@@ -178,6 +186,14 @@ namespace Rebellion.Game.Missions
                     Tick = game.CurrentTick,
                 },
             };
+            if (garrisonChanged)
+            {
+                results.Add(
+                    new PlanetGarrisonChangedResult { Planet = planet, Tick = game.CurrentTick }
+                );
+            }
+
+            return results;
         }
 
         /// <summary>

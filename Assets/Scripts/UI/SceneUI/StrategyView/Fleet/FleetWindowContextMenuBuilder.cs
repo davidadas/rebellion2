@@ -16,13 +16,19 @@ internal static class FleetWindowContextMenuBuilder
     /// <param name="canMove">Whether the selected items can move.</param>
     /// <param name="canCreateMission">Whether the selected personnel can start a mission.</param>
     /// <param name="canRetire">Whether the selected personnel can retire.</param>
+    /// <param name="canBombard">Whether the selected fleet can bombard its current planet.</param>
+    /// <param name="canDestroySystem">Whether the selected fleet can destroy its current planet.</param>
+    /// <param name="canAssault">Whether the selected fleet can assault its current planet.</param>
     /// <returns>The ordered context-menu commands.</returns>
     public static List<StrategyMenuCommand> Build(
         IReadOnlyList<ISceneNode> items,
         bool playerControlsItems,
         bool canMove,
         bool canCreateMission,
-        bool canRetire
+        bool canRetire,
+        bool canBombard = false,
+        bool canDestroySystem = false,
+        bool canAssault = false
     )
     {
         if (items == null || items.Count == 0)
@@ -35,7 +41,11 @@ internal static class FleetWindowContextMenuBuilder
                 items,
                 fleetCount,
                 shipCount,
-                playerControlsItems
+                playerControlsItems,
+                canMove,
+                canBombard,
+                canDestroySystem,
+                canAssault
             );
 
         int fighterCount = items.OfType<Starfighter>().Count();
@@ -58,65 +68,68 @@ internal static class FleetWindowContextMenuBuilder
     /// <param name="fleetCount">The selected fleet count.</param>
     /// <param name="shipCount">The selected capital-ship count.</param>
     /// <param name="playerControlsItems">Whether all selected items are player controlled.</param>
+    /// <param name="canMove">Whether the complete selection can move.</param>
+    /// <param name="canBombard">Whether the selected fleet can bombard its current planet.</param>
+    /// <param name="canDestroySystem">Whether the selected fleet can destroy its current planet.</param>
+    /// <param name="canAssault">Whether the selected fleet can assault its current planet.</param>
     /// <returns>The ordered commands.</returns>
     private static List<StrategyMenuCommand> BuildFleetAndCapitalShipCommands(
         IReadOnlyList<ISceneNode> items,
         int fleetCount,
         int shipCount,
-        bool playerControlsItems
+        bool playerControlsItems,
+        bool canMove,
+        bool canBombard,
+        bool canDestroySystem,
+        bool canAssault
     )
     {
         int itemCount = fleetCount + shipCount;
         List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", playerControlsItems),
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.MoveConfirm,
-                "Confirmed Move",
-                playerControlsItems
-            ),
+            new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canMove),
+            new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
         };
 
-        if (fleetCount == 1 && shipCount == 0)
+        if (fleetCount > 0 && shipCount == 0)
         {
             commands.Add(
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.PlanetaryBombardment,
-                    "Planetary Bombardment",
-                    playerControlsItems
+                StrategyBombardmentMenuBuilder.Build(
+                    playerControlsItems && canBombard,
+                    playerControlsItems && canDestroySystem
                 )
             );
-            commands.Add(new StrategyMenuCommand(0, "Planetary Assault", playerControlsItems));
+            commands.Add(
+                new StrategyMenuCommand(
+                    StrategyMenuAction.PlanetaryAssault,
+                    "Planetary Assault",
+                    playerControlsItems && canAssault
+                )
+            );
         }
         else if (fleetCount == 0)
         {
             commands.Add(
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.CreateFleet,
-                    "Create Fleet",
-                    playerControlsItems
-                )
+                new StrategyMenuCommand(StrategyMenuAction.CreateFleet, "Create Fleet", canMove)
             );
         }
 
         commands.Add(
             new StrategyMenuCommand(
-                StrategyContextMenuActions.Rename,
+                StrategyMenuAction.Rename,
                 "Rename",
                 itemCount == 1 && playerControlsItems
             )
         );
         commands.Add(
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
-                "Encyclopedia",
-                itemCount == 1
-            )
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", itemCount == 1)
         );
-        commands.Add(
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", itemCount == 1)
+        commands.Add(new StrategyMenuCommand(StrategyMenuAction.Status, "Status", itemCount == 1));
+        AddScrapOrStopCommand(
+            commands,
+            items,
+            AreUnderConstruction(items) ? playerControlsItems : canMove
         );
-        AddScrapOrStopCommand(commands, items, playerControlsItems);
         return commands;
     }
 
@@ -135,18 +148,14 @@ internal static class FleetWindowContextMenuBuilder
     {
         List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", canMove),
+            new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canMove),
+            new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.MoveConfirm,
-                "Confirmed Move",
-                canMove
-            ),
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
+                StrategyMenuAction.Encyclopedia,
                 "Encyclopedia",
                 items.Count == 1
             ),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", items.Count == 1),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", items.Count == 1),
         };
         AddScrapOrStopCommand(
             commands,
@@ -173,41 +182,27 @@ internal static class FleetWindowContextMenuBuilder
     {
         List<StrategyMenuCommand> commands = new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", canMove),
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.MoveConfirm,
-                "Confirmed Move",
-                canMove
-            ),
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.CreateMission,
-                "Mission",
-                canCreateMission
-            ),
+            new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canMove),
+            new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
+            new StrategyMenuCommand(StrategyMenuAction.CreateMission, "Mission", canCreateMission),
         };
         if (!personnel.OfType<SpecialForces>().Any())
         {
             commands.Add(
-                new StrategyMenuCommand(StrategyContextMenuActions.Submenu, "Command", canMove)
+                new StrategyMenuCommand("Command", canMove, new List<StrategyMenuCommand>())
             );
         }
         commands.Add(
             new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
+                StrategyMenuAction.Encyclopedia,
                 "Encyclopedia",
                 personnel.Count == 1
             )
         );
         commands.Add(
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Status,
-                "Status",
-                personnel.Count == 1
-            )
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", personnel.Count == 1)
         );
-        commands.Add(
-            new StrategyMenuCommand(StrategyContextMenuActions.Retire, "Retire ", canRetire)
-        );
+        commands.Add(new StrategyMenuCommand(StrategyMenuAction.Retire, "Retire ", canRetire));
         return commands;
     }
 
@@ -219,8 +214,8 @@ internal static class FleetWindowContextMenuBuilder
     {
         return new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Encyclopedia, "Encyclopedia", false),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", false),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", false),
         };
     }
 
@@ -239,9 +234,7 @@ internal static class FleetWindowContextMenuBuilder
         bool underConstruction = AreUnderConstruction(items);
         commands.Add(
             new StrategyMenuCommand(
-                underConstruction
-                    ? StrategyContextMenuActions.Stop
-                    : StrategyContextMenuActions.Scrap,
+                underConstruction ? StrategyMenuAction.Stop : StrategyMenuAction.Scrap,
                 underConstruction ? "Stop" : "Scrap",
                 enabled
             )

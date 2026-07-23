@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
@@ -16,6 +17,12 @@ public interface IPlanetSystemWindowActions
     /// Rebuilds shared strategy state after a planet-system command changes the game.
     /// </summary>
     void RefreshPlanetSystemState();
+
+    /// <summary>
+    /// Opens the completed planetary combat result.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    void OpenPlanetSystemBattleResult(GameResult result);
 
     /// <summary>
     /// Opens one planet icon window at a source-space position.
@@ -416,7 +423,22 @@ public sealed class PlanetSystemWindowController
         List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
             hit,
             items,
-            GetUIContext().GetPlayerFactionInstanceID()
+            GetUIContext().GetPlayerFactionInstanceID(),
+            fleetCommandController.CanExecutePlanetaryCombat(
+                items,
+                hit?.Planet,
+                StrategyMenuAction.BombardMilitaryFacilities
+            ),
+            fleetCommandController.CanExecutePlanetaryCombat(
+                items,
+                hit?.Planet,
+                StrategyMenuAction.DestroySystem
+            ),
+            fleetCommandController.CanExecutePlanetaryCombat(
+                items,
+                hit?.Planet,
+                StrategyMenuAction.PlanetaryAssault
+            )
         );
         if (commands.Count == 0)
             return false;
@@ -455,22 +477,26 @@ public sealed class PlanetSystemWindowController
 
         switch (strategyCommand.Action)
         {
-            case StrategyContextMenuActions.Encyclopedia:
+            case StrategyMenuAction.BombardMilitaryFacilities:
+            case StrategyMenuAction.BombardCivilianFacilities:
+            case StrategyMenuAction.GeneralBombardment:
+            case StrategyMenuAction.DestroySystem:
+            case StrategyMenuAction.PlanetaryAssault:
+                if (windowManager.TryGetWindowView(source.Window, out PlanetSystemWindowView view))
+                    TryExecutePlanetaryCombat(view, strategyCommand.Action);
+                break;
+            case StrategyMenuAction.Encyclopedia:
                 actions.OpenPlanetSystemInfo(source.Target);
                 break;
-            case StrategyContextMenuActions.Status:
+            case StrategyMenuAction.Status:
                 actions.OpenPlanetSystemStatus(source.Target);
                 break;
-            case StrategyContextMenuActions.Scrap:
+            case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.PlanetaryBombardment:
-                if (windowManager.TryGetWindowView(source.Window, out PlanetSystemWindowView view))
-                    TryExecutePlanetaryBombardment(view);
-                break;
-            case StrategyContextMenuActions.CreateMission:
-            case StrategyContextMenuActions.Move:
-            case StrategyContextMenuActions.MoveConfirm:
+            case StrategyMenuAction.CreateMission:
+            case StrategyMenuAction.Move:
+            case StrategyMenuAction.MoveConfirm:
                 BeginContextTargeting(source, strategyCommand.Action);
                 break;
         }
@@ -487,7 +513,10 @@ public sealed class PlanetSystemWindowController
     /// </summary>
     /// <param name="source">The immutable planet-system context selection.</param>
     /// <param name="action">The selected context-menu action.</param>
-    private void BeginContextTargeting(PlanetSystemContextMenuSource source, int action)
+    private void BeginContextTargeting(
+        PlanetSystemContextMenuSource source,
+        StrategyMenuAction action
+    )
     {
         if (source?.Window == null)
             return;
@@ -522,18 +551,7 @@ public sealed class PlanetSystemWindowController
         )
             return;
 
-        switch (source.Action)
-        {
-            case StrategyContextMenuActions.CreateMission:
-                commandActions.OpenMissionCreateWindow(missionTarget, source.Items);
-                break;
-            case StrategyContextMenuActions.Move:
-                commandActions.TryExecuteMove(source.Window, missionTarget, source.Items);
-                break;
-            case StrategyContextMenuActions.MoveConfirm:
-                commandActions.OpenMoveConfirmWindow(source.Window, missionTarget, source.Items);
-                break;
-        }
+        commandActions.ExecuteTargetedCommand(source, missionTarget);
     }
 
     /// <summary>
@@ -583,11 +601,12 @@ public sealed class PlanetSystemWindowController
     }
 
     /// <summary>
-    /// Executes planetary bombardment for the selected fleet overlay.
+    /// Executes planetary combat for the selected fleet overlay.
     /// </summary>
     /// <param name="view">The source planet-system view.</param>
-    /// <returns>True when bombardment was executed.</returns>
-    public bool TryExecutePlanetaryBombardment(PlanetSystemWindowView view)
+    /// <param name="action">The selected planetary combat action.</param>
+    /// <returns>True when planetary combat was executed.</returns>
+    public bool TryExecutePlanetaryCombat(PlanetSystemWindowView view, StrategyMenuAction action)
     {
         if (!sessions.TryGetValue(view, out PlanetSystemWindowSession session))
             return false;
@@ -597,11 +616,16 @@ public sealed class PlanetSystemWindowController
             hit?.Icon == PlanetIcon.Fleet
                 ? GetPlayerFleetItems(hit.Planet)
                 : new List<ISceneNode>();
-        if (!fleetCommandController.TryExecutePlanetaryBombardment(items, hit?.Planet))
+        GameResult result = fleetCommandController.ExecutePlanetaryCombat(
+            items,
+            hit?.Planet,
+            action
+        );
+        if (result == null)
             return false;
 
-        session.ClearSelection();
         actions.RefreshPlanetSystemState();
+        actions.OpenPlanetSystemBattleResult(result);
         return true;
     }
 
@@ -919,9 +943,7 @@ public sealed class PlanetSystemWindowController
     private static bool IsMoveTargetingRequest(TargetingRequest request)
     {
         return request?.Source is StrategyWindowTargetingSource source
-            && source.Action
-                is StrategyContextMenuActions.Move
-                    or StrategyContextMenuActions.MoveConfirm;
+            && source.Action is StrategyMenuAction.Move or StrategyMenuAction.MoveConfirm;
     }
 
     /// <summary>

@@ -43,6 +43,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 null,
                 DefenseWindowTab.Personnel,
                 null,
+                null,
                 tabs,
                 items
             );
@@ -54,6 +55,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(8, data.Y);
             Assert.AreEqual(string.Empty, data.Caption);
             Assert.AreEqual(string.Empty, data.TabTitle);
+            Assert.AreEqual(string.Empty, data.GarrisonRequirementText);
             Assert.AreEqual(1, data.Tabs.Count);
             Assert.AreEqual(1, data.Items.Count);
         }
@@ -68,6 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                     null,
                     null,
                     DefenseWindowTab.Personnel,
+                    null,
                     null,
                     null,
                     Array.Empty<StrategyUnitCardRenderData>()
@@ -85,6 +88,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                     null,
                     null,
                     DefenseWindowTab.Personnel,
+                    null,
                     null,
                     Array.Empty<DefenseWindowTabRenderData>(),
                     null

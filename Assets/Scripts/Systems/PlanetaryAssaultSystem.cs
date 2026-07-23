@@ -58,6 +58,12 @@ namespace Rebellion.Systems
             string attackerId = attackingFleets[0].GetOwnerInstanceID();
             string defenderId = defendingPlanet.GetOwnerInstanceID();
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
+            result.AttackerOwnerInstanceID = attackerId;
+            result.DefenderOwnerInstanceID = defenderId;
+            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(attackingFleets));
+            result.DefendingUnits.AddRange(
+                CombatUnitSnapshot.CapturePlanetUnits(defendingPlanet, defenderId)
+            );
 
             if (IsBlockedByShields(defendingPlanet))
             {
@@ -93,12 +99,36 @@ namespace Rebellion.Systems
 
                 result.RemainingAttackerRegimentCount = GetSurvivingAttackers(attackers).Count;
                 result.RemainingDefenderRegimentCount = GetSurvivingDefenders(defenders).Count;
+                if (result.DestroyedDefenderRegiments.Count > 0 || result.LandedRegiments.Count > 0)
+                {
+                    result.Events.Add(
+                        new PlanetGarrisonChangedResult
+                        {
+                            Planet = defendingPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
                 return result;
             }
             finally
             {
+                RecordUnitOutcomes(result);
                 SetAssaultCombatState(attackingFleets, defendingPlanet, false);
             }
+        }
+
+        /// <summary>
+        /// Determines whether the supplied fleets can execute a planetary assault.
+        /// </summary>
+        /// <param name="fleets">Fleets attempting the assault.</param>
+        /// <param name="planet">Planet being assaulted.</param>
+        /// <returns>True when the fleets contain ready troops and shields do not block them.</returns>
+        public bool CanExecute(IReadOnlyList<Fleet> fleets, Planet planet)
+        {
+            return CanAssault(fleets, planet)
+                && !IsBlockedByShields(planet)
+                && SnapshotAttackers(fleets).Count > 0;
         }
 
         /// <summary>
@@ -107,18 +137,44 @@ namespace Rebellion.Systems
         /// <param name="fleets">Fleets attempting the assault.</param>
         /// <param name="planet">Planet being assaulted.</param>
         /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
-        private static bool CanAssault(List<Fleet> fleets, Planet planet)
+        private static bool CanAssault(IReadOnlyList<Fleet> fleets, Planet planet)
         {
-            if (planet == null || fleets?.Any() != true || fleets.Any(fleet => fleet == null))
+            if (
+                planet?.IsDestroyed != false
+                || fleets?.Any() != true
+                || fleets.Any(fleet => fleet == null)
+            )
                 return false;
 
             string ownerId = fleets[0].GetOwnerInstanceID();
             return !string.IsNullOrEmpty(ownerId)
+                && planet?.GetOwnerInstanceID() != ownerId
                 && fleets.All(fleet =>
                     fleet.GetOwnerInstanceID() == ownerId
                     && fleet.Movement == null
+                    && !fleet.IsInCombat
                     && fleet.GetParent() == planet
                 );
+        }
+
+        /// <summary>
+        /// Records which captured units were destroyed during the assault.
+        /// </summary>
+        /// <param name="result">The completed planetary-assault result.</param>
+        private static void RecordUnitOutcomes(PlanetaryAssaultResult result)
+        {
+            CombatUnitSnapshot.RecordOutcomes(
+                result.AttackingUnits,
+                null,
+                result.DestroyedAttackerRegiments
+            );
+            CombatUnitSnapshot.RecordOutcomes(
+                result.DefendingUnits,
+                null,
+                result
+                    .DestroyedDefenderRegiments.Cast<ISceneNode>()
+                    .Concat(result.CollateralDestroyedBuildings)
+            );
         }
 
         /// <summary>

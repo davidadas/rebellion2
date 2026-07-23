@@ -97,20 +97,40 @@ internal sealed class PlanetSystemWindowProjector
         string planetInstanceId = planet?.InstanceID;
         string ownerFactionId = planet?.OwnerInstanceID;
         bool unexplored = planet?.IsUnexploredView == true;
-        string fleetFactionId = SelectPresentFactionId(
-            GetFleetOwnerFactionIds(planet),
+        string fleetFactionId = SelectPresentFactionID(
+            GetFleetOwnerFactionIDs(planet),
             ownerFactionId
         );
-        string missionFactionId = SelectPresentFactionId(
-            GetMissionOwnerFactionIds(planet),
+        string missionFactionId = SelectPresentFactionID(
+            GetMissionOwnerFactionIDs(planet),
             ownerFactionId
         );
+        bool showUprising = !unexplored && planet?.IsInUprising == true;
         int popularSupport = GetPlayerSupport(uiContext, planet);
+        Texture2D fleetTexture = string.IsNullOrEmpty(fleetFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, false);
+        Texture2D fleetPressedTexture = string.IsNullOrEmpty(fleetFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, true);
+        Texture2D missionTexture = string.IsNullOrEmpty(missionFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, false);
+        Texture2D missionPressedTexture = string.IsNullOrEmpty(missionFactionId)
+            ? null
+            : GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true);
 
         return new PlanetSystemPlanetRenderData(
             planetIndex,
             CreatePlanetOffset(system, planet),
             uiContext.GetPlanetTexture(planet, strategyPlanet?.PlanetIconPath),
+            showUprising
+                ? uiContext.GetTexture(
+                    uiContext
+                        .GetPlayerFactionTheme()
+                        ?.PlanetOverlayTheme?.PlanetSystemUprisingImagePath
+                )
+                : null,
             unexplored || !HasFacilities(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Facility, false),
@@ -123,10 +143,10 @@ internal sealed class PlanetSystemWindowProjector
             unexplored || !HasDefenses(planet)
                 ? null
                 : GetOverlayTexture(uiContext, ownerFactionId, PlanetIcon.Defense, true),
-            GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, false),
-            GetOverlayTexture(uiContext, fleetFactionId, PlanetIcon.Fleet, true),
-            GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, false),
-            GetOverlayTexture(uiContext, missionFactionId, PlanetIcon.Mission, true),
+            fleetTexture,
+            fleetPressedTexture,
+            missionTexture,
+            missionPressedTexture,
             !unexplored && planet?.IsHeadquarters == true
                 ? uiContext.GetTexture(
                     uiContext
@@ -179,9 +199,6 @@ internal sealed class PlanetSystemWindowProjector
         bool pressed
     )
     {
-        if (string.IsNullOrEmpty(factionId))
-            return null;
-
         PlanetOverlayIcons icons = uiContext
             .GetTheme(factionId)
             ?.PlanetOverlayTheme?.PlanetOverlayIcons;
@@ -372,7 +389,7 @@ internal sealed class PlanetSystemWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The present fleet-owner identifiers.</returns>
-    private static List<string> GetFleetOwnerFactionIds(Planet planet)
+    private static List<string> GetFleetOwnerFactionIDs(Planet planet)
     {
         return planet
                 ?.Fleets?.Select(fleet => fleet.OwnerInstanceID)
@@ -387,7 +404,7 @@ internal sealed class PlanetSystemWindowProjector
     /// </summary>
     /// <param name="planet">The represented planet.</param>
     /// <returns>The present mission-owner identifiers.</returns>
-    private static List<string> GetMissionOwnerFactionIds(Planet planet)
+    private static List<string> GetMissionOwnerFactionIDs(Planet planet)
     {
         return planet
                 ?.Missions?.Select(mission => mission.OwnerInstanceID)
@@ -403,7 +420,7 @@ internal sealed class PlanetSystemWindowProjector
     /// <param name="presentFactionIds">The factions present at the planet.</param>
     /// <param name="ownerFactionId">The planet owner faction identifier.</param>
     /// <returns>The faction whose overlay should be shown, or null.</returns>
-    private static string SelectPresentFactionId(
+    private static string SelectPresentFactionID(
         IReadOnlyList<string> presentFactionIds,
         string ownerFactionId
     )

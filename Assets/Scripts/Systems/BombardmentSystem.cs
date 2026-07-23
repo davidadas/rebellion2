@@ -79,7 +79,7 @@ namespace Rebellion.Systems
                 Tick = _game.CurrentTick,
             };
 
-            if (!CanBombard(attackingFleets, targetPlanet))
+            if (!CanExecute(attackingFleets, targetPlanet, type))
                 return result;
 
             string attackerId = attackingFleets[0].GetOwnerInstanceID();
@@ -89,6 +89,12 @@ namespace Rebellion.Systems
                 defenderId
             ).Count;
             result.AttackingFaction = _game.GetFactionByOwnerInstanceID(attackerId);
+            result.AttackerOwnerInstanceID = attackerId;
+            result.DefenderOwnerInstanceID = defenderId;
+            result.AttackingUnits.AddRange(CombatUnitSnapshot.CaptureFleetUnits(attackingFleets));
+            result.DefendingUnits.AddRange(
+                CombatUnitSnapshot.CapturePlanetUnits(targetPlanet, defenderId)
+            );
 
             SetBombardmentCombatState(attackingFleets, targetPlanet, true);
             try
@@ -135,6 +141,17 @@ namespace Rebellion.Systems
                     ReconcileControl(targetPlanet, defenderId, initialDefenderRegimentCount)
                 );
 
+                if (result.DestroyedRegiments.Count > 0)
+                {
+                    result.Events.Add(
+                        new PlanetGarrisonChangedResult
+                        {
+                            Planet = targetPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+
                 if (civilianTargetsDestroyed)
                 {
                     AddOwnershipChanges(
@@ -147,6 +164,7 @@ namespace Rebellion.Systems
             }
             finally
             {
+                RecordUnitOutcomes(result);
                 SetBombardmentCombatState(attackingFleets, targetPlanet, false);
             }
         }
@@ -156,19 +174,72 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleets">Fleets attempting the bombardment.</param>
         /// <param name="targetPlanet">Planet being targeted.</param>
+        /// <param name="type">Bombardment mode being requested.</param>
         /// <returns>True when every fleet is stationary, colocated, and owned by one faction.</returns>
-        private static bool CanBombard(List<Fleet> fleets, Planet targetPlanet)
+        public bool CanExecute(
+            IReadOnlyList<Fleet> fleets,
+            Planet targetPlanet,
+            BombardmentType type
+        )
         {
-            if (targetPlanet == null || fleets?.Any() != true || fleets.Any(fleet => fleet == null))
+            if (!CanBombard(fleets, targetPlanet))
+                return false;
+
+            return type == BombardmentType.DestroySystem
+                ? HasPlanetDestroyingShip(fleets)
+                : CalculateBombardmentStrength(fleets) > 0;
+        }
+
+        /// <summary>
+        /// Determines whether fleets satisfy the shared bombardment restrictions.
+        /// </summary>
+        /// <param name="fleets">Fleets attempting the bombardment.</param>
+        /// <param name="targetPlanet">Planet being targeted.</param>
+        /// <returns>True when the fleets can perform an ordinary bombardment.</returns>
+        private static bool CanBombard(IReadOnlyList<Fleet> fleets, Planet targetPlanet)
+        {
+            if (
+                targetPlanet?.IsDestroyed != false
+                || fleets?.Any() != true
+                || fleets.Any(fleet => fleet == null)
+            )
                 return false;
 
             string ownerId = fleets[0].GetOwnerInstanceID();
             return !string.IsNullOrEmpty(ownerId)
+                && targetPlanet?.GetOwnerInstanceID() != ownerId
                 && fleets.All(fleet =>
                     fleet.GetOwnerInstanceID() == ownerId
                     && fleet.Movement == null
+                    && !fleet.IsInCombat
                     && fleet.GetParent() == targetPlanet
-                );
+                )
+                && GetActiveCapitalShips(fleets).Any();
+        }
+
+        /// <summary>
+        /// Records which captured units were damaged or destroyed by bombardment.
+        /// </summary>
+        /// <param name="result">The completed bombardment result.</param>
+        private static void RecordUnitOutcomes(BombardmentResult result)
+        {
+            CombatUnitSnapshot.RecordOutcomes(
+                result.AttackingUnits,
+                result.AttackerShipDamage.Select(damage => damage.Ship),
+                result.DestroyedCapitalShips
+            );
+            CombatUnitSnapshot.RecordOutcomes(
+                result.DefendingUnits,
+                null,
+                result
+                    .DestroyedBuildings.Cast<ISceneNode>()
+                    .Concat(result.DestroyedRegiments)
+                    .Concat(
+                        result
+                            .Events.OfType<OfficerKilledResult>()
+                            .Select(killed => killed.TargetOfficer)
+                    )
+            );
         }
 
         /// <summary>
@@ -195,7 +266,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleets">Fleets contributing ships and starfighters.</param>
         /// <returns>The combined bombardment strength after condition and leadership adjustments.</returns>
-        private int CalculateBombardmentStrength(List<Fleet> fleets)
+        private int CalculateBombardmentStrength(IReadOnlyList<Fleet> fleets)
         {
             int divisor = _game.Config.Combat.Bombardment.AttackerLeadershipDivisor;
             int total = 0;
@@ -640,7 +711,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="fleets">Attacking fleets to inspect.</param>
         /// <returns>True when an active configured ship type is present.</returns>
-        private bool HasPlanetDestroyingShip(List<Fleet> fleets)
+        private bool HasPlanetDestroyingShip(IEnumerable<Fleet> fleets)
         {
             HashSet<string> typeIds =
                 _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs.ToHashSet();
@@ -888,7 +959,17 @@ namespace Rebellion.Systems
             if (first == null)
                 return second;
             if (second != null)
+            {
                 first.NewOwner = second.NewOwner;
+                first.ObserverFactionInstanceIDs = (
+                    first.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>()
+                )
+                    .Concat(second.ObserverFactionInstanceIDs ?? Enumerable.Empty<string>())
+                    .Distinct()
+                    .ToList();
+                if (second.Reason != PlanetOwnershipChangeReason.None)
+                    first.Reason = second.Reason;
+            }
             if (first.PreviousOwner?.InstanceID == first.NewOwner?.InstanceID)
                 return null;
             return first;

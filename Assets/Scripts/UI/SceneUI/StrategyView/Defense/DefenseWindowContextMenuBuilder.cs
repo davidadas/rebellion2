@@ -31,12 +31,8 @@ internal static class DefenseWindowContextMenuBuilder
         {
             return new List<StrategyMenuCommand>
             {
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.Encyclopedia,
-                    "Encyclopedia",
-                    false
-                ),
-                new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", false),
+                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
+                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", false),
             };
         }
 
@@ -44,24 +40,16 @@ internal static class DefenseWindowContextMenuBuilder
         {
             return new List<StrategyMenuCommand>
             {
-                new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", canMove),
+                new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canMove),
+                new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
                 new StrategyMenuCommand(
-                    StrategyContextMenuActions.MoveConfirm,
-                    "Confirmed Move",
-                    canMove
-                ),
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.CreateMission,
+                    StrategyMenuAction.CreateMission,
                     "Mission",
                     canCreateMission
                 ),
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.Encyclopedia,
-                    "Encyclopedia",
-                    true
-                ),
-                new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", true),
-                new StrategyMenuCommand(StrategyContextMenuActions.Retire, "Retire", canRetire),
+                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
+                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
+                new StrategyMenuCommand(StrategyMenuAction.Retire, "Retire", canRetire),
             };
         }
 
@@ -70,22 +58,12 @@ internal static class DefenseWindowContextMenuBuilder
             bool underConstruction = AreUnderConstruction(selectedItems);
             return new List<StrategyMenuCommand>
             {
-                new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", canMove),
+                new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canMove),
+                new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", canMove),
+                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
+                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
                 new StrategyMenuCommand(
-                    StrategyContextMenuActions.MoveConfirm,
-                    "Confirmed Move",
-                    canMove
-                ),
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.Encyclopedia,
-                    "Encyclopedia",
-                    true
-                ),
-                new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", true),
-                new StrategyMenuCommand(
-                    underConstruction
-                        ? StrategyContextMenuActions.Stop
-                        : StrategyContextMenuActions.Scrap,
+                    underConstruction ? StrategyMenuAction.Stop : StrategyMenuAction.Scrap,
                     underConstruction ? "Stop" : "Scrap",
                     underConstruction ? playerControlsItem : canMove
                 ),
@@ -95,12 +73,10 @@ internal static class DefenseWindowContextMenuBuilder
         bool selectionUnderConstruction = AreUnderConstruction(selectedItems);
         return new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Encyclopedia, "Encyclopedia", true),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", true),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
             new StrategyMenuCommand(
-                selectionUnderConstruction
-                    ? StrategyContextMenuActions.Stop
-                    : StrategyContextMenuActions.Scrap,
+                selectionUnderConstruction ? StrategyMenuAction.Stop : StrategyMenuAction.Scrap,
                 selectionUnderConstruction ? "Stop" : "Scrap",
                 playerControlsItem
             ),

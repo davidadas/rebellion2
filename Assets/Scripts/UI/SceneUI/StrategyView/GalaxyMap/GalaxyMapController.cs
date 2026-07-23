@@ -124,6 +124,7 @@ public sealed class GalaxyMapController
             }
         }
 
+        RebuildDomainLookups(sectors);
         ReconcileHoveredSystem();
     }
 
@@ -157,7 +158,7 @@ public sealed class GalaxyMapController
         target = null;
         if (
             view == null
-            || !view.TryGetPlanetInstanceId(eventData, out string planetInstanceId)
+            || !view.TryGetPlanetInstanceID(eventData, out string planetInstanceId)
             || !planetsByInstanceId.TryGetValue(planetInstanceId, out GalaxyMapPlanet planet)
         )
             return false;
@@ -202,6 +203,20 @@ public sealed class GalaxyMapController
                 match = node;
         });
         return match;
+    }
+
+    /// <summary>
+    /// Finds a planet projection in the current galaxy-map snapshot.
+    /// </summary>
+    /// <param name="instanceId">The planet instance identifier.</param>
+    /// <returns>The matching projected planet, or null when it is not visible.</returns>
+    public GalaxyMapPlanet FindPlanet(string instanceId)
+    {
+        return
+            !string.IsNullOrEmpty(instanceId)
+            && planetsByInstanceId.TryGetValue(instanceId, out GalaxyMapPlanet planet)
+            ? planet
+            : null;
     }
 
     /// <summary>

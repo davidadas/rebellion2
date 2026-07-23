@@ -153,7 +153,7 @@ public sealed class BattleAlertWindowController
         if (window == null)
             throw new ArgumentNullException(nameof(window));
 
-        view.Render(CreateRenderData(view, GetPlayerFactionId(), window.X, window.Y));
+        view.Render(CreateRenderData(view, GetPlayerFactionID(), window.X, window.Y));
     }
 
     /// <summary>
@@ -207,6 +207,24 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
+    /// Opens a completed combat result in the shared battle-result window.
+    /// </summary>
+    /// <param name="result">The completed combat result.</param>
+    internal void OpenResult(GameResult result)
+    {
+        BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+
+        EnsureInitialized();
+        BattleAlertWindowView view = FindWindow() ?? OpenWindow();
+        if (view == null)
+            return;
+
+        SetCombatResult(view, presentation);
+        PlayResultAudio(presentation);
+        markDirty();
+    }
+
+    /// <summary>
     /// Finds the registered battle-alert view.
     /// </summary>
     /// <returns>The open battle-alert view, or null when none is registered.</returns>
@@ -253,7 +271,7 @@ public sealed class BattleAlertWindowController
 
         BattleAlertWindowSession session = GetSession(view);
         if (string.IsNullOrEmpty(playerFactionId))
-            playerFactionId = GetPlayerFactionId();
+            playerFactionId = GetPlayerFactionID();
 
         PendingCombatResult pending = getPendingCombat();
 
@@ -269,54 +287,6 @@ public sealed class BattleAlertWindowController
             y,
             getUIContext()
         );
-    }
-
-    /// <summary>
-    /// Returns completed-result music from the player's perspective.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="playerFactionId">The current player faction identifier.</param>
-    /// <returns>The configured result music path, or null when none applies.</returns>
-    internal static string GetBattleResultMusicPath(
-        BattleAlertWindowTheme theme,
-        SpaceCombatResult result,
-        string playerFactionId
-    )
-    {
-        if (theme == null || result == null)
-            return null;
-
-        CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
-        if (!playerSide.HasValue || result.Winner == CombatSide.Draw)
-            return BattleResultPresentation.FirstNonBlank(
-                theme.ResultDrawMusicPath,
-                theme.ResultMusicPath
-            );
-
-        return result.Winner == playerSide.Value
-            ? BattleResultPresentation.FirstNonBlank(
-                theme.ResultVictoryMusicPath,
-                theme.ResultMusicPath
-            )
-            : BattleResultPresentation.FirstNonBlank(
-                theme.ResultDefeatMusicPath,
-                theme.ResultMusicPath
-            );
-    }
-
-    /// <summary>
-    /// Returns victory artwork, or the withdrawing faction's defeated artwork for withdrawal.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="result">The completed combat result.</param>
-    /// <returns>The selected summary artwork path.</returns>
-    internal static string GetResultSummaryImagePath(
-        BattleAlertWindowTheme theme,
-        SpaceCombatResult result
-    )
-    {
-        return BattleResultPresentation.GetSummaryImagePath(theme, result);
     }
 
     /// <summary>
@@ -353,7 +323,7 @@ public sealed class BattleAlertWindowController
         if (result == null)
             return;
 
-        SetCombatResult(view, result);
+        SetCombatResult(view, BattleResultPresentation.Create(result));
         stopMusic();
         actions.RebuildBattleSnapshot();
         markDirty();
@@ -368,8 +338,9 @@ public sealed class BattleAlertWindowController
         SpaceCombatResult result = autoResolve();
         if (result != null)
         {
-            SetCombatResult(view, result);
-            PlayResultMusic(result);
+            BattleResultPresentation presentation = BattleResultPresentation.Create(result);
+            SetCombatResult(view, presentation);
+            PlayResultAudio(presentation);
             actions.RebuildBattleSnapshot();
             markDirty();
             return;
@@ -413,16 +384,16 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleOpenFleetRequested(BattleAlertWindowView view)
     {
-        if (
-            TryGetResultSession(view, out BattleAlertWindowSession session)
-            && session.Result.Planet != null
-        )
+        if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
-            actions.OpenBattleResultFleet(
-                session.Result.Planet,
-                session.Window.X,
-                session.Window.Y
-            );
+            Planet planet = session.Result.Planet;
+            if (planet == null)
+            {
+                CloseWindow(view);
+                return;
+            }
+
+            actions.OpenBattleResultFleet(planet, session.Window.X, session.Window.Y);
         }
 
         CloseWindow(view);
@@ -434,11 +405,15 @@ public sealed class BattleAlertWindowController
     /// <param name="view">The requesting battle-alert view.</param>
     private void HandleOpenSystemRequested(BattleAlertWindowView view)
     {
-        if (
-            TryGetResultSession(view, out BattleAlertWindowSession session)
-            && session.Result.Planet?.GetParent() is PlanetSystem system
-        )
+        if (TryGetResultSession(view, out BattleAlertWindowSession session))
         {
+            Planet planet = session.Result.Planet;
+            if (planet?.GetParent() is not PlanetSystem system)
+            {
+                CloseWindow(view);
+                return;
+            }
+
             actions.OpenBattleResultSystem(system, session.Window.X, session.Window.Y);
         }
 
@@ -512,7 +487,7 @@ public sealed class BattleAlertWindowController
     /// </summary>
     /// <param name="view">The result view.</param>
     /// <param name="result">The completed combat result.</param>
-    private void SetCombatResult(BattleAlertWindowView view, SpaceCombatResult result)
+    private void SetCombatResult(BattleAlertWindowView view, BattleResultPresentation result)
     {
         sessions[view].Complete(result);
     }
@@ -588,7 +563,7 @@ public sealed class BattleAlertWindowController
     /// <returns>The mode that should be presented.</returns>
     private static BattleAlertWindowMode GetWindowMode(
         PendingCombatResult pending,
-        SpaceCombatResult result
+        BattleResultPresentation result
     )
     {
         if (result != null)
@@ -606,13 +581,15 @@ public sealed class BattleAlertWindowController
     }
 
     /// <summary>
-    /// Plays configured completed-result music from the player's perspective.
+    /// Plays configured completed-result audio.
     /// </summary>
     /// <param name="result">The completed combat result.</param>
-    private void PlayResultMusic(SpaceCombatResult result)
+    private void PlayResultAudio(BattleResultPresentation result)
     {
-        string musicPath = GetBattleResultMusicPath(GetBattleTheme(), result, GetPlayerFactionId());
-        PlayMusicTrack(musicPath, true);
+        BattleAlertWindowTheme theme = GetBattleTheme();
+        PlayMusicTrack(result.GetMusicPath(theme, GetPlayerFactionID()), true);
+        if (!string.IsNullOrWhiteSpace(result.SoundEffectPath))
+            playSfx(result.SoundEffectPath);
     }
 
     /// <summary>
@@ -643,7 +620,7 @@ public sealed class BattleAlertWindowController
     /// Returns the current player faction identifier with the saved-game fallback.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         UIContext uiContext = getUIContext();
         string playerFactionId = uiContext?.Game?.Summary?.PlayerFactionID;
@@ -689,7 +666,7 @@ public sealed class BattleAlertWindowController
 
         internal BattleResultPanel ResultPanel { get; private set; } = BattleResultPanel.Summary;
 
-        internal SpaceCombatResult Result { get; private set; }
+        internal BattleResultPresentation Result { get; private set; }
 
         internal UIWindow Window { get; }
 
@@ -697,10 +674,11 @@ public sealed class BattleAlertWindowController
         /// Stores a completed combat result and restores default result selections.
         /// </summary>
         /// <param name="result">The completed combat result.</param>
-        internal void Complete(SpaceCombatResult result)
+        internal void Complete(BattleResultPresentation result)
         {
             Result = result ?? throw new ArgumentNullException(nameof(result));
             ReconcileMode(BattleAlertWindowMode.Result);
+            ResultCategory = result.DefaultCategory;
         }
 
         /// <summary>
@@ -739,7 +717,10 @@ public sealed class BattleAlertWindowController
         /// <returns>True when the selection changed.</returns>
         internal bool SelectResultCategory(BattleResultCategory category)
         {
-            if (ResultCategory == category)
+            if (
+                ResultCategory == category
+                || !BattleResultCategoryCatalog.GetForResult(Result).Contains(category)
+            )
                 return false;
 
             ResultCategory = category;

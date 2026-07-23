@@ -281,7 +281,7 @@ One of the older and more established worlds of the Corellian sector, Corfai has
           </EncyclopediaEntryStat>
         </EncyclopediaStats>
         <EncyclopediaDescription>One of the older and more established worlds of the Corellian sector, Corfai has been a center for trade and commerce for generations.</EncyclopediaDescription>
-        <PositionX>214</PositionX>
+        <PositionX>213</PositionX>
         <PositionY>190</PositionY>
         <PlanetIconPath>Art/HD/UI/StrategyView/ui_strategyview_temperate_clouded_blue_planet_icon</PlanetIconPath>
         <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_system_temperate_clouded_blue</EncyclopediaImagePath>
@@ -319,7 +319,7 @@ Located in the Corellian Sector, Selonia is home to the species known as Selonia
           </EncyclopediaEntryStat>
         </EncyclopediaStats>
         <EncyclopediaDescription>Located in the Corellian Sector, Selonia is home to the species known as Selonians.  Selonians live in hives centered around a fertile female.  The planet is for the most part covered with water, but it does have a large number of islands.</EncyclopediaDescription>
-        <PositionX>225</PositionX>
+        <PositionX>224</PositionX>
         <PositionY>178</PositionY>
         <PlanetIconPath>Art/HD/UI/StrategyView/ui_strategyview_frozen_blue_planet_icon</PlanetIconPath>
         <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_system_frozen_blue</EncyclopediaImagePath>
@@ -376,7 +376,7 @@ A terrestrial planet is the homeworld of the alien species also known as Duros w
           </EncyclopediaEntryStat>
         </EncyclopediaStats>
         <EncyclopediaDescription>A terrestrial planet is the homeworld of the alien species also known as Duros which have been traveling space for thousands of years. The Duros system is filled with vast, orbiting cities and shipyards governed by a group of starship corporations. Political decisions are made by the stockholders of these corporations. The planet Duros is primarily uninhabited, and is covered with automated farms that help feed the inhabitants of the space cities.</EncyclopediaDescription>
-        <PositionX>235</PositionX>
+        <PositionX>237</PositionX>
         <PositionY>183</PositionY>
         <PlanetIconPath>Art/HD/UI/StrategyView/ui_strategyview_shadowed_green_planet_icon</PlanetIconPath>
         <EncyclopediaImagePath>Art/HD/UI/Encyclopedia/ui_encyclopedia_system_shadowed_green</EncyclopediaImagePath>

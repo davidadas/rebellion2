@@ -15,4 +15,7 @@ internal static class StrategyUISoundPaths
         "Audio/SFX/StrategyView/sfx_strategyview_galactic_information_open";
 
     public const string GalacticInformationControl = "Audio/SFX/StrategyView/sfx_strategyview_open";
+
+    public const string PlanetaryAssault =
+        "Audio/SFX/StrategyView/Messages/sfx_strategyview_message_planetary_assault";
 }

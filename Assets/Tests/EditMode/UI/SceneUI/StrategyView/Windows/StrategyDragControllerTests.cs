@@ -295,6 +295,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
         private sealed class RecordingWindowCommands : IStrategyWindowCommandActions
         {
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) { }
+
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,
                 IReadOnlyList<ISceneNode> items

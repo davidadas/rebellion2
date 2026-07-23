@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -32,7 +30,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_EnemyPlanetTarget_StartsUprising()
+        public void RollParticipantSuccess_ResistanceRegimentReducesScoreByOne()
         {
             (
                 GameRoot game,
@@ -42,6 +40,12 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            enemyPlanet.SetPopularSupport("empire", 40);
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -11, 0 },
+                { -10, 100 },
+            };
             Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
@@ -51,16 +55,20 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            MissionSceneBuilder.RunToSuccess(mission, game);
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "rebels");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            regiment.TypeID = "non-resistance";
+            game.AttachNode(regiment, enemyPlanet);
 
-            Assert.IsTrue(
-                enemyPlanet.IsInUprising,
-                "InciteUprising success should start uprising on planet"
-            );
+            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
+
+            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
+
+            Assert.IsFalse(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
         [Test]
-        public void Execute_EnemyPlanetTarget_ReturnsPlanetUprisingStartedResult()
+        public void RollParticipantSuccess_IncompleteResistanceRegimentDoesNotReduceScore()
         {
             (
                 GameRoot game,
@@ -70,6 +78,12 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            enemyPlanet.SetPopularSupport("empire", 40);
+            game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
+            {
+                { -11, 0 },
+                { -10, 100 },
+            };
             Mission mission = CreateInciteUprisingMission(
                 "empire",
                 enemyPlanet,
@@ -79,14 +93,12 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+            Regiment regiment = EntityFactory.CreateRegiment("r1", "rebels");
+            regiment.ManufacturingStatus = ManufacturingStatus.Building;
+            regiment.TypeID = game.Config.Uprising.ResistanceRegimentTypeID;
+            game.AttachNode(regiment, enemyPlanet);
 
-            Assert.IsTrue(
-                results.OfType<PlanetUprisingStartedResult>().Any(),
-                "Should return PlanetUprisingStartedResult on success"
-            );
+            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
         [Test]
@@ -159,7 +171,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_SuccessfulMission_CompletedResultHasHumanReadableName()
+        public void DisplayName_IsHumanReadable()
         {
             (
                 GameRoot game,
@@ -178,20 +190,11 @@ namespace Rebellion.Tests.Game.Missions
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().First();
-            Assert.AreEqual(
-                "Incite Uprising",
-                completed.MissionName,
-                "MissionName in result should be the human-readable display name"
-            );
+            Assert.AreEqual("Incite Uprising", mission.DisplayName);
         }
 
         [Test]
-        public void GetAbortReason_UprisingAlreadyStarted_ReturnsFailure()
+        public void GetAbortReason_UprisingAlreadyStarted_DoesNotAbort()
         {
             (
                 GameRoot game,
@@ -212,15 +215,11 @@ namespace Rebellion.Tests.Game.Missions
 
             enemyPlanet.BeginUprising();
 
-            Assert.AreEqual(
-                MissionCompletionReason.Failure,
-                mission.GetAbortReason(game),
-                "Mission should be canceled when planet is already in uprising"
-            );
+            Assert.IsNull(mission.GetAbortReason(game));
         }
 
         [Test]
-        public void GetAgentProbability_HighEnemyStrength_FailsAtHighRoll()
+        public void RollParticipantSuccess_NonResistanceDefenseRatingDoesNotAffectScore()
         {
             (
                 GameRoot game,
@@ -230,11 +229,14 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            enemyPlanet.SetPopularSupport("empire", 40);
             Regiment regiment = new Regiment
             {
                 InstanceID = "r1",
                 OwnerInstanceID = "rebels",
-                DefenseRating = 50,
+                TypeID = "non-resistance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                DefenseRating = 500,
             };
             game.AttachNode(regiment, enemyPlanet);
 
@@ -246,20 +248,13 @@ namespace Rebellion.Tests.Game.Missions
             );
             game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
             {
-                { -200, 1 },
-                { 100, 99 },
+                { -11, 0 },
+                { -10, 100 },
             };
             game.AttachNode(mission, enemyPlanet);
             mission.Initiate(0);
 
-            while (!mission.IsComplete())
-                mission.IncrementProgress();
-            List<GameResult> results = mission.Execute(game, new FixedRNG(0.99));
-
-            Assert.IsFalse(
-                results.OfType<PlanetUprisingStartedResult>().Any(),
-                "High enemy regiment strength should reduce incite probability enough to fail at 99% roll"
-            );
+            Assert.IsTrue(mission.RollParticipantSuccess(officer, new FixedRNG(0), game));
         }
 
         [Test]

@@ -37,6 +37,9 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
     [SerializeField]
     private TextMeshProUGUI tabTitleTextField;
 
+    [SerializeField]
+    private TextMeshProUGUI garrisonRequirementTextField;
+
     [Header("Items")]
     [SerializeField]
     private ScrollAreaView itemsScrollArea;
@@ -147,6 +150,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
         UILayout.SetTextContent(captionTextField, data.Caption);
         RenderTabs(data.Tabs);
         UILayout.SetTextContent(tabTitleTextField, data.TabTitle);
+        UILayout.SetTextContent(garrisonRequirementTextField, data.GarrisonRequirementText);
         RenderItems(data.Items);
         gameObject.SetActive(true);
     }
@@ -598,6 +602,8 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
         }
         if (tabTitleTextField == null)
             throw new MissingReferenceException($"{name}/TabTitleTextField is missing.");
+        if (garrisonRequirementTextField == null)
+            throw new MissingReferenceException($"{name}/GarrisonRequirementTextField is missing.");
         if (itemsScrollArea == null)
             throw new MissingReferenceException($"{name}/ItemsScrollArea is missing.");
         if (itemsGridLayout == null)

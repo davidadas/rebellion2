@@ -42,6 +42,8 @@ internal enum BattleResultCategory
 {
     CapitalShips,
     Starfighters,
+    Manufacturing,
+    Defense,
     Troops,
     Personnel,
 }
@@ -88,7 +90,7 @@ internal static class BattleAlertPanelCatalog
 /// </summary>
 internal static class BattleResultCategoryCatalog
 {
-    private static readonly IReadOnlyList<BattleResultCategory> _categories = Array.AsReadOnly(
+    private static readonly IReadOnlyList<BattleResultCategory> _spaceCategories = Array.AsReadOnly(
         new[]
         {
             BattleResultCategory.CapitalShips,
@@ -97,11 +99,35 @@ internal static class BattleResultCategoryCatalog
             BattleResultCategory.Personnel,
         }
     );
+    private static readonly IReadOnlyList<BattleResultCategory> _planetaryCategories =
+        Array.AsReadOnly(
+            new[]
+            {
+                BattleResultCategory.CapitalShips,
+                BattleResultCategory.Starfighters,
+                BattleResultCategory.Manufacturing,
+                BattleResultCategory.Defense,
+                BattleResultCategory.Troops,
+                BattleResultCategory.Personnel,
+            }
+        );
 
     /// <summary>
     /// Returns completed battle-result categories in authored display order.
     /// </summary>
-    internal static IReadOnlyList<BattleResultCategory> Ordered => _categories;
+    internal static IReadOnlyList<BattleResultCategory> Ordered => _planetaryCategories;
+
+    /// <summary>
+    /// Returns the categories supported by one completed result.
+    /// </summary>
+    /// <param name="result">The completed result.</param>
+    /// <returns>The supported categories in authored order.</returns>
+    internal static IReadOnlyList<BattleResultCategory> GetForResult(
+        BattleResultPresentation result
+    )
+    {
+        return result?.UsesPlanetaryLayout == true ? _planetaryCategories : _spaceCategories;
+    }
 }
 
 /// <summary>
@@ -115,16 +141,21 @@ internal sealed class BattleAlertButtonRenderData
     /// <param name="interactable">Whether the button accepts input.</param>
     /// <param name="texture">The normal-state texture.</param>
     /// <param name="pressedTexture">The pressed-state texture.</param>
+    /// <param name="bounds">The optional source-space button bounds.</param>
     public BattleAlertButtonRenderData(
         bool interactable,
         Texture2D texture,
-        Texture2D pressedTexture
+        Texture2D pressedTexture,
+        RectInt? bounds = null
     )
     {
         Interactable = interactable;
         Texture = texture;
         PressedTexture = pressedTexture;
+        Bounds = bounds;
     }
+
+    public RectInt? Bounds { get; }
 
     public bool Interactable { get; }
 
@@ -166,17 +197,20 @@ internal sealed class BattleResultItemRenderData
     /// <param name="baseTexture">The unit's base texture.</param>
     /// <param name="withdrawingOverlayTexture">The optional withdrawal overlay.</param>
     /// <param name="damagedOverlayTexture">The optional damage overlay.</param>
+    /// <param name="capturedOverlayTexture">The optional captured-personnel overlay.</param>
     public BattleResultItemRenderData(
         string text,
         Texture2D baseTexture,
         Texture2D withdrawingOverlayTexture = null,
-        Texture2D damagedOverlayTexture = null
+        Texture2D damagedOverlayTexture = null,
+        Texture2D capturedOverlayTexture = null
     )
     {
         Text = text ?? string.Empty;
         BaseTexture = baseTexture;
         WithdrawingOverlayTexture = withdrawingOverlayTexture;
         DamagedOverlayTexture = damagedOverlayTexture;
+        CapturedOverlayTexture = capturedOverlayTexture;
     }
 
     public string Text { get; }
@@ -186,6 +220,8 @@ internal sealed class BattleResultItemRenderData
     public Texture2D WithdrawingOverlayTexture { get; }
 
     public Texture2D DamagedOverlayTexture { get; }
+
+    public Texture2D CapturedOverlayTexture { get; }
 }
 
 /// <summary>
@@ -304,6 +340,7 @@ internal sealed class BattleAlertResultRenderData
     /// <param name="resultTableTitle">The completed-result category title.</param>
     /// <param name="resultColumnHeaders">The completed-result column headers.</param>
     /// <param name="resultCategories">The completed-result filter buttons.</param>
+    /// <param name="usesPlanetaryCategoryLayout">Whether the six-category planetary layout is active.</param>
     /// <param name="resultDirectButtons">The completed-result navigation buttons.</param>
     /// <param name="resultTable">The completed-result table.</param>
     public BattleAlertResultRenderData(
@@ -317,6 +354,7 @@ internal sealed class BattleAlertResultRenderData
         string resultTableTitle,
         IEnumerable<string> resultColumnHeaders,
         IEnumerable<BattleResultCategoryRenderData> resultCategories,
+        bool usesPlanetaryCategoryLayout,
         IEnumerable<BattleAlertButtonRenderData> resultDirectButtons,
         BattleResultTableRenderData resultTable
     )
@@ -336,6 +374,7 @@ internal sealed class BattleAlertResultRenderData
         ResultCategories = (resultCategories ?? Enumerable.Empty<BattleResultCategoryRenderData>())
             .ToList()
             .AsReadOnly();
+        UsesPlanetaryCategoryLayout = usesPlanetaryCategoryLayout;
         ResultDirectButtons = (
             resultDirectButtons ?? Enumerable.Empty<BattleAlertButtonRenderData>()
         )
@@ -363,6 +402,8 @@ internal sealed class BattleAlertResultRenderData
     public IReadOnlyList<string> ResultColumnHeaders { get; }
 
     public IReadOnlyList<BattleResultCategoryRenderData> ResultCategories { get; }
+
+    public bool UsesPlanetaryCategoryLayout { get; }
 
     public IReadOnlyList<BattleAlertButtonRenderData> ResultDirectButtons { get; }
 

@@ -201,7 +201,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for chance rolls and reward rolls.</param>
         /// <returns>Transition results, with a MissionCompletedResult appended.</returns>
-        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
@@ -354,10 +354,20 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Research missions repeat after completion as long as the mission target is still satisfied.
+        /// Research missions repeat while the target remains valid and advances remain available.
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <returns>True if the mission should repeat.</returns>
-        public override bool ShouldRepeatAfterCompletion(GameRoot game) => IsMissionSatisfied(game);
+        public override bool ShouldRepeatAfterCompletion(GameRoot game)
+        {
+            if (!IsMissionSatisfied(game))
+                return false;
+
+            Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
+            if (faction?.ResearchCatalog.ContainsKey(Discipline) != true)
+                return true;
+
+            return !faction.IsResearchExhausted(Discipline);
+        }
     }
 }

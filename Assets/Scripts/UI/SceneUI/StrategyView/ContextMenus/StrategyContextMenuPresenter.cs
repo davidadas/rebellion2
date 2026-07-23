@@ -195,7 +195,8 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
                     GetCommandIconTexture(command, false),
                     GetCommandIconTexture(command, true),
                     command.UsesIconColumn,
-                    StrategyContextMenuIconKeys.TryGetSpeed(command.IconKey, out _),
+                    command.IsSubmenu
+                        || StrategyContextMenuIconKeys.TryGetSpeed(command.IconKey, out _),
                     BuildCommandItems(command.SubmenuCommands)
                 )
             );

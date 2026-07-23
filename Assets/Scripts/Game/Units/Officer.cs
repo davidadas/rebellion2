@@ -137,6 +137,8 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
+        public string MissionReturnParentInstanceID { get; set; }
+        public string MissionReturnLocationInstanceID { get; set; }
         public bool UsesAdvancedVoiceLines { get; set; }
         public List<string> OrderVoicePaths { get; set; } = new List<string>();
         public List<string> PersonnelArrivedVoicePaths { get; set; } = new List<string>();

@@ -149,7 +149,7 @@ namespace Rebellion.AI.Planners
         )
         {
             Fleet targetFleet = GetCapitalShipTransferTargetFleet(context);
-            Planet targetPlanet = GetAttackTargetPlanet(context, targetFleet);
+            Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(targetFleet);
             if (!CanReceiveCapitalShipTransfer(context, targetFleet, targetPlanet))
                 return;
 
@@ -257,26 +257,6 @@ namespace Rebellion.AI.Planners
         }
 
         /// <summary>
-        /// Returns the active attack target for a fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">The fleet to inspect.</param>
-        /// <returns>The attack target planet, or null.</returns>
-        private Planet GetAttackTargetPlanet(AITurnContext context, Fleet fleet)
-        {
-            string targetPlanetId = fleet?.Order?.TargetPlanetId;
-            if (string.IsNullOrEmpty(targetPlanetId))
-                return null;
-
-            Planet targetPlanet = context.Game.GetSceneNodeByInstanceID<Planet>(targetPlanetId);
-            string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(targetOwnerId) || targetOwnerId == context.Faction.InstanceID)
-                return null;
-
-            return targetPlanet;
-        }
-
-        /// <summary>
         /// Returns whether a fleet can receive a capital ship transfer.
         /// </summary>
         /// <param name="context">The current AI turn context.</param>
@@ -314,7 +294,7 @@ namespace Rebellion.AI.Planners
                 .Assessment.AttackOrderedFleets.Select(fleet => new
                 {
                     Fleet = fleet,
-                    TargetPlanet = GetAttackTargetPlanet(context, fleet),
+                    TargetPlanet = context.Assessment.GetAttackTargetPlanet(fleet),
                 })
                 .Where(candidate =>
                     CanReceiveCapitalShipTransfer(context, candidate.Fleet, candidate.TargetPlanet)

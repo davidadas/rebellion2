@@ -429,15 +429,11 @@
           <xs:complexType>
             <xs:all>
               <xs:element name="MaintenanceShortfallAutoscrapInterval" type="PositiveIntType" />
-              <xs:element name="CapitalShipProgressTable" type="IntTableType" />
-              <xs:element name="CapitalShipProgressRollRange" type="PositiveIntType" />
-              <xs:element name="CapitalShipSuccessThreshold" type="PositiveIntType" />
-              <xs:element name="CapitalShipSuccessRollRange" type="PositiveIntType" />
-              <xs:element name="BlockadeCapitalShipPenalty" type="xs:nonNegativeInteger" />
-              <xs:element name="BlockadeFighterPenalty" type="xs:nonNegativeInteger" />
-              <xs:element name="CapitalShipCompletionSupportShift" type="xs:integer" />
-              <xs:element name="BuildingCompletionSupportShift" type="xs:integer" />
-              <xs:element name="TroopCompletionSupportShift" type="xs:integer" />
+              <xs:element name="ScrapRefundDivisor" type="PositiveIntType" />
+              <xs:element name="ResourceMaintenanceLoadPercent" type="PositiveIntType" />
+              <xs:element name="ResourceCollectionBasePercent" type="PositiveIntType" />
+              <xs:element name="ResourceStartupBasePercent" type="PositiveIntType" />
+              <xs:element name="ResourceStartupRandomPercent" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -526,6 +522,7 @@
               <xs:element name="SpaceCombat">
                 <xs:complexType>
                   <xs:all>
+                    <xs:element name="FighterTacticalDurability" type="PositiveIntType" />
                     <xs:element
                       name="WeaponDamageVariancePercent"
                       type="xs:nonNegativeInteger"
@@ -554,6 +551,13 @@
             <xs:all>
               <xs:element name="DiceRange" type="PositiveIntType" />
               <xs:element name="DiceAddend" type="xs:integer" />
+              <xs:element name="MissionLeadershipDivisor" type="PositiveIntType" />
+              <xs:element name="InciteMissionSupportShift" type="xs:integer" />
+              <xs:element name="ResistanceRegimentTypeID" type="xs:string" />
+              <xs:element name="SubdueOwnedSupportBase" type="xs:integer" />
+              <xs:element name="SubdueOwnedSupportRange" type="xs:nonNegativeInteger" />
+              <xs:element name="SubdueNeutralSupportBase" type="xs:integer" />
+              <xs:element name="SubdueNeutralSupportRange" type="xs:nonNegativeInteger" />
               <xs:element name="PrimaryConsequenceTable" type="IntTableType" />
               <xs:element name="SecondaryConsequenceTable" type="IntTableType" />
               <xs:element name="ControllerSupportShift" type="xs:integer" />
@@ -561,6 +565,8 @@
               <xs:element name="ActiveSupportDriftMaxTicks" type="PositiveIntType" />
               <xs:element name="IncidentPulseMinTicks" type="PositiveIntType" />
               <xs:element name="IncidentPulseMaxTicks" type="PositiveIntType" />
+              <xs:element name="ClearUprisingMinTicks" type="PositiveIntType" />
+              <xs:element name="ClearUprisingMaxTicks" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>
         </xs:element>
@@ -595,6 +601,8 @@
         <xs:element name="Blockade">
           <xs:complexType>
             <xs:all>
+              <xs:element name="CapitalShipProductionPenaltyPercent" type="xs:nonNegativeInteger" />
+              <xs:element name="FighterProductionPenaltyPercent" type="xs:nonNegativeInteger" />
               <xs:element name="EvacuationLossPercent" type="xs:nonNegativeInteger" />
             </xs:all>
           </xs:complexType>
@@ -687,6 +695,14 @@
               <xs:element name="MediumTickIntervalSeconds" type="xs:decimal" />
               <xs:element name="SlowTickIntervalSeconds" type="xs:decimal" />
               <xs:element name="VerySlowTickIntervalSeconds" type="xs:decimal" />
+            </xs:all>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Messages">
+          <xs:complexType>
+            <xs:all>
+              <xs:element name="RetentionTicks" type="PositiveIntType" />
             </xs:all>
           </xs:complexType>
         </xs:element>

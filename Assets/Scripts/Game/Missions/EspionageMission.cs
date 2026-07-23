@@ -100,7 +100,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">The current game state.</param>
         /// <param name="provider">RNG provider for success rolls.</param>
         /// <returns>All results produced by the outcome, with a MissionCompletedResult appended.</returns>
-        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
             List<IMissionParticipant> successfulParticipants = new List<IMissionParticipant>();
@@ -168,7 +168,12 @@ namespace Rebellion.Game.Missions
             PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
 
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetSnapshot(faction, planet, system, game?.CurrentTick ?? 0);
+            recorder.RecordPlanetManufacturingSnapshot(
+                faction,
+                planet,
+                system,
+                game?.CurrentTick ?? 0
+            );
 
             return new List<GameResult>();
         }

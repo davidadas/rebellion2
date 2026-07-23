@@ -268,7 +268,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_FixedGarrisonWithUnknownUnitId_ThrowsInvalidOperationException()
+        public void Seed_FixedGarrisonWithUnknownUnitID_ThrowsInvalidOperationException()
         {
             Planet planet = OwnedPlanet(
                 "CORUSCANT",
@@ -378,7 +378,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeId()
+        public void Seed_FixedFleetWithTargetPlanets_SelectsOneTargetByTypeID()
         {
             Planet yavin = OwnedPlanet("YAVIN", "FNALL1", ownerSupport: 100, typeId: "PLSUM06");
             Planet hq = OwnedPlanet("ALLIANCE_HQ", "FNALL1", ownerSupport: 100);

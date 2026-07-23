@@ -172,6 +172,18 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
+        /// Returns the ship's primary weapon strength for one weapon type.
+        /// </summary>
+        /// <param name="weaponType">The primary weapon type to inspect.</param>
+        /// <returns>The summed strength for the requested weapon type.</returns>
+        public int GetPrimaryWeaponStrength(PrimaryWeaponType weaponType)
+        {
+            return PrimaryWeapons.TryGetValue(weaponType, out int[] weaponValues)
+                ? GetWeaponStrength(weaponValues)
+                : 0;
+        }
+
+        /// <summary>
         /// Returns primary weapon strength from weapon values.
         /// </summary>
         /// <param name="weaponValues">The weapon values to inspect.</param>
@@ -310,6 +322,29 @@ namespace Rebellion.Game.Units
             if (child is SpecialForces specialForces)
                 return specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
             return false;
+        }
+
+        internal override bool CanAcceptChild(
+            ISceneNode child,
+            IReadOnlyCollection<ISceneNode> plannedChildren
+        )
+        {
+            if (!CanAcceptChild(child))
+                return false;
+
+            if (child is Starfighter)
+            {
+                return plannedChildren.Count(candidate => candidate is Starfighter)
+                    < GetExcessStarfighterCapacity();
+            }
+
+            if (child is Regiment)
+            {
+                return plannedChildren.Count(candidate => candidate is Regiment)
+                    < GetExcessRegimentCapacity();
+            }
+
+            return true;
         }
 
         /// <summary>

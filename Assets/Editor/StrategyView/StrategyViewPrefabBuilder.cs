@@ -1475,12 +1475,21 @@ public static class StrategyViewPrefabBuilder
         buildCountLabel.alignment = TextAlignmentOptions.TopRight;
         SetSourceRect(buildCountLabel.rectTransform, 20, 196, 118, 15);
 
-        TextMeshProUGUI buildCount = CreateTextLabel("BuildCountTextField", window.transform);
-        buildCount.text = "1";
-        buildCount.color = Color.white;
-        buildCount.fontSize = 13;
-        buildCount.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(buildCount.rectTransform, 141, 196, 45, 17);
+        TMP_InputField buildCount = CreateTextInputField(
+            "BuildCountInputField",
+            window.transform,
+            string.Empty,
+            141,
+            196,
+            45,
+            17
+        );
+        buildCount.contentType = TMP_InputField.ContentType.IntegerNumber;
+        buildCount.characterValidation = TMP_InputField.CharacterValidation.Integer;
+        buildCount.characterLimit = byte.MaxValue.ToString().Length;
+        buildCount.textComponent.fontSize = 13;
+        buildCount.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+        buildCount.SetTextWithoutNotify("1");
 
         RawImage increment = CreateRawImage(
             "IncrementButtonImage",
@@ -1704,7 +1713,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "selectedItemImage", selectedItem);
         AssignReference(view, "selectedNameTextField", selectedName);
         AssignReference(view, "buildCountLabelTextField", buildCountLabel);
-        AssignReference(view, "buildCountTextField", buildCount);
+        AssignReference(view, "buildCountInputField", buildCount);
         AssignReference(view, "incrementButtonImage", increment);
         AssignReference(
             view,
@@ -1936,11 +1945,21 @@ public static class StrategyViewPrefabBuilder
             tabPressVisuals.Add(tabImage.GetComponent<RawImagePressVisual>());
 
         TextMeshProUGUI tabTitle = CreateTextLabel("TabTitleTextField", window.transform);
-        tabTitle.text = "Troops/Regiments";
+        tabTitle.text = "Trooper Regiments";
         tabTitle.color = Color.white;
         tabTitle.fontSize = 13;
         tabTitle.alignment = TextAlignmentOptions.Top;
-        SetSourceRect(tabTitle.rectTransform, 6, 56, 222, 16);
+        SetSourceRect(tabTitle.rectTransform, 2, 51, 231, 16);
+
+        TextMeshProUGUI garrisonRequirement = CreateTextLabel(
+            "GarrisonRequirementTextField",
+            window.transform
+        );
+        garrisonRequirement.text = "Garrison Requirement: 0";
+        garrisonRequirement.color = Color.white;
+        garrisonRequirement.fontSize = 13;
+        garrisonRequirement.alignment = TextAlignmentOptions.Top;
+        SetSourceRect(garrisonRequirement.rectTransform, 2, 63, 228, 15);
 
         ScrollAreaView itemsScrollArea = CreateScrollAreaView(
             window.transform,
@@ -1975,6 +1994,7 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(view, "tabPressVisuals", tabPressVisuals);
         AssignReferenceArray(view, "tabButtons", tabButtons);
         AssignReference(view, "tabTitleTextField", tabTitle);
+        AssignReference(view, "garrisonRequirementTextField", garrisonRequirement);
         AssignReference(view, "itemsScrollArea", itemsScrollArea);
         AssignReference(view, "itemsGridLayout", itemsGridLayout);
         AssignReference(view, "itemCardTemplate", itemCardTemplate);
@@ -2025,12 +2045,6 @@ public static class StrategyViewPrefabBuilder
             _defensePersonnelBackgroundPreviewPath
         );
         SetSourceRect(background.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
-        RawImage entity = CreateRawButton(
-            "EntityImage",
-            item.transform,
-            _facilityCardEntityPreviewPath
-        );
-        SetSourceRect(entity.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
         RawImage constructionOverlay = CreateRawButton(
             "ConstructionOverlayImage",
             item.transform,
@@ -2043,6 +2057,12 @@ public static class StrategyViewPrefabBuilder
             _defenseItemWidth,
             _defenseItemImageHeight
         );
+        RawImage entity = CreateRawButton(
+            "EntityImage",
+            item.transform,
+            _facilityCardEntityPreviewPath
+        );
+        SetSourceRect(entity.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
         RawImage enrouteOverlay = CreateRawButton(
             "EnrouteOverlayImage",
             item.transform,
@@ -2263,7 +2283,7 @@ public static class StrategyViewPrefabBuilder
         fleetName.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(fleetName.rectTransform, 100, 32, 126, 16);
 
-        TMP_InputField renameInput = CreateFinderInputField(
+        TMP_InputField renameInput = CreateTextInputField(
             "RenameInputField",
             window.transform,
             string.Empty,
@@ -2505,14 +2525,6 @@ public static class StrategyViewPrefabBuilder
             5
         );
         SetSourceRect(background.rectTransform, 25, 5, 61, 25);
-        RawImage entity = CreateRawImage(
-            "EntityImage",
-            item.transform,
-            _facilityCardEntityPreviewPath,
-            25,
-            5
-        );
-        SetSourceRect(entity.rectTransform, 25, 5, 61, 25);
         RawImage constructionOverlay = CreateRawImage(
             "ConstructionOverlayImage",
             item.transform,
@@ -2521,6 +2533,14 @@ public static class StrategyViewPrefabBuilder
             5
         );
         SetSourceRect(constructionOverlay.rectTransform, 25, 5, 61, 25);
+        RawImage entity = CreateRawImage(
+            "EntityImage",
+            item.transform,
+            _facilityCardEntityPreviewPath,
+            25,
+            5
+        );
+        SetSourceRect(entity.rectTransform, 25, 5, 61, 25);
         RawImage enrouteOverlay = CreateRawImage(
             "EnrouteOverlayImage",
             item.transform,
@@ -4231,7 +4251,7 @@ public static class StrategyViewPrefabBuilder
         label.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(label.rectTransform, 37, 48, 120, 16);
 
-        TMP_InputField labelInput = CreateFinderInputField(
+        TMP_InputField labelInput = CreateTextInputField(
             "LabelInputField",
             window.transform,
             string.Empty,
@@ -5127,7 +5147,7 @@ public static class StrategyViewPrefabBuilder
         topic.fontSize = 12;
         topic.alignment = TextAlignmentOptions.TopLeft;
         SetSourceRect(topic.rectTransform, 37, 48, 220, 16);
-        TMP_InputField entryName = CreateFinderInputField(
+        TMP_InputField entryName = CreateTextInputField(
             "EntryNameInputField",
             indexPanelRoot,
             string.Empty,
@@ -5749,105 +5769,205 @@ public static class StrategyViewPrefabBuilder
         ConfigureVerticalContent(rowsContent);
         BattleAlertRowView rowTemplate = CreateBattleAlertRowTemplate(rowsContent);
 
-        TextMeshProUGUI resultTitle = CreateBattleResultText(
-            "ResultTitleTextField",
+        TextMeshProUGUI resultPlanetaryTitle = CreateBattleResultText(
+            "ResultPlanetaryTitleTextField",
             window.transform,
             "Battle at System",
-            new RectInt(12, 13, 400, 20),
-            15,
-            FontStyles.Bold,
+            new RectInt(12, 13, 400, 24),
+            24,
+            FontStyles.Normal,
             TextAlignmentOptions.Top
         );
+        resultPlanetaryTitle.GetComponent<Shadow>().enabled = false;
+        TextMeshProUGUI resultFleetTitle = CreateBattleResultText(
+            "ResultFleetTitleTextField",
+            window.transform,
+            "Battle at System",
+            new RectInt(12, 13, 400, 24),
+            24,
+            FontStyles.Normal,
+            TextAlignmentOptions.Top
+        );
+        resultFleetTitle.GetComponent<Shadow>().enabled = false;
         TextMeshProUGUI resultSummary = CreateBattleResultText(
             "ResultSummaryTextField",
             window.transform,
             "Battle summary",
             new RectInt(25, 225, 350, 70),
-            13,
+            18,
             FontStyles.Normal,
-            TextAlignmentOptions.Top
+            TextAlignmentOptions.TopLeft
         );
         resultSummary.textWrappingMode = TextWrappingModes.Normal;
-        TextMeshProUGUI resultForceHeader = CreateBattleResultText(
-            "ResultForceHeaderTextField",
+        TextMeshProUGUI resultPlanetaryForceHeader = CreateBattleResultText(
+            "ResultPlanetaryForceHeaderTextField",
             window.transform,
             string.IsNullOrEmpty(theme?.FirstForcesHeaderText)
                 ? "First Forces"
                 : theme.FirstForcesHeaderText,
-            new RectInt(96, 40, 230, 20),
-            13,
-            FontStyles.Bold,
+            new RectInt(12, 36, 347, 20),
+            18,
+            FontStyles.Normal,
             TextAlignmentOptions.Top
         );
-        TextMeshProUGUI resultFilters = CreateBattleResultText(
-            "ResultFiltersTextField",
+        TextMeshProUGUI resultFleetForceHeader = CreateBattleResultText(
+            "ResultFleetForceHeaderTextField",
+            window.transform,
+            string.IsNullOrEmpty(theme?.FirstForcesHeaderText)
+                ? "First Forces"
+                : theme.FirstForcesHeaderText,
+            new RectInt(12, 36, 347, 20),
+            18,
+            FontStyles.Normal,
+            TextAlignmentOptions.Top
+        );
+        TextMeshProUGUI resultFleetFilters = CreateBattleResultText(
+            "ResultFleetFiltersTextField",
             window.transform,
             "Filters",
-            new RectInt(84, 68, 46, 20),
-            9,
+            new RectInt(86, 70, 165, 18),
+            16,
             FontStyles.Normal,
             TextAlignmentOptions.TopLeft
         );
-        TextMeshProUGUI resultTableTitle = CreateBattleResultText(
-            "ResultTableTitleTextField",
+        TextMeshProUGUI resultPlanetaryTableTitle = CreateBattleResultText(
+            "ResultPlanetaryTableTitleTextField",
             window.transform,
             "Capital Ships",
-            new RectInt(37, 99, 334, 14),
-            9,
+            new RectInt(38, 100, 400, 18),
+            16,
             FontStyles.Normal,
             TextAlignmentOptions.TopLeft
         );
-        TextMeshProUGUI[] resultStandardColumnHeaders =
+        TextMeshProUGUI resultFleetTableTitle = CreateBattleResultText(
+            "ResultFleetTableTitleTextField",
+            window.transform,
+            "Capital Ships",
+            new RectInt(38, 100, 400, 18),
+            16,
+            FontStyles.Normal,
+            TextAlignmentOptions.TopLeft
+        );
+        TextMeshProUGUI[] resultPlanetaryStandardColumnHeaders =
         {
             CreateBattleResultText(
-                "ResultOperationalHeaderTextField",
+                "ResultPlanetaryOperationalHeaderTextField",
                 window.transform,
                 "Operational",
-                new RectInt(38, 117, 165, 14),
-                9,
+                new RectInt(38, 117, 165, 18),
+                16,
                 FontStyles.Normal,
                 TextAlignmentOptions.Top
             ),
             CreateBattleResultText(
-                "ResultDestroyedHeaderTextField",
+                "ResultPlanetaryDestroyedHeaderTextField",
                 window.transform,
                 "Destroyed",
-                new RectInt(204, 117, 165, 14),
-                9,
+                new RectInt(204, 117, 165, 18),
+                16,
                 FontStyles.Normal,
                 TextAlignmentOptions.Top
             ),
         };
-        TextMeshProUGUI[] resultPersonnelColumnHeaders =
+        TextMeshProUGUI[] resultFleetStandardColumnHeaders =
         {
             CreateBattleResultText(
-                "ResultSurvivorsHeaderTextField",
+                "ResultFleetOperationalHeaderTextField",
                 window.transform,
-                "Survivors",
-                new RectInt(38, 117, 110, 14),
-                9,
+                "Operational",
+                new RectInt(38, 117, 165, 18),
+                16,
                 FontStyles.Normal,
                 TextAlignmentOptions.Top
             ),
             CreateBattleResultText(
-                "ResultCapturedHeaderTextField",
+                "ResultFleetDestroyedHeaderTextField",
                 window.transform,
-                "Captured",
-                new RectInt(165, 117, 110, 14),
-                9,
-                FontStyles.Normal,
-                TextAlignmentOptions.Top
-            ),
-            CreateBattleResultText(
-                "ResultKilledHeaderTextField",
-                window.transform,
-                "Killed",
-                new RectInt(275, 117, 110, 14),
-                9,
+                "Destroyed",
+                new RectInt(204, 117, 165, 18),
+                16,
                 FontStyles.Normal,
                 TextAlignmentOptions.Top
             ),
         };
+        TextMeshProUGUI[] resultPlanetaryPersonnelColumnHeaders =
+        {
+            CreateBattleResultText(
+                "ResultPlanetarySurvivorsHeaderTextField",
+                window.transform,
+                "Survivors",
+                new RectInt(38, 117, 110, 18),
+                16,
+                FontStyles.Normal,
+                TextAlignmentOptions.Top
+            ),
+            CreateBattleResultText(
+                "ResultPlanetaryCapturedHeaderTextField",
+                window.transform,
+                "Captured",
+                new RectInt(165, 117, 110, 18),
+                16,
+                FontStyles.Normal,
+                TextAlignmentOptions.Top
+            ),
+            CreateBattleResultText(
+                "ResultPlanetaryKilledHeaderTextField",
+                window.transform,
+                "Killed",
+                new RectInt(275, 117, 110, 18),
+                16,
+                FontStyles.Normal,
+                TextAlignmentOptions.Top
+            ),
+        };
+        TextMeshProUGUI[] resultFleetPersonnelColumnHeaders =
+        {
+            CreateBattleResultText(
+                "ResultFleetSurvivorsHeaderTextField",
+                window.transform,
+                "Survivors",
+                new RectInt(38, 117, 110, 18),
+                16,
+                FontStyles.Normal,
+                TextAlignmentOptions.Top
+            ),
+            CreateBattleResultText(
+                "ResultFleetCapturedHeaderTextField",
+                window.transform,
+                "Captured",
+                new RectInt(165, 117, 110, 18),
+                16,
+                FontStyles.Normal,
+                TextAlignmentOptions.Top
+            ),
+            CreateBattleResultText(
+                "ResultFleetKilledHeaderTextField",
+                window.transform,
+                "Killed",
+                new RectInt(275, 117, 110, 18),
+                16,
+                FontStyles.Normal,
+                TextAlignmentOptions.Top
+            ),
+        };
+        TextMeshProUGUI[] resultDetailTextFields =
+        {
+            resultPlanetaryForceHeader,
+            resultFleetForceHeader,
+            resultFleetFilters,
+            resultPlanetaryTableTitle,
+            resultFleetTableTitle,
+        };
+        foreach (TextMeshProUGUI textField in resultDetailTextFields)
+            textField.GetComponent<Shadow>().enabled = false;
+        foreach (TextMeshProUGUI textField in resultPlanetaryStandardColumnHeaders)
+            textField.GetComponent<Shadow>().enabled = false;
+        foreach (TextMeshProUGUI textField in resultFleetStandardColumnHeaders)
+            textField.GetComponent<Shadow>().enabled = false;
+        foreach (TextMeshProUGUI textField in resultPlanetaryPersonnelColumnHeaders)
+            textField.GetComponent<Shadow>().enabled = false;
+        foreach (TextMeshProUGUI textField in resultFleetPersonnelColumnHeaders)
+            textField.GetComponent<Shadow>().enabled = false;
 
         ScrollAreaView resultRowsScrollArea = CreateScrollAreaView(
             window.transform,
@@ -5906,16 +6026,16 @@ public static class StrategyViewPrefabBuilder
             "ResultStandardItemTemplate",
             new RectInt(0, 0, 165, 70),
             new RectInt(21, 10, 122, 50),
-            new RectInt(0, 60, 165, 10),
-            new RectInt(0, 5, 165, 24)
+            new RectInt(0, 60, 165, 70),
+            new RectInt(0, 10, 165, 70)
         );
         BattleResultItemView resultPersonnelItemTemplate = CreateBattleResultItemTemplate(
             resultLayoutTemplates,
             "ResultPersonnelItemTemplate",
             new RectInt(0, 0, 110, 50),
             new RectInt(0, 0, 110, 50),
-            new RectInt(0, 50, 110, 10),
-            new RectInt(0, 5, 110, 24)
+            new RectInt(0, 50, 110, 50),
+            new RectInt(0, 10, 110, 50)
         );
 
         WindowButtonImageTheme[] viewButtonThemes =
@@ -6001,17 +6121,30 @@ public static class StrategyViewPrefabBuilder
         {
             theme?.ResultCapitalShipsButton,
             theme?.ResultStarfightersButton,
+            theme?.ResultManufacturingButton,
+            theme?.ResultDefenseButton,
             theme?.ResultTroopsButton,
             theme?.ResultPersonnelButton,
+        };
+        SourceRectLayout[] resultCategoryButtonLayouts =
+        {
+            theme?.PlanetaryResultCapitalShipsLayout,
+            theme?.PlanetaryResultStarfightersLayout,
+            theme?.PlanetaryResultManufacturingLayout,
+            theme?.PlanetaryResultDefenseLayout,
+            theme?.PlanetaryResultTroopsLayout,
+            theme?.PlanetaryResultPersonnelLayout,
         };
         string[] resultCategoryButtonNames =
         {
             "ResultCapitalShipsButtonImage",
             "ResultStarfightersButtonImage",
+            "ResultManufacturingButtonImage",
+            "ResultDefenseButtonImage",
             "ResultTroopsButtonImage",
             "ResultPersonnelButtonImage",
         };
-        int[] resultCategoryButtonFallbackXs = { 130, 179, 228, 277 };
+        int[] resultCategoryButtonFallbackXs = { 36, 98, 160, 222, 284, 348 };
         List<RawImage> resultCategoryButtonImages = new List<RawImage>();
         List<RawImagePressVisual> resultCategoryButtonPressVisuals =
             new List<RawImagePressVisual>();
@@ -6025,7 +6158,8 @@ public static class StrategyViewPrefabBuilder
                 resultCategoryButtonFallbackXs[i],
                 59,
                 49,
-                41
+                41,
+                resultCategoryButtonLayouts[i]
             );
             resultCategoryButtonImages.Add(image);
             resultCategoryButtons.Add(CreateButton(image));
@@ -6071,20 +6205,33 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "summaryTextField", summary);
         AssignReference(view, "rowsScrollArea", rowsScrollArea);
         AssignReference(view, "rowTemplate", rowTemplate);
-        AssignReference(view, "resultTitleTextField", resultTitle);
+        AssignReference(view, "resultPlanetaryTitleTextField", resultPlanetaryTitle);
+        AssignReference(view, "resultFleetTitleTextField", resultFleetTitle);
         AssignReference(view, "resultSummaryTextField", resultSummary);
-        AssignReference(view, "resultForceHeaderTextField", resultForceHeader);
-        AssignReference(view, "resultFiltersTextField", resultFilters);
-        AssignReference(view, "resultTableTitleTextField", resultTableTitle);
+        AssignReference(view, "resultPlanetaryForceHeaderTextField", resultPlanetaryForceHeader);
+        AssignReference(view, "resultFleetForceHeaderTextField", resultFleetForceHeader);
+        AssignReference(view, "resultFleetFiltersTextField", resultFleetFilters);
+        AssignReference(view, "resultPlanetaryTableTitleTextField", resultPlanetaryTableTitle);
+        AssignReference(view, "resultFleetTableTitleTextField", resultFleetTableTitle);
         AssignReferenceArray(
             view,
-            "resultStandardColumnHeaderTextFields",
-            resultStandardColumnHeaders
+            "resultPlanetaryStandardColumnHeaderTextFields",
+            resultPlanetaryStandardColumnHeaders
         );
         AssignReferenceArray(
             view,
-            "resultPersonnelColumnHeaderTextFields",
-            resultPersonnelColumnHeaders
+            "resultFleetStandardColumnHeaderTextFields",
+            resultFleetStandardColumnHeaders
+        );
+        AssignReferenceArray(
+            view,
+            "resultPlanetaryPersonnelColumnHeaderTextFields",
+            resultPlanetaryPersonnelColumnHeaders
+        );
+        AssignReferenceArray(
+            view,
+            "resultFleetPersonnelColumnHeaderTextFields",
+            resultFleetPersonnelColumnHeaders
         );
         AssignReference(view, "resultRowsScrollArea", resultRowsScrollArea);
         AssignReference(view, "resultStandardOperationalColumn", resultStandardOperationalColumn);
@@ -6135,6 +6282,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="fallbackY">The fallback vertical source coordinate.</param>
     /// <param name="fallbackWidth">The fallback source width.</param>
     /// <param name="fallbackHeight">The fallback source height.</param>
+    /// <param name="sourceLayout">An optional context-specific source rectangle.</param>
     /// <returns>The authored button image.</returns>
     private static RawImage CreateBattleAlertButtonImage(
         string name,
@@ -6143,9 +6291,13 @@ public static class StrategyViewPrefabBuilder
         int fallbackX,
         int fallbackY,
         int fallbackWidth,
-        int fallbackHeight
+        int fallbackHeight,
+        SourceRectLayout sourceLayout = null
     )
     {
+        if (sourceLayout != null)
+            return CreateRawImage(name, parent, theme?.UpImagePath, sourceLayout);
+
         if (theme?.SourceLayout != null)
             return CreateRawImage(name, parent, theme.UpImagePath, theme.SourceLayout);
 
@@ -6297,15 +6449,30 @@ public static class StrategyViewPrefabBuilder
             imageRect.width,
             imageRect.height
         );
+        RawImage capturedOverlay = CreateRawImage(
+            "CapturedOverlayImage",
+            item.transform,
+            null,
+            0,
+            0
+        );
+        SetSourceRect(
+            capturedOverlay.rectTransform,
+            imageRect.x,
+            imageRect.y,
+            imageRect.width,
+            imageRect.height
+        );
 
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", item.transform);
         nameText.text = "Corellian Corvette";
         nameText.color = Color.white;
-        nameText.fontSize = 8;
+        nameText.fontSize = 14;
         nameText.fontStyle = FontStyles.Normal;
         nameText.alignment = TextAlignmentOptions.Top;
         nameText.textWrappingMode = TextWrappingModes.NoWrap;
         nameText.overflowMode = TextOverflowModes.Overflow;
+        nameText.GetComponent<Shadow>().enabled = false;
         SetSourceRect(
             nameText.rectTransform,
             nameRect.x,
@@ -6316,11 +6483,12 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI emptyText = CreateTextLabel("EmptyTextField", item.transform);
         emptyText.text = "None";
         emptyText.color = Color.white;
-        emptyText.fontSize = 12;
+        emptyText.fontSize = 18;
         emptyText.fontStyle = FontStyles.Normal;
-        emptyText.alignment = TextAlignmentOptions.Top;
+        emptyText.alignment = TextAlignmentOptions.Center;
         emptyText.textWrappingMode = TextWrappingModes.NoWrap;
         emptyText.overflowMode = TextOverflowModes.Overflow;
+        emptyText.GetComponent<Shadow>().enabled = false;
         SetSourceRect(
             emptyText.rectTransform,
             emptyRect.x,
@@ -6336,6 +6504,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "baseImage", baseImage);
         AssignReference(view, "withdrawingOverlayImage", withdrawingOverlay);
         AssignReference(view, "damagedOverlayImage", damagedOverlay);
+        AssignReference(view, "capturedOverlayImage", capturedOverlay);
         AssignReference(view, "nameTextField", nameText);
         AssignReference(view, "emptyTextField", emptyText);
         AddTemplateLayoutElement(item.GetComponent<RectTransform>());
@@ -7257,6 +7426,16 @@ public static class StrategyViewPrefabBuilder
             _planetSystemPlanetImageWidth,
             _planetSystemPlanetImageHeight
         );
+        RawImage uprising = CreateRawImage(
+            "UprisingImage",
+            root.transform,
+            PreviewTheme?.PlanetOverlayTheme?.PlanetSystemUprisingImagePath,
+            10,
+            1,
+            _planetSystemPlanetImageWidth,
+            _planetSystemPlanetImageHeight
+        );
+        uprising.raycastTarget = false;
         RawImage facility = CreateRawImage(
             "FacilityImage",
             root.transform,
@@ -7337,6 +7516,7 @@ public static class StrategyViewPrefabBuilder
 
         AssignReference(planetView, "hitAreaImage", hitArea);
         AssignReference(planetView, "planetImage", planet);
+        AssignReference(planetView, "uprisingImage", uprising);
         AssignReference(planetView, "facilityImage", facility);
         AssignReference(planetView, "defenseImage", defense);
         AssignReference(planetView, "fleetImage", fleet);
@@ -7929,7 +8109,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="width">The source-space width.</param>
     /// <param name="height">The source-space height.</param>
     /// <returns>The nested TMP input instance.</returns>
-    private static TMP_InputField CreateFinderInputField(
+    private static TMP_InputField CreateTextInputField(
         string name,
         Transform parent,
         string placeholderText,

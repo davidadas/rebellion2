@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -24,10 +25,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(2, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[0].Action);
             Assert.AreEqual("Encyclopedia", commands[0].Text);
             Assert.IsFalse(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[1].Action);
             Assert.AreEqual("Status", commands[1].Text);
             Assert.IsFalse(commands[1].Enabled);
         }
@@ -50,9 +51,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(2, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[0].Action);
             Assert.IsTrue(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[1].Action);
             Assert.IsTrue(commands[1].Enabled);
         }
 
@@ -68,13 +69,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(3, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[0].Action);
             Assert.AreEqual("Encyclopedia", commands[0].Text);
             Assert.IsFalse(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[1].Action);
             Assert.AreEqual("Status", commands[1].Text);
             Assert.IsFalse(commands[1].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Abort, commands[2].Action);
+            Assert.AreEqual(StrategyMenuAction.Abort, commands[2].Action);
             Assert.AreEqual("Abort", commands[2].Text);
             Assert.IsFalse(commands[2].Enabled);
         }
@@ -91,19 +92,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(7, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Move, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Move, commands[0].Action);
             Assert.IsFalse(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.MoveConfirm, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.MoveConfirm, commands[1].Action);
             Assert.IsFalse(commands[1].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.PlanetaryBombardment, commands[2].Action);
+            Assert.AreEqual(StrategyMenuAction.PlanetaryBombardment, commands[2].Action);
             Assert.IsFalse(commands[2].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.DestroySystem, commands[3].Action);
+            Assert.AreEqual(StrategyMenuAction.PlanetaryAssault, commands[3].Action);
             Assert.IsFalse(commands[3].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[4].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[4].Action);
             Assert.IsFalse(commands[4].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[5].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[5].Action);
             Assert.IsFalse(commands[5].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Scrap, commands[6].Action);
+            Assert.AreEqual(StrategyMenuAction.Scrap, commands[6].Action);
             Assert.IsFalse(commands[6].Enabled);
         }
 
@@ -119,16 +120,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
                 hit,
                 fleets,
-                _playerFactionId
+                _playerFactionId,
+                canBombard: true,
+                canDestroySystem: false,
+                canAssault: true
             );
 
             Assert.IsTrue(commands[0].Enabled);
             Assert.IsTrue(commands[1].Enabled);
             Assert.IsTrue(commands[2].Enabled);
-            Assert.IsFalse(commands[3].Enabled);
+            Assert.IsTrue(commands[3].Enabled);
             Assert.IsFalse(commands[4].Enabled);
             Assert.IsTrue(commands[5].Enabled);
             Assert.IsTrue(commands[6].Enabled);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    StrategyMenuAction.BombardMilitaryFacilities,
+                    StrategyMenuAction.BombardCivilianFacilities,
+                    StrategyMenuAction.GeneralBombardment,
+                    StrategyMenuAction.DestroySystem,
+                },
+                commands[2].SubmenuCommands.Select(command => command.Action)
+            );
+            CollectionAssert.AreEqual(
+                new[] { true, true, true, false },
+                commands[2].SubmenuCommands.Select(command => command.Enabled)
+            );
         }
 
         [Test]
@@ -143,7 +161,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
                 hit,
                 fleets,
-                _playerFactionId
+                _playerFactionId,
+                canBombard: true,
+                canDestroySystem: true,
+                canAssault: true
             );
 
             Assert.IsFalse(commands[0].Enabled);
@@ -166,12 +187,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
                 hit,
                 fleets,
-                _playerFactionId
+                _playerFactionId,
+                canBombard: true,
+                canDestroySystem: false,
+                canAssault: true
             );
 
             Assert.IsTrue(commands[0].Enabled);
             Assert.IsTrue(commands[1].Enabled);
             Assert.IsTrue(commands[2].Enabled);
+            Assert.IsTrue(commands[3].Enabled);
             Assert.IsFalse(commands[5].Enabled);
             Assert.IsTrue(commands[6].Enabled);
         }

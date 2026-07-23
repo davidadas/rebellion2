@@ -60,24 +60,24 @@ internal static class FacilityWindowContextMenuBuilder
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(
-                StrategyContextMenuActions.Build,
+                StrategyMenuAction.Build,
                 "Build",
                 CanBuildFromCard(planet, manufacturingTab, playerControlsPlanet)
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.Stop,
+                StrategyMenuAction.Stop,
                 "Stop",
                 CanStopFromCard(planet, manufacturingTab, playerControlsPlanet)
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.Destination,
+                StrategyMenuAction.Destination,
                 "Destination",
                 playerControlsPlanet
             ),
-            new StrategyMenuCommand(0, "Rename", false),
-            new StrategyMenuCommand(StrategyContextMenuActions.Encyclopedia, "Encyclopedia", true),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", true),
-            new StrategyMenuCommand(0, "Reserved", false),
+            new StrategyMenuCommand(StrategyMenuAction.None, "Rename", false),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
+            new StrategyMenuCommand(StrategyMenuAction.None, "Reserved", false),
         };
     }
 
@@ -138,12 +138,10 @@ internal static class FacilityWindowContextMenuBuilder
         bool underConstruction = building?.GetManufacturingStatus() == ManufacturingStatus.Building;
         return new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Encyclopedia, "Encyclopedia", true),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", true),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
             new StrategyMenuCommand(
-                underConstruction
-                    ? StrategyContextMenuActions.Stop
-                    : StrategyContextMenuActions.Scrap,
+                underConstruction ? StrategyMenuAction.Stop : StrategyMenuAction.Scrap,
                 underConstruction ? "Stop" : "Scrap",
                 playerControlsPlanet
             ),

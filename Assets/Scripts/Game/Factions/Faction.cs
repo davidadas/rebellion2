@@ -19,11 +19,7 @@ namespace Rebellion.Game.Factions
     public class Faction : BaseGameEntity
     {
         private FactionSettings _settings = new FactionSettings();
-
-        // Fleet naming counter for sequential fleet names (Fleet 1, Fleet 2, etc.)
         private int _nextFleetNumber = 1;
-
-        // Owned Entities (Fleets, Planets, etc).
         private Dictionary<Type, List<ISceneNode>> _ownedEntities = new Dictionary<
             Type,
             List<ISceneNode>
@@ -38,6 +34,17 @@ namespace Rebellion.Game.Factions
             { typeof(SpecialForces), new List<ISceneNode>() },
             { typeof(Starfighter), new List<ISceneNode>() },
         };
+
+        // Faction Info.
+        public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
+        public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
+        public FactionSettings Settings
+        {
+            get => _settings ??= new FactionSettings();
+            set => _settings = value ?? new FactionSettings();
+        }
+        public string HQInstanceID { get; set; }
+        public string PlayerID { get; set; }
 
         // Messages and Notifications.
         public Dictionary<MessageType, List<Message>> Messages = new Dictionary<
@@ -55,29 +62,15 @@ namespace Rebellion.Game.Factions
             { MessageType.Chat, new List<Message>() },
             { MessageType.Advice, new List<Message>() },
         };
+        public bool AdvisorMessageNotificationsEnabled { get; set; } = true;
+        public Dictionary<MessageType, bool> AdvisorMessageNotifications { get; set; } =
+            new Dictionary<MessageType, bool>();
+        public bool TranslateCounterpart { get; set; } = true;
+        public bool AgentAdvice { get; set; } = true;
 
-        // Faction Info.
-        public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
-        public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
-
-        /// <summary>
-        /// Faction-specific gameplay settings.
-        /// These affect game mechanics regardless of whether faction is player or AI controlled.
-        /// </summary>
-        public FactionSettings Settings
-        {
-            get => _settings ??= new FactionSettings();
-            set => _settings = value ?? new FactionSettings();
-        }
-
-        /// <summary>
-        /// Side-level research progression state.
-        /// </summary>
+        // Research Status.
         public FactionResearchState ResearchState { get; set; } = new FactionResearchState();
 
-        /// <summary>
-        /// Sorted research catalog entries per discipline.
-        /// </summary>
         [PersistableIgnore]
         public Dictionary<
             ResearchDiscipline,
@@ -85,58 +78,41 @@ namespace Rebellion.Game.Factions
         > ResearchCatalog { get; set; } =
             new Dictionary<ResearchDiscipline, List<ResearchCatalogEntry>>();
 
-        /// <summary>
-        /// Compatibility view of research catalog entries grouped by manufacturing type.
-        /// </summary>
         [PersistableIgnore]
         public Dictionary<ManufacturingType, List<Technology>> ResearchQueue { get; set; } =
             new Dictionary<ManufacturingType, List<Technology>>();
 
-        public string HQInstanceID { get; set; }
-        public string PlayerID { get; set; }
+        // Resource Stockpiles.
+        private int _rawMaterialStockpile;
+        private int _refinedMaterialStockpile;
+        public int RawMaterialStockpile
+        {
+            get => _rawMaterialStockpile;
+            set => _rawMaterialStockpile = value;
+        }
+        public int RefinedMaterialStockpile
+        {
+            get => _refinedMaterialStockpile;
+            set => _refinedMaterialStockpile = value;
+        }
+        public List<string> PendingRawMaterialFacilityIDs { get; set; } = new List<string>();
+        public List<string> PendingRefinedMaterialFacilityIDs { get; set; } = new List<string>();
 
-        /// <summary>
-        /// Accumulated raw materials (pre-refinement). Filled each tick from planet income.
-        /// </summary>
-        public int RawMaterialStockpile { get; set; }
-
-        /// <summary>
-        /// Accumulated refined materials (post-refinement). This is the spendable pool —
-        /// builds and maintenance deduct from it.
-        /// </summary>
-        public int RefinedMaterialStockpile { get; set; }
-
+        // Resource Status.
         public int RawMaterials => RawMaterialStockpile;
-
         public int RefinedMaterials => RefinedMaterialStockpile;
-
         public int RawMaterialSupply =>
             GetTotalAvailableMinedResources() * Settings.RefinementMultiplier;
-
         public int RefinedMaterialSupply =>
             GetTotalAvailableMaterialsRaw() * Settings.RefinementMultiplier;
-
         public int MaintenanceCapacity =>
             GetTotalAvailableMaterialsRaw() * Settings.ResourceProcessingPointsPerFacility;
-
         public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
-
         public int ProjectedMaintenanceHeadroom =>
             MaintenanceCapacity - GetTotalProjectedMaintenanceCost();
 
-        /// <summary>
-        /// Fog of war state - snapshots and entity tracking.
-        /// </summary>
+        // Fog of War.
         public FogState Fog { get; set; } = new FogState();
-
-        public bool AdvisorMessageNotificationsEnabled { get; set; } = true;
-
-        public Dictionary<MessageType, bool> AdvisorMessageNotifications { get; set; } =
-            new Dictionary<MessageType, bool>();
-
-        public bool TranslateCounterpart { get; set; } = true;
-
-        public bool AgentAdvice { get; set; } = true;
 
         /// <summary>
         /// Default constructor used for deserialization.
@@ -146,6 +122,67 @@ namespace Rebellion.Game.Factions
         public int GetProjectedMaintenanceHeadroom(IManufacturable item)
         {
             return MaintenanceCapacity - GetTotalProjectedMaintenanceCost(item);
+        }
+
+        /// <summary>
+        /// Reserves one raw material for a facility or queues its request in arrival order.
+        /// </summary>
+        /// <param name="facility">The facility requesting raw material.</param>
+        /// <returns>True when the material is reserved immediately.</returns>
+        public bool RequestRawMaterial(Building facility)
+        {
+            return RequestMaterial(
+                facility,
+                ref _rawMaterialStockpile,
+                PendingRawMaterialFacilityIDs
+            );
+        }
+
+        /// <summary>
+        /// Reserves one refined material for a facility or queues its request in arrival order.
+        /// </summary>
+        /// <param name="facility">The facility requesting refined material.</param>
+        /// <returns>True when the material is reserved immediately.</returns>
+        public bool RequestRefinedMaterial(Building facility)
+        {
+            return RequestMaterial(
+                facility,
+                ref _refinedMaterialStockpile,
+                PendingRefinedMaterialFacilityIDs
+            );
+        }
+
+        /// <summary>
+        /// Reserves one material from a stockpile or queues the requesting facility.
+        /// </summary>
+        /// <param name="facility">The facility requesting material.</param>
+        /// <param name="stockpile">The stockpile that supplies the request.</param>
+        /// <param name="pendingFacilityIDs">The pending request queue for the material.</param>
+        /// <returns>True when the facility already has or immediately receives its material.</returns>
+        private static bool RequestMaterial(
+            Building facility,
+            ref int stockpile,
+            List<string> pendingFacilityIDs
+        )
+        {
+            if (facility == null || string.IsNullOrEmpty(facility.InstanceID))
+                return false;
+
+            if (facility.ProductionInputReserved)
+                return true;
+
+            if (stockpile > 0)
+            {
+                stockpile--;
+                facility.ProductionInputReserved = true;
+                pendingFacilityIDs.Remove(facility.InstanceID);
+                return true;
+            }
+
+            if (!pendingFacilityIDs.Contains(facility.InstanceID))
+                pendingFacilityIDs.Add(facility.InstanceID);
+
+            return false;
         }
 
         /// <summary>

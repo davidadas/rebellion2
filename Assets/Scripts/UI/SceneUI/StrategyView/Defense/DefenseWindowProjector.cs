@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -86,6 +89,7 @@ internal sealed class DefenseWindowProjector
             planet?.Planet?.GetDisplayName(),
             normalizedTab,
             GetTabTitle(normalizedTab),
+            GetGarrisonRequirementText(uiContext, planet, normalizedTab),
             tabs,
             items
         );
@@ -101,12 +105,46 @@ internal sealed class DefenseWindowProjector
         return tab switch
         {
             DefenseWindowTab.Personnel => "Personnel",
-            DefenseWindowTab.Regiments => "Troops/Regiments",
+            DefenseWindowTab.Regiments => "Trooper Regiments",
             DefenseWindowTab.Starfighters => "Fighter Squadrons",
             DefenseWindowTab.Shields => "Planetary Shields",
             DefenseWindowTab.Batteries => "Planetary Batteries",
             _ => string.Empty,
         };
+    }
+
+    /// <summary>
+    /// Returns the player's garrison requirement label for the regiment tab.
+    /// </summary>
+    /// <param name="uiContext">The current presentation context.</param>
+    /// <param name="mapPlanet">The represented strategy planet.</param>
+    /// <param name="tab">The active Defense tab.</param>
+    /// <returns>The garrison requirement label, or an empty string when not applicable.</returns>
+    private static string GetGarrisonRequirementText(
+        UIContext uiContext,
+        GalaxyMapPlanet mapPlanet,
+        DefenseWindowTab tab
+    )
+    {
+        if (tab != DefenseWindowTab.Regiments || mapPlanet?.Planet == null)
+            return string.Empty;
+
+        Faction playerFaction = uiContext.Game.GetPlayerFaction();
+        if (
+            !string.Equals(
+                mapPlanet.Planet.OwnerInstanceID,
+                playerFaction.InstanceID,
+                StringComparison.Ordinal
+            )
+        )
+            return string.Empty;
+
+        int requirement = UprisingSystem.CalculateGarrisonRequirement(
+            mapPlanet.Planet,
+            playerFaction,
+            uiContext.Game.Config.AI.Garrison
+        );
+        return $"Garrison Requirement: {requirement}";
     }
 
     /// <summary>
@@ -381,7 +419,7 @@ internal sealed class DefenseWindowProjector
     /// <returns>True when the node has active movement.</returns>
     private static bool IsItemInTransit(ISceneNode item)
     {
-        return item is IMovable { Movement: not null };
+        return item is IMovable movable && movable.GetTransitMovement() != null;
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -514,8 +515,7 @@ internal sealed class FleetWindowProjector
     private static bool IsItemInTransit(Fleet fleet, ISceneNode item)
     {
         return fleet?.Movement != null
-            || item is IMovable { Movement: not null }
-            || item?.GetParentOfType<CapitalShip>()?.Movement != null;
+            || item is IMovable movable && movable.GetTransitMovement() != null;
     }
 
     /// <summary>

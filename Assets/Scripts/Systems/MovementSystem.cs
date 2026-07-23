@@ -20,7 +20,7 @@ namespace Rebellion.Systems
     /// The only system that calls game.MoveNode() for movement purposes.
     /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
-    public class MovementSystem : IGameSystem
+    public class MovementSystem
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -82,7 +82,7 @@ namespace Rebellion.Systems
 
             destination = ResolveLiveContainer(destination);
 
-            if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: true))
+            if (!CanReceiveMoveOrder(unit))
                 return;
 
             if (IsUnderConstruction(unit))
@@ -105,7 +105,7 @@ namespace Rebellion.Systems
                 }
             }
 
-            ExecuteMove(unit, destination);
+            ExecuteMove(unit, destination, _pendingResults);
         }
 
         /// <summary>
@@ -133,13 +133,14 @@ namespace Rebellion.Systems
                 && !CanEnterHostileOrbit(unit, destination)
             )
             {
-                ExecuteMove(unit, origin);
+                ExecuteMove(unit, origin, _pendingResults);
                 return;
             }
 
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
+                AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
                 return;
             }
 
@@ -170,7 +171,176 @@ namespace Rebellion.Systems
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
 
-            TryRequestMoveGroup(units, destination);
+            TryRequestMoveGroup(units, destination, _pendingResults);
+        }
+
+        /// <summary>
+        /// Records a participant's current container and planet before sending it to a mission.
+        /// </summary>
+        /// <param name="participant">The participant departing for the mission.</param>
+        /// <param name="mission">The mission that will contain the participant.</param>
+        internal void SendToMission(IMissionParticipant participant, Mission mission)
+        {
+            if (participant == null)
+                throw new ArgumentNullException(nameof(participant));
+            if (mission == null)
+                throw new ArgumentNullException(nameof(mission));
+
+            participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
+            participant.MissionReturnLocationInstanceID = participant
+                .GetParentOfType<Planet>()
+                ?.InstanceID;
+            RequestMove(participant, mission);
+        }
+
+        /// <summary>
+        /// Returns mission participants and passengers in destination-specific movement groups.
+        /// </summary>
+        /// <param name="participants">The mission participants that are free to return.</param>
+        /// <param name="additionalPassengers">Additional units that must travel with the first return group.</param>
+        /// <returns>Units that could not be assigned to a return destination.</returns>
+        internal List<IMovable> ReturnFromMission(
+            IReadOnlyList<IMissionParticipant> participants,
+            IReadOnlyList<IMovable> additionalPassengers
+        )
+        {
+            if (participants == null)
+                throw new ArgumentNullException(nameof(participants));
+            if (additionalPassengers == null)
+                throw new ArgumentNullException(nameof(additionalPassengers));
+
+            Dictionary<ContainerNode, List<IMovable>> returnGroups =
+                new Dictionary<ContainerNode, List<IMovable>>();
+            HashSet<IMovable> returningUnits = new HashSet<IMovable>();
+            List<IMovable> strandedUnits = new List<IMovable>();
+
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (participant == null)
+                    continue;
+
+                if (!returningUnits.Add(participant))
+                    continue;
+
+                ContainerNode destination = ResolveMissionReturnDestination(participant);
+                if (destination == null)
+                {
+                    strandedUnits.Add(participant);
+                    continue;
+                }
+
+                AddToReturnGroup(returnGroups, destination, participant);
+            }
+
+            Dictionary<IMovable, MovementState> interruptedMovements = returningUnits
+                .Where(unit => unit.Movement != null)
+                .ToDictionary(unit => unit, unit => unit.Movement);
+            foreach (IMovable unit in interruptedMovements.Keys)
+                unit.Movement = null;
+
+            foreach (
+                KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups.ToList()
+            )
+            {
+                if (!CanMoveGroup(returnGroup.Value, returnGroup.Key))
+                {
+                    strandedUnits.AddRange(returnGroup.Value);
+                    returnGroups.Remove(returnGroup.Key);
+                }
+            }
+
+            ContainerNode passengerDestination = returnGroups.Keys.FirstOrDefault();
+            List<IMovable> passengers = additionalPassengers
+                .Where(passenger => passenger != null && returningUnits.Add(passenger))
+                .ToList();
+            if (passengerDestination == null)
+            {
+                strandedUnits.AddRange(passengers);
+            }
+            else if (passengers.Count > 0)
+            {
+                List<IMovable> passengerGroup = returnGroups[passengerDestination]
+                    .Concat(passengers)
+                    .ToList();
+                if (CanMoveGroup(passengerGroup, passengerDestination))
+                    returnGroups[passengerDestination] = passengerGroup;
+                else
+                    strandedUnits.AddRange(passengers);
+            }
+
+            RestoreMovement(interruptedMovements);
+            foreach (KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups)
+            {
+                string movementGroupID = Guid.NewGuid().ToString("N");
+                foreach (IMovable unit in returnGroup.Value)
+                    ExecuteMove(unit, returnGroup.Key, _pendingResults, movementGroupID);
+            }
+
+            return strandedUnits.Distinct().ToList();
+        }
+
+        /// <summary>
+        /// Restores movement states temporarily cleared during return-group validation.
+        /// </summary>
+        /// <param name="interruptedMovements">The units and movement states to restore.</param>
+        private static void RestoreMovement(
+            IReadOnlyDictionary<IMovable, MovementState> interruptedMovements
+        )
+        {
+            foreach (KeyValuePair<IMovable, MovementState> movement in interruptedMovements)
+                movement.Key.Movement = movement.Value;
+        }
+
+        /// <summary>
+        /// Resolves a participant's recorded container or recorded planet.
+        /// </summary>
+        /// <param name="participant">The participant whose return destination is required.</param>
+        /// <returns>The first valid return container, or null when none can receive the participant.</returns>
+        private ContainerNode ResolveMissionReturnDestination(IMissionParticipant participant)
+        {
+            Planet returnLocation = _game.GetSceneNodeByInstanceID<Planet>(
+                participant.MissionReturnLocationInstanceID
+            );
+            ContainerNode returnParent = _game.GetSceneNodeByInstanceID<ContainerNode>(
+                participant.MissionReturnParentInstanceID
+            );
+
+            Planet returnParentPlanet =
+                returnParent as Planet ?? returnParent?.GetParentOfType<Planet>();
+            if (
+                returnParentPlanet?.IsDestroyed == false
+                && returnParent.CanAcceptChild(participant)
+            )
+                return returnParent;
+
+            if (returnLocation?.IsDestroyed == false)
+            {
+                if (returnLocation.CanAcceptChild(participant))
+                    return returnLocation;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Adds a unit to the movement group for a return destination.
+        /// </summary>
+        /// <param name="returnGroups">The return groups keyed by destination.</param>
+        /// <param name="destination">The destination that identifies the group.</param>
+        /// <param name="unit">The unit to add.</param>
+        private static void AddToReturnGroup(
+            IDictionary<ContainerNode, List<IMovable>> returnGroups,
+            ContainerNode destination,
+            IMovable unit
+        )
+        {
+            if (!returnGroups.TryGetValue(destination, out List<IMovable> group))
+            {
+                group = new List<IMovable>();
+                returnGroups.Add(destination, group);
+            }
+
+            group.Add(unit);
         }
 
         /// <summary>
@@ -179,13 +349,16 @@ namespace Rebellion.Systems
         /// <param name="items">The selected scene nodes or their snapshots.</param>
         /// <param name="destination">The requested destination or its snapshot.</param>
         /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+        /// <param name="results">Receives results produced while executing the order.</param>
         /// <returns>True when the complete movement order was accepted.</returns>
         public bool TryRequestMove(
             IReadOnlyList<ISceneNode> items,
             ContainerNode destination,
-            string ownerInstanceId
+            string ownerInstanceId,
+            out List<GameResult> results
         )
         {
+            results = new List<GameResult>();
             ContainerNode liveDestination = ResolveRegisteredContainer(destination);
             if (
                 liveDestination == null
@@ -221,7 +394,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            bool accepted = TryRequestMoveGroup(movables, liveDestination);
+            bool accepted = TryRequestMoveGroup(movables, liveDestination, results);
             if (accepted)
             {
                 foreach (Fleet sourceFleet in sourceFleets.Distinct())
@@ -294,7 +467,7 @@ namespace Rebellion.Systems
                 if (liveUnit == null)
                     return false;
 
-                if (!CanReceiveMoveOrder(liveUnit, allowManufacturingRetarget: false))
+                if (!CanReceiveMoveOrder(liveUnit))
                     return false;
 
                 Planet origin = liveUnit.GetParentOfType<Planet>();
@@ -310,9 +483,10 @@ namespace Rebellion.Systems
                 )
                     return false;
 
-                int unitTransitTicks = ReferenceEquals(destinationPlanet, origin)
-                    ? 0
-                    : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
+                int unitTransitTicks =
+                    IsUnderConstruction(liveUnit) || ReferenceEquals(destinationPlanet, origin)
+                        ? 0
+                        : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
                 maxTransitTicks = Math.Max(maxTransitTicks, unitTransitTicks);
             }
 
@@ -403,6 +577,18 @@ namespace Rebellion.Systems
         /// <returns>True if the whole group can move.</returns>
         private bool CanMoveGroup(List<IMovable> units, ContainerNode destination)
         {
+            return TryPlanMoveGroup(units, destination, out _);
+        }
+
+        private bool TryPlanMoveGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            out List<ContainerNode> resolvedDestinations
+        )
+        {
+            resolvedDestinations = new List<ContainerNode>();
+            Dictionary<ContainerNode, List<ISceneNode>> plannedChildren =
+                new Dictionary<ContainerNode, List<ISceneNode>>();
             Planet groupOrigin = null;
             foreach (IMovable unit in units)
             {
@@ -412,7 +598,7 @@ namespace Rebellion.Systems
                     return false;
                 }
 
-                if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: false))
+                if (!CanReceiveMoveOrder(unit))
                     return false;
 
                 Planet unitOrigin = unit.GetParentOfType<Planet>();
@@ -434,8 +620,29 @@ namespace Rebellion.Systems
                     return false;
                 }
 
-                if (!TryResolveAcceptedDestination(unit, destination, out _))
+                if (
+                    !TryResolveAcceptedDestination(
+                        unit,
+                        destination,
+                        plannedChildren,
+                        out ContainerNode resolvedDestination
+                    )
+                )
                     return false;
+
+                if (
+                    !plannedChildren.TryGetValue(
+                        resolvedDestination,
+                        out List<ISceneNode> destinationChildren
+                    )
+                )
+                {
+                    destinationChildren = new List<ISceneNode>();
+                    plannedChildren.Add(resolvedDestination, destinationChildren);
+                }
+
+                destinationChildren.Add(unit);
+                resolvedDestinations.Add(resolvedDestination);
             }
 
             foreach (Officer capturedOfficer in units.OfType<Officer>().Where(o => o.IsCaptured))
@@ -457,19 +664,31 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="units">The movable units in execution order.</param>
         /// <param name="destination">The shared destination.</param>
+        /// <param name="results">The collection receiving movement results.</param>
         /// <returns>True when the movement group was accepted.</returns>
-        private bool TryRequestMoveGroup(List<IMovable> units, ContainerNode destination)
+        private bool TryRequestMoveGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            ICollection<GameResult> results
+        )
         {
-            if (units == null || units.Count == 0 || destination == null)
+            if (units == null || units.Count == 0 || destination == null || results == null)
                 return false;
 
             destination = ResolveLiveContainer(destination);
-            if (!CanMoveGroup(units, destination))
+            if (!TryPlanMoveGroup(units, destination, out List<ContainerNode> destinations))
                 return false;
 
             string movementGroupID = Guid.NewGuid().ToString("N");
-            foreach (IMovable unit in units)
-                ExecuteMove(unit, destination, movementGroupID);
+            for (int index = 0; index < units.Count; index++)
+            {
+                IMovable unit = units[index];
+                ContainerNode resolvedDestination = destinations[index];
+                if (IsUnderConstruction(unit))
+                    ApplyManufacturingDestination(unit, resolvedDestination);
+                else
+                    ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
+            }
 
             return true;
         }
@@ -503,7 +722,7 @@ namespace Rebellion.Systems
                         ownerInstanceId,
                         StringComparison.Ordinal
                     )
-                    || !CanReceiveMoveOrder(movable, allowManufacturingRetarget: false)
+                    || !CanReceiveMoveOrder(movable)
                 )
                     return false;
 
@@ -583,25 +802,13 @@ namespace Rebellion.Systems
         /// Returns whether a unit can receive a movement order.
         /// </summary>
         /// <param name="unit">The unit to check.</param>
-        /// <param name="allowManufacturingRetarget">Whether an unfinished manufactured unit may change destination.</param>
         /// <returns>True if the unit can receive the order.</returns>
-        private static bool CanReceiveMoveOrder(IMovable unit, bool allowManufacturingRetarget)
+        private static bool CanReceiveMoveOrder(IMovable unit)
         {
-            if (unit.Movement != null)
+            if (!IsUnderConstruction(unit) && unit.GetTransitMovement() != null)
             {
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is already in transit."
-                );
-                return false;
-            }
-
-            if (IsUnderConstruction(unit))
-            {
-                if (allowManufacturingRetarget)
-                    return true;
-
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
                 );
                 return false;
             }
@@ -758,7 +965,7 @@ namespace Rebellion.Systems
 
             try
             {
-                CompleteArrival(movable, destination, destinationPlanet);
+                CompleteArrival(movable, destination, destinationPlanet, results);
                 AddArrivalResults(movable, destinationPlanet, movementGroupID, results);
             }
             catch (SceneAccessException ex)
@@ -888,10 +1095,12 @@ namespace Rebellion.Systems
         /// <param name="movable">The arriving unit.</param>
         /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The collection receiving deployment results.</param>
         private void CompleteArrival(
             IMovable movable,
             ContainerNode destination,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            ICollection<GameResult> results
         )
         {
             _game.MoveNode(movable, destination);
@@ -904,6 +1113,8 @@ namespace Rebellion.Systems
             string arrivingOwner = GetMovementControlOwner(movable);
             if (!string.IsNullOrEmpty(arrivingOwner))
                 destinationPlanet.AddVisitor(arrivingOwner);
+
+            AddPlanetGarrisonChangedResults(results, movable, destinationPlanet);
 
             if (movable is Fleet fleet)
                 CaptureFleetArrivalSnapshot(fleet, destinationPlanet);
@@ -985,7 +1196,7 @@ namespace Rebellion.Systems
         /// <param name="unit">The unit to evacuate.</param>
         public void EvacuateToNearestFriendlyPlanet(IMovable unit)
         {
-            string ownerID = unit.GetOwnerInstanceID();
+            string ownerID = GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
             {
                 unit.Movement = null;
@@ -995,10 +1206,10 @@ namespace Rebellion.Systems
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
             Planet currentPlanet = unit.GetParentOfType<Planet>();
-            Planet fallback = owner?.GetNearestOwnedPlanetTo(unit.GetPosition(), currentPlanet);
+            Planet fallback = FindEvacuationDestination(owner, unit, currentPlanet);
             if (fallback != null)
             {
-                ExecuteMove(unit, fallback);
+                ExecuteMove(unit, fallback, _pendingResults);
             }
             else
             {
@@ -1016,7 +1227,7 @@ namespace Rebellion.Systems
         /// <param name="rejectedDestination">The planet that refused the unit.</param>
         private void HandleArrivalRejection(IMovable movable, Planet rejectedDestination)
         {
-            string ownerID = movable.GetOwnerInstanceID();
+            string ownerID = GetMovementControlOwner(movable);
             if (string.IsNullOrEmpty(ownerID))
             {
                 movable.Movement = null;
@@ -1027,12 +1238,12 @@ namespace Rebellion.Systems
             }
 
             Faction owner = _game.GetFactionByOwnerInstanceID(ownerID);
-            Planet fallback = owner?.GetNearestOwnedPlanetTo(movable.GetPosition());
+            Planet fallback = FindEvacuationDestination(owner, movable, rejectedDestination);
 
-            if (fallback != null && fallback != rejectedDestination)
+            if (fallback != null)
             {
                 movable.Movement = null;
-                ExecuteMove(movable, fallback);
+                ExecuteMove(movable, fallback, _pendingResults);
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
                 );
@@ -1047,14 +1258,42 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Finds the nearest valid colonized planet controlled by the unit's movement owner.
+        /// </summary>
+        /// <param name="owner">The faction controlling the unit's movement.</param>
+        /// <param name="unit">The unit that must be accepted at the destination.</param>
+        /// <param name="excludedPlanet">The current or rejected planet to exclude.</param>
+        /// <returns>The nearest valid evacuation destination, or null when none exists.</returns>
+        private static Planet FindEvacuationDestination(
+            Faction owner,
+            IMovable unit,
+            Planet excludedPlanet
+        )
+        {
+            return owner
+                ?.GetOwnedColonizedPlanets()
+                .Where(planet =>
+                    planet != excludedPlanet
+                    && !planet.IsDestroyed
+                    && planet.GetOwnerInstanceID() == owner.InstanceID
+                    && planet.CanAcceptChild(unit)
+                )
+                .OrderBy(planet => planet.GetRawDistanceTo(unit.GetPosition()))
+                .ThenBy(planet => planet.InstanceID)
+                .FirstOrDefault();
+        }
+
+        /// <summary>
         /// Reparents the unit to the destination and starts visual transit.
         /// </summary>
         /// <param name="unit">The unit to move.</param>
         /// <param name="destination">The target container to reparent into.</param>
+        /// <param name="results">The collection receiving movement results.</param>
         /// <param name="movementGroupID">The shared movement order id for grouped moves.</param>
         private void ExecuteMove(
             IMovable unit,
             ContainerNode destination,
+            ICollection<GameResult> results,
             string movementGroupID = null
         )
         {
@@ -1070,8 +1309,16 @@ namespace Rebellion.Systems
             )
                 return;
 
-            destination = resolvedDestination;
+            ExecuteAcceptedMove(unit, resolvedDestination, results, movementGroupID);
+        }
 
+        private void ExecuteAcceptedMove(
+            IMovable unit,
+            ContainerNode destination,
+            ICollection<GameResult> results,
+            string movementGroupID
+        )
+        {
             Planet destinationPlanet = RequireDestinationPlanet(destination);
 
             Planet originPlanet = unit.GetParentOfType<Planet>();
@@ -1091,7 +1338,8 @@ namespace Rebellion.Systems
                 );
                 if (evacResult != null)
                 {
-                    _pendingResults.Add(evacResult);
+                    results.Add(evacResult);
+                    AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                     return;
                 }
             }
@@ -1113,13 +1361,14 @@ namespace Rebellion.Systems
             if (destinationPlanet == originPlanet)
             {
                 _game.MoveNode(unit, destination);
-                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
+                ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
                 unit.Movement = null;
+                AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                 return;
             }
 
             _game.MoveNode(unit, destination);
-            ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet);
+            ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
 
             unit.Movement = new MovementState
             {
@@ -1130,13 +1379,15 @@ namespace Rebellion.Systems
                 CurrentPosition = originPosition,
             };
 
+            AddPlanetGarrisonChangedResults(results, unit, originPlanet);
+
             if (unit is Fleet movingFleet)
                 RetargetInTransitFleetJoiners(movingFleet, destinationPlanet);
 
-            _pendingResults.Add(
+            results.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
             );
-            _pendingResults.Add(
+            results.Add(
                 new GameObjectEnrouteActiveResult
                 {
                     GameObject = unit,
@@ -1147,7 +1398,7 @@ namespace Rebellion.Systems
 
             if (unit is IMissionParticipant missionParticipant && destination is Mission)
             {
-                _pendingResults.Add(
+                results.Add(
                     new RoleEnrouteActiveResult
                     {
                         Participant = missionParticipant,
@@ -1204,11 +1455,16 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit being moved.</param>
         /// <param name="destination">The requested destination.</param>
+        /// <param name="plannedChildren">The children already reserved during group planning.</param>
         /// <returns>The node that should receive the unit, or null if none is available.</returns>
-        private ContainerNode ResolveMoveDestination(IMovable unit, ContainerNode destination)
+        private ContainerNode ResolveMoveDestination(
+            IMovable unit,
+            ContainerNode destination,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+        )
         {
             if (destination is Fleet targetFleet && !(unit is Fleet) && !(unit is CapitalShip))
-                return ResolveFleetTarget(unit, targetFleet);
+                return ResolveFleetTarget(unit, targetFleet, plannedChildren);
 
             return destination;
         }
@@ -1229,6 +1485,11 @@ namespace Rebellion.Systems
             )
                 return;
 
+            ApplyManufacturingDestination(unit, resolvedDestination);
+        }
+
+        private void ApplyManufacturingDestination(IMovable unit, ContainerNode resolvedDestination)
+        {
             _game.MoveNode(unit, resolvedDestination);
         }
 
@@ -1245,7 +1506,17 @@ namespace Rebellion.Systems
             out ContainerNode resolvedDestination
         )
         {
-            resolvedDestination = ResolveMoveDestination(unit, destination);
+            return TryResolveAcceptedDestination(unit, destination, null, out resolvedDestination);
+        }
+
+        private bool TryResolveAcceptedDestination(
+            IMovable unit,
+            ContainerNode destination,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren,
+            out ContainerNode resolvedDestination
+        )
+        {
+            resolvedDestination = ResolveMoveDestination(unit, destination, plannedChildren);
             if (resolvedDestination == null)
             {
                 GameLogger.Warning(
@@ -1262,7 +1533,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (resolvedDestination.CanAcceptChild(unit))
+            if (CanAcceptPlannedChild(resolvedDestination, unit, plannedChildren))
                 return true;
 
             GameLogger.Warning(
@@ -1300,9 +1571,11 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The moving unit.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
+        /// <param name="results">The collection receiving ownership results.</param>
         private void ClaimUncolonizedDestinationFromRegiment(
             IMovable unit,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            ICollection<GameResult> results
         )
         {
             if (unit is not Regiment regiment)
@@ -1333,7 +1606,7 @@ namespace Rebellion.Systems
                     destinationPlanet.SetPopularSupport(supportFaction.InstanceID, 0);
             }
 
-            _pendingResults.Add(
+            results.Add(
                 new PlanetOwnershipChangedResult
                 {
                     Planet = destinationPlanet,
@@ -1345,20 +1618,85 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Records each planet where the active regiment garrison changed.
+        /// </summary>
+        /// <param name="results">The collection receiving garrison results.</param>
+        /// <param name="unit">The moved unit.</param>
+        /// <param name="planets">The planets whose regiment presence may have changed.</param>
+        private void AddPlanetGarrisonChangedResults(
+            ICollection<GameResult> results,
+            IMovable unit,
+            params Planet[] planets
+        )
+        {
+            if (results == null || unit is not Regiment)
+                return;
+
+            foreach (Planet planet in planets.Where(planet => planet != null).Distinct())
+            {
+                results.Add(
+                    new PlanetGarrisonChangedResult { Planet = planet, Tick = _game.CurrentTick }
+                );
+            }
+        }
+
+        /// <summary>
         /// Resolves a Fleet destination to the appropriate CapitalShip for non-fleet units.
         /// </summary>
         /// <param name="unit">The non-fleet unit being assigned.</param>
         /// <param name="fleet">The fleet to find a suitable ship within.</param>
+        /// <param name="plannedChildren">The children already reserved during group planning.</param>
         /// <returns>The target ship, or null if no valid ship exists.</returns>
-        private ContainerNode ResolveFleetTarget(IMovable unit, Fleet fleet)
+        private ContainerNode ResolveFleetTarget(
+            IMovable unit,
+            Fleet fleet,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+        )
         {
             if (unit is Starfighter)
-                return fleet.FindShipForStarfighter();
+            {
+                if (fleet.Movement != null)
+                    return null;
+
+                return fleet.CapitalShips.FirstOrDefault(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                );
+            }
+
             if (unit is Regiment)
-                return fleet.FindShipForRegiment();
+            {
+                if (fleet.Movement != null)
+                    return null;
+
+                return fleet.CapitalShips.FirstOrDefault(ship =>
+                    ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && CanAcceptPlannedChild(ship, unit, plannedChildren)
+                );
+            }
+
             if ((unit is Officer || unit is SpecialForces) && fleet.CapitalShips.Count > 0)
                 return fleet.CapitalShips[0];
             return null;
+        }
+
+        private static bool CanAcceptPlannedChild(
+            ContainerNode destination,
+            ISceneNode child,
+            IReadOnlyDictionary<ContainerNode, List<ISceneNode>> plannedChildren
+        )
+        {
+            IReadOnlyCollection<ISceneNode> destinationChildren =
+                plannedChildren != null
+                && plannedChildren.TryGetValue(
+                    destination,
+                    out List<ISceneNode> existingDestinationChildren
+                )
+                    ? existingDestinationChildren
+                    : Array.Empty<ISceneNode>();
+            return destination.CanAcceptChild(child, destinationChildren);
         }
 
         /// <summary>

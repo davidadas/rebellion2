@@ -4,6 +4,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using UnityEngine;
 
@@ -138,6 +139,28 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
+        public void GetEntityStatusTexture_ShipCarriedByMovingFleet_ReturnsTransitArtwork()
+        {
+            string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "fleet",
+                Movement = new MovementState { TransitTicks = 10 },
+            };
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", InTransitImagePath = path };
+            _game.AttachNode(system, _game.GetGalaxyMap());
+            _game.AttachNode(planet, system);
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(ship, fleet);
+
+            Texture2D texture = _context.GetEntityStatusTexture(ship, false);
+
+            Assert.AreSame(_context.GetTexture(path), texture);
+        }
+
+        [Test]
         public void GetEntityCapturedOverlayTexture_CapturedOfficer_ReturnsConfiguredOverlay()
         {
             string path = _context.GetPlayerFactionTheme().ConfirmDialogTheme.BackgroundImagePath;
@@ -148,6 +171,26 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreSame(_context.GetTexture(path), texture);
             Assert.IsNull(_context.GetEntityCapturedOverlayTexture(new Officer()));
             Assert.IsNull(_context.GetEntityCapturedOverlayTexture(new Fleet()));
+        }
+
+        [Test]
+        public void GetEntityCapturedOverlayTexture_OfficerCatalog_ReturnsOverlayForEveryOfficer()
+        {
+            Officer[] officers = ResourceManager.GetEntityData<Officer>();
+
+            Assert.IsNotEmpty(officers);
+            foreach (Officer officer in officers)
+            {
+                officer.IsCaptured = true;
+                Assert.IsFalse(
+                    string.IsNullOrEmpty(officer.CapturedOverlayImagePath),
+                    $"{officer.DisplayName} is missing captured overlay data."
+                );
+                Assert.IsNotNull(
+                    _context.GetEntityCapturedOverlayTexture(officer),
+                    $"{officer.DisplayName} captured overlay could not be loaded."
+                );
+            }
         }
 
         [Test]

@@ -160,26 +160,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         }
 
         [Test]
-        public void GetEntryTypeId_KnownSceneNodes_ReturnsCatalogIdentity()
+        public void GetEntryTypeID_KnownSceneNodes_ReturnsCatalogIdentity()
         {
             Planet planet = new Planet { TypeID = "PLANET" };
 
-            Assert.AreEqual("FLEET", EncyclopediaWindowController.GetEntryTypeId(new GameFleet()));
-            Assert.AreEqual("PLANET", EncyclopediaWindowController.GetEntryTypeId(planet));
-            Assert.IsNull(EncyclopediaWindowController.GetEntryTypeId(null));
+            Assert.AreEqual("FLEET", EncyclopediaWindowController.GetEntryTypeID(new GameFleet()));
+            Assert.AreEqual("PLANET", EncyclopediaWindowController.GetEntryTypeID(planet));
+            Assert.IsNull(EncyclopediaWindowController.GetEntryTypeID(null));
         }
 
         [TestCase(ResearchDiscipline.ShipDesign, MissionIconKeys.ResearchShipDesign)]
         [TestCase(ResearchDiscipline.FacilityDesign, MissionIconKeys.ResearchFacilityDesign)]
         [TestCase(ResearchDiscipline.TroopTraining, MissionIconKeys.ResearchTroopTraining)]
-        public void GetEntryTypeId_ResearchMission_ReturnsDisciplineIdentity(
+        public void GetEntryTypeID_ResearchMission_ReturnsDisciplineIdentity(
             ResearchDiscipline discipline,
             string expected
         )
         {
             ResearchMission mission = new ResearchMission { Discipline = discipline };
 
-            string typeId = EncyclopediaWindowController.GetEntryTypeId(mission);
+            string typeId = EncyclopediaWindowController.GetEntryTypeID(mission);
 
             Assert.AreEqual(expected, typeId);
         }

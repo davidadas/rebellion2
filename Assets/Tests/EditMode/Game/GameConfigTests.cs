@@ -23,6 +23,7 @@ namespace Rebellion.Tests.Game
             Assert.IsNotNull(config.Planet, "PlanetConfig should not be null");
             Assert.IsNotNull(config.Victory, "VictoryConfig should not be null");
             Assert.IsNotNull(config.GameSpeed, "GameSpeedConfig should not be null");
+            Assert.IsNotNull(config.Messages, "MessageConfig should not be null");
             Assert.IsNotNull(
                 config.ProbabilityTables,
                 "ProbabilityTablesConfig should not be null"
@@ -69,12 +70,20 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(10f, config.GameSpeed.MediumTickIntervalSeconds);
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);
             Assert.AreEqual(120f, config.GameSpeed.VerySlowTickIntervalSeconds);
+            Assert.AreEqual(300, config.Messages.RetentionTicks);
             Assert.AreEqual(50, config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability);
             Assert.AreEqual(1, config.SupportShift.DiplomacyCompletionSupportBonus);
             Assert.AreEqual(1, config.SupportShift.DiplomacyOwnedPlanetSupportBase);
             Assert.AreEqual(19, config.SupportShift.DiplomacyOwnedPlanetSupportRange);
             Assert.AreEqual(1, config.SupportShift.DiplomacyNeutralPlanetSupportBase);
             Assert.AreEqual(9, config.SupportShift.DiplomacyNeutralPlanetSupportRange);
+            Assert.AreEqual(2, config.Production.ScrapRefundDivisor);
+            Assert.AreEqual(20, config.Production.ResourceMaintenanceLoadPercent);
+            Assert.AreEqual(100, config.Production.ResourceCollectionBasePercent);
+            Assert.AreEqual(50, config.Production.ResourceStartupBasePercent);
+            Assert.AreEqual(100, config.Production.ResourceStartupRandomPercent);
+            Assert.AreEqual(5, config.Blockade.CapitalShipProductionPenaltyPercent);
+            Assert.AreEqual(2, config.Blockade.FighterProductionPenaltyPercent);
         }
 
         [Test]

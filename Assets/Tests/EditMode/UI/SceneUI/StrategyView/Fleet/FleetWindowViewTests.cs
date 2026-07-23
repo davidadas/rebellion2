@@ -493,14 +493,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DetailItemTemplate_StatusOverlaysRenderAboveEntity()
+        public void DetailItemTemplate_ConstructionRendersBehindEntityAndStatusRendersAbove()
         {
             StrategyUnitCardView itemTemplate = _viewObject
                 .GetComponentsInChildren<StrategyUnitCardView>(true)
                 .Single(item => item.name == "FleetDetailItemTemplate");
             Transform entity = FindCardObject(itemTemplate, "EntityImage").transform;
 
-            Assert.Greater(
+            Assert.Less(
                 FindCardObject(itemTemplate, "ConstructionOverlayImage")
                     .transform.GetSiblingIndex(),
                 entity.GetSiblingIndex()

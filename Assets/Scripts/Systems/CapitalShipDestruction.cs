@@ -121,7 +121,10 @@ namespace Rebellion.Systems
         private static CapitalShip FindSurvivingShip(Fleet fleet, CapitalShip destroyedShip)
         {
             return fleet?.CapitalShips.FirstOrDefault(ship =>
-                !ReferenceEquals(ship, destroyedShip) && ship.CurrentHullStrength > 0
+                !ReferenceEquals(ship, destroyedShip)
+                && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.CurrentHullStrength > 0
             );
         }
 
@@ -135,6 +138,8 @@ namespace Rebellion.Systems
         {
             return fleet?.CapitalShips.FirstOrDefault(ship =>
                 !ReferenceEquals(ship, destroyedShip)
+                && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
                 && ship.CurrentHullStrength > 0
                 && ship.GetExcessStarfighterCapacity() > 0
             );

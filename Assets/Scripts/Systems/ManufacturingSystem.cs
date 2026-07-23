@@ -15,35 +15,29 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages unit and facility production during each game tick.
     /// </summary>
-    public class ManufacturingSystem : IGameSystem
+    public class ManufacturingSystem
     {
         private const int _productionRateScale = 100;
 
         private readonly GameRoot _game;
-        private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementSystem;
         private readonly FleetSystem _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
-        private readonly Dictionary<string, int> _refinedProgressRemainingByFaction =
-            new Dictionary<string, int>();
 
         /// <summary>
         /// Creates a new ManufacturingSystem.
         /// </summary>
         /// <param name="game">The game instance.</param>
         /// <param name="fleetSystem">Owns fleet creation and empty-fleet cleanup.</param>
-        /// <param name="provider">Random number provider for capital ship progress rolls.</param>
         /// <param name="movementSystem">Used to dispatch completed units to their destinations.</param>
         public ManufacturingSystem(
             GameRoot game,
             FleetSystem fleetSystem,
-            IRandomNumberProvider provider = null,
             MovementSystem movementSystem = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _fleetSystem = fleetSystem ?? throw new ArgumentNullException(nameof(fleetSystem));
-            _provider = provider;
             _movementSystem = movementSystem;
         }
 
@@ -56,7 +50,6 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
             results.AddRange(_pendingResults);
             _pendingResults.Clear();
-            RefreshRefinedProgressBudgets();
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
                 results.AddRange(ProcessPlanetManufacturing(planet));
@@ -403,7 +396,7 @@ namespace Rebellion.Systems
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
-            if (faction == null || destination == null)
+            if (faction == null || !IsLiveDestination(destination))
                 return false;
 
             if (item is CapitalShip)
@@ -452,7 +445,7 @@ namespace Rebellion.Systems
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
-            if (faction == null || destination == null)
+            if (faction == null || !IsLiveDestination(destination))
                 return false;
 
             if (
@@ -519,7 +512,7 @@ namespace Rebellion.Systems
         )
         {
             Faction faction = GetValidatedFaction(planet, item);
-            if (faction == null || destination == null)
+            if (faction == null || !IsLiveDestination(destination))
                 return false;
 
             if (
@@ -564,7 +557,26 @@ namespace Rebellion.Systems
         private static bool IsManufacturingCarrierAvailable(CapitalShip ship)
         {
             return ship?.ManufacturingStatus == ManufacturingStatus.Complete
-                && ship.Movement == null;
+                && ship.GetTransitMovement() == null;
+        }
+
+        /// <summary>
+        /// Returns whether a manufacturing destination is the registered live node at a planet.
+        /// </summary>
+        /// <param name="destination">The destination to validate.</param>
+        /// <returns>True when the destination is attached to the active scene graph.</returns>
+        private bool IsLiveDestination(ContainerNode destination)
+        {
+            if (destination == null)
+                return false;
+
+            ContainerNode liveDestination = _game.GetSceneNodeByInstanceID<ContainerNode>(
+                destination.InstanceID
+            );
+            if (!ReferenceEquals(liveDestination, destination))
+                return false;
+
+            return destination is Planet || destination.GetParentOfType<Planet>() != null;
         }
 
         /// <summary>
@@ -601,10 +613,9 @@ namespace Rebellion.Systems
             if (ignoreCost || item.GetMaintenanceCost() <= 0)
                 return true;
 
-            int minimumHeadroom = _game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
             int projectedHeadroom = faction.GetProjectedMaintenanceHeadroom(item);
 
-            return projectedHeadroom >= minimumHeadroom;
+            return projectedHeadroom >= 0;
         }
 
         /// <summary>
@@ -613,7 +624,7 @@ namespace Rebellion.Systems
         /// <param name="faction">The faction committing the order.</param>
         /// <param name="item">The item template being manufactured.</param>
         /// <param name="count">The number of copies to queue.</param>
-        /// <returns>True when the projected maintenance headroom remains above its floor.</returns>
+        /// <returns>True when the complete order remains within maintenance capacity.</returns>
         private bool HasMaintenanceHeadroom(Faction faction, IManufacturable item, int count)
         {
             if (faction == null)
@@ -623,9 +634,7 @@ namespace Rebellion.Systems
             if (maintenanceCost <= 0)
                 return true;
 
-            int minimumHeadroom = _game.Config.AI.Selection.MaintenanceHeadroomHardFloor;
-            return faction.ProjectedMaintenanceHeadroom - maintenanceCost * count
-                >= minimumHeadroom;
+            return faction.ProjectedMaintenanceHeadroom - maintenanceCost * count >= 0;
         }
 
         /// <summary>
@@ -654,23 +663,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Determines capital ship progress from the configured chance and progress tables.
-        /// </summary>
-        /// <returns>Progress to apply this tick, or 0 if the success check fails.</returns>
-        private int RollCapitalShipProgress()
-        {
-            GameConfig.ProductionConfig config = _game.Config.Production;
-
-            int successRoll = _provider.NextInt(0, config.CapitalShipSuccessRollRange);
-            if (successRoll >= config.CapitalShipSuccessThreshold)
-                return 0;
-
-            int progressRoll = _provider.NextInt(0, config.CapitalShipProgressRollRange);
-            ProbabilityTable progressTable = new ProbabilityTable(config.CapitalShipProgressTable);
-            return progressTable.Lookup(progressRoll);
-        }
-
-        /// <summary>
         /// Processes all manufacturing queues on one planet.
         /// </summary>
         /// <param name="planet">The planet whose queues are processed.</param>
@@ -680,32 +672,90 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
             Dictionary<ManufacturingType, List<IManufacturable>> queue =
                 planet.GetManufacturingQueue();
-            if (queue == null || queue.Count == 0)
+            if (queue == null)
                 return results;
 
             string ownerInstanceId = planet.GetOwnerInstanceID();
             if (string.IsNullOrEmpty(ownerInstanceId))
                 return results;
 
-            foreach (KeyValuePair<ManufacturingType, List<IManufacturable>> kvp in queue.ToList())
+            Faction faction = _game.GetFactionByOwnerInstanceID(ownerInstanceId);
+            foreach (ManufacturingType type in GetActiveManufacturingTypes(planet, queue))
             {
-                ManufacturingType type = kvp.Key;
-                List<IManufacturable> items = kvp.Value;
+                queue.TryGetValue(type, out List<IManufacturable> items);
+                bool hadQueuedItems = items?.Count > 0;
 
-                if (items == null || items.Count == 0)
+                items?.RemoveAll(item => !IsQueuedItemActive(item));
+                bool hasQueuedItems = items?.Count > 0;
+                List<Building> readyFacilities = AdvanceProductionFacilities(
+                    planet,
+                    type,
+                    faction,
+                    hasQueuedItems
+                );
+                if (!hasQueuedItems)
+                {
+                    if (queue.Remove(type) && hadQueuedItems)
+                        results.Add(CreateQueueIdleResult(planet, type));
+
+                    DiscardReadyProductionPoints(readyFacilities);
                     continue;
+                }
 
-                List<Building> readyFacilities = AdvanceProductionFacilities(planet, type);
                 List<IManufacturable> completed = DistributeProgress(
                     items,
                     readyFacilities,
                     planet,
                     results
                 );
+                ReserveInputsForSpentProductionPoints(readyFacilities, faction, items.Count > 0);
                 CompleteManufacturedItems(planet, type, completed, results);
+                if (items.Count == 0)
+                    DiscardReadyProductionPoints(readyFacilities);
             }
 
             return results;
+        }
+
+        /// <summary>
+        /// Gets manufacturing types that have a queue or a live production facility.
+        /// </summary>
+        /// <param name="planet">The production planet.</param>
+        /// <param name="queue">The planet's manufacturing queues.</param>
+        /// <returns>The active manufacturing types in stable facility and queue order.</returns>
+        private static List<ManufacturingType> GetActiveManufacturingTypes(
+            Planet planet,
+            Dictionary<ManufacturingType, List<IManufacturable>> queue
+        )
+        {
+            List<ManufacturingType> types = planet
+                .Buildings.Where(facility =>
+                    facility.ManufacturingStatus == ManufacturingStatus.Complete
+                    && facility.Movement == null
+                    && facility.ProcessRate > 0
+                    && facility.ProductionType != ManufacturingType.None
+                )
+                .Select(facility => facility.ProductionType)
+                .Distinct()
+                .ToList();
+            foreach (ManufacturingType type in queue.Keys)
+            {
+                if (type != ManufacturingType.None && !types.Contains(type))
+                    types.Add(type);
+            }
+
+            return types;
+        }
+
+        /// <summary>
+        /// Returns whether a queued item remains registered as the same live scene node.
+        /// </summary>
+        /// <param name="item">The queued item to validate.</param>
+        /// <returns>True when the queued item remains active in the scene graph.</returns>
+        private bool IsQueuedItemActive(IManufacturable item)
+        {
+            return item != null
+                && _game.GetSceneNodeByInstanceID<ISceneNode>(item.InstanceID) == item;
         }
 
         /// <summary>
@@ -713,50 +763,75 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="planet">The production planet.</param>
         /// <param name="type">The manufacturing type being processed.</param>
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
         /// <returns>Facilities with a ready production point.</returns>
-        private List<Building> AdvanceProductionFacilities(Planet planet, ManufacturingType type)
+        private List<Building> AdvanceProductionFacilities(
+            Planet planet,
+            ManufacturingType type,
+            Faction faction,
+            bool hasQueuedItems
+        )
         {
-            List<Building> productionFacilities = planet.GetProductionFacilities(type);
-            double cycleIncrement = GetProductionCycleIncrement(planet);
-            if (cycleIncrement <= 0)
-                return productionFacilities
-                    .Where(facility => facility.ProductionPointReady)
-                    .ToList();
+            List<Building> productionFacilities = planet
+                .Buildings.Where(facility =>
+                    facility.ProductionType == type
+                    && facility.ManufacturingStatus == ManufacturingStatus.Complete
+                    && facility.Movement == null
+                    && facility.ProcessRate > 0
+                )
+                .ToList();
 
+            double cycleIncrement = GetProductionCycleIncrement(planet);
             foreach (Building facility in productionFacilities)
-            {
-                AdvanceProductionFacility(facility, cycleIncrement);
-            }
+                AdvanceProductionFacility(facility, faction, hasQueuedItems, cycleIncrement);
 
             return productionFacilities.Where(facility => facility.ProductionPointReady).ToList();
         }
 
         /// <summary>
-        /// Gets the production-cycle increment for a planet this tick.
+        /// Gets the production-cycle progress available to a planet during this tick.
         /// </summary>
-        /// <param name="planet">The planet to evaluate.</param>
-        /// <returns>The cycle increment after blockade effects.</returns>
+        /// <param name="planet">The production planet.</param>
+        /// <returns>The progress available after uprising and blockade effects.</returns>
         private double GetProductionCycleIncrement(Planet planet)
         {
-            if (!planet.IsBlockadePenalized())
-                return 1.0;
+            if (planet.IsInUprising)
+                return 0;
 
+            GameConfig.BlockadeConfig config = _game.Config.Blockade;
             int modifier = planet.GetBlockadeModifier(
-                _game.Config.Production.BlockadeCapitalShipPenalty,
-                _game.Config.Production.BlockadeFighterPenalty
+                config.CapitalShipProductionPenaltyPercent,
+                config.FighterProductionPenaltyPercent
             );
-            return Math.Max(0, modifier) / 100.0;
+            return (double)modifier / _productionRateScale;
         }
 
         /// <summary>
         /// Advances one production facility toward its next production point.
         /// </summary>
         /// <param name="facility">The facility to advance.</param>
-        /// <param name="cycleIncrement">The cycle progress to apply.</param>
-        private static void AdvanceProductionFacility(Building facility, double cycleIncrement)
+        /// <param name="faction">The owning faction.</param>
+        /// <param name="hasQueuedItems">Whether the facility type currently has work.</param>
+        /// <param name="cycleIncrement">The production progress available this tick.</param>
+        private static void AdvanceProductionFacility(
+            Building facility,
+            Faction faction,
+            bool hasQueuedItems,
+            double cycleIncrement
+        )
         {
             if (facility.ProductionPointReady)
                 return;
+
+            if (cycleIncrement <= 0)
+                return;
+
+            if (!facility.ProductionInputReserved)
+            {
+                if (!hasQueuedItems || !faction.RequestRefinedMaterial(facility))
+                    return;
+            }
 
             int processRate = facility.GetProcessRate();
             if (processRate <= 0)
@@ -769,23 +844,42 @@ namespace Rebellion.Systems
             facility.ProductionCycleProgress += cycleIncrement;
             if (facility.ProductionCycleProgress >= processRate)
             {
-                facility.ProductionCycleProgress -= processRate;
+                facility.ProductionCycleProgress = 0;
+                facility.ProductionInputReserved = false;
                 facility.ProductionPointReady = true;
             }
         }
 
         /// <summary>
-        /// Resets production facilities for a completed queue.
+        /// Reserves replacement inputs for production points spent during this tick.
         /// </summary>
-        /// <param name="planet">The production planet.</param>
-        /// <param name="type">The manufacturing type whose facilities are reset.</param>
-        private static void ResetProductionFacilities(Planet planet, ManufacturingType type)
+        /// <param name="facilities">The facilities whose ready points were distributed.</param>
+        /// <param name="faction">The faction supplying refined material.</param>
+        /// <param name="hasQueuedItems">Whether work remains after point distribution.</param>
+        private static void ReserveInputsForSpentProductionPoints(
+            List<Building> facilities,
+            Faction faction,
+            bool hasQueuedItems
+        )
         {
-            foreach (Building facility in planet.GetProductionFacilities(type))
+            if (!hasQueuedItems)
+                return;
+
+            foreach (Building facility in facilities)
             {
-                facility.ProductionCycleProgress = 0;
-                facility.ProductionPointReady = false;
+                if (!facility.ProductionPointReady && !facility.ProductionInputReserved)
+                    faction.RequestRefinedMaterial(facility);
             }
+        }
+
+        /// <summary>
+        /// Discards completed production points that have no queued item to receive them.
+        /// </summary>
+        /// <param name="facilities">The ready facilities to reset.</param>
+        private static void DiscardReadyProductionPoints(List<Building> facilities)
+        {
+            foreach (Building facility in facilities)
+                facility.ProductionPointReady = false;
         }
 
         /// <summary>
@@ -821,32 +915,13 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                if (activeItem is CapitalShip)
-                {
-                    ApplyCapitalShipProgress(
-                        activeItem,
-                        productionFacilities,
-                        ref facilityIndex,
-                        faction,
-                        planet,
-                        results
-                    );
-                    MoveCompletedActiveItem(items, completed, activeItem);
-                    break;
-                }
-
-                if (
-                    !TryApplyStandardProgress(
-                        activeItem,
-                        productionFacilities[facilityIndex],
-                        faction,
-                        planet,
-                        results
-                    )
-                )
-                {
-                    break;
-                }
+                ApplyStandardProgress(
+                    activeItem,
+                    productionFacilities[facilityIndex],
+                    faction,
+                    planet,
+                    results
+                );
                 facilityIndex++;
                 MoveCompletedActiveItem(items, completed, activeItem);
             }
@@ -876,54 +951,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances a capital ship using all available production points for the tick.
-        /// </summary>
-        /// <param name="activeItem">The capital ship being built.</param>
-        /// <param name="productionFacilities">Facilities with ready production points.</param>
-        /// <param name="facilityIndex">The current facility index.</param>
-        /// <param name="faction">The owning faction.</param>
-        /// <param name="planet">The production planet.</param>
-        /// <param name="results">Result list to append progress events to.</param>
-        private void ApplyCapitalShipProgress(
-            IManufacturable activeItem,
-            List<Building> productionFacilities,
-            ref int facilityIndex,
-            Faction faction,
-            Planet planet,
-            List<GameResult> results
-        )
-        {
-            while (
-                facilityIndex < productionFacilities.Count && !activeItem.IsManufacturingComplete()
-            )
-            {
-                Building facility = productionFacilities[facilityIndex];
-                int rolledProgress = RollCapitalShipProgress();
-                facility.ProductionPointReady = false;
-
-                if (rolledProgress <= 0)
-                {
-                    facilityIndex++;
-                    continue;
-                }
-
-                int appliedProgress = ConsumeRefinedProgress(
-                    faction,
-                    Math.Min(rolledProgress, GetRemainingProgress(activeItem))
-                );
-                if (appliedProgress <= 0)
-                {
-                    facility.ProductionPointReady = true;
-                    break;
-                }
-
-                activeItem.IncrementManufacturingProgress(appliedProgress);
-                AddProgressResult(results, faction, appliedProgress, planet);
-                facilityIndex++;
-            }
-        }
-
-        /// <summary>
         /// Applies one standard production point to an item.
         /// </summary>
         /// <param name="activeItem">The item being built.</param>
@@ -931,8 +958,7 @@ namespace Rebellion.Systems
         /// <param name="faction">The owning faction.</param>
         /// <param name="planet">The production planet.</param>
         /// <param name="results">Result list to append progress events to.</param>
-        /// <returns>True if progress was applied; otherwise, false.</returns>
-        private bool TryApplyStandardProgress(
+        private void ApplyStandardProgress(
             IManufacturable activeItem,
             Building productionFacility,
             Faction faction,
@@ -940,17 +966,10 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            int appliedProgress = ConsumeRefinedProgress(
-                faction,
-                Math.Min(1, GetRemainingProgress(activeItem))
-            );
-            if (appliedProgress <= 0)
-                return false;
-
             productionFacility.ProductionPointReady = false;
+            int appliedProgress = Math.Min(1, GetRemainingProgress(activeItem));
             activeItem.IncrementManufacturingProgress(appliedProgress);
             AddProgressResult(results, faction, appliedProgress, planet);
-            return true;
         }
 
         /// <summary>
@@ -1027,7 +1046,6 @@ namespace Rebellion.Systems
             if (completed.Count == 0 || GetQueuedItems(planet, type).Count > 0)
                 return;
 
-            ResetProductionFacilities(planet, type);
             results.Add(CreateQueueIdleResult(planet, type));
         }
 
@@ -1062,52 +1080,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Refreshes refined-material progress budgets for this tick.
-        /// </summary>
-        private void RefreshRefinedProgressBudgets()
-        {
-            _refinedProgressRemainingByFaction.Clear();
-            foreach (Faction faction in _game.GetFactions())
-            {
-                if (faction == null || string.IsNullOrEmpty(faction.InstanceID))
-                    continue;
-
-                _refinedProgressRemainingByFaction[faction.InstanceID] = Math.Max(
-                    0,
-                    faction.RefinedMaterialSupply
-                );
-            }
-        }
-
-        /// <summary>
-        /// Consumes refined-material progress budget for a faction.
-        /// </summary>
-        /// <param name="faction">The faction consuming progress.</param>
-        /// <param name="requestedProgress">The requested progress amount.</param>
-        /// <returns>The progress amount that can be applied.</returns>
-        private int ConsumeRefinedProgress(Faction faction, int requestedProgress)
-        {
-            if (faction == null || requestedProgress <= 0)
-                return 0;
-
-            if (
-                !_refinedProgressRemainingByFaction.TryGetValue(
-                    faction.InstanceID,
-                    out int remainingBudget
-                )
-                || remainingBudget <= 0
-            )
-            {
-                return 0;
-            }
-
-            int appliedProgress = Math.Min(requestedProgress, remainingBudget);
-            _refinedProgressRemainingByFaction[faction.InstanceID] =
-                remainingBudget - appliedProgress;
-            return appliedProgress;
-        }
-
-        /// <summary>
         /// Completes manufacturing of an item and dispatches it from the production planet.
         /// </summary>
         /// <param name="productionPlanet">The production planet.</param>
@@ -1119,7 +1091,6 @@ namespace Rebellion.Systems
         )
         {
             MarkCompleteAndDispatch(productionPlanet, item);
-            ApplyCompletionSupportShift(productionPlanet, item);
             GameLogger.Log(
                 $"Completed manufacturing: {item.GetDisplayName()} at {productionPlanet.GetDisplayName()}"
             );
@@ -1195,7 +1166,7 @@ namespace Rebellion.Systems
             )
                 return false;
 
-            ClearQueueItems(planet, type, items);
+            ClearQueueItems(planet, items);
             queue.Remove(type);
             return true;
         }
@@ -1251,7 +1222,6 @@ namespace Rebellion.Systems
             if (queue.Count == 0)
             {
                 queues.Remove(type);
-                ResetProductionFacilities(producer, type);
             }
 
             return true;
@@ -1279,16 +1249,11 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Detaches queued manufacturing items and resets the facilities assigned to their queue.
+        /// Detaches queued manufacturing items.
         /// </summary>
         /// <param name="planet">The planet whose queued items are being cleared.</param>
-        /// <param name="type">The manufacturing queue type being cleared.</param>
         /// <param name="items">The queued items to clear.</param>
-        private void ClearQueueItems(
-            Planet planet,
-            ManufacturingType type,
-            List<IManufacturable> items
-        )
+        private void ClearQueueItems(Planet planet, List<IManufacturable> items)
         {
             foreach (IManufacturable item in items.ToList())
             {
@@ -1299,7 +1264,6 @@ namespace Rebellion.Systems
             }
 
             items.Clear();
-            ResetProductionFacilities(planet, type);
         }
 
         /// <summary>
@@ -1315,34 +1279,6 @@ namespace Rebellion.Systems
 
             if (parent is Fleet fleet)
                 _fleetSystem.RemoveIfEmpty(fleet);
-        }
-
-        /// <summary>
-        /// Applies a popular support shift at the production planet when an item completes.
-        /// Boosts faction support on completion.
-        /// </summary>
-        /// <param name="planet">The planet where manufacturing completed.</param>
-        /// <param name="item">The completed manufacturable item.</param>
-        private void ApplyCompletionSupportShift(Planet planet, IManufacturable item)
-        {
-            string ownerID = item.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(ownerID))
-                return;
-
-            GameConfig.ProductionConfig config = _game.Config.Production;
-            int shift = item switch
-            {
-                CapitalShip => config.CapitalShipCompletionSupportShift,
-                Building => config.BuildingCompletionSupportShift,
-                Regiment => config.TroopCompletionSupportShift,
-                _ => 0,
-            };
-
-            if (shift <= 0)
-                return;
-
-            int current = planet.GetPopularSupport(ownerID);
-            planet.SetPopularSupport(ownerID, current + shift);
         }
 
         /// <summary>
@@ -1374,7 +1310,7 @@ namespace Rebellion.Systems
                     continue;
                 }
 
-                ClearQueueItems(planet, type, items);
+                ClearQueueItems(planet, items);
                 queue.Remove(type);
             }
         }

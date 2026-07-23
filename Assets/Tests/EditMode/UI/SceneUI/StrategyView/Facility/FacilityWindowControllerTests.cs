@@ -171,11 +171,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         }
 
         [Test]
-        public void TryGetConstructionDestinationIds_ManufacturingTab_ReturnsPlanetFallback()
+        public void TryGetConstructionDestinationIDs_ManufacturingTab_ReturnsPlanetFallback()
         {
             FacilityWindowView view = OpenWindow(out UIWindow _);
 
-            bool found = _controller.TryGetConstructionDestinationIds(
+            bool found = _controller.TryGetConstructionDestinationIDs(
                 view,
                 FacilityWindowTab.Shipyards,
                 out string destinationPlanetId,

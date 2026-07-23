@@ -395,7 +395,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
                 "Target",
                 new StrategyWindowTargetingSource(
                     _window,
-                    StrategyContextMenuActions.Status,
+                    StrategyMenuAction.Status,
                     0,
                     0,
                     Array.Empty<ISceneNode>()
@@ -464,6 +464,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
             public UIWindow LastWindow { get; private set; }
             public int MissionCount { get; private set; }
             public int MoveCount { get; private set; }
+
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) { }
 
             public void OpenMissionCreateWindow(
                 StrategyMissionTarget target,

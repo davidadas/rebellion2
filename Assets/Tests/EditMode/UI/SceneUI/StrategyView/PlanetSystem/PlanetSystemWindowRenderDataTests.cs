@@ -79,6 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             Assert.AreEqual(3, data.PlanetIndex);
             Assert.AreEqual(new Vector2Int(4, 5), data.GalaxyOffset);
             Assert.AreSame(_texture, data.PlanetTexture);
+            Assert.AreSame(_texture, data.UprisingTexture);
             Assert.AreSame(_texture, data.FacilityTexture);
             Assert.AreSame(_texture, data.FacilityPressedTexture);
             Assert.AreSame(_texture, data.DefenseTexture);
@@ -103,6 +104,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             PlanetSystemPlanetRenderData data = new PlanetSystemPlanetRenderData(
                 0,
                 Vector2Int.zero,
+                null,
                 null,
                 null,
                 null,
@@ -160,6 +162,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             return new PlanetSystemPlanetRenderData(
                 3,
                 new Vector2Int(4, 5),
+                _texture,
                 _texture,
                 _texture,
                 _texture,

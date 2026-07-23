@@ -54,7 +54,38 @@ public sealed class StrategyWindowCommandController
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Executes the semantic command completed by one targeting request.
+    /// </summary>
+    /// <param name="source">The targeting source command and selection.</param>
+    /// <param name="target">The selected strategy target.</param>
+    public void ExecuteTargetedCommand(
+        StrategyWindowTargetingSource source,
+        StrategyMissionTarget target
+    )
+    {
+        if (source == null || target == null)
+            return;
+
+        switch (source.Action)
+        {
+            case StrategyMenuAction.CreateMission:
+                OpenMissionCreateWindow(target, source.Items);
+                break;
+            case StrategyMenuAction.Move:
+                TryExecuteMove(source.Window, target, source.Items);
+                break;
+            case StrategyMenuAction.MoveConfirm:
+                OpenMoveConfirmWindow(source.Window, target, source.Items);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Opens mission creation for selected participants and a target.
+    /// </summary>
+    /// <param name="target">The selected mission target.</param>
+    /// <param name="items">The selected mission participants.</param>
     public void OpenMissionCreateWindow(
         StrategyMissionTarget target,
         IReadOnlyList<ISceneNode> items
@@ -63,7 +94,13 @@ public sealed class StrategyWindowCommandController
         missionCreateWindowController.Open(target, items);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Executes an immediate move for selected items.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="target">The selected move target.</param>
+    /// <param name="items">The selected movable items.</param>
+    /// <returns>True when the move was executed.</returns>
     public bool TryExecuteMove(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
@@ -78,7 +115,12 @@ public sealed class StrategyWindowCommandController
         return true;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens a confirmed move for selected items.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="target">The selected move target.</param>
+    /// <param name="items">The selected movable items.</param>
     public void OpenMoveConfirmWindow(
         UIWindow sourceWindow,
         StrategyMissionTarget target,
@@ -90,7 +132,7 @@ public sealed class StrategyWindowCommandController
         int transitTimeInDays = gameManager.MovementSystem.TryGetSelectionTransitTicks(
             sourceItems,
             destination,
-            GetPlayerFactionId(),
+            GetPlayerFactionID(),
             out int transitTicks
         )
             ? transitTicks
@@ -107,7 +149,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens scrap confirmation for selected units.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected units.</param>
     public void OpenScrapConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items)
     {
         List<ISceneNode> sourceItems = CopyItems(items);
@@ -121,7 +167,7 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && gameManager.MaintenanceSystem.Scrap(manufacturables, GetPlayerFactionId())
+                    && gameManager.TryScrap(manufacturables, GetPlayerFactionID())
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -130,7 +176,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens stop-construction confirmation for selected queued items.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected queued items.</param>
     public void OpenStopConstructionConfirmWindow(
         UIWindow sourceWindow,
         IReadOnlyList<ISceneNode> items
@@ -149,7 +199,7 @@ public sealed class StrategyWindowCommandController
                     manufacturables.Count == sourceItems.Count
                     && gameManager.ManufacturingSystem.CancelManufacturing(
                         manufacturables,
-                        GetPlayerFactionId()
+                        GetPlayerFactionID()
                     )
                 )
                 {
@@ -159,7 +209,11 @@ public sealed class StrategyWindowCommandController
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Opens retirement confirmation for selected personnel.
+    /// </summary>
+    /// <param name="sourceWindow">The strategy window that owns the selection.</param>
+    /// <param name="items">The selected personnel.</param>
     public void OpenRetireConfirmWindow(UIWindow sourceWindow, IReadOnlyList<ISceneNode> items)
     {
         List<ISceneNode> sourceItems = CopyItems(items);
@@ -171,16 +225,20 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             () =>
             {
-                if (gameManager.PersonnelSystem.Retire(sourceItems, GetPlayerFactionId()))
+                if (gameManager.PersonnelSystem.Retire(sourceItems, GetPlayerFactionID()))
                     RefreshAfterMutation(sourceWindow);
             }
         );
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Determines whether the complete personnel selection may be retired.
+    /// </summary>
+    /// <param name="items">The selected personnel or their snapshots.</param>
+    /// <returns>True when every selected person may be retired.</returns>
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
-        return gameManager.PersonnelSystem.CanRetire(items, GetPlayerFactionId());
+        return gameManager.PersonnelSystem.CanRetire(items, GetPlayerFactionID());
     }
 
     /// <summary>
@@ -191,10 +249,10 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when the movement order was accepted.</returns>
     private bool TryMove(StrategyMissionTarget target, IReadOnlyList<ISceneNode> items)
     {
-        bool moved = gameManager.MovementSystem.TryRequestMove(
+        bool moved = gameManager.TryRequestMove(
             items,
             target?.GetMoveDestination() as ContainerNode,
-            GetPlayerFactionId()
+            GetPlayerFactionID()
         );
         if (moved)
             PlayMoveVoice(items);
@@ -237,7 +295,7 @@ public sealed class StrategyWindowCommandController
     /// Gets a non-null player faction identifier for command validation.
     /// </summary>
     /// <returns>The current player faction identifier.</returns>
-    private string GetPlayerFactionId()
+    private string GetPlayerFactionID()
     {
         return gameManager.GetPlayerFaction()?.InstanceID ?? string.Empty;
     }

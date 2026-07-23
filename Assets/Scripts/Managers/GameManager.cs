@@ -7,11 +7,12 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
 /// <summary>
-/// Coordinates all game systems each tick and routes results to cross-cutting handlers.
+/// Coordinates all game systems each tick and routes results through domain reactions and observers.
 /// Owned by GameRuntime — do not create directly.
 /// </summary>
 public class GameManager
@@ -39,6 +40,7 @@ public class GameManager
     private VictorySystem _victoryManager;
     private MessageSystem _messageSystem;
     private IRandomNumberProvider _randomProvider;
+    private IReadOnlyList<IGameResultHandler> _resultHandlers;
     private readonly List<GameResult> _resultsWaitingForCombatResolution = new List<GameResult>();
     private float? _tickInterval;
     private float _tickTimer;
@@ -70,9 +72,11 @@ public class GameManager
 
     internal SpaceCombatSystem SpaceCombatSystem => _spaceCombatSystem;
 
-    internal MessageSystem MessageSystem => _messageSystem;
+    internal BombardmentSystem BombardmentSystem => _bombardmentSystem;
 
-    internal MaintenanceSystem MaintenanceSystem => _maintenanceManager;
+    internal PlanetaryAssaultSystem PlanetaryAssaultSystem => _planetaryAssaultSystem;
+
+    internal MessageSystem MessageSystem => _messageSystem;
 
     /// <summary>
     /// Creates a new GameManager for the given game instance.
@@ -137,12 +141,7 @@ public class GameManager
             _fleetSystem,
             _blockadeManager
         );
-        _manufacturingManager = new ManufacturingSystem(
-            _game,
-            _fleetSystem,
-            _randomProvider,
-            _movementManager
-        );
+        _manufacturingManager = new ManufacturingSystem(_game, _fleetSystem, _movementManager);
         _maintenanceManager = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
         _resourceProductionManager = new ResourceProductionSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
@@ -151,8 +150,14 @@ public class GameManager
             _manufacturingManager,
             _fogOfWarManager
         );
+        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
-        _missionManager = new MissionSystem(_game, _randomProvider, _movementManager);
+        _missionManager = new MissionSystem(
+            _game,
+            _randomProvider,
+            _movementManager,
+            _uprisingManager
+        );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementManager);
         _bombardmentSystem = new BombardmentSystem(
             _game,
@@ -167,7 +172,6 @@ public class GameManager
         );
         _researchManager = new ResearchSystem(_game, _randomProvider);
         _betrayalManager = new BetrayalSystem(_game);
-        _uprisingManager = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _victoryManager = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,
@@ -178,6 +182,13 @@ public class GameManager
             _planetaryAssaultSystem,
             _randomProvider
         );
+        _resultHandlers = new IGameResultHandler[]
+        {
+            _planetaryControlSystem,
+            _uprisingManager,
+            _missionManager,
+            _jediSystem,
+        };
     }
 
     /// <summary>
@@ -223,6 +234,48 @@ public class GameManager
     /// </summary>
     /// <returns>The active FogOfWarSystem instance.</returns>
     public FogOfWarSystem GetFogOfWarSystem() => _fogOfWarManager;
+
+    /// <summary>
+    /// Executes a validated movement order and processes its immediate results.
+    /// </summary>
+    /// <param name="items">The selected scene nodes or their snapshots.</param>
+    /// <param name="destination">The requested destination or its snapshot.</param>
+    /// <param name="ownerInstanceId">The faction authorized to move the selection.</param>
+    /// <returns>True when the complete movement order was accepted.</returns>
+    public bool TryRequestMove(
+        IReadOnlyList<ISceneNode> items,
+        ContainerNode destination,
+        string ownerInstanceId
+    )
+    {
+        if (
+            !_movementManager.TryRequestMove(
+                items,
+                destination,
+                ownerInstanceId,
+                out List<GameResult> results
+            )
+        )
+            return false;
+
+        ProcessResults(results);
+        return true;
+    }
+
+    /// <summary>
+    /// Scraps a validated unit selection and processes its immediate results.
+    /// </summary>
+    /// <param name="items">The units selected for scrapping.</param>
+    /// <param name="ownerInstanceId">The faction authorized to scrap the selection.</param>
+    /// <returns>True when every selected unit was scrapped.</returns>
+    public bool TryScrap(IReadOnlyList<IManufacturable> items, string ownerInstanceId)
+    {
+        if (!_maintenanceManager.TryScrap(items, ownerInstanceId, out List<GameResult> results))
+            return false;
+
+        ProcessResults(results);
+        return true;
+    }
 
     /// <summary>
     /// Sets the game speed and adjusts the tick interval accordingly.
@@ -318,7 +371,7 @@ public class GameManager
     /// <returns>The space-combat result in the routed batch, when present.</returns>
     private SpaceCombatResult CompleteCombatResolution(List<GameResult> combatResults)
     {
-        ProcessResults(combatResults, processMessages: false);
+        combatResults = ProcessResults(combatResults, processMessages: false);
 
         List<GameResult> messageResults = FlushDeferredResults();
         messageResults.AddRange(combatResults);
@@ -346,10 +399,39 @@ public class GameManager
 
         List<Fleet> fleets =
             attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
-        if (fleets.Count == 0)
+        if (!_bombardmentSystem.CanExecute(fleets, targetPlanet, type))
             return null;
 
         BombardmentResult result = _bombardmentSystem.Execute(fleets, targetPlanet, type);
+        List<GameResult> results = new List<GameResult> { result };
+        results.AddRange(result.Events);
+        if (result.OwnershipChange != null)
+            results.Add(result.OwnershipChange);
+
+        ProcessResults(results);
+        return result;
+    }
+
+    /// <summary>
+    /// Executes a planetary assault and processes the resulting game effects.
+    /// </summary>
+    /// <param name="attackingFleets">The attacking fleets.</param>
+    /// <param name="targetPlanet">The assault target planet.</param>
+    /// <returns>The assault result, or null when the assault cannot execute.</returns>
+    public PlanetaryAssaultResult ExecutePlanetaryAssault(
+        IReadOnlyList<Fleet> attackingFleets,
+        Planet targetPlanet
+    )
+    {
+        if (targetPlanet == null)
+            return null;
+
+        List<Fleet> fleets =
+            attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
+        if (!_planetaryAssaultSystem.CanExecute(fleets, targetPlanet))
+            return null;
+
+        PlanetaryAssaultResult result = _planetaryAssaultSystem.Execute(fleets, targetPlanet);
         List<GameResult> results = new List<GameResult> { result };
         results.AddRange(result.Events);
         if (result.OwnershipChange != null)
@@ -368,17 +450,22 @@ public class GameManager
             return;
 
         _game.CurrentTick++;
+        _messageSystem.ProcessTick();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
         ProcessResults(_resourceProductionManager.ProcessTick());
         ProcessResults(_manufacturingManager.ProcessTick());
         ProcessResults(_maintenanceManager.ProcessTick());
 
-        List<GameResult> movementResults = _movementManager.ProcessTick();
-        ProcessResults(movementResults, processMessages: false);
+        List<GameResult> movementResults = ProcessResults(
+            _movementManager.ProcessTick(),
+            processMessages: false
+        );
 
-        List<GameResult> combatResults = _spaceCombatSystem.ProcessTick();
-        ProcessResults(combatResults, processMessages: false);
+        List<GameResult> combatResults = ProcessResults(
+            _spaceCombatSystem.ProcessTick(),
+            processMessages: false
+        );
 
         List<GameResult> resultsWaitingForCombatResolution = CombineResults(
             movementResults,
@@ -409,30 +496,40 @@ public class GameManager
     }
 
     /// <summary>
-    /// Handles cross-cutting side effects for a batch of game results.
+    /// Resolves domain reactions and then presents the completed result batch to observers.
     /// Per-result logging is the responsibility of the system that produced the result.
     /// </summary>
     /// <param name="results">Batch of results from a system tick.</param>
     /// <param name="processMessages">Whether to create faction messages for this batch.</param>
-    private void ProcessResults(List<GameResult> results, bool processMessages = true)
+    /// <returns>The initial results followed by every result produced by their reactions.</returns>
+    private List<GameResult> ProcessResults(
+        IEnumerable<GameResult> results,
+        bool processMessages = true
+    )
     {
-        _fogOfWarManager.ProcessResults(results);
+        List<GameResult> resolvedResults =
+            results?.Where(result => result != null).ToList() ?? new List<GameResult>();
+        List<GameResult> pendingResults = new List<GameResult>(resolvedResults);
+
+        while (pendingResults.Count > 0)
+        {
+            List<GameResult> reactionResults = new List<GameResult>();
+            foreach (IGameResultHandler handler in _resultHandlers)
+            {
+                List<GameResult> handlerResults = handler.HandleResults(pendingResults);
+                if (handlerResults != null)
+                    reactionResults.AddRange(handlerResults.Where(result => result != null));
+            }
+
+            resolvedResults.AddRange(reactionResults);
+            pendingResults = reactionResults;
+        }
+
+        _fogOfWarManager.ProcessResults(resolvedResults);
         if (processMessages)
-            _messageSystem.ProcessResults(results);
+            _messageSystem.ProcessResults(resolvedResults);
 
-        foreach (VictoryResult result in results.OfType<VictoryResult>())
-        {
-            // TODO: Set game over flag, trigger victory screen.
-        }
-
-        foreach (MissionCompletedResult result in results.OfType<MissionCompletedResult>())
-        {
-            if (result.Outcome == MissionOutcome.Success)
-                ProcessResults(
-                    _jediSystem.ApplyForceGrowth(result.Mission.MainParticipants),
-                    processMessages
-                );
-        }
+        return resolvedResults;
     }
 
     /// <summary>

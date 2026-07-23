@@ -7,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Systems;
+using TMPro;
 using UnityEngine;
 using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
 
@@ -217,6 +218,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             UIComponentTestHelper.InvokeLifecycle(view, "OnDestroy");
 
             Assert.IsNull(_controller.GetPlanet(view));
+        }
+
+        [Test]
+        public void BuildCountSubmitted_ValidInteger_UpdatesRenderedQuantity()
+        {
+            ConstructionWindowView view = OpenAdvisorWindow(out UIWindow window);
+            TMP_InputField input = view.GetComponentInChildren<TMP_InputField>(true);
+
+            view.RequestBuildCount("12");
+            _controller.RenderWindow(view, window, true);
+
+            Assert.AreEqual("12", input.text);
+            Assert.AreEqual(2, _dirtyCount);
         }
 
         private ConstructionWindowController CreateController()

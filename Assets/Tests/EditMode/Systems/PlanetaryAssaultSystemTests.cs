@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -53,6 +55,56 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void CanExecute_TwoReadyAndSixMovingRegiments_UsesReadyRegiments()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 8);
+            foreach (Regiment regiment in fleet.CapitalShips[0].Regiments.Skip(2))
+                regiment.Movement = new MovementState();
+            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
+
+            Assert.IsTrue(system.CanExecute(new List<Fleet> { fleet }, planet));
+            PlanetaryAssaultResult result = system.Execute(new List<Fleet> { fleet }, planet);
+
+            Assert.AreEqual(2, result.InitialAttackerRegimentCount);
+            Assert.IsTrue(result.Success);
+        }
+
+        [Test]
+        public void CanExecute_ShieldedTargetOrNoReadyRegiments_ReturnsFalse()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 10);
+            AddDefenseBuilding(game, planet, "shield1", DefenseFacilityClass.Shield);
+            AddDefenseBuilding(game, planet, "shield2", DefenseFacilityClass.Shield);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+            PlanetaryAssaultSystem system = MakePlanetaryAssault(game, new SequenceRNG());
+
+            bool shielded = system.CanExecute(new List<Fleet> { fleet }, planet);
+            foreach (Building building in planet.GetAllBuildings())
+                building.ManufacturingStatus = ManufacturingStatus.Building;
+            fleet.CapitalShips[0].Regiments[0].Movement = new MovementState();
+            bool noReadyRegiments = system.CanExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsFalse(shielded);
+            Assert.IsFalse(noReadyRegiments);
+        }
+
+        [Test]
+        public void CanExecute_NeutralPlanetWithReadyRegiment_ReturnsTrue()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", owner: null, energy: 10);
+            Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
+
+            bool canExecute = MakePlanetaryAssault(game, new SequenceRNG())
+                .CanExecute(new List<Fleet> { fleet }, planet);
+
+            Assert.IsTrue(canExecute);
+        }
+
+        [Test]
         public void Execute_DefenseFire_UsesInitialAttackerIndexRange()
         {
             GameRoot game = CreateGame();
@@ -62,6 +114,7 @@ namespace Rebellion.Tests.Systems
             Building second = AddDefenseBuilding(game, planet, "lnr", DefenseFacilityClass.LNR);
             second.WeaponPower = 500;
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 2);
+            Regiment attacker = fleet.CapitalShips[0].Regiments[0];
 
             PlanetaryAssaultResult result = MakePlanetaryAssault(
                     game,
@@ -72,6 +125,27 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, result.DestroyedAttackerRegiments.Count);
             Assert.AreEqual(1, result.RemainingAttackerRegimentCount);
             Assert.IsTrue(result.Success);
+            Assert.AreEqual("empire", result.AttackerOwnerInstanceID);
+            Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
+            CollectionAssert.Contains(
+                result.AttackingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                attacker.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                first.GetInstanceID()
+            );
+            CollectionAssert.Contains(
+                result.DefendingUnits.Select(unit => unit.Unit.GetInstanceID()),
+                second.GetInstanceID()
+            );
+            Assert.IsTrue(
+                result
+                    .AttackingUnits.Single(unit =>
+                        unit.Unit.GetInstanceID() == attacker.GetInstanceID()
+                    )
+                    .Destroyed
+            );
         }
 
         [TestCase(4, true, false)]
@@ -187,6 +261,10 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(6, result.LandedRegiments.Count);
             Assert.AreEqual(6, planet.GetAllRegiments().Count);
             Assert.AreEqual(1, fleet.CapitalShips[0].Regiments.Count);
+            Assert.AreSame(
+                planet,
+                result.Events.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
         }
 
         [Test]

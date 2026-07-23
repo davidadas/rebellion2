@@ -415,7 +415,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
 
             Assert.AreEqual("Trooper Regiment Status", info.Header);
-            Assert.AreEqual("Awaiting Order", info.Rows.Single(row => row.Left == "Status:").Right);
+            Assert.AreEqual(
+                "Awaiting Orders",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
             Assert.AreEqual("12", info.Rows.Single(row => row.Left == "Attack Strength:").Right);
             Assert.AreEqual("15", info.Rows.Single(row => row.Left == "Defense Strength:").Right);
             Assert.AreEqual("9", info.Rows.Single(row => row.Left == "Bombardment Value:").Right);
@@ -476,7 +479,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
             Assert.AreEqual("Character Status", info.Header);
             Assert.AreEqual("None", info.Rows.Single(row => row.Left == "Commanding:").Right);
-            Assert.AreEqual("Awaiting Order", info.Rows.Single(row => row.Left == "Status:").Right);
+            Assert.AreEqual(
+                "Awaiting Orders",
+                info.Rows.Single(row => row.Left == "Status:").Right
+            );
             Assert.AreEqual(
                 "Jedi Master",
                 info.Rows.Single(row => row.Left == "Force Ranking:").Right
@@ -516,13 +522,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             {
                 DisplayName = "Traveling Officer",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState(),
+                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
                 InTransitImagePath = "officer/in-transit",
             };
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
             Assert.AreEqual("Enroute", info.Rows.Single(row => row.Left == "Status:").Right);
+            Assert.AreEqual(
+                "Day 105",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
             CollectionAssert.AreEqual(new[] { officer }, info.StatusImageItems);
             CollectionAssert.IsEmpty(info.Images);
         }
@@ -534,7 +544,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             {
                 DisplayName = "Traveling Officer",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState(),
+                Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
             };
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
@@ -551,7 +561,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 InstanceID = "fleet",
                 DisplayName = "First Fleet",
                 OwnerInstanceID = _ownerId,
-                Movement = new MovementState(),
+                Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
             };
             _game.AttachNode(fleet, _planet);
             CapitalShip damagedShip = new CapitalShip
@@ -612,6 +622,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 info.Images
             );
             Assert.AreEqual("Enroute", info.Rows.Single(row => row.Left == "Status:").Right);
+            Assert.AreEqual(
+                "Day 107",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
             Assert.AreEqual(
                 "Admiral Ackbar",
                 info.Rows.Single(row => row.Left == "Admiral:").Right
@@ -721,6 +735,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_CapitalShipCarriedByMovingFleet_ReturnsTransitStatusAndArrivalDay()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "moving-fleet",
+                DisplayName = "Moving Fleet",
+                OwnerInstanceID = _ownerId,
+                Movement = new MovementState { TransitTicks = 12, TicksElapsed = 5 },
+            };
+            _game.AttachNode(fleet, _planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carried-ship",
+                DisplayName = "Carried Ship",
+                OwnerInstanceID = _ownerId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                InTransitImagePath = "ship/in-transit",
+            };
+            _game.AttachNode(ship, fleet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
+
+            Assert.AreEqual("Enroute", info.Rows.Single(row => row.Left == "Status:").Right);
+            Assert.AreEqual(
+                "Day 107",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
+            CollectionAssert.AreEqual(new[] { ship }, info.StatusImageItems);
+            CollectionAssert.IsEmpty(info.Images);
+        }
+
+        [Test]
         public void Build_MissionWithExplicitTarget_ReturnsTargetAndTeamCounts()
         {
             Building targetBuilding = new Building
@@ -740,7 +786,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 SabotageTargetInstanceID = targetBuilding.InstanceID,
                 MainParticipants = new List<IMissionParticipant>
                 {
-                    new Officer(),
+                    new Officer
+                    {
+                        Movement = new MovementState { TransitTicks = 9, TicksElapsed = 4 },
+                    },
                     new SpecialForces(),
                 },
                 DecoyParticipants = new List<IMissionParticipant> { new Officer() },
@@ -756,6 +805,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
             Assert.AreEqual("3", info.Rows.Single(row => row.Left == "Team Size:").Right);
             Assert.AreEqual("1", info.Rows.Single(row => row.Left == "Decoys:").Right);
+            Assert.AreEqual(
+                "Day 105",
+                info.Rows.Single(row => row.Left == "ETA Destination:").Right
+            );
         }
 
         [Test]

@@ -44,7 +44,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(MessagesTab.Mission, _session.ActiveTab);
             Assert.IsFalse(_session.DetailVisible);
             Assert.IsNull(_session.SelectedMessageId);
-            Assert.IsEmpty(_session.GetSelectedMessageIds());
+            Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
         [Test]
@@ -60,11 +60,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(MessagesTab.All, _session.ActiveTab);
             Assert.IsFalse(_session.DetailVisible);
             Assert.IsNull(_session.SelectedMessageId);
-            Assert.IsEmpty(_session.GetSelectedMessageIds());
+            Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
         [Test]
-        public void Reconcile_ReplacementWithSameId_PreservesSelectionIdentity()
+        public void Reconcile_ReplacementWithSameID_PreservesSelectionIdentity()
         {
             Message original = new Message(MessageType.Fleet, "Original")
             {
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsFalse(_session.DetailVisible);
-            Assert.IsEmpty(_session.GetSelectedMessageIds());
+            Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
         [Test]
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.IsEmpty(_session.Messages);
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsNull(_session.GetSelectedMessage());
-            Assert.IsEmpty(_session.GetSelectedMessageIds());
+            Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
         [Test]
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreSame(second, _session.GetSelectedMessage());
             CollectionAssert.AreEquivalent(
                 new[] { second.InstanceID },
-                _session.GetSelectedMessageIds()
+                _session.GetSelectedMessageIDs()
             );
         }
 
@@ -175,7 +175,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsNull(_session.GetSelectedMessage());
-            Assert.IsEmpty(_session.GetSelectedMessageIds());
+            Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
         [Test]
@@ -191,10 +191,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             Assert.AreEqual(first.InstanceID, _session.SelectedMessageId);
             CollectionAssert.AreEquivalent(
                 new[] { first.InstanceID, second.InstanceID },
-                _session.GetSelectedMessageIds()
+                _session.GetSelectedMessageIDs()
             );
             Assert.Throws<NotSupportedException>(() =>
-                ((IList<string>)_session.GetSelectedMessageIds())[0] = "changed"
+                ((IList<string>)_session.GetSelectedMessageIDs())[0] = "changed"
             );
         }
 
@@ -211,7 +211,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
             Assert.IsNull(_session.SelectedMessageId);
             Assert.IsNull(_session.GetSelectedMessage());
-            Assert.IsEmpty(_session.GetSelectedMessageIds());
+            Assert.IsEmpty(_session.GetSelectedMessageIDs());
         }
 
         [Test]

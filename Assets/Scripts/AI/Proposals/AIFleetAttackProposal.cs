@@ -178,7 +178,13 @@ namespace Rebellion.AI.Proposals
                 return;
             }
 
-            if (context.Bombardment == null)
+            if (
+                context.Bombardment?.CanExecute(
+                    new List<Fleet> { Fleet },
+                    TargetPlanet,
+                    BombardmentType.Military
+                ) != true
+            )
                 return;
 
             BombardmentResult bombardmentResult = context.Bombardment.Execute(
@@ -276,7 +282,9 @@ namespace Rebellion.AI.Proposals
             int requiredStrength = System.Math.Max(minimumStrength, defenseRequirement);
 
             return assaultStrength >= requiredStrength
-                && context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0;
+                && context.Assessment.GetReadyFleetRegimentCount(Fleet) > 0
+                && context.PlanetaryAssault?.CanExecute(new List<Fleet> { Fleet }, TargetPlanet)
+                    == true;
         }
 
         /// <summary>

@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Projects galaxy objects into ordered Finder tabs and domain-backed result rows.
@@ -455,7 +456,7 @@ public sealed class FinderWindowRowBuilder
     /// <returns>The displayed status or an empty string.</returns>
     private static string GetPersonnelStatusText(ISceneNode personnel)
     {
-        if (personnel is IMovable { Movement: not null })
+        if (personnel is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";
 
         if (personnel is Officer officer)

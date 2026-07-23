@@ -52,7 +52,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                game.Random,
                 movement
             );
             ConstructionOrderController controller = new ConstructionOrderController(
@@ -106,7 +105,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 game,
                 new FleetSystem(game),
-                game.Random,
                 movement
             );
             ConstructionOrderController controller = new ConstructionOrderController(

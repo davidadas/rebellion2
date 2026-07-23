@@ -84,7 +84,7 @@ internal sealed class FacilityWindowSession
         ContextManufacturingTab = null;
         IReadOnlyList<Building> inventoryItems = GetItems(ActiveTab);
         HashSet<string> availableIds = new HashSet<string>(
-            inventoryItems.Select(GetBuildingId).Where(id => !string.IsNullOrEmpty(id)),
+            inventoryItems.Select(GetBuildingID).Where(id => !string.IsNullOrEmpty(id)),
             StringComparer.Ordinal
         );
         selectedBuildingIds.RemoveWhere(id => !availableIds.Contains(id));
@@ -188,7 +188,7 @@ internal sealed class FacilityWindowSession
     public void CaptureBuildingContext(int itemIndex)
     {
         ContextManufacturingTab = null;
-        contextBuildingId = GetBuildingId(GetInventoryBuilding(itemIndex));
+        contextBuildingId = GetBuildingID(GetInventoryBuilding(itemIndex));
     }
 
     /// <summary>
@@ -219,7 +219,7 @@ internal sealed class FacilityWindowSession
         if (
             itemIndex < 0
             || itemIndex >= items.Count
-            || string.IsNullOrEmpty(GetBuildingId(items[itemIndex]))
+            || string.IsNullOrEmpty(GetBuildingID(items[itemIndex]))
         )
             return;
 
@@ -241,10 +241,10 @@ internal sealed class FacilityWindowSession
     /// <returns>True when the building belongs to the represented inventory tab.</returns>
     public bool SelectBuilding(FacilityWindowTab tab, Building building)
     {
-        string buildingId = GetBuildingId(building);
+        string buildingId = GetBuildingID(building);
         if (
             string.IsNullOrEmpty(buildingId)
-            || !GetItems(tab).Any(item => GetBuildingId(item) == buildingId)
+            || !GetItems(tab).Any(item => GetBuildingID(item) == buildingId)
         )
             return false;
 
@@ -261,7 +261,7 @@ internal sealed class FacilityWindowSession
     public List<Building> GetSelectedBuildings()
     {
         return GetItems(ActiveTab)
-            .Where(item => selectedBuildingIds.Contains(GetBuildingId(item)))
+            .Where(item => selectedBuildingIds.Contains(GetBuildingID(item)))
             .ToList();
     }
 
@@ -273,7 +273,7 @@ internal sealed class FacilityWindowSession
     {
         return string.IsNullOrEmpty(contextBuildingId)
             ? null
-            : GetItems(ActiveTab).FirstOrDefault(item => GetBuildingId(item) == contextBuildingId);
+            : GetItems(ActiveTab).FirstOrDefault(item => GetBuildingID(item) == contextBuildingId);
     }
 
     /// <summary>
@@ -359,7 +359,7 @@ internal sealed class FacilityWindowSession
         HashSet<int> indexes = new HashSet<int>();
         for (int index = 0; index < items.Count; index++)
         {
-            if (selectedBuildingIds.Contains(GetBuildingId(items[index])))
+            if (selectedBuildingIds.Contains(GetBuildingID(items[index])))
                 indexes.Add(index);
         }
 
@@ -380,7 +380,7 @@ internal sealed class FacilityWindowSession
         foreach (int index in indexes)
         {
             string buildingId =
-                index >= 0 && index < items.Count ? GetBuildingId(items[index]) : null;
+                index >= 0 && index < items.Count ? GetBuildingID(items[index]) : null;
             if (!string.IsNullOrEmpty(buildingId))
                 selectedBuildingIds.Add(buildingId);
         }
@@ -391,7 +391,7 @@ internal sealed class FacilityWindowSession
     /// </summary>
     /// <param name="building">The inventory building.</param>
     /// <returns>The building identifier, or null.</returns>
-    private static string GetBuildingId(Building building)
+    private static string GetBuildingID(Building building)
     {
         return building?.InstanceID;
     }

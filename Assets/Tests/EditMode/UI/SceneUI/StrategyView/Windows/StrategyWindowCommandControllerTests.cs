@@ -169,12 +169,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void OpenMoveConfirmWindow_ValidSelection_OpensConfirmationWindow()
+        public void ExecuteTargetedCommand_MoveConfirm_OpensConfirmationWindow()
         {
-            _controller.OpenMoveConfirmWindow(
-                _sourceWindow,
-                new StrategyMissionTarget(_destination, null),
-                new ISceneNode[] { _officer }
+            _controller.ExecuteTargetedCommand(
+                new StrategyWindowTargetingSource(
+                    _sourceWindow,
+                    StrategyMenuAction.MoveConfirm,
+                    0,
+                    0,
+                    new ISceneNode[] { _officer }
+                ),
+                new StrategyMissionTarget(_destination, null)
             );
 
             UIWindow window = _windowManager.Windows.Single();
@@ -201,11 +206,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         }
 
         [Test]
-        public void OpenMissionCreateWindow_ValidSelection_OpensMissionCreateWindow()
+        public void ExecuteTargetedCommand_CreateMission_OpensMissionCreateWindow()
         {
-            _controller.OpenMissionCreateWindow(
-                new StrategyMissionTarget(_missionTarget, null),
-                new ISceneNode[] { _specialForces }
+            _controller.ExecuteTargetedCommand(
+                new StrategyWindowTargetingSource(
+                    _sourceWindow,
+                    StrategyMenuAction.CreateMission,
+                    0,
+                    0,
+                    new ISceneNode[] { _specialForces }
+                ),
+                new StrategyMissionTarget(_missionTarget, null)
             );
 
             UIWindow window = _windowManager.Windows.Single();

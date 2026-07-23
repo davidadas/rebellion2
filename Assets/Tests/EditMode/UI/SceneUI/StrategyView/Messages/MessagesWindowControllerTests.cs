@@ -77,7 +77,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void RemoveSelectedMessages_SelectedIds_RemovesMatchingMessagesAcrossBuckets()
+        public void RemoveSelectedMessages_SelectedIDs_RemovesMatchingMessagesAcrossBuckets()
         {
             Message fleet = new Message(MessageType.Fleet, "Fleet") { InstanceID = "fleet" };
             Message mission = new Message(MessageType.Mission, "Mission")

@@ -123,7 +123,7 @@ namespace Rebellion.Game.Missions
         /// <param name="game">Current game state.</param>
         /// <param name="provider">RNG provider.</param>
         /// <returns>All results produced by the mission.</returns>
-        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameResult> results = new List<GameResult>();
 
