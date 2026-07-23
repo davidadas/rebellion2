@@ -25,10 +25,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(2, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[0].Action);
             Assert.AreEqual("Encyclopedia", commands[0].Text);
             Assert.IsFalse(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[1].Action);
             Assert.AreEqual("Status", commands[1].Text);
             Assert.IsFalse(commands[1].Enabled);
         }
@@ -51,9 +51,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(2, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[0].Action);
             Assert.IsTrue(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[1].Action);
             Assert.IsTrue(commands[1].Enabled);
         }
 
@@ -69,13 +69,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(3, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[0].Action);
             Assert.AreEqual("Encyclopedia", commands[0].Text);
             Assert.IsFalse(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[1].Action);
             Assert.AreEqual("Status", commands[1].Text);
             Assert.IsFalse(commands[1].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Abort, commands[2].Action);
+            Assert.AreEqual(StrategyMenuAction.Abort, commands[2].Action);
             Assert.AreEqual("Abort", commands[2].Text);
             Assert.IsFalse(commands[2].Enabled);
         }
@@ -92,19 +92,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
 
             Assert.AreEqual(7, commands.Count);
-            Assert.AreEqual(StrategyContextMenuActions.Move, commands[0].Action);
+            Assert.AreEqual(StrategyMenuAction.Move, commands[0].Action);
             Assert.IsFalse(commands[0].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.MoveConfirm, commands[1].Action);
+            Assert.AreEqual(StrategyMenuAction.MoveConfirm, commands[1].Action);
             Assert.IsFalse(commands[1].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.PlanetaryBombardment, commands[2].Action);
+            Assert.AreEqual(StrategyMenuAction.PlanetaryBombardment, commands[2].Action);
             Assert.IsFalse(commands[2].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.PlanetaryAssault, commands[3].Action);
+            Assert.AreEqual(StrategyMenuAction.PlanetaryAssault, commands[3].Action);
             Assert.IsFalse(commands[3].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Encyclopedia, commands[4].Action);
+            Assert.AreEqual(StrategyMenuAction.Encyclopedia, commands[4].Action);
             Assert.IsFalse(commands[4].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Status, commands[5].Action);
+            Assert.AreEqual(StrategyMenuAction.Status, commands[5].Action);
             Assert.IsFalse(commands[5].Enabled);
-            Assert.AreEqual(StrategyContextMenuActions.Scrap, commands[6].Action);
+            Assert.AreEqual(StrategyMenuAction.Scrap, commands[6].Action);
             Assert.IsFalse(commands[6].Enabled);
         }
 
@@ -136,10 +136,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.BombardMilitaryFacilities,
-                    StrategyContextMenuActions.BombardCivilianFacilities,
-                    StrategyContextMenuActions.GeneralBombardment,
-                    StrategyContextMenuActions.DestroySystem,
+                    StrategyMenuAction.BombardMilitaryFacilities,
+                    StrategyMenuAction.BombardCivilianFacilities,
+                    StrategyMenuAction.GeneralBombardment,
+                    StrategyMenuAction.DestroySystem,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );

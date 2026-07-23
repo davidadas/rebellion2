@@ -184,29 +184,26 @@ internal sealed class FleetWindowSession
     }
 
     /// <summary>
-    /// Captures one fleet row as the current context target.
+    /// Captures one fleet or detail item as the current context target.
     /// </summary>
-    /// <param name="fleetIndex">The current fleet-row index.</param>
-    /// <returns>True when the row exists.</returns>
-    public bool CaptureFleetContext(int fleetIndex)
+    /// <param name="target">The current fleet or detail item.</param>
+    /// <returns>True when the target belongs to a current selectable collection.</returns>
+    public bool CaptureContext(ISceneNode target)
     {
-        if (!TrySetFleetInteractionTarget(fleetIndex))
-            return false;
+        if (target is Fleet)
+        {
+            int fleetIndex = FindNodeIndex(fleets, target);
+            if (!TrySetFleetInteractionTarget(fleetIndex))
+                return false;
 
-        SelectContextItem(selectedFleetItems, fleetIndex);
-        CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
-        selectedDetailNodes.Clear();
-        selectedDetailItems.Clear();
-        return true;
-    }
+            SelectContextItem(selectedFleetItems, fleetIndex);
+            CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
+            selectedDetailNodes.Clear();
+            selectedDetailItems.Clear();
+            return true;
+        }
 
-    /// <summary>
-    /// Captures one detail card as the current context target.
-    /// </summary>
-    /// <param name="itemIndex">The current detail-card index.</param>
-    /// <returns>True when the card exists.</returns>
-    public bool CaptureDetailContext(int itemIndex)
-    {
+        int itemIndex = FindNodeIndex(detailItems, target);
         if (!TrySetDetailInteractionTarget(itemIndex))
             return false;
 
@@ -216,80 +213,66 @@ internal sealed class FleetWindowSession
     }
 
     /// <summary>
-    /// Applies fleet-row selection rules for the start of a drag gesture.
+    /// Applies selection rules for the start of a fleet or detail drag gesture.
     /// </summary>
-    /// <param name="fleetIndex">The pressed fleet-row index.</param>
+    /// <param name="target">The pressed fleet or detail item.</param>
     /// <returns>True when the existing selection can start dragging immediately.</returns>
-    public bool PrepareFleetDragSelection(int fleetIndex)
+    public bool PrepareDragSelection(ISceneNode target)
     {
-        if (!TrySetFleetInteractionTarget(fleetIndex))
-            return false;
+        if (target is Fleet)
+        {
+            int fleetIndex = FindNodeIndex(fleets, target);
+            if (!TrySetFleetInteractionTarget(fleetIndex))
+                return false;
 
-        bool canStartDrag = SelectableListSelection.CanDragExistingSelection(
-            selectedFleetItems,
-            fleetIndex
-        );
-        SelectableListSelection.SelectIndexedItemForDrag(
-            selectedFleetItems,
-            fleetIndex,
-            fleets.Count
-        );
-        CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
-        selectedDetailNodes.Clear();
-        selectedDetailItems.Clear();
-        SelectRequiredItems();
-        return canStartDrag;
-    }
+            bool canStartDrag = PrepareDragSelection(
+                selectedFleetItems,
+                fleetIndex,
+                fleets,
+                selectedFleetNodes
+            );
+            selectedDetailNodes.Clear();
+            selectedDetailItems.Clear();
+            SelectRequiredItems();
+            return canStartDrag;
+        }
 
-    /// <summary>
-    /// Applies final fleet-row selection rules after a click release.
-    /// </summary>
-    /// <param name="fleetIndex">The released fleet-row index.</param>
-    /// <returns>True when the row exists.</returns>
-    public bool SelectFleet(int fleetIndex)
-    {
-        if (!TrySetFleetInteractionTarget(fleetIndex))
-            return false;
-
-        SelectableListSelection.SelectIndexedItem(selectedFleetItems, fleetIndex, fleets.Count);
-        CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
-        selectedDetailNodes.Clear();
-        selectedDetailItems.Clear();
-        SelectRequiredItems();
-        return true;
-    }
-
-    /// <summary>
-    /// Applies detail-card selection rules for the start of a drag gesture.
-    /// </summary>
-    /// <param name="itemIndex">The pressed detail-card index.</param>
-    /// <returns>True when the existing selection can start dragging immediately.</returns>
-    public bool PrepareDetailDragSelection(int itemIndex)
-    {
+        int itemIndex = FindNodeIndex(detailItems, target);
         if (!TrySetDetailInteractionTarget(itemIndex))
             return false;
 
-        bool canStartDrag = SelectableListSelection.CanDragExistingSelection(
-            selectedDetailItems,
-            itemIndex
-        );
-        SelectableListSelection.SelectIndexedItemForDrag(
+        bool detailCanStartDrag = PrepareDragSelection(
             selectedDetailItems,
             itemIndex,
-            detailItems.Count
+            detailItems,
+            selectedDetailNodes
         );
-        CaptureSelection(selectedDetailItems, detailItems, selectedDetailNodes);
         SelectRequiredItems();
-        return canStartDrag;
+        return detailCanStartDrag;
     }
 
     /// <summary>
-    /// Applies final detail-card selection rules after a click release.
+    /// Applies final selection rules after a fleet or detail click release.
     /// </summary>
-    /// <param name="itemIndex">The released detail-card index.</param>
-    /// <returns>True when the card exists.</returns>
-    public bool SelectDetailItem(int itemIndex)
+    /// <param name="target">The released fleet or detail item.</param>
+    /// <returns>True when the target belongs to a current selectable collection.</returns>
+    public bool SelectItem(ISceneNode target)
     {
+        if (target is Fleet)
+        {
+            int fleetIndex = FindNodeIndex(fleets, target);
+            if (!TrySetFleetInteractionTarget(fleetIndex))
+                return false;
+
+            SelectableListSelection.SelectIndexedItem(selectedFleetItems, fleetIndex, fleets.Count);
+            CaptureSelection(selectedFleetItems, fleets, selectedFleetNodes);
+            selectedDetailNodes.Clear();
+            selectedDetailItems.Clear();
+            SelectRequiredItems();
+            return true;
+        }
+
+        int itemIndex = FindNodeIndex(detailItems, target);
         if (!TrySetDetailInteractionTarget(itemIndex))
             return false;
 
@@ -605,6 +588,36 @@ internal sealed class FleetWindowSession
             if (IsValidIndex(index, items.Count))
                 selectedNodes.Add(items[index]);
         }
+    }
+
+    /// <summary>
+    /// Applies drag-selection rules to one indexed scene-node collection.
+    /// </summary>
+    /// <typeparam name="T">The scene-node type.</typeparam>
+    /// <param name="selectedIndexes">The selected visual indices.</param>
+    /// <param name="pressedIndex">The pressed visual index.</param>
+    /// <param name="items">The current ordered items.</param>
+    /// <param name="selectedNodes">The identity-backed selection.</param>
+    /// <returns>True when the pressed item already belonged to the draggable selection.</returns>
+    private static bool PrepareDragSelection<T>(
+        HashSet<int> selectedIndexes,
+        int pressedIndex,
+        IReadOnlyList<T> items,
+        HashSet<ISceneNode> selectedNodes
+    )
+        where T : class, ISceneNode
+    {
+        bool canStartDrag = SelectableListSelection.CanDragExistingSelection(
+            selectedIndexes,
+            pressedIndex
+        );
+        SelectableListSelection.SelectIndexedItemForDrag(
+            selectedIndexes,
+            pressedIndex,
+            items.Count
+        );
+        CaptureSelection(selectedIndexes, items, selectedNodes);
+        return canStartDrag;
     }
 
     /// <summary>

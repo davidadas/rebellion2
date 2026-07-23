@@ -77,6 +77,7 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(19, config.SupportShift.DiplomacyOwnedPlanetSupportRange);
             Assert.AreEqual(1, config.SupportShift.DiplomacyNeutralPlanetSupportBase);
             Assert.AreEqual(9, config.SupportShift.DiplomacyNeutralPlanetSupportRange);
+            Assert.AreEqual(2, config.Production.ScrapRefundDivisor);
             Assert.AreEqual(20, config.Production.ResourceMaintenanceLoadPercent);
             Assert.AreEqual(100, config.Production.ResourceCollectionBasePercent);
             Assert.AreEqual(50, config.Production.ResourceStartupBasePercent);

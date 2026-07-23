@@ -129,7 +129,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
         )
             return;
 
-        if (StrategyContextMenuActions.TryGetGameSpeed(menuCommand.Action, out TickSpeed speed))
+        if (menuCommand.Action.TryGetGameSpeed(out TickSpeed speed))
             actions.SetGameSpeed(speed);
     }
 
@@ -392,31 +392,31 @@ public sealed class StrategyHudController : IContextMenuReceiver
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedPause,
+                StrategyMenuAction.GameSpeedPause,
                 "Pause",
                 true,
                 StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Paused))
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedVerySlow,
+                StrategyMenuAction.GameSpeedVerySlow,
                 "Very Slow",
                 true,
                 StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.VerySlow))
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedSlow,
+                StrategyMenuAction.GameSpeedSlow,
                 "Slow",
                 true,
                 StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Slow))
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedMedium,
+                StrategyMenuAction.GameSpeedMedium,
                 "Medium",
                 true,
                 StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Medium))
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedFast,
+                StrategyMenuAction.GameSpeedFast,
                 "Fast",
                 true,
                 StrategyContextMenuIconKeys.GetSpeedIconKey(GetSourceSpeed(TickSpeed.Fast))

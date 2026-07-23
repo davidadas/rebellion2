@@ -111,11 +111,14 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         if (planet?.Planet == null)
             return null;
 
-        MissionsWindowSession existing = FindWindow(planet.Planet.InstanceID);
-        if (existing != null)
+        MissionsWindowView existing = windowManager.FindWindowView<MissionsWindowView>(view =>
+            sessions.TryGetValue(view, out MissionsWindowSession session)
+            && session.Planet?.Planet?.InstanceID == planet.Planet.InstanceID
+        );
+        if (existing != null && sessions.TryGetValue(existing, out MissionsWindowSession session))
         {
-            windowManager.Focus(existing.Window);
-            return existing.Window;
+            windowManager.Focus(session.Window);
+            return session.Window;
         }
 
         Vector2Int position = getWindowPosition(sourceX, sourceY);
@@ -148,36 +151,33 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
     /// </summary>
     public void RenderWindows()
     {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out MissionsWindowView view))
-                RenderWindow(view, window, window.ActiveWindow);
-        }
+        windowManager.ForEachWindow<MissionsWindowView>(
+            (window, view) => RenderWindow(view, window, window.ActiveWindow)
+        );
     }
 
     /// <summary>
     /// Rebinds Missions sessions to a refreshed galaxy snapshot.
     /// </summary>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    public void ReconcileWindows(IReadOnlyList<GalaxyMapSector> sectors)
+    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
+    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
     {
-        if (sectors == null)
+        if (findPlanet == null)
             return;
 
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                !windowManager.TryGetWindowView(window, out MissionsWindowView view)
-                || !sessions.TryGetValue(view, out MissionsWindowSession session)
-            )
-                continue;
+        windowManager.ForEachWindow<MissionsWindowView>(
+            (_, view) =>
+            {
+                if (!sessions.TryGetValue(view, out MissionsWindowSession session))
+                    return;
 
-            GalaxyMapPlanet planet = FindFreshPlanet(session.Planet, sectors);
-            if (planet == null)
-                continue;
+                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
+                if (planet == null)
+                    return;
 
-            session.RebindPlanet(planet);
-        }
+                session.RebindPlanet(planet);
+            }
+        );
     }
 
     /// <summary>
@@ -397,10 +397,10 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         StrategyStatusTarget target = GetStatusTarget(view);
         switch (strategyCommand.Action)
         {
-            case StrategyContextMenuActions.Encyclopedia:
+            case StrategyMenuAction.Encyclopedia:
                 actions.OpenMissionsInfo(target);
                 break;
-            case StrategyContextMenuActions.Status:
+            case StrategyMenuAction.Status:
                 actions.OpenMissionsStatus(target);
                 break;
         }
@@ -423,13 +423,9 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         bool canAbort = hasMission && !mission.IsWaitingForParticipants();
         return new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
-                "Encyclopedia",
-                hasMission
-            ),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", hasMission),
-            new StrategyMenuCommand(StrategyContextMenuActions.Abort, "Abort", canAbort),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", hasMission),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", hasMission),
+            new StrategyMenuCommand(StrategyMenuAction.Abort, "Abort", canAbort),
         };
     }
 
@@ -694,26 +690,6 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
     }
 
     /// <summary>
-    /// Finds the Missions window session representing a planet.
-    /// </summary>
-    /// <param name="planetId">The represented planet identifier.</param>
-    /// <returns>The matching Missions session, or null when none is open.</returns>
-    private MissionsWindowSession FindWindow(string planetId)
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                windowManager.TryGetWindowView(window, out MissionsWindowView view)
-                && sessions.TryGetValue(view, out MissionsWindowSession session)
-                && session.Planet?.Planet?.InstanceID == planetId
-            )
-                return session;
-        }
-
-        return null;
-    }
-
-    /// <summary>
     /// Gets the controller-owned session for an initialized Missions view.
     /// </summary>
     /// <param name="view">The initialized Missions view.</param>
@@ -730,25 +706,6 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         }
 
         return session;
-    }
-
-    /// <summary>
-    /// Resolves a projected planet against a refreshed sector collection.
-    /// </summary>
-    /// <param name="planet">The previous projected planet.</param>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    /// <returns>The refreshed planet, or null when it is no longer represented.</returns>
-    private static GalaxyMapPlanet FindFreshPlanet(
-        GalaxyMapPlanet planet,
-        IReadOnlyList<GalaxyMapSector> sectors
-    )
-    {
-        string planetId = planet?.Planet?.InstanceID;
-        return planetId == null
-            ? null
-            : sectors
-                .SelectMany(sector => sector.Planets)
-                .FirstOrDefault(item => item.Planet?.InstanceID == planetId);
     }
 
     /// <summary>

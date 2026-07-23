@@ -316,7 +316,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 
         private static StrategyMenuCommand CreateCommand(string text)
         {
-            return new StrategyMenuCommand(StrategyContextMenuActions.Status, text, true);
+            return new StrategyMenuCommand(StrategyMenuAction.Status, text, true);
         }
 
         private sealed class RecordingProvider : IStrategyContextMenuProvider

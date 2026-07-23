@@ -223,6 +223,14 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// The active regiment garrison at a planet changed.
+    /// </summary>
+    public class PlanetGarrisonChangedResult : GameResult
+    {
+        public Planet Planet { get; set; }
+    }
+
+    /// <summary>
     /// A scripted incident occurred at a planet.
     /// </summary>
     public class PlanetIncidentResult : GameResult
@@ -565,15 +573,6 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A regiment's active deployment changed at a planet.
-    /// </summary>
-    public class RegimentDeploymentChangedResult : GameResult
-    {
-        public Regiment Regiment { get; set; }
-        public Planet Planet { get; set; }
-    }
-
-    /// <summary>
     /// A game object was damaged.
     /// </summary>
     public class GameObjectDamagedResult : GameResult
@@ -809,6 +808,7 @@ namespace Rebellion.Game.Results
         public List<Regiment> LandedRegiments { get; set; } = new List<Regiment>();
         public List<ISceneNode> AttackingUnits { get; set; } = new List<ISceneNode>();
         public List<ISceneNode> DefendingUnits { get; set; } = new List<ISceneNode>();
+        public List<GameResult> Events { get; set; } = new List<GameResult>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
     }
 

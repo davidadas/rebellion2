@@ -429,6 +429,7 @@
           <xs:complexType>
             <xs:all>
               <xs:element name="MaintenanceShortfallAutoscrapInterval" type="PositiveIntType" />
+              <xs:element name="ScrapRefundDivisor" type="PositiveIntType" />
               <xs:element name="ResourceMaintenanceLoadPercent" type="PositiveIntType" />
               <xs:element name="ResourceCollectionBasePercent" type="PositiveIntType" />
               <xs:element name="ResourceStartupBasePercent" type="PositiveIntType" />

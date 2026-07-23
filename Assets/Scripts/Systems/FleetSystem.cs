@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Systems
 {
@@ -86,6 +87,8 @@ namespace Rebellion.Systems
                     )
                     || ship.GetParent() is not Fleet sourceFleet
                     || !ReferenceEquals(sourceFleet.GetParentOfType<Planet>(), planet)
+                    || ship.ManufacturingStatus != ManufacturingStatus.Building
+                        && ship.GetTransitMovement() != null
                 )
                     return null;
 

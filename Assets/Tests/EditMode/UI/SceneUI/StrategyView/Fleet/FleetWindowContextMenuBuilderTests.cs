@@ -22,11 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             );
 
             CollectionAssert.AreEqual(
-                new[]
-                {
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                },
+                new[] { StrategyMenuAction.Encyclopedia, StrategyMenuAction.Status },
                 commands.Select(command => command.Action)
             );
             Assert.IsTrue(commands.All(command => !command.Enabled));
@@ -51,14 +47,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.PlanetaryBombardment,
-                    StrategyContextMenuActions.PlanetaryAssault,
-                    StrategyContextMenuActions.Rename,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Scrap,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.PlanetaryBombardment,
+                    StrategyMenuAction.PlanetaryAssault,
+                    StrategyMenuAction.Rename,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Scrap,
                 },
                 commands.Select(command => command.Action)
             );
@@ -80,10 +76,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.BombardMilitaryFacilities,
-                    StrategyContextMenuActions.BombardCivilianFacilities,
-                    StrategyContextMenuActions.GeneralBombardment,
-                    StrategyContextMenuActions.DestroySystem,
+                    StrategyMenuAction.BombardMilitaryFacilities,
+                    StrategyMenuAction.BombardCivilianFacilities,
+                    StrategyMenuAction.GeneralBombardment,
+                    StrategyMenuAction.DestroySystem,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );
@@ -123,14 +119,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.PlanetaryBombardment,
-                    StrategyContextMenuActions.PlanetaryAssault,
-                    StrategyContextMenuActions.Rename,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Scrap,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.PlanetaryBombardment,
+                    StrategyMenuAction.PlanetaryAssault,
+                    StrategyMenuAction.Rename,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Scrap,
                 },
                 commands.Select(command => command.Action)
             );
@@ -141,10 +137,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.BombardMilitaryFacilities,
-                    StrategyContextMenuActions.BombardCivilianFacilities,
-                    StrategyContextMenuActions.GeneralBombardment,
-                    StrategyContextMenuActions.DestroySystem,
+                    StrategyMenuAction.BombardMilitaryFacilities,
+                    StrategyMenuAction.BombardCivilianFacilities,
+                    StrategyMenuAction.GeneralBombardment,
+                    StrategyMenuAction.DestroySystem,
                 },
                 commands[2].SubmenuCommands.Select(command => command.Action)
             );
@@ -169,13 +165,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.CreateFleet,
-                    StrategyContextMenuActions.Rename,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Scrap,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.CreateFleet,
+                    StrategyMenuAction.Rename,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Scrap,
                 },
                 commands.Select(command => command.Action)
             );
@@ -183,7 +179,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Build_CapitalShipUnderConstruction_ReturnsStopCommand()
+        public void Build_CapitalShipUnderConstruction_AllowsDeliveryReassignment()
         {
             CapitalShip ship = new CapitalShip
             {
@@ -192,14 +188,39 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
                 new ISceneNode[] { ship },
+                true,
+                true,
                 false,
+                false
+            );
+
+            Assert.IsTrue(commands[0].Enabled);
+            Assert.IsTrue(commands[1].Enabled);
+            Assert.IsTrue(commands[2].Enabled);
+            Assert.AreEqual(StrategyMenuAction.Stop, commands.Last().Action);
+            Assert.AreEqual("Stop", commands.Last().Text);
+            Assert.IsTrue(commands.Last().Enabled);
+        }
+
+        [Test]
+        public void Build_CapitalShipWithoutMoveEligibility_DisablesMovementCommands()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+
+            List<StrategyMenuCommand> commands = FleetWindowContextMenuBuilder.Build(
+                new ISceneNode[] { ship },
+                true,
                 false,
                 false,
                 false
             );
 
-            Assert.AreEqual(StrategyContextMenuActions.Stop, commands.Last().Action);
-            Assert.AreEqual("Stop", commands.Last().Text);
+            Assert.IsFalse(commands[0].Enabled);
+            Assert.IsFalse(commands[1].Enabled);
+            Assert.IsFalse(commands[2].Enabled);
             Assert.IsFalse(commands.Last().Enabled);
         }
 
@@ -222,11 +243,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Scrap,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Scrap,
                 },
                 commands.Select(command => command.Action)
             );
@@ -249,7 +270,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 false
             );
 
-            Assert.AreEqual(StrategyContextMenuActions.Stop, commands.Last().Action);
+            Assert.AreEqual(StrategyMenuAction.Stop, commands.Last().Action);
             Assert.IsTrue(commands.Last().Enabled);
         }
 
@@ -269,13 +290,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.CreateMission,
-                    StrategyContextMenuActions.Submenu,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Retire,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.None,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Retire,
                 },
                 commands.Select(command => command.Action)
             );
@@ -299,12 +320,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    StrategyContextMenuActions.Move,
-                    StrategyContextMenuActions.MoveConfirm,
-                    StrategyContextMenuActions.CreateMission,
-                    StrategyContextMenuActions.Encyclopedia,
-                    StrategyContextMenuActions.Status,
-                    StrategyContextMenuActions.Retire,
+                    StrategyMenuAction.Move,
+                    StrategyMenuAction.MoveConfirm,
+                    StrategyMenuAction.CreateMission,
+                    StrategyMenuAction.Encyclopedia,
+                    StrategyMenuAction.Status,
+                    StrategyMenuAction.Retire,
                 },
                 commands.Select(command => command.Action)
             );

@@ -393,6 +393,8 @@ namespace Rebellion.Game
         {
             public int MaintenanceShortfallAutoscrapInterval { get; set; }
 
+            public int ScrapRefundDivisor { get; set; }
+
             public int ResourceMaintenanceLoadPercent { get; set; }
 
             public int ResourceCollectionBasePercent { get; set; }
@@ -627,7 +629,7 @@ namespace Rebellion.Game
         [PersistableObject]
         public class MessageConfig
         {
-            public int RetentionTicks { get; set; } = 300;
+            public int RetentionTicks { get; set; }
         }
 
         /// <summary>

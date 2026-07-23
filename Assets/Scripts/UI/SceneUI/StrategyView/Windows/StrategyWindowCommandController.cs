@@ -55,6 +55,33 @@ public sealed class StrategyWindowCommandController
     }
 
     /// <summary>
+    /// Executes the semantic command completed by one targeting request.
+    /// </summary>
+    /// <param name="source">The targeting source command and selection.</param>
+    /// <param name="target">The selected strategy target.</param>
+    public void ExecuteTargetedCommand(
+        StrategyWindowTargetingSource source,
+        StrategyMissionTarget target
+    )
+    {
+        if (source == null || target == null)
+            return;
+
+        switch (source.Action)
+        {
+            case StrategyMenuAction.CreateMission:
+                OpenMissionCreateWindow(target, source.Items);
+                break;
+            case StrategyMenuAction.Move:
+                TryExecuteMove(source.Window, target, source.Items);
+                break;
+            case StrategyMenuAction.MoveConfirm:
+                OpenMoveConfirmWindow(source.Window, target, source.Items);
+                break;
+        }
+    }
+
+    /// <summary>
     /// Opens mission creation for selected participants and a target.
     /// </summary>
     /// <param name="target">The selected mission target.</param>
@@ -140,7 +167,7 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && gameManager.MaintenanceSystem.Scrap(manufacturables, GetPlayerFactionID())
+                    && gameManager.TryScrap(manufacturables, GetPlayerFactionID())
                 )
                 {
                     RefreshAfterMutation(sourceWindow);

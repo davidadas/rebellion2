@@ -1215,7 +1215,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_GroupUnitUnderConstruction_NoneMove()
+        public void RequestMove_GroupUnitUnderConstruction_RetargetsDelivery()
         {
             (
                 GameRoot game,
@@ -1235,10 +1235,11 @@ namespace Rebellion.Tests.Systems
 
             movement.RequestMove(new List<IMovable> { officer, starfighter }, destination);
 
-            Assert.AreEqual(origin, officer.GetParent());
-            Assert.AreEqual(origin, starfighter.GetParent());
-            Assert.IsNull(officer.Movement);
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.AreEqual(destination, starfighter.GetParent());
+            Assert.IsNotNull(officer.Movement);
             Assert.IsNull(starfighter.Movement);
+            Assert.AreEqual(ManufacturingStatus.Building, starfighter.ManufacturingStatus);
         }
 
         [Test]
@@ -3360,7 +3361,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TryRequestMove_RegimentToShip_ReturnsDeploymentChange()
+        public void TryRequestMove_RegimentToShip_ReturnsGarrisonChange()
         {
             (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
                 BuildScene();
@@ -3393,12 +3394,11 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(moved);
-            RegimentDeploymentChangedResult result = results
-                .OfType<RegimentDeploymentChangedResult>()
+            PlanetGarrisonChangedResult result = results
+                .OfType<PlanetGarrisonChangedResult>()
                 .Single();
-            Assert.AreSame(regiment, result.Regiment);
             Assert.AreSame(origin, result.Planet);
-            Assert.IsEmpty(movement.ProcessTick().OfType<RegimentDeploymentChangedResult>());
+            Assert.IsEmpty(movement.ProcessTick().OfType<PlanetGarrisonChangedResult>());
         }
 
         [Test]
@@ -3451,6 +3451,65 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(destinationFleet, ship.GetParent());
             Assert.IsNull(sourceFleet.GetParent());
             Assert.IsNull(ship.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipUnderConstruction_RetargetsDelivery()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(ship, sourceFleet);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destinationFleet,
+                "empire",
+                out List<GameResult> results
+            );
+
+            Assert.IsTrue(moved);
+            Assert.AreSame(destinationFleet, ship.GetParent());
+            Assert.IsNull(ship.Movement);
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void TryRequestMove_CapitalShipInMovingFleet_PreservesSourceGraph()
+        {
+            (GameRoot game, Planet origin, Planet _, Officer _, MovementSystem movement) =
+                BuildScene();
+            Fleet sourceFleet = EntityFactory.CreateFleet("source-fleet", "empire");
+            Fleet destinationFleet = EntityFactory.CreateFleet("destination-fleet", "empire");
+            game.AttachNode(sourceFleet, origin);
+            game.AttachNode(destinationFleet, origin);
+            CapitalShip ship = CreateMovableCapitalShip("ship");
+            game.AttachNode(ship, sourceFleet);
+            sourceFleet.Movement = new MovementState();
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { ship },
+                destinationFleet,
+                "empire",
+                out _
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(sourceFleet, ship.GetParent());
+            CollectionAssert.AreEquivalent(
+                new[] { sourceFleet, destinationFleet },
+                origin.GetFleets()
+            );
         }
 
         [Test]

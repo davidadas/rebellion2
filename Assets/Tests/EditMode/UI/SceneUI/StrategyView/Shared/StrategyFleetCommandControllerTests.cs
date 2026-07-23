@@ -164,7 +164,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryBombardment_SnapshotTargetAndFleet_UsesLiveGraphObjects()
+        public void ExecutePlanetaryCombat_BombardmentSnapshot_UsesLiveGraphObjects()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             _game.AttachNode(fleet, _planet);
@@ -192,10 +192,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 (_, _) => null
             );
 
-            BombardmentResult result = controller.ExecutePlanetaryBombardment(
+            GameResult result = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
                 requestedTarget,
-                BombardmentType.Civilian
+                StrategyMenuAction.BombardCivilianFacilities
             );
 
             Assert.AreSame(expected, result);
@@ -206,25 +206,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryBombardment_InvalidInputOrNullResult_ReturnsNull()
+        public void ExecutePlanetaryCombat_InvalidBombardmentInputOrNullResult_ReturnsNull()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             StrategyFleetCommandController controller = CreateController();
 
-            BombardmentResult noFleetResult = controller.ExecutePlanetaryBombardment(
+            GameResult noFleetResult = controller.ExecutePlanetaryCombat(
                 Array.Empty<ISceneNode>(),
                 _planet,
-                BombardmentType.Military
+                StrategyMenuAction.BombardMilitaryFacilities
             );
-            BombardmentResult missingTargetResult = controller.ExecutePlanetaryBombardment(
+            GameResult missingTargetResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
                 new Planet { InstanceID = "missing" },
-                BombardmentType.Military
+                StrategyMenuAction.BombardMilitaryFacilities
             );
-            BombardmentResult nullCommandResult = controller.ExecutePlanetaryBombardment(
+            GameResult nullCommandResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
                 _planet,
-                BombardmentType.Military
+                StrategyMenuAction.BombardMilitaryFacilities
             );
 
             Assert.IsNull(noFleetResult);
@@ -233,7 +233,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_SnapshotTargetAndFleet_UsesLiveGraphObjects()
+        public void ExecutePlanetaryCombat_AssaultSnapshot_UsesLiveGraphObjects()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             _game.AttachNode(fleet, _planet);
@@ -259,9 +259,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 }
             );
 
-            PlanetaryAssaultResult result = controller.ExecutePlanetaryAssault(
+            GameResult result = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
-                requestedTarget
+                requestedTarget,
+                StrategyMenuAction.PlanetaryAssault
             );
 
             Assert.AreSame(expected, result);
@@ -271,7 +272,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_MultipleFleets_UsesFullLiveSelection()
+        public void ExecutePlanetaryCombat_AssaultWithMultipleFleets_UsesFullLiveSelection()
         {
             GameFleet eligibleFleet = new GameFleet(_playerFactionId, "eligible");
             GameFleet ineligibleFleet = new GameFleet(_playerFactionId, "ineligible");
@@ -309,13 +310,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 }
             );
 
-            bool canExecute = controller.CanExecutePlanetaryAssault(
+            bool canExecute = controller.CanExecutePlanetaryCombat(
                 new ISceneNode[] { requestedEligibleFleet, requestedIneligibleFleet },
-                requestedTarget
+                requestedTarget,
+                StrategyMenuAction.PlanetaryAssault
             );
-            PlanetaryAssaultResult result = controller.ExecutePlanetaryAssault(
+            GameResult result = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { requestedEligibleFleet, requestedIneligibleFleet },
-                requestedTarget
+                requestedTarget,
+                StrategyMenuAction.PlanetaryAssault
             );
 
             Assert.IsTrue(canExecute);
@@ -354,14 +357,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 (_, _) => null
             );
 
-            bool canBombard = controller.CanExecutePlanetaryBombardment(
+            bool canBombard = controller.CanExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
                 requestedTarget,
-                BombardmentType.General
+                StrategyMenuAction.GeneralBombardment
             );
-            bool canAssault = controller.CanExecutePlanetaryAssault(
+            bool canAssault = controller.CanExecutePlanetaryCombat(
                 new ISceneNode[] { requestedFleet },
-                requestedTarget
+                requestedTarget,
+                StrategyMenuAction.PlanetaryAssault
             );
 
             Assert.IsTrue(canBombard);
@@ -369,22 +373,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void ExecutePlanetaryAssault_InvalidInputOrNullResult_ReturnsNull()
+        public void ExecutePlanetaryCombat_InvalidAssaultInputOrNullResult_ReturnsNull()
         {
             GameFleet fleet = new GameFleet(_playerFactionId, "fleet");
             StrategyFleetCommandController controller = CreateController();
 
-            PlanetaryAssaultResult noFleetResult = controller.ExecutePlanetaryAssault(
+            GameResult noFleetResult = controller.ExecutePlanetaryCombat(
                 Array.Empty<ISceneNode>(),
-                _planet
+                _planet,
+                StrategyMenuAction.PlanetaryAssault
             );
-            PlanetaryAssaultResult missingTargetResult = controller.ExecutePlanetaryAssault(
+            GameResult missingTargetResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
-                new Planet { InstanceID = "missing" }
+                new Planet { InstanceID = "missing" },
+                StrategyMenuAction.PlanetaryAssault
             );
-            PlanetaryAssaultResult nullCommandResult = controller.ExecutePlanetaryAssault(
+            GameResult nullCommandResult = controller.ExecutePlanetaryCombat(
                 new ISceneNode[] { fleet },
-                _planet
+                _planet,
+                StrategyMenuAction.PlanetaryAssault
             );
 
             Assert.IsNull(noFleetResult);

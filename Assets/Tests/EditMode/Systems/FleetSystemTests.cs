@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
@@ -134,6 +135,40 @@ namespace Rebellion.Tests.Systems
             Assert.IsNull(createdFleet);
             Assert.AreSame(sourceFleet, ship.GetParent());
             CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets());
+        }
+
+        [Test]
+        public void CreateFromCapitalShips_CompletedShipInTransit_PreservesSourceGraph()
+        {
+            Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
+            sourceFleet.Movement = new MovementState();
+
+            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
+                new List<CapitalShip> { ship },
+                _ownerId
+            );
+
+            Assert.IsNull(createdFleet);
+            Assert.AreSame(sourceFleet, ship.GetParent());
+            CollectionAssert.AreEqual(new[] { sourceFleet }, _planet.GetFleets());
+        }
+
+        [Test]
+        public void CreateFromCapitalShips_ShipUnderConstruction_ChangesDeliveryFleet()
+        {
+            Fleet sourceFleet = CreateFleet("source", out CapitalShip ship);
+            sourceFleet.Movement = new MovementState();
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+
+            Fleet createdFleet = _fleetSystem.CreateFromCapitalShips(
+                new List<CapitalShip> { ship },
+                _ownerId
+            );
+
+            Assert.IsNotNull(createdFleet);
+            Assert.AreSame(createdFleet, ship.GetParent());
+            Assert.IsNull(sourceFleet.GetParent());
+            Assert.AreEqual(ManufacturingStatus.Building, ship.ManufacturingStatus);
         }
 
         [Test]

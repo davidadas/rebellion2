@@ -13,7 +13,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary ownership and popular support.
     /// </summary>
-    public class PlanetaryControlSystem
+    public class PlanetaryControlSystem : IGameResultHandler
     {
         private readonly GameRoot _game;
         private readonly MovementSystem _movementSystem;
@@ -57,18 +57,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Reconciles planets affected by regiment deployment results.
+        /// Reconciles planets whose active garrisons changed.
         /// </summary>
         /// <param name="results">The result batch to inspect.</param>
-        /// <returns>Any ownership changes caused by the deployment changes.</returns>
-        internal List<GameResult> ProcessResults(IEnumerable<GameResult> results)
+        /// <returns>Any ownership changes caused by the garrison changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
             List<GameResult> controlResults = new List<GameResult>();
             if (results == null)
                 return controlResults;
 
             IEnumerable<Planet> affectedPlanets = results
-                .OfType<RegimentDeploymentChangedResult>()
+                .OfType<PlanetGarrisonChangedResult>()
                 .Select(result => result.Planet)
                 .Where(planet => planet != null)
                 .Distinct();
@@ -153,36 +153,7 @@ namespace Rebellion.Systems
         /// <returns>The ownership-change result.</returns>
         public PlanetOwnershipChangedResult TransferPlanet(Planet planet, Faction newOwner)
         {
-            bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
-            try
-            {
-                string previousOwnerId = planet.GetOwnerInstanceID();
-                Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
-                    ? null
-                    : _game.GetFactionByOwnerInstanceID(previousOwnerId);
-                List<Faction> observers = GetOwnershipChangeObservers(
-                    planet,
-                    previousOwner,
-                    newOwner
-                );
-
-                CancelCompetingMissions(planet, newOwner.InstanceID);
-                TransferBuildings(planet, newOwner);
-                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
-                EvictEnemyUnits(planet, newOwner.InstanceID);
-                planet.EndUprising();
-                _game.ChangeUnitOwnership(planet, newOwner.InstanceID);
-                if (previousOwner?.InstanceID != newOwner.InstanceID)
-                    CaptureSnapshotForFaction(planet, previousOwner);
-                CaptureOwnershipChange(planet, observers);
-
-                return CreateOwnershipChangedResult(planet, previousOwner, newOwner, observers);
-            }
-            finally
-            {
-                if (ownsControlChange)
-                    _controlChangesInProgress.Remove(planet.InstanceID);
-            }
+            return ApplyPlanetOwnershipChange(planet, newOwner);
         }
 
         /// <summary>
@@ -195,7 +166,10 @@ namespace Rebellion.Systems
         /// <returns>The ownership-change result.</returns>
         public PlanetOwnershipChangedResult ClearPlanetOwnership(Planet planet)
         {
-            PlanetOwnershipChangedResult result = NeutralizePlanet(planet);
+            PlanetOwnershipChangedResult result = ApplyPlanetOwnershipChange(
+                planet,
+                newOwner: null
+            );
 
             foreach (Faction faction in _game.GetFactions())
                 planet.SetPopularSupport(faction.InstanceID, 0);
@@ -335,44 +309,6 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Removes direct ownership while preserving the planet's current support values.
-        /// </summary>
-        /// <param name="planet">The planet returning to neutral control.</param>
-        /// <returns>The ownership-change result.</returns>
-        private PlanetOwnershipChangedResult NeutralizePlanet(Planet planet)
-        {
-            bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
-            try
-            {
-                string previousOwnerId = planet.GetOwnerInstanceID();
-                Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
-                    ? null
-                    : _game.GetFactionByOwnerInstanceID(previousOwnerId);
-                List<Faction> observers = GetOwnershipChangeObservers(
-                    planet,
-                    previousOwner,
-                    newOwner: null
-                );
-
-                CancelCompetingMissions(planet, newOwnerID: null);
-                EvictEnemyUnits(planet, newOwnerID: null);
-                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
-                planet.EndUprising();
-                _game.DeregsiterOwnedUnit(planet);
-                planet.SetOwnerInstanceID(null);
-                CaptureSnapshotForFaction(planet, previousOwner);
-                CaptureOwnershipChange(planet, observers);
-
-                return CreateOwnershipChangedResult(planet, previousOwner, null, observers);
-            }
-            finally
-            {
-                if (ownsControlChange)
-                    _controlChangesInProgress.Remove(planet.InstanceID);
-            }
-        }
-
-        /// <summary>
         /// Transfers or clears planet ownership when the resolved controller changes.
         /// </summary>
         /// <param name="planet">The planet whose control is changing.</param>
@@ -383,7 +319,62 @@ namespace Rebellion.Systems
             if (planet.GetOwnerInstanceID() == newOwner?.InstanceID)
                 return null;
 
-            return newOwner == null ? NeutralizePlanet(planet) : TransferPlanet(planet, newOwner);
+            return ApplyPlanetOwnershipChange(planet, newOwner);
+        }
+
+        /// <summary>
+        /// Applies the shared state transition for transferring or clearing planet ownership.
+        /// </summary>
+        /// <param name="planet">The planet whose ownership is changing.</param>
+        /// <param name="newOwner">The receiving faction, or null for neutral control.</param>
+        /// <returns>The completed ownership-change result.</returns>
+        private PlanetOwnershipChangedResult ApplyPlanetOwnershipChange(
+            Planet planet,
+            Faction newOwner
+        )
+        {
+            bool ownsControlChange = _controlChangesInProgress.Add(planet.InstanceID);
+            try
+            {
+                string previousOwnerId = planet.GetOwnerInstanceID();
+                string newOwnerId = newOwner?.InstanceID;
+                Faction previousOwner = string.IsNullOrEmpty(previousOwnerId)
+                    ? null
+                    : _game.GetFactionByOwnerInstanceID(previousOwnerId);
+                List<Faction> observers = GetOwnershipChangeObservers(
+                    planet,
+                    previousOwner,
+                    newOwner
+                );
+
+                CancelCompetingMissions(planet, newOwnerId);
+                if (newOwner != null)
+                    TransferBuildings(planet, newOwner);
+
+                _manufacturingSystem.ClearQueuesOnOwnershipChange(planet);
+                EvictEnemyUnits(planet, newOwnerId);
+                planet.EndUprising();
+                if (newOwner == null)
+                {
+                    _game.DeregsiterOwnedUnit(planet);
+                    planet.SetOwnerInstanceID(null);
+                }
+                else
+                {
+                    _game.ChangeUnitOwnership(planet, newOwnerId);
+                }
+
+                if (previousOwner?.InstanceID != newOwnerId)
+                    CaptureSnapshotForFaction(planet, previousOwner);
+                CaptureOwnershipChange(planet, observers);
+
+                return CreateOwnershipChangedResult(planet, previousOwner, newOwner, observers);
+            }
+            finally
+            {
+                if (ownsControlChange)
+                    _controlChangesInProgress.Remove(planet.InstanceID);
+            }
         }
 
         /// <summary>

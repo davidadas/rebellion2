@@ -245,7 +245,7 @@ namespace Rebellion.AI.Planners
             Fleet fleet
         )
         {
-            Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
+            Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
             if (targetPlanet == null)
                 return;
 
@@ -979,7 +979,7 @@ namespace Rebellion.AI.Planners
         )
         {
             double pressure = GetBasePressure(baseDemandPercent, deficit, targetCount);
-            Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
+            Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
 
             if (targetPlanet != null)
             {
@@ -1261,7 +1261,7 @@ namespace Rebellion.AI.Planners
                 capacity,
                 context.Game.Config.AI.Infrastructure.AssaultRegimentLoadPercent
             );
-            Planet targetPlanet = GetAttackTargetPlanet(context, fleet);
+            Planet targetPlanet = context.Assessment.GetAttackTargetPlanet(fleet);
             if (targetPlanet != null)
                 fillTarget = System.Math.Max(
                     fillTarget,
@@ -1297,29 +1297,6 @@ namespace Rebellion.AI.Planners
                 planet.GetProductionFacilityCount(ManufacturingType.Troop),
                 context.Game.Config.AI.Infrastructure.GarrisonRegimentReservePercent
             );
-        }
-
-        /// <summary>
-        /// Returns the active attack target for a fleet.
-        /// </summary>
-        /// <param name="context">The current AI turn context.</param>
-        /// <param name="fleet">Fleet to inspect.</param>
-        /// <returns>The attack target planet, or null.</returns>
-        private Planet GetAttackTargetPlanet(AITurnContext context, Fleet fleet)
-        {
-            string targetPlanetId = fleet.Order?.TargetPlanetId;
-            if (
-                fleet.Order?.OrderType != FleetOrderType.Attack
-                || string.IsNullOrEmpty(targetPlanetId)
-            )
-                return null;
-
-            Planet targetPlanet = context.Game.GetSceneNodeByInstanceID<Planet>(targetPlanetId);
-            string targetOwnerId = targetPlanet?.GetOwnerInstanceID();
-            if (string.IsNullOrEmpty(targetOwnerId) || targetOwnerId == context.Faction.InstanceID)
-                return null;
-
-            return targetPlanet;
         }
 
         /// <summary>

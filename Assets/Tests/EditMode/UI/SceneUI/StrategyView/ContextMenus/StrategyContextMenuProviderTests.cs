@@ -65,7 +65,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         public void MenuData_CommandSource_CopiesCommandsAndStoresPlacement()
         {
             UIWindow window = CreateWindow();
-            StrategyMenuCommand command = new StrategyMenuCommand(1, "Status", true);
+            StrategyMenuCommand command = new StrategyMenuCommand(
+                StrategyMenuAction.Status,
+                "Status",
+                true
+            );
             List<StrategyMenuCommand> commands = new List<StrategyMenuCommand> { command };
 
             StrategyContextMenuData data = new StrategyContextMenuData(

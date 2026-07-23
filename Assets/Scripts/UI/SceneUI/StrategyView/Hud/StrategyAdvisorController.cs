@@ -208,38 +208,38 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(
-                StrategyContextMenuActions.AdvisorBuildShips,
+                StrategyMenuAction.AdvisorBuildShips,
                 "Build Ships",
                 faction != null
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.AdvisorBuildTroops,
+                StrategyMenuAction.AdvisorBuildTroops,
                 "Build Troops",
                 faction != null
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.AdvisorBuildFacilities,
+                StrategyMenuAction.AdvisorBuildFacilities,
                 "Build Facilities",
                 faction != null
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.AdvisorGalaxyOverview,
+                StrategyMenuAction.AdvisorGalaxyOverview,
                 "Galaxy Overview",
                 faction != null
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.AdvisorObjectives,
+                StrategyMenuAction.AdvisorObjectives,
                 "Objectives",
                 faction != null
             ),
             CreateToggleCommand(
-                StrategyContextMenuActions.AdvisorTranslateCounterpart,
+                StrategyMenuAction.AdvisorTranslateCounterpart,
                 "Translate Counterpart",
                 faction != null,
                 faction?.TranslateCounterpart == true
             ),
             CreateToggleCommand(
-                StrategyContextMenuActions.AdvisorAgentAdvice,
+                StrategyMenuAction.AdvisorAgentAdvice,
                 "Agent Advice",
                 faction != null,
                 faction?.AgentAdvice == true
@@ -258,70 +258,70 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorLoyaltyMessages,
+            StrategyMenuAction.AdvisorLoyaltyMessages,
             "Loyalty",
             MessageType.PopularSupport
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorFleetMessages,
+            StrategyMenuAction.AdvisorFleetMessages,
             "Fleets",
             MessageType.Fleet
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorMissionMessages,
+            StrategyMenuAction.AdvisorMissionMessages,
             "Mission",
             MessageType.Mission
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorResourceMessages,
+            StrategyMenuAction.AdvisorResourceMessages,
             "Resources",
             MessageType.Resource
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorManufacturingMessages,
+            StrategyMenuAction.AdvisorManufacturingMessages,
             "Manufacturing",
             MessageType.Manufacturing
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorDefenseMessages,
+            StrategyMenuAction.AdvisorDefenseMessages,
             "Defense",
             MessageType.Defense
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorConflictMessages,
+            StrategyMenuAction.AdvisorConflictMessages,
             "Conflict",
             MessageType.Conflict
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorAdviceMessages,
+            StrategyMenuAction.AdvisorAdviceMessages,
             "Advice",
             MessageType.Advice
         );
         AddMessageCommand(
             alerts,
             faction,
-            StrategyContextMenuActions.AdvisorChatMessages,
+            StrategyMenuAction.AdvisorChatMessages,
             "Chat",
             MessageType.Chat
         );
         return new List<StrategyMenuCommand>
         {
             new StrategyMenuCommand(
-                StrategyContextMenuActions.AdvisorMessages,
+                StrategyMenuAction.AdvisorMessages,
                 "Messages",
                 faction != null
             ),
@@ -354,13 +354,13 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         switch (menuCommand.Action)
         {
-            case StrategyContextMenuActions.AdvisorGalaxyOverview:
+            case StrategyMenuAction.AdvisorGalaxyOverview:
                 actions.OpenAdvisorReport(AdvisorReportMode.GalaxyOverview);
                 return;
-            case StrategyContextMenuActions.AdvisorObjectives:
+            case StrategyMenuAction.AdvisorObjectives:
                 actions.OpenAdvisorReport(AdvisorReportMode.Objectives);
                 return;
-            case StrategyContextMenuActions.AdvisorMessages:
+            case StrategyMenuAction.AdvisorMessages:
                 actions.OpenMessagesTab(MessagesTab.All);
                 return;
         }
@@ -377,10 +377,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         switch (menuCommand.Action)
         {
-            case StrategyContextMenuActions.AdvisorTranslateCounterpart:
+            case StrategyMenuAction.AdvisorTranslateCounterpart:
                 faction.TranslateCounterpart = !faction.TranslateCounterpart;
                 break;
-            case StrategyContextMenuActions.AdvisorAgentAdvice:
+            case StrategyMenuAction.AdvisorAgentAdvice:
                 faction.AgentAdvice = !faction.AgentAdvice;
                 break;
         }
@@ -541,7 +541,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="selected">Whether the persisted option is selected.</param>
     /// <returns>The completed advisor command.</returns>
     private static StrategyMenuCommand CreateToggleCommand(
-        int action,
+        StrategyMenuAction action,
         string text,
         bool enabled,
         bool selected
@@ -567,7 +567,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private static void AddMessageCommand(
         ICollection<StrategyMenuCommand> commands,
         Faction faction,
-        int action,
+        StrategyMenuAction action,
         string text,
         MessageType messageType
     )
@@ -588,35 +588,35 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="action">The semantic action identifier.</param>
     /// <param name="messageType">Receives the mapped message category.</param>
     /// <returns>True when the action represents a message-category toggle.</returns>
-    private static bool TryGetMessageType(int action, out MessageType messageType)
+    private static bool TryGetMessageType(StrategyMenuAction action, out MessageType messageType)
     {
         switch (action)
         {
-            case StrategyContextMenuActions.AdvisorLoyaltyMessages:
+            case StrategyMenuAction.AdvisorLoyaltyMessages:
                 messageType = MessageType.PopularSupport;
                 return true;
-            case StrategyContextMenuActions.AdvisorFleetMessages:
+            case StrategyMenuAction.AdvisorFleetMessages:
                 messageType = MessageType.Fleet;
                 return true;
-            case StrategyContextMenuActions.AdvisorMissionMessages:
+            case StrategyMenuAction.AdvisorMissionMessages:
                 messageType = MessageType.Mission;
                 return true;
-            case StrategyContextMenuActions.AdvisorResourceMessages:
+            case StrategyMenuAction.AdvisorResourceMessages:
                 messageType = MessageType.Resource;
                 return true;
-            case StrategyContextMenuActions.AdvisorManufacturingMessages:
+            case StrategyMenuAction.AdvisorManufacturingMessages:
                 messageType = MessageType.Manufacturing;
                 return true;
-            case StrategyContextMenuActions.AdvisorDefenseMessages:
+            case StrategyMenuAction.AdvisorDefenseMessages:
                 messageType = MessageType.Defense;
                 return true;
-            case StrategyContextMenuActions.AdvisorConflictMessages:
+            case StrategyMenuAction.AdvisorConflictMessages:
                 messageType = MessageType.Conflict;
                 return true;
-            case StrategyContextMenuActions.AdvisorChatMessages:
+            case StrategyMenuAction.AdvisorChatMessages:
                 messageType = MessageType.Chat;
                 return true;
-            case StrategyContextMenuActions.AdvisorAdviceMessages:
+            case StrategyMenuAction.AdvisorAdviceMessages:
                 messageType = MessageType.Advice;
                 return true;
             default:
@@ -631,17 +631,20 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="action">The semantic action identifier.</param>
     /// <param name="manufacturingType">Receives the mapped manufacturing category.</param>
     /// <returns>True when the action represents advisor-directed construction.</returns>
-    private static bool TryGetManufacturingType(int action, out ManufacturingType manufacturingType)
+    private static bool TryGetManufacturingType(
+        StrategyMenuAction action,
+        out ManufacturingType manufacturingType
+    )
     {
         switch (action)
         {
-            case StrategyContextMenuActions.AdvisorBuildShips:
+            case StrategyMenuAction.AdvisorBuildShips:
                 manufacturingType = ManufacturingType.Ship;
                 return true;
-            case StrategyContextMenuActions.AdvisorBuildTroops:
+            case StrategyMenuAction.AdvisorBuildTroops:
                 manufacturingType = ManufacturingType.Troop;
                 return true;
-            case StrategyContextMenuActions.AdvisorBuildFacilities:
+            case StrategyMenuAction.AdvisorBuildFacilities:
                 manufacturingType = ManufacturingType.Building;
                 return true;
             default:

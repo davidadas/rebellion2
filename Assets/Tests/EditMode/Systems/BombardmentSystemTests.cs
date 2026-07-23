@@ -94,6 +94,10 @@ namespace Rebellion.Tests.Systems
             CollectionAssert.Contains(result.AttackingUnits, fleet.CapitalShips[0]);
             CollectionAssert.Contains(result.DefendingUnits, regiment);
             CollectionAssert.Contains(result.DefendingUnits, mine);
+            Assert.AreSame(
+                planet,
+                result.Events.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
             Assert.AreEqual(10, planet.EnergyCapacity);
         }
 

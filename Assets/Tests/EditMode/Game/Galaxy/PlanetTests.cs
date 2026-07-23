@@ -932,7 +932,7 @@ namespace Rebellion.Tests.Game.Galaxy
 
             int modifier = _planet.GetBlockadeModifier(5, 2);
 
-            Assert.AreEqual(89, modifier);
+            Assert.AreEqual(91, modifier);
         }
 
         [Test]

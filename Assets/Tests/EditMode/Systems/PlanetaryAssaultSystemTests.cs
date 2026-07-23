@@ -245,6 +245,10 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(6, result.LandedRegiments.Count);
             Assert.AreEqual(6, planet.GetAllRegiments().Count);
             Assert.AreEqual(1, fleet.CapitalShips[0].Regiments.Count);
+            Assert.AreSame(
+                planet,
+                result.Events.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
         }
 
         [Test]

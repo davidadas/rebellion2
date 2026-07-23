@@ -654,6 +654,7 @@
   <!-- Resource production and maintenance-shortfall timing. -->
   <Production>
     <MaintenanceShortfallAutoscrapInterval>10</MaintenanceShortfallAutoscrapInterval>
+    <ScrapRefundDivisor>2</ScrapRefundDivisor>
     <ResourceMaintenanceLoadPercent>20</ResourceMaintenanceLoadPercent>
     <ResourceCollectionBasePercent>100</ResourceCollectionBasePercent>
     <ResourceStartupBasePercent>50</ResourceStartupBasePercent>

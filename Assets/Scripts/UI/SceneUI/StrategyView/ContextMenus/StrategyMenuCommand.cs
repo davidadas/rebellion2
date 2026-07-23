@@ -22,7 +22,7 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
     /// <param name="submenuCommands">The ordered child commands.</param>
     /// <param name="usesIconColumn">Whether the row reserves space for an icon.</param>
     public StrategyMenuCommand(
-        int action,
+        StrategyMenuAction action,
         string text,
         bool enabled,
         int iconKey = 0,
@@ -35,6 +35,7 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
         Enabled = enabled;
         IconKey = iconKey;
         SubmenuCommands = submenuCommands?.ToList() ?? new List<StrategyMenuCommand>();
+        IsSubmenu = submenuCommands != null;
         UsesIconColumn = usesIconColumn || HasIcon || IsSubmenu;
     }
 
@@ -49,9 +50,9 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
         bool enabled,
         IReadOnlyList<StrategyMenuCommand> submenuCommands
     )
-        : this(StrategyContextMenuActions.Submenu, text, enabled, 0, submenuCommands) { }
+        : this(StrategyMenuAction.None, text, enabled, 0, submenuCommands) { }
 
-    public int Action { get; }
+    public StrategyMenuAction Action { get; }
 
     public string Text { get; }
 
@@ -65,83 +66,88 @@ public sealed class StrategyMenuCommand : IContextMenuParentCommand
 
     public bool HasIcon => IconKey != StrategyContextMenuIconKeys.None;
 
-    public bool IsSubmenu =>
-        Action == StrategyContextMenuActions.Submenu || SubmenuCommands.Count > 0;
+    public bool IsSubmenu { get; }
 
     public bool UsesIconColumn { get; }
 }
 
 /// <summary>
-/// Defines stable action identifiers emitted by strategy context menus.
+/// Identifies semantic actions emitted by strategy context menus.
 /// </summary>
-public static class StrategyContextMenuActions
+public enum StrategyMenuAction
 {
-    public const int Submenu = 1003;
-    public const int Build = 1004;
-    public const int Stop = 1005;
-    public const int CreateMission = 1006;
-    public const int Destination = 1007;
-    public const int Scrap = 1008;
-    public const int Move = 1013;
-    public const int Retire = 1014;
-    public const int Status = 1015;
-    public const int MoveConfirm = 1016;
-    public const int PlanetaryBombardment = 1017;
-    public const int Encyclopedia = 1019;
-    public const int Abort = 1020;
-    public const int DestroySystem = 1021;
-    public const int Rename = 1022;
-    public const int CreateFleet = 1023;
-    public const int BombardMilitaryFacilities = 1024;
-    public const int BombardCivilianFacilities = 1025;
-    public const int GeneralBombardment = 1026;
-    public const int PlanetaryAssault = 1027;
-    public const int GameSpeedPause = 9000;
-    public const int GameSpeedVerySlow = 9001;
-    public const int GameSpeedSlow = 9002;
-    public const int GameSpeedMedium = 9003;
-    public const int GameSpeedFast = 9004;
-    public const int AdvisorBuildShips = 9100;
-    public const int AdvisorBuildTroops = 9101;
-    public const int AdvisorBuildFacilities = 9102;
-    public const int AdvisorGalaxyOverview = 9103;
-    public const int AdvisorObjectives = 9104;
-    public const int AdvisorTranslateCounterpart = 9107;
-    public const int AdvisorAgentAdvice = 9108;
-    public const int AdvisorMessages = 9120;
-    public const int AdvisorLoyaltyMessages = 9121;
-    public const int AdvisorFleetMessages = 9122;
-    public const int AdvisorMissionMessages = 9123;
-    public const int AdvisorResourceMessages = 9124;
-    public const int AdvisorManufacturingMessages = 9125;
-    public const int AdvisorDefenseMessages = 9126;
-    public const int AdvisorConflictMessages = 9127;
-    public const int AdvisorChatMessages = 9128;
-    public const int AdvisorAdviceMessages = 9129;
+    None,
+    Build,
+    Stop,
+    CreateMission,
+    Destination,
+    Scrap,
+    Move,
+    Retire,
+    Status,
+    MoveConfirm,
+    PlanetaryBombardment,
+    Encyclopedia,
+    Abort,
+    DestroySystem,
+    Rename,
+    CreateFleet,
+    BombardMilitaryFacilities,
+    BombardCivilianFacilities,
+    GeneralBombardment,
+    PlanetaryAssault,
+    GameSpeedPause,
+    GameSpeedVerySlow,
+    GameSpeedSlow,
+    GameSpeedMedium,
+    GameSpeedFast,
+    AdvisorBuildShips,
+    AdvisorBuildTroops,
+    AdvisorBuildFacilities,
+    AdvisorGalaxyOverview,
+    AdvisorObjectives,
+    AdvisorTranslateCounterpart,
+    AdvisorAgentAdvice,
+    AdvisorMessages,
+    AdvisorLoyaltyMessages,
+    AdvisorFleetMessages,
+    AdvisorMissionMessages,
+    AdvisorResourceMessages,
+    AdvisorManufacturingMessages,
+    AdvisorDefenseMessages,
+    AdvisorConflictMessages,
+    AdvisorChatMessages,
+    AdvisorAdviceMessages,
+}
 
+/// <summary>
+/// Resolves strategy menu actions to their domain values.
+/// </summary>
+public static class StrategyMenuActionExtensions
+{
     /// <summary>
     /// Tries to resolve a game-speed action to its simulation speed.
     /// </summary>
     /// <param name="action">The semantic action identifier.</param>
     /// <param name="speed">Receives the matching simulation speed.</param>
     /// <returns><see langword="true"/> when the action changes game speed.</returns>
-    public static bool TryGetGameSpeed(int action, out TickSpeed speed)
+    public static bool TryGetGameSpeed(this StrategyMenuAction action, out TickSpeed speed)
     {
         switch (action)
         {
-            case GameSpeedPause:
+            case StrategyMenuAction.GameSpeedPause:
                 speed = TickSpeed.Paused;
                 return true;
-            case GameSpeedVerySlow:
+            case StrategyMenuAction.GameSpeedVerySlow:
                 speed = TickSpeed.VerySlow;
                 return true;
-            case GameSpeedSlow:
+            case StrategyMenuAction.GameSpeedSlow:
                 speed = TickSpeed.Slow;
                 return true;
-            case GameSpeedMedium:
+            case StrategyMenuAction.GameSpeedMedium:
                 speed = TickSpeed.Medium;
                 return true;
-            case GameSpeedFast:
+            case StrategyMenuAction.GameSpeedFast:
                 speed = TickSpeed.Fast;
                 return true;
             default:
@@ -156,20 +162,23 @@ public static class StrategyContextMenuActions
     /// <param name="action">The semantic action identifier.</param>
     /// <param name="type">Receives the matching bombardment target profile.</param>
     /// <returns>True when the action executes a bombardment.</returns>
-    public static bool TryGetBombardmentType(int action, out BombardmentType type)
+    public static bool TryGetBombardmentType(
+        this StrategyMenuAction action,
+        out BombardmentType type
+    )
     {
         switch (action)
         {
-            case BombardMilitaryFacilities:
+            case StrategyMenuAction.BombardMilitaryFacilities:
                 type = BombardmentType.Military;
                 return true;
-            case BombardCivilianFacilities:
+            case StrategyMenuAction.BombardCivilianFacilities:
                 type = BombardmentType.Civilian;
                 return true;
-            case GeneralBombardment:
+            case StrategyMenuAction.GeneralBombardment:
                 type = BombardmentType.General;
                 return true;
-            case DestroySystem:
+            case StrategyMenuAction.DestroySystem:
                 type = BombardmentType.DestroySystem;
                 return true;
             default:
@@ -193,28 +202,28 @@ internal static class StrategyBombardmentMenuBuilder
     public static StrategyMenuCommand Build(bool canBombard, bool canDestroySystem)
     {
         return new StrategyMenuCommand(
-            StrategyContextMenuActions.PlanetaryBombardment,
+            StrategyMenuAction.PlanetaryBombardment,
             "Planetary Bombardment",
             canBombard || canDestroySystem,
             submenuCommands: new List<StrategyMenuCommand>
             {
                 new StrategyMenuCommand(
-                    StrategyContextMenuActions.BombardMilitaryFacilities,
+                    StrategyMenuAction.BombardMilitaryFacilities,
                     "Target Military Facilities",
                     canBombard
                 ),
                 new StrategyMenuCommand(
-                    StrategyContextMenuActions.BombardCivilianFacilities,
+                    StrategyMenuAction.BombardCivilianFacilities,
                     "Target Civilian Facilities",
                     canBombard
                 ),
                 new StrategyMenuCommand(
-                    StrategyContextMenuActions.GeneralBombardment,
+                    StrategyMenuAction.GeneralBombardment,
                     "General Bombardment",
                     canBombard
                 ),
                 new StrategyMenuCommand(
-                    StrategyContextMenuActions.DestroySystem,
+                    StrategyMenuAction.DestroySystem,
                     "Destroy System",
                     canDestroySystem
                 ),
@@ -244,7 +253,10 @@ public static class StrategyContextMenuAvailability
 
         foreach (ISceneNode item in items)
         {
-            if (HasMoveBlockingStatus(item))
+            if (
+                item is not IManufacturable { ManufacturingStatus: ManufacturingStatus.Building }
+                && IsInTransit(item)
+            )
                 return false;
         }
 
@@ -270,7 +282,7 @@ public static class StrategyContextMenuAvailability
         {
             if (item is Officer officer)
             {
-                if (officer.IsCaptured || officer.InjuryPoints > 0 || HasMoveBlockingStatus(item))
+                if (officer.IsCaptured || officer.InjuryPoints > 0 || IsInTransit(item))
                     return false;
 
                 participants.Add(officer);
@@ -279,7 +291,10 @@ public static class StrategyContextMenuAvailability
 
             if (item is SpecialForces specialForces)
             {
-                if (HasMoveBlockingStatus(item))
+                if (
+                    IsInTransit(item)
+                    || specialForces.ManufacturingStatus == ManufacturingStatus.Building
+                )
                     return false;
 
                 participants.Add(specialForces);
@@ -335,17 +350,13 @@ public static class StrategyContextMenuAvailability
     }
 
     /// <summary>
-    /// Determines whether movement or manufacturing prevents moving one item.
+    /// Determines whether an item is currently traveling, including travel inherited from a container.
     /// </summary>
     /// <param name="item">The scene node to evaluate.</param>
-    /// <returns><see langword="true"/> when the item's current status prevents movement.</returns>
-    private static bool HasMoveBlockingStatus(ISceneNode item)
+    /// <returns><see langword="true"/> when the item is in transit.</returns>
+    private static bool IsInTransit(ISceneNode item)
     {
-        if (item is IMovable movable && movable.GetTransitMovement() != null)
-            return true;
-
-        return item is IManufacturable manufacturable
-            && manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building;
+        return item is IMovable movable && movable.GetTransitMovement() != null;
     }
 
     /// <summary>

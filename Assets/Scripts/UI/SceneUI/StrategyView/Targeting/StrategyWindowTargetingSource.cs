@@ -17,7 +17,7 @@ public sealed class StrategyWindowTargetingSource
     /// <param name="items">The selected scene nodes in source order.</param>
     public StrategyWindowTargetingSource(
         UIWindow window,
-        int action,
+        StrategyMenuAction action,
         int sourceX,
         int sourceY,
         IReadOnlyList<ISceneNode> items
@@ -32,7 +32,7 @@ public sealed class StrategyWindowTargetingSource
 
     public UIWindow Window { get; }
 
-    public int Action { get; }
+    public StrategyMenuAction Action { get; }
 
     public int SourceX { get; }
 
@@ -45,14 +45,13 @@ public sealed class StrategyWindowTargetingSource
     /// </summary>
     /// <param name="action">The semantic command identifier.</param>
     /// <returns>The displayed targeting prompt.</returns>
-    public static string GetPrompt(int action)
+    public static string GetPrompt(StrategyMenuAction action)
     {
         return action switch
         {
-            StrategyContextMenuActions.CreateMission => "Select mission target",
-            StrategyContextMenuActions.Destination => "Select destination",
-            StrategyContextMenuActions.Move or StrategyContextMenuActions.MoveConfirm =>
-                "Select move destination",
+            StrategyMenuAction.CreateMission => "Select mission target",
+            StrategyMenuAction.Destination => "Select destination",
+            StrategyMenuAction.Move or StrategyMenuAction.MoveConfirm => "Select move destination",
             _ => "Select target",
         };
     }

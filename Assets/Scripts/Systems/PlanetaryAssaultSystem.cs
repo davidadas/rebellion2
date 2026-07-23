@@ -97,6 +97,16 @@ namespace Rebellion.Systems
 
                 result.RemainingAttackerRegimentCount = GetSurvivingAttackers(attackers).Count;
                 result.RemainingDefenderRegimentCount = GetSurvivingDefenders(defenders).Count;
+                if (result.DestroyedDefenderRegiments.Count > 0 || result.LandedRegiments.Count > 0)
+                {
+                    result.Events.Add(
+                        new PlanetGarrisonChangedResult
+                        {
+                            Planet = defendingPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
                 return result;
             }
             finally

@@ -288,11 +288,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _controller.TryCreateContextMenu(context, out ContextMenuRequest request, out _);
             StrategyMenuCommand parent = request
                 .Commands.Cast<StrategyMenuCommand>()
-                .Single(command =>
-                    command.Action == StrategyContextMenuActions.PlanetaryBombardment
-                );
+                .Single(command => command.Action == StrategyMenuAction.PlanetaryBombardment);
             StrategyMenuCommand command = parent.SubmenuCommands.Single(item =>
-                item.Action == StrategyContextMenuActions.GeneralBombardment
+                item.Action == StrategyMenuAction.GeneralBombardment
             );
             ContextMenuController contextMenuController = new ContextMenuController();
             contextMenuController.Open(request);
@@ -418,6 +416,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 IStrategyConfirmationActions
         {
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
+
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) { }
 
             public GameResult LastBattleResult { get; private set; }
 

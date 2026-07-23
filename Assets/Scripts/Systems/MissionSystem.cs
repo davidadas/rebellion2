@@ -17,7 +17,7 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem : IGameSystem
+    public class MissionSystem : IGameSystem, IGameResultHandler
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -82,6 +82,28 @@ namespace Rebellion.Systems
 
             AddRecruitmentExhaustedResults(results, recruitmentAvailabilityBefore);
             return results;
+        }
+
+        /// <summary>
+        /// Aborts missions invalidated by uprisings reported in a result batch.
+        /// </summary>
+        /// <param name="results">The result batch to inspect.</param>
+        /// <returns>The terminal results produced by aborted missions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            IEnumerable<Planet> affectedPlanets = results
+                .OfType<PlanetUprisingStartedResult>()
+                .Select(result => result.Planet)
+                .Where(planet => planet != null)
+                .Distinct();
+            foreach (Planet planet in affectedPlanets)
+                missionResults.AddRange(AbortInvalidMissions(planet));
+
+            return missionResults;
         }
 
         /// <summary>
@@ -509,16 +531,8 @@ namespace Rebellion.Systems
             int attemptResultStart
         )
         {
-            List<Planet> uprisingPlanets = results
-                .Skip(attemptResultStart)
-                .OfType<PlanetUprisingStartedResult>()
-                .Select(result => result.Planet)
-                .Where(planet => planet != null)
-                .Distinct()
-                .ToList();
-
-            foreach (Planet planet in uprisingPlanets)
-                results.AddRange(AbortInvalidMissions(planet));
+            List<GameResult> attemptResults = results.Skip(attemptResultStart).ToList();
+            results.AddRange(HandleResults(attemptResults));
         }
 
         /// <summary>

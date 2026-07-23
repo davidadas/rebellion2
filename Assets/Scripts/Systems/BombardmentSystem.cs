@@ -139,6 +139,17 @@ namespace Rebellion.Systems
                     ReconcileControl(targetPlanet, defenderId, initialDefenderRegimentCount)
                 );
 
+                if (result.DestroyedRegiments.Count > 0)
+                {
+                    result.Events.Add(
+                        new PlanetGarrisonChangedResult
+                        {
+                            Planet = targetPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
+                }
+
                 if (civilianTargetsDestroyed)
                 {
                     AddOwnershipChanges(

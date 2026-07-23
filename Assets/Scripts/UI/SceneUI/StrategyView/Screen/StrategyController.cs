@@ -831,11 +831,11 @@ public sealed class StrategyController
         galaxyMapController.RebuildSnapshot(gameManager);
         bookmarkController.ReconcilePlanets(Sectors);
         statusWindowController.ReconcileWindows(Sectors);
-        constructionWindowController.ReconcileWindows(Sectors);
-        facilityWindowController.ReconcileWindows(Sectors);
-        fleetWindowController.ReconcileWindows(Sectors);
-        defenseWindowController.ReconcileWindows(Sectors);
-        missionsWindowController.ReconcileWindows(Sectors);
+        constructionWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
+        facilityWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
+        fleetWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
+        defenseWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
+        missionsWindowController.ReconcileWindows(galaxyMapController.FindPlanet);
         planetSystemWindowController.ReconcileWindows(Sectors);
         messagesWindowController.ReconcileWindows();
         finderWindowController.ReconcileWindows();

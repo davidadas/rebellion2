@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessResults_GarrisonDeficit_StartsUprising()
+        public void HandleResults_GarrisonDeficit_StartsUprising()
         {
             (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
                 ownerSupport: 10,
@@ -126,15 +126,8 @@ namespace Rebellion.Tests.Systems
             Regiment departingRegiment = planet.Regiments[0];
             game.DetachNode(departingRegiment);
 
-            List<GameResult> results = system.ProcessResults(
-                new GameResult[]
-                {
-                    new RegimentDeploymentChangedResult
-                    {
-                        Regiment = departingRegiment,
-                        Planet = planet,
-                    },
-                }
+            List<GameResult> results = system.HandleResults(
+                new GameResult[] { new PlanetGarrisonChangedResult { Planet = planet } }
             );
 
             Assert.IsTrue(planet.IsInUprising);

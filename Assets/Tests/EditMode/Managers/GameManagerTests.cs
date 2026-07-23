@@ -575,6 +575,46 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        [Test]
+        public void TryScrap_LastSurfaceRegiment_ReconcilesPlanetImmediately()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = "OWNER", DisplayName = "Owner" };
+            Faction opposition = new Faction
+            {
+                InstanceID = "OPPOSITION",
+                DisplayName = "Opposition",
+            };
+            game.Factions.Add(owner);
+            game.Factions.Add(opposition);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
+            game.AttachNode(system, game.GetGalaxyMap());
+            int ownershipThreshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int>
+                {
+                    { owner.InstanceID, ownershipThreshold - 1 },
+                    { opposition.InstanceID, 100 - ownershipThreshold + 1 },
+                },
+            };
+            game.AttachNode(planet, system);
+            Regiment regiment = EntityFactory.CreateRegiment("REGIMENT", owner.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, planet);
+            GameManager manager = new GameManager(game);
+
+            bool scrapped = manager.TryScrap(new IManufacturable[] { regiment }, owner.InstanceID);
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(planet.GetOwnerInstanceID());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+        }
+
         private static Fleet CreateCombatFleet(
             GameRoot game,
             string instanceId,

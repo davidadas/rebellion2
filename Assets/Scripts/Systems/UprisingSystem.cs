@@ -15,7 +15,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages planetary uprisings based on garrison strength vs. popular support.
     /// </summary>
-    public class UprisingSystem : IGameSystem
+    public class UprisingSystem : IGameSystem, IGameResultHandler
     {
         private const int _buildingDestroyedSeverity = 1;
         private const int _regimentDestroyedSeverity = 2;
@@ -73,18 +73,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Reconciles uprising state for planets affected by regiment deployment results.
+        /// Reconciles uprising state for planets whose active garrisons changed.
         /// </summary>
         /// <param name="results">The result batch to inspect.</param>
-        /// <returns>Any uprising results caused by the deployment changes.</returns>
-        internal List<GameResult> ProcessResults(IEnumerable<GameResult> results)
+        /// <returns>Any uprising results caused by the garrison changes.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
             List<GameResult> uprisingResults = new List<GameResult>();
             if (results == null)
                 return uprisingResults;
 
             IEnumerable<Planet> affectedPlanets = results
-                .OfType<RegimentDeploymentChangedResult>()
+                .OfType<PlanetGarrisonChangedResult>()
                 .Select(result => result.Planet)
                 .Where(planet => planet != null)
                 .Distinct();
@@ -900,7 +900,12 @@ namespace Rebellion.Systems
                 )
                 .ToList();
 
-            DestroyRandomIncidentTarget(regiments, planet, _regimentDestroyedSeverity, results);
+            if (DestroyRandomIncidentTarget(regiments, planet, _regimentDestroyedSeverity, results))
+            {
+                results.Add(
+                    new PlanetGarrisonChangedResult { Planet = planet, Tick = _game.CurrentTick }
+                );
+            }
         }
 
         /// <summary>
@@ -911,7 +916,8 @@ namespace Rebellion.Systems
         /// <param name="planet">Planet where the incident occurs.</param>
         /// <param name="severity">Incident severity to report.</param>
         /// <param name="results">Result list to append events to.</param>
-        private void DestroyRandomIncidentTarget<T>(
+        /// <returns>True when a target was destroyed.</returns>
+        private bool DestroyRandomIncidentTarget<T>(
             List<T> candidates,
             Planet planet,
             int severity,
@@ -920,7 +926,7 @@ namespace Rebellion.Systems
             where T : class, ISceneNode
         {
             if (candidates.Count == 0)
-                return;
+                return false;
 
             _game.DetachNode(candidates[_provider.NextInt(0, candidates.Count)]);
             results.Add(
@@ -932,6 +938,7 @@ namespace Rebellion.Systems
                     Tick = _game.CurrentTick,
                 }
             );
+            return true;
         }
 
         /// <summary>
@@ -946,31 +953,17 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            List<Officer> candidates = planet
-                .GetAllOfficers()
-                .Where(o =>
-                    o.GetOwnerInstanceID() == controllerInstanceId
-                    && o.Movement == null
-                    && !o.IsKilled
-                    && !o.IsCaptured
-                )
-                .ToList();
+            List<Officer> candidates = GetIncidentOfficers(
+                planet,
+                controllerInstanceId,
+                isCaptured: false
+            );
             if (candidates.Count == 0)
                 return;
+
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
-            target.IsCaptured = true;
             Faction opposingFaction = FindLeadingOpposingFaction(planet, controllerInstanceId);
-            target.CaptorInstanceID = opposingFaction?.InstanceID;
-            target.CanEscape = true;
-            results.Add(
-                new OfficerCaptureStateResult
-                {
-                    TargetOfficer = target,
-                    IsCaptured = true,
-                    Context = planet,
-                    Tick = _game.CurrentTick,
-                }
-            );
+            SetOfficerCaptureState(target, planet, true, opposingFaction?.InstanceID, results);
         }
 
         /// <summary>
@@ -985,30 +978,16 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            List<Officer> candidates = planet
-                .GetAllOfficers()
-                .Where(o =>
-                    o.GetOwnerInstanceID() == controllerInstanceId
-                    && o.Movement == null
-                    && !o.IsKilled
-                    && o.IsCaptured
-                )
-                .ToList();
+            List<Officer> candidates = GetIncidentOfficers(
+                planet,
+                controllerInstanceId,
+                isCaptured: true
+            );
             if (candidates.Count == 0)
                 return;
+
             Officer target = candidates[_provider.NextInt(0, candidates.Count)];
-            target.IsCaptured = false;
-            target.CaptorInstanceID = null;
-            target.CanEscape = false;
-            results.Add(
-                new OfficerCaptureStateResult
-                {
-                    TargetOfficer = target,
-                    IsCaptured = false,
-                    Context = planet,
-                    Tick = _game.CurrentTick,
-                }
-            );
+            SetOfficerCaptureState(target, planet, false, null, results);
         }
 
         /// <summary>
@@ -1023,30 +1002,67 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            List<Officer> captured = planet
+            List<Officer> captured = GetIncidentOfficers(
+                planet,
+                controllerInstanceId,
+                isCaptured: true
+            );
+            foreach (Officer target in captured)
+                SetOfficerCaptureState(target, planet, false, null, results);
+        }
+
+        /// <summary>
+        /// Gets stationary, living controller officers in one capture state.
+        /// </summary>
+        /// <param name="planet">The planet whose officers are inspected.</param>
+        /// <param name="controllerInstanceId">The controlling faction identifier.</param>
+        /// <param name="isCaptured">The required capture state.</param>
+        /// <returns>The officers eligible for an uprising capture-state incident.</returns>
+        private static List<Officer> GetIncidentOfficers(
+            Planet planet,
+            string controllerInstanceId,
+            bool isCaptured
+        )
+        {
+            return planet
                 .GetAllOfficers()
-                .Where(o =>
-                    o.GetOwnerInstanceID() == controllerInstanceId
-                    && o.Movement == null
-                    && !o.IsKilled
-                    && o.IsCaptured
+                .Where(officer =>
+                    officer.GetOwnerInstanceID() == controllerInstanceId
+                    && officer.Movement == null
+                    && !officer.IsKilled
+                    && officer.IsCaptured == isCaptured
                 )
                 .ToList();
-            foreach (Officer target in captured)
-            {
-                target.IsCaptured = false;
-                target.CaptorInstanceID = null;
-                target.CanEscape = false;
-                results.Add(
-                    new OfficerCaptureStateResult
-                    {
-                        TargetOfficer = target,
-                        IsCaptured = false,
-                        Context = planet,
-                        Tick = _game.CurrentTick,
-                    }
-                );
-            }
+        }
+
+        /// <summary>
+        /// Applies and records one officer capture-state transition.
+        /// </summary>
+        /// <param name="officer">The officer whose state changes.</param>
+        /// <param name="planet">The planet where the incident occurs.</param>
+        /// <param name="isCaptured">The new capture state.</param>
+        /// <param name="captorInstanceId">The capturing faction identifier when captured.</param>
+        /// <param name="results">The result collection receiving the state change.</param>
+        private void SetOfficerCaptureState(
+            Officer officer,
+            Planet planet,
+            bool isCaptured,
+            string captorInstanceId,
+            List<GameResult> results
+        )
+        {
+            officer.IsCaptured = isCaptured;
+            officer.CaptorInstanceID = isCaptured ? captorInstanceId : null;
+            officer.CanEscape = isCaptured;
+            results.Add(
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = officer,
+                    IsCaptured = isCaptured,
+                    Context = planet,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>

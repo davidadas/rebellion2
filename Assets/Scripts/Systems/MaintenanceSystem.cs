@@ -17,8 +17,6 @@ namespace Rebellion.Systems
     /// </summary>
     public class MaintenanceSystem : IGameSystem
     {
-        private const int _scrapRefundDivisor = 2;
-
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly FleetSystem _fleetSystem;
@@ -74,9 +72,15 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="items">The units selected for scrapping.</param>
         /// <param name="ownerInstanceId">The faction authorized to scrap the units.</param>
+        /// <param name="results">Receives results produced by the completed scrap operation.</param>
         /// <returns>True when every selected unit was scrapped.</returns>
-        public bool Scrap(IReadOnlyList<IManufacturable> items, string ownerInstanceId)
+        public bool TryScrap(
+            IReadOnlyList<IManufacturable> items,
+            string ownerInstanceId,
+            out List<GameResult> results
+        )
         {
+            results = new List<GameResult>();
             if (items == null || items.Count == 0 || string.IsNullOrEmpty(ownerInstanceId))
                 return false;
 
@@ -103,7 +107,7 @@ namespace Rebellion.Systems
             }
 
             foreach (IManufacturable item in liveItems)
-                Scrap(item);
+                Scrap(item, results);
 
             return true;
         }
@@ -129,9 +133,7 @@ namespace Rebellion.Systems
             if (!TryConsumeAutoScrapPulse(faction))
                 return;
 
-            GameObjectAutoscrappedResult result = ScrapRandomEligibleUnit(faction);
-            if (result != null)
-                results.Add(result);
+            ScrapRandomEligibleUnit(faction, results);
         }
 
         /// <summary>
@@ -207,8 +209,8 @@ namespace Rebellion.Systems
         /// Scraps one random eligible unit from the faction.
         /// </summary>
         /// <param name="faction">The faction whose unit is scrapped.</param>
-        /// <returns>The auto-scrap result, or null if no unit can be scrapped.</returns>
-        private GameObjectAutoscrappedResult ScrapRandomEligibleUnit(Faction faction)
+        /// <param name="results">The result collection receiving the scrap effects.</param>
+        private void ScrapRandomEligibleUnit(Faction faction, List<GameResult> results)
         {
             List<IManufacturable> candidates = faction
                 .GetAllOwnedManufacturables()
@@ -220,23 +222,24 @@ namespace Rebellion.Systems
                 .ToList();
 
             if (candidates.Count == 0)
-                return null;
+                return;
 
             IManufacturable victim = candidates[_provider.NextInt(0, candidates.Count)];
             Planet location = victim.GetParentOfType<Planet>();
 
-            Scrap(victim);
+            results.Add(
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = victim,
+                    Context = location,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            Scrap(victim, results);
 
             GameLogger.Log(
                 $"Maintenance shortfall: scrapped {victim.GetDisplayName()} from {faction.DisplayName}"
             );
-
-            return new GameObjectAutoscrappedResult
-            {
-                DestroyedObject = victim,
-                Context = location,
-                Tick = _game.CurrentTick,
-            };
         }
 
         /// <summary>
@@ -255,25 +258,49 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Removes an auto-scrapped manufacturable and any fleet left empty by its removal.
+        /// Removes a scrapped manufacturable and any fleet left empty by its removal.
         /// </summary>
         /// <param name="item">The manufacturable to remove.</param>
-        private void Scrap(IManufacturable item)
+        /// <param name="results">The result collection receiving a garrison change.</param>
+        private void Scrap(IManufacturable item, List<GameResult> results)
         {
             ISceneNode node = item as ISceneNode;
+            Planet garrisonPlanet =
+                item is Regiment regiment
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null
+                && regiment.GetParent() is Planet planet
+                    ? planet
+                    : null;
             Fleet parentFleet = item is CapitalShip ? node?.GetParent() as Fleet : null;
             RefundScrapMaterials(item);
             _game.DetachNode(node);
             _fleetSystem.RemoveIfEmpty(parentFleet);
+
+            if (
+                garrisonPlanet != null
+                && !results
+                    .OfType<PlanetGarrisonChangedResult>()
+                    .Any(result => result.Planet == garrisonPlanet)
+            )
+            {
+                results.Add(
+                    new PlanetGarrisonChangedResult
+                    {
+                        Planet = garrisonPlanet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
         }
 
         /// <summary>
-        /// Returns half of a completed item's construction material to its owner.
+        /// Returns the configured share of a completed item's construction material to its owner.
         /// </summary>
         /// <param name="item">The completed item being scrapped.</param>
         private void RefundScrapMaterials(IManufacturable item)
         {
-            int refund = item.GetConstructionCost() / _scrapRefundDivisor;
+            int refund = item.GetConstructionCost() / _game.Config.Production.ScrapRefundDivisor;
             if (refund <= 0)
                 return;
 

@@ -168,7 +168,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [Test]
         public void Build_MovingFleet_ReturnsFleetAndDetailTransitPresentation()
         {
-            _session.SelectFleet(1);
+            _session.SelectItem(_secondFleet);
 
             FleetWindowRenderData data = _projector.Build(_session, _window, false);
 

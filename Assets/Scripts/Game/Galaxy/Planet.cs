@@ -623,7 +623,6 @@ namespace Rebellion.Game.Galaxy
             int activeFighterCount = activeCapitalShips.Sum(capitalShip =>
                 capitalShip.Starfighters.Count(IsEntityActive)
             );
-            activeFighterCount += Starfighters.Count(IsEntityActive);
 
             int modifier =
                 _maximumProductionModifier

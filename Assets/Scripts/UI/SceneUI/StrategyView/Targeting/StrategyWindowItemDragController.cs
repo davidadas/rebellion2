@@ -244,7 +244,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         )
             return;
 
-        if (source.Action == StrategyContextMenuActions.Move)
+        if (source.Action == StrategyMenuAction.Move)
         {
             if (ShouldOpenMissionCreateWindow(source, missionTarget))
                 commands.OpenMissionCreateWindow(missionTarget, source.Items);
@@ -297,10 +297,10 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     private TargetingRequest CreateMoveTargetingRequest(UIWindow window)
     {
         return new TargetingRequest(
-            StrategyWindowTargetingSource.GetPrompt(StrategyContextMenuActions.Move),
+            StrategyWindowTargetingSource.GetPrompt(StrategyMenuAction.Move),
             new StrategyWindowTargetingSource(
                 window,
-                StrategyContextMenuActions.Move,
+                StrategyMenuAction.Move,
                 candidateHotspotX,
                 candidateHotspotY,
                 new List<ISceneNode>(candidateItems)

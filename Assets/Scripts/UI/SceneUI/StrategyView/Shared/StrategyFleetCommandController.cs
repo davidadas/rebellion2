@@ -73,74 +73,49 @@ public sealed class StrategyFleetCommandController
     }
 
     /// <summary>
-    /// Determines whether selected fleets can bombard one planet.
+    /// Determines whether selected fleets can execute one planetary combat command.
     /// </summary>
     /// <param name="items">The selected fleets.</param>
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
-    /// <param name="type">The requested bombardment target profile.</param>
-    /// <returns>True when the bombardment command can execute.</returns>
-    public bool CanExecutePlanetaryBombardment(
+    /// <param name="action">The requested planetary combat action.</param>
+    /// <returns>True when the planetary combat command can execute.</returns>
+    public bool CanExecutePlanetaryCombat(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
-        BombardmentType type
+        StrategyMenuAction action
     )
     {
         if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
             return false;
 
-        return canBombard(liveTarget, fleets, type);
+        if (action.TryGetBombardmentType(out BombardmentType type))
+            return canBombard(liveTarget, fleets, type);
+
+        return action == StrategyMenuAction.PlanetaryAssault && canAssault(liveTarget, fleets);
     }
 
     /// <summary>
-    /// Executes orbital bombardment for selected fleets at one planet.
+    /// Executes one planetary combat command for selected fleets at one planet.
     /// </summary>
     /// <param name="items">The selected fleets.</param>
     /// <param name="targetPlanet">The requested target planet snapshot.</param>
-    /// <param name="type">The requested bombardment target profile.</param>
-    /// <returns>The completed bombardment result, or null when the command cannot execute.</returns>
-    public BombardmentResult ExecutePlanetaryBombardment(
+    /// <param name="action">The requested planetary combat action.</param>
+    /// <returns>The completed combat result, or null when the command cannot execute.</returns>
+    public GameResult ExecutePlanetaryCombat(
         IReadOnlyList<ISceneNode> items,
         Planet targetPlanet,
-        BombardmentType type
+        StrategyMenuAction action
     )
     {
         if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
             return null;
 
-        return canBombard(liveTarget, fleets, type)
-            ? executeBombardment(liveTarget, fleets, type)
+        if (action.TryGetBombardmentType(out BombardmentType type))
+            return executeBombardment(liveTarget, fleets, type);
+
+        return action == StrategyMenuAction.PlanetaryAssault
+            ? executeAssault(liveTarget, fleets)
             : null;
-    }
-
-    /// <summary>
-    /// Determines whether selected fleets can assault one planet.
-    /// </summary>
-    /// <param name="items">The selected fleets.</param>
-    /// <param name="targetPlanet">The requested target planet snapshot.</param>
-    /// <returns>True when the assault command can execute.</returns>
-    public bool CanExecutePlanetaryAssault(IReadOnlyList<ISceneNode> items, Planet targetPlanet)
-    {
-        if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
-            return false;
-
-        return canAssault(liveTarget, fleets);
-    }
-
-    /// <summary>
-    /// Executes a planetary assault for selected fleets at one planet.
-    /// </summary>
-    /// <param name="items">The selected fleets.</param>
-    /// <param name="targetPlanet">The requested target planet snapshot.</param>
-    /// <returns>The completed assault result, or null when the command cannot execute.</returns>
-    public PlanetaryAssaultResult ExecutePlanetaryAssault(
-        IReadOnlyList<ISceneNode> items,
-        Planet targetPlanet
-    )
-    {
-        if (!TryResolveCommand(items, targetPlanet, out List<Fleet> fleets, out Planet liveTarget))
-            return null;
-
-        return canAssault(liveTarget, fleets) ? executeAssault(liveTarget, fleets) : null;
     }
 
     /// <summary>

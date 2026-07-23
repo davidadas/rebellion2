@@ -138,7 +138,10 @@ public sealed class DefenseWindowController
         if (planet?.Planet == null)
             return null;
 
-        DefenseWindowView existing = FindWindow(planet.Planet.InstanceID);
+        DefenseWindowView existing = windowManager.FindWindowView<DefenseWindowView>(view =>
+            sessions.TryGetValue(view, out DefenseWindowSession session)
+            && session.Planet?.Planet?.InstanceID == planet.Planet.InstanceID
+        );
         if (existing != null)
         {
             UIWindow existingWindow = existing.WindowShell;
@@ -176,34 +179,31 @@ public sealed class DefenseWindowController
     /// </summary>
     public void RenderWindows()
     {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out DefenseWindowView view))
-                RenderWindow(view, window, window.ActiveWindow);
-        }
+        windowManager.ForEachWindow<DefenseWindowView>(
+            (window, view) => RenderWindow(view, window, window.ActiveWindow)
+        );
     }
 
     /// <summary>
     /// Rebinds Defense sessions to a refreshed galaxy snapshot.
     /// </summary>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    public void ReconcileWindows(IReadOnlyList<GalaxyMapSector> sectors)
+    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
+    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
     {
-        if (sectors == null)
+        if (findPlanet == null)
             return;
 
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                !windowManager.TryGetWindowView(window, out DefenseWindowView view)
-                || !sessions.TryGetValue(view, out DefenseWindowSession session)
-            )
-                continue;
+        windowManager.ForEachWindow<DefenseWindowView>(
+            (_, view) =>
+            {
+                if (!sessions.TryGetValue(view, out DefenseWindowSession session))
+                    return;
 
-            GalaxyMapPlanet planet = FindFreshPlanet(session.Planet, sectors);
-            if (planet != null)
-                session.RebindPlanet(planet);
-        }
+                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
+                if (planet != null)
+                    session.RebindPlanet(planet);
+            }
+        );
     }
 
     /// <summary>
@@ -467,24 +467,24 @@ public sealed class DefenseWindowController
 
         switch (strategyCommand.Action)
         {
-            case StrategyContextMenuActions.Encyclopedia:
+            case StrategyMenuAction.Encyclopedia:
                 actions.OpenDefenseInfoWindow(source.Target);
                 break;
-            case StrategyContextMenuActions.Status:
+            case StrategyMenuAction.Status:
                 actions.OpenDefenseStatusWindow(source.Target);
                 break;
-            case StrategyContextMenuActions.Scrap:
+            case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.Stop:
+            case StrategyMenuAction.Stop:
                 confirmationActions.OpenStopConstructionConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.Retire:
+            case StrategyMenuAction.Retire:
                 confirmationActions.OpenRetireConfirmWindow(source.Window, source.Items);
                 break;
-            case StrategyContextMenuActions.CreateMission:
-            case StrategyContextMenuActions.Move:
-            case StrategyContextMenuActions.MoveConfirm:
+            case StrategyMenuAction.CreateMission:
+            case StrategyMenuAction.Move:
+            case StrategyMenuAction.MoveConfirm:
                 BeginContextTargeting(source, strategyCommand.Action);
                 break;
         }
@@ -509,18 +509,7 @@ public sealed class DefenseWindowController
         )
             return;
 
-        switch (source.Action)
-        {
-            case StrategyContextMenuActions.CreateMission:
-                commandActions.OpenMissionCreateWindow(missionTarget, source.Items);
-                break;
-            case StrategyContextMenuActions.Move:
-                commandActions.TryExecuteMove(source.Window, missionTarget, source.Items);
-                break;
-            case StrategyContextMenuActions.MoveConfirm:
-                commandActions.OpenMoveConfirmWindow(source.Window, missionTarget, source.Items);
-                break;
-        }
+        commandActions.ExecuteTargetedCommand(source, missionTarget);
     }
 
     /// <summary>
@@ -598,7 +587,7 @@ public sealed class DefenseWindowController
     /// </summary>
     /// <param name="source">The immutable Defense context selection.</param>
     /// <param name="action">The selected context-menu action.</param>
-    private void BeginContextTargeting(DefenseContextMenuSource source, int action)
+    private void BeginContextTargeting(DefenseContextMenuSource source, StrategyMenuAction action)
     {
         if (source?.Window == null)
             return;
@@ -860,45 +849,6 @@ public sealed class DefenseWindowController
         }
 
         return -1;
-    }
-
-    /// <summary>
-    /// Finds the Defense window representing a planet.
-    /// </summary>
-    /// <param name="planetId">The represented planet identifier.</param>
-    /// <returns>The matching Defense view, or null when none is open.</returns>
-    private DefenseWindowView FindWindow(string planetId)
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                windowManager.TryGetWindowView(window, out DefenseWindowView view)
-                && sessions.TryGetValue(view, out DefenseWindowSession session)
-                && session.Planet?.Planet?.InstanceID == planetId
-            )
-                return view;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resolves a projected planet against a refreshed sector collection.
-    /// </summary>
-    /// <param name="planet">The previous projected planet.</param>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    /// <returns>The refreshed planet, or null when it is no longer represented.</returns>
-    private static GalaxyMapPlanet FindFreshPlanet(
-        GalaxyMapPlanet planet,
-        IReadOnlyList<GalaxyMapSector> sectors
-    )
-    {
-        string planetId = planet?.Planet?.InstanceID;
-        return planetId == null
-            ? null
-            : sectors
-                .SelectMany(sector => sector.Planets)
-                .FirstOrDefault(item => item.Planet?.InstanceID == planetId);
     }
 
     /// <summary>

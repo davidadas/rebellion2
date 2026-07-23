@@ -173,6 +173,10 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsFalse(firstResults.OfType<GameObjectAutoscrappedResult>().Any());
             Assert.IsTrue(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
+            Assert.AreSame(
+                planet,
+                secondResults.OfType<PlanetGarrisonChangedResult>().Single().Planet
+            );
             Assert.AreEqual(3, empire.RefinedMaterialStockpile);
             MaintenanceRequiredResult shortfall = firstResults
                 .OfType<MaintenanceRequiredResult>()
@@ -550,9 +554,10 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Scrap_OwnedAttachedUnit_RemovesUnit()
+        public void TryScrap_OwnedSurfaceRegiment_RefundsRemovesAndReportsGarrisonChange()
         {
             GameRoot game = CreateGame();
+            game.Config.Production.ScrapRefundDivisor = 7;
             Faction empire = CreateFaction("empire", "Empire");
             game.Factions.Add(empire);
             PlanetSystem system = new PlanetSystem { InstanceID = "s1" };
@@ -573,19 +578,21 @@ namespace Rebellion.Tests.Systems
                 new FleetSystem(game)
             );
 
-            bool scrapped = maintenanceSystem.Scrap(
+            bool scrapped = maintenanceSystem.TryScrap(
                 new List<IManufacturable> { regiment },
-                "empire"
+                "empire",
+                out List<GameResult> results
             );
 
             Assert.IsTrue(scrapped);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.IsNull(regiment.GetParent());
-            Assert.AreEqual(3, empire.RefinedMaterialStockpile);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.AreSame(planet, results.OfType<PlanetGarrisonChangedResult>().Single().Planet);
         }
 
         [Test]
-        public void Scrap_UnitUnderConstruction_PreservesUnitAndMaterials()
+        public void TryScrap_UnitUnderConstruction_PreservesUnitAndMaterials()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -608,19 +615,21 @@ namespace Rebellion.Tests.Systems
                 new FleetSystem(game)
             );
 
-            bool scrapped = maintenanceSystem.Scrap(
+            bool scrapped = maintenanceSystem.TryScrap(
                 new List<IManufacturable> { regiment },
-                "empire"
+                "empire",
+                out List<GameResult> results
             );
 
             Assert.IsFalse(scrapped);
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(planet, regiment.GetParent());
             Assert.AreEqual(0, empire.RefinedMaterialStockpile);
+            Assert.IsEmpty(results);
         }
 
         [Test]
-        public void Scrap_OtherFactionUnit_PreservesUnit()
+        public void TryScrap_OtherFactionUnit_PreservesUnit()
         {
             GameRoot game = CreateGame();
             Faction empire = CreateFaction("empire", "Empire");
@@ -642,14 +651,16 @@ namespace Rebellion.Tests.Systems
                 new FleetSystem(game)
             );
 
-            bool scrapped = maintenanceSystem.Scrap(
+            bool scrapped = maintenanceSystem.TryScrap(
                 new List<IManufacturable> { regiment },
-                "alliance"
+                "alliance",
+                out List<GameResult> results
             );
 
             Assert.IsFalse(scrapped);
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(planet, regiment.GetParent());
+            Assert.IsEmpty(results);
         }
     }
 }

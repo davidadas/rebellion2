@@ -291,6 +291,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             public bool CanRetire(IReadOnlyList<ISceneNode> items) => false;
 
+            public void ExecuteTargetedCommand(
+                StrategyWindowTargetingSource source,
+                StrategyMissionTarget target
+            ) { }
+
             public void OpenDefenseStatusWindow(StrategyStatusTarget target) { }
 
             public void OpenDefenseInfoWindow(StrategyStatusTarget target) { }

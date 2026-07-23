@@ -165,7 +165,10 @@ public sealed class FacilityWindowController
         if (planet?.Planet == null)
             return null;
 
-        FacilityWindowView existing = FindWindow(planet.Planet.InstanceID);
+        FacilityWindowView existing = windowManager.FindWindowView<FacilityWindowView>(view =>
+            sessions.TryGetValue(view, out FacilityWindowSession session)
+            && session.Planet?.Planet?.InstanceID == planet.Planet.InstanceID
+        );
         if (existing != null && TryGetSession(existing, out FacilityWindowSession existingSession))
         {
             existingSession.Window.RequestFocus();
@@ -202,34 +205,31 @@ public sealed class FacilityWindowController
     /// </summary>
     public void RenderWindows()
     {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (windowManager.TryGetWindowView(window, out FacilityWindowView view))
-                RenderWindow(view, window);
-        }
+        windowManager.ForEachWindow<FacilityWindowView>(
+            (window, view) => RenderWindow(view, window)
+        );
     }
 
     /// <summary>
     /// Rebinds facility sessions to a refreshed galaxy snapshot.
     /// </summary>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    public void ReconcileWindows(IReadOnlyList<GalaxyMapSector> sectors)
+    /// <param name="findPlanet">Resolves a planet in the refreshed visible snapshot.</param>
+    public void ReconcileWindows(Func<string, GalaxyMapPlanet> findPlanet)
     {
-        if (sectors == null)
+        if (findPlanet == null)
             return;
 
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                !windowManager.TryGetWindowView(window, out FacilityWindowView view)
-                || !sessions.TryGetValue(view, out FacilityWindowSession session)
-            )
-                continue;
+        windowManager.ForEachWindow<FacilityWindowView>(
+            (_, view) =>
+            {
+                if (!sessions.TryGetValue(view, out FacilityWindowSession session))
+                    return;
 
-            GalaxyMapPlanet planet = FindFreshPlanet(session.Planet, sectors);
-            if (planet != null)
-                session.RebindPlanet(planet);
-        }
+                GalaxyMapPlanet planet = findPlanet(session.Planet?.Planet?.InstanceID);
+                if (planet != null)
+                    session.RebindPlanet(planet);
+            }
+        );
     }
 
     /// <summary>
@@ -333,25 +333,25 @@ public sealed class FacilityWindowController
 
         switch (strategyCommand.Action)
         {
-            case StrategyContextMenuActions.Build:
+            case StrategyMenuAction.Build:
                 OpenConstruction(context.Window);
                 break;
-            case StrategyContextMenuActions.Stop:
+            case StrategyMenuAction.Stop:
                 confirmationActions.OpenStopConstructionConfirmWindow(
                     context.Window,
                     GetStopConstructionItems(view)
                 );
                 break;
-            case StrategyContextMenuActions.Destination:
+            case StrategyMenuAction.Destination:
                 BeginContextTargeting(context, strategyCommand.Action);
                 break;
-            case StrategyContextMenuActions.Encyclopedia:
+            case StrategyMenuAction.Encyclopedia:
                 actions.OpenFacilityInfo(GetStatusTarget(view));
                 break;
-            case StrategyContextMenuActions.Status:
+            case StrategyMenuAction.Status:
                 actions.OpenFacilityStatus(GetStatusTarget(view));
                 break;
-            case StrategyContextMenuActions.Scrap:
+            case StrategyMenuAction.Scrap:
                 confirmationActions.OpenScrapConfirmWindow(context.Window, GetScrapItems(view));
                 break;
         }
@@ -368,10 +368,13 @@ public sealed class FacilityWindowController
     /// </summary>
     /// <param name="context">The active context-menu invocation.</param>
     /// <param name="action">The selected context-menu action.</param>
-    private void BeginContextTargeting(StrategyContextMenuProviderContext context, int action)
+    private void BeginContextTargeting(
+        StrategyContextMenuProviderContext context,
+        StrategyMenuAction action
+    )
     {
         if (
-            action != StrategyContextMenuActions.Destination
+            action != StrategyMenuAction.Destination
             || context?.Window == null
             || !windowManager.TryGetWindowView(context.Window, out FacilityWindowView view)
         )
@@ -1001,45 +1004,6 @@ public sealed class FacilityWindowController
         return string.IsNullOrEmpty(instanceId)
             ? null
             : getGame()?.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
-    }
-
-    /// <summary>
-    /// Finds the facility window representing a planet.
-    /// </summary>
-    /// <param name="planetId">The represented planet identifier.</param>
-    /// <returns>The matching facility view, or null when none is open.</returns>
-    private FacilityWindowView FindWindow(string planetId)
-    {
-        foreach (UIWindow window in windowManager.Windows)
-        {
-            if (
-                windowManager.TryGetWindowView(window, out FacilityWindowView view)
-                && sessions.TryGetValue(view, out FacilityWindowSession session)
-                && session.Planet?.Planet?.InstanceID == planetId
-            )
-                return view;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Resolves a projected planet against a refreshed sector collection.
-    /// </summary>
-    /// <param name="planet">The previous projected planet.</param>
-    /// <param name="sectors">The refreshed visible sectors.</param>
-    /// <returns>The refreshed planet, or null when it is no longer represented.</returns>
-    private static GalaxyMapPlanet FindFreshPlanet(
-        GalaxyMapPlanet planet,
-        IReadOnlyList<GalaxyMapSector> sectors
-    )
-    {
-        string planetId = planet?.Planet?.InstanceID;
-        return planetId == null
-            ? null
-            : sectors
-                .SelectMany(sector => sector.Planets)
-                .FirstOrDefault(item => item.Planet?.InstanceID == planetId);
     }
 
     /// <summary>

@@ -296,6 +296,45 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Finds the first authored view of a requested type that satisfies a feature predicate.
+    /// </summary>
+    /// <typeparam name="TView">The requested authored view type.</typeparam>
+    /// <param name="predicate">Determines whether a hosted view is the requested instance.</param>
+    /// <returns>The matching authored view, or null when none exists.</returns>
+    public TView FindWindowView<TView>(Predicate<TView> predicate)
+        where TView : class
+    {
+        if (predicate == null)
+            throw new ArgumentNullException(nameof(predicate));
+
+        foreach (UIWindow window in windows)
+        {
+            if (TryGetWindowView(window, out TView view) && predicate(view))
+                return view;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Visits every registered window hosting a requested authored view type.
+    /// </summary>
+    /// <typeparam name="TView">The requested authored view type.</typeparam>
+    /// <param name="visitor">Receives each matching window and its authored view.</param>
+    public void ForEachWindow<TView>(Action<UIWindow, TView> visitor)
+        where TView : class
+    {
+        if (visitor == null)
+            throw new ArgumentNullException(nameof(visitor));
+
+        foreach (UIWindow window in new List<UIWindow>(windows))
+        {
+            if (TryGetWindowView(window, out TView view))
+                visitor(window, view);
+        }
+    }
+
+    /// <summary>
     /// Gives the active interactable window the opportunity to cancel its current operation.
     /// </summary>
     /// <returns>True when the active window handled cancellation.</returns>

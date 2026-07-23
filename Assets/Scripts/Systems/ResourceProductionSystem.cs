@@ -72,23 +72,11 @@ namespace Rebellion.Systems
         /// <param name="faction">The faction whose requests are serviced.</param>
         private void ServicePendingRawMaterialRequests(Faction faction)
         {
-            while (faction.PendingRawMaterialFacilityIDs.Count > 0)
-            {
-                if (faction.RawMaterialStockpile <= 0)
-                    return;
-
-                string facilityId = faction.PendingRawMaterialFacilityIDs[0];
-                Building facility = GetPendingFacility(faction, facilityId, BuildingType.Refinery);
-                if (facility == null)
-                {
-                    faction.PendingRawMaterialFacilityIDs.RemoveAt(0);
-                    continue;
-                }
-
-                faction.PendingRawMaterialFacilityIDs.RemoveAt(0);
-                faction.RawMaterialStockpile--;
-                facility.ProductionInputReserved = true;
-            }
+            faction.RawMaterialStockpile = ServicePendingMaterialRequests(
+                faction.PendingRawMaterialFacilityIDs,
+                faction.RawMaterialStockpile,
+                facilityId => GetPendingFacility(faction, facilityId, BuildingType.Refinery)
+            );
         }
 
         /// <summary>
@@ -97,23 +85,39 @@ namespace Rebellion.Systems
         /// <param name="faction">The faction whose requests are serviced.</param>
         private void ServicePendingRefinedMaterialRequests(Faction faction)
         {
-            while (faction.PendingRefinedMaterialFacilityIDs.Count > 0)
+            faction.RefinedMaterialStockpile = ServicePendingMaterialRequests(
+                faction.PendingRefinedMaterialFacilityIDs,
+                faction.RefinedMaterialStockpile,
+                facilityId => GetPendingProductionFacility(faction, facilityId)
+            );
+        }
+
+        /// <summary>
+        /// Delivers one material stockpile to its pending facilities in request order.
+        /// </summary>
+        /// <param name="pendingFacilityIDs">The ordered pending facility identifiers.</param>
+        /// <param name="stockpile">The available material count.</param>
+        /// <param name="resolveFacility">Resolves a pending identifier to an eligible facility.</param>
+        /// <returns>The material count remaining after pending requests are serviced.</returns>
+        private static int ServicePendingMaterialRequests(
+            List<string> pendingFacilityIDs,
+            int stockpile,
+            Func<string, Building> resolveFacility
+        )
+        {
+            while (pendingFacilityIDs.Count > 0 && stockpile > 0)
             {
-                if (faction.RefinedMaterialStockpile <= 0)
-                    return;
-
-                string facilityId = faction.PendingRefinedMaterialFacilityIDs[0];
-                Building facility = GetPendingProductionFacility(faction, facilityId);
+                string facilityId = pendingFacilityIDs[0];
+                Building facility = resolveFacility(facilityId);
+                pendingFacilityIDs.RemoveAt(0);
                 if (facility == null)
-                {
-                    faction.PendingRefinedMaterialFacilityIDs.RemoveAt(0);
                     continue;
-                }
 
-                faction.PendingRefinedMaterialFacilityIDs.RemoveAt(0);
-                faction.RefinedMaterialStockpile--;
+                stockpile--;
                 facility.ProductionInputReserved = true;
             }
+
+            return stockpile;
         }
 
         /// <summary>

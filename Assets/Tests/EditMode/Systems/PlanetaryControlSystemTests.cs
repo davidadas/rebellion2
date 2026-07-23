@@ -559,6 +559,26 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ClearPlanetOwnership_PlanetWithManufacturingQueue_DestroysQueuedUnit()
+        {
+            _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
+
+            ManufacturingSystem manufacturing = new ManufacturingSystem(
+                _game,
+                new FleetSystem(_game)
+            );
+            Regiment regiment = EntityFactory.CreateRegiment("neutralized-regiment", "empire");
+            bool enqueued = manufacturing.Enqueue(_targetPlanet, regiment, _targetPlanet);
+            Assert.IsTrue(enqueued);
+
+            _ownershipSystem.ClearPlanetOwnership(_targetPlanet);
+
+            Assert.IsEmpty(_targetPlanet.GetManufacturingQueue());
+            Assert.IsNull(regiment.GetParent());
+            Assert.IsNull(regiment.Movement);
+        }
+
+        [Test]
         public void TransferPlanet_PlanetWithInProgressBuilding_ClearsInProgressBuilding()
         {
             _game.ChangeUnitOwnership(_targetPlanet, "empire");
@@ -600,7 +620,7 @@ namespace Rebellion.Tests.Systems
         [TestCase("empire", 60, "empire")]
         [TestCase("empire", 59, null)]
         [TestCase("rebels", 60, "rebels")]
-        public void ProcessResults_LastStationedRegiment_ReconcilesControl(
+        public void HandleResults_LastStationedRegiment_ReconcilesControl(
             string supportFactionId,
             int support,
             string expectedOwnerId
@@ -628,16 +648,16 @@ namespace Rebellion.Tests.Systems
 
             _movementSystem.RequestMove(regiment, ship);
             List<GameResult> movementResults = _movementSystem.ProcessTick();
-            List<GameResult> deploymentResults = _ownershipSystem.ProcessResults(movementResults);
+            List<GameResult> controlResults = _ownershipSystem.HandleResults(movementResults);
 
             Assert.AreEqual(expectedOwnerId, _targetPlanet.GetOwnerInstanceID());
             Assert.IsTrue(
                 movementResults
-                    .OfType<RegimentDeploymentChangedResult>()
-                    .Any(result => result.Planet == _targetPlanet && result.Regiment == regiment)
+                    .OfType<PlanetGarrisonChangedResult>()
+                    .Any(result => result.Planet == _targetPlanet)
             );
 
-            List<PlanetOwnershipChangedResult> changes = deploymentResults
+            List<PlanetOwnershipChangedResult> changes = controlResults
                 .OfType<PlanetOwnershipChangedResult>()
                 .Where(result => result.Planet == _targetPlanet)
                 .ToList();
@@ -661,7 +681,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessResults_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
+        public void HandleResults_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
         {
             _game.ChangeUnitOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.PopularSupport = new Dictionary<string, int>
@@ -701,7 +721,7 @@ namespace Rebellion.Tests.Systems
 
             _movementSystem.RequestMove(regiment, ship);
             List<GameResult> movementResults = _movementSystem.ProcessTick();
-            _ownershipSystem.ProcessResults(movementResults);
+            _ownershipSystem.HandleResults(movementResults);
 
             Assert.AreEqual(_rebels.InstanceID, _targetPlanet.GetOwnerInstanceID());
             Assert.IsNull(diplomacyMission.GetParent());

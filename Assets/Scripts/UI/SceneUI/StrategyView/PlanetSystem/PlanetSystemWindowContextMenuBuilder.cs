@@ -43,13 +43,9 @@ internal static class PlanetSystemWindowContextMenuBuilder
             ),
             PlanetIcon.Mission => new List<StrategyMenuCommand>
             {
-                new StrategyMenuCommand(
-                    StrategyContextMenuActions.Encyclopedia,
-                    "Encyclopedia",
-                    false
-                ),
-                new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", false),
-                new StrategyMenuCommand(StrategyContextMenuActions.Abort, "Abort", false),
+                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
+                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", false),
+                new StrategyMenuCommand(StrategyMenuAction.Abort, "Abort", false),
             },
             _ => CreatePlanetInformationCommands(false),
         };
@@ -64,12 +60,8 @@ internal static class PlanetSystemWindowContextMenuBuilder
     {
         return new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
-                "Encyclopedia",
-                enabled
-            ),
-            new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", enabled),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", enabled),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", enabled),
         };
     }
 
@@ -97,9 +89,9 @@ internal static class PlanetSystemWindowContextMenuBuilder
         bool canShowSingleFleetInfo = fleetItems?.Count == 1;
         return new List<StrategyMenuCommand>
         {
-            new StrategyMenuCommand(StrategyContextMenuActions.Move, "Move", canCommandFleets),
+            new StrategyMenuCommand(StrategyMenuAction.Move, "Move", canCommandFleets),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.MoveConfirm,
+                StrategyMenuAction.MoveConfirm,
                 "Confirmed Move",
                 canCommandFleets
             ),
@@ -108,17 +100,13 @@ internal static class PlanetSystemWindowContextMenuBuilder
                 canCommandFleets && canDestroySystem
             ),
             new StrategyMenuCommand(
-                StrategyContextMenuActions.PlanetaryAssault,
+                StrategyMenuAction.PlanetaryAssault,
                 "Planetary Assault",
                 canCommandFleets && canAssault
             ),
-            new StrategyMenuCommand(StrategyContextMenuActions.Encyclopedia, "Encyclopedia", false),
-            new StrategyMenuCommand(
-                StrategyContextMenuActions.Status,
-                "Status",
-                canShowSingleFleetInfo
-            ),
-            new StrategyMenuCommand(StrategyContextMenuActions.Scrap, "Scrap", canCommandFleets),
+            new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", false),
+            new StrategyMenuCommand(StrategyMenuAction.Status, "Status", canShowSingleFleetInfo),
+            new StrategyMenuCommand(StrategyMenuAction.Scrap, "Scrap", canCommandFleets),
         };
     }
 }

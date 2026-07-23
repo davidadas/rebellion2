@@ -67,19 +67,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         public void Show_Commands_FiltersNullAndRendersNestedPresentation()
         {
             StrategyMenuCommand child = new StrategyMenuCommand(
-                StrategyContextMenuActions.Status,
+                StrategyMenuAction.Status,
                 "Child",
                 true
             );
             StrategyMenuCommand parent = new StrategyMenuCommand("Parent", true, new[] { child });
             StrategyMenuCommand speed = new StrategyMenuCommand(
-                StrategyContextMenuActions.GameSpeedFast,
+                StrategyMenuAction.GameSpeedFast,
                 "Fast",
                 true,
                 StrategyContextMenuIconKeys.FastSpeed
             );
             StrategyMenuCommand checkedCommand = new StrategyMenuCommand(
-                StrategyContextMenuActions.Encyclopedia,
+                StrategyMenuAction.Encyclopedia,
                 "Checked",
                 true,
                 StrategyContextMenuIconKeys.CheckMark
@@ -141,7 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         public void CommandSelection_EnabledLeaf_ForwardsStrategyCommand()
         {
             StrategyMenuCommand command = new StrategyMenuCommand(
-                StrategyContextMenuActions.Status,
+                StrategyMenuAction.Status,
                 "Status",
                 true
             );
@@ -172,10 +172,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                     10,
                     20,
                     100,
-                    new[]
-                    {
-                        new StrategyMenuCommand(StrategyContextMenuActions.Status, "Status", true),
-                    }
+                    new[] { new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true) }
                 )
             );
             ContextMenuDismissBoundary boundary =
@@ -216,7 +213,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 new[]
                 {
                     new StrategyMenuCommand(
-                        StrategyContextMenuActions.Status,
+                        StrategyMenuAction.Status,
                         "A command label wider than the authored menu",
                         true
                     ),

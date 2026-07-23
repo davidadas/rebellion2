@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages Force discovery state and force user scanning each tick.
     /// </summary>
-    public class JediSystem : IGameSystem
+    public class JediSystem : IGameSystem, IGameResultHandler
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -47,8 +47,33 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Applies Force growth for successful missions reported in a result batch.
+        /// </summary>
+        /// <param name="results">The result batch to inspect.</param>
+        /// <returns>Any Force experience results produced by successful missions.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        {
+            List<GameResult> forceResults = new List<GameResult>();
+            if (results == null)
+                return forceResults;
+
+            foreach (
+                MissionCompletedResult result in results
+                    .OfType<MissionCompletedResult>()
+                    .Where(result =>
+                        result.Outcome == MissionOutcome.Success
+                        && result.Mission?.MainParticipants != null
+                    )
+            )
+            {
+                forceResults.AddRange(ApplyForceGrowth(result.Mission.MainParticipants));
+            }
+
+            return forceResults;
+        }
+
+        /// <summary>
         /// Grants ForceGrowthPerMission to eligible main participants of a successful mission.
-        /// Called from GameManager.ProcessResults when a MissionCompletedResult with Success is seen.
         /// </summary>
         /// <param name="participants">The mission participants to update.</param>
         /// <returns>Any force experience results generated.</returns>

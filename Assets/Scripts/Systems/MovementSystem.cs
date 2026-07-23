@@ -82,7 +82,7 @@ namespace Rebellion.Systems
 
             destination = ResolveLiveContainer(destination);
 
-            if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: true))
+            if (!CanReceiveMoveOrder(unit))
                 return;
 
             if (IsUnderConstruction(unit))
@@ -140,7 +140,7 @@ namespace Rebellion.Systems
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
-                AddRegimentDeploymentChangedResults(_pendingResults, unit, destinationPlanet);
+                AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
                 return;
             }
 
@@ -535,7 +535,7 @@ namespace Rebellion.Systems
                 if (liveUnit == null)
                     return false;
 
-                if (!CanReceiveMoveOrder(liveUnit, allowManufacturingRetarget: false))
+                if (!CanReceiveMoveOrder(liveUnit))
                     return false;
 
                 Planet origin = liveUnit.GetParentOfType<Planet>();
@@ -551,9 +551,10 @@ namespace Rebellion.Systems
                 )
                     return false;
 
-                int unitTransitTicks = ReferenceEquals(destinationPlanet, origin)
-                    ? 0
-                    : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
+                int unitTransitTicks =
+                    IsUnderConstruction(liveUnit) || ReferenceEquals(destinationPlanet, origin)
+                        ? 0
+                        : CalculateTransitTicks(liveUnit, origin, destinationPlanet);
                 maxTransitTicks = Math.Max(maxTransitTicks, unitTransitTicks);
             }
 
@@ -653,7 +654,7 @@ namespace Rebellion.Systems
                     return false;
                 }
 
-                if (!CanReceiveMoveOrder(unit, allowManufacturingRetarget: false))
+                if (!CanReceiveMoveOrder(unit))
                     return false;
 
                 Planet unitOrigin = unit.GetParentOfType<Planet>();
@@ -715,7 +716,12 @@ namespace Rebellion.Systems
 
             string movementGroupID = Guid.NewGuid().ToString("N");
             foreach (IMovable unit in units)
-                ExecuteMove(unit, destination, results, movementGroupID);
+            {
+                if (IsUnderConstruction(unit))
+                    RetargetManufacturingDestination(unit, destination);
+                else
+                    ExecuteMove(unit, destination, results, movementGroupID);
+            }
 
             return true;
         }
@@ -749,7 +755,7 @@ namespace Rebellion.Systems
                         ownerInstanceId,
                         StringComparison.Ordinal
                     )
-                    || !CanReceiveMoveOrder(movable, allowManufacturingRetarget: false)
+                    || !CanReceiveMoveOrder(movable)
                 )
                     return false;
 
@@ -829,25 +835,13 @@ namespace Rebellion.Systems
         /// Returns whether a unit can receive a movement order.
         /// </summary>
         /// <param name="unit">The unit to check.</param>
-        /// <param name="allowManufacturingRetarget">Whether an unfinished manufactured unit may change destination.</param>
         /// <returns>True if the unit can receive the order.</returns>
-        private static bool CanReceiveMoveOrder(IMovable unit, bool allowManufacturingRetarget)
+        private static bool CanReceiveMoveOrder(IMovable unit)
         {
-            if (unit.Movement != null)
+            if (!IsUnderConstruction(unit) && unit.GetTransitMovement() != null)
             {
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is already in transit."
-                );
-                return false;
-            }
-
-            if (IsUnderConstruction(unit))
-            {
-                if (allowManufacturingRetarget)
-                    return true;
-
-                GameLogger.Warning(
-                    $"RequestMove rejected: {unit.GetDisplayName()} is under construction."
                 );
                 return false;
             }
@@ -1153,7 +1147,7 @@ namespace Rebellion.Systems
             if (!string.IsNullOrEmpty(arrivingOwner))
                 destinationPlanet.AddVisitor(arrivingOwner);
 
-            AddRegimentDeploymentChangedResults(results, movable, destinationPlanet);
+            AddPlanetGarrisonChangedResults(results, movable, destinationPlanet);
 
             if (movable is Fleet fleet)
                 CaptureFleetArrivalSnapshot(fleet, destinationPlanet);
@@ -1370,7 +1364,7 @@ namespace Rebellion.Systems
                 if (evacResult != null)
                 {
                     results.Add(evacResult);
-                    AddRegimentDeploymentChangedResults(results, unit, originPlanet);
+                    AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                     return;
                 }
             }
@@ -1394,7 +1388,7 @@ namespace Rebellion.Systems
                 _game.MoveNode(unit, destination);
                 ClaimUncolonizedDestinationFromRegiment(unit, destinationPlanet, results);
                 unit.Movement = null;
-                AddRegimentDeploymentChangedResults(results, unit, originPlanet);
+                AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                 return;
             }
 
@@ -1410,7 +1404,7 @@ namespace Rebellion.Systems
                 CurrentPosition = originPosition,
             };
 
-            AddRegimentDeploymentChangedResults(results, unit, originPlanet);
+            AddPlanetGarrisonChangedResults(results, unit, originPlanet);
 
             if (unit is Fleet movingFleet)
                 RetargetInTransitFleetJoiners(movingFleet, destinationPlanet);
@@ -1629,29 +1623,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Records each planet where a regiment's active deployment changed.
+        /// Records each planet where the active regiment garrison changed.
         /// </summary>
-        /// <param name="results">The collection receiving deployment results.</param>
+        /// <param name="results">The collection receiving garrison results.</param>
         /// <param name="unit">The moved unit.</param>
         /// <param name="planets">The planets whose regiment presence may have changed.</param>
-        private void AddRegimentDeploymentChangedResults(
+        private void AddPlanetGarrisonChangedResults(
             ICollection<GameResult> results,
             IMovable unit,
             params Planet[] planets
         )
         {
-            if (results == null || unit is not Regiment regiment)
+            if (results == null || unit is not Regiment)
                 return;
 
             foreach (Planet planet in planets.Where(planet => planet != null).Distinct())
             {
                 results.Add(
-                    new RegimentDeploymentChangedResult
-                    {
-                        Regiment = regiment,
-                        Planet = planet,
-                        Tick = _game.CurrentTick,
-                    }
+                    new PlanetGarrisonChangedResult { Planet = planet, Tick = _game.CurrentTick }
                 );
             }
         }
