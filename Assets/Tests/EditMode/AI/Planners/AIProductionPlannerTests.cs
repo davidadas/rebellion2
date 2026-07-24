@@ -553,7 +553,85 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Plan_WithSpecialForcesDeficit_SelectsRequestedUnlockedType()
+        public void Plan_WithPlanetaryStarfighterDemand_SelectsEfficientDefender()
+        {
+            (GameRoot game, Faction empire, Planet _, Starfighter efficient) =
+                CreatePlanetaryStarfighterScene(0, 4, 12);
+            Starfighter stronger = AITestSceneBuilder.CreateStarfighter(
+                "stronger-fighter",
+                empire.InstanceID,
+                laserCannon: 20,
+                maintenanceCost: 10
+            );
+            empire.ResearchQueue[ManufacturingType.Ship].Add(new Technology(stronger));
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                );
+
+            Assert.AreSame(efficient, proposal.Product.GetReference());
+        }
+
+        [Test]
+        public void Plan_WithPlanetaryFighterBatchExactlyAtDefensiveBudget_QueuesCompleteBatch()
+        {
+            (GameRoot game, Faction empire, Planet _, Starfighter _) =
+                CreatePlanetaryStarfighterScene(10, 10, 10);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                );
+
+            Assert.AreEqual(4, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(40, proposal.GetMaintenanceCost());
+        }
+
+        [Test]
+        public void Plan_WithPlanetaryFighterBatchOneOverDefensiveBudget_QueuesAffordableCount()
+        {
+            (GameRoot game, Faction empire, Planet _, Starfighter _) =
+                CreatePlanetaryStarfighterScene(11, 10, 10);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                );
+
+            Assert.AreEqual(3, proposal.Demand.QuantityNeeded);
+            Assert.AreEqual(30, proposal.GetMaintenanceCost());
+        }
+
+        [Test]
+        public void Plan_WithNoAffordablePlanetaryFighter_DoesNotAddProposal()
+        {
+            (GameRoot game, Faction empire, Planet _, Starfighter _) =
+                CreatePlanetaryStarfighterScene(47, 4, 10);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProposal> proposals = new AIProductionPlanner().Plan(context);
+
+            Assert.IsFalse(
+                proposals
+                    .OfType<AIManufactureProposal>()
+                    .Any(item =>
+                        item.Demand.Kind == AIProductionDemandKind.PlanetaryStarfighterReserve
+                    )
+            );
+        }
+
+        [Test]
+        public void Plan_WithSpecialForcesDeficits_SelectsEachRequestedUnlockedType()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
@@ -597,13 +675,22 @@ namespace Rebellion.Tests.AI.Planners
             game.AttachNode(secondCommandos, planet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIManufactureProposal proposal = new AIProductionPlanner()
+            List<AIManufactureProposal> proposals = new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
-                .Single(item => item.Demand.Kind == AIProductionDemandKind.SpecialForces);
+                .Where(item => item.Demand.Kind == AIProductionDemandKind.SpecialForces)
+                .ToList();
 
-            Assert.AreEqual("spies", proposal.Demand.ProductTypeId);
-            Assert.AreSame(spies, proposal.Product.GetReference());
+            AIManufactureProposal commandoProposal = proposals.Single(item =>
+                item.Demand.ProductTypeId == "commandos"
+            );
+            AIManufactureProposal spyProposal = proposals.Single(item =>
+                item.Demand.ProductTypeId == "spies"
+            );
+            Assert.AreEqual(2, commandoProposal.Demand.QuantityNeeded);
+            Assert.AreSame(commandos, commandoProposal.Product.GetReference());
+            Assert.AreEqual(4, spyProposal.Demand.QuantityNeeded);
+            Assert.AreSame(spies, spyProposal.Product.GetReference());
         }
 
         [Test]
@@ -1791,6 +1878,51 @@ namespace Rebellion.Tests.AI.Planners
                 new Technology(shield),
             };
             return (game, empire, shield);
+        }
+
+        private static (
+            GameRoot game,
+            Faction faction,
+            Planet planet,
+            Starfighter starfighter
+        ) CreatePlanetaryStarfighterScene(
+            int minimumMaintenanceHeadroom,
+            int fighterMaintenance,
+            int fighterStrength
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.Selection.MinimumMaintenanceHeadroomAfterProduction =
+                minimumMaintenanceHeadroom;
+            game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent = 0;
+            game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
+            game.Config.AI.Infrastructure.SpecialForcesTargetCountPerType = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "defense-system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "defense-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            AddMaintenanceCapacity(game, planet, 1);
+            Starfighter starfighter = AITestSceneBuilder.CreateStarfighter(
+                "planetary-fighter",
+                empire.InstanceID,
+                laserCannon: fighterStrength,
+                maintenanceCost: fighterMaintenance
+            );
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(starfighter),
+            };
+            return (game, empire, planet, starfighter);
         }
 
         private static (

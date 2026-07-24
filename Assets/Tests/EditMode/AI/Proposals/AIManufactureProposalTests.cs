@@ -600,6 +600,54 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
+        public void Execute_WithPlanetaryStarfighterBatch_QueuesExactQuantityAtPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Starfighter template = AITestSceneBuilder.CreateStarfighter(
+                "planetary-fighter",
+                empire.InstanceID
+            );
+            AIProductionDemand demand = new AIProductionDemand(
+                "planetary-starfighter-demand",
+                AIProductionDemandKind.PlanetaryStarfighterReserve,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                planet,
+                3,
+                100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(template),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            proposal.Execute(context);
+
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Ship];
+            Assert.AreEqual(3, queue.Count);
+            Assert.AreEqual(3, queue.OfType<Starfighter>().Count());
+            Assert.AreEqual(3, planet.GetStarfighterCount());
+            Assert.IsTrue(planet.GetAllStarfighters().All(item => item.GetParent() == planet));
+        }
+
+        [Test]
         public void CanExecute_WithDistributedBatchForMovingFleet_ReturnsFalse()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

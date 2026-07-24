@@ -16,6 +16,7 @@ namespace Rebellion.AI.Planners
         Shipyard,
         TrainingFacility,
         PlanetaryDefense,
+        PlanetaryStarfighterReserve,
         FleetCapitalShip,
         FleetStarfighter,
         FleetRegiment,
@@ -88,6 +89,7 @@ namespace Rebellion.AI.Planners
         public bool UsesDefensiveReserve =>
             Kind
                 is AIProductionDemandKind.PlanetaryDefense
+                    or AIProductionDemandKind.PlanetaryStarfighterReserve
                     or AIProductionDemandKind.GarrisonRegimentReserve
                     or AIProductionDemandKind.TrainingFacility
                     or AIProductionDemandKind.BuildingUpgrade;

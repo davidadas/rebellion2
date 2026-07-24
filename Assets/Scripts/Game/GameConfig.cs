@@ -249,10 +249,12 @@ namespace Rebellion.Game
             public int FleetStarfighterDemandPercent { get; set; } = 50;
             public int FleetRegimentDemandPercent { get; set; } = 60;
             public int FleetSeedCapitalShipDemandPercent { get; set; } = 95;
-            public int SpecialForcesTargetCountPerType { get; set; } = 2;
+            public int SpecialForcesTargetCountPerType { get; set; } = 4;
             public int SpecialForcesDemandPercent { get; set; } = 25;
             public int StarfighterParentFillPercent { get; set; } = 100;
             public int AssaultRegimentLoadPercent { get; set; } = 100;
+            public int PlanetaryStarfighterTargetCount { get; set; } = 4;
+            public int PlanetaryStarfighterDemandPercent { get; set; } = 40;
             public int PlanetaryWeaponTargetCount { get; set; } = 1;
             public int PlanetaryDefenseSurplusBatchSize { get; set; } = 1;
             public int PlanetaryShieldDemandPercent { get; set; } = 45;

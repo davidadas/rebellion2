@@ -143,6 +143,35 @@ namespace Rebellion.Tests.AI.Helpers
             };
         }
 
+        public static Starfighter CreateStarfighter(
+            string instanceId,
+            string ownerInstanceId,
+            int laserCannon = 1,
+            int ionCannon = 0,
+            int torpedoes = 0,
+            int maintenanceCost = 0,
+            int constructionCost = 1
+        )
+        {
+            return new Starfighter
+            {
+                InstanceID = instanceId,
+                TypeID = instanceId,
+                DisplayName = instanceId,
+                AllowedOwnerInstanceIDs = new List<string> { ownerInstanceId },
+                OwnerInstanceID = ownerInstanceId,
+                ConstructionCost = constructionCost,
+                MaintenanceCost = maintenanceCost,
+                BaseBuildSpeed = 1,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = laserCannon,
+                IonCannon = ionCannon,
+                Torpedoes = torpedoes,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+        }
+
         public static SpecialForces CreateSpecialForces(string typeId, string ownerInstanceId)
         {
             SpecialForces specialForces = new SpecialForces

@@ -290,21 +290,16 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CaptureSnapshot_MovingEntityChanges_DoNotAffectSnapshot()
+        public void CaptureSnapshot_EnemyBuildingInTransit_NotRecorded()
         {
             Building building = CreateBuilding("BLDG1", _empire);
             building.Movement = new MovementState { TransitTicks = 20, TicksElapsed = 5 };
-            _coruscant.Buildings.Add(building);
+            _coruscant.EnergyCapacity = 1;
+            _game.AttachNode(building, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
-            building.Movement.TicksElapsed = 15;
-
-            Building snapshotBuilding = _alliance
-                .Fog.Snapshots["CORESYS"]
-                .Planets["CORUSCANT"]
-                .Buildings.Single();
-            Assert.AreEqual(5, snapshotBuilding.Movement.TicksElapsed);
+            Assert.IsEmpty(_alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"].Buildings);
         }
 
         [Test]

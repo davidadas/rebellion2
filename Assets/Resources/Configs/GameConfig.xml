@@ -92,10 +92,12 @@
       <FleetStarfighterDemandPercent>50</FleetStarfighterDemandPercent>
       <FleetRegimentDemandPercent>60</FleetRegimentDemandPercent>
       <FleetSeedCapitalShipDemandPercent>95</FleetSeedCapitalShipDemandPercent>
-      <SpecialForcesTargetCountPerType>2</SpecialForcesTargetCountPerType>
+      <SpecialForcesTargetCountPerType>4</SpecialForcesTargetCountPerType>
       <SpecialForcesDemandPercent>25</SpecialForcesDemandPercent>
       <StarfighterParentFillPercent>100</StarfighterParentFillPercent>
       <AssaultRegimentLoadPercent>100</AssaultRegimentLoadPercent>
+      <PlanetaryStarfighterTargetCount>4</PlanetaryStarfighterTargetCount>
+      <PlanetaryStarfighterDemandPercent>40</PlanetaryStarfighterDemandPercent>
       <PlanetaryWeaponTargetCount>1</PlanetaryWeaponTargetCount>
       <PlanetaryDefenseSurplusBatchSize>1</PlanetaryDefenseSurplusBatchSize>
       <PlanetaryShieldDemandPercent>45</PlanetaryShieldDemandPercent>

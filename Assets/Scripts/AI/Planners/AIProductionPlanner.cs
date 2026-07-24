@@ -148,6 +148,7 @@ namespace Rebellion.AI.Planners
                 ),
                 AIProductionDemandKind.FleetCapitalShip
                 or AIProductionDemandKind.FleetStarfighter
+                or AIProductionDemandKind.PlanetaryStarfighterReserve
                 or AIProductionDemandKind.FleetRegiment
                 or AIProductionDemandKind.GarrisonRegimentReserve
                 or AIProductionDemandKind.SpecialForces
@@ -628,6 +629,7 @@ namespace Rebellion.AI.Planners
             return demand?.Kind
                 is AIProductionDemandKind.FleetCapitalShip
                     or AIProductionDemandKind.FleetStarfighter
+                    or AIProductionDemandKind.PlanetaryStarfighterReserve
                     or AIProductionDemandKind.FleetRegiment
                     or AIProductionDemandKind.GarrisonRegimentReserve
                     or AIProductionDemandKind.SpecialForces;
@@ -678,6 +680,8 @@ namespace Rebellion.AI.Planners
                     context,
                     demand.DestinationFleet
                 ),
+                AIProductionDemandKind.PlanetaryStarfighterReserve =>
+                    GetUnlockedPlanetaryStarfighterTechnology(context),
                 AIProductionDemandKind.FleetRegiment => GetUnlockedRegimentTechnology(
                     context,
                     demand.DestinationFleet
@@ -953,6 +957,43 @@ namespace Rebellion.AI.Planners
                 config.MaxDuplicateStarfighterTypePerFleet,
                 starfighter => ScoreStarfighterTechnology(config, fleet, starfighter)
             );
+        }
+
+        private Technology GetUnlockedPlanetaryStarfighterTechnology(AITurnContext context)
+        {
+            int maintenanceBudget = GetDefensiveMaintenanceBudget(context);
+            return context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Ship)
+                .Where(technology =>
+                    technology.GetReference() is Starfighter starfighter
+                    && starfighter.HasAllowedOwnerInstanceID(context.Faction.InstanceID)
+                    && starfighter.MaintenanceCost <= maintenanceBudget
+                    && GetPlanetaryStarfighterDefenseStrength(starfighter) > 0
+                )
+                .OrderByDescending(technology =>
+                    GetPlanetaryStarfighterDefenseEfficiency((Starfighter)technology.GetReference())
+                )
+                .ThenByDescending(technology =>
+                    GetPlanetaryStarfighterDefenseStrength((Starfighter)technology.GetReference())
+                )
+                .ThenByDescending(technology => technology.GetResearchOrder())
+                .ThenBy(technology => technology.GetReference().GetMaintenanceCost())
+                .ThenBy(technology => technology.GetReference().GetConstructionCost())
+                .ThenBy(technology => technology.GetReference().GetTypeID())
+                .FirstOrDefault();
+        }
+
+        private static double GetPlanetaryStarfighterDefenseEfficiency(Starfighter starfighter)
+        {
+            int strength = GetPlanetaryStarfighterDefenseStrength(starfighter);
+            return starfighter.MaintenanceCost > 0
+                ? strength / (double)starfighter.MaintenanceCost
+                : double.MaxValue;
+        }
+
+        private static int GetPlanetaryStarfighterDefenseStrength(Starfighter starfighter)
+        {
+            return starfighter.LaserCannon + starfighter.IonCannon + starfighter.Torpedoes;
         }
 
         /// <summary>

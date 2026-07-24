@@ -38,6 +38,8 @@ namespace Rebellion.Tests.Game
             // AI defaults
             Assert.AreEqual(7, config.AI.TickInterval);
             Assert.AreEqual(0f, config.AI.Selection.MinimumSelectableScore);
+            Assert.AreEqual(4, config.AI.Infrastructure.SpecialForcesTargetCountPerType);
+            Assert.AreEqual(4, config.AI.Infrastructure.PlanetaryStarfighterTargetCount);
 
             // Movement defaults
             Assert.AreEqual(12, config.Movement.DistanceScale);

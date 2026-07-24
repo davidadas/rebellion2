@@ -28,6 +28,7 @@ namespace Rebellion.AI.Planners
 
             AddResourceBalanceDemand(context, demands);
             AddPlanetaryDefenseDemands(context, demands);
+            AddPlanetaryStarfighterDemands(context, demands);
             AddFleetSeedDemand(context, demands);
             AddFleetReinforcementDemands(context, demands);
             AddPlanetaryGarrisonDemands(context, demands);
@@ -135,6 +136,48 @@ namespace Rebellion.AI.Planners
                     targetCount
                 )
             );
+        }
+
+        private void AddPlanetaryStarfighterDemands(
+            AITurnContext context,
+            List<AIProductionDemand> demands
+        )
+        {
+            GameConfig.AIInfrastructureConfig config = context.Game.Config.AI.Infrastructure;
+            foreach (
+                Planet planet in context
+                    .Assessment.OwnedPlanets.Where(IsOwnedUsablePlanet)
+                    .OrderByDescending(context.Assessment.GetPlanetValue)
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+            )
+            {
+                int committedCount = planet
+                    .GetAllStarfighters()
+                    .Count(starfighter =>
+                        starfighter.GetOwnerInstanceID() == context.Faction.InstanceID
+                    );
+                int deficit = config.PlanetaryStarfighterTargetCount - committedCount;
+                if (deficit <= 0)
+                    continue;
+
+                demands.Add(
+                    new AIProductionDemand(
+                        $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.PlanetaryStarfighterReserve}:{planet.InstanceID}",
+                        AIProductionDemandKind.PlanetaryStarfighterReserve,
+                        ManufacturingType.Ship,
+                        BuildingType.None,
+                        planet,
+                        deficit,
+                        GetPlanetaryDefensePressure(
+                            context,
+                            planet,
+                            config.PlanetaryStarfighterDemandPercent,
+                            deficit,
+                            config.PlanetaryStarfighterTargetCount
+                        )
+                    )
+                );
+            }
         }
 
         private void AddFleetSeedDemand(AITurnContext context, List<AIProductionDemand> demands)

@@ -285,6 +285,14 @@
                       type="PositiveIntType"
                     />
                     <xs:element
+                      name="PlanetaryStarfighterTargetCount"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
+                      name="PlanetaryStarfighterDemandPercent"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
                       name="PlanetaryWeaponTargetCount"
                       type="PositiveIntType"
                     />

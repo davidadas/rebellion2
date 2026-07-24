@@ -352,6 +352,8 @@ namespace Rebellion.AI.Proposals
                 or AIProductionDemandKind.PlanetaryDefense => CanManufactureBuilding(context),
                 AIProductionDemandKind.FleetCapitalShip => CanManufactureCapitalShip(context),
                 AIProductionDemandKind.FleetStarfighter => CanManufactureStarfighter(context),
+                AIProductionDemandKind.PlanetaryStarfighterReserve =>
+                    CanManufacturePlanetStarfighter(context),
                 AIProductionDemandKind.FleetRegiment => CanManufactureRegiment(context),
                 AIProductionDemandKind.GarrisonRegimentReserve => CanManufacturePlanetRegiment(
                     context
@@ -552,6 +554,16 @@ namespace Rebellion.AI.Proposals
                 && destinationFleet.GetOwnerInstanceID() == context.Faction.InstanceID
                 && Product.GetReference() is Starfighter
                 && destinationFleet.FindShipForStarfighter() != null;
+        }
+
+        private bool CanManufacturePlanetStarfighter(AITurnContext context)
+        {
+            return Destination is Planet destinationPlanet
+                && destinationPlanet.GetOwnerInstanceID() == context.Faction.InstanceID
+                && destinationPlanet.IsColonized
+                && !destinationPlanet.IsDestroyed
+                && Product.GetReference() is Starfighter starfighter
+                && starfighter.HasAllowedOwnerInstanceID(context.Faction.InstanceID);
         }
 
         /// <summary>
