@@ -101,7 +101,7 @@ namespace Rebellion.Systems
                 planet.Fleets.Any(f =>
                     f.OwnerInstanceID == faction.InstanceID
                     && f.Movement == null
-                    && f.CapitalShips.Count > 0
+                    && f.HasOperationalCapitalShips()
                 )
             )
                 return true;
@@ -310,8 +310,13 @@ namespace Rebellion.Systems
         )
         {
             return IsOwnedBy(unit, faction)
-                || unit is not IManufacturable manufacturable
-                || manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building;
+                || (
+                    FogOfWarRecorder.IsObservableAtPlanet(unit, faction.InstanceID)
+                    && (
+                        unit is not IManufacturable manufacturable
+                        || manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building
+                    )
+                );
         }
 
         /// <summary>
@@ -359,20 +364,26 @@ namespace Rebellion.Systems
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
 
             viewPlanet.Officers.AddRange(
-                masterPlanet.Officers.Select(officer =>
-                    IsOwnedBy(officer, faction) && !officer.IsCaptured
-                        ? officer
-                        : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
-                )
+                masterPlanet
+                    .Officers.Where(officer =>
+                        FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
+                    )
+                    .Select(officer =>
+                        IsOwnedBy(officer, faction) && !officer.IsCaptured
+                            ? officer
+                            : FogOfWarRecorder.CopyOfficerForSnapshot(officer)
+                    )
             );
             viewPlanet.Fleets.AddRange(
                 masterPlanet
                     .Fleets.Where(f =>
                         f.CapitalShips.Count > 0
-                        && (f.Movement == null || f.OwnerInstanceID == faction.InstanceID)
+                        && FogOfWarRecorder.IsObservableAtPlanet(f, faction.InstanceID)
                     )
                     .Select(f =>
-                        IsOwnedBy(f, faction) ? f : FogOfWarRecorder.CopyObservedFleetForSnapshot(f)
+                        IsOwnedBy(f, faction)
+                            ? f
+                            : FogOfWarRecorder.CopyObservedFleetForSnapshot(f, faction.InstanceID)
                     )
                     .Where(fleet => fleet != null)
             );
@@ -423,7 +434,14 @@ namespace Rebellion.Systems
                         fleet.GetOwnerInstanceID() != faction.InstanceID
                         && !liveFleetIDs.Contains(fleet.InstanceID)
                     )
-                    .Select(FogOfWarRecorder.CopyFleetForSnapshot)
+                    .Select(fleet =>
+                        FogOfWarRecorder.CopyObservedFleetForSnapshot(
+                            fleet,
+                            faction.InstanceID,
+                            includeManufacturing: true
+                        )
+                    )
+                    .Where(fleet => fleet != null)
             );
         }
 
@@ -460,7 +478,11 @@ namespace Rebellion.Systems
                     : new Dictionary<string, int>();
 
             viewPlanet.Officers.AddRange(
-                planetSnapshot.Officers.Select(FogOfWarRecorder.CopyOfficerForSnapshot)
+                planetSnapshot
+                    .Officers.Where(officer =>
+                        FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
+                    )
+                    .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
             );
             viewPlanet.Officers.AddRange(
                 masterPlanet
@@ -468,19 +490,43 @@ namespace Rebellion.Systems
                     .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
             );
             viewPlanet.Fleets.AddRange(
-                planetSnapshot.Fleets.Select(FogOfWarRecorder.CopyFleetForSnapshot)
+                planetSnapshot
+                    .Fleets.Select(fleet =>
+                        FogOfWarRecorder.CopyObservedFleetForSnapshot(
+                            fleet,
+                            faction.InstanceID,
+                            includeManufacturing: true
+                        )
+                    )
+                    .Where(fleet => fleet != null)
             );
             viewPlanet.Regiments.AddRange(
-                planetSnapshot.Regiments.Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot
+                    .Regiments.Where(regiment =>
+                        FogOfWarRecorder.IsObservableAtPlanet(regiment, faction.InstanceID)
+                    )
+                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.SpecialForces.AddRange(
-                planetSnapshot.SpecialForces.Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot
+                    .SpecialForces.Where(specialForces =>
+                        FogOfWarRecorder.IsObservableAtPlanet(specialForces, faction.InstanceID)
+                    )
+                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.Starfighters.AddRange(
-                planetSnapshot.Starfighters.Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot
+                    .Starfighters.Where(starfighter =>
+                        FogOfWarRecorder.IsObservableAtPlanet(starfighter, faction.InstanceID)
+                    )
+                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.Buildings.AddRange(
-                planetSnapshot.Buildings.Select(FogOfWarRecorder.CopyEntityForSnapshot)
+                planetSnapshot
+                    .Buildings.Where(building =>
+                        FogOfWarRecorder.IsObservableAtPlanet(building, faction.InstanceID)
+                    )
+                    .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
         }

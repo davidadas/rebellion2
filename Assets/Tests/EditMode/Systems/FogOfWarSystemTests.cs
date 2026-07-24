@@ -718,7 +718,12 @@ namespace Rebellion.Tests.Systems
             Fleet ownFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(ownFleet, _coruscant);
             _game.AttachNode(
-                new CapitalShip { InstanceID = "cs1", OwnerInstanceID = _alliance.InstanceID },
+                new CapitalShip
+                {
+                    InstanceID = "cs1",
+                    OwnerInstanceID = _alliance.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 ownFleet
             );
             ownFleet.Movement = null;
@@ -1708,6 +1713,137 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void BuildFactionView_LiveEnemyPlanet_EnemyUnitsInTransit_NotVisible()
+        {
+            Fleet observerFleet = CreateFleet("ALLIANCE_FLEET", _alliance);
+            _game.AttachNode(observerFleet, _coruscant);
+            AddCapitalShip(observerFleet, _alliance, "ALLIANCE_SHIP");
+
+            Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
+            officer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(officer, _coruscant);
+
+            Regiment regiment = CreateRegiment("MOVING_REGIMENT", _empire);
+            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(regiment, _coruscant);
+
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "MOVING_SPECIAL_FORCES",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+            };
+            _game.AttachNode(specialForces, _coruscant);
+
+            Starfighter starfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
+            starfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(starfighter, _coruscant);
+
+            _coruscant.EnergyCapacity = 1;
+            Building building = CreateBuilding("MOVING_BUILDING", _empire);
+            building.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(building, _coruscant);
+
+            Planet viewCoruscant = _fogSystem
+                .BuildFactionView(_alliance)
+                .PlanetSystems.Single(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.Single(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.IsEmpty(viewCoruscant.Officers);
+            Assert.IsEmpty(viewCoruscant.Regiments);
+            Assert.IsEmpty(viewCoruscant.SpecialForces);
+            Assert.IsEmpty(viewCoruscant.Starfighters);
+            Assert.IsEmpty(viewCoruscant.Buildings);
+        }
+
+        [Test]
+        public void BuildFactionView_LiveEnemyFleet_InTransitManifestNotVisible()
+        {
+            Fleet observerFleet = CreateFleet("ALLIANCE_FLEET", _alliance);
+            _game.AttachNode(observerFleet, _coruscant);
+            AddCapitalShip(observerFleet, _alliance, "ALLIANCE_SHIP");
+
+            Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
+            _game.AttachNode(empireFleet, _coruscant);
+            CapitalShip stationaryShip = new CapitalShip
+            {
+                InstanceID = "STATIONARY_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+                StarfighterCapacity = 1,
+            };
+            _game.AttachNode(stationaryShip, empireFleet);
+
+            CapitalShip movingShip = new CapitalShip
+            {
+                InstanceID = "MOVING_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+            };
+            _game.AttachNode(movingShip, empireFleet);
+            _game.AttachNode(CreateOfficer("CARRIED_OFFICER", _empire), movingShip);
+
+            Officer movingOfficer = CreateOfficer("MOVING_OFFICER", _empire);
+            movingOfficer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(movingOfficer, stationaryShip);
+
+            Regiment movingRegiment = CreateRegiment("MOVING_REGIMENT", _empire);
+            movingRegiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(movingRegiment, stationaryShip);
+
+            Starfighter movingStarfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
+            movingStarfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(movingStarfighter, stationaryShip);
+
+            Planet viewCoruscant = _fogSystem
+                .BuildFactionView(_alliance)
+                .PlanetSystems.Single(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.Single(planet => planet.InstanceID == _coruscant.InstanceID);
+            Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
+                fleet.InstanceID == empireFleet.InstanceID
+            );
+
+            Assert.AreEqual(stationaryShip.InstanceID, viewFleet.CapitalShips.Single().InstanceID);
+            Assert.IsEmpty(viewFleet.CapitalShips[0].Officers);
+            Assert.IsEmpty(viewFleet.CapitalShips[0].Regiments);
+            Assert.IsEmpty(viewFleet.CapitalShips[0].Starfighters);
+        }
+
+        [Test]
+        public void CaptureSnapshot_EnemyUnitsInTransit_NotRecorded()
+        {
+            Officer officer = CreateOfficer("MOVING_OFFICER", _empire);
+            officer.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(officer, _coruscant);
+
+            Regiment regiment = CreateRegiment("MOVING_REGIMENT", _empire);
+            regiment.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(regiment, _coruscant);
+
+            Starfighter starfighter = CreateStarfighter("MOVING_STARFIGHTER", _empire);
+            starfighter.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(starfighter, _coruscant);
+
+            Fleet fleet = CreateFleet("MOVING_FLEET", _empire);
+            fleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "MOVING_FLEET_SHIP");
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(snapshot.Officers);
+            Assert.IsEmpty(snapshot.Regiments);
+            Assert.IsEmpty(snapshot.Starfighters);
+            Assert.IsEmpty(snapshot.Fleets);
+        }
+
+        [Test]
         public void IsPlanetVisible_OwnFleetInTransit_DoesNotGrantVisibility()
         {
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
@@ -1721,6 +1857,23 @@ namespace Rebellion.Tests.Systems
                 visible,
                 "An in-transit own fleet must not grant visibility of the destination"
             );
+        }
+
+        [Test]
+        public void IsPlanetVisible_OwnCapitalShipInTransit_DoesNotGrantVisibility()
+        {
+            Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
+            _game.AttachNode(allianceFleet, _coruscant);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "CS1",
+                OwnerInstanceID = _alliance.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 3 },
+            };
+            _game.AttachNode(capitalShip, allianceFleet);
+
+            Assert.IsFalse(_fogSystem.IsPlanetVisible(_coruscant, _alliance));
         }
 
         [Test]
