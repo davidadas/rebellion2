@@ -129,6 +129,65 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreateMission_SabotageTargetUnderConstruction_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            target.ManufacturingStatus = ManufacturingStatus.Building;
+
+            bool created = factory.TryCreateMission(
+                CreateContext(
+                    game,
+                    MissionTypeIDs.Sabotage,
+                    "empire",
+                    officer,
+                    planet,
+                    selectedTarget: target
+                ),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryCreateMission_SabotageTargetCarriedByMovingFleet_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "moving-fleet",
+                OwnerInstanceID = "empire",
+                Movement = new MovementState(),
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.MoveNode(target, ship);
+
+            bool created = factory.TryCreateMission(
+                CreateContext(
+                    game,
+                    MissionTypeIDs.Sabotage,
+                    "empire",
+                    officer,
+                    planet,
+                    selectedTarget: target
+                ),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
         public void TryCreateMission_DisallowedMissionTypeID_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();

@@ -69,7 +69,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(0, cards[0].Index);
             Assert.AreEqual(1, cards[1].Index);
             Assert.AreEqual("First", FindCardText(cards[0], "NameTextField").text);
-            Assert.IsTrue(FindCardObject(cards[0], "ConstructionOverlayImage").activeSelf);
             Assert.IsTrue(FindCardObject(cards[0], "EnrouteOverlayImage").activeSelf);
             Assert.IsTrue(FindCardObject(cards[0], "DamagedOverlayImage").activeSelf);
             Assert.IsTrue(FindCardObject(cards[0], "CapturedOverlayImage").activeSelf);
@@ -150,18 +149,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void ItemTemplate_ConstructionRendersBehindEntityAndStatusRendersAbove()
+        public void ItemTemplate_StatusRendersAboveEntity()
         {
             StrategyUnitCardView itemTemplate = _viewObject
                 .GetComponentsInChildren<StrategyUnitCardView>(true)
                 .Single(item => item.name == "ItemCardTemplate");
             Transform entity = FindCardObject(itemTemplate, "EntityImage").transform;
 
-            Assert.Less(
-                FindCardObject(itemTemplate, "ConstructionOverlayImage")
-                    .transform.GetSiblingIndex(),
-                entity.GetSiblingIndex()
-            );
             Assert.Greater(
                 FindCardObject(itemTemplate, "EnrouteOverlayImage").transform.GetSiblingIndex(),
                 entity.GetSiblingIndex()
@@ -277,17 +271,43 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             PointerEventData eventData = new PointerEventData(null);
             PointerEventData dragged = null;
             PointerEventData ended = null;
+            PointerEventData dropped = null;
             _view.ScrollDragged += (_, value) => dragged = value;
             _view.ScrollDragEnded += (_, value) => ended = value;
+            _view.ItemsDropped += (_, value) => dropped = value;
             ScrollAreaView scrollArea = _viewObject.GetComponentInChildren<ScrollAreaView>(true);
 
             scrollArea.RelayDrag(eventData);
             scrollArea.RelayDragEnd(eventData);
+            scrollArea.RelayDrop(eventData);
             scrollArea.RelayDrag(null);
             scrollArea.RelayDragEnd(null);
 
             Assert.AreSame(eventData, dragged);
             Assert.AreSame(eventData, ended);
+            Assert.AreSame(eventData, dropped);
+        }
+
+        [Test]
+        public void TabDrops_AllAuthoredTabs_RaisePlanetDestinationEvent()
+        {
+            PointerEventData eventData = new PointerEventData(null);
+            int dropCount = 0;
+            _view.ItemsDropped += (_, value) =>
+            {
+                Assert.AreSame(eventData, value);
+                dropCount++;
+            };
+            UIPointerGestureRelay[] tabRelays = _view
+                .GetComponentsInChildren<UIPointerGestureRelay>(true)
+                .Where(relay => relay.name.EndsWith("TabButtonImage", StringComparison.Ordinal))
+                .ToArray();
+
+            foreach (UIPointerGestureRelay relay in tabRelays)
+                relay.OnDrop(eventData);
+
+            Assert.AreEqual(DefenseWindowRenderData.TabCount, tabRelays.Length);
+            Assert.AreEqual(DefenseWindowRenderData.TabCount, dropCount);
         }
 
         [Test]
@@ -411,7 +431,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 !string.Equals(name, "Second", StringComparison.Ordinal)
                     && !string.Equals(name, "Hidden", StringComparison.Ordinal),
                 alternateNameLayout,
-                optionalTexture,
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,

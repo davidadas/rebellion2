@@ -9,7 +9,7 @@ using UnityEngine.Video;
 /// </summary>
 public sealed class MainMenuController : MonoBehaviour
 {
-    private const string _menuMusicPath = "Audio/Music/battle_of_endor_medley";
+    private const string _menuMusicPath = "Audio/Music/battle_of_endor_1_medley";
 
     [SerializeField]
     private MainMenuView view;

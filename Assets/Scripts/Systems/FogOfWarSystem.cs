@@ -470,7 +470,7 @@ namespace Rebellion.Systems
             viewPlanet.IsHeadquarters = planetSnapshot.IsHeadquarters;
             viewPlanet.EnergyCapacity = planetSnapshot.EnergyCapacity;
             viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
-            viewPlanet.NumRawResourceNodes = 0;
+            viewPlanet.NumRawResourceNodes = planetSnapshot.NumRawResourceNodes;
 
             viewPlanet.PopularSupport =
                 masterSystem.SystemType == PlanetSystemType.CoreSystem

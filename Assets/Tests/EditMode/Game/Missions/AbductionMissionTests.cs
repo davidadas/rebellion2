@@ -45,6 +45,32 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreate_TargetInTransit_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.Movement = new MovementState();
+            game.AttachNode(target, enemyPlanet);
+
+            Mission mission = CreateAbductionMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission);
+        }
+
+        [Test]
         public void Execute_TargetOnEnemyPlanet_SetsTargetCaptured()
         {
             (

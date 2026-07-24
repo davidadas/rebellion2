@@ -2332,7 +2332,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void CanCreateMission_StaleCompletedViewTarget_ReturnsTrue()
+        public void CanCreateMission_StaleCompletedViewTarget_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -2360,12 +2360,12 @@ namespace Rebellion.Tests.Systems
                 )
             );
 
-            Assert.IsTrue(canCreate);
+            Assert.IsFalse(canCreate);
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
-        public void InitiateMission_StaleCompletedViewTarget_CreatesMissionFromKnownIntel()
+        public void InitiateMission_StaleCompletedViewTarget_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -2393,18 +2393,12 @@ namespace Rebellion.Tests.Systems
                 )
             );
 
-            Mission mission = game.GetSceneNodesByType<Mission>().Single();
-            Assert.IsTrue(created);
-            Assert.AreEqual(targetPlanet, mission.GetParent());
-            Assert.AreEqual(targetPlanet.InstanceID, mission.LocationInstanceID);
-            Assert.AreEqual(
-                liveRegiment.InstanceID,
-                ((SabotageMission)mission).SabotageTargetInstanceID
-            );
+            Assert.IsFalse(created);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
         [Test]
-        public void UpdateMission_StaleCompletedViewTargetStillBuildingAtArrival_FailsAndTearsDown()
+        public void CanCreateMission_StaleStationaryOfficerViewWithLiveTransit_ReturnsFalse()
         {
             (
                 GameRoot game,
@@ -2414,31 +2408,21 @@ namespace Rebellion.Tests.Systems
                 Officer target,
                 MissionSystem missions
             ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
-            Regiment liveRegiment = EntityFactory.CreateRegiment("regiment", "rebels");
-            liveRegiment.ManufacturingStatus = ManufacturingStatus.Building;
-            game.AttachNode(liveRegiment, targetPlanet);
-
             Planet viewPlanet = new Planet { InstanceID = targetPlanet.InstanceID };
-            Regiment viewRegiment = EntityFactory.CreateRegiment(liveRegiment.InstanceID, "rebels");
-            viewRegiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            viewRegiment.SetParent(viewPlanet);
+            Officer viewTarget = EntityFactory.CreateOfficer(target.InstanceID, "rebels");
+            viewTarget.SetParent(viewPlanet);
+            target.Movement = new MovementState();
 
-            missions.InitiateMission(
+            bool canCreate = missions.CanCreateMission(
                 CreateRequest(
-                    MissionTypeIDs.Sabotage,
+                    MissionTypeIDs.Abduction,
                     participant,
                     viewPlanet,
-                    selectedTarget: viewRegiment
+                    selectedTarget: viewTarget
                 )
             );
-            Mission mission = game.GetSceneNodesByType<Mission>().Single();
-            participant.Movement = null;
 
-            List<GameResult> results = missions.UpdateMission(mission);
-
-            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
-            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.IsFalse(canCreate);
             Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
         }
 
@@ -2539,6 +2523,40 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void UpdateMission_SabotageTargetBeginsConstructionBeforeArrival_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "rebels");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, targetPlanet);
+            missions.InitiateMission(
+                CreateRequest(
+                    MissionTypeIDs.Sabotage,
+                    participant,
+                    targetPlanet,
+                    selectedTarget: regiment
+                )
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            participant.Movement = null;
+            regiment.ManufacturingStatus = ManufacturingStatus.Building;
+
+            List<GameResult> results = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+        }
+
+        [Test]
         public void UpdateMission_AbductionTargetCapturedBeforeArrival_FailsAndTearsDown()
         {
             (
@@ -2560,6 +2578,37 @@ namespace Rebellion.Tests.Systems
             Mission mission = game.GetSceneNodesByType<Mission>().Single();
             participant.Movement = null;
             target.IsCaptured = true;
+
+            List<GameResult> results = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
+            Assert.AreEqual(0, game.GetSceneNodesByType<Mission>().Count);
+        }
+
+        [Test]
+        public void UpdateMission_AbductionTargetBeginsTransitBeforeArrival_FailsAndTearsDown()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet targetPlanet,
+                Officer participant,
+                Officer target,
+                MissionSystem missions
+            ) = BuildOfficerTargetMissionScene(friendlyTarget: false, capturedTarget: false);
+            missions.InitiateMission(
+                CreateRequest(
+                    MissionTypeIDs.Abduction,
+                    participant,
+                    targetPlanet,
+                    selectedTarget: target
+                )
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            participant.Movement = null;
+            target.Movement = new MovementState();
 
             List<GameResult> results = missions.UpdateMission(mission);
 

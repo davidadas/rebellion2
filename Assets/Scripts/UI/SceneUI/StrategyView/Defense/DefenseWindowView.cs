@@ -83,6 +83,8 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     internal event Action<DefenseWindowView, int, PointerEventData> ItemReleased;
 
+    internal event Action<DefenseWindowView, PointerEventData> ItemsDropped;
+
     /// <summary>
     /// Occurs while the scroll area is dragged.
     /// </summary>
@@ -365,6 +367,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
             DefenseWindowTab tab = DefenseWindowRenderData.OrderedTabs[i];
             tabListeners[i] = () => TabRequested?.Invoke(this, tab);
             tabButtons[i].onClick.AddListener(tabListeners[i]);
+            tabImages[i].GetComponent<UIPointerGestureRelay>().Dropped += HandleItemsDropped;
         }
     }
 
@@ -378,6 +381,9 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
         {
             if (tabButtons[i] != null && tabListeners[i] != null)
                 tabButtons[i].onClick.RemoveListener(tabListeners[i]);
+            UIPointerGestureRelay dropRelay = tabImages[i]?.GetComponent<UIPointerGestureRelay>();
+            if (dropRelay != null)
+                dropRelay.Dropped -= HandleItemsDropped;
         }
         tabListeners = Array.Empty<UnityAction>();
     }
@@ -392,6 +398,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
 
         itemsScrollArea.Dragged += HandleScrollDragged;
         itemsScrollArea.DragEnded += HandleScrollDragEnded;
+        itemsScrollArea.Dropped += HandleItemsDropped;
         scrollEventsBound = true;
     }
 
@@ -405,6 +412,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
 
         itemsScrollArea.Dragged -= HandleScrollDragged;
         itemsScrollArea.DragEnded -= HandleScrollDragEnded;
+        itemsScrollArea.Dropped -= HandleItemsDropped;
         scrollEventsBound = false;
     }
 
@@ -487,6 +495,11 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
     {
         if (eventData != null)
             ScrollDragEnded?.Invoke(this, eventData);
+    }
+
+    private void HandleItemsDropped(PointerEventData eventData)
+    {
+        ItemsDropped?.Invoke(this, eventData);
     }
 
     /// <summary>
@@ -599,6 +612,8 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
                 throw new MissingReferenceException($"{name}/TabPressVisual{i} is missing.");
             if (tabButtons[i] == null)
                 throw new MissingReferenceException($"{name}/TabButton{i} is missing.");
+            if (tabImages[i].GetComponent<UIPointerGestureRelay>() == null)
+                throw new MissingReferenceException($"{name}/TabDropRelay{i} is missing.");
         }
         if (tabTitleTextField == null)
             throw new MissingReferenceException($"{name}/TabTitleTextField is missing.");

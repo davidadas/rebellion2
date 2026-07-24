@@ -185,8 +185,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6617400878523185571}
-  - {fileID: 2370879788580322106}
-  - {fileID: 681927292797023194}
+  - {fileID: 1127390021163476906}
   - {fileID: 5469958469258633027}
   - {fileID: 6477559466876624285}
   - {fileID: 6307072938688192765}
@@ -226,8 +225,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GameAssembly::StrategyUnitCardView
   hitAreaImage: {fileID: 4282006616865095419}
-  backgroundImage: {fileID: 3207287956352946086}
-  constructionOverlayImage: {fileID: 3199053316823623167}
+  backgroundImage: {fileID: 6585885739378905438}
   enrouteOverlayImage: {fileID: 3254121450711944378}
   damagedOverlayImage: {fileID: 4681268192143085237}
   entityImage: {fileID: 8673858507283874516}
@@ -271,6 +269,7 @@ GameObject:
   - component: {fileID: 5162751951130671988}
   - component: {fileID: 2779827036691284456}
   - component: {fileID: 6553513285108831021}
+  - component: {fileID: 8207741822257356187}
   m_Layer: 0
   m_Name: BatteriesTabButtonImage
   m_TagString: Untagged
@@ -392,6 +391,19 @@ MonoBehaviour:
   button: {fileID: 2779827036691284456}
   upTexture: {fileID: 2800000, guid: 34993afd22a0842dd849e9057fd49877, type: 3}
   downTexture: {fileID: 0}
+--- !u!114 &8207741822257356187
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1971736072375915992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47b5c76f7c23d412b8f15c8521a65578, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIPointerGestureRelay
+  doubleClickCount: 2
 --- !u!1 &2199011280114294597
 GameObject:
   m_ObjectHideFlags: 0
@@ -811,6 +823,7 @@ GameObject:
   - component: {fileID: 6535430414680762915}
   - component: {fileID: 4415918727126159776}
   - component: {fileID: 4701506424232912024}
+  - component: {fileID: 5336680899176361857}
   m_Layer: 0
   m_Name: ShieldsTabButtonImage
   m_TagString: Untagged
@@ -932,6 +945,19 @@ MonoBehaviour:
   button: {fileID: 4415918727126159776}
   upTexture: {fileID: 2800000, guid: 34993afd22a0842dd849e9057fd49877, type: 3}
   downTexture: {fileID: 0}
+--- !u!114 &5336680899176361857
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3376360254966364383}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47b5c76f7c23d412b8f15c8521a65578, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIPointerGestureRelay
+  doubleClickCount: 2
 --- !u!1 &3860424924596346113
 GameObject:
   m_ObjectHideFlags: 0
@@ -1017,6 +1043,7 @@ GameObject:
   - component: {fileID: 1979296675070168796}
   - component: {fileID: 1330598409695639225}
   - component: {fileID: 700122357026928599}
+  - component: {fileID: 1309140401099396031}
   m_Layer: 0
   m_Name: StarfightersTabButtonImage
   m_TagString: Untagged
@@ -1138,6 +1165,19 @@ MonoBehaviour:
   button: {fileID: 1330598409695639225}
   upTexture: {fileID: 2800000, guid: 34993afd22a0842dd849e9057fd49877, type: 3}
   downTexture: {fileID: 0}
+--- !u!114 &1309140401099396031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4836290678718734917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47b5c76f7c23d412b8f15c8521a65578, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIPointerGestureRelay
+  doubleClickCount: 2
 --- !u!1 &4897433280134507959
 GameObject:
   m_ObjectHideFlags: 0
@@ -1291,78 +1331,6 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 1}
   m_EffectDistance: {x: 1, y: -1}
   m_UseGraphicAlpha: 1
---- !u!1 &4994620008435022510
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2370879788580322106}
-  - component: {fileID: 8488795150356168875}
-  - component: {fileID: 3207287956352946086}
-  m_Layer: 0
-  m_Name: BackgroundImage
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &2370879788580322106
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4994620008435022510}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 3042444463887591221}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 61, y: 25}
-  m_Pivot: {x: 0, y: 1}
---- !u!222 &8488795150356168875
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4994620008435022510}
-  m_CullTransparentMesh: 1
---- !u!114 &3207287956352946086
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4994620008435022510}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Texture: {fileID: 2800000, guid: ec09a737134d74155b1818cdb2c4929b, type: 3}
-  m_UVRect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 1
-    height: 1
 --- !u!1 &5658089876263058639
 GameObject:
   m_ObjectHideFlags: 0
@@ -1794,7 +1762,7 @@ MonoBehaviour:
     y: 0
     width: 1
     height: 1
---- !u!1 &6788641564715280884
+--- !u!1 &6693602834199408810
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1802,23 +1770,23 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 681927292797023194}
-  - component: {fileID: 8060256114117512701}
-  - component: {fileID: 3199053316823623167}
+  - component: {fileID: 1127390021163476906}
+  - component: {fileID: 4142570410229067763}
+  - component: {fileID: 6585885739378905438}
   m_Layer: 0
-  m_Name: ConstructionOverlayImage
+  m_Name: BackgroundImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!224 &681927292797023194
+--- !u!224 &1127390021163476906
 RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6788641564715280884}
+  m_GameObject: {fileID: 6693602834199408810}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -1831,21 +1799,21 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 61, y: 25}
   m_Pivot: {x: 0, y: 1}
---- !u!222 &8060256114117512701
+--- !u!222 &4142570410229067763
 CanvasRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6788641564715280884}
+  m_GameObject: {fileID: 6693602834199408810}
   m_CullTransparentMesh: 1
---- !u!114 &3199053316823623167
+--- !u!114 &6585885739378905438
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6788641564715280884}
+  m_GameObject: {fileID: 6693602834199408810}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
@@ -1859,7 +1827,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: ee386dac929dc4655bbcfd5ce7bbab90, type: 3}
+  m_Texture: {fileID: 2800000, guid: ec09a737134d74155b1818cdb2c4929b, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1917,6 +1885,7 @@ GameObject:
   - component: {fileID: 5951384218498162038}
   - component: {fileID: 6555452829521772955}
   - component: {fileID: 6017726777709149429}
+  - component: {fileID: 1754925263696921820}
   m_Layer: 0
   m_Name: PersonnelTabButtonImage
   m_TagString: Untagged
@@ -2038,6 +2007,19 @@ MonoBehaviour:
   button: {fileID: 6555452829521772955}
   upTexture: {fileID: 2800000, guid: 34993afd22a0842dd849e9057fd49877, type: 3}
   downTexture: {fileID: 0}
+--- !u!114 &1754925263696921820
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7460668888065031935}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47b5c76f7c23d412b8f15c8521a65578, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIPointerGestureRelay
+  doubleClickCount: 2
 --- !u!1 &7486448287119513321
 GameObject:
   m_ObjectHideFlags: 0
@@ -2123,6 +2105,7 @@ GameObject:
   - component: {fileID: 7530918718790680189}
   - component: {fileID: 8800930820046536470}
   - component: {fileID: 7263859099843038191}
+  - component: {fileID: 4244948404821936127}
   m_Layer: 0
   m_Name: RegimentsTabButtonImage
   m_TagString: Untagged
@@ -2244,6 +2227,19 @@ MonoBehaviour:
   button: {fileID: 8800930820046536470}
   upTexture: {fileID: 2800000, guid: 34993afd22a0842dd849e9057fd49877, type: 3}
   downTexture: {fileID: 0}
+--- !u!114 &4244948404821936127
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7743723726863272479}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47b5c76f7c23d412b8f15c8521a65578, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::UIPointerGestureRelay
+  doubleClickCount: 2
 --- !u!1 &7744616442105625655
 GameObject:
   m_ObjectHideFlags: 0

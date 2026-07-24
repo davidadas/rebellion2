@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Linq;
 using Rebellion.Util.Extensions;
@@ -41,6 +42,7 @@ public sealed class AudioManager : MonoBehaviour
     private int _playlistIndex;
     private bool _shufflePlaylist;
     private string _activeTrackPath;
+    private Func<string> _nextTrackPathProvider;
     private Coroutine _playlistCoroutine;
     private Coroutine _fadeOutCoroutine;
 
@@ -79,7 +81,7 @@ public sealed class AudioManager : MonoBehaviour
         if (Instance != null)
             return Instance;
 
-        AudioManager existing = Object.FindAnyObjectByType<AudioManager>();
+        AudioManager existing = UnityEngine.Object.FindAnyObjectByType<AudioManager>();
         if (existing != null)
         {
             existing.BecomeInstance();
@@ -224,6 +226,26 @@ public sealed class AudioManager : MonoBehaviour
         _playlistCoroutine = StartCoroutine(RunPathPlaylist());
     }
 
+    internal void PlayDynamicPlaylist(Func<string> nextTrackPathProvider)
+    {
+        if (nextTrackPathProvider == null)
+            throw new ArgumentNullException(nameof(nextTrackPathProvider));
+
+        EnsureAudioSources();
+        if (_nextTrackPathProvider == nextTrackPathProvider && _playlistCoroutine != null)
+        {
+            ApplyVolumes();
+            return;
+        }
+
+        StopPlaylist();
+        StopFadeOut();
+
+        _activeTrackPath = null;
+        _nextTrackPathProvider = nextTrackPathProvider;
+        _playlistCoroutine = StartCoroutine(RunDynamicPathPlaylist());
+    }
+
     /// <summary>
     /// Stops playlist sequencing without stopping the currently assigned music clip.
     /// </summary>
@@ -234,6 +256,7 @@ public sealed class AudioManager : MonoBehaviour
         _clipPlaylist = null;
         _activePlaylistPaths = null;
         _requestedPlaylistPaths = null;
+        _nextTrackPathProvider = null;
         _playlistIndex = 0;
         _shufflePlaylist = false;
     }
@@ -538,6 +561,38 @@ public sealed class AudioManager : MonoBehaviour
             AdvancePlaylistIndex(_activePlaylistPaths.Length);
         }
 
+        _playlistCoroutine = null;
+    }
+
+    private IEnumerator RunDynamicPathPlaylist()
+    {
+        while (_nextTrackPathProvider != null)
+        {
+            string resourcePath = _nextTrackPathProvider();
+            if (string.IsNullOrWhiteSpace(resourcePath))
+            {
+                yield return null;
+                break;
+            }
+
+            AudioClip clip = ResourceManager.GetAudio(resourcePath);
+            if (clip == null)
+            {
+                yield return null;
+                break;
+            }
+
+            musicSource.clip = clip;
+            musicSource.loop = false;
+            ApplyVolumes();
+            musicSource.Play();
+
+            yield return null;
+            while (musicSource.isPlaying && _nextTrackPathProvider != null)
+                yield return null;
+        }
+
+        _nextTrackPathProvider = null;
         _playlistCoroutine = null;
     }
 

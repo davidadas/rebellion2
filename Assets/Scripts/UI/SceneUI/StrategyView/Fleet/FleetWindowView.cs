@@ -128,6 +128,8 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     internal event Action<FleetWindowView, int, PointerEventData> DetailItemReleased;
 
+    internal event Action<FleetWindowView, PointerEventData> DetailItemsDropped;
+
     /// <summary>
     /// Occurs when a pointer drop is received by the fleet list.
     /// </summary>
@@ -814,6 +816,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
             FleetWindowTab tab = FleetWindowRenderData.OrderedTabs[i];
             UnityAction listener = () => TabRequested?.Invoke(this, tab);
             tabButtons[i].onClick.AddListener(listener);
+            tabImages[i].GetComponent<UIPointerGestureRelay>().Dropped += HandleDetailItemsDropped;
             tabListeners.Add(listener);
         }
 
@@ -828,7 +831,12 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
     {
         int count = Mathf.Min(tabButtons.Length, tabListeners.Count);
         for (int i = 0; i < count; i++)
+        {
             tabButtons[i]?.onClick.RemoveListener(tabListeners[i]);
+            UIPointerGestureRelay dropRelay = tabImages[i]?.GetComponent<UIPointerGestureRelay>();
+            if (dropRelay != null)
+                dropRelay.Dropped -= HandleDetailItemsDropped;
+        }
         tabListeners.Clear();
 
         if (renameInputField == null)
@@ -869,6 +877,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
         fleetListScrollArea.Dropped += HandleFleetListDropped;
         detailItemsScrollArea.Dragged += HandleScrollDragged;
         detailItemsScrollArea.DragEnded += HandleScrollDragEnded;
+        detailItemsScrollArea.Dropped += HandleDetailItemsDropped;
         scrollEventsBound = true;
     }
 
@@ -885,6 +894,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
         fleetListScrollArea.Dropped -= HandleFleetListDropped;
         detailItemsScrollArea.Dragged -= HandleScrollDragged;
         detailItemsScrollArea.DragEnded -= HandleScrollDragEnded;
+        detailItemsScrollArea.Dropped -= HandleDetailItemsDropped;
         scrollEventsBound = false;
     }
 
@@ -1008,6 +1018,11 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
     private void HandleFleetListDropped(PointerEventData eventData)
     {
         FleetListDropped?.Invoke(this, eventData);
+    }
+
+    private void HandleDetailItemsDropped(PointerEventData eventData)
+    {
+        DetailItemsDropped?.Invoke(this, eventData);
     }
 
     /// <summary>
@@ -1179,6 +1194,8 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
                 throw new MissingReferenceException($"{name}/TabButton{i} is missing.");
             if (tabPressVisuals[i] == null)
                 throw new MissingReferenceException($"{name}/TabPressVisual{i} is missing.");
+            if (tabImages[i].GetComponent<UIPointerGestureRelay>() == null)
+                throw new MissingReferenceException($"{name}/TabDropRelay{i} is missing.");
         }
         if (detailItemsScrollArea == null)
             throw new MissingReferenceException($"{name}/DetailItemsScrollArea is missing.");

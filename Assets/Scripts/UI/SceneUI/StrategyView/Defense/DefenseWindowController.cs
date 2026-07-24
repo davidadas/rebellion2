@@ -201,6 +201,7 @@ public sealed class DefenseWindowController
         view.ItemDropped += HandleItemDropped;
         view.ItemPressed += HandleItemPressed;
         view.ItemReleased += HandleItemReleased;
+        view.ItemsDropped += HandleItemsDropped;
         view.ScrollDragged += HandleScrollDragged;
         view.ScrollDragEnded += HandleScrollDragEnded;
         view.SurfaceClicked += HandleSurfaceClicked;
@@ -687,6 +688,12 @@ public sealed class DefenseWindowController
             TrySelectTarget(session, item);
     }
 
+    private void HandleItemsDropped(DefenseWindowView view, PointerEventData eventData)
+    {
+        if (TryGetSession(view, out DefenseWindowSession session))
+            TrySelectTarget(session, null);
+    }
+
     /// <summary>
     /// Handles a unit-card double click as a status request.
     /// </summary>
@@ -780,6 +787,7 @@ public sealed class DefenseWindowController
         view.ItemDropped -= HandleItemDropped;
         view.ItemPressed -= HandleItemPressed;
         view.ItemReleased -= HandleItemReleased;
+        view.ItemsDropped -= HandleItemsDropped;
         view.ScrollDragged -= HandleScrollDragged;
         view.ScrollDragEnded -= HandleScrollDragEnded;
         view.SurfaceClicked -= HandleSurfaceClicked;
