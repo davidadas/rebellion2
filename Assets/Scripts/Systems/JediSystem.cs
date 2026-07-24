@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages Force discovery state and force user scanning each tick.
     /// </summary>
-    public class JediSystem : IGameResultHandler
+    public class JediSystem : IGameResultHandler<MissionCompletedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -51,19 +51,17 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="results">The result batch to inspect.</param>
         /// <returns>Any Force experience results produced by successful missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        public List<GameResult> HandleResults(IReadOnlyList<MissionCompletedResult> results)
         {
             List<GameResult> forceResults = new List<GameResult>();
             if (results == null)
                 return forceResults;
 
             foreach (
-                MissionCompletedResult result in results
-                    .OfType<MissionCompletedResult>()
-                    .Where(result =>
-                        result.Outcome == MissionOutcome.Success
-                        && result.Mission?.MainParticipants != null
-                    )
+                MissionCompletedResult result in results.Where(result =>
+                    result.Outcome == MissionOutcome.Success
+                    && result.Mission?.MainParticipants != null
+                )
             )
             {
                 forceResults.AddRange(ApplyForceGrowth(result.Mission.MainParticipants));

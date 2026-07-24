@@ -40,6 +40,11 @@ namespace Rebellion.Systems
         private readonly PlanetaryControlSystem _ownership;
 
         /// <summary>
+        /// Raised after an immediate bombardment command produces results.
+        /// </summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
+
+        /// <summary>
         /// Creates the bombardment system.
         /// </summary>
         /// <param name="game">Active game state.</param>
@@ -57,6 +62,37 @@ namespace Rebellion.Systems
             _provider = provider;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _ownership = ownership ?? throw new ArgumentNullException(nameof(ownership));
+        }
+
+        /// <summary>
+        /// Executes a validated orbital bombardment command and publishes its results.
+        /// </summary>
+        /// <param name="attackingFleets">The attacking fleets.</param>
+        /// <param name="targetPlanet">The bombardment target planet.</param>
+        /// <param name="type">The bombardment target profile.</param>
+        /// <returns>The bombardment result, or null when bombardment cannot execute.</returns>
+        public BombardmentResult TryExecute(
+            IReadOnlyList<Fleet> attackingFleets,
+            Planet targetPlanet,
+            BombardmentType type
+        )
+        {
+            if (targetPlanet == null)
+                return null;
+
+            List<Fleet> fleets =
+                attackingFleets?.Where(fleet => fleet != null).ToList() ?? new List<Fleet>();
+            if (!CanExecute(fleets, targetPlanet, type))
+                return null;
+
+            BombardmentResult result = Execute(fleets, targetPlanet, type);
+            List<GameResult> results = new List<GameResult> { result };
+            results.AddRange(result.Events);
+            if (result.OwnershipChange != null)
+                results.Add(result.OwnershipChange);
+
+            ResultsProduced?.Invoke(results);
+            return result;
         }
 
         /// <summary>

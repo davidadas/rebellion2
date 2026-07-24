@@ -229,6 +229,9 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
+                if (!IsObservableAtPlanet(officer, faction.InstanceID))
+                    continue;
+
                 snapshot.Officers.Add(CopyOfficerForSnapshot(officer));
                 InvalidateEntityFromOtherSnapshots(faction, officer.InstanceID, planet.InstanceID);
             }
@@ -257,12 +260,15 @@ namespace Rebellion.Game.FogOfWar
                     RemoveEntityFromSnapshotState(faction, fleet.InstanceID);
                     continue;
                 }
-                if (fleet.OwnerInstanceID != faction.InstanceID && fleet.Movement != null)
+
+                if (!IsObservableAtPlanet(fleet, faction.InstanceID))
                     continue;
 
-                Fleet fleetCopy = includeManufacturing
-                    ? CopyFleetForSnapshot(fleet)
-                    : CopyObservedFleetForSnapshot(fleet);
+                Fleet fleetCopy = CopyObservedFleetForSnapshot(
+                    fleet,
+                    faction.InstanceID,
+                    includeManufacturing
+                );
                 if (fleetCopy == null)
                     continue;
 
@@ -296,6 +302,9 @@ namespace Rebellion.Game.FogOfWar
                     RemoveEntityFromSnapshotState(faction, entity.InstanceID);
                     continue;
                 }
+
+                if (!IsObservableAtPlanet(entity, faction.InstanceID))
+                    continue;
 
                 if (
                     !includeManufacturing
@@ -546,22 +555,65 @@ namespace Rebellion.Game.FogOfWar
         /// Copies the completed portion of an observed fleet for fog state.
         /// </summary>
         /// <param name="fleet">The observed fleet to copy.</param>
+        /// <param name="observerFactionInstanceID">The faction receiving the observation.</param>
+        /// <param name="includeManufacturing">Whether unfinished units should be retained.</param>
         /// <returns>The detached fleet copy, or null when no completed ships remain.</returns>
-        internal static Fleet CopyObservedFleetForSnapshot(Fleet fleet)
+        internal static Fleet CopyObservedFleetForSnapshot(
+            Fleet fleet,
+            string observerFactionInstanceID,
+            bool includeManufacturing = false
+        )
         {
+            if (!IsObservableAtPlanet(fleet, observerFactionInstanceID))
+                return null;
+
             Fleet copy = CopyFleetForSnapshot(fleet);
             if (copy == null)
                 return null;
 
-            copy.CapitalShips.RemoveAll(IsManufacturingInProgress);
+            copy.CapitalShips.RemoveAll(ship =>
+                !IsObservableAtPlanet(ship, observerFactionInstanceID)
+                || !includeManufacturing && IsManufacturingInProgress(ship)
+            );
             foreach (CapitalShip ship in copy.CapitalShips)
             {
-                ship.Regiments.RemoveAll(IsManufacturingInProgress);
-                ship.SpecialForces.RemoveAll(IsManufacturingInProgress);
-                ship.Starfighters.RemoveAll(IsManufacturingInProgress);
+                ship.Officers.RemoveAll(officer =>
+                    !IsObservableAtPlanet(officer, observerFactionInstanceID)
+                );
+                ship.Regiments.RemoveAll(regiment =>
+                    !IsObservableAtPlanet(regiment, observerFactionInstanceID)
+                    || !includeManufacturing && IsManufacturingInProgress(regiment)
+                );
+                ship.SpecialForces.RemoveAll(specialForces =>
+                    !IsObservableAtPlanet(specialForces, observerFactionInstanceID)
+                    || !includeManufacturing && IsManufacturingInProgress(specialForces)
+                );
+                ship.Starfighters.RemoveAll(starfighter =>
+                    !IsObservableAtPlanet(starfighter, observerFactionInstanceID)
+                    || !includeManufacturing && IsManufacturingInProgress(starfighter)
+                );
             }
 
             return copy.CapitalShips.Count > 0 ? copy : null;
+        }
+
+        /// <summary>
+        /// Returns whether a faction can observe an entity at its current scene-graph location.
+        /// </summary>
+        /// <param name="entity">The entity whose presence is being evaluated.</param>
+        /// <param name="observerFactionInstanceID">The faction receiving the observation.</param>
+        /// <returns>True for owned entities and enemy entities that are not in transit.</returns>
+        internal static bool IsObservableAtPlanet(
+            ISceneNode entity,
+            string observerFactionInstanceID
+        )
+        {
+            return entity != null
+                && (
+                    entity.GetOwnerInstanceID() == observerFactionInstanceID
+                    || entity is not IMovable movable
+                    || movable.GetTransitMovement() == null
+                );
         }
 
         /// <summary>

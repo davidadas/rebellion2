@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -23,6 +24,11 @@ namespace Rebellion.Systems
         private readonly HashSet<string> _shortfallFactions = new HashSet<string>();
         private readonly Dictionary<string, int> _nextAutoscrapTickByFaction =
             new Dictionary<string, int>();
+
+        /// <summary>
+        /// Raised after an immediate scrap command produces results.
+        /// </summary>
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>
         /// Creates a new MaintenanceSystem.
@@ -72,15 +78,9 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="items">The units selected for scrapping.</param>
         /// <param name="ownerInstanceId">The faction authorized to scrap the units.</param>
-        /// <param name="results">Receives results produced by the completed scrap operation.</param>
         /// <returns>True when every selected unit was scrapped.</returns>
-        public bool TryScrap(
-            IReadOnlyList<IManufacturable> items,
-            string ownerInstanceId,
-            out List<GameResult> results
-        )
+        public bool TryScrap(IReadOnlyList<IManufacturable> items, string ownerInstanceId)
         {
-            results = new List<GameResult>();
             if (items == null || items.Count == 0 || string.IsNullOrEmpty(ownerInstanceId))
                 return false;
 
@@ -106,9 +106,11 @@ namespace Rebellion.Systems
                 liveItems.Add(liveItem);
             }
 
+            List<GameResult> results = new List<GameResult>();
             foreach (IManufacturable item in liveItems)
                 Scrap(item, results);
 
+            ResultsProduced?.Invoke(results);
             return true;
         }
 

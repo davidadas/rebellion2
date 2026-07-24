@@ -59,7 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
             _targetingController = new TargetingController();
-            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
+            _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _actions = new TestActions();
             _controller.Initialize(
@@ -251,7 +251,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _planet.Planet.Fleets.Remove(_fleet);
             _fleet.SetParent(null);
             _game.AttachNode(_fleet, _planet.Planet);
-            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
+            _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _controller.Initialize(
                 _actions,
@@ -311,6 +311,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _windowManager,
                 (x, y) => new Vector2Int(x + 17, y + 19),
                 () => _dirtyCount++
+            );
+        }
+
+        private StrategyFleetCommandController CreateFleetCommandController()
+        {
+            return new StrategyFleetCommandController(
+                () => _gameManager.GetGame(),
+                () => _gameManager.FleetSystem,
+                () => _gameManager.BombardmentSystem,
+                () => _gameManager.PlanetaryAssaultSystem
             );
         }
 

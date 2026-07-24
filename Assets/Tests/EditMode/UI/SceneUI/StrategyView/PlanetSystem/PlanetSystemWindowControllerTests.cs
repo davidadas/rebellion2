@@ -268,7 +268,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 },
                 ship
             );
-            _fleetCommandController = new StrategyFleetCommandController(_gameManager);
+            _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
             PlanetSystemWindowView view = OpenWindow(out UIWindow window);
@@ -449,7 +449,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
 
         private StrategyFleetCommandController CreateFleetCommandController()
         {
-            return new StrategyFleetCommandController(_gameManager);
+            return new StrategyFleetCommandController(
+                () => _gameManager.GetGame(),
+                () => _gameManager.FleetSystem,
+                () => _gameManager.BombardmentSystem,
+                () => _gameManager.PlanetaryAssaultSystem
+            );
         }
 
         private GameRoot CreateGame()

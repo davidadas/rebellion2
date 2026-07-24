@@ -577,11 +577,12 @@ namespace Rebellion.Tests.Systems
                 new FixedRNG(),
                 new FleetSystem(game)
             );
+            IReadOnlyList<GameResult> results = null;
+            maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
             bool scrapped = maintenanceSystem.TryScrap(
                 new List<IManufacturable> { regiment },
-                "empire",
-                out List<GameResult> results
+                "empire"
             );
 
             Assert.IsTrue(scrapped);
@@ -614,18 +615,19 @@ namespace Rebellion.Tests.Systems
                 new FixedRNG(),
                 new FleetSystem(game)
             );
+            IReadOnlyList<GameResult> results = null;
+            maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
             bool scrapped = maintenanceSystem.TryScrap(
                 new List<IManufacturable> { regiment },
-                "empire",
-                out List<GameResult> results
+                "empire"
             );
 
             Assert.IsFalse(scrapped);
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(planet, regiment.GetParent());
             Assert.AreEqual(0, empire.RefinedMaterialStockpile);
-            Assert.IsEmpty(results);
+            Assert.IsNull(results);
         }
 
         [Test]
@@ -650,17 +652,18 @@ namespace Rebellion.Tests.Systems
                 new FixedRNG(),
                 new FleetSystem(game)
             );
+            IReadOnlyList<GameResult> results = null;
+            maintenanceSystem.ResultsProduced += producedResults => results = producedResults;
 
             bool scrapped = maintenanceSystem.TryScrap(
                 new List<IManufacturable> { regiment },
-                "alliance",
-                out List<GameResult> results
+                "alliance"
             );
 
             Assert.IsFalse(scrapped);
             Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.AreSame(planet, regiment.GetParent());
-            Assert.IsEmpty(results);
+            Assert.IsNull(results);
         }
     }
 }

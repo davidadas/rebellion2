@@ -73,6 +73,31 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TryExecute_ValidCommand_PublishesCompletedResultBatch()
+        {
+            GameRoot game = CreateGame();
+            (Planet planet, _) = CreatePlanet(game, "p1", "empire", energy: 10);
+            AddRegiment(game, planet, "defender", "empire");
+            Fleet fleet = AddBombardmentFleet(game, planet, "alliance", bombardment: 1);
+            BombardmentSystem system = MakeBombardment(
+                game,
+                new SequenceRNG(intValues: new[] { 1, 0, 10 })
+            );
+            IReadOnlyList<GameResult> publishedResults = null;
+            system.ResultsProduced += results => publishedResults = results;
+
+            BombardmentResult result = system.TryExecute(
+                new List<Fleet> { fleet },
+                planet,
+                BombardmentType.Military
+            );
+
+            Assert.IsNotNull(publishedResults);
+            Assert.AreSame(result, publishedResults[0]);
+            Assert.IsTrue(publishedResults.OfType<PlanetGarrisonChangedResult>().Any());
+        }
+
+        [Test]
         public void Execute_MilitaryBombardment_TargetsDefendersOnly()
         {
             GameRoot game = CreateGame();

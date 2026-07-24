@@ -521,7 +521,7 @@ namespace Rebellion.Tests.Systems
             mission.MainParticipants.Add(luke);
 
             List<GameResult> results = _system.HandleResults(
-                new GameResult[]
+                new MissionCompletedResult[]
                 {
                     new MissionCompletedResult
                     {

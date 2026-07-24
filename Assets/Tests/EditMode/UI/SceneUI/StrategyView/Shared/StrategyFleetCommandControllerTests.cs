@@ -45,9 +45,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
-        public void Constructor_NullGameManager_ThrowsArgumentNullException()
+        public void Constructor_NullGameProvider_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new StrategyFleetCommandController(null));
+            Assert.Throws<ArgumentNullException>(() =>
+                new StrategyFleetCommandController(
+                    null,
+                    () => _gameManager.FleetSystem,
+                    () => _gameManager.BombardmentSystem,
+                    () => _gameManager.PlanetaryAssaultSystem
+                )
+            );
         }
 
         [Test]
@@ -279,7 +286,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 
         private StrategyFleetCommandController CreateController()
         {
-            return new StrategyFleetCommandController(_gameManager);
+            return new StrategyFleetCommandController(
+                () => _gameManager.GetGame(),
+                () => _gameManager.FleetSystem,
+                () => _gameManager.BombardmentSystem,
+                () => _gameManager.PlanetaryAssaultSystem
+            );
         }
 
         private GameFleet AddCombatFleet(

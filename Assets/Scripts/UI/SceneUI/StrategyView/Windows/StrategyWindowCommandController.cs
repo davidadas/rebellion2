@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 
 /// <summary>
 /// Executes and finalizes commands shared by strategy feature windows.
@@ -13,7 +15,11 @@ public sealed class StrategyWindowCommandController
 {
     private readonly MissionCreateWindowController missionCreateWindowController;
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
-    private readonly GameManager gameManager;
+    private readonly Func<GameRoot> getGame;
+    private readonly Func<MovementSystem> getMovementSystem;
+    private readonly Func<MaintenanceSystem> getMaintenanceSystem;
+    private readonly Func<ManufacturingSystem> getManufacturingSystem;
+    private readonly Func<PersonnelSystem> getPersonnelSystem;
     private readonly Action<string> playSfx;
     private readonly Action<UIWindow> clearWindowSelection;
     private readonly Action rebuildSnapshot;
@@ -24,7 +30,11 @@ public sealed class StrategyWindowCommandController
     /// </summary>
     /// <param name="missionCreateWindowController">Owns mission-creation windows.</param>
     /// <param name="confirmDialogWindowController">Owns confirmation windows.</param>
-    /// <param name="gameManager">Owns the active game and its domain systems.</param>
+    /// <param name="getGame">Returns the active game state.</param>
+    /// <param name="getMovementSystem">Returns the active movement system.</param>
+    /// <param name="getMaintenanceSystem">Returns the active maintenance system.</param>
+    /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
+    /// <param name="getPersonnelSystem">Returns the active personnel system.</param>
     /// <param name="playSfx">Plays an optional officer response.</param>
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
@@ -32,7 +42,11 @@ public sealed class StrategyWindowCommandController
     public StrategyWindowCommandController(
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
-        GameManager gameManager,
+        Func<GameRoot> getGame,
+        Func<MovementSystem> getMovementSystem,
+        Func<MaintenanceSystem> getMaintenanceSystem,
+        Func<ManufacturingSystem> getManufacturingSystem,
+        Func<PersonnelSystem> getPersonnelSystem,
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
@@ -45,7 +59,16 @@ public sealed class StrategyWindowCommandController
         this.confirmDialogWindowController =
             confirmDialogWindowController
             ?? throw new ArgumentNullException(nameof(confirmDialogWindowController));
-        this.gameManager = gameManager ?? throw new ArgumentNullException(nameof(gameManager));
+        this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
+        this.getMovementSystem =
+            getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
+        this.getMaintenanceSystem =
+            getMaintenanceSystem ?? throw new ArgumentNullException(nameof(getMaintenanceSystem));
+        this.getManufacturingSystem =
+            getManufacturingSystem
+            ?? throw new ArgumentNullException(nameof(getManufacturingSystem));
+        this.getPersonnelSystem =
+            getPersonnelSystem ?? throw new ArgumentNullException(nameof(getPersonnelSystem));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
         this.clearWindowSelection =
             clearWindowSelection ?? throw new ArgumentNullException(nameof(clearWindowSelection));
@@ -129,14 +152,17 @@ public sealed class StrategyWindowCommandController
     {
         List<ISceneNode> sourceItems = CopyItems(items);
         ContainerNode destination = target?.GetMoveDestination() as ContainerNode;
-        int transitTimeInDays = gameManager.MovementSystem.TryGetSelectionTransitTicks(
-            sourceItems,
-            destination,
-            GetPlayerFactionID(),
-            out int transitTicks
-        )
-            ? transitTicks
-            : -1;
+        MovementSystem movementSystem = getMovementSystem();
+        int transitTimeInDays =
+            movementSystem != null
+            && movementSystem.TryGetSelectionTransitTicks(
+                sourceItems,
+                destination,
+                GetPlayerFactionID(),
+                out int transitTicks
+            )
+                ? transitTicks
+                : -1;
         confirmDialogWindowController.OpenMove(
             sourceWindow,
             sourceItems,
@@ -167,7 +193,8 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && gameManager.TryScrap(manufacturables, GetPlayerFactionID())
+                    && getMaintenanceSystem()?.TryScrap(manufacturables, GetPlayerFactionID())
+                        == true
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -197,10 +224,8 @@ public sealed class StrategyWindowCommandController
                     .ToList();
                 if (
                     manufacturables.Count == sourceItems.Count
-                    && gameManager.ManufacturingSystem.CancelManufacturing(
-                        manufacturables,
-                        GetPlayerFactionID()
-                    )
+                    && getManufacturingSystem()
+                        ?.CancelManufacturing(manufacturables, GetPlayerFactionID()) == true
                 )
                 {
                     RefreshAfterMutation(sourceWindow);
@@ -225,7 +250,7 @@ public sealed class StrategyWindowCommandController
             sourceItems,
             () =>
             {
-                if (gameManager.PersonnelSystem.Retire(sourceItems, GetPlayerFactionID()))
+                if (getPersonnelSystem()?.Retire(sourceItems, GetPlayerFactionID()) == true)
                     RefreshAfterMutation(sourceWindow);
             }
         );
@@ -238,7 +263,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when every selected person may be retired.</returns>
     public bool CanRetire(IReadOnlyList<ISceneNode> items)
     {
-        return gameManager.PersonnelSystem.CanRetire(items, GetPlayerFactionID());
+        return getPersonnelSystem()?.CanRetire(items, GetPlayerFactionID()) == true;
     }
 
     /// <summary>
@@ -249,11 +274,13 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when the movement order was accepted.</returns>
     private bool TryMove(StrategyMissionTarget target, IReadOnlyList<ISceneNode> items)
     {
-        bool moved = gameManager.TryRequestMove(
-            items,
-            target?.GetMoveDestination() as ContainerNode,
-            GetPlayerFactionID()
-        );
+        bool moved =
+            getMovementSystem()
+                ?.TryRequestMove(
+                    items,
+                    target?.GetMoveDestination() as ContainerNode,
+                    GetPlayerFactionID()
+                ) == true;
         if (moved)
             PlayMoveVoice(items);
 
@@ -269,13 +296,9 @@ public sealed class StrategyWindowCommandController
         if (items == null || items.Count != 1 || items[0] is not Officer selectedOfficer)
             return;
 
-        Officer officer = gameManager
-            .GetGame()
-            .GetSceneNodeByInstanceID<Officer>(selectedOfficer.InstanceID);
-        string voicePath = officer?.GetVoicePath(
-            OfficerVoiceLineType.Order,
-            gameManager.GetGame().Random
-        );
+        GameRoot game = getGame();
+        Officer officer = game?.GetSceneNodeByInstanceID<Officer>(selectedOfficer.InstanceID);
+        string voicePath = officer?.GetVoicePath(OfficerVoiceLineType.Order, game.Random);
         if (!string.IsNullOrEmpty(voicePath))
             playSfx(voicePath);
     }
@@ -297,7 +320,7 @@ public sealed class StrategyWindowCommandController
     /// <returns>The current player faction identifier.</returns>
     private string GetPlayerFactionID()
     {
-        return gameManager.GetPlayerFaction()?.InstanceID ?? string.Empty;
+        return getGame()?.GetPlayerFaction()?.InstanceID ?? string.Empty;
     }
 
     /// <summary>

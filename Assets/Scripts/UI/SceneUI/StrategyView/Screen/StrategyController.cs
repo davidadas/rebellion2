@@ -201,7 +201,10 @@ public sealed class StrategyController
     {
         InitializeWindowInfrastructure();
         StrategyFleetCommandController fleetCommandController = new StrategyFleetCommandController(
-            gameManager
+            () => gameManager.GetGame(),
+            () => gameManager.FleetSystem,
+            () => gameManager.BombardmentSystem,
+            () => gameManager.PlanetaryAssaultSystem
         );
         InitializeFeatureWindowControllers(fleetCommandController);
         InitializeSharedCommandControllers();
@@ -391,7 +394,11 @@ public sealed class StrategyController
         windowCommandController = new StrategyWindowCommandController(
             missionCreateWindowController,
             confirmDialogWindowController,
-            gameManager,
+            () => gameManager.GetGame(),
+            () => gameManager.MovementSystem,
+            () => gameManager.MaintenanceSystem,
+            () => gameManager.ManufacturingSystem,
+            () => gameManager.PersonnelSystem,
             PlaySfx,
             ClearWindowSelection,
             RebuildSnapshot,
