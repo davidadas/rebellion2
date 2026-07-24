@@ -353,6 +353,7 @@ public sealed class GameManager
     private void InitializeResultProcessing()
     {
         _resultProcessor = new GameResultProcessor();
+        _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);

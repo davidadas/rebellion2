@@ -20,7 +20,7 @@ namespace Rebellion.Systems
     /// The only system that calls game.MoveNode() for movement purposes.
     /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
-    public class MovementSystem
+    public class MovementSystem : IGameResultHandler<BlockadeChangedResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -69,6 +69,37 @@ namespace Rebellion.Systems
                         UpdateMovement(movable, results);
                 });
             return results;
+        }
+
+        /// <summary>
+        /// Applies movement reactions to newly started blockades.
+        /// </summary>
+        /// <param name="results">The blockade changes to inspect.</param>
+        /// <returns>The movement and destruction results caused by blockade starts.</returns>
+        List<GameResult> IGameResultHandler<BlockadeChangedResult>.HandleResults(
+            IReadOnlyList<BlockadeChangedResult> results
+        )
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            if (results == null)
+                return reactions;
+
+            HashSet<string> handledPlanets = new HashSet<string>(StringComparer.Ordinal);
+            foreach (BlockadeChangedResult result in results)
+            {
+                if (
+                    result?.Blockaded != true
+                    || result.Planet == null
+                    || result.BlockadingFleet == null
+                    || !result.Planet.IsBlockaded()
+                    || !handledPlanets.Add(result.Planet.InstanceID)
+                )
+                    continue;
+
+                HandleBlockadeStarted(result, reactions);
+            }
+
+            return reactions;
         }
 
         /// <summary>
@@ -1201,6 +1232,147 @@ namespace Rebellion.Systems
 
             return (destination as Fleet)?.GetOwnerInstanceID() == movableOwner
                 || (destination as CapitalShip)?.GetOwnerInstanceID() == movableOwner;
+        }
+
+        /// <summary>
+        /// Resolves every independently moving unit headed toward a newly blockaded planet.
+        /// </summary>
+        /// <param name="result">The blockade-start result containing the planet and blockader.</param>
+        /// <param name="reactions">The collection receiving generated results.</param>
+        private void HandleBlockadeStarted(
+            BlockadeChangedResult result,
+            ICollection<GameResult> reactions
+        )
+        {
+            string blockadingOwner = result.BlockadingFleet.GetOwnerInstanceID();
+            if (string.IsNullOrEmpty(blockadingOwner))
+                return;
+
+            List<IMovable> inboundUnits = result
+                .Planet.GetChildren<IMovable>(unit => unit.Movement != null)
+                .Where(unit => unit.GetOwnerInstanceID() != blockadingOwner)
+                .ToList();
+
+            foreach (IMovable unit in inboundUnits)
+            {
+                if (unit is Building)
+                {
+                    DestroyBlockadeInboundUnit(unit, result.Planet, reactions);
+                    continue;
+                }
+
+                if (!ShouldAutorouteFromBlockade(unit))
+                    continue;
+
+                ContainerNode destination = FindBlockadeAutorouteDestination(unit, result.Planet);
+                if (destination == null)
+                {
+                    DestroyBlockadeInboundUnit(unit, result.Planet, reactions);
+                    continue;
+                }
+
+                Planet destinationPlanet =
+                    destination as Planet ?? destination.GetParentOfType<Planet>();
+                if (destinationPlanet == null)
+                    continue;
+
+                _game.MoveNode(unit, destination);
+                RetargetMovement(unit, destinationPlanet);
+                reactions.Add(
+                    new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+                );
+            }
+        }
+
+        /// <summary>
+        /// Returns whether an independently moving unit must seek another destination.
+        /// </summary>
+        /// <param name="unit">The inbound unit to evaluate.</param>
+        /// <returns>True when the unit must be autorouted.</returns>
+        private static bool ShouldAutorouteFromBlockade(IMovable unit)
+        {
+            return unit is Starfighter
+                || unit is Regiment
+                || unit is SpecialForces specialForces && !specialForces.IsOnMission();
+        }
+
+        /// <summary>
+        /// Finds the nearest safe planet or stationary carrier that can receive an inbound unit.
+        /// </summary>
+        /// <param name="unit">The unit requiring a new destination.</param>
+        /// <param name="blockadedPlanet">The destination that became blockaded.</param>
+        /// <returns>The nearest valid destination, or null when none exists.</returns>
+        private ContainerNode FindBlockadeAutorouteDestination(
+            IMovable unit,
+            Planet blockadedPlanet
+        )
+        {
+            string ownerInstanceID = GetMovementControlOwner(unit);
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return null;
+
+            List<(ContainerNode Destination, Planet Planet)> candidates = _game
+                .GetSceneNodesByType<Planet>()
+                .Where(planet =>
+                    planet != blockadedPlanet
+                    && planet.GetOwnerInstanceID() == ownerInstanceID
+                    && planet.IsColonized
+                    && !planet.IsDestroyed
+                    && !planet.IsBlockaded()
+                    && planet.CanAcceptChild(unit)
+                )
+                .Select(planet => (Destination: (ContainerNode)planet, Planet: planet))
+                .ToList();
+
+            candidates.AddRange(
+                _game
+                    .GetSceneNodesByType<CapitalShip>()
+                    .Where(ship =>
+                        ship.GetOwnerInstanceID() == ownerInstanceID
+                        && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                        && ship.GetTransitMovement() == null
+                        && ship.CanAcceptChild(unit)
+                    )
+                    .Select(ship => new
+                    {
+                        Destination = (ContainerNode)ship,
+                        Planet = ship.GetParentOfType<Planet>(),
+                    })
+                    .Where(candidate => candidate.Planet?.IsDestroyed == false)
+                    .Select(candidate =>
+                        (Destination: candidate.Destination, Planet: candidate.Planet)
+                    )
+            );
+
+            return candidates
+                .OrderBy(candidate => candidate.Planet.GetRawDistanceTo(blockadedPlanet))
+                .ThenBy(candidate => candidate.Destination is Planet ? 0 : 1)
+                .ThenBy(candidate => candidate.Destination.InstanceID, StringComparer.Ordinal)
+                .Select(candidate => candidate.Destination)
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Removes an inbound unit and records its destruction at the blockaded planet.
+        /// </summary>
+        /// <param name="unit">The unit to destroy.</param>
+        /// <param name="blockadedPlanet">The destination responsible for the destruction.</param>
+        /// <param name="reactions">The collection receiving the destruction result.</param>
+        private void DestroyBlockadeInboundUnit(
+            IMovable unit,
+            Planet blockadedPlanet,
+            ICollection<GameResult> reactions
+        )
+        {
+            _game.DetachNode(unit);
+            reactions.Add(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = unit,
+                    Context = blockadedPlanet,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>

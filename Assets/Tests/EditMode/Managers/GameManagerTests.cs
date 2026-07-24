@@ -126,6 +126,74 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_BlockadeStarts_ReroutesInboundStarfighter()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction owner = new Faction { InstanceID = "OWNER" };
+            Faction opposition = new Faction { InstanceID = "OPPOSITION" };
+            game.Factions.Add(owner);
+            game.Factions.Add(opposition);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
+            game.AttachNode(system, game.GetGalaxyMap());
+            Planet origin = new Planet
+            {
+                InstanceID = "ORIGIN",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet destination = new Planet
+            {
+                InstanceID = "DESTINATION",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            Planet fallback = new Planet
+            {
+                InstanceID = "FALLBACK",
+                OwnerInstanceID = owner.InstanceID,
+                IsColonized = true,
+                PositionX = 120,
+                PositionY = 0,
+            };
+            game.AttachNode(origin, system);
+            game.AttachNode(destination, system);
+            game.AttachNode(fallback, system);
+
+            Starfighter starfighter = EntityFactory.CreateStarfighter(
+                "STARFIGHTER",
+                owner.InstanceID
+            );
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
+
+            GameManager manager = new GameManager(game);
+            manager.MovementSystem.RequestMove(starfighter, destination);
+
+            Fleet blockadingFleet = EntityFactory.CreateFleet(
+                "BLOCKADING_FLEET",
+                opposition.InstanceID
+            );
+            CapitalShip blockadingShip = new CapitalShip
+            {
+                InstanceID = "BLOCKADING_SHIP",
+                OwnerInstanceID = opposition.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(blockadingFleet, destination);
+            game.AttachNode(blockadingShip, blockadingFleet);
+
+            manager.ProcessTick();
+
+            Assert.AreSame(fallback, starfighter.GetParent());
+            Assert.IsNotNull(starfighter.Movement);
+        }
+
+        [Test]
         public void ProcessTick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
             GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
