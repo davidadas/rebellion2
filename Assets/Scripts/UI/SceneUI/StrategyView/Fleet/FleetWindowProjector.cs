@@ -224,11 +224,6 @@ internal sealed class FleetWindowProjector
                         item,
                         session.ActiveTab
                     ),
-                    constructionOverlayTexture: GetConstructionOverlayTexture(
-                        uiContext,
-                        icons,
-                        item
-                    ),
                     enrouteOverlayTexture: GetDetailEnrouteOverlayTexture(uiContext, fleet, item),
                     damagedOverlayTexture: GetDetailDamagedOverlayTexture(uiContext, item),
                     entityTexture: uiContext.GetEntityTexture(item, true),
@@ -320,6 +315,14 @@ internal sealed class FleetWindowProjector
         FleetWindowTab activeTab
     )
     {
+        if (item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
+        {
+            UnitTileIcons icons = uiContext
+                .GetTheme(item.GetOwnerInstanceID())
+                ?.PlanetOverlayTheme?.UnitTileIcons;
+            return uiContext.GetTexture(icons?.FleetConstructionSmallImagePath);
+        }
+
         bool enroute = IsItemInTransit(fleet, item);
         Texture2D personnelBackground = uiContext.GetTexture(theme?.PersonnelBackgroundImagePath);
         Texture2D personnelEnrouteBackground = uiContext.GetTexture(
@@ -334,24 +337,6 @@ internal sealed class FleetWindowProjector
 
         string path = SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath);
         return uiContext.GetTexture(path) ?? personnelEnrouteBackground;
-    }
-
-    /// <summary>
-    /// Resolves a building-state overlay for an item currently under construction.
-    /// </summary>
-    /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="icons">The applicable unit-tile icon theme.</param>
-    /// <param name="item">The represented detail item.</param>
-    /// <returns>The construction overlay, or null.</returns>
-    private static Texture2D GetConstructionOverlayTexture(
-        UIContext uiContext,
-        UnitTileIcons icons,
-        ISceneNode item
-    )
-    {
-        return item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building }
-            ? uiContext.GetTexture(icons?.FleetConstructionSmallImagePath)
-            : null;
     }
 
     /// <summary>

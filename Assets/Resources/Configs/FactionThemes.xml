@@ -1496,6 +1496,25 @@
       <PlanetWindowCollapseSoundPath>Audio/SFX/StrategyView/sfx_strategyview_planetpanel_close</PlanetWindowCollapseSoundPath>
       <PlanetWindowMinimizeSoundPath>Audio/SFX/StrategyView/sfx_strategyview_window_minimize_rebel</PlanetWindowMinimizeSoundPath>
     </StrategyWindowSounds>
+    <StrategyMusic>
+      <NeutralTrackPaths>
+        <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
+      </NeutralTrackPaths>
+      <DecisiveAdvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveAdvantageTrackPath>
+      <StrongAdvantageTrackPath>Audio/Music/landos_palace</StrongAdvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/imperial_march</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongDisadvantageTrackPath>
+      <DecisiveDisadvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveDisadvantageTrackPath>
+      <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
+      <PlanetRatioScale>100</PlanetRatioScale>
+      <NoOpponentPlanetMultiplier>10</NoOpponentPlanetMultiplier>
+      <StrongAdvantageMinimumRatio>300</StrongAdvantageMinimumRatio>
+      <AdvantageMinimumRatio>200</AdvantageMinimumRatio>
+      <DisadvantageMaximumRatio>50</DisadvantageMaximumRatio>
+    </StrategyMusic>
     <ConfirmDialogTheme>
       <BackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_confirm_move_rebel_background</BackgroundImagePath>
       <MoveTitleImagePath>Art/HD/UI/StrategyView/ui_strategyview_confirm_move_rebel_title</MoveTitleImagePath>
@@ -3905,6 +3924,25 @@
       <PlanetWindowCollapseSoundPath>Audio/SFX/StrategyView/sfx_strategyview_planetpanel_close</PlanetWindowCollapseSoundPath>
       <PlanetWindowMinimizeSoundPath>Audio/SFX/StrategyView/sfx_strategyview_window_minimize_empire</PlanetWindowMinimizeSoundPath>
     </StrategyWindowSounds>
+    <StrategyMusic>
+      <NeutralTrackPaths>
+        <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
+      </NeutralTrackPaths>
+      <DecisiveAdvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveAdvantageTrackPath>
+      <StrongAdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongAdvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/imperial_march</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/landos_palace</StrongDisadvantageTrackPath>
+      <DecisiveDisadvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveDisadvantageTrackPath>
+      <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
+      <PlanetRatioScale>100</PlanetRatioScale>
+      <NoOpponentPlanetMultiplier>10</NoOpponentPlanetMultiplier>
+      <StrongAdvantageMinimumRatio>300</StrongAdvantageMinimumRatio>
+      <AdvantageMinimumRatio>200</AdvantageMinimumRatio>
+      <DisadvantageMaximumRatio>50</DisadvantageMaximumRatio>
+    </StrategyMusic>
     <ConfirmDialogTheme>
       <BackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_confirm_move_empire_background</BackgroundImagePath>
       <MoveTitleImagePath>Art/HD/UI/StrategyView/ui_strategyview_confirm_move_empire_title</MoveTitleImagePath>
@@ -5687,6 +5725,25 @@
       <PlanetWindowCollapseSoundPath>Audio/SFX/StrategyView/sfx_strategyview_planetpanel_close</PlanetWindowCollapseSoundPath>
       <PlanetWindowMinimizeSoundPath>Audio/SFX/StrategyView/sfx_strategyview_window_minimize_rebel</PlanetWindowMinimizeSoundPath>
     </StrategyWindowSounds>
+    <StrategyMusic>
+      <NeutralTrackPaths>
+        <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
+      </NeutralTrackPaths>
+      <DecisiveAdvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveAdvantageTrackPath>
+      <StrongAdvantageTrackPath>Audio/Music/landos_palace</StrongAdvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/imperial_march</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongDisadvantageTrackPath>
+      <DecisiveDisadvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveDisadvantageTrackPath>
+      <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
+      <PlanetRatioScale>100</PlanetRatioScale>
+      <NoOpponentPlanetMultiplier>10</NoOpponentPlanetMultiplier>
+      <StrongAdvantageMinimumRatio>300</StrongAdvantageMinimumRatio>
+      <AdvantageMinimumRatio>200</AdvantageMinimumRatio>
+      <DisadvantageMaximumRatio>50</DisadvantageMaximumRatio>
+    </StrategyMusic>
     <ConfirmDialogTheme>
       <BackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_confirm_move_rebel_background</BackgroundImagePath>
       <MoveTitleImagePath>Art/HD/UI/StrategyView/ui_strategyview_confirm_move_rebel_title</MoveTitleImagePath>
@@ -6555,6 +6612,25 @@
   </FactionTheme>
   <FactionTheme>
     <FactionInstanceID>UNKNOWN</FactionInstanceID>
+    <StrategyMusic>
+      <NeutralTrackPaths>
+        <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
+      </NeutralTrackPaths>
+      <DecisiveAdvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveAdvantageTrackPath>
+      <StrongAdvantageTrackPath>Audio/Music/landos_palace</StrongAdvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/imperial_march</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongDisadvantageTrackPath>
+      <DecisiveDisadvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveDisadvantageTrackPath>
+      <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
+      <PlanetRatioScale>100</PlanetRatioScale>
+      <NoOpponentPlanetMultiplier>10</NoOpponentPlanetMultiplier>
+      <StrongAdvantageMinimumRatio>300</StrongAdvantageMinimumRatio>
+      <AdvantageMinimumRatio>200</AdvantageMinimumRatio>
+      <DisadvantageMaximumRatio>50</DisadvantageMaximumRatio>
+    </StrategyMusic>
     <WindowTitleTheme>
       <ActiveImagePath>Art/HD/UI/StrategyView/ui_strategyview_window_title_neutral_active</ActiveImagePath>
       <InactiveImagePath>Art/HD/UI/StrategyView/ui_strategyview_window_title_neutral_inactive</InactiveImagePath>

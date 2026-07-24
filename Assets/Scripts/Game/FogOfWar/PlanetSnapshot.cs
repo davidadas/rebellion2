@@ -18,6 +18,7 @@ namespace Rebellion.Game.FogOfWar
         public bool IsInUprising;
         public bool IsDestroyed;
         public bool IsHeadquarters;
+        public int NumRawResourceNodes;
         public int EnergyCapacity;
         public int AllocatedEnergy;
 

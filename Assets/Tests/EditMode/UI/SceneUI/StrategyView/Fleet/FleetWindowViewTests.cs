@@ -78,7 +78,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             StrategyUnitCardView[] items = FindDetailItems();
             Assert.AreEqual(2, items.Length);
             Assert.AreEqual("First Ship", items[0].NameTextField.text);
-            Assert.IsTrue(FindCardObject(items[0], "ConstructionOverlayImage").activeSelf);
         }
 
         [Test]
@@ -388,9 +387,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             PointerEventData eventData = new PointerEventData(null);
             int draggedCount = 0;
             int endedCount = 0;
+            int detailItemsDropCount = 0;
             int fleetListDropCount = 0;
             _view.ScrollDragged += (_, _) => draggedCount++;
             _view.ScrollDragEnded += (_, _) => endedCount++;
+            _view.DetailItemsDropped += (_, _) => detailItemsDropCount++;
             _view.FleetListDropped += (_, _) => fleetListDropCount++;
             ScrollAreaView fleetScrollArea = FindFleetRows()[0]
                 .GetComponentInParent<ScrollAreaView>();
@@ -402,10 +403,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             fleetScrollArea.RelayDrop(eventData);
             detailScrollArea.RelayDrag(eventData);
             detailScrollArea.RelayDragEnd(eventData);
+            detailScrollArea.RelayDrop(eventData);
 
             Assert.AreEqual(2, draggedCount);
             Assert.AreEqual(2, endedCount);
+            Assert.AreEqual(1, detailItemsDropCount);
             Assert.AreEqual(1, fleetListDropCount);
+        }
+
+        [Test]
+        public void TabDrops_AllAuthoredTabs_RaiseDetailDestinationEvent()
+        {
+            PointerEventData eventData = new PointerEventData(null);
+            int dropCount = 0;
+            _view.DetailItemsDropped += (_, value) =>
+            {
+                Assert.AreSame(eventData, value);
+                dropCount++;
+            };
+            UIPointerGestureRelay[] tabRelays = _view
+                .GetComponentsInChildren<UIPointerGestureRelay>(true)
+                .Where(relay => relay.name.EndsWith("TabButtonImage", StringComparison.Ordinal))
+                .ToArray();
+
+            foreach (UIPointerGestureRelay relay in tabRelays)
+                relay.OnDrop(eventData);
+
+            Assert.AreEqual(FleetWindowRenderData.TabCount, tabRelays.Length);
+            Assert.AreEqual(FleetWindowRenderData.TabCount, dropCount);
         }
 
         [Test]
@@ -493,18 +518,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DetailItemTemplate_ConstructionRendersBehindEntityAndStatusRendersAbove()
+        public void DetailItemTemplate_StatusRendersAboveEntity()
         {
             StrategyUnitCardView itemTemplate = _viewObject
                 .GetComponentsInChildren<StrategyUnitCardView>(true)
                 .Single(item => item.name == "FleetDetailItemTemplate");
             Transform entity = FindCardObject(itemTemplate, "EntityImage").transform;
 
-            Assert.Less(
-                FindCardObject(itemTemplate, "ConstructionOverlayImage")
-                    .transform.GetSiblingIndex(),
-                entity.GetSiblingIndex()
-            );
             Assert.Greater(
                 FindCardObject(itemTemplate, "EnrouteOverlayImage").transform.GetSiblingIndex(),
                 entity.GetSiblingIndex()
@@ -596,7 +616,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 Color.white,
                 true,
                 false,
-                optionalTexture,
                 optionalTexture,
                 optionalTexture,
                 optionalTexture,

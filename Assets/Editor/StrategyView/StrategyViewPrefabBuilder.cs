@@ -1942,7 +1942,10 @@ public static class StrategyViewPrefabBuilder
         List<Button> tabButtons = CreateButtons(tabImages);
         List<RawImagePressVisual> tabPressVisuals = new List<RawImagePressVisual>();
         foreach (RawImage tabImage in tabImages)
+        {
+            EnableRuntimeComponent(tabImage.gameObject.AddComponent<UIPointerGestureRelay>());
             tabPressVisuals.Add(tabImage.GetComponent<RawImagePressVisual>());
+        }
 
         TextMeshProUGUI tabTitle = CreateTextLabel("TabTitleTextField", window.transform);
         tabTitle.text = "Trooper Regiments";
@@ -2045,18 +2048,6 @@ public static class StrategyViewPrefabBuilder
             _defensePersonnelBackgroundPreviewPath
         );
         SetSourceRect(background.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
-        RawImage constructionOverlay = CreateRawButton(
-            "ConstructionOverlayImage",
-            item.transform,
-            PreviewTheme?.PlanetOverlayTheme?.UnitTileIcons?.FleetConstructionSmallImagePath
-        );
-        SetSourceRect(
-            constructionOverlay.rectTransform,
-            0,
-            0,
-            _defenseItemWidth,
-            _defenseItemImageHeight
-        );
         RawImage entity = CreateRawButton(
             "EntityImage",
             item.transform,
@@ -2122,7 +2113,6 @@ public static class StrategyViewPrefabBuilder
             view,
             hitArea,
             background,
-            constructionOverlay,
             enrouteOverlay,
             damagedOverlay,
             entity,
@@ -2335,7 +2325,10 @@ public static class StrategyViewPrefabBuilder
         List<Button> tabButtons = CreateButtons(tabImages);
         List<RawImagePressVisual> tabPressVisuals = new List<RawImagePressVisual>();
         for (int i = 0; i < tabImages.Count; i++)
+        {
+            EnableRuntimeComponent(tabImages[i].gameObject.AddComponent<UIPointerGestureRelay>());
             tabPressVisuals.Add(tabImages[i].GetComponent<RawImagePressVisual>());
+        }
 
         ScrollAreaView detailItemsScrollArea = CreateScrollAreaView(
             window.transform,
@@ -2525,14 +2518,6 @@ public static class StrategyViewPrefabBuilder
             5
         );
         SetSourceRect(background.rectTransform, 25, 5, 61, 25);
-        RawImage constructionOverlay = CreateRawImage(
-            "ConstructionOverlayImage",
-            item.transform,
-            PreviewTheme?.PlanetOverlayTheme?.UnitTileIcons?.FleetConstructionSmallImagePath,
-            25,
-            5
-        );
-        SetSourceRect(constructionOverlay.rectTransform, 25, 5, 61, 25);
         RawImage entity = CreateRawImage(
             "EntityImage",
             item.transform,
@@ -2620,7 +2605,6 @@ public static class StrategyViewPrefabBuilder
             view,
             hitArea,
             background,
-            constructionOverlay,
             enrouteOverlay,
             damagedOverlay,
             entity,
@@ -8639,7 +8623,6 @@ public static class StrategyViewPrefabBuilder
     /// <param name="view">The generated unit-card view.</param>
     /// <param name="hitAreaImage">The card hit-area image.</param>
     /// <param name="backgroundImage">The card background image.</param>
-    /// <param name="constructionOverlayImage">The construction overlay image.</param>
     /// <param name="enrouteOverlayImage">The enroute overlay image.</param>
     /// <param name="damagedOverlayImage">The damaged overlay image.</param>
     /// <param name="entityImage">The entity image.</param>
@@ -8654,7 +8637,6 @@ public static class StrategyViewPrefabBuilder
         StrategyUnitCardView view,
         RawImage hitAreaImage,
         RawImage backgroundImage,
-        RawImage constructionOverlayImage,
         RawImage enrouteOverlayImage,
         RawImage damagedOverlayImage,
         RawImage entityImage,
@@ -8669,7 +8651,6 @@ public static class StrategyViewPrefabBuilder
     {
         AssignReference(view, "hitAreaImage", hitAreaImage);
         AssignReference(view, "backgroundImage", backgroundImage);
-        AssignReference(view, "constructionOverlayImage", constructionOverlayImage);
         AssignReference(view, "enrouteOverlayImage", enrouteOverlayImage);
         AssignReference(view, "damagedOverlayImage", damagedOverlayImage);
         AssignReference(view, "entityImage", entityImage);

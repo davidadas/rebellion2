@@ -412,7 +412,7 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Build_FogOfWar_CoreSystemsHaveInitialSnapshotsForNonOwners()
+        public void Build_FogOfWar_CoreSystemsHaveInitialResourceSnapshotsForNonOwners()
         {
             foreach (
                 PlanetSystem system in _game.Galaxy.PlanetSystems.Where(s =>
@@ -428,15 +428,29 @@ namespace Rebellion.Tests.Generation
                         if (isOwner)
                             continue;
 
-                        bool hasSnapshot =
+                        Assert.IsTrue(
                             faction.Fog.Snapshots.TryGetValue(
                                 system.InstanceID,
-                                out SystemSnapshot ss
-                            ) && ss.Planets.ContainsKey(planet.InstanceID);
-
+                                out SystemSnapshot systemSnapshot
+                            ),
+                            $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core system '{system.GetDisplayName()}'"
+                        );
                         Assert.IsTrue(
-                            hasSnapshot,
+                            systemSnapshot.Planets.TryGetValue(
+                                planet.InstanceID,
+                                out PlanetSnapshot snapshot
+                            ),
                             $"Faction '{faction.GetDisplayName()}' should have an initial snapshot for core planet '{planet.GetDisplayName()}'"
+                        );
+                        Assert.AreEqual(
+                            planet.EnergyCapacity,
+                            snapshot.EnergyCapacity,
+                            $"Faction '{faction.GetDisplayName()}' should know the initial energy capacity for core planet '{planet.GetDisplayName()}'"
+                        );
+                        Assert.AreEqual(
+                            planet.NumRawResourceNodes,
+                            snapshot.NumRawResourceNodes,
+                            $"Faction '{faction.GetDisplayName()}' should know the initial raw resources for core planet '{planet.GetDisplayName()}'"
                         );
                     }
                 }

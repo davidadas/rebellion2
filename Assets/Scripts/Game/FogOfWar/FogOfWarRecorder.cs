@@ -207,6 +207,7 @@ namespace Rebellion.Game.FogOfWar
                 IsInUprising = planet.IsInUprising,
                 IsDestroyed = planet.IsDestroyed,
                 IsHeadquarters = planet.IsHeadquarters,
+                NumRawResourceNodes = planet.NumRawResourceNodes,
                 EnergyCapacity = planet.EnergyCapacity,
                 AllocatedEnergy = planet.AllocatedEnergy,
                 PopularSupport = new Dictionary<string, int>(planet.PopularSupport),

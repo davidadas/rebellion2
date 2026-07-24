@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -63,6 +64,32 @@ namespace Rebellion.Tests.Game.Missions
                 "TryCreate should succeed with a valid enemy officer on the target planet"
             );
             Assert.AreEqual("target", ((AssassinationMission)mission).TargetOfficerInstanceID);
+        }
+
+        [Test]
+        public void TryCreate_TargetInTransit_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            target.Movement = new MovementState();
+            game.AttachNode(target, enemyPlanet);
+
+            Mission mission = CreateAssassinationMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission);
         }
 
         [Test]
