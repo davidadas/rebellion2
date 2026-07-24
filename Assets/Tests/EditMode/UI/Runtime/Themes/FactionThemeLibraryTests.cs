@@ -70,10 +70,6 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 allianceMusic.NeutralTrackPaths,
                 empireMusic.NeutralTrackPaths
             );
-            Assert.AreEqual(
-                "Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley",
-                allianceMusic.DecisiveAdvantageTrackPath
-            );
             Assert.AreEqual("Audio/Music/landos_palace", allianceMusic.StrongAdvantageTrackPath);
             Assert.AreEqual(
                 "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley",
@@ -85,29 +81,15 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
             Assert.AreEqual(
                 "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger",
-                allianceMusic.StrongDisadvantageTrackPath
-            );
-            Assert.AreEqual(
-                "Audio/Music/battle_of_hoth_medley",
-                allianceMusic.DecisiveDisadvantageTrackPath
-            );
-            Assert.AreEqual(
-                allianceMusic.DecisiveDisadvantageTrackPath,
-                empireMusic.DecisiveAdvantageTrackPath
-            );
-            Assert.AreEqual(
-                allianceMusic.StrongDisadvantageTrackPath,
                 empireMusic.StrongAdvantageTrackPath
             );
-            Assert.AreEqual(allianceMusic.DisadvantageTrackPath, empireMusic.AdvantageTrackPath);
-            Assert.AreEqual(allianceMusic.AdvantageTrackPath, empireMusic.DisadvantageTrackPath);
             Assert.AreEqual(
-                allianceMusic.StrongAdvantageTrackPath,
-                empireMusic.StrongDisadvantageTrackPath
+                "Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger",
+                empireMusic.AdvantageTrackPath
             );
             Assert.AreEqual(
-                allianceMusic.DecisiveAdvantageTrackPath,
-                empireMusic.DecisiveDisadvantageTrackPath
+                "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley",
+                empireMusic.DisadvantageTrackPath
             );
             Assert.AreEqual(3, allianceMusic.NeutralTracksBetweenStrategicTracks);
             Assert.AreEqual(100, allianceMusic.PlanetRatioScale);

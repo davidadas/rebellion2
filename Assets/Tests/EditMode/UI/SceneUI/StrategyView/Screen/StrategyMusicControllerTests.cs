@@ -33,12 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _theme = new StrategyMusicTheme
             {
                 NeutralTrackPaths = new List<string> { "neutral-1", "neutral-2", "neutral-3" },
-                DecisiveAdvantageTrackPath = "decisive-advantage",
                 StrongAdvantageTrackPath = _strongAdvantageTrack,
                 AdvantageTrackPath = _advantageTrack,
                 DisadvantageTrackPath = _disadvantageTrack,
-                StrongDisadvantageTrackPath = "strong-disadvantage",
-                DecisiveDisadvantageTrackPath = "decisive-disadvantage",
                 NeutralTracksBetweenStrategicTracks = 3,
                 PlanetRatioScale = 100,
                 NoOpponentPlanetMultiplier = 10,
