@@ -6,17 +6,11 @@ public sealed class StrategyMusicTheme
 {
     public List<string> NeutralTrackPaths { get; set; } = new List<string>();
 
-    public string DecisiveAdvantageTrackPath { get; set; }
-
     public string StrongAdvantageTrackPath { get; set; }
 
     public string AdvantageTrackPath { get; set; }
 
     public string DisadvantageTrackPath { get; set; }
-
-    public string StrongDisadvantageTrackPath { get; set; }
-
-    public string DecisiveDisadvantageTrackPath { get; set; }
 
     public int NeutralTracksBetweenStrategicTracks { get; set; }
 
