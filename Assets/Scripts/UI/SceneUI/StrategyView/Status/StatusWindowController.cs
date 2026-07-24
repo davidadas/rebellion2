@@ -266,8 +266,6 @@ public sealed class StatusWindowController
         List<Texture2D> textures = new List<Texture2D>();
         foreach (StatusWindowImage image in info.Images)
             textures.Add(uiContext.GetTexture(GetImageThemePath(theme, image)));
-        foreach (ISceneNode item in info.StatusImageItems)
-            textures.Add(uiContext.GetEntityStatusTexture(item, false));
         foreach (ISceneNode item in info.ImageItems)
             textures.Add(GetPrimaryImageTexture(uiContext, item));
         foreach (ISceneNode item in info.OverlayImageItems)
@@ -304,7 +302,6 @@ public sealed class StatusWindowController
             StatusWindowImage.Shipyard => theme?.ShipyardImagePath,
             StatusWindowImage.Construction => theme?.ConstructionImagePath,
             StatusWindowImage.Training => theme?.TrainingImagePath,
-            StatusWindowImage.Enroute => theme?.EnrouteImagePath,
             _ => null,
         };
     }

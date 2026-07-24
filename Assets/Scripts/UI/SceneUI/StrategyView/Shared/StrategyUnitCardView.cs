@@ -17,9 +17,6 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     private RawImage backgroundImage;
 
     [SerializeField]
-    private RawImage constructionOverlayImage;
-
-    [SerializeField]
     private RawImage enrouteOverlayImage;
 
     [SerializeField]
@@ -129,11 +126,6 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
 
         RectInt entityRenderFrameRect = GetEntityRenderFrameRect(data.EntityFrameYOffset);
         SetOptionalImageTexture(backgroundImage, data.BackgroundTexture);
-        SetOptionalCenteredImage(
-            constructionOverlayImage,
-            data.ConstructionOverlayTexture,
-            entityRenderFrameRect
-        );
         SetOptionalCenteredImage(
             enrouteOverlayImage,
             data.EnrouteOverlayTexture,
@@ -308,8 +300,6 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
             throw new MissingReferenceException($"{name}/HitAreaImage is missing.");
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
-        if (constructionOverlayImage == null)
-            throw new MissingReferenceException($"{name}/ConstructionOverlayImage is missing.");
         if (enrouteOverlayImage == null)
             throw new MissingReferenceException($"{name}/EnrouteOverlayImage is missing.");
         if (damagedOverlayImage == null)
@@ -344,7 +334,6 @@ public sealed class StrategyUnitCardRenderData
     /// <param name="showName">Whether the unit name is visible.</param>
     /// <param name="useAlternateNameLayout">Whether to use the authored alternate name layout.</param>
     /// <param name="backgroundTexture">The optional card background.</param>
-    /// <param name="constructionOverlayTexture">The optional construction overlay.</param>
     /// <param name="enrouteOverlayTexture">The optional in-transit overlay.</param>
     /// <param name="damagedOverlayTexture">The optional damaged or injured overlay.</param>
     /// <param name="entityTexture">The represented entity image.</param>
@@ -361,7 +350,6 @@ public sealed class StrategyUnitCardRenderData
         bool showName,
         bool useAlternateNameLayout,
         Texture backgroundTexture,
-        Texture constructionOverlayTexture,
         Texture enrouteOverlayTexture,
         Texture damagedOverlayTexture,
         Texture entityTexture,
@@ -379,7 +367,6 @@ public sealed class StrategyUnitCardRenderData
         ShowName = showName;
         UseAlternateNameLayout = useAlternateNameLayout;
         BackgroundTexture = backgroundTexture;
-        ConstructionOverlayTexture = constructionOverlayTexture;
         EnrouteOverlayTexture = enrouteOverlayTexture;
         DamagedOverlayTexture = damagedOverlayTexture;
         EntityTexture = entityTexture;
@@ -401,8 +388,6 @@ public sealed class StrategyUnitCardRenderData
     public bool UseAlternateNameLayout { get; }
 
     public Texture BackgroundTexture { get; }
-
-    public Texture ConstructionOverlayTexture { get; }
 
     public Texture EnrouteOverlayTexture { get; }
 

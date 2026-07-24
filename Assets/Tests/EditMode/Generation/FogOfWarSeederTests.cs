@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Generation;
 
@@ -37,6 +38,8 @@ namespace Rebellion.Tests.Generation
                 TypeID = "PLSEW05",
                 OwnerInstanceID = "FNEMP1",
                 IsColonized = true,
+                EnergyCapacity = 9,
+                NumRawResourceNodes = 6,
             };
             coreSystem.Planets.Add(empirePlanet);
             game.Galaxy = new GalaxyMap { PlanetSystems = new List<PlanetSystem> { coreSystem } };
@@ -54,9 +57,9 @@ namespace Rebellion.Tests.Generation
         }
 
         [Test]
-        public void Seed_ForeignCorePlanet_CapturesSnapshotForNonOwner()
+        public void Seed_ForeignCorePlanet_CapturesResourceSnapshotForNonOwner()
         {
-            var (game, coreSystem, _, _, alliance) = BuildScene();
+            var (game, coreSystem, empirePlanet, _, alliance) = BuildScene();
 
             new FogOfWarSeeder().Seed(Wrap(game));
 
@@ -64,6 +67,11 @@ namespace Rebellion.Tests.Generation
                 alliance.Fog.Snapshots.ContainsKey(coreSystem.InstanceID),
                 "Alliance should have a snapshot of the Empire-owned core system."
             );
+            PlanetSnapshot snapshot = alliance.Fog.Snapshots[coreSystem.InstanceID].Planets[
+                empirePlanet.InstanceID
+            ];
+            Assert.AreEqual(empirePlanet.EnergyCapacity, snapshot.EnergyCapacity);
+            Assert.AreEqual(empirePlanet.NumRawResourceNodes, snapshot.NumRawResourceNodes);
         }
 
         [Test]

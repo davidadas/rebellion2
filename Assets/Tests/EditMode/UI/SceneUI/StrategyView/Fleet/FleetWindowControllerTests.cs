@@ -188,6 +188,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void DetailItemsDrop_ActiveTargeting_SelectsCurrentFleet()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            ScrollAreaView detailScrollArea = view.GetComponentsInChildren<StrategyUnitCardView>(
+                    true
+                )
+                .Single(item => item.gameObject.activeInHierarchy)
+                .GetComponentInParent<ScrollAreaView>();
+
+            detailScrollArea.RelayDrop(new PointerEventData(null));
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_fleet, target.Item);
+            Assert.AreSame(_fleet, target.GetMoveDestination());
+        }
+
+        [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndTargetByIdentity()
         {
             FleetWindowView view = OpenWindow(out UIWindow _);
@@ -410,6 +434,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                     gameObject = row.transform.GetChild(0).gameObject,
                 },
             };
+        }
+
+        private sealed class RecordingTargetingReceiver : ITargetingReceiver
+        {
+            public object Target { get; private set; }
+
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                Target = target;
+            }
+
+            public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
         private sealed class TestActions

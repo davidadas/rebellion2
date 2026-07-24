@@ -38,6 +38,8 @@ public class FactionTheme
 
     public StrategyWindowSoundTheme StrategyWindowSounds { get; set; }
 
+    public StrategyMusicTheme StrategyMusic { get; set; }
+
     public StrategyBookmarkLayout StrategyBookmarkLayout { get; set; }
 
     public StrategyBookmarkIcons StrategyBookmarkIcons { get; set; }

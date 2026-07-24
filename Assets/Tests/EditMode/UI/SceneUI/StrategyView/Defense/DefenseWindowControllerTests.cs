@@ -165,6 +165,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
+        public void ItemsDrop_ActiveTargeting_SelectsRepresentedPlanet()
+        {
+            DefenseWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            ScrollAreaView scrollArea = view.GetComponentInChildren<ScrollAreaView>(true);
+
+            scrollArea.RelayDrop(new PointerEventData(null));
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.IsNull(target.Item);
+            Assert.AreSame(_planet.Planet, target.GetMoveDestination());
+        }
+
+        [Test]
         public void ReconcileWindow_FreshProjection_RebindsPlanetAndSelectionByIdentity()
         {
             DefenseWindowView view = OpenWindow(out UIWindow _);
@@ -282,6 +302,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             window = _controller.Open(_planet, 20, 30, out bool _);
             _windowManager.TryGetWindowView(window, out DefenseWindowView view);
             return view;
+        }
+
+        private sealed class RecordingTargetingReceiver : ITargetingReceiver
+        {
+            public object Target { get; private set; }
+
+            public void OnTargetSelected(TargetingRequest request, object target)
+            {
+                Target = target;
+            }
+
+            public void OnTargetingCancelled(TargetingRequest request) { }
         }
 
         private sealed class TestActions

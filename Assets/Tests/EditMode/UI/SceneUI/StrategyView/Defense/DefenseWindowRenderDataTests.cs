@@ -122,7 +122,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 null,
                 null,
                 null,
-                null,
                 4,
                 null,
                 null,

@@ -365,8 +365,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("24:36", info.Rows.Single(row => row.Left == "Laser Rating:").Right);
             Assert.AreEqual("16:24", info.Rows.Single(row => row.Left == "Ion Cannon:").Right);
             Assert.AreEqual("32:48", info.Rows.Single(row => row.Left == "Torpedoes:").Right);
-            CollectionAssert.AreEqual(new[] { starfighter }, info.StatusImageItems);
             CollectionAssert.IsEmpty(info.Images);
+            CollectionAssert.AreEqual(new[] { starfighter }, info.ImageItems);
         }
 
         [Test]
@@ -516,7 +516,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void Build_MovingOfficerWithTransitImage_ReturnsEntityStatusImage()
+        public void Build_MovingOfficerWithTransitImage_ReturnsOnlyPrimaryImage()
         {
             Officer officer = new Officer
             {
@@ -533,12 +533,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 "Day 105",
                 info.Rows.Single(row => row.Left == "ETA Destination:").Right
             );
-            CollectionAssert.AreEqual(new[] { officer }, info.StatusImageItems);
             CollectionAssert.IsEmpty(info.Images);
+            CollectionAssert.AreEqual(new[] { officer }, info.ImageItems);
         }
 
         [Test]
-        public void Build_MovingOfficerWithoutTransitImage_ReturnsGenericEnrouteImage()
+        public void Build_MovingOfficerWithoutTransitImage_ReturnsOnlyPrimaryImage()
         {
             Officer officer = new Officer
             {
@@ -549,8 +549,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
             StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
 
-            CollectionAssert.AreEqual(new[] { StatusWindowImage.Enroute }, info.Images);
-            CollectionAssert.IsEmpty(info.StatusImageItems);
+            CollectionAssert.IsEmpty(info.Images);
+            CollectionAssert.AreEqual(new[] { officer }, info.ImageItems);
         }
 
         [Test]
@@ -731,7 +731,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 "19",
                 info.Rows.Single(row => row.Left == "Bombardment Modifier:").Right
             );
-            CollectionAssert.AreEqual(new[] { ship }, info.StatusImageItems);
+            CollectionAssert.IsEmpty(info.Images);
+            CollectionAssert.AreEqual(new[] { ship }, info.ImageItems);
         }
 
         [Test]
@@ -762,8 +763,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 "Day 107",
                 info.Rows.Single(row => row.Left == "ETA Destination:").Right
             );
-            CollectionAssert.AreEqual(new[] { ship }, info.StatusImageItems);
             CollectionAssert.IsEmpty(info.Images);
+            CollectionAssert.AreEqual(new[] { ship }, info.ImageItems);
         }
 
         [Test]

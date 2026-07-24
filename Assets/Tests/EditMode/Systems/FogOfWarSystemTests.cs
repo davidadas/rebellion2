@@ -199,6 +199,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void CaptureSnapshot_PlanetWithAllEntities_CreatesAccurateSnapshot()
         {
+            _coruscant.NumRawResourceNodes = 5;
             Officer vader = CreateOfficer("VADER", _empire);
             Fleet imperialFleet = CreateFleet("FLEET1", _empire);
             CapitalShip destroyer = new CapitalShip
@@ -233,6 +234,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, snapshot.Starfighters.Count);
             Assert.AreEqual("FNEMP1", snapshot.OwnerInstanceID);
             Assert.IsTrue(snapshot.IsColonized);
+            Assert.AreEqual(5, snapshot.NumRawResourceNodes);
         }
 
         [Test]
@@ -746,7 +748,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_Snapshot_NumResourcesIsZero()
+        public void BuildFactionView_Snapshot_PreservesObservedResources()
         {
             _coruscant.NumRawResourceNodes = 5;
 
@@ -758,12 +760,13 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.AreEqual(0, viewCoruscant.NumRawResourceNodes);
+            Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
         [Test]
         public void BuildFactionView_FleetLeaves_UsesSnapshot()
         {
+            _coruscant.NumRawResourceNodes = 5;
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
             AddCapitalShip(allianceFleet, _alliance, "CS1");
@@ -782,6 +785,7 @@ namespace Rebellion.Tests.Systems
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(1, viewCoruscant.Officers.Count);
+            Assert.AreEqual(5, viewCoruscant.NumRawResourceNodes);
         }
 
         [Test]
@@ -852,9 +856,9 @@ namespace Rebellion.Tests.Systems
                 "Own in-transit fleet must be visible at its destination"
             );
             Assert.AreEqual(
-                0,
+                5,
                 viewCoruscant.NumRawResourceNodes,
-                "In transit must not grant live vision -- destination stays on the snapshot"
+                "In transit must not grant live vision -- destination stays on the observed snapshot"
             );
         }
 

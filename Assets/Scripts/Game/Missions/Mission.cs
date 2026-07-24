@@ -6,6 +6,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Missions
@@ -116,6 +117,17 @@ namespace Rebellion.Game.Missions
                     $"{missionName} target must be a planet. Got: {target.GetType().Name}"
                 );
             return planet;
+        }
+
+        internal static bool IsOperationalTarget(ISceneNode target)
+        {
+            if (target == null)
+                return false;
+
+            if (target is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
+                return false;
+
+            return target is not IMovable movable || movable.GetTransitMovement() == null;
         }
 
         /// <summary>

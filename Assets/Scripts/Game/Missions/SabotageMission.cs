@@ -75,13 +75,10 @@ namespace Rebellion.Game.Missions
                 return null;
 
             ISceneNode selectedTarget = ctx.SelectedTarget ?? ctx.Location;
-            if (selectedTarget is not IManufacturable manufacturable)
+            if (selectedTarget is not IManufacturable)
                 return null;
 
-            if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
-                return null;
-
-            if (selectedTarget is IMovable movable && movable.Movement != null)
+            if (!IsOperationalTarget(selectedTarget))
                 return null;
 
             Planet missionPlanet =
@@ -136,13 +133,10 @@ namespace Rebellion.Game.Missions
         private bool HasValidTarget(GameRoot game)
         {
             ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(SabotageTargetInstanceID);
-            if (target is not IManufacturable manufacturable)
+            if (target is not IManufacturable)
                 return false;
 
-            if (manufacturable.GetManufacturingStatus() == ManufacturingStatus.Building)
-                return false;
-
-            if (target is IMovable movable && movable.Movement != null)
+            if (!IsOperationalTarget(target))
                 return false;
 
             return target.GetParentOfType<Planet>() == GetParent() as Planet;

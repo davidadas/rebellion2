@@ -693,12 +693,6 @@ internal sealed class StrategyStatusInfoBuilder
             CenterImage = true,
         };
 
-        MovementState transitMovement = GetTransitMovement(item);
-        if (HasEntityStatusImage(item, transitMovement))
-            info.StatusImageItems.Add(item);
-        else if (transitMovement != null && item is not Fleet)
-            info.Images.Add(StatusWindowImage.Enroute);
-
         info.ImageItems.Add(item);
         if (
             item is Officer { IsCaptured: true }
@@ -706,32 +700,6 @@ internal sealed class StrategyStatusInfoBuilder
         )
             info.OverlayImageItems.Add(item);
         return info;
-    }
-
-    /// <summary>
-    /// Determines whether one entity supplies a state-specific status image.
-    /// </summary>
-    /// <param name="item">The scene node to inspect.</param>
-    /// <param name="transitMovement">The movement state physically carrying the entity.</param>
-    /// <returns><see langword="true"/> when a state-specific image is available.</returns>
-    private static bool HasEntityStatusImage(ISceneNode item, MovementState transitMovement)
-    {
-        if (item == null)
-            return false;
-
-        if (item is Officer { InjuryPoints: > 0 } && !string.IsNullOrEmpty(item.InjuredImagePath))
-            return true;
-
-        if (transitMovement != null && !string.IsNullOrEmpty(item.InTransitImagePath))
-            return true;
-
-        if (item is CapitalShip capitalShip && capitalShip.IsDamaged())
-            return !string.IsNullOrEmpty(item.DamagedImagePath);
-
-        if (item is Starfighter starfighter && starfighter.HasLosses())
-            return !string.IsNullOrEmpty(item.DamagedImagePath);
-
-        return false;
     }
 
     /// <summary>

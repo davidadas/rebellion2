@@ -73,16 +73,6 @@ public sealed class StrategyController
     [SerializeField]
     private BookmarkBarView bookmarkBar;
 
-    private static readonly string[] _strategyMusicTracks =
-    {
-        "Audio/Music/battle_of_endor_medley_2",
-        "Audio/Music/main_title_death_star_tatooine_emperor",
-        "Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger",
-        "Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation",
-        "Audio/Music/imperial_march",
-        "Audio/Music/battle_of_hoth_medley",
-    };
-
     private CancelStack cancelStack;
     private GameManager gameManager;
     private MessageSystem messageSystem;
@@ -95,6 +85,7 @@ public sealed class StrategyController
     private bool windowMovePreviewVisible;
 
     private StrategyHudController strategyHudController;
+    private StrategyMusicController strategyMusicController;
     private GalaxyMapController galaxyMapController;
     private GalacticInformationDisplayController galacticInformationDisplayController;
     private TargetingController targetingController;
@@ -171,6 +162,14 @@ public sealed class StrategyController
     /// </summary>
     private void InitializeScreenControllers()
     {
+        AudioManager audioManager = AudioManager.EnsureExists();
+        System.Random musicRandom = new System.Random();
+        strategyMusicController = new StrategyMusicController(
+            () => gameManager.GetGame(),
+            () => uiContext?.GetPlayerFactionTheme()?.StrategyMusic,
+            musicRandom.Next,
+            audioManager.PlayDynamicPlaylist
+        );
         strategyHudController = new StrategyHudController(
             () => gameManager?.GetPlayerFaction(),
             () => uiContext?.GetPlayerFactionTheme(),
@@ -536,14 +535,6 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Restores the shuffled strategy music playlist.
-    /// </summary>
-    private void ResumeStrategyMusic()
-    {
-        AudioManager.EnsureExists().PlayPlaylist(_strategyMusicTracks, true);
-    }
-
-    /// <summary>
     /// Plays a strategy sound effect through the shared audio manager.
     /// </summary>
     /// <param name="resourcePath">The Resources path of the sound effect.</param>
@@ -574,7 +565,7 @@ public sealed class StrategyController
     /// </summary>
     private void OnGameReady()
     {
-        ResumeStrategyMusic();
+        strategyMusicController.Resume();
         RebuildSnapshot();
         Render();
     }
@@ -2364,7 +2355,7 @@ public sealed class StrategyController
 
         strategyWindowManager.DestroyWindow(window);
         if (resumeMusic)
-            ResumeStrategyMusic();
+            strategyMusicController.Resume();
 
         MarkDirty();
     }

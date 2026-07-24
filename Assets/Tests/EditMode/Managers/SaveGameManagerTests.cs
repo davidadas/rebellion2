@@ -660,6 +660,7 @@ namespace Rebellion.Tests.Managers
                         {
                             TickCaptured = 100,
                             OwnerInstanceID = "FNEMP1",
+                            NumRawResourceNodes = 7,
                             HasManufacturingIntelligence = true,
                             ManufacturingQueueItems = new List<IManufacturable>
                             {
@@ -705,6 +706,7 @@ namespace Rebellion.Tests.Managers
             PlanetSnapshot loadedPlanetSnapshot = loadedSystemSnapshot.Planets["CORUSCANT"];
             Assert.AreEqual(100, loadedPlanetSnapshot.TickCaptured);
             Assert.AreEqual("FNEMP1", loadedPlanetSnapshot.OwnerInstanceID);
+            Assert.AreEqual(7, loadedPlanetSnapshot.NumRawResourceNodes);
             Assert.AreEqual(2, loadedPlanetSnapshot.PopularSupport.Count);
             Assert.AreEqual(90, loadedPlanetSnapshot.PopularSupport["FNEMP1"]);
             Assert.AreEqual(10, loadedPlanetSnapshot.PopularSupport["FNALL1"]);

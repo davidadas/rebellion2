@@ -33,11 +33,6 @@ internal sealed class StrategyStatusInfo
     /// Gets the rows.
     /// </summary>
     public List<StrategyStatusRow> Rows { get; } = new List<StrategyStatusRow>();
-
-    /// <summary>
-    /// Gets the status image items.
-    /// </summary>
-    public List<ISceneNode> StatusImageItems { get; } = new List<ISceneNode>();
 }
 
 /// <summary>
@@ -51,7 +46,6 @@ internal enum StatusWindowImage
     FleetBanner,
     FleetBannerEnroute,
     FleetBannerDamaged,
-    Enroute,
 }
 
 /// <summary>

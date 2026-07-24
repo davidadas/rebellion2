@@ -95,6 +95,14 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void PlayDynamicPlaylist_NullProvider_ThrowsArgumentNullException()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+
+        Assert.Throws<System.ArgumentNullException>(() => manager.PlayDynamicPlaylist(null));
+    }
+
+    [Test]
     public void EnsureExists_WhenExistingSceneManagerIsParented_MovesItToPersistentRoot()
     {
         GameObject parent = new GameObject("SceneRoot");

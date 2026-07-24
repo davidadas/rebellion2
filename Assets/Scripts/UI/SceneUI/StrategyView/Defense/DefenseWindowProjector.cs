@@ -266,7 +266,6 @@ internal sealed class DefenseWindowProjector
             showName: true,
             useAlternateNameLayout: false,
             backgroundTexture: GetItemBackgroundTexture(uiContext, theme, item),
-            constructionOverlayTexture: GetItemConstructionOverlayTexture(uiContext, item),
             enrouteOverlayTexture: GetItemEnrouteOverlayTexture(uiContext, item),
             damagedOverlayTexture: GetItemDamagedOverlayTexture(uiContext, item),
             entityTexture: uiContext.GetEntityTexture(item, true),
@@ -293,6 +292,14 @@ internal sealed class DefenseWindowProjector
         ISceneNode item
     )
     {
+        if (item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building })
+        {
+            UnitTileIcons icons = uiContext
+                .GetTheme(item.GetOwnerInstanceID())
+                ?.PlanetOverlayTheme?.UnitTileIcons;
+            return uiContext.GetTexture(icons?.FleetConstructionSmallImagePath);
+        }
+
         if (IsItemInTransit(item))
         {
             return GetPersonnelEnrouteBackgroundTexture(uiContext, item)
@@ -302,26 +309,6 @@ internal sealed class DefenseWindowProjector
         return item is Officer or SpecialForces
             ? uiContext.GetTexture(theme?.PersonnelBackgroundImagePath)
             : null;
-    }
-
-    /// <summary>
-    /// Resolves the construction overlay for a building unit.
-    /// </summary>
-    /// <param name="uiContext">The current presentation context.</param>
-    /// <param name="item">The represented scene node.</param>
-    /// <returns>The optional construction overlay.</returns>
-    private static Texture GetItemConstructionOverlayTexture(UIContext uiContext, ISceneNode item)
-    {
-        if (
-            item is not IManufacturable manufacturable
-            || manufacturable.GetManufacturingStatus() != ManufacturingStatus.Building
-        )
-            return null;
-
-        UnitTileIcons icons = uiContext
-            .GetTheme(item.GetOwnerInstanceID())
-            ?.PlanetOverlayTheme?.UnitTileIcons;
-        return uiContext.GetTexture(icons?.FleetConstructionSmallImagePath);
     }
 
     /// <summary>

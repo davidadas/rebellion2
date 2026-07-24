@@ -138,7 +138,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNotNull(card.EntityTexture);
             Assert.IsNotNull(card.CapturedOverlayTexture);
             Assert.IsNotNull(card.SelectionTexture);
-            Assert.IsNull(card.ConstructionOverlayTexture);
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNull(card.DamagedOverlayTexture);
             Assert.IsTrue(card.CanDrag);
@@ -202,7 +201,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void Build_StarfighterUnderConstruction_ReturnsConstructionOverlayOnly()
+        public void Build_StarfighterUnderConstruction_ReturnsConstructionBackground()
         {
             Starfighter starfighter = CreateStarfighter("fighter", "Fighter Squadron");
             starfighter.ManufacturingStatus = ManufacturingStatus.Building;
@@ -216,10 +215,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             DefenseWindowRenderData data = _projector.Build(_session, _window, true);
 
             StrategyUnitCardRenderData card = data.Items[0];
-            Assert.IsNotNull(card.ConstructionOverlayTexture);
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNull(card.DamagedOverlayTexture);
             Assert.IsNotNull(card.BackgroundTexture);
+            Assert.IsNotNull(card.EntityTexture);
             Assert.IsFalse(card.CanDrag);
         }
 
@@ -254,7 +253,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             DefenseWindowRenderData data = _projector.Build(_session, _window, true);
 
             StrategyUnitCardRenderData card = data.Items[0];
-            Assert.IsNull(card.ConstructionOverlayTexture);
             Assert.IsNotNull(card.EnrouteOverlayTexture);
             Assert.IsNotNull(card.DamagedOverlayTexture);
             Assert.IsNotNull(card.BackgroundTexture);
@@ -289,7 +287,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual("Planetary Shields", data.TabTitle);
             Assert.AreEqual(1, data.Items.Count);
             Assert.IsNotNull(data.Items[0].EntityTexture);
-            Assert.IsNotNull(data.Items[0].ConstructionOverlayTexture);
+            Assert.IsNotNull(data.Items[0].BackgroundTexture);
             Assert.IsFalse(data.Items[0].CanDrag);
         }
 

@@ -3,6 +3,7 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
@@ -161,6 +162,9 @@ namespace Rebellion.Game.Missions
             if (faction.DisallowedMissionTypeIDs.Contains(resolvedContext.MissionTypeID))
                 return false;
 
+            if (!HasOperationalTarget(resolvedContext))
+                return false;
+
             foreach (
                 IMissionParticipant missionParticipant in resolvedContext.MainParticipants.Concat(
                     resolvedContext.DecoyParticipants
@@ -179,6 +183,24 @@ namespace Rebellion.Game.Missions
 
             mission = TryCreateByType(resolvedContext);
             return mission != null;
+        }
+
+        private bool HasOperationalTarget(MissionContext context)
+        {
+            ISceneNode target = context.MissionTypeID switch
+            {
+                SabotageMission.MissionTypeID => context.SelectedTarget ?? context.Location,
+                AbductionMission.MissionTypeID
+                or AssassinationMission.MissionTypeID
+                or RescueMission.MissionTypeID => context.TargetOfficer
+                    ?? context.SelectedTarget as Officer,
+                _ => null,
+            };
+            if (target == null)
+                return true;
+
+            ISceneNode liveTarget = _game.GetSceneNodeByInstanceID<ISceneNode>(target.InstanceID);
+            return Mission.IsOperationalTarget(liveTarget);
         }
 
         /// <summary>

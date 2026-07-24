@@ -218,7 +218,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 _firstTexture,
                 null,
                 null,
-                null,
                 _secondTexture,
                 null,
                 null,

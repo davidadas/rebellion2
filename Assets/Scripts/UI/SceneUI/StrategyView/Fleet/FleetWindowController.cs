@@ -604,6 +604,7 @@ public sealed class FleetWindowController
         view.DetailItemDropped += HandleDetailItemDropped;
         view.DetailItemPressed += HandleDetailItemPressed;
         view.DetailItemReleased += HandleDetailItemReleased;
+        view.DetailItemsDropped += HandleDetailItemsDropped;
         view.FleetListDropped += HandleFleetListDropped;
         view.FleetRowDoubleClicked += HandleItemDoubleClicked;
         view.FleetRowDropped += HandleFleetRowDropped;
@@ -883,6 +884,12 @@ public sealed class FleetWindowController
         TrySelectTarget(session, item);
     }
 
+    private void HandleDetailItemsDropped(FleetWindowView view, PointerEventData eventData)
+    {
+        if (TryGetSession(view, out FleetWindowSession session) && session.SelectedFleet != null)
+            TrySelectTarget(session, session.SelectedFleet);
+    }
+
     /// <summary>
     /// Handles a fleet or detail item double click as a status request.
     /// </summary>
@@ -1152,6 +1159,7 @@ public sealed class FleetWindowController
         view.DetailItemDropped -= HandleDetailItemDropped;
         view.DetailItemPressed -= HandleDetailItemPressed;
         view.DetailItemReleased -= HandleDetailItemReleased;
+        view.DetailItemsDropped -= HandleDetailItemsDropped;
         view.FleetListDropped -= HandleFleetListDropped;
         view.FleetRowDoubleClicked -= HandleItemDoubleClicked;
         view.FleetRowDropped -= HandleFleetRowDropped;

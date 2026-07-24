@@ -153,7 +153,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreEqual("Capital Ship", card.Name);
             Assert.IsFalse(card.UseAlternateNameLayout);
             Assert.IsNull(card.BackgroundTexture);
-            Assert.IsNull(card.ConstructionOverlayTexture);
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNotNull(card.DamagedOverlayTexture);
             Assert.IsNotNull(card.EntityTexture);
@@ -196,7 +195,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             StrategyUnitCardRenderData card = data.DetailItems[0];
             Assert.AreEqual("Starfighter", card.Name);
             Assert.IsNull(card.BackgroundTexture);
-            Assert.IsNull(card.ConstructionOverlayTexture);
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNotNull(card.DamagedOverlayTexture);
             Assert.IsNotNull(card.SelectionTexture);
@@ -204,7 +202,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void Build_StarfighterUnderConstruction_SuppressesTransitAndDamageOverlays()
+        public void Build_StarfighterUnderConstruction_UsesConstructionBackground()
         {
             _starfighter.ManufacturingStatus = ManufacturingStatus.Building;
             _starfighter.Movement = new MovementState();
@@ -213,7 +211,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             FleetWindowRenderData data = _projector.Build(_session, _window, true);
 
             StrategyUnitCardRenderData card = data.DetailItems[0];
-            Assert.IsNotNull(card.ConstructionOverlayTexture);
+            Assert.IsNotNull(card.BackgroundTexture);
+            Assert.IsNotNull(card.EntityTexture);
             Assert.IsNull(card.EnrouteOverlayTexture);
             Assert.IsNull(card.DamagedOverlayTexture);
         }

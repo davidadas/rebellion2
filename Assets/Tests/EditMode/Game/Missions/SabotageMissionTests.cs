@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -31,6 +32,46 @@ namespace Rebellion.Tests.Game.Missions
                 decoyParticipants,
                 selectedTarget
             );
+        }
+
+        [Test]
+        public void TryCreate_TargetCarriedByMovingFleet_ReturnsNull()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            Regiment target = EntityFactory.CreateRegiment("target", "rebels");
+            target.ManufacturingStatus = ManufacturingStatus.Complete;
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "moving-fleet",
+                OwnerInstanceID = "rebels",
+                Movement = new MovementState(),
+            };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "carrier",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            game.AttachNode(fleet, enemyPlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(target, ship);
+
+            Mission mission = CreateSabotageMission(
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                target
+            );
+
+            Assert.IsNull(mission);
         }
 
         [Test]

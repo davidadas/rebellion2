@@ -82,6 +82,7 @@ namespace Rebellion.Game.Missions
                 || target.GetOwnerInstanceID() == ctx.OwnerInstanceId
                 || target.IsCaptured
                 || target.IsKilled
+                || !IsOperationalTarget(target)
                 || targetPlanet?.InstanceID != planet.InstanceID
             )
                 return null;
@@ -130,6 +131,7 @@ namespace Rebellion.Game.Missions
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
             return target?.IsKilled == false
                 && !target.IsCaptured
+                && IsOperationalTarget(target)
                 && target.GetParentOfType<Planet>() == GetParent() as Planet;
         }
 
