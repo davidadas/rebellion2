@@ -83,6 +83,7 @@
       <TrainingFacilityMaintenanceAllocationScalePercent>50</TrainingFacilityMaintenanceAllocationScalePercent>
       <ConstructionFacilityMaintenanceAllocationPercent>4</ConstructionFacilityMaintenanceAllocationPercent>
       <FacilityConstructionLaneReserve>1</FacilityConstructionLaneReserve>
+      <ProductionQueueTargetPlanningIntervals>1</ProductionQueueTargetPlanningIntervals>
       <ProductionFacilityUpgradeMinimumRemainingCount>1</ProductionFacilityUpgradeMinimumRemainingCount>
       <ProductionFacilityUpgradeDemandPercent>65</ProductionFacilityUpgradeDemandPercent>
       <ProductionFacilityUpgradeValuePressureWeight>20</ProductionFacilityUpgradeValuePressureWeight>

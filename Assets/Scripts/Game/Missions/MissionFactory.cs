@@ -3,6 +3,7 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Game.Missions
 {
@@ -170,6 +171,7 @@ namespace Rebellion.Game.Missions
                     missionParticipant?.GetOwnerInstanceID() != resolvedContext.OwnerInstanceId
                     || missionParticipant.IsOnMission()
                     || !missionParticipant.IsMovable()
+                    || missionParticipant.GetTransitMovement() != null
                     || missionParticipant.CanPerformMission(resolvedContext.MissionTypeID) != true
                 )
                     return false;

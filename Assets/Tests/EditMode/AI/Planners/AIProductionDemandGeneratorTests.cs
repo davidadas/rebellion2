@@ -206,6 +206,15 @@ namespace Rebellion.Tests.AI.Planners
                 BuildingType.TrainingFacility,
                 ManufacturingType.Troop
             );
+            Regiment queuedRegiment = new Regiment
+            {
+                InstanceID = "queued-regiment",
+                OwnerInstanceID = empire.InstanceID,
+                ConstructionCost = game.Config.AI.TickInterval,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            game.AttachNode(queuedRegiment, hub);
+            hub.AddToManufacturingQueue(queuedRegiment);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
             List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
@@ -464,6 +473,7 @@ namespace Rebellion.Tests.AI.Planners
             {
                 InstanceID = "queued-starfighter",
                 OwnerInstanceID = empire.InstanceID,
+                ConstructionCost = game.Config.AI.TickInterval,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
             game.AttachNode(queuedStarfighter, ship);
@@ -505,7 +515,7 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
-        public void Generate_WithMoreGarrisonDemandsThanTrainingLanes_AddsTrainingFacilityDemand()
+        public void Generate_WithIdleTrainingFacility_DoesNotAddTrainingFacilityDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
             game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 0;
@@ -529,11 +539,11 @@ namespace Rebellion.Tests.AI.Planners
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 
-            AIProductionDemand demand = new AIProductionDemandGenerator()
-                .Generate(context)
-                .Single(item => item.Kind == AIProductionDemandKind.TrainingFacility);
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
 
-            Assert.AreSame(hub, demand.DestinationPlanet);
+            Assert.IsFalse(
+                demands.Any(item => item.Kind == AIProductionDemandKind.TrainingFacility)
+            );
         }
 
         [Test]
@@ -835,6 +845,38 @@ namespace Rebellion.Tests.AI.Planners
             Assert.IsTrue(
                 demands.Any(demand => demand.Kind == AIProductionDemandKind.FleetRegiment)
             );
+        }
+
+        [Test]
+        public void Generate_WithMovingFleet_DoesNotAddFleetReinforcementDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+            CapitalShip ship = AITestSceneBuilder.CreateCapitalShip(
+                "ship",
+                empire.InstanceID,
+                combatStrength: 10,
+                regimentCapacity: 1,
+                starfighterCapacity: 2
+            );
+            game.AttachNode(fleet, owned);
+            game.AttachNode(ship, fleet);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(demands.Any(demand => demand.DestinationFleet == fleet));
         }
 
         [Test]

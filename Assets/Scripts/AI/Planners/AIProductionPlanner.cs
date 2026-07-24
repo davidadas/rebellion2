@@ -75,13 +75,30 @@ namespace Rebellion.AI.Planners
             if (product == null)
                 return;
 
+            bool distributesDemand = IsDistributedProductionDemand(demand);
+            int remainingQuantity = GetRequestedManufacturingCount(
+                context,
+                demand,
+                product.GetReference()
+            );
+            if (distributesDemand)
+            {
+                remainingQuantity = System.Math.Min(
+                    remainingQuantity,
+                    GetFleetUnitDiversityLimit(context, demand, product.GetReference())
+                );
+            }
+            if (remainingQuantity <= 0)
+                return;
+
             foreach (Planet producerPlanet in FindProducerPlanets(context, demand))
             {
                 AIProductionDemand proposalDemand = GetProposalDemand(
                     context,
                     demand,
                     producerPlanet,
-                    product
+                    product,
+                    remainingQuantity
                 );
                 if (proposalDemand == null)
                     continue;
@@ -89,11 +106,20 @@ namespace Rebellion.AI.Planners
                 AIManufactureProposal proposal = new AIManufactureProposal(
                     proposalDemand,
                     producerPlanet,
-                    product
+                    product,
+                    distributesDemand
                 );
 
                 if (proposal.CanExecute(context))
+                {
                     proposals.Add(proposal);
+                    if (distributesDemand)
+                    {
+                        remainingQuantity -= proposalDemand.QuantityNeeded;
+                        if (remainingQuantity <= 0)
+                            return;
+                    }
+                }
             }
         }
 
@@ -272,11 +298,25 @@ namespace Rebellion.AI.Planners
             AITurnContext context,
             AIProductionDemand demand,
             Planet producerPlanet,
-            Technology product
+            Technology product,
+            int remainingQuantity
         )
         {
             if (demand.Kind == AIProductionDemandKind.BuildingUpgrade)
                 return demand;
+
+            if (IsDistributedProductionDemand(demand))
+            {
+                int distributedQuantity = GetDistributedBatchSize(
+                    context,
+                    producerPlanet,
+                    product.GetReference(),
+                    remainingQuantity
+                );
+                return distributedQuantity > 0
+                    ? CreateProposalDemand(demand, distributedQuantity)
+                    : null;
+            }
 
             if (!IsFacilityExpansionDemand(demand) && !demand.UsesDefensiveReserve)
                 return demand;
@@ -297,7 +337,15 @@ namespace Rebellion.AI.Planners
             if (quantity <= 0)
                 return null;
 
-            return new AIProductionDemand(
+            return CreateProposalDemand(demand, quantity);
+        }
+
+        private static AIProductionDemand CreateProposalDemand(
+            AIProductionDemand demand,
+            int quantity
+        )
+        {
+            AIProductionDemand proposalDemand = new AIProductionDemand(
                 demand.Id,
                 demand.Kind,
                 demand.ManufacturingType,
@@ -307,6 +355,170 @@ namespace Rebellion.AI.Planners
                 demand.Pressure,
                 demand.ProductTypeId,
                 demand.CapitalShipRole
+            );
+            proposalDemand.ReplacementBuilding = demand.ReplacementBuilding;
+            return proposalDemand;
+        }
+
+        private int GetRequestedManufacturingCount(
+            AITurnContext context,
+            AIProductionDemand demand,
+            IManufacturable product
+        )
+        {
+            if (!IsDistributedProductionDemand(demand))
+                return System.Math.Max(0, demand.QuantityNeeded);
+
+            int requestedCount =
+                demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    ? GetCapitalShipCount(context, demand, product as CapitalShip)
+                    : demand.QuantityNeeded;
+
+            if (demand.UsesDefensiveReserve)
+                requestedCount = System.Math.Min(
+                    requestedCount,
+                    GetDefensiveBatchSize(context, demand, product)
+                );
+
+            return System.Math.Max(0, requestedCount);
+        }
+
+        private int GetCapitalShipCount(
+            AITurnContext context,
+            AIProductionDemand demand,
+            CapitalShip capitalShip
+        )
+        {
+            if (capitalShip == null)
+                return 0;
+
+            int contribution = demand.CapitalShipRole switch
+            {
+                AICapitalShipProductionRole.General =>
+                    context.Assessment.GetProjectedCapitalShipCombatValue(capitalShip),
+                AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
+                AICapitalShipProductionRole.Bombardment =>
+                    context.Assessment.GetProjectedCapitalShipBombardmentStrength(
+                        demand.DestinationFleet,
+                        capitalShip
+                    ),
+                _ => 0,
+            };
+            if (contribution <= 0)
+                return 0;
+
+            int requestedCount = DivideRoundedUp(demand.QuantityNeeded, contribution);
+            if (capitalShip.MaintenanceCost <= 0)
+                return requestedCount;
+
+            return System.Math.Min(
+                requestedCount,
+                GetCapitalShipMaintenanceBudget(context) / capitalShip.MaintenanceCost
+            );
+        }
+
+        private int GetDistributedBatchSize(
+            AITurnContext context,
+            Planet producerPlanet,
+            IManufacturable product,
+            int remainingQuantity
+        )
+        {
+            int queueCapacity = GetQueueBatchCapacity(context, producerPlanet, product);
+            return System.Math.Max(0, System.Math.Min(remainingQuantity, queueCapacity));
+        }
+
+        private int GetQueueBatchCapacity(
+            AITurnContext context,
+            Planet producerPlanet,
+            IManufacturable product
+        )
+        {
+            ManufacturingType manufacturingType = product.GetManufacturingType();
+            double targetWork =
+                producerPlanet.GetProductionRate(manufacturingType)
+                * context.Game.Config.AI.TickInterval
+                * context.Game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals;
+            long queuedWork = producerPlanet
+                .GetManufacturingQueue()
+                .TryGetValue(manufacturingType, out List<IManufacturable> queue)
+                ? queue.Sum(item =>
+                    (long)
+                        System.Math.Max(0, item.GetConstructionCost() - item.ManufacturingProgress)
+                )
+                : 0;
+            long additionalWork = (long)System.Math.Ceiling(targetWork) - queuedWork;
+            if (additionalWork <= 0)
+                return 0;
+
+            int constructionCost = product.GetConstructionCost();
+            if (constructionCost <= 0)
+                return int.MaxValue;
+
+            long capacity = (additionalWork + constructionCost - 1) / constructionCost;
+            return capacity > int.MaxValue ? int.MaxValue : (int)capacity;
+        }
+
+        private int GetFleetUnitDiversityLimit(
+            AITurnContext context,
+            AIProductionDemand demand,
+            IManufacturable product
+        )
+        {
+            if (demand.DestinationFleet == null)
+                return int.MaxValue;
+
+            GameConfig.AISelectionConfig config = context.Game.Config.AI.Selection;
+            if (product is Starfighter starfighter)
+            {
+                return GetFleetUnitDiversityLimit(
+                    context,
+                    demand.DestinationFleet,
+                    starfighter.GetTypeID(),
+                    ManufacturingType.Ship,
+                    config.MaxDuplicateStarfighterTypePerFleet,
+                    technology => technology.GetReference() as Starfighter
+                );
+            }
+
+            if (product is Regiment regiment)
+            {
+                return GetFleetUnitDiversityLimit(
+                    context,
+                    demand.DestinationFleet,
+                    regiment.GetTypeID(),
+                    ManufacturingType.Troop,
+                    config.MaxDuplicateRegimentTypePerDestination,
+                    technology => technology.GetReference() as Regiment
+                );
+            }
+
+            return int.MaxValue;
+        }
+
+        private int GetFleetUnitDiversityLimit<T>(
+            AITurnContext context,
+            Fleet fleet,
+            string selectedTypeId,
+            ManufacturingType manufacturingType,
+            int maximumDuplicateCount,
+            Func<Technology, T> getUnit
+        )
+            where T : class, IManufacturable
+        {
+            bool hasPreferredTechnology = context
+                .Faction.GetUnlockedTechnologies(manufacturingType)
+                .Select(getUnit)
+                .Any(unit =>
+                    unit != null
+                    && CountFleetUnitsByType<T>(fleet, unit.GetTypeID()) < maximumDuplicateCount
+                );
+            if (!hasPreferredTechnology)
+                return int.MaxValue;
+
+            return System.Math.Max(
+                0,
+                maximumDuplicateCount - CountFleetUnitsByType<T>(fleet, selectedTypeId)
             );
         }
 
@@ -409,6 +621,16 @@ namespace Rebellion.AI.Planners
                 is AIProductionDemandKind.ConstructionFacility
                     or AIProductionDemandKind.Shipyard
                     or AIProductionDemandKind.TrainingFacility;
+        }
+
+        private static bool IsDistributedProductionDemand(AIProductionDemand demand)
+        {
+            return demand?.Kind
+                is AIProductionDemandKind.FleetCapitalShip
+                    or AIProductionDemandKind.FleetStarfighter
+                    or AIProductionDemandKind.FleetRegiment
+                    or AIProductionDemandKind.GarrisonRegimentReserve
+                    or AIProductionDemandKind.SpecialForces;
         }
 
         private static int GetBuildingCapability(Building building)
@@ -600,6 +822,14 @@ namespace Rebellion.AI.Planners
         private static int ScaleByPercent(int value, int percent)
         {
             return (int)((long)value * percent / _percentageScale);
+        }
+
+        private static int DivideRoundedUp(int value, int divisor)
+        {
+            if (value <= 0 || divisor <= 0)
+                return 0;
+
+            return (int)(((long)value + divisor - 1) / divisor);
         }
 
         private static bool CanFillCapitalShipRole(
@@ -866,11 +1096,12 @@ namespace Rebellion.AI.Planners
                 return Enumerable.Empty<Planet>();
 
             Planet destinationPlanet = GetDestinationPlanet(context, demand);
+            bool distributesDemand = IsDistributedProductionDemand(demand);
             return context
                 .Assessment.OwnedPlanets.Where(planet =>
-                    IsFacilityExpansionDemand(demand)
-                        ? CanQueueFacilityExpansion(planet)
-                        : CanProduce(planet, demand.ManufacturingType)
+                    IsFacilityExpansionDemand(demand) ? CanQueueFacilityExpansion(planet)
+                    : distributesDemand ? HasProductionFacility(planet, demand.ManufacturingType)
+                    : CanProduce(planet, demand.ManufacturingType)
                 )
                 .OrderBy(planet =>
                     destinationPlanet == null ? 0 : destinationPlanet.GetRawDistanceTo(planet)
@@ -917,6 +1148,16 @@ namespace Rebellion.AI.Planners
             return planet.IsColonized
                 && !planet.IsDestroyed
                 && planet.GetAvailableManufacturingCapacity(manufacturingType) > 0;
+        }
+
+        private static bool HasProductionFacility(
+            Planet planet,
+            ManufacturingType manufacturingType
+        )
+        {
+            return planet?.IsColonized == true
+                && !planet.IsDestroyed
+                && planet.GetProductionFacilityCount(manufacturingType) > 0;
         }
 
         /// <summary>

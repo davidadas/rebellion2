@@ -513,8 +513,21 @@ namespace Rebellion.AI.Planners
             int demandLaneCount = demands.Count(demand =>
                 demand.ManufacturingType == manufacturingType && demand.QuantityNeeded > 0
             );
-            return demandLaneCount
-                > context.Assessment.GetAvailableProductionLaneCount(manufacturingType);
+            if (demandLaneCount <= 0)
+                return false;
+
+            double throughput = context.Assessment.GetProductionThroughput(manufacturingType);
+            if (throughput <= 0)
+                return true;
+
+            if (context.Assessment.GetIdleProductionThroughput(manufacturingType) > 0)
+                return false;
+
+            int targetQueueTicks =
+                context.Game.Config.AI.TickInterval
+                * context.Game.Config.AI.Infrastructure.ProductionQueueTargetPlanningIntervals;
+            return context.Assessment.GetQueuedProductionClearTicks(manufacturingType)
+                >= targetQueueTicks;
         }
 
         private bool HasPendingFacility(
@@ -1533,6 +1546,7 @@ namespace Rebellion.AI.Planners
         {
             return fleet != null
                 && fleet.RoleType == FleetRoleType.Battle
+                && fleet.Movement == null
                 && (
                     HasPresentOrUnderConstructionCapitalShips(fleet)
                     || fleet.Order?.OrderType is FleetOrderType.Attack or FleetOrderType.Defend

@@ -7,6 +7,7 @@ using Rebellion.AI.Proposals;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -276,6 +277,97 @@ namespace Rebellion.Tests.AI.Phases
             Assert.AreSame(higherScore, selected[0]);
         }
 
+        [Test]
+        public void Select_WithAvailableHostileMissionCapacity_SelectsUpToCapacity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            game.Config.AI.MissionPlanning.MaximumConcurrentHostileMissions = 2;
+            AIMissionProposal first = CreateHostileMissionProposal(
+                game,
+                context,
+                origin,
+                system,
+                rebels.InstanceID,
+                "first",
+                100
+            );
+            AIMissionProposal second = CreateHostileMissionProposal(
+                game,
+                context,
+                origin,
+                system,
+                rebels.InstanceID,
+                "second",
+                90
+            );
+            AIMissionProposal third = CreateHostileMissionProposal(
+                game,
+                context,
+                origin,
+                system,
+                rebels.InstanceID,
+                "third",
+                80
+            );
+            context.AddProposal(third);
+            context.AddProposal(first);
+            context.AddProposal(second);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { first, second }, selected);
+        }
+
+        [Test]
+        public void Select_WithActiveHostileMission_SelectsOnlyRemainingCapacity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet activeTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "active-target",
+                rebels.InstanceID
+            );
+            StubMission activeMission = EntityFactory.CreateMission(
+                "active-mission",
+                empire.InstanceID,
+                activeTarget.InstanceID
+            );
+            activeMission.ConfigKey = MissionTypeIDs.InciteUprising;
+            game.AttachNode(activeMission, activeTarget);
+            game.Config.AI.MissionPlanning.MaximumConcurrentHostileMissions = 2;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposal first = CreateHostileMissionProposal(
+                game,
+                context,
+                origin,
+                system,
+                rebels.InstanceID,
+                "first",
+                100
+            );
+            AIMissionProposal second = CreateHostileMissionProposal(
+                game,
+                context,
+                origin,
+                system,
+                rebels.InstanceID,
+                "second",
+                90
+            );
+            context.AddProposal(second);
+            context.AddProposal(first);
+
+            List<AIProposal> selected = new AISelectionPhase().Select(context);
+
+            CollectionAssert.AreEqual(new[] { first }, selected);
+        }
+
         private static Fleet CreateBattleFleet(
             GameRoot game,
             Planet planet,
@@ -293,6 +385,39 @@ namespace Rebellion.Tests.AI.Phases
             ship.SetParent(fleet);
             game.AttachNode(fleet, planet);
             return fleet;
+        }
+
+        private static AIMissionProposal CreateHostileMissionProposal(
+            GameRoot game,
+            AITurnContext context,
+            Planet origin,
+            PlanetSystem system,
+            string targetOwnerInstanceId,
+            string id,
+            double score
+        )
+        {
+            Planet target = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                $"target-{id}",
+                targetOwnerInstanceId
+            );
+            SpecialForces participant = new SpecialForces
+            {
+                InstanceID = $"participant-{id}",
+                OwnerInstanceID = context.Faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                AllowedMissionTypeIDs = new List<string> { MissionTypeIDs.InciteUprising },
+            };
+            game.AttachNode(participant, origin);
+            AIMissionProposal proposal = new AIMissionProposal(
+                new[] { participant },
+                MissionTypeIDs.InciteUprising,
+                target
+            );
+            proposal.SetScore(score);
+            return proposal;
         }
 
         private static AITurnContext CreateManufacturingContext(

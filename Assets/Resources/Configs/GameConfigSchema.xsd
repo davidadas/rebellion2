@@ -233,6 +233,10 @@
                       type="xs:nonNegativeInteger"
                     />
                     <xs:element
+                      name="ProductionQueueTargetPlanningIntervals"
+                      type="PositiveIntType"
+                    />
+                    <xs:element
                       name="ProductionFacilityUpgradeMinimumRemainingCount"
                       type="xs:nonNegativeInteger"
                     />

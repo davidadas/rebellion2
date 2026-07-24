@@ -240,6 +240,7 @@ namespace Rebellion.Game
             public int TrainingFacilityMaintenanceAllocationScalePercent { get; set; } = 50;
             public int ConstructionFacilityMaintenanceAllocationPercent { get; set; } = 4;
             public int FacilityConstructionLaneReserve { get; set; } = 1;
+            public int ProductionQueueTargetPlanningIntervals { get; set; } = 1;
             public int ProductionFacilityUpgradeMinimumRemainingCount { get; set; } = 1;
             public int ProductionFacilityUpgradeDemandPercent { get; set; } = 65;
             public int ProductionFacilityUpgradeValuePressureWeight { get; set; } = 20;

@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -689,7 +690,11 @@ namespace Rebellion.Game.Factions
             if (participant == null || participant.OwnerInstanceID != InstanceID)
                 return false;
 
-            if (participant.IsOnMission() || !participant.IsMovable())
+            if (
+                participant.IsOnMission()
+                || !participant.IsMovable()
+                || participant.GetTransitMovement() != null
+            )
                 return false;
 
             if (participant is Officer officer)

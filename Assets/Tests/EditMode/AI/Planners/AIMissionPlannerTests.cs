@@ -389,6 +389,53 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Plan_WithMoreSpiesThanConfiguredCandidates_OffersEnoughDistinctTargets()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet firstTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "target-1",
+                rebels.InstanceID
+            );
+            Planet secondTarget = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "target-2",
+                rebels.InstanceID
+            );
+            game.AttachNode(
+                CreateSpecialForces("spy-1", empire.InstanceID, MissionTypeIDs.Espionage),
+                origin
+            );
+            game.AttachNode(
+                CreateSpecialForces("spy-2", empire.InstanceID, MissionTypeIDs.Espionage),
+                origin
+            );
+            AITestSceneBuilder.RevealPlanet(game, empire, firstTarget);
+            AITestSceneBuilder.RevealPlanet(game, empire, secondTarget);
+            game.Config.AI.MissionPlanning.EspionageCandidatePlanetLimit = 1;
+            game.CurrentTick = game.Config.AI.MissionPlanning.EspionageRefreshIntervalTicks;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            string[] targetIds = new AIMissionPlanner()
+                .Plan(context)
+                .OfType<AIMissionProposal>()
+                .Where(proposal => proposal.MissionTypeID == MissionTypeIDs.Espionage)
+                .Select(proposal => proposal.TargetPlanet.InstanceID)
+                .Distinct()
+                .OrderBy(instanceId => instanceId)
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { firstTarget.InstanceID, secondTarget.InstanceID },
+                targetIds
+            );
+        }
+
+        [Test]
         public void Plan_WithQualifiedTrainerAndStudent_AddsTeamTrainingProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

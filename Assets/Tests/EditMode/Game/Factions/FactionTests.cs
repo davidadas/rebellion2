@@ -570,6 +570,32 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        public void GetAvailableMissionParticipants_ParticipantInMovingFleet_ExcludesParticipant()
+        {
+            Officer officer = EntityFactory.CreateOfficer("OFFICER1", "FACTION1");
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "FLEET1",
+                OwnerInstanceID = "FACTION1",
+                Movement = new MovementState(),
+            };
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "SHIP1",
+                OwnerInstanceID = "FACTION1",
+            };
+            fleet.AddChild(capitalShip);
+            capitalShip.SetParent(fleet);
+            capitalShip.AddChild(officer);
+            officer.SetParent(capitalShip);
+            _faction.AddOwnedUnit(officer);
+
+            List<IMissionParticipant> available = _faction.GetAvailableMissionParticipants();
+
+            CollectionAssert.DoesNotContain(available, officer);
+        }
+
+        [Test]
         public void GetTotalRawResourceNodes_FactionWithMultiplePlanets_ReturnsSumAcrossPlanets()
         {
             _planet1.NumRawResourceNodes = 10;

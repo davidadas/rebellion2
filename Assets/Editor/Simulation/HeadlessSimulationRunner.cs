@@ -24,6 +24,7 @@ public static class HeadlessSimulationRunner
     private const string _outputPathFlag = "-simOut";
     private const string _seedFlag = "-simSeed";
     private const string _logDirectory = "/tmp/rebellion2-sim-logs";
+    private const string _savedSimulationPlayerId = "PLAYER1";
     private const int _percentScale = 100;
 
     /// <summary>
@@ -50,11 +51,17 @@ public static class HeadlessSimulationRunner
     /// <param name="tickCount">The number of ticks to simulate.</param>
     /// <param name="outputPath">The summary output path.</param>
     /// <param name="seed">The optional generation seed.</param>
+    /// <param name="saveFileName">The optional save file name.</param>
+    /// <param name="saveDisplayName">The optional save display name.</param>
+    /// <param name="playerFactionId">The faction assigned to the player in the saved game.</param>
     /// <returns>The completed simulation result.</returns>
     public static SimulationRunResult RunPersistentSimulation(
         int tickCount,
         string outputPath,
-        int? seed
+        int? seed,
+        string saveFileName = null,
+        string saveDisplayName = null,
+        string playerFactionId = null
     )
     {
         return RunSimulation(
@@ -63,6 +70,9 @@ public static class HeadlessSimulationRunner
                 TickCount = tickCount,
                 OutputPath = outputPath,
                 Seed = seed,
+                SaveFileName = saveFileName,
+                SaveDisplayName = saveDisplayName,
+                PlayerFactionId = playerFactionId,
             }
         );
     }
@@ -116,6 +126,7 @@ public static class HeadlessSimulationRunner
                 activityTracker.RecordTick(game);
             }
 
+            string savePath = SaveSimulation(game, options);
             SimulationSummary report = BuildSimulationSummary(
                 game,
                 summary,
@@ -136,6 +147,7 @@ public static class HeadlessSimulationRunner
                 TicksCompleted = report.TicksCompleted,
                 OutputPath = resolvedPath,
                 Seed = options.Seed ?? -1,
+                SavePath = savePath,
             };
         }
         finally
@@ -144,6 +156,44 @@ public static class HeadlessSimulationRunner
             GameLogger.SetMinimumLevel(GameLogger.LogLevel.Debug);
             GameLogger.Configure(enableFileLogging: false);
         }
+    }
+
+    private static string SaveSimulation(GameRoot game, SimulationOptions options)
+    {
+        if (string.IsNullOrWhiteSpace(options.SaveFileName))
+            return string.Empty;
+
+        Faction playerFaction = game.Factions.FirstOrDefault(faction =>
+            faction.InstanceID == options.PlayerFactionId
+        );
+        if (playerFaction == null)
+        {
+            throw new InvalidOperationException(
+                $"Cannot save simulation with unknown player faction '{options.PlayerFactionId}'."
+            );
+        }
+
+        game.Summary.PlayerFactionID = playerFaction.InstanceID;
+        foreach (Faction faction in game.Factions)
+        {
+            faction.PlayerID =
+                faction.InstanceID == playerFaction.InstanceID ? _savedSimulationPlayerId : null;
+        }
+
+        SaveGameManager saveManager = SaveGameManager.Instance;
+        saveManager.SaveGameData(game, options.SaveFileName, options.SaveDisplayName);
+        GameRoot loadedGame = saveManager.LoadGameData(options.SaveFileName);
+        if (
+            loadedGame.CurrentTick != game.CurrentTick
+            || loadedGame.Summary?.PlayerFactionID != playerFaction.InstanceID
+        )
+        {
+            throw new InvalidOperationException(
+                $"Saved simulation validation failed for '{options.SaveFileName}'."
+            );
+        }
+
+        return saveManager.GetSaveFilePath(options.SaveFileName);
     }
 
     /// <summary>
@@ -1011,6 +1061,7 @@ public static class HeadlessSimulationRunner
         public int TicksCompleted;
         public string OutputPath;
         public int Seed = -1;
+        public string SavePath;
     }
 
     [Serializable]
@@ -2202,6 +2253,9 @@ public static class HeadlessSimulationRunner
         public int TickCount { get; set; }
         public string OutputPath { get; set; }
         public int? Seed { get; set; }
+        public string SaveFileName { get; set; }
+        public string SaveDisplayName { get; set; }
+        public string PlayerFactionId { get; set; }
 
         /// <summary>
         /// Parses simulation options from command-line arguments.

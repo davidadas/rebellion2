@@ -484,7 +484,13 @@ namespace Rebellion.AI.Planners
                 )
                 .Shuffle(context.Random)
                 .OrderByDescending(planet => GetDiplomacyCandidatePriority(context, planet))
-                .Take(context.Game.Config.AI.MissionPlanning.DiplomacyCandidatePlanetLimit);
+                .Take(
+                    GetAssignableCandidateLimit(
+                        context,
+                        MissionTypeIDs.Diplomacy,
+                        context.Game.Config.AI.MissionPlanning.DiplomacyCandidatePlanetLimit
+                    )
+                );
         }
 
         private IEnumerable<Planet> GetReconnaissanceCandidatePlanets(
@@ -541,7 +547,25 @@ namespace Rebellion.AI.Planners
                 .OrderByDescending(context.Assessment.GetPlanetIntelAge)
                 .ThenByDescending(context.Assessment.GetPlanetValue)
                 .ThenBy(planet => planet.InstanceID)
-                .Take(context.Game.Config.AI.MissionPlanning.EspionageCandidatePlanetLimit);
+                .Take(
+                    GetAssignableCandidateLimit(
+                        context,
+                        MissionTypeIDs.Espionage,
+                        context.Game.Config.AI.MissionPlanning.EspionageCandidatePlanetLimit
+                    )
+                );
+        }
+
+        private static int GetAssignableCandidateLimit(
+            AITurnContext context,
+            string missionTypeId,
+            int configuredLimit
+        )
+        {
+            int capableParticipantCount = context.Assessment.AvailableMissionParticipants.Count(
+                participant => participant.CanPerformMission(missionTypeId)
+            );
+            return System.Math.Max(configuredLimit, capableParticipantCount);
         }
 
         private IEnumerable<Planet> GetSabotageCandidatePlanets(AITurnContext context)

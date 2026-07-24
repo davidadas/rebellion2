@@ -288,6 +288,38 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void TryCreateMission_ParticipantInMovingFleet_ReturnsFalse()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            Regiment target = CreateSabotageTarget(game, planet);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            game.AttachNode(fleet, planet);
+            CapitalShip capitalShip = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "empire",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(capitalShip, fleet);
+            game.MoveNode(officer, capitalShip);
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+
+            bool created = factory.TryCreateMission(
+                CreateContext(
+                    game,
+                    MissionTypeIDs.Sabotage,
+                    "empire",
+                    officer,
+                    planet,
+                    selectedTarget: target
+                ),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
         public void TryCreateMission_NullOptionalFields_DoesNotMutateContext()
         {
             (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();

@@ -29,10 +29,19 @@ namespace Rebellion.AI.Proposals
             Planet producerPlanet,
             Technology product
         )
+            : this(demand, producerPlanet, product, false) { }
+
+        internal AIManufactureProposal(
+            AIProductionDemand demand,
+            Planet producerPlanet,
+            Technology product,
+            bool distributesDemand
+        )
         {
             Demand = demand;
             ProducerPlanet = producerPlanet;
             Product = product;
+            DistributesDemand = distributesDemand;
         }
 
         public AIProductionDemand Demand { get; }
@@ -43,6 +52,8 @@ namespace Rebellion.AI.Proposals
 
         public ContainerNode Destination => Demand?.Destination;
 
+        internal bool DistributesDemand { get; }
+
         /// <summary>
         /// Returns claims that prevent incompatible production proposals.
         /// </summary>
@@ -51,7 +62,7 @@ namespace Rebellion.AI.Proposals
         {
             List<string> claimKeys = new List<string>();
 
-            if (Demand != null)
+            if (Demand != null && !DistributesDemand)
                 claimKeys.Add($"production:demand:{Demand.Id}");
 
             if (ProducerPlanet != null && !UsesSharedProducerCapacity)
@@ -68,7 +79,7 @@ namespace Rebellion.AI.Proposals
             if (Demand?.Kind == AIProductionDemandKind.ConstructionFacility)
                 claimKeys.Add("production:building-kind:ConstructionFacility");
 
-            if (Destination is Fleet destinationFleet)
+            if (Destination is Fleet destinationFleet && !DistributesDemand)
             {
                 claimKeys.Add($"fleet:reinforcement:{Demand?.Kind}:{destinationFleet.InstanceID}");
                 if (Demand?.Kind == AIProductionDemandKind.FleetCapitalShip)
@@ -301,12 +312,33 @@ namespace Rebellion.AI.Proposals
                 )
                     return false;
             }
+            else if (DistributesDemand)
+            {
+                if (
+                    Demand.QuantityNeeded <= 0
+                    || ProducerPlanet.GetProductionFacilityCount(Demand.ManufacturingType) <= 0
+                )
+                    return false;
+            }
             else if (
                 ProducerPlanet.GetAvailableManufacturingCapacity(Demand.ManufacturingType) <= 0
             )
                 return false;
 
             if (Product.GetReference().GetManufacturingType() != Demand.ManufacturingType)
+                return false;
+
+            if (
+                Demand.Kind != AIProductionDemandKind.BuildingUpgrade
+                && IsCountedManufacturingDemand()
+                && !context.Manufacturing.CanStartManufacturing(
+                    ProducerPlanet,
+                    Product.GetReference(),
+                    Destination,
+                    GetManufacturingCount(),
+                    context.Faction.InstanceID
+                )
+            )
                 return false;
 
             return Demand.Kind switch
@@ -491,11 +523,14 @@ namespace Rebellion.AI.Proposals
             return IsCountedManufacturingDemand() ? Demand?.QuantityNeeded ?? 0 : 1;
         }
 
-        internal bool UsesSharedProducerCapacity => !IsFacilityExpansionDemand();
+        internal bool UsesSharedProducerCapacity =>
+            !IsFacilityExpansionDemand() && !DistributesDemand;
 
         private bool IsCountedManufacturingDemand()
         {
-            return IsFacilityExpansionDemand() || Demand?.UsesDefensiveReserve == true;
+            return IsFacilityExpansionDemand()
+                || Demand?.UsesDefensiveReserve == true
+                || DistributesDemand;
         }
 
         private bool IsFacilityExpansionDemand()

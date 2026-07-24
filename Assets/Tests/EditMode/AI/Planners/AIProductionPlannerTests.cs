@@ -1567,12 +1567,187 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(alternateTemplate, proposal.Product.GetReference());
         }
 
+        [Test]
+        public void Plan_WithStarfighterDeficit_QueuesWorkThroughNextPlanningTick()
+        {
+            (GameRoot game, Faction empire, Fleet fleet, Planet firstProducer, Planet _) =
+                CreateDistributedStarfighterScene(includeSecondProducer: false);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
+                    && item.Destination == fleet
+                );
+
+            Assert.AreSame(firstProducer, proposal.ProducerPlanet);
+            Assert.AreEqual(4, proposal.Demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Plan_WithStarfighterDeficit_DistributesBatchAcrossProducerPlanets()
+        {
+            (
+                GameRoot game,
+                Faction empire,
+                Fleet fleet,
+                Planet firstProducer,
+                Planet secondProducer
+            ) = CreateDistributedStarfighterScene(includeSecondProducer: true);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            Dictionary<string, int> quantities = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Where(item =>
+                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
+                    && item.Destination == fleet
+                )
+                .ToDictionary(
+                    item => item.ProducerPlanet.InstanceID,
+                    item => item.Demand.QuantityNeeded
+                );
+
+            Assert.AreEqual(4, quantities[firstProducer.InstanceID]);
+            Assert.AreEqual(2, quantities[secondProducer.InstanceID]);
+            Assert.AreEqual(6, quantities.Values.Sum());
+        }
+
+        [Test]
+        public void Plan_WithDistributedStarfighterBatch_RespectsFleetTypeLimit()
+        {
+            (GameRoot game, Faction empire, Fleet fleet, Planet _, Planet _) =
+                CreateDistributedStarfighterScene(includeSecondProducer: true);
+            game.Config.AI.Selection.MaxDuplicateStarfighterTypePerFleet = 4;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            int quantity = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Where(item =>
+                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
+                    && item.Destination == fleet
+                )
+                .Sum(item => item.Demand.QuantityNeeded);
+
+            Assert.AreEqual(4, quantity);
+        }
+
+        [Test]
+        public void Plan_WithQueueCoveringNextPlanningTick_DoesNotAddMoreWork()
+        {
+            (GameRoot game, Faction empire, Fleet fleet, Planet firstProducer, Planet _) =
+                CreateDistributedStarfighterScene(includeSecondProducer: false);
+            Starfighter queuedStarfighter = new Starfighter
+            {
+                InstanceID = "queued-starfighter",
+                TypeID = "queued-starfighter",
+                OwnerInstanceID = empire.InstanceID,
+                ConstructionCost = game.Config.AI.TickInterval,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            CapitalShip carrier = fleet.CapitalShips.Single();
+            game.AttachNode(queuedStarfighter, carrier);
+            firstProducer.AddToManufacturingQueue(queuedStarfighter);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIManufactureProposal> proposals = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Where(item =>
+                    item.Demand.Kind == AIProductionDemandKind.FleetStarfighter
+                    && item.Destination == fleet
+                )
+                .ToList();
+
+            Assert.IsEmpty(proposals);
+        }
+
         private static AIManufactureProposal GetShipyardProposal(AITurnContext context)
         {
             return new AIProductionPlanner()
                 .Plan(context)
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
+        }
+
+        private static (
+            GameRoot game,
+            Faction faction,
+            Fleet fleet,
+            Planet firstProducer,
+            Planet secondProducer
+        ) CreateDistributedStarfighterScene(bool includeSecondProducer)
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.MaximumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.MaximumConcurrentAttackOrders = 0;
+            game.Config.AI.FleetDeployment.MaximumConcurrentColonizationOrders = 0;
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 500;
+            game.Config.AI.Selection.MaxDuplicateStarfighterTypePerFleet = 10;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "shipyard-system");
+            Planet firstProducer = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "producer-1",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                firstProducer,
+                "shipyard-1",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Planet secondProducer = null;
+            if (includeSecondProducer)
+            {
+                secondProducer = AITestSceneBuilder.AddPlanet(
+                    game,
+                    system,
+                    "producer-2",
+                    empire.InstanceID,
+                    positionX: 100
+                );
+                AITestSceneBuilder.AddProductionFacility(
+                    game,
+                    secondProducer,
+                    "shipyard-2",
+                    BuildingType.Shipyard,
+                    ManufacturingType.Ship
+                );
+            }
+
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "carrier",
+                empire.InstanceID,
+                combatStrength: 500,
+                regimentCapacity: 0,
+                starfighterCapacity: 6
+            );
+            game.AttachNode(fleet, firstProducer);
+            game.AttachNode(carrier, fleet);
+            Starfighter template = new Starfighter
+            {
+                InstanceID = "starfighter-template",
+                TypeID = "starfighter",
+                OwnerInstanceID = empire.InstanceID,
+                AllowedOwnerInstanceIDs = new List<string> { empire.InstanceID },
+                ConstructionCost = 2,
+                MaintenanceCost = 0,
+                LaserCannon = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            return (game, empire, fleet, firstProducer, secondProducer);
         }
 
         private static (

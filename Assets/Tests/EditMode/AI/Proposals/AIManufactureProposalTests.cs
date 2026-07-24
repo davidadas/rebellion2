@@ -8,6 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.Tests.AI.Helpers;
@@ -536,6 +537,113 @@ namespace Rebellion.Tests.AI.Proposals
             Assert.AreEqual("commandos", queued.GetTypeID());
             Assert.AreSame(planet, queued.GetParent());
             Assert.AreEqual(70, queued.GetBaseRating(OfficerRating.Combat));
+        }
+
+        [Test]
+        public void Execute_WithDistributedStarfighterBatch_QueuesExactQuantity()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            CapitalShip carrier = AITestSceneBuilder.CreateCapitalShip(
+                "carrier",
+                empire.InstanceID,
+                starfighterCapacity: 3
+            );
+            game.AttachNode(fleet, planet);
+            game.AttachNode(carrier, fleet);
+            Starfighter template = new Starfighter
+            {
+                InstanceID = "starfighter-template",
+                TypeID = "starfighter",
+                OwnerInstanceID = empire.InstanceID,
+                AllowedOwnerInstanceIDs = new List<string> { empire.InstanceID },
+                ConstructionCost = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            AIProductionDemand demand = new AIProductionDemand(
+                "starfighter-demand",
+                AIProductionDemandKind.FleetStarfighter,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                fleet,
+                3,
+                100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(template),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            proposal.Execute(context);
+
+            List<IManufacturable> queue = planet.GetManufacturingQueue()[ManufacturingType.Ship];
+            Assert.AreEqual(3, queue.Count);
+            Assert.AreEqual(3, queue.OfType<Starfighter>().Count());
+            Assert.AreEqual(3, fleet.GetCurrentStarfighterCount());
+        }
+
+        [Test]
+        public void CanExecute_WithDistributedBatchForMovingFleet_ReturnsFalse()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard-world",
+                empire.InstanceID
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.Movement = new MovementState { TransitTicks = 10 };
+            game.AttachNode(fleet, planet);
+            CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
+                "capital-template",
+                empire.InstanceID
+            );
+            AIProductionDemand demand = new AIProductionDemand(
+                "capital-demand",
+                AIProductionDemandKind.FleetCapitalShip,
+                ManufacturingType.Ship,
+                BuildingType.None,
+                fleet,
+                1,
+                100
+            );
+            AIManufactureProposal proposal = new AIManufactureProposal(
+                demand,
+                planet,
+                new Technology(template),
+                distributesDemand: true
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            bool canExecute = proposal.CanExecute(context);
+
+            Assert.IsFalse(canExecute);
         }
 
         [Test]

@@ -6,6 +6,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.AI.Proposals
 {
@@ -92,9 +93,6 @@ namespace Rebellion.AI.Proposals
                 .ToList();
 
             AddMissionSpecificClaims(claimKeys);
-
-            if (IsHostileMission())
-                claimKeys.Add($"mission:hostile:{Participant?.GetOwnerInstanceID()}");
 
             return claimKeys;
         }
@@ -240,7 +238,11 @@ namespace Rebellion.AI.Proposals
 
         private bool IsParticipantAvailable(IMissionParticipant participant)
         {
-            if (participant?.IsMovable() != true || participant.IsOnMission())
+            if (
+                participant?.IsMovable() != true
+                || participant.IsOnMission()
+                || participant.GetTransitMovement() != null
+            )
                 return false;
 
             if (participant is Officer officer && (officer.IsCaptured || officer.IsKilled))
@@ -268,12 +270,10 @@ namespace Rebellion.AI.Proposals
                 : !TargetOfficer.IsCaptured;
         }
 
-        private bool IsHostileMission()
-        {
-            return MissionTypeID == MissionTypeIDs.Sabotage
-                || MissionTypeID == MissionTypeIDs.Abduction
-                || MissionTypeID == MissionTypeIDs.Assassination
-                || MissionTypeID == MissionTypeIDs.InciteUprising;
-        }
+        internal bool IsHostileMission =>
+            MissionTypeID == MissionTypeIDs.Sabotage
+            || MissionTypeID == MissionTypeIDs.Abduction
+            || MissionTypeID == MissionTypeIDs.Assassination
+            || MissionTypeID == MissionTypeIDs.InciteUprising;
     }
 }
