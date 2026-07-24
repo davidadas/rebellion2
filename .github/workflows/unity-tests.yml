@@ -37,7 +37,7 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          persist-credentials: false
+          persist-credentials: true
           lfs: true
           sparse-checkout: |
             Art
