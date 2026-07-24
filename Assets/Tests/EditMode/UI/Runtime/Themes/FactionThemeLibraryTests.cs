@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 new[]
                 {
                     "Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley",
-                    "Audio/Music/main_title_death_star_tatooine_emperor",
+                    "Audio/Music/main_title_death_star_tatooine_emperor_medley",
                     "Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley",
                 },
                 allianceMusic.NeutralTrackPaths
@@ -76,12 +76,15 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
             Assert.AreEqual("Audio/Music/landos_palace", allianceMusic.StrongAdvantageTrackPath);
             Assert.AreEqual(
-                "Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation",
+                "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley",
                 allianceMusic.AdvantageTrackPath
             );
-            Assert.AreEqual("Audio/Music/imperial_march", allianceMusic.DisadvantageTrackPath);
             Assert.AreEqual(
-                "Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger",
+                "Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger",
+                allianceMusic.DisadvantageTrackPath
+            );
+            Assert.AreEqual(
+                "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger",
                 allianceMusic.StrongDisadvantageTrackPath
             );
             Assert.AreEqual(

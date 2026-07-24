@@ -1499,14 +1499,14 @@
     <StrategyMusic>
       <NeutralTrackPaths>
         <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
-        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor_medley</string>
         <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
       </NeutralTrackPaths>
       <DecisiveAdvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveAdvantageTrackPath>
       <StrongAdvantageTrackPath>Audio/Music/landos_palace</StrongAdvantageTrackPath>
-      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</AdvantageTrackPath>
-      <DisadvantageTrackPath>Audio/Music/imperial_march</DisadvantageTrackPath>
-      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongDisadvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger</StrongDisadvantageTrackPath>
       <DecisiveDisadvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveDisadvantageTrackPath>
       <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
       <PlanetRatioScale>100</PlanetRatioScale>
@@ -1681,8 +1681,8 @@
         <BattleMusicPath>Audio/Music/attacking_a_star_destroyer</BattleMusicPath>
         <ResultMusicPath>Audio/Music/sail_barge_assault_alternate</ResultMusicPath>
         <ResultVictoryMusicPath>Audio/Music/sail_barge_assault_alternate</ResultVictoryMusicPath>
-        <ResultDefeatMusicPath>Audio/Music/battle_of_endor_medley_3</ResultDefeatMusicPath>
-        <ResultDrawMusicPath>Audio/Music/battle_of_endor_medley_3</ResultDrawMusicPath>
+        <ResultDefeatMusicPath>Audio/Music/battle_of_endor_3_medley</ResultDefeatMusicPath>
+        <ResultDrawMusicPath>Audio/Music/battle_of_endor_3_medley</ResultDrawMusicPath>
         <SummaryBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_rebel_summary_background</SummaryBackgroundImagePath>
         <ListBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_rebel_list_background</ListBackgroundImagePath>
         <ResultListBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_list_background</ResultListBackgroundImagePath>
@@ -3927,13 +3927,13 @@
     <StrategyMusic>
       <NeutralTrackPaths>
         <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
-        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor_medley</string>
         <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
       </NeutralTrackPaths>
       <DecisiveAdvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveAdvantageTrackPath>
-      <StrongAdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongAdvantageTrackPath>
-      <AdvantageTrackPath>Audio/Music/imperial_march</AdvantageTrackPath>
-      <DisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</DisadvantageTrackPath>
+      <StrongAdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger</StrongAdvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley</DisadvantageTrackPath>
       <StrongDisadvantageTrackPath>Audio/Music/landos_palace</StrongDisadvantageTrackPath>
       <DecisiveDisadvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveDisadvantageTrackPath>
       <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
@@ -4107,10 +4107,10 @@
         <BombardmentAttackerLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_attacker_losses</BombardmentAttackerLossesImagePath>
         <BombardmentTargetLossesImagePath>Art/HD/UI/Messages/ui_message_bombardment_target_losses</BombardmentTargetLossesImagePath>
         <BattleMusicPath>Audio/Music/attacking_a_star_destroyer</BattleMusicPath>
-        <ResultMusicPath>Audio/Music/imperial_march_darth_vader_theme_2</ResultMusicPath>
-        <ResultVictoryMusicPath>Audio/Music/imperial_march_darth_vader_theme_2</ResultVictoryMusicPath>
-        <ResultDefeatMusicPath>Audio/Music/battle_of_endor_medley_3</ResultDefeatMusicPath>
-        <ResultDrawMusicPath>Audio/Music/battle_of_endor_medley_3</ResultDrawMusicPath>
+        <ResultMusicPath>Audio/Music/imperial_march_darth_vaders_theme</ResultMusicPath>
+        <ResultVictoryMusicPath>Audio/Music/imperial_march_darth_vaders_theme</ResultVictoryMusicPath>
+        <ResultDefeatMusicPath>Audio/Music/battle_of_endor_3_medley</ResultDefeatMusicPath>
+        <ResultDrawMusicPath>Audio/Music/battle_of_endor_3_medley</ResultDrawMusicPath>
         <SummaryBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_empire_summary_background</SummaryBackgroundImagePath>
         <ListBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_empire_list_background</ListBackgroundImagePath>
         <ResultListBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_list_background</ResultListBackgroundImagePath>
@@ -5728,14 +5728,14 @@
     <StrategyMusic>
       <NeutralTrackPaths>
         <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
-        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor_medley</string>
         <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
       </NeutralTrackPaths>
       <DecisiveAdvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveAdvantageTrackPath>
       <StrongAdvantageTrackPath>Audio/Music/landos_palace</StrongAdvantageTrackPath>
-      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</AdvantageTrackPath>
-      <DisadvantageTrackPath>Audio/Music/imperial_march</DisadvantageTrackPath>
-      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongDisadvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger</StrongDisadvantageTrackPath>
       <DecisiveDisadvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveDisadvantageTrackPath>
       <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
       <PlanetRatioScale>100</PlanetRatioScale>
@@ -5910,8 +5910,8 @@
         <BattleMusicPath>Audio/Music/attacking_a_star_destroyer</BattleMusicPath>
         <ResultMusicPath>Audio/Music/sail_barge_assault_alternate</ResultMusicPath>
         <ResultVictoryMusicPath>Audio/Music/sail_barge_assault_alternate</ResultVictoryMusicPath>
-        <ResultDefeatMusicPath>Audio/Music/battle_of_endor_medley_3</ResultDefeatMusicPath>
-        <ResultDrawMusicPath>Audio/Music/battle_of_endor_medley_3</ResultDrawMusicPath>
+        <ResultDefeatMusicPath>Audio/Music/battle_of_endor_3_medley</ResultDefeatMusicPath>
+        <ResultDrawMusicPath>Audio/Music/battle_of_endor_3_medley</ResultDrawMusicPath>
         <SummaryBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_rebel_summary_background</SummaryBackgroundImagePath>
         <ListBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_begin_rebel_list_background</ListBackgroundImagePath>
         <ResultListBackgroundImagePath>Art/HD/UI/StrategyView/ui_strategyview_tactical_result_list_background</ResultListBackgroundImagePath>
@@ -6615,14 +6615,14 @@
     <StrategyMusic>
       <NeutralTrackPaths>
         <string>Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley</string>
-        <string>Audio/Music/main_title_death_star_tatooine_emperor</string>
+        <string>Audio/Music/main_title_death_star_tatooine_emperor_medley</string>
         <string>Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley</string>
       </NeutralTrackPaths>
       <DecisiveAdvantageTrackPath>Audio/Music/carbon_freeze_darth_vaders_trap_departure_of_boba_fett_imperial_probe_executor_medley</DecisiveAdvantageTrackPath>
       <StrongAdvantageTrackPath>Audio/Music/landos_palace</StrongAdvantageTrackPath>
-      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation</AdvantageTrackPath>
-      <DisadvantageTrackPath>Audio/Music/imperial_march</DisadvantageTrackPath>
-      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wan_revelation_stinger</StrongDisadvantageTrackPath>
+      <AdvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley</AdvantageTrackPath>
+      <DisadvantageTrackPath>Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger</DisadvantageTrackPath>
+      <StrongDisadvantageTrackPath>Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger</StrongDisadvantageTrackPath>
       <DecisiveDisadvantageTrackPath>Audio/Music/battle_of_hoth_medley</DecisiveDisadvantageTrackPath>
       <NeutralTracksBetweenStrategicTracks>3</NeutralTracksBetweenStrategicTracks>
       <PlanetRatioScale>100</PlanetRatioScale>
