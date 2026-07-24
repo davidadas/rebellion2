@@ -37,12 +37,8 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          persist-credentials: true
+          persist-credentials: false
           lfs: true
-          sparse-checkout: |
-            Art
-            Audio
-            Videos
           path: .ci/rebellion2-media
 
       - name: Install media
