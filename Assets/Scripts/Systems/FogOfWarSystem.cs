@@ -149,13 +149,7 @@ namespace Rebellion.Systems
                     else if (planetSnapshot != null)
                     {
                         viewPlanet = BlankPlanetView(masterPlanet);
-                        ApplySnapshotView(
-                            viewPlanet,
-                            masterPlanet,
-                            masterSystem,
-                            faction,
-                            planetSnapshot
-                        );
+                        ApplySnapshotView(viewPlanet, masterPlanet, faction, planetSnapshot);
                     }
                     else
                     {
@@ -345,8 +339,7 @@ namespace Rebellion.Systems
 
         /// <summary>
         /// Populates a view planet from live master state. The faction has direct visibility
-        /// because it owns the planet or has a fleet present. Previously observed enemy fleets
-        /// remain visible until a later observation invalidates them.
+        /// because it owns the planet or has a fleet present.
         /// </summary>
         /// <param name="viewPlanet">The view planet to populate.</param>
         /// <param name="masterPlanet">The authoritative planet data source.</param>
@@ -421,44 +414,20 @@ namespace Rebellion.Systems
                 viewPlanet.ManufacturingQueue = CopyLiveManufacturingQueue(masterPlanet);
             else
                 ApplyManufacturingIntelligence(viewPlanet, planetSnapshot);
-
-            if (planetSnapshot == null)
-                return;
-
-            HashSet<string> liveFleetIDs = new HashSet<string>(
-                viewPlanet.Fleets.Select(fleet => fleet.InstanceID)
-            );
-            viewPlanet.Fleets.AddRange(
-                planetSnapshot
-                    .Fleets.Where(fleet =>
-                        fleet.GetOwnerInstanceID() != faction.InstanceID
-                        && !liveFleetIDs.Contains(fleet.InstanceID)
-                    )
-                    .Select(fleet =>
-                        FogOfWarRecorder.CopyObservedFleetForSnapshot(
-                            fleet,
-                            faction.InstanceID,
-                            includeManufacturing: true
-                        )
-                    )
-                    .Where(fleet => fleet != null)
-            );
         }
 
         /// <summary>
         /// Populates a view planet from the last known snapshot. The faction has no current
-        /// visibility but has previously observed this planet. Core system popular support
-        /// is always shown regardless of fog state. Captured friendly officers are always live.
+        /// visibility but has previously observed this planet. Captured friendly officers are
+        /// always live.
         /// </summary>
         /// <param name="viewPlanet">The view planet to populate.</param>
         /// <param name="masterPlanet">The authoritative planet data source.</param>
-        /// <param name="masterSystem">The authoritative system data source.</param>
         /// <param name="faction">The faction whose view is being built.</param>
         /// <param name="planetSnapshot">The prior snapshot for the planet.</param>
         private void ApplySnapshotView(
             Planet viewPlanet,
             Planet masterPlanet,
-            PlanetSystem masterSystem,
             Faction faction,
             PlanetSnapshot planetSnapshot
         )
@@ -472,10 +441,7 @@ namespace Rebellion.Systems
             viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
             viewPlanet.NumRawResourceNodes = planetSnapshot.NumRawResourceNodes;
 
-            viewPlanet.PopularSupport =
-                masterSystem.SystemType == PlanetSystemType.CoreSystem
-                    ? new Dictionary<string, int>(masterPlanet.PopularSupport)
-                    : new Dictionary<string, int>();
+            viewPlanet.PopularSupport = new Dictionary<string, int>(planetSnapshot.PopularSupport);
 
             viewPlanet.Officers.AddRange(
                 planetSnapshot

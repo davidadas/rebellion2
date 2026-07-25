@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored fleet window and emits semantic fleet-window gestures.
 /// </summary>
-public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
+public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDropHandler
 {
     private readonly List<StrategyUnitCardView> detailItemViews = new List<StrategyUnitCardView>();
     private readonly List<FleetListRowView> fleetRowViews = new List<FleetListRowView>();
@@ -128,7 +128,10 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     internal event Action<FleetWindowView, int, PointerEventData> DetailItemReleased;
 
-    internal event Action<FleetWindowView, PointerEventData> DetailItemsDropped;
+    /// <summary>
+    /// Occurs when a pointer drop requests the default fleet-window destination.
+    /// </summary>
+    internal event Action<FleetWindowView, PointerEventData> FleetDestinationDropped;
 
     /// <summary>
     /// Occurs when a pointer drop is received by the fleet list.
@@ -254,6 +257,15 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
     {
         if (eventData?.button == PointerEventData.InputButton.Left)
             SurfaceClicked?.Invoke(this, eventData);
+    }
+
+    /// <summary>
+    /// Uses the default fleet-window destination for a drop anywhere on the window.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnDrop(PointerEventData eventData)
+    {
+        HandleFleetDestinationDropped(eventData);
     }
 
     /// <summary>
@@ -816,7 +828,8 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
             FleetWindowTab tab = FleetWindowRenderData.OrderedTabs[i];
             UnityAction listener = () => TabRequested?.Invoke(this, tab);
             tabButtons[i].onClick.AddListener(listener);
-            tabImages[i].GetComponent<UIPointerGestureRelay>().Dropped += HandleDetailItemsDropped;
+            tabImages[i].GetComponent<UIPointerGestureRelay>().Dropped +=
+                HandleFleetDestinationDropped;
             tabListeners.Add(listener);
         }
 
@@ -835,7 +848,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
             tabButtons[i]?.onClick.RemoveListener(tabListeners[i]);
             UIPointerGestureRelay dropRelay = tabImages[i]?.GetComponent<UIPointerGestureRelay>();
             if (dropRelay != null)
-                dropRelay.Dropped -= HandleDetailItemsDropped;
+                dropRelay.Dropped -= HandleFleetDestinationDropped;
         }
         tabListeners.Clear();
 
@@ -877,7 +890,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
         fleetListScrollArea.Dropped += HandleFleetListDropped;
         detailItemsScrollArea.Dragged += HandleScrollDragged;
         detailItemsScrollArea.DragEnded += HandleScrollDragEnded;
-        detailItemsScrollArea.Dropped += HandleDetailItemsDropped;
+        detailItemsScrollArea.Dropped += HandleFleetDestinationDropped;
         scrollEventsBound = true;
     }
 
@@ -894,7 +907,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
         fleetListScrollArea.Dropped -= HandleFleetListDropped;
         detailItemsScrollArea.Dragged -= HandleScrollDragged;
         detailItemsScrollArea.DragEnded -= HandleScrollDragEnded;
-        detailItemsScrollArea.Dropped -= HandleDetailItemsDropped;
+        detailItemsScrollArea.Dropped -= HandleFleetDestinationDropped;
         scrollEventsBound = false;
     }
 
@@ -1020,9 +1033,14 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler
         FleetListDropped?.Invoke(this, eventData);
     }
 
-    private void HandleDetailItemsDropped(PointerEventData eventData)
+    /// <summary>
+    /// Forwards a drop that targets the current fleet or represented planet.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleFleetDestinationDropped(PointerEventData eventData)
     {
-        DetailItemsDropped?.Invoke(this, eventData);
+        if (eventData != null)
+            FleetDestinationDropped?.Invoke(this, eventData);
     }
 
     /// <summary>

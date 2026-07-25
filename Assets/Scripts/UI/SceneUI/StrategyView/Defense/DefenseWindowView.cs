@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored Defense window and emits semantic Defense-window gestures.
 /// </summary>
-public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
+public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler, IDropHandler
 {
     private readonly List<StrategyUnitCardView> itemCards = new List<StrategyUnitCardView>();
     private readonly List<string> renderedItemNames = new List<string>();
@@ -83,7 +83,10 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     internal event Action<DefenseWindowView, int, PointerEventData> ItemReleased;
 
-    internal event Action<DefenseWindowView, PointerEventData> ItemsDropped;
+    /// <summary>
+    /// Occurs when a pointer drop requests the represented planet as its destination.
+    /// </summary>
+    internal event Action<DefenseWindowView, PointerEventData> PlanetDestinationDropped;
 
     /// <summary>
     /// Occurs while the scroll area is dragged.
@@ -165,6 +168,15 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
     {
         if (eventData?.button == PointerEventData.InputButton.Left)
             SurfaceClicked?.Invoke(this, eventData);
+    }
+
+    /// <summary>
+    /// Uses the represented planet as the fallback destination for a drop anywhere on the window.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnDrop(PointerEventData eventData)
+    {
+        HandlePlanetDestinationDropped(eventData);
     }
 
     /// <summary>
@@ -367,7 +379,8 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
             DefenseWindowTab tab = DefenseWindowRenderData.OrderedTabs[i];
             tabListeners[i] = () => TabRequested?.Invoke(this, tab);
             tabButtons[i].onClick.AddListener(tabListeners[i]);
-            tabImages[i].GetComponent<UIPointerGestureRelay>().Dropped += HandleItemsDropped;
+            tabImages[i].GetComponent<UIPointerGestureRelay>().Dropped +=
+                HandlePlanetDestinationDropped;
         }
     }
 
@@ -383,7 +396,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
                 tabButtons[i].onClick.RemoveListener(tabListeners[i]);
             UIPointerGestureRelay dropRelay = tabImages[i]?.GetComponent<UIPointerGestureRelay>();
             if (dropRelay != null)
-                dropRelay.Dropped -= HandleItemsDropped;
+                dropRelay.Dropped -= HandlePlanetDestinationDropped;
         }
         tabListeners = Array.Empty<UnityAction>();
     }
@@ -398,7 +411,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
 
         itemsScrollArea.Dragged += HandleScrollDragged;
         itemsScrollArea.DragEnded += HandleScrollDragEnded;
-        itemsScrollArea.Dropped += HandleItemsDropped;
+        itemsScrollArea.Dropped += HandlePlanetDestinationDropped;
         scrollEventsBound = true;
     }
 
@@ -412,7 +425,7 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
 
         itemsScrollArea.Dragged -= HandleScrollDragged;
         itemsScrollArea.DragEnded -= HandleScrollDragEnded;
-        itemsScrollArea.Dropped -= HandleItemsDropped;
+        itemsScrollArea.Dropped -= HandlePlanetDestinationDropped;
         scrollEventsBound = false;
     }
 
@@ -497,9 +510,14 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler
             ScrollDragEnded?.Invoke(this, eventData);
     }
 
-    private void HandleItemsDropped(PointerEventData eventData)
+    /// <summary>
+    /// Forwards a drop that targets the represented planet.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandlePlanetDestinationDropped(PointerEventData eventData)
     {
-        ItemsDropped?.Invoke(this, eventData);
+        if (eventData != null)
+            PlanetDestinationDropped?.Invoke(this, eventData);
     }
 
     /// <summary>

@@ -201,7 +201,7 @@ public sealed class DefenseWindowController
         view.ItemDropped += HandleItemDropped;
         view.ItemPressed += HandleItemPressed;
         view.ItemReleased += HandleItemReleased;
-        view.ItemsDropped += HandleItemsDropped;
+        view.PlanetDestinationDropped += HandlePlanetDestinationDropped;
         view.ScrollDragged += HandleScrollDragged;
         view.ScrollDragEnded += HandleScrollDragEnded;
         view.SurfaceClicked += HandleSurfaceClicked;
@@ -688,7 +688,12 @@ public sealed class DefenseWindowController
             TrySelectTarget(session, item);
     }
 
-    private void HandleItemsDropped(DefenseWindowView view, PointerEventData eventData)
+    /// <summary>
+    /// Handles a generic Defense-window drop using the represented planet.
+    /// </summary>
+    /// <param name="view">The destination Defense view.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandlePlanetDestinationDropped(DefenseWindowView view, PointerEventData eventData)
     {
         if (TryGetSession(view, out DefenseWindowSession session))
             TrySelectTarget(session, null);
@@ -787,7 +792,7 @@ public sealed class DefenseWindowController
         view.ItemDropped -= HandleItemDropped;
         view.ItemPressed -= HandleItemPressed;
         view.ItemReleased -= HandleItemReleased;
-        view.ItemsDropped -= HandleItemsDropped;
+        view.PlanetDestinationDropped -= HandlePlanetDestinationDropped;
         view.ScrollDragged -= HandleScrollDragged;
         view.ScrollDragEnded -= HandleScrollDragEnded;
         view.SurfaceClicked -= HandleSurfaceClicked;

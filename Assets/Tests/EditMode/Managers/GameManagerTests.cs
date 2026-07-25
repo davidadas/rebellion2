@@ -582,8 +582,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, game.CurrentTick);
             Assert.IsTrue(planet.IsInUprising);
             Assert.IsEmpty(game.GetSceneNodesByType<Mission>());
-            Assert.AreSame(home, diplomat.GetParent());
-            Assert.IsNotNull(diplomat.Movement);
+            Assert.AreSame(planet, diplomat.GetParent());
+            Assert.IsNull(diplomat.Movement);
             Assert.IsTrue(
                 owner
                     .Messages[MessageType.PopularSupport]

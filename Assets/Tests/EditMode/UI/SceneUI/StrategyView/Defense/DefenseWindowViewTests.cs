@@ -274,7 +274,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             PointerEventData dropped = null;
             _view.ScrollDragged += (_, value) => dragged = value;
             _view.ScrollDragEnded += (_, value) => ended = value;
-            _view.ItemsDropped += (_, value) => dropped = value;
+            _view.PlanetDestinationDropped += (_, value) => dropped = value;
             ScrollAreaView scrollArea = _viewObject.GetComponentInChildren<ScrollAreaView>(true);
 
             scrollArea.RelayDrag(eventData);
@@ -293,7 +293,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             PointerEventData eventData = new PointerEventData(null);
             int dropCount = 0;
-            _view.ItemsDropped += (_, value) =>
+            _view.PlanetDestinationDropped += (_, value) =>
             {
                 Assert.AreSame(eventData, value);
                 dropCount++;
@@ -308,6 +308,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 
             Assert.AreEqual(DefenseWindowRenderData.TabCount, tabRelays.Length);
             Assert.AreEqual(DefenseWindowRenderData.TabCount, dropCount);
+        }
+
+        [Test]
+        public void WindowBackgroundDrop_RoutesToPlanetDestination()
+        {
+            PointerEventData eventData = new PointerEventData(null);
+            PointerEventData received = null;
+            _view.PlanetDestinationDropped += (_, value) => received = value;
+            RawImage background = _view.transform.Find("BackgroundImage").GetComponent<RawImage>();
+            _viewObject.SetActive(true);
+
+            GameObject handler = ExecuteEvents.ExecuteHierarchy(
+                background.gameObject,
+                eventData,
+                ExecuteEvents.dropHandler
+            );
+
+            Assert.AreSame(_view.gameObject, handler);
+            Assert.AreSame(eventData, received);
+            Assert.IsTrue(background.raycastTarget);
+            Assert.AreEqual(
+                UILayout.GetSourceRect(_view.transform as RectTransform),
+                UILayout.GetSourceRect(background.rectTransform)
+            );
         }
 
         [Test]

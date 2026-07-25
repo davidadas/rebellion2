@@ -604,7 +604,7 @@ public sealed class FleetWindowController
         view.DetailItemDropped += HandleDetailItemDropped;
         view.DetailItemPressed += HandleDetailItemPressed;
         view.DetailItemReleased += HandleDetailItemReleased;
-        view.DetailItemsDropped += HandleDetailItemsDropped;
+        view.FleetDestinationDropped += HandleFleetDestinationDropped;
         view.FleetListDropped += HandleFleetListDropped;
         view.FleetRowDoubleClicked += HandleItemDoubleClicked;
         view.FleetRowDropped += HandleFleetRowDropped;
@@ -884,9 +884,14 @@ public sealed class FleetWindowController
         TrySelectTarget(session, item);
     }
 
-    private void HandleDetailItemsDropped(FleetWindowView view, PointerEventData eventData)
+    /// <summary>
+    /// Handles a generic drop using the selected fleet or represented planet.
+    /// </summary>
+    /// <param name="view">The destination fleet view.</param>
+    /// <param name="eventData">The pointer event.</param>
+    private void HandleFleetDestinationDropped(FleetWindowView view, PointerEventData eventData)
     {
-        if (TryGetSession(view, out FleetWindowSession session) && session.SelectedFleet != null)
+        if (TryGetSession(view, out FleetWindowSession session))
             TrySelectTarget(session, session.SelectedFleet);
     }
 
@@ -1159,7 +1164,7 @@ public sealed class FleetWindowController
         view.DetailItemDropped -= HandleDetailItemDropped;
         view.DetailItemPressed -= HandleDetailItemPressed;
         view.DetailItemReleased -= HandleDetailItemReleased;
-        view.DetailItemsDropped -= HandleDetailItemsDropped;
+        view.FleetDestinationDropped -= HandleFleetDestinationDropped;
         view.FleetListDropped -= HandleFleetListDropped;
         view.FleetRowDoubleClicked -= HandleItemDoubleClicked;
         view.FleetRowDropped -= HandleFleetRowDropped;

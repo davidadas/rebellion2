@@ -1,13 +1,22 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
     [TestFixture]
     public class MessagesWindowControllerTests
     {
+        private const string _strategyViewPrefabPath =
+            "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
+
         [Test]
         public void GetDetailAudioPaths_MessageAndOfficerPaths_ReturnsPlaybackOrder()
         {
@@ -203,6 +212,80 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
                 MessagesWindowController.IsMessageNotificationEnabled(null, MessagesTab.All)
             );
             MessagesWindowController.ToggleMessageNotification(null, MessagesTab.All);
+        }
+
+        [Test]
+        public void TabClick_FromMessageDetail_LoadsRequestedTabRows()
+        {
+            Message fleetMessage = new Message(MessageType.Fleet, "Fleet")
+            {
+                InstanceID = "fleet-message",
+            };
+            Message missionMessage = new Message(MessageType.Mission, "Mission")
+            {
+                InstanceID = "mission-message",
+            };
+            Faction faction = new Faction { InstanceID = "player" };
+            faction.Messages[MessageType.Fleet] = new List<Message> { fleetMessage };
+            faction.Messages[MessageType.Mission] = new List<Message> { missionMessage };
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            UIContext uiContext = new UIContext(
+                game,
+                new FactionThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+
+            try
+            {
+                StrategyWindowLayerView windowLayer =
+                    root.GetComponentInChildren<StrategyWindowLayerView>(true);
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                MessagesWindowController controller = new MessagesWindowController(
+                    _ => { },
+                    () => uiContext,
+                    windowLayer,
+                    windowManager,
+                    () => Vector2Int.zero,
+                    windowManager.DestroyWindow,
+                    () => { }
+                );
+                controller.Initialize(new TestActions());
+                controller.OpenDetail(fleetMessage, MessagesTab.Fleet);
+                UIWindow window = windowManager.Windows.Single();
+                Assert.IsTrue(windowManager.TryGetWindowView(window, out MessagesWindowView view));
+                Assert.IsTrue(controller.IsDetailVisible(view));
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+                Button missionTabButton = view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "MissionTabButtonImage");
+                missionTabButton.onClick.Invoke();
+                controller.RenderWindows();
+
+                Assert.AreEqual(MessagesTab.Mission, controller.GetActiveTab(view));
+                Assert.IsFalse(controller.IsDetailVisible(view));
+                MessageWindowRowView row = view.GetComponentsInChildren<MessageWindowRowView>(true)
+                    .Single(candidate => candidate.gameObject.activeSelf);
+                Assert.AreEqual(missionMessage.InstanceID, row.MessageId);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        private sealed class TestActions : IMessagesWindowActions
+        {
+            public bool OpenMessageTarget(
+                string targetInstanceId,
+                string secondaryTargetInstanceId,
+                string locationInstanceId
+            )
+            {
+                return true;
+            }
         }
     }
 }
