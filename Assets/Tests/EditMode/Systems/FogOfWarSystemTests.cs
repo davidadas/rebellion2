@@ -1350,6 +1350,72 @@ namespace Rebellion.Tests.Systems
             Assert.IsEmpty(preservedShip.Regiments);
         }
 
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingProgress = 25,
+            };
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(knownShip, fleet);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            knownShip.ManufacturingProgress = 75;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Fleet preservedFleet = snapshot.Fleets.Single(snapshotFleet =>
+                snapshotFleet.InstanceID == fleet.InstanceID
+            );
+            CapitalShip preservedShip = preservedFleet.CapitalShips.Single();
+            Assert.AreEqual(knownShip.InstanceID, preservedShip.InstanceID);
+            Assert.AreEqual(25, preservedShip.ManufacturingProgress);
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[fleet.InstanceID]
+            );
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[knownShip.InstanceID]
+            );
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(knownShip, fleet);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _game.DetachNode(knownShip);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Fleets.Any(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(fleet.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(knownShip.InstanceID));
+        }
+
         private Officer CreateOfficer(string id, Faction faction) =>
             EntityFactory.CreateOfficer(id, faction.InstanceID);
 

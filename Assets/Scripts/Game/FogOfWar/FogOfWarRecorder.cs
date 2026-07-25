@@ -122,28 +122,24 @@ namespace Rebellion.Game.FogOfWar
                 planet.Regiments,
                 planetSnapshot.Regiments,
                 faction,
-                planet.InstanceID,
                 includeManufacturing
             );
             AddEntityCopiesToSnapshot(
                 planet.SpecialForces,
                 planetSnapshot.SpecialForces,
                 faction,
-                planet.InstanceID,
                 includeManufacturing
             );
             AddEntityCopiesToSnapshot(
                 planet.Buildings,
                 planetSnapshot.Buildings,
                 faction,
-                planet.InstanceID,
                 includeManufacturing
             );
             AddEntityCopiesToSnapshot(
                 planet.Starfighters,
                 planetSnapshot.Starfighters,
                 faction,
-                planet.InstanceID,
                 includeManufacturing
             );
 
@@ -168,10 +164,10 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot snapshot
         )
         {
-            HashSet<string> observedEntityIds = GetObservedEntityIDs(snapshot);
+            HashSet<string> snapshotEntityIds = GetSnapshotEntityIDs(snapshot);
             List<string> absentEntityIds = faction
                 .Fog.EntityLastSeenAt.Where(entry =>
-                    entry.Value == planetId && !observedEntityIds.Contains(entry.Key)
+                    entry.Value == planetId && !snapshotEntityIds.Contains(entry.Key)
                 )
                 .Select(entry => entry.Key)
                 .ToList();
@@ -179,7 +175,7 @@ namespace Rebellion.Game.FogOfWar
             foreach (string entityId in absentEntityIds)
                 faction.Fog.EntityLastSeenAt.Remove(entityId);
 
-            foreach (string entityId in observedEntityIds)
+            foreach (string entityId in snapshotEntityIds)
                 InvalidateEntityFromOtherSnapshots(faction, entityId, planetId);
         }
 
@@ -187,8 +183,8 @@ namespace Rebellion.Game.FogOfWar
         /// Collects every entity instance ID represented by a planet snapshot.
         /// </summary>
         /// <param name="snapshot">The snapshot to inspect.</param>
-        /// <returns>The observed entity instance IDs.</returns>
-        private static HashSet<string> GetObservedEntityIDs(PlanetSnapshot snapshot)
+        /// <returns>The represented entity instance IDs.</returns>
+        private static HashSet<string> GetSnapshotEntityIDs(PlanetSnapshot snapshot)
         {
             IEnumerable<ISceneNode> fleetEntities = snapshot.Fleets.SelectMany(fleet =>
                 fleet.GetChildren<ISceneNode>(_ => true).Prepend(fleet)
@@ -285,7 +281,6 @@ namespace Rebellion.Game.FogOfWar
                     continue;
 
                 snapshot.Officers.Add(CopyOfficerForSnapshot(officer));
-                InvalidateEntityFromOtherSnapshots(faction, officer.InstanceID, planet.InstanceID);
             }
         }
 
@@ -325,7 +320,6 @@ namespace Rebellion.Game.FogOfWar
                     continue;
 
                 snapshot.Fleets.Add(fleetCopy);
-                InvalidateEntityFromOtherSnapshots(faction, fleet.InstanceID, planet.InstanceID);
             }
         }
 
@@ -336,13 +330,11 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="source">The live entities to copy.</param>
         /// <param name="destination">The snapshot list to populate.</param>
         /// <param name="faction">The faction receiving the snapshot.</param>
-        /// <param name="planetId">The observed planet instance ID.</param>
         /// <param name="includeManufacturing">Whether unfinished units should be included.</param>
         private void AddEntityCopiesToSnapshot<T>(
             IEnumerable<T> source,
             List<T> destination,
             Faction faction,
-            string planetId,
             bool includeManufacturing
         )
             where T : class, ISceneNode
@@ -366,7 +358,6 @@ namespace Rebellion.Game.FogOfWar
                     continue;
 
                 destination.Add(CopyEntityForSnapshot(entity));
-                InvalidateEntityFromOtherSnapshots(faction, entity.InstanceID, planetId);
             }
         }
 

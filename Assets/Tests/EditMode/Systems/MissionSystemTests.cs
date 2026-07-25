@@ -773,6 +773,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TearDownMission_FriendlyUncolonizedLocation_ReturnsOfficerToOrigin()
+        {
+            (GameRoot game, Planet origin, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Planet missionPlanet = new Planet
+            {
+                InstanceID = "mission-planet",
+                OwnerInstanceID = officer.OwnerInstanceID,
+                IsColonized = false,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(missionPlanet, origin.GetParent());
+            StubMission mission = CreateMission(game, missionPlanet, officer);
+            game.MoveNode(officer, mission);
+            MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
+
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = system.UpdateMission(mission);
+
+            Assert.AreSame(origin, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsFalse(results.OfType<OfficerCaptureStateResult>().Any());
+            Assert.IsNull(mission.GetParent());
+        }
+
+        [Test]
         public void TearDownMission_HostileLocation_OriginFleetMoved_ReturnsToRecordedShip()
         {
             (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(

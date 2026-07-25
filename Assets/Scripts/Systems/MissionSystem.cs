@@ -591,7 +591,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="participant">The participant whose destination is being resolved.</param>
         /// <param name="missionPlanet">The planet where the mission ended.</param>
-        /// <returns>True when the mission planet is intact and controlled by the participant.</returns>
+        /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
         private static bool CanRemainAtMissionLocation(
             IMissionParticipant participant,
             Planet missionPlanet
@@ -602,7 +602,8 @@ namespace Rebellion.Systems
 
             string participantOwnerId = participant.GetOwnerInstanceID();
             return !string.IsNullOrEmpty(participantOwnerId)
-                && participantOwnerId == missionPlanet.GetOwnerInstanceID();
+                && participantOwnerId == missionPlanet.GetOwnerInstanceID()
+                && missionPlanet.CanAcceptChild(participant);
         }
 
         /// <summary>
