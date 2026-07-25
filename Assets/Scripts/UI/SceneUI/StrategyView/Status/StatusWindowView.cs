@@ -98,11 +98,18 @@ public sealed class StatusWindowView : MonoBehaviour
     public event Action<StatusWindowView> InfoRequested;
 
     /// <summary>
+    /// Raised when an authored status control enters its pressed state.
+    /// </summary>
+    internal event Action<StatusWindowView> ControlPressed;
+
+    /// <summary>
     /// Verifies the authored hierarchy and binds command listeners.
     /// </summary>
     private void Awake()
     {
         VerifyReferences();
+        infoButtonPressVisual.Pressed += RequestControlPress;
+        closeButtonPressVisual.Pressed += RequestControlPress;
         infoButton.onClick.AddListener(RequestInfo);
         closeButton.onClick.AddListener(RequestClose);
     }
@@ -112,6 +119,10 @@ public sealed class StatusWindowView : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        if (infoButtonPressVisual != null)
+            infoButtonPressVisual.Pressed -= RequestControlPress;
+        if (closeButtonPressVisual != null)
+            closeButtonPressVisual.Pressed -= RequestControlPress;
         if (infoButton != null)
             infoButton.onClick.RemoveListener(RequestInfo);
         if (closeButton != null)
@@ -162,6 +173,14 @@ public sealed class StatusWindowView : MonoBehaviour
     internal void RequestClose()
     {
         CloseRequested?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Emits a semantic control-press event for the owning status controller.
+    /// </summary>
+    private void RequestControlPress()
+    {
+        ControlPressed?.Invoke(this);
     }
 
     /// <summary>

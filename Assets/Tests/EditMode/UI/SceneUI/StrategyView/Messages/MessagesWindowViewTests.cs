@@ -90,7 +90,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void CommandControls_Click_RaiseParentSemanticAndControlRequests()
+        public void CommandControls_PressThenClick_RaiseParentControlBeforeSemanticRequests()
         {
             int controlCount = 0;
             int closeCount = 0;
@@ -107,13 +107,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _view.MessageTargetRequested += _ => targetCount++;
             _view.ChatRequested += _ => chatCount++;
             _view.Render(CreateRenderData(false));
+            string[] buttonNames =
+            {
+                "CloseButtonImage",
+                "DisplayButtonImage",
+                "IndexButtonImage",
+                "SignalButtonImage",
+                "SignalTargetButtonImage",
+                "ChatCommandButtonImage",
+            };
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
 
-            FindComponent<Button>("CloseButtonImage").onClick.Invoke();
-            FindComponent<Button>("DisplayButtonImage").onClick.Invoke();
-            FindComponent<Button>("IndexButtonImage").onClick.Invoke();
-            FindComponent<Button>("SignalButtonImage").onClick.Invoke();
-            FindComponent<Button>("SignalTargetButtonImage").onClick.Invoke();
-            FindComponent<Button>("ChatCommandButtonImage").onClick.Invoke();
+            foreach (string buttonName in buttonNames)
+                FindComponent<RawImagePressVisual>(buttonName).OnPointerDown(eventData);
+
+            Assert.AreEqual(6, controlCount);
+            Assert.AreEqual(0, closeCount);
+            Assert.AreEqual(0, displayCount);
+            Assert.AreEqual(0, indexCount);
+            Assert.AreEqual(0, signalCount);
+            Assert.AreEqual(0, targetCount);
+            Assert.AreEqual(0, chatCount);
+
+            foreach (string buttonName in buttonNames)
+                FindComponent<Button>(buttonName).onClick.Invoke();
 
             Assert.AreEqual(6, controlCount);
             Assert.AreEqual(1, closeCount);

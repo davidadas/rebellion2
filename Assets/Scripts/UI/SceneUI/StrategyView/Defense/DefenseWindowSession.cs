@@ -15,7 +15,6 @@ internal sealed class DefenseWindowSession
     private readonly HashSet<ISceneNode> selectedNodes = new HashSet<ISceneNode>();
     private readonly HashSet<int> selectedIndexes = new HashSet<int>();
     private ISceneNode contextItem;
-    private ISceneNode dragItem;
 
     /// <summary>
     /// Creates a Defense-window session for one planet and owning window.
@@ -32,8 +31,6 @@ internal sealed class DefenseWindowSession
     public DefenseWindowTab ActiveTab { get; private set; } = DefenseWindowTab.Personnel;
 
     public int ContextItemIndex { get; private set; } = -1;
-
-    public int DragItemIndex { get; private set; } = -1;
 
     public GalaxyMapPlanet Planet { get; private set; }
 
@@ -63,8 +60,6 @@ internal sealed class DefenseWindowSession
         ReconcileSelection(activeItems);
         contextItem = ResolveNode(activeItems, contextItem);
         ContextItemIndex = FindNodeIndex(activeItems, contextItem);
-        dragItem = ResolveNode(activeItems, dragItem);
-        DragItemIndex = FindNodeIndex(activeItems, dragItem);
     }
 
     /// <summary>
@@ -185,7 +180,7 @@ internal sealed class DefenseWindowSession
     }
 
     /// <summary>
-    /// Prepares pointer selection for one current item and clears the previous drag target.
+    /// Prepares pointer selection for one current item.
     /// </summary>
     /// <param name="itemIndex">The pressed visual index.</param>
     /// <returns>True when the item exists.</returns>
@@ -195,8 +190,6 @@ internal sealed class DefenseWindowSession
             return false;
 
         ContextItemIndex = itemIndex;
-        dragItem = null;
-        DragItemIndex = -1;
         return true;
     }
 
@@ -229,18 +222,6 @@ internal sealed class DefenseWindowSession
             columnCount
         );
         CaptureSelection(items);
-    }
-
-    /// <summary>
-    /// Records the current item supplying the active drag preview.
-    /// </summary>
-    /// <param name="itemIndex">The drag-source visual index.</param>
-    public void BeginDrag(int itemIndex)
-    {
-        if (!TryGetItem(itemIndex, out dragItem))
-            return;
-
-        DragItemIndex = itemIndex;
     }
 
     /// <summary>
@@ -346,14 +327,12 @@ internal sealed class DefenseWindowSession
     }
 
     /// <summary>
-    /// Clears context and drag targets without changing selection.
+    /// Clears the context target without changing selection.
     /// </summary>
     private void ClearTransientTargets()
     {
         contextItem = null;
         ContextItemIndex = -1;
-        dragItem = null;
-        DragItemIndex = -1;
     }
 
     /// <summary>

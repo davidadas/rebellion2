@@ -13,6 +13,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/DefenseWindow.prefab";
 
+        private Texture2D _backgroundTexture;
         private Texture2D _texture;
         private DefenseWindowView _view;
         private GameObject _viewObject;
@@ -22,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         {
             _viewObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _viewObject.GetComponent<DefenseWindowView>();
+            _backgroundTexture = new Texture2D(90, 45);
             _texture = new Texture2D(90, 45);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
@@ -29,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [TearDown]
         public void TearDown()
         {
+            UnityEngine.Object.DestroyImmediate(_backgroundTexture);
             UnityEngine.Object.DestroyImmediate(_texture);
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
@@ -335,21 +338,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void ItemQueries_RenderedCard_ResolveIndexAndDragPreview()
+        public void ItemQueries_RenderedCards_ResolveIndexAndDragPreview()
         {
             _view.Render(
                 CreateRenderData(
                     DefenseWindowTab.Personnel,
-                    new[] { CreateItem("Item", true, true, false) }
+                    new[]
+                    {
+                        CreateItem("First", canDrag: true),
+                        CreateItem("Second", canDrag: true),
+                    }
                 )
             );
-            StrategyUnitCardView card = FindItemCards().Single();
-            PointerEventData eventData = CreateRaycastEvent(card.gameObject);
+            StrategyUnitCardView[] cards = FindItemCards();
+            PointerEventData eventData = CreateRaycastEvent(cards[0].gameObject);
 
             bool found = _view.TryGetItemIndex(eventData, out int itemIndex);
             bool selectionClick = _view.IsSelectionItemClick(eventData);
-            bool previewCreated = _view.TryCreateDragPreview(0, 100, 120, out DragPreview preview);
-            bool missingPreview = _view.TryCreateDragPreview(-1, 0, 0, out DragPreview missing);
+            bool previewCreated = _view.TryCreateDragPreview(
+                new[] { 0, 1 },
+                100,
+                120,
+                out DragPreview preview
+            );
+            bool missingPreview = _view.TryCreateDragPreview(
+                Array.Empty<int>(),
+                0,
+                0,
+                out DragPreview missing
+            );
 
             Assert.IsTrue(found);
             Assert.AreEqual(0, itemIndex);
@@ -357,10 +374,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsTrue(previewCreated);
             Assert.IsNotNull(preview);
             Assert.AreSame(_texture, preview.Texture);
+            Assert.AreEqual(2, preview.Images.Count);
+            RectInt firstCardRect = UILayout.GetSourceRect(cards[0].transform as RectTransform);
+            RectInt secondCardRect = UILayout.GetSourceRect(cards[1].transform as RectTransform);
+            Assert.AreEqual(
+                secondCardRect.x - firstCardRect.x,
+                preview.Images[1].Bounds.x - preview.Images[0].Bounds.x
+            );
+            Assert.AreEqual(
+                secondCardRect.y - firstCardRect.y,
+                preview.Images[1].Bounds.y - preview.Images[0].Bounds.y
+            );
             Assert.IsFalse(missingPreview);
             Assert.IsNull(missing);
             Assert.IsFalse(_view.ItemContainsDragSource(-1, eventData));
             Assert.IsFalse(_view.ItemContainsDragSource(0, null));
+        }
+
+        [Test]
+        public void DragPreview_CardBackgroundAndEntity_PreserveTheirRenderedLayering()
+        {
+            _view.Render(
+                CreateRenderData(
+                    DefenseWindowTab.Personnel,
+                    new[]
+                    {
+                        CreateItem("Item", canDrag: true, backgroundTexture: _backgroundTexture),
+                    }
+                )
+            );
+            StrategyUnitCardView card = FindItemCards().Single();
+
+            bool created = _view.TryCreateDragPreview(
+                new[] { 0 },
+                100,
+                120,
+                out DragPreview preview
+            );
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(2, preview.Images.Count);
+            Assert.AreSame(_backgroundTexture, preview.Images[0].Texture);
+            Assert.AreSame(_texture, preview.Images[1].Texture);
+            AssertLayerLayoutMatchesCard(
+                card,
+                "BackgroundImage",
+                preview.Images[0],
+                "EntityImage",
+                preview.Images[1]
+            );
         }
 
         [Test]
@@ -445,7 +507,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             string name,
             bool canDrag = false,
             bool showOptionalImages = false,
-            bool alternateNameLayout = false
+            bool alternateNameLayout = false,
+            Texture backgroundTexture = null
         )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -455,7 +518,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 !string.Equals(name, "Second", StringComparison.Ordinal)
                     && !string.Equals(name, "Hidden", StringComparison.Ordinal),
                 alternateNameLayout,
-                optionalTexture,
+                backgroundTexture ?? optionalTexture,
                 optionalTexture,
                 optionalTexture,
                 _texture,
@@ -467,6 +530,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 optionalTexture,
                 canDrag
             );
+        }
+
+        private static void AssertLayerLayoutMatchesCard(
+            StrategyUnitCardView card,
+            string firstName,
+            DragPreviewImage first,
+            string secondName,
+            DragPreviewImage second
+        )
+        {
+            RectInt firstRect = UILayout.GetSourceRect(
+                FindCardObject(card, firstName).transform as RectTransform
+            );
+            RectInt secondRect = UILayout.GetSourceRect(
+                FindCardObject(card, secondName).transform as RectTransform
+            );
+            Assert.AreEqual(firstRect.size, first.Bounds.size);
+            Assert.AreEqual(secondRect.size, second.Bounds.size);
+            Assert.AreEqual(secondRect.x - firstRect.x, second.Bounds.x - first.Bounds.x);
+            Assert.AreEqual(secondRect.y - firstRect.y, second.Bounds.y - first.Bounds.y);
         }
 
         private static PointerEventData CreateRaycastEvent(GameObject target)

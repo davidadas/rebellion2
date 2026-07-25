@@ -270,9 +270,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Targeting
 
             bool moved = controller.TryMoveSourceDrag(50, 60);
             bool hasOverlay = controller.TryGetOverlay(out _, out RectInt bounds);
+            bool hasCompleteOverlay = controller.TryGetOverlay(
+                out DragPreview preview,
+                out int pointerX,
+                out int pointerY
+            );
 
             Assert.IsTrue(moved);
             Assert.IsTrue(hasOverlay);
+            Assert.IsTrue(hasCompleteOverlay);
+            Assert.AreSame(_preview, preview);
+            Assert.AreEqual(50, pointerX);
+            Assert.AreEqual(60, pointerY);
             Assert.AreEqual(new RectInt(48, 57, 20, 30), bounds);
         }
 

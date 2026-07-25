@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -7,6 +8,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
@@ -20,6 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         private int _closeCount;
         private StatusWindowController _controller;
         private int _dirtyCount;
+        private readonly List<string> _playedSfx = new List<string>();
         private GameObject _rootObject;
         private UIContext _uiContext;
         private ISceneNode _visibleNode;
@@ -31,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         {
             _closeCount = 0;
             _dirtyCount = 0;
+            _playedSfx.Clear();
             _visibleNode = null;
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(
@@ -153,6 +157,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual(1, _closeCount);
         }
 
+        [Test]
+        public void StatusControl_PointerDown_PlaysSharedControlSoundBeforeClick()
+        {
+            _controller.Open(
+                new StrategyStatusTarget(null, new Officer { DisplayName = "Target" })
+            );
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out StatusWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window);
+            RawImagePressVisual closePressVisual =
+                view.GetComponentsInChildren<RawImagePressVisual>(true)
+                    .Single(visual => visual.name == "CloseButtonImage");
+
+            closePressVisual.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.ControlPress }, _playedSfx);
+            Assert.AreEqual(0, _closeCount);
+        }
+
         private StatusWindowController CreateController()
         {
             return new StatusWindowController(
@@ -161,7 +187,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 _windowManager,
                 () => Array.Empty<GalaxyMapSector>(),
                 _ => _visibleNode,
-                _ => { },
+                path => _playedSfx.Add(path),
                 () => new Vector2Int(75, 40),
                 window =>
                 {

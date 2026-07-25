@@ -46,7 +46,7 @@ public sealed class DefenseWindowController
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
     private Action<PointerEventData> moveItemDrag;
-    private Action<UIWindow, int, int> startItemDrag;
+    private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
     /// Creates the Defense feature controller with its presentation and targeting dependencies.
@@ -91,7 +91,7 @@ public sealed class DefenseWindowController
         IDefenseWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
-        Action<UIWindow, int, int> beginItemDrag,
+        Action<UIWindow, PointerEventData> beginItemDrag,
         Action<PointerEventData> continueItemDrag,
         Action<PointerEventData> completeItemDrag
     )
@@ -357,7 +357,7 @@ public sealed class DefenseWindowController
     }
 
     /// <summary>
-    /// Creates the current Defense drag preview from the controller-selected card.
+    /// Creates the current Defense drag preview from the selected cards.
     /// </summary>
     /// <param name="window">The source Defense window.</param>
     /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
@@ -373,7 +373,12 @@ public sealed class DefenseWindowController
     {
         preview = null;
         return TryGetSession(window, out DefenseWindowView view, out DefenseWindowSession session)
-            && view.TryCreateDragPreview(session.DragItemIndex, sourceX, sourceY, out preview);
+            && view.TryCreateDragPreview(
+                session.SelectedItemIndexes,
+                sourceX,
+                sourceY,
+                out preview
+            );
     }
 
     /// <summary>
@@ -627,12 +632,11 @@ public sealed class DefenseWindowController
         session.SelectItemForDrag(itemIndex, view.ItemColumnCount);
         if (
             session.CanDragSelectedItems()
+            && session.SelectedItemIndexes.Contains(itemIndex)
             && view.ItemContainsDragSource(itemIndex, eventData)
-            && view.TryGetDesktopPosition(eventData, out int x, out int y)
         )
         {
-            session.BeginDrag(itemIndex);
-            startItemDrag(session.Window, x, y);
+            startItemDrag(session.Window, eventData);
             return;
         }
 

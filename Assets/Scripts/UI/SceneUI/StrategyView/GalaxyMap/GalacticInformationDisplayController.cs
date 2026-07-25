@@ -124,6 +124,7 @@ public sealed class GalacticInformationDisplayController : ICancelable
         if (!open)
             return false;
 
+        playSfx(StrategyUISoundPaths.GalacticInformationControl);
         DismissSelector();
         return true;
     }
@@ -134,12 +135,8 @@ public sealed class GalacticInformationDisplayController : ICancelable
     /// <param name="mode">The selected filter mode.</param>
     internal void SelectFilter(GalacticInformationFilterMode mode)
     {
-        bool changed = filterMode != mode;
         filterMode = mode;
         Hide();
-        if (changed && mode != GalacticInformationFilterMode.DisplayOff)
-            playSfx(StrategyUISoundPaths.GalacticInformationControl);
-
         actions.RequestGalacticInformationRender();
     }
 
@@ -232,12 +229,31 @@ public sealed class GalacticInformationDisplayController : ICancelable
     }
 
     /// <summary>
+    /// Plays the selector control sound when a press will change the active filter.
+    /// </summary>
+    /// <param name="mode">The pressed filter mode.</param>
+    private void HandleFilterPressed(GalacticInformationFilterMode mode)
+    {
+        if (open && mode != GalacticInformationFilterMode.DisplayOff && filterMode != mode)
+            playSfx(StrategyUISoundPaths.GalacticInformationControl);
+    }
+
+    /// <summary>
     /// Dismisses the selector after an outside click.
     /// </summary>
     private void HandleDismissRequested()
     {
         if (open)
             DismissSelector();
+    }
+
+    /// <summary>
+    /// Plays the selector control sound when the open selector is pressed for dismissal.
+    /// </summary>
+    private void HandleDismissPressed()
+    {
+        if (open)
+            playSfx(StrategyUISoundPaths.GalacticInformationControl);
     }
 
     /// <summary>
@@ -279,12 +295,11 @@ public sealed class GalacticInformationDisplayController : ICancelable
     }
 
     /// <summary>
-    /// Hides the selector, plays its dismissal sound, and requests a strategy render.
+    /// Hides the selector and requests a strategy render.
     /// </summary>
     private void DismissSelector()
     {
         Hide();
-        playSfx(StrategyUISoundPaths.GalacticInformationControl);
         actions.RequestGalacticInformationRender();
     }
 
@@ -324,12 +339,14 @@ public sealed class GalacticInformationDisplayController : ICancelable
     {
         displayView.CategoryRequested += HandleCategoryRequested;
         displayView.Destroyed += HandleDisplayViewDestroyed;
+        displayView.DismissPressed += HandleDismissPressed;
         displayView.DismissRequested += HandleDismissRequested;
         displayView.DisplayOffEntered += HandleDisplayOffEntered;
         displayView.DisplayOffExited += HandleDisplayOffExited;
         displayView.DisplayOffSelected += HandleDisplayOffSelected;
         displayView.FilterEntered += HandleFilterEntered;
         displayView.FilterExited += HandleFilterExited;
+        displayView.FilterPressed += HandleFilterPressed;
         displayView.FilterSelected += HandleFilterSelected;
     }
 
@@ -343,12 +360,14 @@ public sealed class GalacticInformationDisplayController : ICancelable
 
         displayView.CategoryRequested -= HandleCategoryRequested;
         displayView.Destroyed -= HandleDisplayViewDestroyed;
+        displayView.DismissPressed -= HandleDismissPressed;
         displayView.DismissRequested -= HandleDismissRequested;
         displayView.DisplayOffEntered -= HandleDisplayOffEntered;
         displayView.DisplayOffExited -= HandleDisplayOffExited;
         displayView.DisplayOffSelected -= HandleDisplayOffSelected;
         displayView.FilterEntered -= HandleFilterEntered;
         displayView.FilterExited -= HandleFilterExited;
+        displayView.FilterPressed -= HandleFilterPressed;
         displayView.FilterSelected -= HandleFilterSelected;
     }
 

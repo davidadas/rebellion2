@@ -120,7 +120,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);
-            _session.BeginDrag(0);
 
             _planet.Officers.Clear();
             _session.Reconcile();
@@ -128,7 +127,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsEmpty(_session.SelectedItemIndexes);
             Assert.IsEmpty(_session.GetSelectedItems());
             Assert.AreEqual(-1, _session.ContextItemIndex);
-            Assert.AreEqual(-1, _session.DragItemIndex);
         }
 
         [Test]
@@ -144,7 +142,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.AreEqual(DefenseWindowTab.Regiments, _session.ActiveTab);
             Assert.IsEmpty(_session.SelectedItemIndexes);
             Assert.AreEqual(-1, _session.ContextItemIndex);
-            Assert.AreEqual(-1, _session.DragItemIndex);
         }
 
         [Test]
@@ -236,31 +233,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void PrepareItemSelection_ValidItem_CapturesContextAndClearsDragTarget()
+        public void PrepareItemSelection_ValidItem_CapturesContext()
         {
             Officer officer = new Officer { InstanceID = "officer" };
             _planet.Officers.Add(officer);
             _session.Reconcile();
-            _session.BeginDrag(0);
 
             bool prepared = _session.PrepareItemSelection(0);
 
             Assert.IsTrue(prepared);
             Assert.AreEqual(0, _session.ContextItemIndex);
-            Assert.AreEqual(-1, _session.DragItemIndex);
-        }
-
-        [Test]
-        public void BeginDrag_ValidAndInvalidItems_UpdatesOnlyValidTarget()
-        {
-            Officer officer = new Officer { InstanceID = "officer" };
-            _planet.Officers.Add(officer);
-            _session.Reconcile();
-
-            _session.BeginDrag(0);
-            _session.BeginDrag(2);
-
-            Assert.AreEqual(0, _session.DragItemIndex);
         }
 
         [Test]
@@ -323,7 +305,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);
-            _session.BeginDrag(0);
             Officer replacement = new Officer { InstanceID = original.InstanceID };
             Planet refreshedPlanet = new Planet
             {
@@ -345,7 +326,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 _session.GetSelectedItems()
             );
             Assert.AreEqual(0, _session.ContextItemIndex);
-            Assert.AreEqual(0, _session.DragItemIndex);
         }
 
         [Test]
@@ -356,14 +336,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _session.Reconcile();
             _session.SelectItem(0, 3);
             _session.CaptureContextItem(0);
-            _session.BeginDrag(0);
 
             _session.ClearSelection();
 
             Assert.IsEmpty(_session.SelectedItemIndexes);
             Assert.IsEmpty(_session.GetSelectedItems());
             Assert.AreEqual(-1, _session.ContextItemIndex);
-            Assert.AreEqual(-1, _session.DragItemIndex);
             Assert.IsFalse(_session.CanDragSelectedItems());
         }
     }

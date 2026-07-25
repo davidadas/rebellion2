@@ -198,6 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             int enteredFilter = -1;
             int exitedCategory = -1;
             int exitedFilter = -1;
+            GalacticInformationFilterMode? pressedMode = null;
             GalacticInformationFilterMode? selectedMode = null;
             _view.FilterEntered += (category, filter) =>
             {
@@ -209,6 +210,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 exitedCategory = category;
                 exitedFilter = filter;
             };
+            _view.FilterPressed += mode => pressedMode = mode;
             _view.FilterSelected += mode => selectedMode = mode;
             RectInt hitBounds = new RectInt(7, 9, 82, 14);
             _view.Render(
@@ -234,6 +236,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             hitArea.OnPointerEnter(eventData);
             hitArea.OnPointerExit(eventData);
+            hitArea.OnPointerDown(eventData);
+
+            Assert.AreEqual(GalacticInformationFilterMode.AvailableEnergy, pressedMode);
+            Assert.IsNull(selectedMode);
             hitArea.OnPointerClick(eventData);
 
             Assert.AreEqual(4, enteredCategory);
@@ -248,9 +254,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         {
             int enteredCount = 0;
             int exitedCount = 0;
+            int pressedCount = 0;
             int selectedCount = 0;
             _view.FilterEntered += (_, _) => enteredCount++;
             _view.FilterExited += (_, _) => exitedCount++;
+            _view.FilterPressed += _ => pressedCount++;
             _view.FilterSelected += _ => selectedCount++;
             RectInt hitBounds = new RectInt(7, 9, 82, 14);
             _view.Render(
@@ -277,10 +285,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
             hitArea.OnPointerEnter(eventData);
             hitArea.OnPointerExit(eventData);
+            hitArea.OnPointerDown(eventData);
             hitArea.OnPointerClick(eventData);
 
             Assert.AreEqual(0, enteredCount);
             Assert.AreEqual(0, exitedCount);
+            Assert.AreEqual(0, pressedCount);
             Assert.AreEqual(0, selectedCount);
         }
 

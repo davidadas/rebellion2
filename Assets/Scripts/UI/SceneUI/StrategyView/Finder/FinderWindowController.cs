@@ -87,6 +87,7 @@ public sealed class FinderWindowController
         RefreshSession(session);
         sessions.Add(view, session);
         view.CommandRequested += HandleCommandRequested;
+        view.ControlPressed += HandleControlPressed;
         view.ContextRequested += HandleContextRequested;
         view.Destroyed += HandleViewDestroyed;
         view.FocusRequested += HandleFocusRequested;
@@ -212,7 +213,6 @@ public sealed class FinderWindowController
     private void HandleCommandRequested(FinderWindowView view, FinderWindowCommand command)
     {
         FinderWindowSession session = GetSession(view);
-        playSfx(StrategyUISoundPaths.ControlPress);
         switch (command)
         {
             case FinderWindowCommand.Close:
@@ -235,6 +235,16 @@ public sealed class FinderWindowController
 
         RefreshSession(session);
         markDirty();
+    }
+
+    /// <summary>
+    /// Plays the shared control sound for a bound Finder view.
+    /// </summary>
+    /// <param name="view">The Finder view whose control was pressed.</param>
+    private void HandleControlPressed(FinderWindowView view)
+    {
+        if (sessions.ContainsKey(view))
+            playSfx(StrategyUISoundPaths.ControlPress);
     }
 
     /// <summary>
@@ -362,6 +372,7 @@ public sealed class FinderWindowController
             return;
 
         view.CommandRequested -= HandleCommandRequested;
+        view.ControlPressed -= HandleControlPressed;
         view.ContextRequested -= HandleContextRequested;
         view.Destroyed -= HandleViewDestroyed;
         view.FocusRequested -= HandleFocusRequested;

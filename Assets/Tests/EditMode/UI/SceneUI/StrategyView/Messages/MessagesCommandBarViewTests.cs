@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
@@ -69,7 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
-        public void CommandButtons_Click_RaiseControlAndSemanticRequests()
+        public void CommandButtons_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
             int controlCount = 0;
             int closeCount = 0;
@@ -86,13 +87,33 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             _view.TargetRequested += () => targetCount++;
             _view.ChatRequested += () => chatCount++;
             _view.Render(CreateRenderData());
+            string[] buttonNames =
+            {
+                "CloseButtonImage",
+                "DisplayButtonImage",
+                "IndexButtonImage",
+                "SignalButtonImage",
+                "SignalTargetButtonImage",
+                "ChatCommandButtonImage",
+            };
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
 
-            FindComponent<Button>("CloseButtonImage").onClick.Invoke();
-            FindComponent<Button>("DisplayButtonImage").onClick.Invoke();
-            FindComponent<Button>("IndexButtonImage").onClick.Invoke();
-            FindComponent<Button>("SignalButtonImage").onClick.Invoke();
-            FindComponent<Button>("SignalTargetButtonImage").onClick.Invoke();
-            FindComponent<Button>("ChatCommandButtonImage").onClick.Invoke();
+            foreach (string buttonName in buttonNames)
+                FindComponent<RawImagePressVisual>(buttonName).OnPointerDown(eventData);
+
+            Assert.AreEqual(6, controlCount);
+            Assert.AreEqual(0, closeCount);
+            Assert.AreEqual(0, displayCount);
+            Assert.AreEqual(0, indexCount);
+            Assert.AreEqual(0, signalCount);
+            Assert.AreEqual(0, targetCount);
+            Assert.AreEqual(0, chatCount);
+
+            foreach (string buttonName in buttonNames)
+                FindComponent<Button>(buttonName).onClick.Invoke();
 
             Assert.AreEqual(6, controlCount);
             Assert.AreEqual(1, closeCount);
@@ -110,8 +131,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             int closeCount = 0;
             _view.ControlPressed += () => controlCount++;
             _view.CloseRequested += () => closeCount++;
+            _view.Render(CreateRenderData());
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            FindComponent<RawImagePressVisual>("CloseButtonImage")
+                .OnPointerDown(
+                    new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                );
             FindComponent<Button>("CloseButtonImage").onClick.Invoke();
 
             Assert.AreEqual(0, controlCount);

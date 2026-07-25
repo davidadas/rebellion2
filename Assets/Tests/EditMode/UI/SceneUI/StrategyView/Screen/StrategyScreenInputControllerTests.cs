@@ -378,8 +378,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             _contextItems = new ISceneNode[] { new Officer() };
             _hasDragPreview = true;
-            _controller.StartItemDrag(_window, 10, 20);
             PointerEventData eventData = CreateStatusDoubleClickEvent(_window);
+            _sourceX = 10;
+            _sourceY = 20;
+            _controller.StartItemDrag(_window, eventData);
+            _sourceX = 40;
+            _sourceY = 50;
 
             _controller.OnDrag(eventData);
             _controller.OnPointerClick(eventData);
@@ -392,10 +396,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         public void OnPointerUp_UnresolvedItemCandidate_ClearsDragAndMarksDirty()
         {
             _contextItems = new ISceneNode[] { new Officer() };
-            _controller.StartItemDrag(_window, 10, 20);
+            PointerEventData eventData = CreatePointerEvent(_window.gameObject);
+            _controller.StartItemDrag(_window, eventData);
             _resolvePosition = false;
 
-            _controller.OnPointerUp(CreatePointerEvent(_window.gameObject));
+            _controller.OnPointerUp(eventData);
 
             Assert.AreEqual(1, _dirtyCount);
             Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
@@ -464,9 +469,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             _contextItems = new ISceneNode[] { new Officer() };
             _hasDragPreview = true;
+            PointerEventData eventData = CreatePointerEvent(null);
 
-            _controller.StartItemDrag(null, 10, 20);
-            _controller.OnDrag(CreatePointerEvent(null));
+            _controller.StartItemDrag(null, eventData);
+            _controller.OnDrag(eventData);
 
             Assert.AreEqual(0, _overlayCount);
             Assert.IsFalse(_dragController.TryGetOverlay(out _, out _));
@@ -535,7 +541,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             {
                 button = button,
                 clickCount = clickCount,
+                pointerId = -1,
+                pressPosition = new Vector2(10, 20),
                 pointerCurrentRaycast = new RaycastResult { gameObject = target },
+                pointerPressRaycast = new RaycastResult { gameObject = target },
             };
         }
 

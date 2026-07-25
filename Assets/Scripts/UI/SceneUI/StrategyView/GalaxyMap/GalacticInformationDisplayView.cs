@@ -56,6 +56,11 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
     public event Action<GalacticInformationDisplayView> Destroyed;
 
     /// <summary>
+    /// Raised when the selector's outside dismiss area enters its pressed state.
+    /// </summary>
+    internal event Action DismissPressed;
+
+    /// <summary>
     /// Raised when the selector's outside dismiss area is clicked.
     /// </summary>
     public event Action DismissRequested;
@@ -89,6 +94,11 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
     /// Raised when a submenu filter is selected.
     /// </summary>
     public event Action<GalacticInformationFilterMode> FilterSelected;
+
+    /// <summary>
+    /// Raised when a submenu filter enters its pressed state.
+    /// </summary>
+    internal event Action<GalacticInformationFilterMode> FilterPressed;
 
     /// <summary>
     /// Validates authored references and subscribes selector input when Unity creates the view.
@@ -209,6 +219,7 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
             return;
 
         dismissHitArea.Clicked += HandleDismissClicked;
+        dismissHitArea.Pressed += HandleDismissPressed;
         displayOffHitArea.Clicked += HandleDisplayOffClicked;
         displayOffHitArea.Entered += HandleDisplayOffEntered;
         displayOffHitArea.Exited += HandleDisplayOffExited;
@@ -218,6 +229,7 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
             categoryHitAreas[i].Entered += HandleCategoryRequested;
             submenuViews[i].FilterEntered += HandleFilterEntered;
             submenuViews[i].FilterExited += HandleFilterExited;
+            submenuViews[i].FilterPressed += HandleFilterPressed;
             submenuViews[i].FilterSelected += HandleFilterSelected;
         }
 
@@ -233,6 +245,7 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
             return;
 
         dismissHitArea.Clicked -= HandleDismissClicked;
+        dismissHitArea.Pressed -= HandleDismissPressed;
         displayOffHitArea.Clicked -= HandleDisplayOffClicked;
         displayOffHitArea.Entered -= HandleDisplayOffEntered;
         displayOffHitArea.Exited -= HandleDisplayOffExited;
@@ -242,6 +255,7 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
             categoryHitAreas[i].Entered -= HandleCategoryRequested;
             submenuViews[i].FilterEntered -= HandleFilterEntered;
             submenuViews[i].FilterExited -= HandleFilterExited;
+            submenuViews[i].FilterPressed -= HandleFilterPressed;
             submenuViews[i].FilterSelected -= HandleFilterSelected;
         }
 
@@ -320,6 +334,15 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
     }
 
     /// <summary>
+    /// Forwards a submenu filter press to the owning selector controller.
+    /// </summary>
+    /// <param name="mode">The pressed filter mode.</param>
+    private void HandleFilterPressed(GalacticInformationFilterMode mode)
+    {
+        FilterPressed?.Invoke(mode);
+    }
+
+    /// <summary>
     /// Emits an outside-click dismissal request.
     /// </summary>
     /// <param name="area">The outside dismiss hit area.</param>
@@ -327,6 +350,16 @@ public sealed class GalacticInformationDisplayView : MonoBehaviour
     private void HandleDismissClicked(UIRaycastArea area, PointerEventData eventData)
     {
         DismissRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Forwards an outside-area press to the owning selector controller.
+    /// </summary>
+    /// <param name="area">The outside dismiss hit area.</param>
+    /// <param name="eventData">The originating pointer event.</param>
+    private void HandleDismissPressed(UIRaycastArea area, PointerEventData eventData)
+    {
+        DismissPressed?.Invoke();
     }
 
     /// <summary>
