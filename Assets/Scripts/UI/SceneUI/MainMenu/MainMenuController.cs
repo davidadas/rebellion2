@@ -44,6 +44,7 @@ public sealed class MainMenuController : MonoBehaviour
         if (view == null)
             return;
 
+        AudioManager.EnsureExists().PreloadSfx(view.GetAudioCuePaths());
         view.RenderVictoryCondition(currentVictoryCondition);
         if (view.TryGetSelectedDifficulty(out GameDifficulty difficulty))
             SelectGameDifficulty(difficulty);

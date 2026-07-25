@@ -147,6 +147,11 @@ public sealed class FinderWindowView : MonoBehaviour
     public event Action<FinderWindowView, FinderWindowCommand> CommandRequested;
 
     /// <summary>
+    /// Raised when an authored dialog control enters its pressed state.
+    /// </summary>
+    internal event Action<FinderWindowView> ControlPressed;
+
+    /// <summary>
     /// Raised when a result row requests the strategy context menu.
     /// </summary>
     public event Action<FinderWindowView, string, PointerEventData> ContextRequested;
@@ -232,6 +237,9 @@ public sealed class FinderWindowView : MonoBehaviour
         BindDialogButtons(upperButtons);
         BindDialogButtons(twoButtons);
         BindDialogButtons(fourButtons);
+        BindDialogPressVisuals(upperButtonPressVisuals);
+        BindDialogPressVisuals(twoButtonPressVisuals);
+        BindDialogPressVisuals(fourButtonPressVisuals);
         labelInputField.onValueChanged.AddListener(HandleSearchTextChanged);
     }
 
@@ -241,6 +249,9 @@ public sealed class FinderWindowView : MonoBehaviour
     private void UnbindControls()
     {
         labelInputField?.onValueChanged.RemoveListener(HandleSearchTextChanged);
+        UnbindDialogPressVisuals(upperButtonPressVisuals);
+        UnbindDialogPressVisuals(twoButtonPressVisuals);
+        UnbindDialogPressVisuals(fourButtonPressVisuals);
         for (int i = 0; i < boundButtons.Count; i++)
         {
             if (boundButtons[i] != null)
@@ -249,6 +260,43 @@ public sealed class FinderWindowView : MonoBehaviour
 
         boundButtons.Clear();
         boundButtonListeners.Clear();
+    }
+
+    /// <summary>
+    /// Subscribes authored dialog press visuals to the local control-press handler.
+    /// </summary>
+    /// <param name="pressVisuals">The authored press visuals to subscribe.</param>
+    private void BindDialogPressVisuals(IReadOnlyList<RawImagePressVisual> pressVisuals)
+    {
+        if (pressVisuals == null)
+            return;
+
+        for (int i = 0; i < pressVisuals.Count; i++)
+            pressVisuals[i].Pressed += HandleDialogButtonPressed;
+    }
+
+    /// <summary>
+    /// Releases local control-press subscriptions from authored dialog press visuals.
+    /// </summary>
+    /// <param name="pressVisuals">The authored press visuals to unsubscribe.</param>
+    private void UnbindDialogPressVisuals(IReadOnlyList<RawImagePressVisual> pressVisuals)
+    {
+        if (pressVisuals == null)
+            return;
+
+        for (int i = 0; i < pressVisuals.Count; i++)
+        {
+            if (pressVisuals[i] != null)
+                pressVisuals[i].Pressed -= HandleDialogButtonPressed;
+        }
+    }
+
+    /// <summary>
+    /// Emits a semantic control-press event for the owning Finder controller.
+    /// </summary>
+    private void HandleDialogButtonPressed()
+    {
+        ControlPressed?.Invoke(this);
     }
 
     /// <summary>

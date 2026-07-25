@@ -63,13 +63,35 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
-        public void OnPointerDown_InteractiveControl_UsesPressedTexture()
+        public void OnPointerDown_InteractiveControl_UsesPressedTextureAndEmitsPress()
         {
+            int pressedCount = 0;
+            _visual.Pressed += () => pressedCount++;
             _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
 
-            _visual.OnPointerDown(new PointerEventData(null));
+            _visual.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
 
             Assert.AreSame(_pressedTexture, _image.texture);
+            Assert.AreEqual(1, pressedCount);
+        }
+
+        [Test]
+        public void OnPointerDown_AlreadyPressed_DoesNotEmitAnotherPress()
+        {
+            int pressedCount = 0;
+            _visual.Pressed += () => pressedCount++;
+            _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            _visual.OnPointerDown(eventData);
+            _visual.OnPointerDown(eventData);
+
+            Assert.AreEqual(1, pressedCount);
         }
 
         [Test]
@@ -97,12 +119,30 @@ namespace Rebellion.Tests.UI.Components
         [Test]
         public void OnPointerDown_DisabledButton_PreservesNormalTexture()
         {
+            int pressedCount = 0;
+            _visual.Pressed += () => pressedCount++;
             _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
             _button.interactable = false;
 
             _visual.OnPointerDown(new PointerEventData(null));
 
             Assert.AreSame(_normalTexture, _image.texture);
+            Assert.AreEqual(0, pressedCount);
+        }
+
+        [Test]
+        public void OnPointerDown_RightButton_PreservesNormalTextureWithoutEmittingPress()
+        {
+            int pressedCount = 0;
+            _visual.Pressed += () => pressedCount++;
+            _visual.SetInteractiveTextures(_normalTexture, _pressedTexture);
+
+            _visual.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Right }
+            );
+
+            Assert.AreSame(_normalTexture, _image.texture);
+            Assert.AreEqual(0, pressedCount);
         }
     }
 }

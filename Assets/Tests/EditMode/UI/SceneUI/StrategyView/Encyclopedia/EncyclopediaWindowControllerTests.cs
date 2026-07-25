@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -9,6 +10,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
@@ -22,6 +24,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
 
         private EncyclopediaWindowController _controller;
         private int _dirtyCount;
+        private readonly List<string> _playedSfx = new List<string>();
         private GameObject _rootObject;
         private UIContext _uiContext;
         private StrategyWindowLayerView _windowLayer;
@@ -31,6 +34,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         public void SetUp()
         {
             _dirtyCount = 0;
+            _playedSfx.Clear();
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
@@ -144,6 +148,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         }
 
         [Test]
+        public void DialogControl_PointerDown_PlaysSharedControlSoundBeforeClick()
+        {
+            _controller.Open();
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out EncyclopediaWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window);
+            RawImagePressVisual closePressVisual =
+                view.GetComponentsInChildren<RawImagePressVisual>(true)
+                    .Single(visual => visual.name == "LowerLayoutCloseButtonImage");
+
+            closePressVisual.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.ControlPress }, _playedSfx);
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+        }
+
+        [Test]
         public void FindEntryIndex_Entries_ReturnsExactMatchOrNegativeOne()
         {
             EncyclopediaEntry[] entries =
@@ -188,7 +212,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         {
             return new EncyclopediaWindowController(
                 () => _uiContext,
-                _ => { },
+                path => _playedSfx.Add(path),
                 _windowLayer,
                 _windowManager,
                 () => new Vector2Int(123, 45),

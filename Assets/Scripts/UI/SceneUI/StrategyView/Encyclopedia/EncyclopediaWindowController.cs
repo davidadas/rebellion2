@@ -72,6 +72,7 @@ public sealed class EncyclopediaWindowController
         RefreshSession(session);
         sessions.Add(view, session);
         view.CommandRequested += HandleCommandRequested;
+        view.ControlPressed += HandleControlPressed;
         view.ContextRequested += HandleContextRequested;
         view.Destroyed += HandleViewDestroyed;
         view.FocusRequested += HandleFocusRequested;
@@ -256,7 +257,6 @@ public sealed class EncyclopediaWindowController
     )
     {
         EncyclopediaWindowSession session = GetSession(view);
-        playSfx(StrategyUISoundPaths.ControlPress);
         switch (command)
         {
             case EncyclopediaWindowCommand.Close:
@@ -273,6 +273,16 @@ public sealed class EncyclopediaWindowController
         }
 
         markDirty();
+    }
+
+    /// <summary>
+    /// Plays the shared control sound for a bound Encyclopedia view.
+    /// </summary>
+    /// <param name="view">The Encyclopedia view whose control was pressed.</param>
+    private void HandleControlPressed(EncyclopediaWindowView view)
+    {
+        if (sessions.ContainsKey(view))
+            playSfx(StrategyUISoundPaths.ControlPress);
     }
 
     /// <summary>
@@ -396,6 +406,7 @@ public sealed class EncyclopediaWindowController
             return;
 
         view.CommandRequested -= HandleCommandRequested;
+        view.ControlPressed -= HandleControlPressed;
         view.ContextRequested -= HandleContextRequested;
         view.Destroyed -= HandleViewDestroyed;
         view.FocusRequested -= HandleFocusRequested;

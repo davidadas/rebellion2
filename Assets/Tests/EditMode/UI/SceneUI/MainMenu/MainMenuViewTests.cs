@@ -217,6 +217,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void GetAudioCuePaths_AuthoredBindings_ReturnsDistinctConfiguredPaths()
+        {
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "Audio/SFX/MainMenu/sfx_ui_mainmenu_select",
+                    "Audio/SFX/MainMenu/sfx_ui_mainmenu_galaxysize_select",
+                    "Audio/SFX/MainMenu/sfx_ui_mainmenu_exit_select",
+                },
+                _view.GetAudioCuePaths()
+            );
+        }
+
+        [Test]
         public void OnEnable_AlreadyBound_DoesNotDuplicateListeners()
         {
             int loadCount = 0;

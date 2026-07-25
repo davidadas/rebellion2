@@ -42,6 +42,11 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
     public event Action<int, int> FilterExited;
 
     /// <summary>
+    /// Raised when one rendered filter row enters its pressed state.
+    /// </summary>
+    internal event Action<GalacticInformationFilterMode> FilterPressed;
+
+    /// <summary>
     /// Raised when one rendered filter row is selected.
     /// </summary>
     public event Action<GalacticInformationFilterMode> FilterSelected;
@@ -141,6 +146,7 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
             hitArea.Clicked += HandleFilterClicked;
             hitArea.Entered += HandleFilterEntered;
             hitArea.Exited += HandleFilterExited;
+            hitArea.Pressed += HandleFilterPressed;
         }
 
         eventsBound = true;
@@ -159,6 +165,7 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
             hitArea.Clicked -= HandleFilterClicked;
             hitArea.Entered -= HandleFilterEntered;
             hitArea.Exited -= HandleFilterExited;
+            hitArea.Pressed -= HandleFilterPressed;
         }
 
         eventsBound = false;
@@ -198,6 +205,18 @@ public sealed class GalacticInformationSubmenuView : MonoBehaviour
         int filterIndex = Array.IndexOf(hitAreas, area);
         if (filterIndex >= 0 && filterIndex < renderedFilters.Count)
             FilterSelected?.Invoke(renderedFilters[filterIndex]);
+    }
+
+    /// <summary>
+    /// Emits the semantic filter represented by a pressed row.
+    /// </summary>
+    /// <param name="area">The pressed filter hit area.</param>
+    /// <param name="eventData">The originating pointer event.</param>
+    private void HandleFilterPressed(UIRaycastArea area, PointerEventData eventData)
+    {
+        int filterIndex = Array.IndexOf(hitAreas, area);
+        if (filterIndex >= 0 && filterIndex < renderedFilters.Count)
+            FilterPressed?.Invoke(renderedFilters[filterIndex]);
     }
 
     /// <summary>

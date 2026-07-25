@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -25,6 +26,11 @@ public sealed class RawImagePressVisual
     private Texture downTexture;
 
     private bool pressed;
+
+    /// <summary>
+    /// Raised when the control enters its pressed state.
+    /// </summary>
+    internal event Action Pressed;
 
     /// <summary>
     /// Sets the normal and pressed textures and synchronizes image visibility and raycasting.
@@ -88,11 +94,12 @@ public sealed class RawImagePressVisual
     /// <param name="eventData">The pointer event.</param>
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (!IsPressable())
+        if (eventData?.button != PointerEventData.InputButton.Left || pressed || !IsPressable())
             return;
 
         pressed = true;
         image.texture = downTexture;
+        Pressed?.Invoke();
     }
 
     /// <summary>

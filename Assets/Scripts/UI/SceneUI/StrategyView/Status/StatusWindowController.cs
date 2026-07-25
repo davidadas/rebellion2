@@ -190,6 +190,7 @@ public sealed class StatusWindowController
             return;
 
         view.CloseRequested += HandleCloseRequested;
+        view.ControlPressed += HandleControlPressed;
         view.Destroyed += HandleViewDestroyed;
         view.InfoRequested += HandleInfoRequested;
     }
@@ -313,10 +314,7 @@ public sealed class StatusWindowController
     private void HandleInfoRequested(StatusWindowView view)
     {
         if (sessions.TryGetValue(view, out StatusWindowSession session) && !session.InfoDisabled)
-        {
-            playSfx(StrategyUISoundPaths.ControlPress);
             actions.OpenStatusInfo(session.Target);
-        }
     }
 
     /// <summary>
@@ -326,10 +324,17 @@ public sealed class StatusWindowController
     private void HandleCloseRequested(StatusWindowView view)
     {
         if (sessions.TryGetValue(view, out StatusWindowSession session))
-        {
-            playSfx(StrategyUISoundPaths.ControlPress);
             closeWindow(session.Window);
-        }
+    }
+
+    /// <summary>
+    /// Plays the shared control sound for a bound status view.
+    /// </summary>
+    /// <param name="view">The status view whose control was pressed.</param>
+    private void HandleControlPressed(StatusWindowView view)
+    {
+        if (sessions.ContainsKey(view))
+            playSfx(StrategyUISoundPaths.ControlPress);
     }
 
     /// <summary>
@@ -342,6 +347,7 @@ public sealed class StatusWindowController
             return;
 
         view.CloseRequested -= HandleCloseRequested;
+        view.ControlPressed -= HandleControlPressed;
         view.Destroyed -= HandleViewDestroyed;
         view.InfoRequested -= HandleInfoRequested;
         sessions.Remove(view);

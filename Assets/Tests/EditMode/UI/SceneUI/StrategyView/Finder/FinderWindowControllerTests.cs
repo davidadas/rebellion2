@@ -7,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
@@ -19,6 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
         private FinderWindowController _controller;
         private int _dirtyCount;
+        private readonly List<string> _playedSfx = new List<string>();
         private GameObject _rootObject;
         private IReadOnlyList<GalaxyMapSector> _sectors;
         private UIContext _uiContext;
@@ -29,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         public void SetUp()
         {
             _dirtyCount = 0;
+            _playedSfx.Clear();
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
@@ -148,6 +151,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void DialogControl_PointerDown_PlaysSharedControlSoundBeforeClick()
+        {
+            _controller.Open(FinderMode.Systems);
+            UIWindow window = _windowManager.Windows.Single();
+            _windowManager.TryGetWindowView(window, out FinderWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window);
+            RawImagePressVisual closePressVisual =
+                view.GetComponentsInChildren<RawImagePressVisual>(true)
+                    .Single(visual => visual.name == "TwoButtonLayoutCloseButtonImage");
+
+            closePressVisual.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
+
+            CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.ControlPress }, _playedSfx);
+            Assert.AreEqual(1, _windowManager.Windows.Count);
+        }
+
+        [Test]
         public void ReconcileWindows_UnavailableSectors_ThrowsInvalidOperationException()
         {
             _controller.Open(FinderMode.Systems);
@@ -171,7 +194,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         {
             return new FinderWindowController(
                 () => _uiContext,
-                _ => { },
+                path => _playedSfx.Add(path),
                 _windowLayer,
                 _windowManager,
                 () => _sectors,

@@ -55,6 +55,11 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     public event Action<EncyclopediaWindowView, EncyclopediaWindowCommand> CommandRequested;
 
     /// <summary>
+    /// Raised when an authored dialog control enters its pressed state.
+    /// </summary>
+    internal event Action<EncyclopediaWindowView> ControlPressed;
+
+    /// <summary>
     /// Raised when an index row requests the strategy context menu.
     /// </summary>
     public event Action<EncyclopediaWindowView, string, PointerEventData> ContextRequested;
@@ -172,6 +177,8 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     {
         BindDialogButtons(upperButtons);
         BindDialogButtons(lowerButtons);
+        BindDialogPressVisuals(upperButtonPressVisuals);
+        BindDialogPressVisuals(lowerButtonPressVisuals);
 
         indexPanel.ContextRequested += HandleContextRequested;
         indexPanel.RowActivated += HandleRowActivated;
@@ -209,6 +216,8 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
     /// </summary>
     private void UnbindControls()
     {
+        UnbindDialogPressVisuals(upperButtonPressVisuals);
+        UnbindDialogPressVisuals(lowerButtonPressVisuals);
         int count = Math.Min(boundDialogButtons.Count, dialogButtonListeners.Count);
         for (int i = 0; i < count; i++)
         {
@@ -232,6 +241,43 @@ public sealed class EncyclopediaWindowView : MonoBehaviour
             detailPanel.NextRequested -= RequestNextEntry;
             detailPanel.PreviousRequested -= RequestPreviousEntry;
         }
+    }
+
+    /// <summary>
+    /// Subscribes authored dialog press visuals to the local control-press handler.
+    /// </summary>
+    /// <param name="pressVisuals">The authored press visuals to subscribe.</param>
+    private void BindDialogPressVisuals(IReadOnlyList<RawImagePressVisual> pressVisuals)
+    {
+        if (pressVisuals == null)
+            return;
+
+        for (int i = 0; i < pressVisuals.Count; i++)
+            pressVisuals[i].Pressed += HandleDialogButtonPressed;
+    }
+
+    /// <summary>
+    /// Releases local control-press subscriptions from authored dialog press visuals.
+    /// </summary>
+    /// <param name="pressVisuals">The authored press visuals to unsubscribe.</param>
+    private void UnbindDialogPressVisuals(IReadOnlyList<RawImagePressVisual> pressVisuals)
+    {
+        if (pressVisuals == null)
+            return;
+
+        for (int i = 0; i < pressVisuals.Count; i++)
+        {
+            if (pressVisuals[i] != null)
+                pressVisuals[i].Pressed -= HandleDialogButtonPressed;
+        }
+    }
+
+    /// <summary>
+    /// Emits a semantic control-press event for the owning Encyclopedia controller.
+    /// </summary>
+    private void HandleDialogButtonPressed()
+    {
+        ControlPressed?.Invoke(this);
     }
 
     /// <summary>

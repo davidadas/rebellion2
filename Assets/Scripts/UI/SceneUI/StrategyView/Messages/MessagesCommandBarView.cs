@@ -193,6 +193,12 @@ public sealed class MessagesCommandBarView : MonoBehaviour
         UnbindButton(signalButton, signalButtonListener);
         UnbindButton(signalTargetButton, signalTargetButtonListener);
         UnbindButton(chatButton, chatButtonListener);
+        UnbindPressVisual(closeButtonPressVisual);
+        UnbindPressVisual(displayButtonPressVisual);
+        UnbindPressVisual(indexButtonPressVisual);
+        UnbindPressVisual(signalButtonPressVisual);
+        UnbindPressVisual(signalTargetButtonPressVisual);
+        UnbindPressVisual(chatButtonPressVisual);
     }
 
     /// <summary>
@@ -221,24 +227,53 @@ public sealed class MessagesCommandBarView : MonoBehaviour
             () => TargetRequested?.Invoke()
         );
         chatButtonListener = BindButton(chatButton, () => ChatRequested?.Invoke());
+        BindPressVisual(closeButtonPressVisual);
+        BindPressVisual(displayButtonPressVisual);
+        BindPressVisual(indexButtonPressVisual);
+        BindPressVisual(signalButtonPressVisual);
+        BindPressVisual(signalTargetButtonPressVisual);
+        BindPressVisual(chatButtonPressVisual);
         initialized = true;
     }
 
     /// <summary>
-    /// Binds one authored button to its semantic request and the shared press event.
+    /// Binds one authored button to its semantic request.
     /// </summary>
     /// <param name="button">The authored button.</param>
     /// <param name="request">The semantic request delegate captured at initialization.</param>
     /// <returns>The retained Unity listener used to detach the binding.</returns>
     private UnityAction BindButton(Button button, Action request)
     {
-        UnityAction listener = () =>
-        {
-            ControlPressed?.Invoke();
-            request?.Invoke();
-        };
+        UnityAction listener = () => request?.Invoke();
         button.onClick.AddListener(listener);
         return listener;
+    }
+
+    /// <summary>
+    /// Subscribes one authored press visual to the semantic control-press event.
+    /// </summary>
+    /// <param name="pressVisual">The authored press visual to subscribe.</param>
+    private void BindPressVisual(RawImagePressVisual pressVisual)
+    {
+        pressVisual.Pressed += HandleControlPressed;
+    }
+
+    /// <summary>
+    /// Releases the semantic control-press subscription from one authored press visual.
+    /// </summary>
+    /// <param name="pressVisual">The authored press visual to unsubscribe.</param>
+    private void UnbindPressVisual(RawImagePressVisual pressVisual)
+    {
+        if (pressVisual != null)
+            pressVisual.Pressed -= HandleControlPressed;
+    }
+
+    /// <summary>
+    /// Emits the command bar's semantic control-press event.
+    /// </summary>
+    private void HandleControlPressed()
+    {
+        ControlPressed?.Invoke();
     }
 
     /// <summary>

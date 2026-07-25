@@ -9,6 +9,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using GameFleet = Rebellion.Game.Units.Fleet;
 using GamePlanetSystem = Rebellion.Game.Galaxy.PlanetSystem;
@@ -278,11 +279,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void ControlButton_InitializedView_PlaysSharedControlSound()
+        public void ControlButton_PointerDown_PlaysSharedControlSoundBeforeClick()
         {
-            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            BattleAlertWindowView view = OpenWindow(out UIWindow window);
+            _controller.RenderWindow(view, window);
+            RawImagePressVisual pressVisual = view.GetComponentsInChildren<RawImagePressVisual>(
+                    true
+                )
+                .Single(visual => visual.name == "SummaryButtonImage");
 
-            FindButton(view, "SummaryButtonImage").onClick.Invoke();
+            pressVisual.OnPointerDown(
+                new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+            );
 
             CollectionAssert.AreEqual(new[] { StrategyUISoundPaths.ControlPress }, _playedSfx);
         }
