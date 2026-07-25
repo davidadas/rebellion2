@@ -316,6 +316,41 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Places mission participants at the mission planet without initiating return travel.
+        /// </summary>
+        /// <param name="participants">The participants remaining at the mission location.</param>
+        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <returns>Participants that could not be placed at the mission planet.</returns>
+        internal List<IMovable> CompleteMissionAtLocation(
+            IReadOnlyList<IMissionParticipant> participants,
+            Planet missionPlanet
+        )
+        {
+            if (participants == null)
+                throw new ArgumentNullException(nameof(participants));
+
+            List<IMovable> strandedUnits = new List<IMovable>();
+            foreach (IMissionParticipant participant in participants)
+            {
+                if (
+                    participant == null
+                    || missionPlanet?.IsDestroyed != false
+                    || !missionPlanet.CanAcceptChild(participant)
+                )
+                {
+                    if (participant != null)
+                        strandedUnits.Add(participant);
+                    continue;
+                }
+
+                _game.MoveNode(participant, missionPlanet);
+                participant.Movement = null;
+            }
+
+            return strandedUnits;
+        }
+
+        /// <summary>
         /// Restores movement states temporarily cleared during return-group validation.
         /// </summary>
         /// <param name="interruptedMovements">The units and movement states to restore.</param>

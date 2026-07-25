@@ -154,7 +154,7 @@ namespace Rebellion.Game.Missions
         /// Returns whether the mission should repeat after completing one execution.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True if the mission should repeat; false to tear down and send participants home.</returns>
+        /// <returns>True if the mission should repeat; false to finish the mission.</returns>
         public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
 
         /// <summary>
@@ -785,10 +785,10 @@ namespace Rebellion.Game.Missions
         ) => new List<GameResult>();
 
         /// <summary>
-        /// Returns extra movable units that should travel home with mission participants after a successful mission.
+        /// Returns extra movable units that must travel with participants after a successful mission.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>Additional units to return after successful mission completion.</returns>
+        /// <returns>Additional units that must accompany the mission participants.</returns>
         internal virtual IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game) =>
             Enumerable.Empty<IMovable>();
 

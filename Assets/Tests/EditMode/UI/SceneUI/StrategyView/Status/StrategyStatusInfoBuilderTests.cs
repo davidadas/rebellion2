@@ -829,6 +829,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("0", info.Rows.Single(row => row.Left == "Decoys:").Right);
         }
 
+        [Test]
+        public void Build_RecruitmentMission_ReturnsPlanetAsTarget()
+        {
+            Officer recruitedOfficer = new Officer
+            {
+                InstanceID = "recruited-officer",
+                DisplayName = "Recruited Officer",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(recruitedOfficer, _planet);
+            RecruitmentMission mission = new RecruitmentMission
+            {
+                InstanceID = "recruitment",
+                DisplayName = "Recruitment Mission",
+                OwnerInstanceID = _ownerId,
+                LocationInstanceID = _planet.InstanceID,
+                TargetOfficerInstanceID = recruitedOfficer.InstanceID,
+            };
+            _game.AttachNode(mission, _planet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, mission));
+
+            Assert.AreEqual("Corellia", info.Rows.Single(row => row.Left == "Target:").Right);
+        }
+
         private void AttachBuilding(Building building)
         {
             _game.AttachNode(building, _planet);

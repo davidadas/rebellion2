@@ -472,11 +472,11 @@ public sealed class MessagesWindowController
     /// <param name="view">The requesting Messages view.</param>
     private void HandleChatRequested(MessagesWindowView view)
     {
-        if (!TryGetSession(view, out MessagesWindowSession session))
+        if (!TryGetSession(view, out _))
             return;
 
         FocusWindow(view);
-        session.SelectTab(MessagesTab.Chat);
+        OpenTab(view, MessagesTab.Chat);
         RequestRender();
     }
 
@@ -681,11 +681,11 @@ public sealed class MessagesWindowController
     /// <param name="tab">The requested semantic Messages tab.</param>
     private void HandleTabRequested(MessagesWindowView view, MessagesTab tab)
     {
-        if (!TryGetSession(view, out MessagesWindowSession session))
+        if (!TryGetSession(view, out _))
             return;
 
         FocusWindow(view);
-        session.SelectTab(tab);
+        OpenTab(view, tab);
         RequestRender();
     }
 

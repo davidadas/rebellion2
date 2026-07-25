@@ -217,7 +217,6 @@ internal sealed class MissionsWindowProjector
         return mission switch
         {
             SabotageMission sabotage => sabotage.SabotageTargetInstanceID,
-            RecruitmentMission recruitment => recruitment.TargetOfficerInstanceID,
             AbductionMission abduction => abduction.TargetOfficerInstanceID,
             AssassinationMission assassination => assassination.TargetOfficerInstanceID,
             RescueMission rescue => rescue.TargetOfficerInstanceID,

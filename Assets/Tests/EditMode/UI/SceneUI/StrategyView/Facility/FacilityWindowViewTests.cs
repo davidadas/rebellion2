@@ -110,14 +110,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             Assert.IsTrue(FindCardObject(shipCard, "EntityImage").activeSelf);
             Assert.IsFalse(FindCardObject(shipCard, "EmptyTextField").activeSelf);
             Assert.IsTrue(FindCardObject(shipCard, "ProgressFillImage").activeSelf);
-            Assert.Greater(
-                UILayout
-                    .GetSourceRect(
-                        FindCardObject(shipCard, "ProgressFillImage").transform as RectTransform
-                    )
-                    .width,
-                0
+            RectInt progressRect = UILayout.GetSourceRect(
+                FindCardObject(shipCard, "ProgressFillImage").transform as RectTransform
             );
+            Assert.AreEqual(new RectInt(56, 126, 40, 4), progressRect);
             ManufacturingLaneCardView troopCard = FindCard("TrainingManufacturingLaneCard");
             Assert.IsFalse(FindCardObject(troopCard, "EntityImage").activeSelf);
             Assert.IsTrue(FindCardObject(troopCard, "EmptyTextField").activeSelf);

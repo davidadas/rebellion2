@@ -731,10 +731,8 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void TearDownMission_OriginIsCapitalShipInFleet_ParticipantsReturnToShip()
+        public void TearDownMission_FriendlyLocation_ParticipantsRemainAtPlanet()
         {
-            // When the officer's recorded origin is a capital ship (i.e. they boarded from a fleet),
-            // teardown should return them to that ship, not to the planet directly.
             (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
@@ -749,13 +747,11 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            // Move officer from planet onto the capital ship (pre-mission state).
             game.DetachNode(officer);
             game.AttachNode(officer, ship);
 
             StubMission mission = CreateMission(game, planet, officer);
 
-            // Simulate BeginMission: record the ship as origin, then move officer to mission.
             mission.OriginInstanceID = ship.InstanceID;
             officer.MissionReturnParentInstanceID = ship.InstanceID;
             officer.MissionReturnLocationInstanceID = planet.InstanceID;
@@ -770,18 +766,19 @@ namespace Rebellion.Tests.Systems
             system.UpdateMission(mission);
 
             Assert.AreEqual(
-                ship,
+                planet,
                 officer.GetParent(),
-                "Officer should return to the capital ship they came from"
+                "Officer should remain at a friendly mission location"
             );
         }
 
         [Test]
-        public void TearDownMission_OriginFleetHasMoved_ParticipantsReturnToRecordedShip()
+        public void TearDownMission_HostileLocation_OriginFleetMoved_ReturnsToRecordedShip()
         {
             (GameRoot game, Planet planetA, Officer officer, MovementSystem movement) = BuildScene(
                 factionOwnsPlanet: true
             );
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
 
             PlanetSystem systemB = new PlanetSystem
             {
@@ -826,6 +823,7 @@ namespace Rebellion.Tests.Systems
             game.DetachNode(fleet);
             game.AttachNode(fleet, planetB);
             game.AttachNode(ship, fleet);
+            planetA.OwnerInstanceID = "rebels";
 
             MissionSystem system = TestSystems.CreateMissionSystem(game, new StubRNG(), movement);
 
@@ -839,6 +837,69 @@ namespace Rebellion.Tests.Systems
                 officer.GetParent(),
                 "Officer should return to its recorded ship when the origin fleet has moved"
             );
+        }
+
+        [Test]
+        public void UpdateMission_DiplomacyCompletion_ParticipantRemainsAtTargetPlanet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "empire" };
+            game.Factions.Add(faction);
+            PlanetSystem planetSystem = new PlanetSystem { InstanceID = "system" };
+            game.AttachNode(planetSystem, game.Galaxy);
+            Planet origin = new Planet
+            {
+                InstanceID = "origin",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+                PopularSupport = new Dictionary<string, int> { { faction.InstanceID, 99 } },
+            };
+            target.AddVisitor(faction.InstanceID);
+            game.AttachNode(origin, planetSystem);
+            game.AttachNode(target, planetSystem);
+            Officer officer = EntityFactory.CreateOfficer("diplomat", faction.InstanceID);
+            game.AttachNode(officer, origin);
+            game.Config.ProbabilityTables.Mission.Diplomacy = new Dictionary<int, int>
+            {
+                { -200, 100 },
+            };
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0),
+                movement
+            );
+
+            Assert.IsTrue(
+                missions.InitiateMission(CreateRequest(MissionTypeIDs.Diplomacy, officer, target))
+            );
+            Mission mission = game.GetSceneNodesByType<Mission>().Single();
+            officer.Movement = null;
+            mission.SetExecutionTick(0);
+
+            List<GameResult> results = missions.UpdateMission(mission);
+
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.AreSame(target, officer.GetParent());
+            Assert.IsNull(officer.Movement);
+            Assert.IsNull(mission.GetParent());
         }
 
         [Test]

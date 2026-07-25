@@ -244,6 +244,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.IsNull(data.TargetTexture);
         }
 
+        [Test]
+        public void Build_RecruitmentMission_UsesPlanetAsTarget()
+        {
+            RecruitmentMission mission = new RecruitmentMission
+            {
+                InstanceID = "recruitment",
+                DisplayName = "Recruitment Mission",
+                OwnerInstanceID = _playerFactionId,
+                LocationInstanceID = _planet.Planet.InstanceID,
+                TargetOfficerInstanceID = _target.InstanceID,
+                MainParticipants = new List<IMissionParticipant>
+                {
+                    CreateOfficer("recruiter", "Recruiter", false),
+                },
+            };
+            _planet.Planet.Missions.Clear();
+            _planet.Planet.Missions.Add(mission);
+            _visibleNodes[_planet.Planet.InstanceID] = _planet.Planet;
+            MissionsWindowSession session = new MissionsWindowSession(_planet, _window);
+
+            MissionsWindowRenderData data = _projector.Build(session, _window, true);
+
+            Assert.AreEqual("Corellia", data.TargetName);
+        }
+
         private Officer CreateOfficer(string instanceId, string displayName, bool inTransit)
         {
             return new Officer
