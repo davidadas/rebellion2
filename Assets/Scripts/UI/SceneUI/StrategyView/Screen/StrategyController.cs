@@ -140,6 +140,7 @@ public sealed class StrategyController
         ValidateAuthoredViews();
         gameManager = manager;
         uiContext = context;
+        PreloadStrategySfx();
         cancelStack = AppBootstrap.Instance?.GetCancelStack();
         strategyContextMenu.Initialize(uiContext);
         gameManager.GameSpeedChanged += MarkDirty;
@@ -1212,8 +1213,19 @@ public sealed class StrategyController
     private void HandleGameReplaced(GameRoot game)
     {
         uiContext.ReplaceGame(game);
+        PreloadStrategySfx();
         BindMessageSystem(gameManager.MessageSystem);
         RefreshStrategyState();
+    }
+
+    /// <summary>
+    /// Preloads shared and themed sound effects required by the active strategy interface.
+    /// </summary>
+    private void PreloadStrategySfx()
+    {
+        AudioManager
+            .EnsureExists()
+            .PreloadSfx(StrategyUISoundPaths.GetPreloadPaths(uiContext?.GetPlayerFactionTheme()));
     }
 
     /// <summary>

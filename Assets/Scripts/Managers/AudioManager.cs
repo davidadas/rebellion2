@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Util.Extensions;
 using UnityEngine;
@@ -36,6 +37,10 @@ public sealed class AudioManager : MonoBehaviour
     [SerializeField]
     private float ambienceVolume = 1f;
 
+    private readonly Dictionary<string, AudioClip> _preloadedSfx = new Dictionary<
+        string,
+        AudioClip
+    >(StringComparer.Ordinal);
     private AudioClip[] _clipPlaylist;
     private string[] _activePlaylistPaths;
     private string[] _requestedPlaylistPaths;
@@ -287,6 +292,46 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Loads and retains sound-effect clips for immediate resource-path playback.
+    /// </summary>
+    /// <param name="resourcePaths">The sound-effect resource paths to preload.</param>
+    internal void PreloadSfx(IEnumerable<string> resourcePaths)
+    {
+        if (resourcePaths == null)
+            return;
+
+        foreach (string resourcePath in resourcePaths)
+        {
+            if (string.IsNullOrWhiteSpace(resourcePath))
+                continue;
+
+            string normalizedPath = resourcePath.Trim();
+            if (_preloadedSfx.ContainsKey(normalizedPath))
+                continue;
+
+            AudioClip clip = ResourceManager.GetAudio(normalizedPath);
+            if (
+                clip.loadState == AudioDataLoadState.Unloaded
+                && (!clip.LoadAudioData() || clip.loadState == AudioDataLoadState.Failed)
+            )
+            {
+                throw new InvalidOperationException(
+                    $"Audio data could not be loaded at: {normalizedPath}"
+                );
+            }
+
+            if (clip.loadState != AudioDataLoadState.Loaded)
+            {
+                throw new InvalidOperationException(
+                    $"Audio data was not ready at: {normalizedPath}"
+                );
+            }
+
+            _preloadedSfx.Add(normalizedPath, clip);
+        }
+    }
+
+    /// <summary>
     /// Plays one sound effect loaded from a Resources path.
     /// </summary>
     /// <param name="resourcePath">The Resources path for the sound effect clip.</param>
@@ -295,7 +340,12 @@ public sealed class AudioManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(resourcePath))
             return;
 
-        PlaySfx(ResourceManager.GetAudio(resourcePath));
+        string normalizedPath = resourcePath.Trim();
+        PlaySfx(
+            _preloadedSfx.TryGetValue(normalizedPath, out AudioClip clip)
+                ? clip
+                : ResourceManager.GetAudio(normalizedPath)
+        );
     }
 
     /// <summary>

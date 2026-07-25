@@ -21,6 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private CutscenePlayer _player;
         private GameObject _rootObject;
         private RawImage _screen;
+        private Color _authoredScreenColor;
         private VideoPlayer _videoPlayer;
 
         [SetUp]
@@ -29,6 +30,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _player = _rootObject.GetComponent<CutscenePlayer>();
             _screen = GetField<RawImage>("screen");
+            _authoredScreenColor = _screen.color;
             _videoPlayer = GetField<VideoPlayer>("videoPlayer");
             _audioSource = GetField<AudioSource>("audioSource");
             _clip = AssetDatabase.LoadAssetAtPath<VideoClip>(_clipPath);
@@ -50,7 +52,10 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsNotNull(_audioSource);
             Assert.IsFalse(_videoPlayer.playOnAwake);
             Assert.IsFalse(_videoPlayer.isLooping);
+            Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
             Assert.IsFalse(_audioSource.playOnAwake);
+            Assert.AreEqual(Color.black, _screen.color);
+            Assert.IsTrue(_screen.raycastTarget);
         }
 
         [Test]
@@ -61,6 +66,19 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreSame(_clip, _videoPlayer.clip);
             Assert.AreEqual(VideoAudioOutputMode.AudioSource, _videoPlayer.audioOutputMode);
             Assert.AreSame(_audioSource, _videoPlayer.GetTargetAudioSource(0));
+            Assert.IsTrue(_videoPlayer.sendFrameReadyEvents);
+            Assert.AreEqual(Color.black, _screen.color);
+        }
+
+        [Test]
+        public void HandleFirstFrameReady_NewFrame_RevealsVideoScreen()
+        {
+            _player.Play(_clip, null);
+
+            Invoke("HandleFirstFrameReady", _videoPlayer, 0L);
+
+            Assert.AreEqual(_authoredScreenColor, _screen.color);
+            Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
         [Test]
@@ -73,6 +91,22 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Invoke("EndCutscene");
 
             Assert.AreEqual(1, completedCount);
+            Assert.AreEqual(Color.black, _screen.color);
+            Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
+        }
+
+        [Test]
+        public void OnDestroy_ActivePlayback_BlanksScreenAndReleasesFrameEvents()
+        {
+            int completedCount = 0;
+            _player.Play(_clip, () => completedCount++);
+            Invoke("HandleFirstFrameReady", _videoPlayer, 0L);
+
+            Invoke("OnDestroy");
+
+            Assert.AreEqual(0, completedCount);
+            Assert.AreEqual(Color.black, _screen.color);
+            Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
         private T GetField<T>(string fieldName)
@@ -83,7 +117,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                     .GetValue(_player);
         }
 
-        private void Invoke(string methodName)
+        private void Invoke(string methodName, params object[] parameters)
         {
             MethodInfo method = typeof(CutscenePlayer).GetMethod(
                 methodName,
@@ -91,7 +125,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             );
             try
             {
-                method.Invoke(_player, null);
+                method.Invoke(_player, parameters);
             }
             catch (TargetInvocationException exception) when (exception.InnerException != null)
             {

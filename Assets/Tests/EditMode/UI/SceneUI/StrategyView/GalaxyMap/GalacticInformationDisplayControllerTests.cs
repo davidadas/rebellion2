@@ -128,15 +128,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void SelectFilter_ChangedVisibleFilter_PlaysControlSoundAndRequestsRender()
+        public void SelectFilter_ChangedVisibleFilter_RequestsRenderWithoutPointerAudio()
         {
             _controller.SelectFilter(GalacticInformationFilterMode.IdleShipyards);
 
             Assert.AreEqual(GalacticInformationFilterMode.IdleShipyards, _controller.FilterMode);
-            CollectionAssert.AreEqual(
-                new[] { StrategyUISoundPaths.GalacticInformationControl },
-                _playedSounds
-            );
+            Assert.IsEmpty(_playedSounds);
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
@@ -163,6 +160,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
             FindRaycastArea("LoyaltyCategoryHitArea").OnPointerEnter(eventData);
 
+            FindRaycastArea("PopularSupportFilterHitArea").OnPointerDown(eventData);
+
+            CollectionAssert.AreEqual(
+                new[] { StrategyUISoundPaths.GalacticInformationControl },
+                _playedSounds
+            );
+            Assert.AreEqual(GalacticInformationFilterMode.DisplayOff, _controller.FilterMode);
+            Assert.IsTrue(_controller.Open);
             FindRaycastArea("PopularSupportFilterHitArea").OnPointerClick(eventData);
 
             Assert.AreEqual(GalacticInformationFilterMode.PopularSupport, _controller.FilterMode);
@@ -171,6 +176,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new[] { StrategyUISoundPaths.GalacticInformationControl },
                 _playedSounds
             );
+            Assert.AreEqual(1, _actions.RenderRequestCount);
+        }
+
+        [Test]
+        public void DismissPointerDown_PlaysControlSoundBeforeSelectorCloses()
+        {
+            _controller.Show();
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
+
+            FindRaycastArea("DismissHitArea").OnPointerDown(eventData);
+
+            CollectionAssert.AreEqual(
+                new[] { StrategyUISoundPaths.GalacticInformationControl },
+                _playedSounds
+            );
+            Assert.IsTrue(_controller.Open);
+            Assert.AreEqual(0, _actions.RenderRequestCount);
+
+            FindRaycastArea("DismissHitArea").OnPointerClick(eventData);
+
+            Assert.IsFalse(_controller.Open);
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 

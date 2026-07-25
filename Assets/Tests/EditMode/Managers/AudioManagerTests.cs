@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -87,11 +89,59 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void PreloadSfx_NullPaths_DoesNotThrow()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+
+        Assert.DoesNotThrow(() => manager.PreloadSfx(null));
+    }
+
+    [Test]
+    public void PreloadSfx_DuplicateAndBlankPaths_CachesOneLoadedClip()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        const string path = "Audio/SFX/StrategyView/sfx_strategyview_control_press";
+
+        manager.PreloadSfx(new[] { null, string.Empty, " ", path, $" {path} " });
+
+        Dictionary<string, AudioClip> clips = GetPreloadedSfx(manager);
+        Assert.AreEqual(1, clips.Count);
+        Assert.AreEqual(AudioDataLoadState.Loaded, clips[path].loadState);
+    }
+
+    [Test]
+    public void PreloadSfx_MissingRequiredPath_Throws()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+
+        Assert.Throws<System.Exception>(() =>
+            manager.PreloadSfx(new[] { "Audio/SFX/Missing/required_clip" })
+        );
+    }
+
+    [Test]
     public void PlaySfx_NullClip_DoesNotThrow()
     {
         AudioManager manager = AudioManager.EnsureExists();
 
         Assert.DoesNotThrow(() => manager.PlaySfx((AudioClip)null));
+    }
+
+    [Test]
+    public void PlaySfx_PreloadedPath_DoesNotLoadResourceAgain()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("PreloadedOnly", 1, 1, 44100, false);
+        try
+        {
+            GetPreloadedSfx(manager).Add("Audio/SFX/Missing/preloaded_only", clip);
+
+            Assert.DoesNotThrow(() => manager.PlaySfx(" Audio/SFX/Missing/preloaded_only "));
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
     }
 
     [Test]
@@ -130,11 +180,17 @@ public sealed class AudioManagerTests
 
     private static void DestroyAudioManagers()
     {
-        foreach (
-            AudioManager manager in Object.FindObjectsByType<AudioManager>(FindObjectsSortMode.None)
-        )
+        foreach (AudioManager manager in Object.FindObjectsByType<AudioManager>())
         {
             Object.DestroyImmediate(manager.gameObject);
         }
+    }
+
+    private static Dictionary<string, AudioClip> GetPreloadedSfx(AudioManager manager)
+    {
+        return (Dictionary<string, AudioClip>)
+            typeof(AudioManager)
+                .GetField("_preloadedSfx", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(manager);
     }
 }

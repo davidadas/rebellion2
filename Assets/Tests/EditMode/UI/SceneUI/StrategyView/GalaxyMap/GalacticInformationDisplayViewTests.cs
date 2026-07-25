@@ -160,11 +160,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             int displayEnteredCount = 0;
             int displayExitedCount = 0;
             int displaySelectedCount = 0;
+            int dismissPressedCount = 0;
             int dismissCount = 0;
             _view.CategoryRequested += category => requestedCategory = category;
             _view.DisplayOffEntered += () => displayEnteredCount++;
             _view.DisplayOffExited += () => displayExitedCount++;
             _view.DisplayOffSelected += () => displaySelectedCount++;
+            _view.DismissPressed += () => dismissPressedCount++;
             _view.DismissRequested += () => dismissCount++;
             _view.Render(CreateDisplay(true, true));
             PointerEventData eventData = new PointerEventData(null)
@@ -176,6 +178,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             FindComponent<UIRaycastArea>("DisplayOffHitArea").OnPointerEnter(eventData);
             FindComponent<UIRaycastArea>("DisplayOffHitArea").OnPointerExit(eventData);
             FindComponent<UIRaycastArea>("DisplayOffHitArea").OnPointerClick(eventData);
+            FindComponent<UIRaycastArea>("DismissHitArea").OnPointerDown(eventData);
+
+            Assert.AreEqual(1, dismissPressedCount);
+            Assert.AreEqual(0, dismissCount);
             FindComponent<UIRaycastArea>("DismissHitArea").OnPointerClick(eventData);
 
             Assert.AreEqual(0, requestedCategory);
@@ -192,6 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             int enteredFilter = -1;
             int exitedCategory = -1;
             int exitedFilter = -1;
+            GalacticInformationFilterMode? pressedMode = null;
             GalacticInformationFilterMode? selectedMode = null;
             _view.FilterEntered += (category, filter) =>
             {
@@ -203,6 +210,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 exitedCategory = category;
                 exitedFilter = filter;
             };
+            _view.FilterPressed += mode => pressedMode = mode;
             _view.FilterSelected += mode => selectedMode = mode;
             _view.Render(CreateDisplay(true, true));
             UIRaycastArea filter = FindComponent<UIRaycastArea>("PopularSupportFilterHitArea");
@@ -213,6 +221,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             filter.OnPointerEnter(eventData);
             filter.OnPointerExit(eventData);
+            filter.OnPointerDown(eventData);
+
+            Assert.AreEqual(GalacticInformationFilterMode.PopularSupport, pressedMode);
+            Assert.IsNull(selectedMode);
             filter.OnPointerClick(eventData);
 
             Assert.AreEqual(0, enteredCategory);
@@ -228,12 +240,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalacticInformationDisplayView destroyed = null;
             int categoryCount = 0;
             int displayCount = 0;
+            int pressedCount = 0;
             int filterCount = 0;
+            int dismissPressedCount = 0;
             int dismissCount = 0;
             _view.Destroyed += view => destroyed = view;
             _view.CategoryRequested += _ => categoryCount++;
             _view.DisplayOffSelected += () => displayCount++;
+            _view.FilterPressed += _ => pressedCount++;
             _view.FilterSelected += _ => filterCount++;
+            _view.DismissPressed += () => dismissPressedCount++;
             _view.DismissRequested += () => dismissCount++;
             _view.Render(CreateDisplay(true, true));
             PointerEventData eventData = new PointerEventData(null)
@@ -244,13 +260,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
             FindComponent<UIRaycastArea>("LoyaltyCategoryHitArea").OnPointerClick(eventData);
             FindComponent<UIRaycastArea>("DisplayOffHitArea").OnPointerClick(eventData);
+            FindComponent<UIRaycastArea>("PopularSupportFilterHitArea").OnPointerDown(eventData);
             FindComponent<UIRaycastArea>("PopularSupportFilterHitArea").OnPointerClick(eventData);
+            FindComponent<UIRaycastArea>("DismissHitArea").OnPointerDown(eventData);
             FindComponent<UIRaycastArea>("DismissHitArea").OnPointerClick(eventData);
 
             Assert.AreSame(_view, destroyed);
             Assert.AreEqual(0, categoryCount);
             Assert.AreEqual(0, displayCount);
+            Assert.AreEqual(0, pressedCount);
             Assert.AreEqual(0, filterCount);
+            Assert.AreEqual(0, dismissPressedCount);
             Assert.AreEqual(0, dismissCount);
         }
 

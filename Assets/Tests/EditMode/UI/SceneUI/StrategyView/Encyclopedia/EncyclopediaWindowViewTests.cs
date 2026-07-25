@@ -421,10 +421,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         }
 
         [Test]
-        public void DialogButton_Click_RaisesFocusAndRenderedSemanticCommand()
+        public void DialogButton_PressThenClick_RaisesControlBeforeRenderedSemanticCommand()
         {
+            int controlCount = 0;
             int focusCount = 0;
             EncyclopediaWindowCommand command = EncyclopediaWindowCommand.None;
+            _view.ControlPressed += _ => controlCount++;
             _view.FocusRequested += _ => focusCount++;
             _view.CommandRequested += (_, requested) => command = requested;
             _view.Render(
@@ -435,9 +437,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
                     CreateDetail()
                 )
             );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
 
+            FindComponent<RawImagePressVisual>("LowerLayoutTopicButtonImage")
+                .OnPointerDown(eventData);
+
+            Assert.AreEqual(1, controlCount);
+            Assert.AreEqual(0, focusCount);
+            Assert.AreEqual(EncyclopediaWindowCommand.None, command);
             FindComponent<Button>("LowerLayoutTopicButtonImage").onClick.Invoke();
 
+            Assert.AreEqual(1, controlCount);
             Assert.AreEqual(1, focusCount);
             Assert.AreEqual(EncyclopediaWindowCommand.ShowTopic, command);
         }
@@ -478,10 +491,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         public void OnDestroy_InitializedView_UnbindsParentControlsAndRaisesDestroyedEvent()
         {
             EncyclopediaWindowView destroyed = null;
+            int controlCount = 0;
             int commandCount = 0;
             int rowCount = 0;
             int nextCount = 0;
             _view.Destroyed += view => destroyed = view;
+            _view.ControlPressed += _ => controlCount++;
             _view.CommandRequested += (_, _) => commandCount++;
             _view.RowSelected += (_, _) => rowCount++;
             _view.NextRequested += _ => nextCount++;
@@ -496,6 +511,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             EncyclopediaWindowRowView row = FindRows().Single();
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            FindComponent<RawImagePressVisual>("LowerLayoutCloseButtonImage")
+                .OnPointerDown(
+                    new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                );
             FindComponent<Button>("LowerLayoutCloseButtonImage").onClick.Invoke();
             row.OnPointerDown(
                 new PointerEventData(null) { button = PointerEventData.InputButton.Left }
@@ -503,6 +522,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
             FindComponent<Button>("DetailNextButtonImage").onClick.Invoke();
 
             Assert.AreSame(_view, destroyed);
+            Assert.AreEqual(0, controlCount);
             Assert.AreEqual(0, commandCount);
             Assert.AreEqual(0, rowCount);
             Assert.AreEqual(0, nextCount);

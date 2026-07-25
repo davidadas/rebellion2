@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
@@ -191,16 +192,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
-        public void AuthoredButtons_Click_EmitSemanticRequests()
+        public void AuthoredButtons_PressThenClick_EmitControlBeforeSemanticRequests()
         {
+            int controlCount = 0;
             int closeCount = 0;
             int infoCount = 0;
+            _view.ControlPressed += _ => controlCount++;
             _view.CloseRequested += _ => closeCount++;
             _view.InfoRequested += _ => infoCount++;
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    false,
+                    "Status",
+                    Array.Empty<Texture2D>(),
+                    string.Empty,
+                    Array.Empty<StatusWindowRowRenderData>()
+                )
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
 
+            FindComponent<RawImagePressVisual>("CloseButtonImage").OnPointerDown(eventData);
+            Assert.AreEqual(1, controlCount);
+            Assert.AreEqual(0, closeCount);
             FindComponent<Button>("CloseButtonImage").onClick.Invoke();
+            FindComponent<RawImagePressVisual>("CloseButtonImage").OnPointerUp(eventData);
+            FindComponent<RawImagePressVisual>("InfoButtonImage").OnPointerDown(eventData);
+            Assert.AreEqual(2, controlCount);
+            Assert.AreEqual(0, infoCount);
             FindComponent<Button>("InfoButtonImage").onClick.Invoke();
 
+            Assert.AreEqual(2, controlCount);
             Assert.AreEqual(1, closeCount);
             Assert.AreEqual(1, infoCount);
         }
@@ -209,17 +234,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         public void OnDestroy_InitializedView_UnbindsButtonsAndRaisesDestroyedEvent()
         {
             StatusWindowView destroyedView = null;
+            int controlCount = 0;
             int closeCount = 0;
             int infoCount = 0;
             _view.Destroyed += view => destroyedView = view;
+            _view.ControlPressed += _ => controlCount++;
             _view.CloseRequested += _ => closeCount++;
             _view.InfoRequested += _ => infoCount++;
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    false,
+                    "Status",
+                    Array.Empty<Texture2D>(),
+                    string.Empty,
+                    Array.Empty<StatusWindowRowRenderData>()
+                )
+            );
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            FindComponent<RawImagePressVisual>("CloseButtonImage")
+                .OnPointerDown(
+                    new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                );
             FindComponent<Button>("CloseButtonImage").onClick.Invoke();
             FindComponent<Button>("InfoButtonImage").onClick.Invoke();
 
             Assert.AreSame(_view, destroyedView);
+            Assert.AreEqual(0, controlCount);
             Assert.AreEqual(0, closeCount);
             Assert.AreEqual(0, infoCount);
         }

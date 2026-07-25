@@ -221,6 +221,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         BindViewButtons();
         BindCommandButtons();
         BindResultButtons();
+        BindControlPressVisuals();
     }
 
     /// <summary>
@@ -337,7 +338,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         for (int i = 0; i < panelCount; i++)
         {
             BattleAlertPanel panel = BattleAlertPanelCatalog.Ordered[i];
-            UnityAction listener = () => ExecuteControlAction(() => RequestPrimaryPanel(panel));
+            UnityAction listener = () => RequestPrimaryPanel(panel);
             viewButtonListeners.Add(listener);
             viewButtons[i].onClick.AddListener(listener);
         }
@@ -363,7 +364,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// </summary>
     private void BindResultButtons()
     {
-        resultCloseButtonListener = () => ExecuteControlAction(RequestClose);
+        resultCloseButtonListener = RequestClose;
         resultCloseButton.onClick.AddListener(resultCloseButtonListener);
 
         int categoryCount = Math.Min(
@@ -378,8 +379,8 @@ public sealed class BattleAlertWindowView : MonoBehaviour
             resultCategoryButtons[i].onClick.AddListener(listener);
         }
 
-        UnityAction openSystem = () => ExecuteControlAction(RequestOpenSystem);
-        UnityAction openFleet = () => ExecuteControlAction(RequestOpenFleet);
+        UnityAction openSystem = RequestOpenSystem;
+        UnityAction openFleet = RequestOpenFleet;
         resultDirectButtonListeners.Add(openSystem);
         resultDirectButtonListeners.Add(openFleet);
         resultDirectButtons[0].onClick.AddListener(openSystem);
@@ -391,6 +392,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// </summary>
     private void UnbindControls()
     {
+        UnbindControlPressVisuals();
         UnbindButtons(viewButtons, viewButtonListeners);
         UnbindButtons(commandButtons, commandButtonListeners);
         UnbindButtons(resultCategoryButtons, resultCategoryButtonListeners);
@@ -421,13 +423,47 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     }
 
     /// <summary>
-    /// Plays the shared control sound before executing a local control action.
+    /// Subscribes authored battle-alert press visuals to the semantic control-press request.
     /// </summary>
-    /// <param name="action">The local action to execute.</param>
-    private void ExecuteControlAction(Action action)
+    private void BindControlPressVisuals()
     {
-        RequestControlPress();
-        action();
+        BindControlPressVisuals(viewButtonPressVisuals);
+        resultCloseButtonPressVisual.Pressed += RequestControlPress;
+        BindControlPressVisuals(resultDirectButtonPressVisuals);
+    }
+
+    /// <summary>
+    /// Releases authored battle-alert press-visual subscriptions.
+    /// </summary>
+    private void UnbindControlPressVisuals()
+    {
+        UnbindControlPressVisuals(viewButtonPressVisuals);
+        if (resultCloseButtonPressVisual != null)
+            resultCloseButtonPressVisual.Pressed -= RequestControlPress;
+        UnbindControlPressVisuals(resultDirectButtonPressVisuals);
+    }
+
+    /// <summary>
+    /// Subscribes a collection of press visuals to the semantic control-press request.
+    /// </summary>
+    /// <param name="pressVisuals">The authored press visuals to subscribe.</param>
+    private void BindControlPressVisuals(IReadOnlyList<RawImagePressVisual> pressVisuals)
+    {
+        for (int i = 0; i < pressVisuals.Count; i++)
+            pressVisuals[i].Pressed += RequestControlPress;
+    }
+
+    /// <summary>
+    /// Releases semantic control-press subscriptions from a collection of press visuals.
+    /// </summary>
+    /// <param name="pressVisuals">The authored press visuals to unsubscribe.</param>
+    private void UnbindControlPressVisuals(IReadOnlyList<RawImagePressVisual> pressVisuals)
+    {
+        for (int i = 0; i < pressVisuals.Count; i++)
+        {
+            if (pressVisuals[i] != null)
+                pressVisuals[i].Pressed -= RequestControlPress;
+        }
     }
 
     /// <summary>

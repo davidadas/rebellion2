@@ -345,24 +345,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void TabButton_Click_RaisesFocusAndStableTabIndex()
+        public void TabButton_PressThenClick_RaisesFocusWithoutControlPress()
         {
+            int controlCount = 0;
             int focusCount = 0;
             int selectedTab = -1;
+            _view.ControlPressed += _ => controlCount++;
             _view.FocusRequested += _ => focusCount++;
             _view.TabSelected += (_, index) => selectedTab = index;
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
 
+            FindComponent<RawImagePressVisual>("TabSlot3ButtonImage").OnPointerDown(eventData);
             FindComponent<Button>("TabSlot3ButtonImage").onClick.Invoke();
 
+            Assert.AreEqual(0, controlCount);
             Assert.AreEqual(1, focusCount);
             Assert.AreEqual(3, selectedTab);
         }
 
         [Test]
-        public void DialogButton_Click_RaisesFocusAndRenderedSemanticCommand()
+        public void DialogButton_PressThenClick_RaisesControlBeforeRenderedSemanticCommand()
         {
+            int controlCount = 0;
             int focusCount = 0;
             FinderWindowCommand command = FinderWindowCommand.None;
+            _view.ControlPressed += _ => controlCount++;
             _view.FocusRequested += _ => focusCount++;
             _view.CommandRequested += (_, requested) => command = requested;
             _view.Render(
@@ -374,9 +384,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                     Array.Empty<FinderWindowRowRenderData>()
                 )
             );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+            };
 
+            FindComponent<RawImagePressVisual>("TwoButtonLayoutCloseButtonImage")
+                .OnPointerDown(eventData);
+
+            Assert.AreEqual(1, controlCount);
+            Assert.AreEqual(0, focusCount);
+            Assert.AreEqual(FinderWindowCommand.None, command);
             FindComponent<Button>("TwoButtonLayoutCloseButtonImage").onClick.Invoke();
 
+            Assert.AreEqual(1, controlCount);
             Assert.AreEqual(1, focusCount);
             Assert.AreEqual(FinderWindowCommand.Close, command);
         }
@@ -432,19 +453,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {
             FinderWindowView destroyed = null;
+            int controlCount = 0;
             int tabCount = 0;
             int searchCount = 0;
             _view.Destroyed += view => destroyed = view;
+            _view.ControlPressed += _ => controlCount++;
             _view.TabSelected += (_, _) => tabCount++;
             _view.SearchTextChanged += (_, _) => searchCount++;
             Button tab = FindComponent<Button>("TabSlot0ButtonImage");
             TMP_InputField input = FindComponent<TMP_InputField>("LabelInputField");
+            _view.Render(
+                CreateRenderData(
+                    FinderMode.Systems,
+                    false,
+                    CreateFrame(false, CreateDialogButtons(2)),
+                    CreateTabs(1),
+                    Array.Empty<FinderWindowRowRenderData>()
+                )
+            );
+            controlCount = 0;
+            tabCount = 0;
+            searchCount = 0;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            FindComponent<RawImagePressVisual>("TwoButtonLayoutCloseButtonImage")
+                .OnPointerDown(
+                    new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                );
             tab.onClick.Invoke();
             input.onValueChanged.Invoke("ignored");
 
             Assert.AreSame(_view, destroyed);
+            Assert.AreEqual(0, controlCount);
             Assert.AreEqual(0, tabCount);
             Assert.AreEqual(0, searchCount);
         }

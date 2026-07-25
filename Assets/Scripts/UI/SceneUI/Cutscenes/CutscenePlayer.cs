@@ -25,6 +25,7 @@ public sealed class CutscenePlayer : MonoBehaviour
 
     private Action onFinished;
     private bool isEnding;
+    private Color authoredScreenColor;
 
     /// <summary>
     /// Configures video playback defaults.
@@ -36,6 +37,8 @@ public sealed class CutscenePlayer : MonoBehaviour
         videoPlayer.playOnAwake = false;
         videoPlayer.isLooping = false;
         audioSource.playOnAwake = false;
+        authoredScreenColor = screen.color;
+        BlankScreen();
     }
 
     /// <summary>
@@ -46,6 +49,7 @@ public sealed class CutscenePlayer : MonoBehaviour
         if (videoPlayer != null)
             videoPlayer.loopPointReached -= HandleFinished;
 
+        BlankScreen();
         onFinished = null;
     }
 
@@ -59,6 +63,7 @@ public sealed class CutscenePlayer : MonoBehaviour
         isEnding = false;
         onFinished = finished;
 
+        HideUntilFirstFrame();
         videoPlayer.loopPointReached += HandleFinished;
         videoPlayer.clip = clip;
 
@@ -108,6 +113,18 @@ public sealed class CutscenePlayer : MonoBehaviour
     }
 
     /// <summary>
+    /// Reveals the cutscene surface when the current clip produces its first frame.
+    /// </summary>
+    /// <param name="source">The video player that produced the frame.</param>
+    /// <param name="frameIndex">The decoded frame index.</param>
+    private void HandleFirstFrameReady(VideoPlayer source, long frameIndex)
+    {
+        videoPlayer.frameReady -= HandleFirstFrameReady;
+        videoPlayer.sendFrameReadyEvents = false;
+        screen.color = authoredScreenColor;
+    }
+
+    /// <summary>
     /// Stops playback, prevents duplicate termination, and
     /// invokes the completion callback.
     /// </summary>
@@ -119,6 +136,7 @@ public sealed class CutscenePlayer : MonoBehaviour
         isEnding = true;
 
         videoPlayer.loopPointReached -= HandleFinished;
+        BlankScreen();
 
         videoPlayer.Stop();
         audioSource.Stop();
@@ -126,6 +144,31 @@ public sealed class CutscenePlayer : MonoBehaviour
         Action finished = onFinished;
         onFinished = null;
         finished?.Invoke();
+    }
+
+    /// <summary>
+    /// Blanks the cutscene surface until the current clip produces its first frame.
+    /// </summary>
+    private void HideUntilFirstFrame()
+    {
+        BlankScreen();
+        videoPlayer.frameReady -= HandleFirstFrameReady;
+        videoPlayer.frameReady += HandleFirstFrameReady;
+        videoPlayer.sendFrameReadyEvents = true;
+    }
+
+    /// <summary>
+    /// Blanks the cutscene surface and releases first-frame callbacks.
+    /// </summary>
+    private void BlankScreen()
+    {
+        if (screen != null)
+            screen.color = Color.black;
+        if (videoPlayer == null)
+            return;
+
+        videoPlayer.frameReady -= HandleFirstFrameReady;
+        videoPlayer.sendFrameReadyEvents = false;
     }
 
     /// <summary>

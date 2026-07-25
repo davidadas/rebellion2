@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using TMPro;
 using UnityEngine;
@@ -128,12 +129,12 @@ public sealed class MainMenuView : MonoBehaviour
 
         public EventTriggerType EventType => eventType;
 
-        public string ResourcePath => resourcePath;
+        public string ResourcePath => resourcePath?.Trim();
 
         /// <summary>
         /// Gets whether the binding has a trigger and audio resource path.
         /// </summary>
-        public bool IsConfigured => trigger != null && !string.IsNullOrEmpty(resourcePath);
+        public bool IsConfigured => trigger != null && !string.IsNullOrWhiteSpace(resourcePath);
     }
 
     [Header("Commands")]
@@ -273,6 +274,19 @@ public sealed class MainMenuView : MonoBehaviour
 
         difficulty = default;
         return false;
+    }
+
+    /// <summary>
+    /// Returns the distinct sound-effect resource paths configured for main-menu interactions.
+    /// </summary>
+    /// <returns>The configured main-menu sound-effect resource paths.</returns>
+    internal IReadOnlyList<string> GetAudioCuePaths()
+    {
+        return (audioCueBindings ?? Array.Empty<AudioCueBinding>())
+            .Where(binding => binding != null && !string.IsNullOrWhiteSpace(binding.ResourcePath))
+            .Select(binding => binding.ResourcePath)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     /// <summary>

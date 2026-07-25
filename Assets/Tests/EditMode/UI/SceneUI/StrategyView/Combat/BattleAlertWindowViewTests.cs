@@ -3,6 +3,7 @@ using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
@@ -464,14 +465,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void PrimaryPanelButton_Click_RaisesControlPressAndOrderedPanelRequest()
+        public void PrimaryPanelButton_PressThenClick_RaisesControlBeforeOrderedPanelRequest()
         {
             int pressedCount = 0;
             BattleAlertPanel? requested = null;
             _view.ControlPressed += () => pressedCount++;
             _view.PrimaryPanelRequested += (_, panel) => requested = panel;
             Button button = FindComponent<Button>("SecondForcesButtonImage");
+            _view.Render(
+                CreateWindowData(
+                    BattleAlertWindowMode.Pending,
+                    CreatePending(BattleAlertPanel.Summary),
+                    null
+                )
+            );
 
+            Press("SecondForcesButtonImage");
+
+            Assert.AreEqual(1, pressedCount);
+            Assert.IsNull(requested);
             button.onClick.Invoke();
 
             Assert.AreEqual(1, pressedCount);
@@ -503,7 +515,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void ResultControls_Click_RaiseCloseAndNavigationRequestsWithControlPresses()
+        public void ResultControls_PressThenClick_RaiseControlBeforeSemanticRequests()
         {
             int pressedCount = 0;
             int closeCount = 0;
@@ -513,10 +525,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             _view.CloseRequested += _ => closeCount++;
             _view.OpenSystemRequested += _ => systemCount++;
             _view.OpenFleetRequested += _ => fleetCount++;
+            _view.Render(
+                CreateWindowData(
+                    BattleAlertWindowMode.Result,
+                    null,
+                    CreateResult(BattleResultPanel.Direct)
+                )
+            );
+            string[] buttonNames =
+            {
+                "ResultCloseButtonImage",
+                "ResultDirectSystemButtonImage",
+                "ResultDirectFleetButtonImage",
+            };
 
-            FindComponent<Button>("ResultCloseButtonImage").onClick.Invoke();
-            FindComponent<Button>("ResultDirectSystemButtonImage").onClick.Invoke();
-            FindComponent<Button>("ResultDirectFleetButtonImage").onClick.Invoke();
+            foreach (string buttonName in buttonNames)
+                Press(buttonName);
+
+            Assert.AreEqual(3, pressedCount);
+            Assert.AreEqual(0, closeCount);
+            Assert.AreEqual(0, systemCount);
+            Assert.AreEqual(0, fleetCount);
+
+            foreach (string buttonName in buttonNames)
+                FindComponent<Button>(buttonName).onClick.Invoke();
 
             Assert.AreEqual(3, pressedCount);
             Assert.AreEqual(1, closeCount);
@@ -545,15 +577,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         public void OnDestroy_InitializedView_UnbindsControlsAndRaisesDestroyedEvent()
         {
             BattleAlertWindowView destroyed = null;
+            int controlCount = 0;
             int panelRequestCount = 0;
             _view.Destroyed += view => destroyed = view;
+            _view.ControlPressed += () => controlCount++;
             _view.PrimaryPanelRequested += (_, _) => panelRequestCount++;
             Button button = FindComponent<Button>("SummaryButtonImage");
+            _view.Render(
+                CreateWindowData(
+                    BattleAlertWindowMode.Pending,
+                    CreatePending(BattleAlertPanel.Summary),
+                    null
+                )
+            );
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDestroy");
+            Press("SummaryButtonImage");
             button.onClick.Invoke();
 
             Assert.AreSame(_view, destroyed);
+            Assert.AreEqual(0, controlCount);
             Assert.AreEqual(0, panelRequestCount);
         }
 
@@ -694,6 +737,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             return _viewObject
                 .GetComponentsInChildren<T>(true)
                 .Single(component => component.name == objectName);
+        }
+
+        private void Press(string objectName)
+        {
+            FindComponent<RawImagePressVisual>(objectName)
+                .OnPointerDown(
+                    new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+                );
         }
 
         private TextMeshProUGUI FindText(string objectName)
