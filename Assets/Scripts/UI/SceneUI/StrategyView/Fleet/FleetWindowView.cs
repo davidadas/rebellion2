@@ -84,8 +84,6 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     private int currentSelectedFleetIndex = -1;
     private int currentWindowX;
     private int currentWindowY;
-    private int dragDetailItemIndex = -1;
-    private int dragFleetIndex = -1;
     private bool renderedAnyDetailItems;
     private bool renderedAnyFleetRows;
     private FleetWindowTab renderedDetailActiveTab = FleetWindowTab.CapitalShips;
@@ -269,83 +267,104 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     }
 
     /// <summary>
-    /// Creates the current drag preview from the controller-selected visual source.
+    /// Creates a drag preview from the selected fleet rows.
     /// </summary>
+    /// <param name="selectedIndexes">The selected fleet-row indexes.</param>
     /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
     /// <param name="sourceY">The pointer's source-space vertical coordinate.</param>
     /// <param name="preview">Receives the drag preview.</param>
     /// <returns>True when a drawable preview source is available.</returns>
-    public bool TryGetDragPreview(int sourceX, int sourceY, out DragPreview preview)
+    internal bool TryCreateFleetDragPreview(
+        IReadOnlyCollection<int> selectedIndexes,
+        int sourceX,
+        int sourceY,
+        out DragPreview preview
+    )
     {
         preview = null;
-        if (
-            dragFleetIndex >= 0
-            && dragFleetIndex < fleetRowViews.Count
-            && fleetRowViews[dragFleetIndex]
-                .TryGetDragImage(out Texture fleetTexture, out RectTransform fleetRect)
-        )
+        if (selectedIndexes == null || selectedIndexes.Count == 0)
+            return false;
+
+        List<int> orderedIndexes = new List<int>(selectedIndexes);
+        orderedIndexes.Sort();
+        List<DragPreviewImage> images = new List<DragPreviewImage>(orderedIndexes.Count);
+        for (int index = 0; index < orderedIndexes.Count; index++)
         {
+            int fleetIndex = orderedIndexes[index];
+            if (
+                fleetIndex < 0
+                || fleetIndex >= fleetRowViews.Count
+                || !fleetRowViews[fleetIndex]
+                    .TryGetDragImage(out Texture texture, out RectTransform imageTransform)
+            )
+                return false;
+
             RectInt rowRect = UILayout.GetSourceRect(
-                fleetRowViews[dragFleetIndex].transform as RectTransform
+                fleetRowViews[fleetIndex].transform as RectTransform
             );
             RectInt sourceRect = GetScrolledContentSourceRect(
                 fleetListScrollArea,
                 rowRect,
-                UILayout.GetSourceRect(fleetRect)
+                UILayout.GetSourceRect(imageTransform)
             );
-            preview = UILayout.CreateDragPreview(fleetTexture, sourceRect, sourceX, sourceY);
-            return true;
+            images.Add(new DragPreviewImage(texture, sourceRect));
         }
 
-        if (
-            dragDetailItemIndex >= 0
-            && dragDetailItemIndex < detailItemViews.Count
-            && detailItemViews[dragDetailItemIndex]
-                .TryGetDragImage(out Texture detailTexture, out RectTransform detailRect)
-        )
+        preview = UILayout.CreateDragPreview(images, sourceX, sourceY);
+        return preview != null;
+    }
+
+    /// <summary>
+    /// Creates a drag preview from the selected fleet-detail cards.
+    /// </summary>
+    /// <param name="selectedIndexes">The selected detail-card indexes.</param>
+    /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
+    /// <param name="sourceY">The pointer's source-space vertical coordinate.</param>
+    /// <param name="preview">Receives the drag preview.</param>
+    /// <returns>True when every selected card supplies drawable preview layers.</returns>
+    internal bool TryCreateDetailDragPreview(
+        IReadOnlyCollection<int> selectedIndexes,
+        int sourceX,
+        int sourceY,
+        out DragPreview preview
+    )
+    {
+        preview = null;
+        if (selectedIndexes == null || selectedIndexes.Count == 0)
+            return false;
+
+        List<int> orderedIndexes = new List<int>(selectedIndexes);
+        orderedIndexes.Sort();
+        List<DragPreviewImage> images = new List<DragPreviewImage>(orderedIndexes.Count);
+        List<RawImage> cardImages = new List<RawImage>();
+        for (int index = 0; index < orderedIndexes.Count; index++)
         {
+            int itemIndex = orderedIndexes[index];
+            cardImages.Clear();
+            if (
+                itemIndex < 0
+                || itemIndex >= detailItemViews.Count
+                || !detailItemViews[itemIndex].TryAppendDragImages(cardImages)
+            )
+                return false;
+
             RectInt itemRect = UILayout.GetSourceRect(
-                detailItemViews[dragDetailItemIndex].transform as RectTransform
+                detailItemViews[itemIndex].transform as RectTransform
             );
-            RectInt sourceRect = GetScrolledContentSourceRect(
-                detailItemsScrollArea,
-                itemRect,
-                UILayout.GetSourceRect(detailRect)
-            );
-            preview = UILayout.CreateDragPreview(detailTexture, sourceRect, sourceX, sourceY);
-            return true;
+            for (int imageIndex = 0; imageIndex < cardImages.Count; imageIndex++)
+            {
+                RawImage image = cardImages[imageIndex];
+                RectInt sourceRect = GetScrolledContentSourceRect(
+                    detailItemsScrollArea,
+                    itemRect,
+                    UILayout.GetSourceRect(image.rectTransform)
+                );
+                images.Add(new DragPreviewImage(image.texture, sourceRect));
+            }
         }
 
-        return false;
-    }
-
-    /// <summary>
-    /// Selects a fleet row as the current drag-preview source.
-    /// </summary>
-    /// <param name="index">The fleet-row index.</param>
-    internal void SetFleetRowDragSource(int index)
-    {
-        dragFleetIndex = index;
-        dragDetailItemIndex = -1;
-    }
-
-    /// <summary>
-    /// Selects a detail card as the current drag-preview source.
-    /// </summary>
-    /// <param name="index">The detail-card index.</param>
-    internal void SetDetailItemDragSource(int index)
-    {
-        dragFleetIndex = -1;
-        dragDetailItemIndex = index;
-    }
-
-    /// <summary>
-    /// Clears the current drag-preview source.
-    /// </summary>
-    internal void ClearDragSource()
-    {
-        dragFleetIndex = -1;
-        dragDetailItemIndex = -1;
+        preview = UILayout.CreateDragPreview(images, sourceX, sourceY);
+        return preview != null;
     }
 
     /// <summary>

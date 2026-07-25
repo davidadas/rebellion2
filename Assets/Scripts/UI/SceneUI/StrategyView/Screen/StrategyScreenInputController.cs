@@ -285,12 +285,17 @@ public sealed class StrategyScreenInputController : ICancelable
     /// Begins tracking an item drag from a feature window.
     /// </summary>
     /// <param name="sourceWindow">The source strategy window.</param>
-    /// <param name="sourceX">The source-space horizontal press coordinate.</param>
-    /// <param name="sourceY">The source-space vertical press coordinate.</param>
-    public void StartItemDrag(UIWindow sourceWindow, int sourceX, int sourceY)
+    /// <param name="eventData">The originating pointer press.</param>
+    public void StartItemDrag(UIWindow sourceWindow, PointerEventData eventData)
     {
-        if (sourceWindow != null)
-            strategyDragController.StartItemCandidate(sourceWindow, sourceX, sourceY);
+        if (
+            sourceWindow != null
+            && eventData?.button == PointerEventData.InputButton.Left
+            && tryGetSourcePosition(eventData, eventData.position, out int sourceX, out int sourceY)
+        )
+        {
+            strategyDragController.StartItemCandidate(sourceWindow, eventData, sourceX, sourceY);
+        }
     }
 
     /// <summary>
@@ -308,7 +313,9 @@ public sealed class StrategyScreenInputController : ICancelable
 
         if (
             allowItemDrag
-            && ApplyDragEventResult(strategyDragController.TryHandleItemPointerMove(x, y))
+            && ApplyDragEventResult(
+                strategyDragController.TryHandleItemPointerMove(eventData, x, y)
+            )
         )
             return;
 

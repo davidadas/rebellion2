@@ -432,6 +432,41 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsNull(UILayout.CreateDragPreview(_texture, new RectInt(0, 0, 1, 0), 0, 0));
         }
 
+        [Test]
+        public void CreateDragPreview_MixedImages_PreservesDrawableSourceLayout()
+        {
+            DragPreview preview = UILayout.CreateDragPreview(
+                new[]
+                {
+                    new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40)),
+                    new DragPreviewImage(null, new RectInt(30, 40, 10, 10)),
+                    new DragPreviewImage(_texture, new RectInt(40, 50, 0, 10)),
+                    new DragPreviewImage(_texture, new RectInt(55, 70, 20, 15)),
+                },
+                17,
+                29
+            );
+
+            Assert.IsNotNull(preview);
+            Assert.AreEqual(2, preview.Images.Count);
+            Assert.AreEqual(new RectInt(10, 20, 30, 40), preview.Images[0].Bounds);
+            Assert.AreEqual(new RectInt(55, 70, 20, 15), preview.Images[1].Bounds);
+            Assert.AreEqual(17, preview.HotspotX);
+            Assert.AreEqual(29, preview.HotspotY);
+        }
+
+        [Test]
+        public void CreateDragPreview_NoDrawableImages_ReturnsNull()
+        {
+            DragPreview preview = UILayout.CreateDragPreview(
+                new[] { new DragPreviewImage(null, new RectInt(0, 0, 10, 10)) },
+                0,
+                0
+            );
+
+            Assert.IsNull(preview);
+        }
+
         private static GameObject CreateTextObject(string objectName, out TextMeshProUGUI text)
         {
             GameObject textObject = new GameObject(

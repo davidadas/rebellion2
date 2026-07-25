@@ -84,7 +84,7 @@ public sealed class PlanetSystemWindowController
     private IPlanetSystemWindowActions actions;
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
-    private Action<UIWindow, int, int> startItemDrag;
+    private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
     /// Creates a planet-system feature controller.
@@ -138,7 +138,7 @@ public sealed class PlanetSystemWindowController
         IPlanetSystemWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
-        Action<UIWindow, int, int> beginItemDrag
+        Action<UIWindow, PointerEventData> beginItemDrag
     )
     {
         actions = windowActions ?? throw new ArgumentNullException(nameof(windowActions));
@@ -814,12 +814,8 @@ public sealed class PlanetSystemWindowController
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        if (
-            selected
-            && hit.Icon == PlanetIcon.Fleet
-            && TryGetDesktopPosition(view, eventData, out int x, out int y)
-        )
-            startItemDrag(session.Window, x, y);
+        if (selected && hit.Icon == PlanetIcon.Fleet)
+            startItemDrag(session.Window, eventData);
         else
             markDirty();
     }

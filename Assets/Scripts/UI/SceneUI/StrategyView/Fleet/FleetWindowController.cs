@@ -62,7 +62,7 @@ public sealed class FleetWindowController
     private IStrategyWindowCommandActions commandActions;
     private IStrategyConfirmationActions confirmationActions;
     private Action<PointerEventData> moveItemDrag;
-    private Action<UIWindow, int, int> startItemDrag;
+    private Action<UIWindow, PointerEventData> startItemDrag;
 
     /// <summary>
     /// Creates the fleet feature controller with its shared interaction dependencies.
@@ -112,7 +112,7 @@ public sealed class FleetWindowController
         IFleetWindowActions windowActions,
         IStrategyWindowCommandActions windowCommandActions,
         IStrategyConfirmationActions windowConfirmationActions,
-        Action<UIWindow, int, int> beginItemDrag,
+        Action<UIWindow, PointerEventData> beginItemDrag,
         Action<PointerEventData> continueItemDrag,
         Action<PointerEventData> completeItemDrag
     )
@@ -280,7 +280,6 @@ public sealed class FleetWindowController
         if (!session.SelectTarget(target, GetTargetTab(target)))
             return false;
 
-        view.ClearDragSource();
         return true;
     }
 
@@ -321,6 +320,48 @@ public sealed class FleetWindowController
     }
 
     /// <summary>
+    /// Creates the drag preview for the selected fleet rows or detail cards under one press.
+    /// </summary>
+    /// <param name="window">The source fleet window.</param>
+    /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
+    /// <param name="sourceY">The pointer's source-space vertical coordinate.</param>
+    /// <param name="preview">Receives the drag preview.</param>
+    /// <returns>True when the pressed item belongs to a drawable selection.</returns>
+    public bool TryGetDragPreview(
+        UIWindow window,
+        int sourceX,
+        int sourceY,
+        out DragPreview preview
+    )
+    {
+        preview = null;
+        if (!TryGetSession(window, out FleetWindowView view, out FleetWindowSession session))
+            return false;
+
+        if (
+            session.ContextFleetIndex >= 0
+            && session.SelectedFleetItems.Contains(session.ContextFleetIndex)
+        )
+        {
+            return view.TryCreateFleetDragPreview(
+                session.SelectedFleetItems,
+                sourceX,
+                sourceY,
+                out preview
+            );
+        }
+
+        return session.ContextDetailItemIndex >= 0
+            && session.SelectedDetailItems.Contains(session.ContextDetailItemIndex)
+            && view.TryCreateDetailDragPreview(
+                session.SelectedDetailItems,
+                sourceX,
+                sourceY,
+                out preview
+            );
+    }
+
+    /// <summary>
     /// Resolves the single current status target for one fleet window.
     /// </summary>
     /// <param name="window">The source fleet window.</param>
@@ -340,11 +381,10 @@ public sealed class FleetWindowController
     /// <param name="window">The source fleet window.</param>
     public void ClearSelection(UIWindow window)
     {
-        if (!TryGetSession(window, out FleetWindowView view, out FleetWindowSession session))
+        if (!TryGetSession(window, out _, out FleetWindowSession session))
             return;
 
         session.ClearItemSelection();
-        view.ClearDragSource();
     }
 
     /// <summary>
@@ -705,7 +745,7 @@ public sealed class FleetWindowController
         )
             return;
 
-        HandleItemReleased(view, session, fleet, eventData);
+        HandleItemReleased(session, fleet, eventData);
     }
 
     /// <summary>
@@ -766,7 +806,7 @@ public sealed class FleetWindowController
         )
             return;
 
-        HandleItemReleased(view, session, item, eventData);
+        HandleItemReleased(session, item, eventData);
     }
 
     /// <summary>
@@ -815,7 +855,6 @@ public sealed class FleetWindowController
         )
             return;
 
-        view.ClearDragSource();
         if (eventData.button == PointerEventData.InputButton.Right)
         {
             session.CaptureContext(item);
@@ -831,17 +870,13 @@ public sealed class FleetWindowController
             item is Fleet
                 ? view.FleetRowContainsDragSource(itemIndex, eventData)
                 : view.DetailItemContainsDragSource(itemIndex, eventData);
-        if (
-            canStartDrag
-            && containsDragSource
-            && TryGetDesktopPosition(session, eventData, out int x, out int y)
-        )
+        bool itemSelected =
+            item is Fleet
+                ? session.SelectedFleetItems.Contains(itemIndex)
+                : session.SelectedDetailItems.Contains(itemIndex);
+        if (canStartDrag && itemSelected && containsDragSource)
         {
-            if (item is Fleet)
-                view.SetFleetRowDragSource(itemIndex);
-            else
-                view.SetDetailItemDragSource(itemIndex);
-            startItemDrag(session.Window, x, y);
+            startItemDrag(session.Window, eventData);
             return;
         }
 
@@ -851,12 +886,10 @@ public sealed class FleetWindowController
     /// <summary>
     /// Handles a fleet or detail item release and resolves targeting or final selection.
     /// </summary>
-    /// <param name="view">The source fleet view.</param>
     /// <param name="session">The controller-owned fleet session.</param>
     /// <param name="item">The released fleet or detail item.</param>
     /// <param name="eventData">The pointer event.</param>
     private void HandleItemReleased(
-        FleetWindowView view,
         FleetWindowSession session,
         ISceneNode item,
         PointerEventData eventData
@@ -869,7 +902,6 @@ public sealed class FleetWindowController
         )
             return;
 
-        view.ClearDragSource();
         session.SelectItem(item);
         markDirty();
     }
@@ -934,7 +966,6 @@ public sealed class FleetWindowController
             return;
 
         session.ClearContext();
-        view.ClearDragSource();
         markDirty();
     }
 
@@ -948,7 +979,6 @@ public sealed class FleetWindowController
         if (!TryGetSession(view, out FleetWindowSession session) || !session.SelectTab(tab))
             return;
 
-        view.ClearDragSource();
         markDirty();
     }
 
@@ -1031,28 +1061,6 @@ public sealed class FleetWindowController
         return targetingController.IsTargeting
             && session?.Planet?.Planet != null
             && targetingController.TrySelectTarget(new StrategyMissionTarget(session.Planet, item));
-    }
-
-    /// <summary>
-    /// Resolves a pointer event to strategy source coordinates through the owning window.
-    /// </summary>
-    /// <param name="session">The controller-owned fleet session.</param>
-    /// <param name="eventData">The pointer event.</param>
-    /// <param name="x">Receives the horizontal source coordinate.</param>
-    /// <param name="y">Receives the vertical source coordinate.</param>
-    /// <returns>True when the pointer could be resolved.</returns>
-    private static bool TryGetDesktopPosition(
-        FleetWindowSession session,
-        PointerEventData eventData,
-        out int x,
-        out int y
-    )
-    {
-        x = 0;
-        y = 0;
-        return session?.Window != null
-            && eventData != null
-            && session.Window.TryGetDesktopPosition(eventData, eventData.position, out x, out y);
     }
 
     /// <summary>

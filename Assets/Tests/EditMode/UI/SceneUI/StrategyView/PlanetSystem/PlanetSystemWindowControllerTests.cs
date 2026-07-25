@@ -62,7 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             _actions = new TestActions();
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, (_, _) => { });
         }
 
         [TearDown]
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         public void Initialize_NullWindowActions_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, _actions, _actions, (_, _, _) => { })
+                _controller.Initialize(null, _actions, _actions, (_, _) => { })
             );
         }
 
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
             );
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(_actions, _actions, _actions, (_, _, _) => { });
+            _controller.Initialize(_actions, _actions, _actions, (_, _) => { });
             PlanetSystemWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(

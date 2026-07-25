@@ -49,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             _targetingController = new TargetingController();
             _controller = CreateController();
             TestActions actions = new TestActions();
-            _controller.Initialize(actions, actions, actions, (_, _, _) => { }, _ => { }, _ => { });
+            _controller.Initialize(actions, actions, actions, (_, _) => { }, _ => { }, _ => { });
         }
 
         [TearDown]
@@ -79,7 +79,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             TestActions actions = new TestActions();
 
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, actions, actions, (_, _, _) => { }, _ => { }, _ => { })
+                _controller.Initialize(null, actions, actions, (_, _) => { }, _ => { }, _ => { })
             );
         }
 

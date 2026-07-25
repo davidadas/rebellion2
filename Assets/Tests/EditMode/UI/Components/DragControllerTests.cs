@@ -56,6 +56,26 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void DragPreview_MultipleImages_PreservesImageBoundsAndHotspot()
+        {
+            DragPreviewImage[] images =
+            {
+                new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40)),
+                new DragPreviewImage(_texture, new RectInt(60, 80, 20, 10)),
+            };
+            DragPreview preview = new DragPreview(images, 17, 29);
+
+            images[0] = default;
+
+            Assert.AreEqual(2, preview.Images.Count);
+            Assert.AreEqual(new RectInt(10, 20, 30, 40), preview.Images[0].Bounds);
+            Assert.AreEqual(new RectInt(60, 80, 20, 10), preview.Images[1].Bounds);
+            Assert.AreEqual(17, preview.HotspotX);
+            Assert.AreEqual(29, preview.HotspotY);
+            Assert.IsTrue(preview.HasDrawableImages);
+        }
+
+        [Test]
         public void StartCandidate_NullRequest_ThrowsArgumentNullException()
         {
             DragController controller = new DragController(5);
@@ -148,6 +168,35 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(controller.HasCandidate);
             Assert.IsFalse(controller.IsDragging);
             Assert.IsNull(controller.ActiveRequest);
+        }
+
+        [Test]
+        public void TryGetPreview_MultipleImages_ReturnsPreviewAndCurrentPointer()
+        {
+            DragController controller = new DragController(0);
+            DragPreview preview = new DragPreview(
+                new[]
+                {
+                    new DragPreviewImage(_texture, new RectInt(10, 20, 30, 40)),
+                    new DragPreviewImage(_texture, new RectInt(60, 80, 20, 10)),
+                },
+                17,
+                29
+            );
+            controller.StartCandidate(new DragRequest(new object()), 17, 29);
+            controller.BeginDrag(preview, 20, 30);
+            controller.Move(50, 70);
+
+            bool available = controller.TryGetPreview(
+                out DragPreview activePreview,
+                out int pointerX,
+                out int pointerY
+            );
+
+            Assert.IsTrue(available);
+            Assert.AreSame(preview, activePreview);
+            Assert.AreEqual(50, pointerX);
+            Assert.AreEqual(70, pointerY);
         }
 
         [Test]

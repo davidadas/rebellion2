@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -19,10 +20,12 @@ public sealed class DragRequest
 }
 
 /// <summary>
-/// Defines the texture, dimensions, and pointer offset of a drag preview.
+/// Defines the ordered image layers and source-space hotspot of a drag preview.
 /// </summary>
 public sealed class DragPreview
 {
+    private readonly IReadOnlyList<DragPreviewImage> images;
+
     /// <summary>
     /// Creates immutable drag-preview presentation data.
     /// </summary>
@@ -32,23 +35,97 @@ public sealed class DragPreview
     /// <param name="offsetX">The horizontal pointer offset.</param>
     /// <param name="offsetY">The vertical pointer offset.</param>
     public DragPreview(Texture texture, int width, int height, int offsetX, int offsetY)
+        : this(
+            new[] { new DragPreviewImage(texture, new RectInt(-offsetX, -offsetY, width, height)) },
+            0,
+            0
+        ) { }
+
+    /// <summary>
+    /// Creates immutable drag-preview presentation data from ordered image layers.
+    /// </summary>
+    /// <param name="images">The image layers in rendering order.</param>
+    /// <param name="hotspotX">The source-space horizontal pointer coordinate.</param>
+    /// <param name="hotspotY">The source-space vertical pointer coordinate.</param>
+    public DragPreview(IReadOnlyList<DragPreviewImage> images, int hotspotX, int hotspotY)
     {
-        Texture = texture;
-        Width = width;
-        Height = height;
-        OffsetX = offsetX;
-        OffsetY = offsetY;
+        if (images == null)
+            throw new ArgumentNullException(nameof(images));
+
+        this.images = new List<DragPreviewImage>(images).AsReadOnly();
+        HotspotX = hotspotX;
+        HotspotY = hotspotY;
     }
 
+    /// <summary>
+    /// Gets the immutable image layers in rendering order.
+    /// </summary>
+    public IReadOnlyList<DragPreviewImage> Images => images;
+
+    /// <summary>
+    /// Gets the source-space horizontal pointer coordinate captured with the preview.
+    /// </summary>
+    public int HotspotX { get; }
+
+    /// <summary>
+    /// Gets the source-space vertical pointer coordinate captured with the preview.
+    /// </summary>
+    public int HotspotY { get; }
+
+    public Texture Texture => images.Count > 0 ? images[0].Texture : null;
+
+    public int Width => images.Count > 0 ? images[0].Bounds.width : 0;
+
+    public int Height => images.Count > 0 ? images[0].Bounds.height : 0;
+
+    public int OffsetX => images.Count > 0 ? HotspotX - images[0].Bounds.x : 0;
+
+    public int OffsetY => images.Count > 0 ? HotspotY - images[0].Bounds.y : 0;
+
+    /// <summary>
+    /// Gets whether at least one image layer has a texture and positive dimensions.
+    /// </summary>
+    public bool HasDrawableImages
+    {
+        get
+        {
+            for (int index = 0; index < images.Count; index++)
+            {
+                DragPreviewImage image = images[index];
+                if (image.Texture != null && image.Bounds.width > 0 && image.Bounds.height > 0)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+}
+
+/// <summary>
+/// Describes one textured drag-preview layer in source-space coordinates.
+/// </summary>
+public readonly struct DragPreviewImage
+{
+    /// <summary>
+    /// Creates one drag-preview image layer.
+    /// </summary>
+    /// <param name="texture">The displayed texture.</param>
+    /// <param name="bounds">The source-space layer bounds.</param>
+    public DragPreviewImage(Texture texture, RectInt bounds)
+    {
+        Texture = texture;
+        Bounds = bounds;
+    }
+
+    /// <summary>
+    /// Gets the displayed texture.
+    /// </summary>
     public Texture Texture { get; }
 
-    public int Width { get; }
-
-    public int Height { get; }
-
-    public int OffsetX { get; }
-
-    public int OffsetY { get; }
+    /// <summary>
+    /// Gets the source-space layer bounds.
+    /// </summary>
+    public RectInt Bounds { get; }
 }
 
 /// <summary>
@@ -200,6 +277,21 @@ public sealed class DragController
         width = activePreview.Width;
         height = activePreview.Height;
         return texture != null;
+    }
+
+    /// <summary>
+    /// Resolves the complete active drag preview at its current pointer position.
+    /// </summary>
+    /// <param name="preview">Receives the ordered drag-preview presentation.</param>
+    /// <param name="pointerX">Receives the current source-space horizontal pointer coordinate.</param>
+    /// <param name="pointerY">Receives the current source-space vertical pointer coordinate.</param>
+    /// <returns>True when an active drawable preview is available.</returns>
+    public bool TryGetPreview(out DragPreview preview, out int pointerX, out int pointerY)
+    {
+        preview = activePreview;
+        pointerX = currentX;
+        pointerY = currentY;
+        return activeRequest != null && preview?.HasDrawableImages == true;
     }
 
     /// <summary>

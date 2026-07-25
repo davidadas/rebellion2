@@ -198,6 +198,18 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
     }
 
     /// <summary>
+    /// Tries to get the complete active source-drag presentation.
+    /// </summary>
+    /// <param name="preview">Receives the ordered drag-preview presentation.</param>
+    /// <param name="pointerX">Receives the current source-space horizontal pointer coordinate.</param>
+    /// <param name="pointerY">Receives the current source-space vertical pointer coordinate.</param>
+    /// <returns>True when a drawable source-drag preview is active.</returns>
+    public bool TryGetOverlay(out DragPreview preview, out int pointerX, out int pointerY)
+    {
+        return dragController.TryGetPreview(out preview, out pointerX, out pointerY);
+    }
+
+    /// <summary>
     /// Clears drag state owned by one closing source window.
     /// </summary>
     /// <param name="window">The closing source window.</param>
@@ -366,9 +378,7 @@ public sealed class StrategyWindowItemDragController : ITargetingReceiver
         candidateItems = selectedItems?.ToList() ?? new List<ISceneNode>();
         if (
             tryGetDragPreview(window, x, y, out DragPreview preview)
-            && preview?.Texture != null
-            && preview.Width > 0
-            && preview.Height > 0
+            && preview?.HasDrawableImages == true
         )
         {
             candidatePreview = preview;

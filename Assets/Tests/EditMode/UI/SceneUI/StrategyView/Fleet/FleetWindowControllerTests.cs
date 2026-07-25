@@ -62,14 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
             _actions = new TestActions();
-            _controller.Initialize(
-                _actions,
-                _actions,
-                _actions,
-                (_, _, _) => { },
-                _ => { },
-                _ => { }
-            );
+            _controller.Initialize(_actions, _actions, _actions, (_, _) => { }, _ => { }, _ => { });
         }
 
         [TearDown]
@@ -100,7 +93,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             TestActions actions = new TestActions();
 
             Assert.Throws<ArgumentNullException>(() =>
-                _controller.Initialize(null, actions, actions, (_, _, _) => { }, _ => { }, _ => { })
+                _controller.Initialize(null, actions, actions, (_, _) => { }, _ => { }, _ => { })
             );
         }
 
@@ -292,14 +285,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             _game.AttachNode(_fleet, _planet.Planet);
             _fleetCommandController = CreateFleetCommandController();
             _controller = CreateController();
-            _controller.Initialize(
-                _actions,
-                _actions,
-                _actions,
-                (_, _, _) => { },
-                _ => { },
-                _ => { }
-            );
+            _controller.Initialize(_actions, _actions, _actions, (_, _) => { }, _ => { }, _ => { });
             FleetWindowView view = OpenWindow(out UIWindow window);
             _controller.RenderWindow(view, window, true);
             StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(

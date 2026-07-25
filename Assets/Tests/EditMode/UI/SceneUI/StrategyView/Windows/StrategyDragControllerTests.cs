@@ -21,6 +21,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         private bool _pointerResolved;
         private int _pointerX;
         private int _pointerY;
+        private PointerEventData _pointerEvent;
 
         [SetUp]
         public void SetUp()
@@ -40,6 +41,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _pointerResolved = false;
             _pointerX = 50;
             _pointerY = 60;
+            _pointerEvent = CreatePointerEvent(_window.gameObject);
         }
 
         [TearDown]
@@ -113,7 +115,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             StrategyDragController controller = CreateController();
 
-            StrategyDragEventResult result = controller.TryHandleItemPointerMove(10, 20);
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(null, 10, 20);
 
             Assert.IsFalse(result.Handled);
         }
@@ -123,9 +125,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             _contextItems = new ISceneNode[] { new Officer() };
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
 
-            StrategyDragEventResult result = controller.TryHandleItemPointerMove(12, 22);
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                12,
+                22
+            );
 
             Assert.IsTrue(result.Handled);
             Assert.IsFalse(result.RenderOverlay);
@@ -136,10 +142,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         public void TryHandleItemPointerMove_EmptyCandidateCrossesThreshold_ClearsCandidate()
         {
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
 
-            StrategyDragEventResult started = controller.TryHandleItemPointerMove(13, 24);
-            StrategyDragEventResult next = controller.TryHandleItemPointerMove(20, 30);
+            StrategyDragEventResult started = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                13,
+                24
+            );
+            StrategyDragEventResult next = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                20,
+                30
+            );
 
             Assert.IsTrue(started.Handled);
             Assert.IsFalse(started.RenderOverlay);
@@ -151,9 +165,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             _contextItems = new ISceneNode[] { new Officer() };
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
 
-            StrategyDragEventResult result = controller.TryHandleItemPointerMove(13, 24);
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                13,
+                24
+            );
 
             Assert.IsTrue(result.Handled);
             Assert.IsTrue(result.ClearPressedWindow);
@@ -167,10 +185,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _contextItems = new ISceneNode[] { new Officer() };
             _hasPreview = true;
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
 
-            StrategyDragEventResult started = controller.TryHandleItemPointerMove(13, 24);
-            StrategyDragEventResult moved = controller.TryHandleItemPointerMove(50, 60);
+            StrategyDragEventResult started = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                13,
+                24
+            );
+            StrategyDragEventResult moved = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                50,
+                60
+            );
             bool hasOverlay = controller.TryGetOverlay(out Texture texture, out RectInt bounds);
 
             Assert.IsTrue(started.Handled);
@@ -198,10 +224,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         public void TryHandleItemPointerUp_UnresolvedWithCandidate_ClearsAndFinishes()
         {
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
 
-            StrategyDragEventResult result = controller.TryHandleItemPointerUp(null);
-            StrategyDragEventResult nextMove = controller.TryHandleItemPointerMove(20, 30);
+            StrategyDragEventResult result = controller.TryHandleItemPointerUp(_pointerEvent);
+            StrategyDragEventResult nextMove = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                20,
+                30
+            );
 
             Assert.IsTrue(result.Handled);
             Assert.IsTrue(result.SuppressClick);
@@ -214,10 +244,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             _pointerResolved = true;
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
 
-            StrategyDragEventResult result = controller.TryHandleItemPointerUp(null);
-            StrategyDragEventResult nextMove = controller.TryHandleItemPointerMove(20, 30);
+            StrategyDragEventResult result = controller.TryHandleItemPointerUp(_pointerEvent);
+            StrategyDragEventResult nextMove = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                20,
+                30
+            );
 
             Assert.IsFalse(result.Handled);
             Assert.IsFalse(nextMove.Handled);
@@ -230,10 +264,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _contextItems = new ISceneNode[] { new Officer() };
             _hasPreview = true;
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
-            controller.TryHandleItemPointerMove(13, 24);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
+            controller.TryHandleItemPointerMove(_pointerEvent, 13, 24);
 
-            StrategyDragEventResult result = controller.TryHandleItemPointerUp(null);
+            StrategyDragEventResult result = controller.TryHandleItemPointerUp(_pointerEvent);
 
             Assert.IsTrue(result.Handled);
             Assert.IsTrue(result.SuppressClick);
@@ -248,12 +282,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             _contextItems = new ISceneNode[] { new Officer() };
             _hasPreview = true;
             StrategyDragController controller = CreateController();
-            controller.StartItemCandidate(_window, 10, 20);
-            controller.TryHandleItemPointerMove(13, 24);
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
+            controller.TryHandleItemPointerMove(_pointerEvent, 13, 24);
 
             controller.ClearWindow(_window);
 
             Assert.IsFalse(controller.TryGetOverlay(out _, out _));
+        }
+
+        [Test]
+        public void TryHandleItemPointerMove_DifferentPress_ClearsCandidateWithoutDragging()
+        {
+            _contextItems = new ISceneNode[] { new Officer() };
+            _hasPreview = true;
+            StrategyDragController controller = CreateController();
+            controller.StartItemCandidate(_window, _pointerEvent, 10, 20);
+            GameObject otherTarget = new GameObject("OtherPress", typeof(RectTransform));
+            otherTarget.transform.SetParent(_window.transform, false);
+            PointerEventData otherPress = CreatePointerEvent(otherTarget);
+
+            StrategyDragEventResult result = controller.TryHandleItemPointerMove(
+                otherPress,
+                50,
+                60
+            );
+            StrategyDragEventResult stalePressRetry = controller.TryHandleItemPointerMove(
+                _pointerEvent,
+                50,
+                60
+            );
+
+            Assert.IsFalse(result.Handled);
+            Assert.IsFalse(stalePressRetry.Handled);
+            Assert.IsFalse(controller.TryGetOverlay(out _, out _));
+            Assert.IsFalse(_targetingController.IsTargeting);
         }
 
         private StrategyDragController CreateController()
@@ -291,6 +353,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             x = _pointerX;
             y = _pointerY;
             return _pointerResolved;
+        }
+
+        private static PointerEventData CreatePointerEvent(GameObject target)
+        {
+            return new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerId = -1,
+                pressPosition = new Vector2(10, 20),
+                pointerCurrentRaycast = new RaycastResult { gameObject = target },
+                pointerPressRaycast = new RaycastResult { gameObject = target },
+            };
         }
 
         private sealed class RecordingWindowCommands : IStrategyWindowCommandActions
