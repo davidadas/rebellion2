@@ -165,16 +165,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         }
 
         [Test]
-        public void ItemsDrop_ActiveTargeting_SelectsRepresentedPlanet()
+        public void WindowDrop_ActiveTargeting_SelectsRepresentedPlanet()
         {
             DefenseWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
-            ScrollAreaView scrollArea = view.GetComponentInChildren<ScrollAreaView>(true);
 
-            scrollArea.RelayDrop(new PointerEventData(null));
+            view.OnDrop(new PointerEventData(null));
 
             Assert.IsFalse(_targetingController.IsTargeting);
             Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);

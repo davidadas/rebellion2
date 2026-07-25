@@ -5446,7 +5446,7 @@ public static class StrategyViewPrefabBuilder
         );
         Image progress = CreateImage("ProgressFillImage", card.transform);
         progress.color = new Color32(255, 255, 84, 255);
-        SetSourceRect(progress.rectTransform, 56, cardY + 65, 158, 4);
+        SetSourceRect(progress.rectTransform, 56, cardY + 70, 161, 4);
 
         TextMeshProUGUI title = CreateTextLabel("TitleTextField", card.transform);
         title.text = "Ship Construction";

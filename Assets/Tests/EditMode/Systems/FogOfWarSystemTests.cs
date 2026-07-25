@@ -723,11 +723,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_CoreSystemSnapshot_PopularSupportIsVisible()
+        public void BuildFactionView_CoreSystemSnapshot_PreservesObservedPopularSupport()
         {
             _coruscant.PopularSupport["FNALL1"] = 50;
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            _coruscant.PopularSupport["FNALL1"] = 25;
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -735,16 +736,7 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "CORESYS")
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
-            Assert.IsNotNull(viewCoruscant.PopularSupport);
-            Assert.IsNotEmpty(
-                viewCoruscant.PopularSupport,
-                "Core system popular support should always be visible"
-            );
-            Assert.AreEqual(
-                50,
-                viewCoruscant.PopularSupport["FNALL1"],
-                "Popular support value should match live data"
-            );
+            Assert.AreEqual(50, viewCoruscant.PopularSupport["FNALL1"]);
         }
 
         [Test]
@@ -1076,6 +1068,37 @@ namespace Rebellion.Tests.Systems
             int vaderCount = allOfficers.Count(o => o.InstanceID == "VADER");
 
             Assert.AreEqual(1, vaderCount);
+        }
+
+        [Test]
+        public void CaptureSnapshot_NestedEntityObservedElsewhere_RemovesOldFleetManifestEntry()
+        {
+            Fleet fleet = CreateFleet("FLEET", _empire);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                RegimentCapacity = 1,
+            };
+            Regiment regiment = CreateRegiment("REGIMENT", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(ship, fleet);
+            _game.AttachNode(regiment, ship);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            MakeTatooineImperial();
+            _game.MoveNode(regiment, _tatooine);
+            _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 20);
+
+            PlanetSnapshot oldSnapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsEmpty(oldSnapshot.Fleets.Single().CapitalShips.Single().Regiments);
+            Assert.AreEqual(
+                _tatooine.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[regiment.InstanceID]
+            );
         }
 
         [Test]
@@ -1421,6 +1444,127 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(25, queue[0].ManufacturingProgress);
         }
 
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_RemovesAbsentManufacturingIntel()
+        {
+            Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _coruscant.ManufacturingQueue[ManufacturingType.Building].Remove(knownBuilding);
+            _game.DetachNode(knownBuilding);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Buildings.Any(building => building.InstanceID == knownBuilding.InstanceID)
+            );
+            Assert.IsFalse(
+                snapshot.ManufacturingQueueItems.Any(item =>
+                    item.InstanceID == knownBuilding.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_RemovesAbsentCargoFromPreservedShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            AddCapitalShip(fleet, _empire, "VISIBLE_SHIP");
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                RegimentCapacity = 1,
+            };
+            Regiment departedRegiment = CreateRegiment("DEPARTED_REGIMENT", _empire);
+            _game.AttachNode(knownShip, fleet);
+            _game.AttachNode(departedRegiment, knownShip);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _game.DetachNode(departedRegiment);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            CapitalShip preservedShip = snapshot
+                .Fleets.Single(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
+                .CapitalShips.Single(ship => ship.InstanceID == knownShip.InstanceID);
+            Assert.IsEmpty(preservedShip.Regiments);
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_PreservesFleetContainingOnlyManufacturingShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                ManufacturingProgress = 25,
+            };
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(knownShip, fleet);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            knownShip.ManufacturingProgress = 75;
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Fleet preservedFleet = snapshot.Fleets.Single(snapshotFleet =>
+                snapshotFleet.InstanceID == fleet.InstanceID
+            );
+            CapitalShip preservedShip = preservedFleet.CapitalShips.Single();
+            Assert.AreEqual(knownShip.InstanceID, preservedShip.InstanceID);
+            Assert.AreEqual(25, preservedShip.ManufacturingProgress);
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[fleet.InstanceID]
+            );
+            Assert.AreEqual(
+                _coruscant.InstanceID,
+                _alliance.Fog.EntityLastSeenAt[knownShip.InstanceID]
+            );
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_RemovesAbsentFleetContainingOnlyManufacturingShip()
+        {
+            Fleet fleet = CreateFleet("KNOWN_FLEET", _empire);
+            CapitalShip knownShip = new CapitalShip
+            {
+                InstanceID = "KNOWN_SHIP",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            _game.AttachNode(fleet, _coruscant);
+            _game.AttachNode(knownShip, fleet);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _game.DetachNode(knownShip);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.IsFalse(
+                snapshot.Fleets.Any(snapshotFleet => snapshotFleet.InstanceID == fleet.InstanceID)
+            );
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(fleet.InstanceID));
+            Assert.IsFalse(_alliance.Fog.EntityLastSeenAt.ContainsKey(knownShip.InstanceID));
+        }
+
         private Officer CreateOfficer(string id, Faction faction) =>
             EntityFactory.CreateOfficer(id, faction.InstanceID);
 
@@ -1728,8 +1872,91 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_PlanetCapturedFromEnemy_ExcludesStaleEnemyFleet()
+        public void BuildFactionView_LivePlanet_RemovesAbsentEnemyUnitsFromSnapshot()
         {
+            Fleet enemyFleet = CreateFleet("ENEMY_FLEET", _empire);
+            Officer enemyOfficer = CreateOfficer("ENEMY_OFFICER", _empire);
+            Regiment enemyRegiment = CreateRegiment("ENEMY_REGIMENT", _empire);
+            SpecialForces enemySpecialForces = new SpecialForces
+            {
+                InstanceID = "ENEMY_SPECIAL_FORCES",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Starfighter enemyStarfighter = CreateStarfighter("ENEMY_STARFIGHTER", _empire);
+            Building enemyBuilding = CreateBuilding("ENEMY_BUILDING", _empire);
+            _coruscant.EnergyCapacity = 1;
+            _game.AttachNode(enemyFleet, _coruscant);
+            AddCapitalShip(enemyFleet, _empire, "ENEMY_SHIP");
+            _game.AttachNode(enemyOfficer, _coruscant);
+            _game.AttachNode(enemyRegiment, _coruscant);
+            _game.AttachNode(enemySpecialForces, _coruscant);
+            _game.AttachNode(enemyStarfighter, _coruscant);
+            _game.AttachNode(enemyBuilding, _coruscant);
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _game.DetachNode(enemyFleet);
+            _game.DetachNode(enemyOfficer);
+            _game.DetachNode(enemyRegiment);
+            _game.DetachNode(enemySpecialForces);
+            _game.DetachNode(enemyStarfighter);
+            _game.DetachNode(enemyBuilding);
+            Fleet allianceFleet = CreateFleet("ALLIANCE_FLEET", _alliance);
+            _game.AttachNode(allianceFleet, _coruscant);
+            AddCapitalShip(allianceFleet, _alliance, "ALLIANCE_SHIP");
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            CollectionAssert.AreEqual(
+                new[] { allianceFleet.InstanceID },
+                viewCoruscant.Fleets.Select(fleet => fleet.InstanceID)
+            );
+            Assert.IsFalse(
+                viewCoruscant.Officers.Any(officer => officer.InstanceID == enemyOfficer.InstanceID)
+            );
+            Assert.IsFalse(
+                viewCoruscant.Regiments.Any(regiment =>
+                    regiment.InstanceID == enemyRegiment.InstanceID
+                )
+            );
+            Assert.IsFalse(
+                viewCoruscant.SpecialForces.Any(specialForces =>
+                    specialForces.InstanceID == enemySpecialForces.InstanceID
+                )
+            );
+            Assert.IsFalse(
+                viewCoruscant.Starfighters.Any(starfighter =>
+                    starfighter.InstanceID == enemyStarfighter.InstanceID
+                )
+            );
+            Assert.IsFalse(
+                viewCoruscant.Buildings.Any(building =>
+                    building.InstanceID == enemyBuilding.InstanceID
+                )
+            );
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+            PlanetSnapshot refreshedSnapshot = _alliance
+                .Fog
+                .Snapshots[_coreSystem.InstanceID]
+                .Planets[_coruscant.InstanceID];
+            Assert.IsEmpty(refreshedSnapshot.Fleets);
+            Assert.IsEmpty(refreshedSnapshot.Officers);
+            Assert.IsEmpty(refreshedSnapshot.Regiments);
+            Assert.IsEmpty(refreshedSnapshot.SpecialForces);
+            Assert.IsEmpty(refreshedSnapshot.Starfighters);
+            Assert.IsEmpty(refreshedSnapshot.Buildings);
+            Assert.IsEmpty(_alliance.Fog.EntityLastSeenAt);
+        }
+
+        [Test]
+        public void BuildFactionView_PlanetCapturedFromEnemy_UsesOnlyLiveUnits()
+        {
+            // Coruscant was empire's. Alliance took a snapshot when empire owned it —
+            // capturing an empire fleet. Alliance then takes ownership.
             Fleet empireFleet = CreateFleet("EMPIRE_FLEET", _empire);
             CapitalShip destroyer = new CapitalShip
             {
@@ -2132,14 +2359,13 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_OuterRimSnapshot_PopularSupportHidden()
+        public void BuildFactionView_OuterRimSnapshot_PreservesObservedPopularSupport()
         {
-            // Outer rim planet: popular support is NOT universally visible.
-            // Only core system support is always shown.
             MakeTatooineImperial();
             _tatooine.PopularSupport["FNALL1"] = 40;
 
             _fogSystem.CaptureSnapshot(_alliance, _tatooine, _outerRimSystem, 10);
+            _tatooine.PopularSupport["FNALL1"] = 10;
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
 
@@ -2147,10 +2373,7 @@ namespace Rebellion.Tests.Systems
                 .PlanetSystems.First(s => s.InstanceID == "OUTERRIM")
                 .Planets.First(p => p.InstanceID == "TATOOINE");
 
-            Assert.IsEmpty(
-                viewTatooine.PopularSupport,
-                "Popular support on outer rim snapshots should be hidden"
-            );
+            Assert.AreEqual(40, viewTatooine.PopularSupport["FNALL1"]);
         }
 
         [Test]

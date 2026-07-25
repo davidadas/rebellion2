@@ -231,7 +231,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Aborts an active mission and returns its participants to their mission origin.
+        /// Aborts an active mission and resolves its participants' post-mission location.
         /// </summary>
         /// <param name="missionInstanceID">The instance ID of the mission to abort.</param>
         /// <returns>True when the mission was found and aborted.</returns>
@@ -537,7 +537,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Resolves participant capture state, delegates return travel, and detaches the mission.
+        /// Resolves participant capture state and post-mission travel, then detaches the mission.
         /// </summary>
         /// <param name="mission">The mission to tear down and clean up.</param>
         /// <param name="completedResult">The completed mission result, or null for pre-execution teardown.</param>
@@ -550,22 +550,36 @@ namespace Rebellion.Systems
         {
             int resultStart = results.Count;
             Planet missionPlanet = mission.GetParent() as Planet;
-            List<IMissionParticipant> returnParticipants = GetFreeMissionParticipants(mission)
+            List<IMissionParticipant> freeParticipants = GetFreeMissionParticipants(mission)
                 .Distinct()
                 .ToList();
             List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
                     mission,
                     completedResult
                 )
-                .Except(returnParticipants.Cast<IMovable>())
+                .Except(freeParticipants.Cast<IMovable>())
                 .Where(passenger => passenger.Movement == null)
                 .Distinct()
                 .ToList();
+            List<IMissionParticipant> localParticipants =
+                additionalPassengers.Count == 0
+                    ? freeParticipants
+                        .Where(participant =>
+                            CanRemainAtMissionLocation(participant, missionPlanet)
+                        )
+                        .ToList()
+                    : new List<IMissionParticipant>();
+            List<IMissionParticipant> returnParticipants = freeParticipants
+                .Except(localParticipants)
+                .ToList();
 
             MoveCapturedParticipants(mission, missionPlanet);
-            List<IMovable> strandedUnits = _movementManager.ReturnFromMission(
-                returnParticipants,
-                additionalPassengers
+            List<IMovable> strandedUnits = _movementManager.CompleteMissionAtLocation(
+                localParticipants,
+                missionPlanet
+            );
+            strandedUnits.AddRange(
+                _movementManager.ReturnFromMission(returnParticipants, additionalPassengers)
             );
             ResolveStrandedMissionUnits(strandedUnits, mission, missionPlanet, results);
 
@@ -573,6 +587,26 @@ namespace Rebellion.Systems
                 result.MissionInstanceID = mission.InstanceID;
 
             _game.DetachNode(mission);
+        }
+
+        /// <summary>
+        /// Returns whether a participant may remain at the planet where its mission ended.
+        /// </summary>
+        /// <param name="participant">The participant whose destination is being resolved.</param>
+        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <returns>True when the mission planet is intact, friendly, and can accept the participant.</returns>
+        private static bool CanRemainAtMissionLocation(
+            IMissionParticipant participant,
+            Planet missionPlanet
+        )
+        {
+            if (participant == null || missionPlanet?.IsDestroyed != false)
+                return false;
+
+            string participantOwnerId = participant.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(participantOwnerId)
+                && participantOwnerId == missionPlanet.GetOwnerInstanceID()
+                && missionPlanet.CanAcceptChild(participant);
         }
 
         /// <summary>
@@ -672,7 +706,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns mission participants that can travel back after teardown.
+        /// Returns mission participants that need a post-mission location.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <returns>The movable participants that are neither killed nor captured.</returns>
@@ -682,7 +716,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns extra units that should travel with a successful mission's participants.
+        /// Returns extra units that must travel with a successful mission's participants.
         /// </summary>
         /// <param name="mission">The mission being torn down.</param>
         /// <param name="completedResult">The completed mission result, or null before execution.</param>
@@ -710,7 +744,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Returns whether a movable participant can travel home after mission teardown.
+        /// Returns whether a movable participant can be relocated after mission teardown.
         /// </summary>
         /// <param name="participant">The participant to inspect.</param>
         /// <returns>True when the participant is not a killed or captured officer.</returns>

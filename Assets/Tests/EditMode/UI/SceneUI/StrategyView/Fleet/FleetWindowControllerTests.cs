@@ -188,20 +188,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DetailItemsDrop_ActiveTargeting_SelectsCurrentFleet()
+        public void WindowDrop_ActiveTargeting_SelectsCurrentFleet()
         {
             FleetWindowView view = OpenWindow(out UIWindow window);
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindow(view, window, true);
             RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
             _targetingController.Begin(new TargetingRequest("Target", null, receiver));
-            ScrollAreaView detailScrollArea = view.GetComponentsInChildren<StrategyUnitCardView>(
-                    true
-                )
-                .Single(item => item.gameObject.activeInHierarchy)
-                .GetComponentInParent<ScrollAreaView>();
 
-            detailScrollArea.RelayDrop(new PointerEventData(null));
+            view.OnDrop(new PointerEventData(null));
 
             Assert.IsFalse(_targetingController.IsTargeting);
             Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
@@ -209,6 +204,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_planet, target.Planet);
             Assert.AreSame(_fleet, target.Item);
             Assert.AreSame(_fleet, target.GetMoveDestination());
+        }
+
+        [Test]
+        public void WindowDrop_WithoutSelectedFleet_SelectsRepresentedPlanet()
+        {
+            _planet.Planet.Fleets.Clear();
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+
+            view.OnDrop(new PointerEventData(null));
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.IsNull(target.Item);
+            Assert.AreSame(_planet.Planet, target.GetMoveDestination());
         }
 
         [Test]
