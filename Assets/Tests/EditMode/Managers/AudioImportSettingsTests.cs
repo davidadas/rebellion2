@@ -75,7 +75,12 @@ public sealed class AudioImportSettingsTests
 
     private static AudioImporter GetAudioImporter(string resourcePath)
     {
-        string assetPath = $"Assets/Resources/{resourcePath}.wav";
+        AudioClip clip =
+            Resources.Load<AudioClip>(resourcePath)
+            ?? throw new InvalidOperationException(
+                $"No AudioClip exists at Resources path '{resourcePath}'."
+            );
+        string assetPath = AssetDatabase.GetAssetPath(clip);
         return AssetImporter.GetAtPath(assetPath) as AudioImporter
             ?? throw new InvalidOperationException($"No audio importer exists at '{assetPath}'.");
     }
