@@ -74,11 +74,17 @@
                     <xs:element name="EspionageCandidatePlanetLimit" type="PositiveIntType" />
                     <xs:element name="EspionageRefreshIntervalTicks" type="PositiveIntType" />
                     <xs:element name="HostileMissionMaximumIntelAgeTicks" type="PositiveIntType" />
-                    <xs:element name="MaximumConcurrentHostileMissions" type="PositiveIntType" />
                     <xs:element name="MaximumConcurrentResearchMissionsPerDiscipline" type="PositiveIntType" />
                     <xs:element name="MaximumJediTrainingStudents" type="PositiveIntType" />
                     <xs:element name="SabotageTargetsPerPlanetLimit" type="PositiveIntType" />
                     <xs:element name="SabotageAssaultBlockerBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageAttackTargetBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageAttackDefenseBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageFavoredSupportRegimentBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageGarrisonRegimentBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageGarrisonStarfighterBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageOtherUnitBonus" type="xs:nonNegativeInteger" />
+                    <xs:element name="SabotageInfrastructureBonus" type="xs:nonNegativeInteger" />
                     <xs:element name="MinimumMissionScore" type="xs:nonNegativeInteger" />
                     <xs:element name="ReconnaissancePriorityBonus" type="xs:nonNegativeInteger" />
                     <xs:element name="RecruitmentPriorityBonus" type="xs:nonNegativeInteger" />

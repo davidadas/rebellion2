@@ -269,11 +269,5 @@ namespace Rebellion.AI.Proposals
                 ? TargetOfficer.IsCaptured
                 : !TargetOfficer.IsCaptured;
         }
-
-        internal bool IsHostileMission =>
-            MissionTypeID == MissionTypeIDs.Sabotage
-            || MissionTypeID == MissionTypeIDs.Abduction
-            || MissionTypeID == MissionTypeIDs.Assassination
-            || MissionTypeID == MissionTypeIDs.InciteUprising;
     }
 }

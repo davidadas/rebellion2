@@ -72,16 +72,11 @@ namespace Rebellion.AI.Scoring
 
         private double ScoreSabotage(AITurnContext context, AIMissionProposal proposal)
         {
-            double score = ScoreFromMissionTable(context, proposal);
-            if (
-                context.Assessment.IsAssaultBlockingShield(
+            return ScoreFromMissionTable(context, proposal)
+                + context.Assessment.GetSabotageTargetPriorityBonus(
                     proposal.TargetPlanet,
                     proposal.SelectedTarget as IManufacturable
-                )
-            )
-                score += context.Game.Config.AI.MissionPlanning.SabotageAssaultBlockerBonus;
-
-            return score;
+                );
         }
 
         private double ScoreRecruitment(AITurnContext context, AIMissionProposal proposal)

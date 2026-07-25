@@ -35,6 +35,8 @@ namespace Rebellion.AI.Director
             string,
             int
         >(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _hostilePlanetaryStarfighterStrengths =
+            new Dictionary<string, int>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _planetDefenseThreatStrengths = new Dictionary<
             string,
             int
@@ -652,7 +654,9 @@ namespace Rebellion.AI.Director
             if (planet == null || _context?.Game?.Config == null)
                 return 0;
 
-            int hostileStrength = GetStrongestHostileFleetStrength(planet);
+            int hostileStrength =
+                GetStrongestHostileFleetStrength(planet)
+                + GetHostilePlanetaryStarfighterStrength(planet);
             return hostileStrength > 0
                 ? ScaleByPercent(
                     hostileStrength,
@@ -664,6 +668,25 @@ namespace Rebellion.AI.Director
                         .AttackStrengthPercentOfStrongestHostileFleet
                 )
                 : 0;
+        }
+
+        public int GetHostilePlanetaryStarfighterStrength(Planet planet)
+        {
+            if (planet == null)
+                return 0;
+
+            return GetOrAdd(
+                _hostilePlanetaryStarfighterStrengths,
+                planet.InstanceID,
+                () =>
+                    planet
+                        .GetAllStarfighters()
+                        .Where(starfighter =>
+                            !string.IsNullOrEmpty(starfighter.GetOwnerInstanceID())
+                            && starfighter.GetOwnerInstanceID() != _context?.Faction?.InstanceID
+                        )
+                        .Sum(starfighter => starfighter.GetCombatValue())
+            );
         }
 
         public int GetPlanetDefenseThreatStrength(Planet planet)
@@ -780,7 +803,12 @@ namespace Rebellion.AI.Director
 
         public bool IsAttackTargetBlockedByShields(Planet planet)
         {
-            return IsAssaultBlockedByShields(planet)
+            return IsAssaultBlockedByShields(planet) && IsAttackPreparationTarget(planet);
+        }
+
+        public bool IsAttackPreparationTarget(Planet planet)
+        {
+            return planet != null
                 && AttackOrderedFleets.Any(fleet =>
                     fleet.Order.TargetPlanetId == planet.InstanceID
                 );
@@ -797,6 +825,63 @@ namespace Rebellion.AI.Director
                         Movement: null,
                     } shield
                 && shield.GetParentOfType<Planet>()?.InstanceID == planet.InstanceID;
+        }
+
+        public int GetSabotageTargetPriorityBonus(Planet planet, IManufacturable target)
+        {
+            GameConfig.AIMissionPlanningConfig config = _context?.Game?.Config?.AI?.MissionPlanning;
+            if (config == null || planet == null || target == null)
+                return 0;
+
+            bool isAttackTarget = IsAttackPreparationTarget(planet);
+            if (target is Building building)
+            {
+                int infrastructureBonus = config.SabotageInfrastructureBonus;
+                if (!isAttackTarget || !IsPlanetaryDefenseBuilding(building))
+                    return infrastructureBonus;
+
+                int defenseBonus =
+                    infrastructureBonus
+                    + config.SabotageAttackTargetBonus
+                    + config.SabotageAttackDefenseBonus;
+                return IsAssaultBlockingShield(planet, building)
+                    ? defenseBonus + config.SabotageAssaultBlockerBonus
+                    : defenseBonus;
+            }
+
+            int priorityBonus = target switch
+            {
+                Regiment when IsGarrisonedAtPlanet(planet, target) =>
+                    config.SabotageGarrisonRegimentBonus
+                        + (
+                            HasOppositionSupportMajority(planet)
+                                ? config.SabotageFavoredSupportRegimentBonus
+                                : 0
+                        ),
+                Starfighter when IsGarrisonedAtPlanet(planet, target) =>
+                    config.SabotageGarrisonStarfighterBonus,
+                _ => config.SabotageOtherUnitBonus,
+            };
+            return isAttackTarget
+                ? priorityBonus + config.SabotageAttackTargetBonus
+                : priorityBonus;
+        }
+
+        private bool HasOppositionSupportMajority(Planet planet)
+        {
+            string ownerInstanceId = planet?.GetOwnerInstanceID();
+            return !string.IsNullOrEmpty(ownerInstanceId)
+                && GetFactionPopularSupport(planet) > planet.GetPopularSupport(ownerInstanceId);
+        }
+
+        private static bool IsGarrisonedAtPlanet(Planet planet, IManufacturable target)
+        {
+            return target.GetParent() is Planet parent && parent.InstanceID == planet.InstanceID;
+        }
+
+        private static bool IsPlanetaryDefenseBuilding(Building building)
+        {
+            return building?.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon;
         }
 
         /// <summary>

@@ -317,10 +317,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (
-                !CanPlanHostileMission(context)
-                || !participant.CanPerformMission(MissionTypeIDs.InciteUprising)
-            )
+            if (!participant.CanPerformMission(MissionTypeIDs.InciteUprising))
                 return;
 
             foreach (
@@ -348,10 +345,7 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (
-                !CanPlanHostileMission(context)
-                || !participant.CanPerformMission(MissionTypeIDs.Sabotage)
-            )
+            if (!participant.CanPerformMission(MissionTypeIDs.Sabotage))
                 return;
 
             foreach (Planet planet in GetSabotageCandidatePlanets(context))
@@ -416,9 +410,6 @@ namespace Rebellion.AI.Planners
             List<AIProposal> proposals
         )
         {
-            if (!CanPlanHostileMission(context))
-                return;
-
             foreach ((Planet planet, Officer targetOfficer) in GetOfficerTargetCandidates(context))
             {
                 if (participant.CanPerformMission(MissionTypeIDs.Abduction))
@@ -571,9 +562,15 @@ namespace Rebellion.AI.Planners
         private IEnumerable<Planet> GetSabotageCandidatePlanets(AITurnContext context)
         {
             return GetFreshEnemyPlanets(context)
-                .Where(planet => context.Assessment.GetPlanetBuildingCount(planet) > 0)
+                .Where(planet => GetEligibleSabotageTargets(context, planet).Any())
                 .Shuffle(context.Random)
-                .OrderByDescending(context.Assessment.IsAttackTargetBlockedByShields)
+                .OrderByDescending(context.Assessment.IsAttackPreparationTarget)
+                .ThenByDescending(planet =>
+                    GetEligibleSabotageTargets(context, planet)
+                        .Max(target =>
+                            context.Assessment.GetSabotageTargetPriorityBonus(planet, target)
+                        )
+                )
                 .ThenByDescending(context.Assessment.GetPlanetBuildingCount)
                 .Take(context.Game.Config.AI.MissionPlanning.SabotageCandidatePlanetLimit);
         }
@@ -583,21 +580,28 @@ namespace Rebellion.AI.Planners
             Planet planet
         )
         {
-            return planet
-                .GetChildren<IManufacturable>(target =>
-                    target.GetOwnerInstanceID() != context.Faction.InstanceID
-                    && target.GetManufacturingStatus() == ManufacturingStatus.Complete
-                    && target.Movement == null
-                    && !HasActiveSabotageTarget(context, target.InstanceID)
-                )
+            return GetEligibleSabotageTargets(context, planet)
                 .OrderByDescending(target =>
-                    context.Assessment.IsAssaultBlockingShield(planet, target)
+                    context.Assessment.GetSabotageTargetPriorityBonus(planet, target)
                 )
                 .ThenByDescending(target =>
                     target.GetConstructionCost() + target.GetMaintenanceCost()
                 )
                 .ThenBy(target => target.InstanceID)
                 .Take(context.Game.Config.AI.MissionPlanning.SabotageTargetsPerPlanetLimit);
+        }
+
+        private IEnumerable<IManufacturable> GetEligibleSabotageTargets(
+            AITurnContext context,
+            Planet planet
+        )
+        {
+            return planet.GetChildren<IManufacturable>(target =>
+                target.GetOwnerInstanceID() != context.Faction.InstanceID
+                && target.GetManufacturingStatus() == ManufacturingStatus.Complete
+                && target.Movement == null
+                && !HasActiveSabotageTarget(context, target.InstanceID)
+            );
         }
 
         private IEnumerable<(Planet Planet, Officer TargetOfficer)> GetOfficerTargetCandidates(
@@ -701,12 +705,6 @@ namespace Rebellion.AI.Planners
                 .Max();
         }
 
-        private bool CanPlanHostileMission(AITurnContext context)
-        {
-            return GetActiveMissions(context).Count(mission => IsHostileMission(mission.ConfigKey))
-                < context.Game.Config.AI.MissionPlanning.MaximumConcurrentHostileMissions;
-        }
-
         private bool HasActiveMission(AITurnContext context, string missionTypeId)
         {
             return GetActiveMissions(context).Any(mission => mission.ConfigKey == missionTypeId);
@@ -760,14 +758,6 @@ namespace Rebellion.AI.Planners
         private IEnumerable<Mission> GetActiveMissions(AITurnContext context)
         {
             return context.Assessment.ActiveMissions;
-        }
-
-        private static bool IsHostileMission(string missionTypeId)
-        {
-            return missionTypeId == MissionTypeIDs.Sabotage
-                || missionTypeId == MissionTypeIDs.Abduction
-                || missionTypeId == MissionTypeIDs.Assassination
-                || missionTypeId == MissionTypeIDs.InciteUprising;
         }
 
         private int GetDiplomacyCandidatePriority(AITurnContext context, Planet planet)

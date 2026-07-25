@@ -278,13 +278,12 @@ namespace Rebellion.Tests.AI.Phases
         }
 
         [Test]
-        public void Select_WithAvailableHostileMissionCapacity_SelectsUpToCapacity()
+        public void Select_WithHostileMissionProposals_SelectsAllNonConflictingProposals()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            game.Config.AI.MissionPlanning.MaximumConcurrentHostileMissions = 2;
             AIMissionProposal first = CreateHostileMissionProposal(
                 game,
                 context,
@@ -318,11 +317,11 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { first, second }, selected);
+            CollectionAssert.AreEqual(new[] { first, second, third }, selected);
         }
 
         [Test]
-        public void Select_WithActiveHostileMission_SelectsOnlyRemainingCapacity()
+        public void Select_WithActiveHostileMission_SelectsAllNonConflictingProposals()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             PlanetSystem system = AITestSceneBuilder.AddSystem(game, "system");
@@ -340,7 +339,6 @@ namespace Rebellion.Tests.AI.Phases
             );
             activeMission.ConfigKey = MissionTypeIDs.InciteUprising;
             game.AttachNode(activeMission, activeTarget);
-            game.Config.AI.MissionPlanning.MaximumConcurrentHostileMissions = 2;
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
             AIMissionProposal first = CreateHostileMissionProposal(
                 game,
@@ -365,7 +363,7 @@ namespace Rebellion.Tests.AI.Phases
 
             List<AIProposal> selected = new AISelectionPhase().Select(context);
 
-            CollectionAssert.AreEqual(new[] { first }, selected);
+            CollectionAssert.AreEqual(new[] { first, second }, selected);
         }
 
         private static Fleet CreateBattleFleet(

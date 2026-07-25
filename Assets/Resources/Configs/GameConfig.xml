@@ -21,11 +21,17 @@
       <EspionageCandidatePlanetLimit>4</EspionageCandidatePlanetLimit>
       <EspionageRefreshIntervalTicks>70</EspionageRefreshIntervalTicks>
       <HostileMissionMaximumIntelAgeTicks>70</HostileMissionMaximumIntelAgeTicks>
-      <MaximumConcurrentHostileMissions>3</MaximumConcurrentHostileMissions>
       <MaximumConcurrentResearchMissionsPerDiscipline>1</MaximumConcurrentResearchMissionsPerDiscipline>
       <MaximumJediTrainingStudents>3</MaximumJediTrainingStudents>
       <SabotageTargetsPerPlanetLimit>3</SabotageTargetsPerPlanetLimit>
       <SabotageAssaultBlockerBonus>150</SabotageAssaultBlockerBonus>
+      <SabotageAttackTargetBonus>50</SabotageAttackTargetBonus>
+      <SabotageAttackDefenseBonus>200</SabotageAttackDefenseBonus>
+      <SabotageFavoredSupportRegimentBonus>50</SabotageFavoredSupportRegimentBonus>
+      <SabotageGarrisonRegimentBonus>100</SabotageGarrisonRegimentBonus>
+      <SabotageGarrisonStarfighterBonus>75</SabotageGarrisonStarfighterBonus>
+      <SabotageOtherUnitBonus>25</SabotageOtherUnitBonus>
+      <SabotageInfrastructureBonus>0</SabotageInfrastructureBonus>
       <MinimumMissionScore>20</MinimumMissionScore>
       <ReconnaissancePriorityBonus>50</ReconnaissancePriorityBonus>
       <RecruitmentPriorityBonus>80</RecruitmentPriorityBonus>

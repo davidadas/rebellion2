@@ -313,10 +313,7 @@ namespace Rebellion.AI.Proposals
         private bool IsReadyToLaunch(AITurnContext context)
         {
             return context.Assessment.CanFleetDepartHeadquarters(Fleet)
-                && (
-                    context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet)
-                    || context.Assessment.CanWinOrbitalCombat(Fleet, TargetPlanet)
-                );
+                && context.Assessment.IsFleetReadyToAttack(Fleet, TargetPlanet);
         }
 
         /// <summary>

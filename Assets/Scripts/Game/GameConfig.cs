@@ -89,8 +89,6 @@ namespace Rebellion.Game
 
             public int HostileMissionMaximumIntelAgeTicks { get; set; } = 70;
 
-            public int MaximumConcurrentHostileMissions { get; set; } = 3;
-
             public int MaximumConcurrentResearchMissionsPerDiscipline { get; set; } = 1;
 
             public int MaximumJediTrainingStudents { get; set; } = 3;
@@ -98,6 +96,20 @@ namespace Rebellion.Game
             public int SabotageTargetsPerPlanetLimit { get; set; } = 3;
 
             public int SabotageAssaultBlockerBonus { get; set; } = 150;
+
+            public int SabotageAttackTargetBonus { get; set; } = 50;
+
+            public int SabotageAttackDefenseBonus { get; set; } = 200;
+
+            public int SabotageFavoredSupportRegimentBonus { get; set; } = 50;
+
+            public int SabotageGarrisonRegimentBonus { get; set; } = 100;
+
+            public int SabotageGarrisonStarfighterBonus { get; set; } = 75;
+
+            public int SabotageOtherUnitBonus { get; set; } = 25;
+
+            public int SabotageInfrastructureBonus { get; set; } = 0;
 
             public int MinimumMissionScore { get; set; } = 20;
 

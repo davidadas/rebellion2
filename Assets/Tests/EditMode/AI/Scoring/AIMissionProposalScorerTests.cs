@@ -301,7 +301,135 @@ namespace Rebellion.Tests.AI.Scoring
                 )
             );
 
-            Assert.AreEqual(123, shieldScore - shipyardScore);
+            Assert.AreEqual(
+                game.Config.AI.MissionPlanning.SabotageAssaultBlockerBonus
+                    + game.Config.AI.MissionPlanning.SabotageAttackTargetBonus
+                    + game.Config.AI.MissionPlanning.SabotageAttackDefenseBonus
+                    - game.Config.AI.MissionPlanning.SabotageInfrastructureBonus,
+                shieldScore - shipyardScore
+            );
+        }
+
+        [Test]
+        public void Score_SabotageProposal_UsesTacticalTargetPriorityOrder()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(rebels.InstanceID, 40);
+            target.SetPopularSupport(empire.InstanceID, 60);
+
+            Building defense = AITestSceneBuilder.CreateBuildingTemplate(
+                "defense",
+                BuildingType.Weapon
+            );
+            defense.OwnerInstanceID = rebels.InstanceID;
+            game.AttachNode(defense, target);
+            Regiment regiment = AITestSceneBuilder.CreateRegiment("regiment", rebels.InstanceID);
+            game.AttachNode(regiment, target);
+            Starfighter starfighter = AITestSceneBuilder.CreateStarfighter(
+                "starfighter",
+                rebels.InstanceID
+            );
+            game.AttachNode(starfighter, target);
+            Building shipyard = AITestSceneBuilder.AddProductionFacility(
+                game,
+                target,
+                "shipyard",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet attackFleet = EntityFactory.CreateFleet("attack-fleet", empire.InstanceID);
+            attackFleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(attackFleet, origin);
+            SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID
+            );
+            participant.Ratings[OfficerRating.Combat] = 60;
+            game.AttachNode(participant, origin);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double defenseScore = ScoreSabotage(scorer, context, participant, target, defense);
+            double regimentScore = ScoreSabotage(scorer, context, participant, target, regiment);
+            double starfighterScore = ScoreSabotage(
+                scorer,
+                context,
+                participant,
+                target,
+                starfighter
+            );
+            double shipyardScore = ScoreSabotage(scorer, context, participant, target, shipyard);
+
+            Assert.Greater(defenseScore, regimentScore);
+            Assert.Greater(regimentScore, starfighterScore);
+            Assert.Greater(starfighterScore, shipyardScore);
+        }
+
+        [Test]
+        public void Score_SabotageProposal_FavorsRegimentWhereOppositionHasMajoritySupport()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
+            Planet favored = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "favored",
+                rebels.InstanceID
+            );
+            Planet unfavored = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "unfavored",
+                rebels.InstanceID
+            );
+            favored.SetPopularSupport(rebels.InstanceID, 40);
+            favored.SetPopularSupport(empire.InstanceID, 60);
+            unfavored.SetPopularSupport(rebels.InstanceID, 60);
+            unfavored.SetPopularSupport(empire.InstanceID, 40);
+            Regiment favoredRegiment = AITestSceneBuilder.CreateRegiment(
+                "favored-regiment",
+                rebels.InstanceID
+            );
+            Regiment unfavoredRegiment = AITestSceneBuilder.CreateRegiment(
+                "unfavored-regiment",
+                rebels.InstanceID
+            );
+            game.AttachNode(favoredRegiment, favored);
+            game.AttachNode(unfavoredRegiment, unfavored);
+            SpecialForces participant = AITestSceneBuilder.CreateSpecialForces(
+                "saboteur",
+                empire.InstanceID
+            );
+            participant.Ratings[OfficerRating.Combat] = 60;
+            game.AttachNode(participant, origin);
+            game.Config.AI.MissionPlanning.SabotageFavoredSupportRegimentBonus = 37;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIMissionProposalScorer scorer = new AIMissionProposalScorer();
+
+            double favoredScore = ScoreSabotage(
+                scorer,
+                context,
+                participant,
+                favored,
+                favoredRegiment
+            );
+            double unfavoredScore = ScoreSabotage(
+                scorer,
+                context,
+                participant,
+                unfavored,
+                unfavoredRegiment
+            );
+
+            Assert.AreEqual(37, favoredScore - unfavoredScore);
         }
 
         [Test]
@@ -394,6 +522,25 @@ namespace Rebellion.Tests.AI.Scoring
             shield.ShieldStrength = 10;
             game.AttachNode(shield, planet);
             return shield;
+        }
+
+        private static double ScoreSabotage(
+            AIMissionProposalScorer scorer,
+            AITurnContext context,
+            IMissionParticipant participant,
+            Planet planet,
+            IManufacturable target
+        )
+        {
+            return scorer.Score(
+                context,
+                new AIMissionProposal(
+                    new[] { participant },
+                    MissionTypeIDs.Sabotage,
+                    planet,
+                    selectedTarget: target
+                )
+            );
         }
     }
 }

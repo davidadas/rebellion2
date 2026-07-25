@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.AI.Director;
 using Rebellion.AI.Proposals;
 using Rebellion.Game;
-using Rebellion.Game.Missions;
 
 namespace Rebellion.AI.Phases
 {
@@ -37,7 +36,6 @@ namespace Rebellion.AI.Phases
             Dictionary<string, int> reservedProducerCapacity = new Dictionary<string, int>(
                 StringComparer.Ordinal
             );
-            int remainingHostileMissionCapacity = GetRemainingHostileMissionCapacity(context);
             int selectedMaintenanceCost = 0;
             float minimumSelectableScore = GetMinimumSelectableScore(context);
             foreach (AIProposal proposal in GetSortedProposals(context.Proposals))
@@ -46,12 +44,6 @@ namespace Rebellion.AI.Phases
                     continue;
 
                 if (proposal?.CanSelect(context) != true)
-                    continue;
-
-                if (
-                    proposal is AIMissionProposal { IsHostileMission: true }
-                    && remainingHostileMissionCapacity <= 0
-                )
                     continue;
 
                 IReadOnlyList<string> claimKeys = proposal.GetClaimKeys() ?? Array.Empty<string>();
@@ -67,29 +59,10 @@ namespace Rebellion.AI.Phases
                 ClaimKeys(claimedKeys, claimKeys);
                 ReserveProducerCapacity(proposal, reservedProducerCapacity);
                 selectedProposals.Add(proposal);
-                if (proposal is AIMissionProposal { IsHostileMission: true })
-                    remainingHostileMissionCapacity--;
                 selectedMaintenanceCost += GetMaintenanceCost(proposal);
             }
 
             return selectedProposals;
-        }
-
-        private static int GetRemainingHostileMissionCapacity(AITurnContext context)
-        {
-            if (context?.Assessment == null)
-                return int.MaxValue;
-
-            int maximumConcurrentMissions =
-                context.Game?.Config?.AI?.MissionPlanning?.MaximumConcurrentHostileMissions
-                ?? new GameConfig.AIMissionPlanningConfig().MaximumConcurrentHostileMissions;
-            int activeMissionCount = context.Assessment.ActiveMissions.Count(mission =>
-                mission.ConfigKey == MissionTypeIDs.Sabotage
-                || mission.ConfigKey == MissionTypeIDs.Abduction
-                || mission.ConfigKey == MissionTypeIDs.Assassination
-                || mission.ConfigKey == MissionTypeIDs.InciteUprising
-            );
-            return System.Math.Max(0, maximumConcurrentMissions - activeMissionCount);
         }
 
         /// <summary>

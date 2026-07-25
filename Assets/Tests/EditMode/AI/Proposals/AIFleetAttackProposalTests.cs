@@ -86,7 +86,7 @@ namespace Rebellion.Tests.AI.Proposals
         }
 
         [Test]
-        public void Execute_WithOrbitalAdvantageAndNoTroops_MovesToTarget()
+        public void Execute_WithOrbitalAdvantageAndNoTroops_RemainsAtStagingPlanet()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 5000;
@@ -119,9 +119,48 @@ namespace Rebellion.Tests.AI.Proposals
 
             proposal.Execute(context);
 
-            Assert.AreSame(enemy, fleet.GetParent());
-            Assert.IsNotNull(fleet.Movement);
-            Assert.AreEqual(FleetOrderStatus.Readying, fleet.Order.Status);
+            Assert.AreSame(owned, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
+        }
+
+        [Test]
+        public void Execute_WithOutmatchedPlanetaryFighters_RemainsAtStagingPlanet()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            Fleet fleet = AddBattleFleet(
+                game,
+                owned,
+                empire.InstanceID,
+                combatStrength: 100,
+                fleetId: "attacker"
+            );
+            Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
+                "defending-fighter",
+                rebels.InstanceID,
+                laserCannon: 10
+            );
+            game.AttachNode(fighter, enemy);
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+            AIFleetAttackProposal proposal = new AIFleetAttackProposal(
+                fleet,
+                FleetOrderType.Attack,
+                FleetOrderStatus.Staging,
+                enemy
+            );
+
+            proposal.Execute(context);
+
+            Assert.AreSame(owned, fleet.GetParent());
+            Assert.IsNull(fleet.Movement);
+            Assert.AreEqual(FleetOrderStatus.Building, fleet.Order.Status);
         }
 
         [Test]
