@@ -1036,7 +1036,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (TryDestroyBlockadedReinforcementOnArrival(movable, destinationPlanet, results))
+            if (TryRejectBlockadedArrival(movable, destinationPlanet, results))
                 return;
 
             if (HasArrivalOwnerConflict(movable, destination, destinationPlanet))
@@ -1146,7 +1146,7 @@ namespace Rebellion.Systems
         /// <param name="destinationPlanet">The planet receiving the reinforcement.</param>
         /// <param name="results">The collection receiving the destruction result.</param>
         /// <returns>True when the reinforcement was destroyed; otherwise false.</returns>
-        private bool TryDestroyBlockadedReinforcementOnArrival(
+        private bool TryRejectBlockadedArrival(
             IMovable movable,
             Planet destinationPlanet,
             ICollection<GameResult> results
