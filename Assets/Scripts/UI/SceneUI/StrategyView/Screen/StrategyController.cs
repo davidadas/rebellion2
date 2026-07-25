@@ -990,19 +990,25 @@ public sealed class StrategyController
             return;
 
         RectInt? dragFrameBounds = windowMovePreviewVisible ? windowMovePreviewBounds : null;
-        Texture dragImageTexture = null;
-        RectInt? dragImageBounds = null;
+        DragPreview dragPreview = null;
+        int dragPointerX = 0;
+        int dragPointerY = 0;
         if (
             strategyDragController != null
-            && strategyDragController.TryGetOverlay(out Texture texture, out RectInt bounds)
+            && strategyDragController.TryGetOverlay(
+                out DragPreview preview,
+                out int pointerX,
+                out int pointerY
+            )
         )
         {
-            dragImageTexture = texture;
-            dragImageBounds = bounds;
+            dragPreview = preview;
+            dragPointerX = pointerX;
+            dragPointerY = pointerY;
         }
 
         strategyOverlay.Render(
-            new StrategyOverlayRenderData(dragFrameBounds, dragImageTexture, dragImageBounds)
+            new StrategyOverlayRenderData(dragFrameBounds, dragPreview, dragPointerX, dragPointerY)
         );
     }
 
@@ -2097,8 +2103,8 @@ public sealed class StrategyController
     )
     {
         preview = null;
-        if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView fleetView))
-            return fleetView.TryGetDragPreview(sourceX, sourceY, out preview);
+        if (strategyWindowManager.TryGetWindowView(window, out FleetWindowView _))
+            return fleetWindowController.TryGetDragPreview(window, sourceX, sourceY, out preview);
         if (strategyWindowManager.TryGetWindowView(window, out DefenseWindowView _))
             return defenseWindowController.TryGetDragPreview(window, sourceX, sourceY, out preview);
         if (

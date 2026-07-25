@@ -85,6 +85,11 @@ public sealed class StrategyDragController
 {
     private readonly StrategyWindowItemDragController itemDragController;
     private readonly StrategyPointerPositionResolver resolvePointerPosition;
+    private PointerEventData.InputButton itemPointerButton;
+    private int itemPointerId;
+    private Vector2 itemPointerPressPosition;
+    private GameObject itemPointerPressTarget;
+    private bool itemPointerTracked;
 
     /// <summary>
     /// Creates the strategy item-drag coordinator.
@@ -131,28 +136,49 @@ public sealed class StrategyDragController
     /// Begins tracking an item-drag candidate for a registered source window.
     /// </summary>
     /// <param name="window">The source window.</param>
+    /// <param name="eventData">The originating pointer press.</param>
     /// <param name="x">The source-space horizontal press coordinate.</param>
     /// <param name="y">The source-space vertical press coordinate.</param>
-    public void StartItemCandidate(UIWindow window, int x, int y)
+    public void StartItemCandidate(UIWindow window, PointerEventData eventData, int x, int y)
     {
+        if (window == null || !TryTrackItemPointer(eventData))
+        {
+            ClearItemDrag();
+            return;
+        }
+
         itemDragController.StartCandidate(window, x, y);
     }
 
     /// <summary>
     /// Processes item-drag movement at known strategy source coordinates.
     /// </summary>
+    /// <param name="eventData">The active pointer gesture.</param>
     /// <param name="x">The source-space horizontal coordinate.</param>
     /// <param name="y">The source-space vertical coordinate.</param>
     /// <returns>The screen-level effects produced by the transition.</returns>
-    public StrategyDragEventResult TryHandleItemPointerMove(int x, int y)
+    public StrategyDragEventResult TryHandleItemPointerMove(
+        PointerEventData eventData,
+        int x,
+        int y
+    )
     {
+        if (HasItemState && !IsTrackedItemPointer(eventData))
+        {
+            ClearItemDrag();
+            return StrategyDragEventResult.None;
+        }
+
         if (TryMoveItemDrag(x, y))
             return StrategyDragEventResult.SourceDragVisible;
 
         if (!HasItemCandidate)
             return StrategyDragEventResult.None;
 
-        return TryStartItemDragFromCandidateForPointerMove(x, y);
+        StrategyDragEventResult result = TryStartItemDragFromCandidateForPointerMove(x, y);
+        if (!HasItemState)
+            ClearTrackedItemPointer();
+        return result;
     }
 
     /// <summary>
@@ -163,6 +189,12 @@ public sealed class StrategyDragController
     public StrategyDragEventResult TryHandleItemPointerUp(PointerEventData eventData)
     {
         bool hadItemState = HasItemState;
+        if (hadItemState && !IsTrackedItemPointer(eventData))
+        {
+            ClearItemDrag();
+            return StrategyDragEventResult.None;
+        }
+
         if (
             !TryResolvePointerPosition(
                 eventData,
@@ -180,7 +212,10 @@ public sealed class StrategyDragController
         }
 
         if (TryFinishItemDrag(eventData, x, y))
+        {
+            ClearTrackedItemPointer();
             return StrategyDragEventResult.ItemDragFinished;
+        }
 
         ClearItemDrag();
         return StrategyDragEventResult.None;
@@ -226,6 +261,7 @@ public sealed class StrategyDragController
     public void ClearItemDrag()
     {
         itemDragController.Clear();
+        ClearTrackedItemPointer();
     }
 
     /// <summary>
@@ -240,12 +276,76 @@ public sealed class StrategyDragController
     }
 
     /// <summary>
+    /// Tries to get the complete active item-drag presentation.
+    /// </summary>
+    /// <param name="preview">Receives the ordered drag-preview presentation.</param>
+    /// <param name="pointerX">Receives the current source-space horizontal pointer coordinate.</param>
+    /// <param name="pointerY">Receives the current source-space vertical pointer coordinate.</param>
+    /// <returns>True when a drawable item-drag preview is active.</returns>
+    public bool TryGetOverlay(out DragPreview preview, out int pointerX, out int pointerY)
+    {
+        return itemDragController.TryGetOverlay(out preview, out pointerX, out pointerY);
+    }
+
+    /// <summary>
     /// Clears drag state owned by a closing source window.
     /// </summary>
     /// <param name="window">The closing source window.</param>
     public void ClearWindow(UIWindow window)
     {
         itemDragController.ClearWindow(window);
+        if (!HasItemState)
+            ClearTrackedItemPointer();
+    }
+
+    /// <summary>
+    /// Captures the primary pointer press that owns a new item-drag candidate.
+    /// </summary>
+    /// <param name="eventData">The originating pointer press.</param>
+    /// <returns>True when the event identifies a valid primary-button press target.</returns>
+    private bool TryTrackItemPointer(PointerEventData eventData)
+    {
+        GameObject pressTarget = eventData?.pointerPressRaycast.gameObject;
+        if (
+            eventData == null
+            || eventData.button != PointerEventData.InputButton.Left
+            || pressTarget == null
+        )
+            return false;
+
+        itemPointerButton = eventData.button;
+        itemPointerId = eventData.pointerId;
+        itemPointerPressPosition = eventData.pressPosition;
+        itemPointerPressTarget = pressTarget;
+        itemPointerTracked = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Reports whether one pointer event belongs to the press that started the candidate.
+    /// </summary>
+    /// <param name="eventData">The pointer event to inspect.</param>
+    /// <returns>True when the pointer identity and press target match.</returns>
+    private bool IsTrackedItemPointer(PointerEventData eventData)
+    {
+        return itemPointerTracked
+            && eventData != null
+            && eventData.button == itemPointerButton
+            && eventData.pointerId == itemPointerId
+            && eventData.pressPosition == itemPointerPressPosition
+            && ReferenceEquals(eventData.pointerPressRaycast.gameObject, itemPointerPressTarget);
+    }
+
+    /// <summary>
+    /// Clears the pointer identity associated with item-drag state.
+    /// </summary>
+    private void ClearTrackedItemPointer()
+    {
+        itemPointerButton = default;
+        itemPointerId = 0;
+        itemPointerPressPosition = Vector2.zero;
+        itemPointerPressTarget = null;
+        itemPointerTracked = false;
     }
 
     /// <summary>

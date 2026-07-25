@@ -1036,6 +1036,9 @@ namespace Rebellion.Systems
                 return;
             }
 
+            if (TryDestroyBlockadedReinforcementOnArrival(movable, destinationPlanet, results))
+                return;
+
             if (HasArrivalOwnerConflict(movable, destination, destinationPlanet))
             {
                 RejectArrivalAtChangedOwner(movable, destinationPlanet, results);
@@ -1134,6 +1137,49 @@ namespace Rebellion.Systems
                 return capturedOfficer.CaptorInstanceID;
 
             return movable.GetOwnerInstanceID();
+        }
+
+        /// <summary>
+        /// Destroys an arriving building or regiment when an opposing fleet still blockades its destination.
+        /// </summary>
+        /// <param name="movable">The reinforcement completing transit.</param>
+        /// <param name="destinationPlanet">The planet receiving the reinforcement.</param>
+        /// <param name="results">The collection receiving the destruction result.</param>
+        /// <returns>True when the reinforcement was destroyed; otherwise false.</returns>
+        private bool TryDestroyBlockadedReinforcementOnArrival(
+            IMovable movable,
+            Planet destinationPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            if (movable is not Building && movable is not Regiment)
+                return false;
+
+            if (!destinationPlanet.IsBlockaded())
+                return false;
+
+            string movableOwner = GetMovementControlOwner(movable);
+            bool hasOpposingBlockader = destinationPlanet.Fleets.Any(fleet =>
+                fleet.Movement == null
+                && fleet.GetOwnerInstanceID() != movableOwner
+                && fleet.HasOperationalCapitalShips()
+            );
+            if (!hasOpposingBlockader)
+                return false;
+
+            _game.DetachNode(movable);
+            GameLogger.Log(
+                $"{movable.GetDisplayName()} destroyed on arrival at blockaded {destinationPlanet.GetDisplayName()}."
+            );
+            results.Add(
+                new GameObjectDestroyedOnArrivalResult
+                {
+                    DestroyedObject = movable,
+                    Context = destinationPlanet,
+                    Tick = _game.CurrentTick,
+                }
+            );
+            return true;
         }
 
         /// <summary>

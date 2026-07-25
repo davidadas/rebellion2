@@ -56,5 +56,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
             Assert.IsNull(data.DragImageTexture);
             Assert.IsNull(data.DragImageBounds);
         }
+
+        [Test]
+        public void Constructor_MultipleDragImages_StoresPreviewAndPointerPosition()
+        {
+            Texture2D texture = new Texture2D(4, 4);
+            DragPreview preview = new DragPreview(
+                new[]
+                {
+                    new DragPreviewImage(texture, new RectInt(10, 20, 30, 40)),
+                    new DragPreviewImage(texture, new RectInt(60, 80, 20, 10)),
+                },
+                17,
+                29
+            );
+
+            StrategyOverlayRenderData data = new StrategyOverlayRenderData(null, preview, 47, 69);
+
+            Assert.AreSame(preview, data.DragPreview);
+            Assert.AreEqual(47, data.DragPointerX);
+            Assert.AreEqual(69, data.DragPointerY);
+            Assert.AreEqual(new RectInt(40, 60, 30, 40), data.DragImageBounds);
+
+            UnityEngine.Object.DestroyImmediate(texture);
+        }
     }
 }

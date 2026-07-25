@@ -663,12 +663,37 @@ public static class UILayout
             return null;
 
         return new DragPreview(
-            texture,
-            sourceRect.width,
-            sourceRect.height,
-            sourceX - sourceRect.x,
-            sourceY - sourceRect.y
+            new[] { new DragPreviewImage(texture, sourceRect) },
+            sourceX,
+            sourceY
         );
+    }
+
+    /// <summary>
+    /// Creates drag-preview geometry from ordered source-space image layers.
+    /// </summary>
+    /// <param name="images">The candidate image layers in rendering order.</param>
+    /// <param name="sourceX">The source-space pointer x-coordinate.</param>
+    /// <param name="sourceY">The source-space pointer y-coordinate.</param>
+    /// <returns>The drawable drag preview, or null when no valid image layer exists.</returns>
+    public static DragPreview CreateDragPreview(
+        IReadOnlyList<DragPreviewImage> images,
+        int sourceX,
+        int sourceY
+    )
+    {
+        if (images == null)
+            return null;
+
+        List<DragPreviewImage> drawableImages = new List<DragPreviewImage>();
+        for (int index = 0; index < images.Count; index++)
+        {
+            DragPreviewImage image = images[index];
+            if (image.Texture != null && image.Bounds.width > 0 && image.Bounds.height > 0)
+                drawableImages.Add(image);
+        }
+
+        return drawableImages.Count > 0 ? new DragPreview(drawableImages, sourceX, sourceY) : null;
     }
 
     /// <summary>

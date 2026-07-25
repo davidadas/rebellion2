@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -7,6 +8,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICancelHandler
 {
+    private const int _sharedCursorImageCount = 1;
+
     [SerializeField]
     private RawImage targetingInputImage;
 
@@ -32,6 +35,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
     private int destinationCursorRadius;
 
     private Texture2D destinationCursorTexture;
+    private readonly List<RawImage> dragImages = new List<RawImage>();
     private int destinationCursorTextureSize;
     private int destinationCursorTextureRadius;
     private bool targetCursorVisible;
@@ -59,8 +63,8 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
         }
 
         RenderDragFrame(data);
-        if (data.DragImageBounds.HasValue)
-            RenderDragImage(data);
+        if (data.DragPreview?.HasDrawableImages == true)
+            RenderDragImages(data);
         else
             HideSharedImageIfTargetCursorInactive();
     }
@@ -77,6 +81,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
         DisableTargetingInput();
         HideUnityCursor();
         SelectForCancel();
+        HideDragImagesFrom(_sharedCursorImageCount);
         RenderDestinationCursor(x, y);
     }
 
@@ -100,7 +105,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
         DisableTargetingInput();
         RestoreUnityCursor();
         ClearCancelSelection();
-        destinationCursorImage.gameObject.SetActive(false);
+        HideDragImagesFrom(0);
     }
 
     /// <summary>
@@ -131,8 +136,7 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
         DisableTargetingInput();
         RestoreUnityCursor();
         ClearCancelSelection();
-        if (destinationCursorImage != null)
-            destinationCursorImage.gameObject.SetActive(false);
+        HideDragImagesFrom(0);
     }
 
     /// <summary>
@@ -178,29 +182,48 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
     }
 
     /// <summary>
-    /// Renders the active item-drag image within its projected source-space bounds.
+    /// Renders the active item-drag images within their projected source-space bounds.
     /// </summary>
     /// <param name="data">The complete overlay presentation.</param>
-    private void RenderDragImage(StrategyOverlayRenderData data)
+    private void RenderDragImages(StrategyOverlayRenderData data)
     {
-        if (data.DragImageTexture == null)
+        DragPreview preview = data.DragPreview;
+        if (preview == null)
         {
-            destinationCursorImage.gameObject.SetActive(false);
+            HideDragImagesFrom(0);
             return;
         }
 
-        destinationCursorImage.texture = data.DragImageTexture;
-        destinationCursorImage.raycastTarget = false;
-        RectInt bounds = data.DragImageBounds.Value;
-        UILayout.SetSourceRect(
-            destinationCursorImage.rectTransform,
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height
-        );
-        destinationCursorImage.gameObject.SetActive(true);
-        destinationCursorImage.enabled = true;
+        int renderedImageCount = 0;
+        int deltaX = data.DragPointerX - preview.HotspotX;
+        int deltaY = data.DragPointerY - preview.HotspotY;
+        for (int index = 0; index < preview.Images.Count; index++)
+        {
+            DragPreviewImage previewImage = preview.Images[index];
+            if (
+                previewImage.Texture == null
+                || previewImage.Bounds.width <= 0
+                || previewImage.Bounds.height <= 0
+            )
+                continue;
+
+            RawImage image = GetOrCreateDragImage(renderedImageCount);
+            image.texture = previewImage.Texture;
+            image.raycastTarget = false;
+            RectInt bounds = previewImage.Bounds;
+            UILayout.SetSourceRect(
+                image.rectTransform,
+                bounds.x + deltaX,
+                bounds.y + deltaY,
+                bounds.width,
+                bounds.height
+            );
+            image.gameObject.SetActive(true);
+            image.enabled = true;
+            renderedImageCount++;
+        }
+
+        HideDragImagesFrom(renderedImageCount);
     }
 
     /// <summary>
@@ -219,8 +242,46 @@ public sealed class StrategyOverlayView : MonoBehaviour, ITargetingCursor, ICanc
     /// </summary>
     private void HideSharedImageIfTargetCursorInactive()
     {
-        if (!targetCursorVisible)
-            destinationCursorImage.gameObject.SetActive(false);
+        HideDragImagesFrom(targetCursorVisible ? _sharedCursorImageCount : 0);
+    }
+
+    /// <summary>
+    /// Gets or creates one reusable drag-preview image.
+    /// </summary>
+    /// <param name="index">The required image index.</param>
+    /// <returns>The reusable drag-preview image.</returns>
+    private RawImage GetOrCreateDragImage(int index)
+    {
+        if (dragImages.Count == 0)
+            dragImages.Add(destinationCursorImage);
+
+        while (dragImages.Count <= index)
+        {
+            RawImage image = Instantiate(
+                destinationCursorImage,
+                destinationCursorImage.transform.parent
+            );
+            image.gameObject.SetActive(false);
+            dragImages.Add(image);
+        }
+
+        return dragImages[index];
+    }
+
+    /// <summary>
+    /// Hides every reusable drag-preview image at or after one index.
+    /// </summary>
+    /// <param name="startIndex">The first image index to hide.</param>
+    private void HideDragImagesFrom(int startIndex)
+    {
+        if (destinationCursorImage == null)
+            return;
+
+        if (dragImages.Count == 0)
+            dragImages.Add(destinationCursorImage);
+
+        for (int index = startIndex; index < dragImages.Count; index++)
+            dragImages[index].gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -435,13 +496,71 @@ public sealed class StrategyOverlayRenderData
             );
 
         DragFrameBounds = dragFrameBounds;
-        DragImageTexture = dragImageTexture;
-        DragImageBounds = dragImageBounds;
+        DragPreview =
+            dragImageTexture == null
+                ? null
+                : new DragPreview(
+                    new[] { new DragPreviewImage(dragImageTexture, dragImageBounds.Value) },
+                    0,
+                    0
+                );
+        DragPointerX = 0;
+        DragPointerY = 0;
     }
 
     public RectInt? DragFrameBounds { get; }
 
-    public Texture DragImageTexture { get; }
+    /// <summary>
+    /// Gets the optional ordered item-drag preview.
+    /// </summary>
+    public DragPreview DragPreview { get; }
 
-    public RectInt? DragImageBounds { get; }
+    /// <summary>
+    /// Gets the current source-space horizontal pointer coordinate.
+    /// </summary>
+    public int DragPointerX { get; }
+
+    /// <summary>
+    /// Gets the current source-space vertical pointer coordinate.
+    /// </summary>
+    public int DragPointerY { get; }
+
+    public Texture DragImageTexture => DragPreview?.Texture;
+
+    public RectInt? DragImageBounds
+    {
+        get
+        {
+            if (DragPreview == null || DragPreview.Images.Count == 0)
+                return null;
+
+            RectInt bounds = DragPreview.Images[0].Bounds;
+            return new RectInt(
+                bounds.x + DragPointerX - DragPreview.HotspotX,
+                bounds.y + DragPointerY - DragPreview.HotspotY,
+                bounds.width,
+                bounds.height
+            );
+        }
+    }
+
+    /// <summary>
+    /// Creates one complete drag-overlay presentation snapshot.
+    /// </summary>
+    /// <param name="dragFrameBounds">The optional window-move preview bounds.</param>
+    /// <param name="dragPreview">The optional ordered item-drag preview.</param>
+    /// <param name="dragPointerX">The current source-space horizontal pointer coordinate.</param>
+    /// <param name="dragPointerY">The current source-space vertical pointer coordinate.</param>
+    public StrategyOverlayRenderData(
+        RectInt? dragFrameBounds,
+        DragPreview dragPreview,
+        int dragPointerX,
+        int dragPointerY
+    )
+    {
+        DragFrameBounds = dragFrameBounds;
+        DragPreview = dragPreview;
+        DragPointerX = dragPointerX;
+        DragPointerY = dragPointerY;
+    }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -103,6 +104,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Overlay
 
             Assert.IsTrue(GetField<Image>("dragFrameTopImage").gameObject.activeSelf);
             Assert.IsFalse(GetField<RawImage>("destinationCursorImage").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_MultipleDragImages_TranslatesEveryImageWithoutChangingSpacing()
+        {
+            DragPreview preview = new DragPreview(
+                new[]
+                {
+                    new DragPreviewImage(_itemTexture, new RectInt(10, 20, 24, 18)),
+                    new DragPreviewImage(_itemTexture, new RectInt(70, 90, 24, 18)),
+                },
+                15,
+                25
+            );
+
+            _view.Render(new StrategyOverlayRenderData(null, preview, 45, 65));
+
+            List<RawImage> images = GetField<List<RawImage>>("dragImages");
+            Assert.AreEqual(2, images.Count);
+            Assert.AreEqual(new RectInt(40, 60, 24, 18), GetSourceRect(images[0].transform));
+            Assert.AreEqual(new RectInt(100, 130, 24, 18), GetSourceRect(images[1].transform));
+            Assert.IsTrue(images[0].gameObject.activeSelf);
+            Assert.IsTrue(images[1].gameObject.activeSelf);
+            Assert.AreSame(_itemTexture, images[0].texture);
+            Assert.AreSame(_itemTexture, images[1].texture);
         }
 
         [Test]

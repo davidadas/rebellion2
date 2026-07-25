@@ -236,33 +236,52 @@ public sealed class DefenseWindowView : MonoBehaviour, IPointerClickHandler, IDr
     }
 
     /// <summary>
-    /// Creates a drag preview from one controller-selected unit-card image.
+    /// Creates a drag preview from the selected unit-card images.
     /// </summary>
-    /// <param name="itemIndex">The selected unit-card index.</param>
+    /// <param name="selectedItemIndexes">The selected unit-card indexes.</param>
     /// <param name="sourceX">The pointer's source-space horizontal coordinate.</param>
     /// <param name="sourceY">The pointer's source-space vertical coordinate.</param>
     /// <param name="preview">Receives the drag preview.</param>
     /// <returns>True when a drawable preview source is available.</returns>
     internal bool TryCreateDragPreview(
-        int itemIndex,
+        IReadOnlyCollection<int> selectedItemIndexes,
         int sourceX,
         int sourceY,
         out DragPreview preview
     )
     {
         preview = null;
-        if (
-            itemIndex < 0
-            || itemIndex >= itemCards.Count
-            || !itemCards[itemIndex]
-                .TryGetDragImage(out Texture texture, out RectTransform imageTransform)
-        )
+        if (selectedItemIndexes == null || selectedItemIndexes.Count == 0)
             return false;
 
-        RectInt cardRect = UILayout.GetSourceRect(itemCards[itemIndex].transform as RectTransform);
-        RectInt imageRect = UILayout.GetSourceRect(imageTransform);
-        RectInt sourceRect = GetVisibleContentRect(OffsetRect(imageRect, cardRect));
-        preview = UILayout.CreateDragPreview(texture, sourceRect, sourceX, sourceY);
+        List<int> orderedIndexes = new List<int>(selectedItemIndexes);
+        orderedIndexes.Sort();
+        List<DragPreviewImage> images = new List<DragPreviewImage>(orderedIndexes.Count);
+        List<RawImage> cardImages = new List<RawImage>();
+        for (int index = 0; index < orderedIndexes.Count; index++)
+        {
+            int itemIndex = orderedIndexes[index];
+            cardImages.Clear();
+            if (
+                itemIndex < 0
+                || itemIndex >= itemCards.Count
+                || !itemCards[itemIndex].TryAppendDragImages(cardImages)
+            )
+                return false;
+
+            RectInt cardRect = UILayout.GetSourceRect(
+                itemCards[itemIndex].transform as RectTransform
+            );
+            for (int imageIndex = 0; imageIndex < cardImages.Count; imageIndex++)
+            {
+                RawImage image = cardImages[imageIndex];
+                RectInt imageRect = UILayout.GetSourceRect(image.rectTransform);
+                RectInt sourceRect = GetVisibleContentRect(OffsetRect(imageRect, cardRect));
+                images.Add(new DragPreviewImage(image.texture, sourceRect));
+            }
+        }
+
+        preview = UILayout.CreateDragPreview(images, sourceX, sourceY);
         return preview != null;
     }
 

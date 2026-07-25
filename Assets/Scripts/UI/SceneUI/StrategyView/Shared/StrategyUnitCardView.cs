@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -162,14 +163,39 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
         sourceTransform = null;
         VerifyReferences();
         CaptureLayout();
-        if (!canDrag || !entityImage.gameObject.activeInHierarchy)
+        if (!canDrag || !IsDrawableDragImage(entityImage))
             return false;
 
         texture = entityImage.texture;
         sourceTransform = entityImage.rectTransform;
-        return texture != null
-            && sourceTransform.rect.width > 0f
-            && sourceTransform.rect.height > 0f;
+        return true;
+    }
+
+    /// <summary>
+    /// Appends the card's drawable visual layers in their authored rendering order.
+    /// </summary>
+    /// <param name="images">The destination image collection.</param>
+    /// <returns>True when the card is draggable and has a drawable entity image.</returns>
+    internal bool TryAppendDragImages(List<RawImage> images)
+    {
+        if (images == null)
+            throw new ArgumentNullException(nameof(images));
+
+        VerifyReferences();
+        CaptureLayout();
+        if (!canDrag || !IsDrawableDragImage(entityImage))
+            return false;
+
+        AppendDragImage(images, backgroundImage);
+        AppendDragImage(images, entityImage);
+        AppendDragImage(images, enrouteOverlayImage);
+        AppendDragImage(images, damagedOverlayImage);
+        AppendDragImage(images, capturedOverlayImage);
+        AppendDragImage(images, starfighterBadgeImage);
+        AppendDragImage(images, troopBadgeImage);
+        AppendDragImage(images, personnelBadgeImage);
+        AppendDragImage(images, selectionImage);
+        return true;
     }
 
     /// <summary>
@@ -289,6 +315,34 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     {
         if (image != null)
             UILayout.SetCenteredImage(image, texture, frameRect);
+    }
+
+    /// <summary>
+    /// Appends one drawable card image to a drag-preview collection.
+    /// </summary>
+    /// <param name="images">The destination image collection.</param>
+    /// <param name="image">The candidate card image.</param>
+    private static void AppendDragImage(List<RawImage> images, RawImage image)
+    {
+        if (IsDrawableDragImage(image))
+            images.Add(image);
+    }
+
+    /// <summary>
+    /// Reports whether one rendered card image can appear in a drag preview.
+    /// </summary>
+    /// <param name="image">The card image to inspect.</param>
+    /// <returns>True when the image is visible, textured, and has positive dimensions.</returns>
+    private static bool IsDrawableDragImage(RawImage image)
+    {
+        if (image == null)
+            return false;
+
+        return image.gameObject.activeInHierarchy
+            && image.enabled
+            && image.texture != null
+            && image.rectTransform.rect.width > 0f
+            && image.rectTransform.rect.height > 0f;
     }
 
     /// <summary>

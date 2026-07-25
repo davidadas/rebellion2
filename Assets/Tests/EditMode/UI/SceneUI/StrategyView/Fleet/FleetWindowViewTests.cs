@@ -13,6 +13,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/FleetWindow.prefab";
 
+        private Texture2D _backgroundTexture;
         private Texture2D _texture;
         private FleetWindowView _view;
         private GameObject _viewObject;
@@ -22,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             _viewObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _viewObject.GetComponent<FleetWindowView>();
+            _backgroundTexture = new Texture2D(90, 45);
             _texture = new Texture2D(90, 45);
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
@@ -29,6 +31,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         [TearDown]
         public void TearDown()
         {
+            UnityEngine.Object.DestroyImmediate(_backgroundTexture);
             UnityEngine.Object.DestroyImmediate(_texture);
             UnityEngine.Object.DestroyImmediate(_viewObject);
         }
@@ -488,43 +491,98 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void DragPreview_FleetThenDetailSource_UsesSelectedVisualAndClearsState()
+        public void DragPreview_MultipleFleetAndDetailItems_PreservesSourceSpacing()
+        {
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[] { CreateFleetRow("First Fleet"), CreateFleetRow("Second Fleet") },
+                    new[] { CreateDetailItem("First Ship"), CreateDetailItem("Second Ship") }
+                )
+            );
+
+            bool fleetPreviewCreated = _view.TryCreateFleetDragPreview(
+                new[] { 0, 1 },
+                100,
+                120,
+                out DragPreview fleetPreview
+            );
+            bool detailPreviewCreated = _view.TryCreateDetailDragPreview(
+                new[] { 0, 1 },
+                100,
+                120,
+                out DragPreview detailPreview
+            );
+            bool missingPreviewCreated = _view.TryCreateFleetDragPreview(
+                Array.Empty<int>(),
+                0,
+                0,
+                out DragPreview missingPreview
+            );
+
+            Assert.IsTrue(fleetPreviewCreated);
+            Assert.AreSame(_texture, fleetPreview.Texture);
+            Assert.AreEqual(2, fleetPreview.Images.Count);
+            Assert.IsTrue(detailPreviewCreated);
+            Assert.AreSame(_texture, detailPreview.Texture);
+            Assert.AreEqual(2, detailPreview.Images.Count);
+
+            FleetListRowView[] rows = FindFleetRows();
+            RectInt firstRowRect = UILayout.GetSourceRect(rows[0].transform as RectTransform);
+            RectInt secondRowRect = UILayout.GetSourceRect(rows[1].transform as RectTransform);
+            Assert.AreEqual(
+                secondRowRect.y - firstRowRect.y,
+                fleetPreview.Images[1].Bounds.y - fleetPreview.Images[0].Bounds.y
+            );
+
+            StrategyUnitCardView[] items = FindDetailItems();
+            RectInt firstItemRect = UILayout.GetSourceRect(items[0].transform as RectTransform);
+            RectInt secondItemRect = UILayout.GetSourceRect(items[1].transform as RectTransform);
+            Assert.AreEqual(
+                secondItemRect.x - firstItemRect.x,
+                detailPreview.Images[1].Bounds.x - detailPreview.Images[0].Bounds.x
+            );
+            Assert.AreEqual(
+                secondItemRect.y - firstItemRect.y,
+                detailPreview.Images[1].Bounds.y - detailPreview.Images[0].Bounds.y
+            );
+
+            Assert.IsFalse(missingPreviewCreated);
+            Assert.IsNull(missingPreview);
+            Assert.IsFalse(_view.FleetRowContainsDragSource(-1, null));
+            Assert.IsFalse(_view.DetailItemContainsDragSource(-1, null));
+        }
+
+        [Test]
+        public void DetailDragPreview_CardBackgroundAndEntity_PreserveTheirRenderedLayering()
         {
             _view.Render(
                 CreateRenderData(
                     true,
                     new[] { CreateFleetRow("Fleet") },
-                    new[] { CreateDetailItem("Ship", true) }
+                    new[] { CreateDetailItem("Ship", backgroundTexture: _backgroundTexture) }
                 )
             );
+            StrategyUnitCardView item = FindDetailItems().Single();
 
-            _view.SetFleetRowDragSource(0);
-            bool fleetPreviewCreated = _view.TryGetDragPreview(
+            bool created = _view.TryCreateDetailDragPreview(
+                new[] { 0 },
                 100,
                 120,
-                out DragPreview fleetPreview
-            );
-            _view.SetDetailItemDragSource(0);
-            bool detailPreviewCreated = _view.TryGetDragPreview(
-                100,
-                120,
-                out DragPreview detailPreview
-            );
-            _view.ClearDragSource();
-            bool clearedPreviewCreated = _view.TryGetDragPreview(
-                0,
-                0,
-                out DragPreview clearedPreview
+                out DragPreview preview
             );
 
-            Assert.IsTrue(fleetPreviewCreated);
-            Assert.AreSame(_texture, fleetPreview.Texture);
-            Assert.IsTrue(detailPreviewCreated);
-            Assert.AreSame(_texture, detailPreview.Texture);
-            Assert.IsFalse(clearedPreviewCreated);
-            Assert.IsNull(clearedPreview);
-            Assert.IsFalse(_view.FleetRowContainsDragSource(-1, null));
-            Assert.IsFalse(_view.DetailItemContainsDragSource(-1, null));
+            Assert.IsTrue(created);
+            Assert.AreEqual(2, preview.Images.Count);
+            Assert.AreSame(_backgroundTexture, preview.Images[0].Texture);
+            Assert.AreSame(_texture, preview.Images[1].Texture);
+            AssertLayerLayoutMatchesCard(
+                item,
+                "BackgroundImage",
+                preview.Images[0],
+                "EntityImage",
+                preview.Images[1]
+            );
         }
 
         [Test]
@@ -631,7 +689,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
         private StrategyUnitCardRenderData CreateDetailItem(
             string name,
-            bool showOptionalImages = false
+            bool showOptionalImages = false,
+            Texture backgroundTexture = null
         )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -640,7 +699,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 Color.white,
                 true,
                 false,
-                optionalTexture,
+                backgroundTexture ?? optionalTexture,
                 optionalTexture,
                 optionalTexture,
                 _texture,
@@ -652,6 +711,26 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 optionalTexture,
                 true
             );
+        }
+
+        private static void AssertLayerLayoutMatchesCard(
+            StrategyUnitCardView card,
+            string firstName,
+            DragPreviewImage first,
+            string secondName,
+            DragPreviewImage second
+        )
+        {
+            RectInt firstRect = UILayout.GetSourceRect(
+                FindCardObject(card, firstName).transform as RectTransform
+            );
+            RectInt secondRect = UILayout.GetSourceRect(
+                FindCardObject(card, secondName).transform as RectTransform
+            );
+            Assert.AreEqual(firstRect.size, first.Bounds.size);
+            Assert.AreEqual(secondRect.size, second.Bounds.size);
+            Assert.AreEqual(secondRect.x - firstRect.x, second.Bounds.x - first.Bounds.x);
+            Assert.AreEqual(secondRect.y - firstRect.y, second.Bounds.y - first.Bounds.y);
         }
 
         private static PointerEventData CreateDoubleClickEvent()
