@@ -189,6 +189,7 @@ jobs:
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           persist-credentials: false
+          lfs: true
           sparse-checkout: |
             Art
             Audio
