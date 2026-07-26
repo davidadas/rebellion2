@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.Video;
 
 /// <summary>
@@ -17,40 +16,35 @@ public sealed class CutsceneManager : MonoBehaviour
     private const float _pausedTimeScale = 0f;
     private const float _runningTimeScale = 1f;
 
-    public static CutsceneManager Instance { get; private set; }
-
-    [SerializeField]
-    [FormerlySerializedAs("CutscenePrefab")]
-    private CutscenePlayer cutscenePrefab;
+    private GameObject cutscenePrefab;
 
     private CutscenePlayer activePlayer;
     private bool ownsTimePause;
     private float previousTimeScale = _runningTimeScale;
 
-    /// <summary>
-    /// Initializes the singleton instance.
-    /// </summary>
-    private void Awake()
+    internal void Initialize(GameObject prefab)
     {
-        if (Instance != null && Instance != this)
-            throw new InvalidOperationException("Only one CutsceneManager may be active.");
-        if (cutscenePrefab == null)
-            throw new MissingReferenceException($"{name}/CutscenePrefab is missing.");
-
-        Instance = this;
+        cutscenePrefab =
+            prefab
+            ?? throw new ArgumentNullException(nameof(prefab), "Cutscene prefab is missing.");
     }
 
-    /// <summary>
-    /// Clears the global reference when this manager leaves the active scene.
-    /// </summary>
     private void OnDestroy()
     {
-        if (Instance != this)
-            return;
-
         DestroyActivePlayer();
         RestoreTimeScale();
-        Instance = null;
+    }
+
+    public void Play(string clipAddress, Action onFinished)
+    {
+        CancelPlayback();
+        if (string.IsNullOrWhiteSpace(clipAddress))
+        {
+            onFinished?.Invoke();
+            return;
+        }
+
+        StartPlayback(ResourceManager.GetVideoUrl(clipAddress), onFinished);
     }
 
     /// <summary>
@@ -65,21 +59,65 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </param>
     public void Play(VideoClip clip, Action onFinished)
     {
+        CancelPlayback();
         if (clip == null)
         {
             onFinished?.Invoke();
             return;
         }
 
-        if (activePlayer != null)
-            DestroyActivePlayer();
+        StartPlayback(clip, onFinished);
+    }
 
-        CutscenePlayer player = Instantiate(cutscenePrefab);
+    private void StartPlayback(VideoClip clip, Action onFinished)
+    {
+        if (cutscenePrefab == null)
+            throw new InvalidOperationException("CutsceneManager has not been initialized.");
+
+        GameObject playerObject = Instantiate(cutscenePrefab);
+        CutscenePlayer player = playerObject.GetComponent<CutscenePlayer>();
+        if (player == null)
+        {
+            Destroy(playerObject);
+            throw new MissingComponentException(
+                $"{cutscenePrefab.name} has no CutscenePlayer component."
+            );
+        }
+
         activePlayer = player;
         PauseTimeScale();
         try
         {
             player.Play(clip, () => FinishPlayback(player, onFinished));
+        }
+        catch
+        {
+            DestroyActivePlayer();
+            RestoreTimeScale();
+            throw;
+        }
+    }
+
+    private void StartPlayback(string videoUrl, Action onFinished)
+    {
+        if (cutscenePrefab == null)
+            throw new InvalidOperationException("CutsceneManager has not been initialized.");
+
+        GameObject playerObject = Instantiate(cutscenePrefab);
+        CutscenePlayer player = playerObject.GetComponent<CutscenePlayer>();
+        if (player == null)
+        {
+            Destroy(playerObject);
+            throw new MissingComponentException(
+                $"{cutscenePrefab.name} has no CutscenePlayer component."
+            );
+        }
+
+        activePlayer = player;
+        PauseTimeScale();
+        try
+        {
+            player.Play(videoUrl, () => FinishPlayback(player, onFinished));
         }
         catch
         {
@@ -143,5 +181,11 @@ public sealed class CutsceneManager : MonoBehaviour
             Destroy(playerObject);
         else
             DestroyImmediate(playerObject);
+    }
+
+    private void CancelPlayback()
+    {
+        DestroyActivePlayer();
+        RestoreTimeScale();
     }
 }

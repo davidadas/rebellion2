@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using Rebellion.Game;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Application-level runtime controller.
@@ -10,6 +9,7 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public sealed class GameRuntime
 {
+    private readonly Action<string> _loadScene;
     private GameManager _activeGameSession;
 
     /// <summary>
@@ -21,6 +21,11 @@ public sealed class GameRuntime
     /// Raised when global input requests the settings menu.
     /// </summary>
     public event Action ToggleSettingsMenuRequested;
+
+    internal GameRuntime(Action<string> loadScene)
+    {
+        _loadScene = loadScene ?? throw new ArgumentNullException(nameof(loadScene));
+    }
 
     /// <summary>
     /// Get the current active game instance.
@@ -146,6 +151,6 @@ public sealed class GameRuntime
         GameLaunchContext.IsLoadGame = true;
         GameLaunchContext.SaveFileName = fileName;
         GameLaunchContext.PlayIntroCutscene = false;
-        SceneManager.LoadScene("StrategyView");
+        _loadScene(SaveMenuLaunchContext.StrategyViewSceneName);
     }
 }

@@ -148,16 +148,16 @@ public static class TestConfig
 {
     private static readonly string _configPath = Path.Combine(
         UnityEngine.Application.dataPath,
-        "Resources",
+        "Content",
         "Configs",
         "GameConfig.xml"
     );
 
     private static readonly string _schemaPath = Path.Combine(
         UnityEngine.Application.dataPath,
-        "Resources",
+        "Content",
         "Configs",
-        "GameConfigSchema.xsd"
+        "GameConfigSchema.xml"
     );
 
     public static GameConfig Create()

@@ -124,7 +124,7 @@ do_format() {
 
 do_xmlformat() {
     echo "=== XML Format ==="
-    find Assets/Resources -name "*.xml" | while read -r f; do
+    find Assets/Content -name "*.xml" | while read -r f; do
         xmllint --format "$f" --output "$f"
         echo "Formatted $f"
     done

@@ -16,7 +16,6 @@ public sealed class UIContext
     private GameRoot game;
     private readonly FactionThemeLibrary themeLibrary;
     private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
-    private readonly HashSet<string> missingTextures = new HashSet<string>();
 
     /// <summary>
     /// Creates a presentation context for one active game.
@@ -96,43 +95,6 @@ public sealed class UIContext
     }
 
     /// <summary>
-    /// Resolves the primary sprite used to represent a scene node.
-    /// </summary>
-    /// <param name="node">The scene node to represent.</param>
-    /// <returns>The resolved sprite.</returns>
-    public Sprite GetSprite(ISceneNode node)
-    {
-        if (node == null)
-            throw new ArgumentNullException(nameof(node));
-
-        if (node is Fleet)
-        {
-            string ownerId = node.OwnerInstanceID;
-
-            if (string.IsNullOrEmpty(ownerId))
-                throw new InvalidOperationException("Fleet missing OwnerInstanceID.");
-
-            FactionTheme theme = GetTheme(ownerId);
-
-            string path = theme?.PlanetWindowTheme?.FleetsPane?.FleetsImagePath;
-
-            if (string.IsNullOrEmpty(path))
-                throw new InvalidOperationException("Fleet-pane image path is missing.");
-
-            return ResourceManager.GetSprite(path);
-        }
-
-        string nodePath = node.GetDisplayImagePath();
-
-        if (!string.IsNullOrEmpty(nodePath))
-            return ResourceManager.GetSprite(nodePath);
-
-        throw new InvalidOperationException(
-            $"No sprite mapping defined for '{node.GetDisplayName()}'."
-        );
-    }
-
-    /// <summary>
     /// Resolves and caches a point-filtered texture by resource path.
     /// </summary>
     /// <param name="path">The resource path.</param>
@@ -145,21 +107,9 @@ public sealed class UIContext
         if (textures.TryGetValue(path, out Texture2D texture))
             return texture;
 
-        if (missingTextures.Contains(path))
-            return null;
-
-        texture = ResourceManager.TryGetTexture(path);
+        texture = ResourceManager.GetTexture(path);
         if (texture == null)
-        {
-            Sprite sprite = ResourceManager.TryGetSprite(path);
-            texture = sprite == null ? null : sprite.texture;
-        }
-
-        if (texture == null)
-        {
-            missingTextures.Add(path);
             return null;
-        }
 
         texture.filterMode = FilterMode.Point;
         texture.wrapMode = TextureWrapMode.Clamp;

@@ -65,7 +65,28 @@ public sealed class CutscenePlayer : MonoBehaviour
 
         HideUntilFirstFrame();
         videoPlayer.loopPointReached += HandleFinished;
+        videoPlayer.source = VideoSource.VideoClip;
         videoPlayer.clip = clip;
+
+        videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+        videoPlayer.SetTargetAudioSource(0, audioSource);
+
+        videoPlayer.Play();
+        audioSource.Play();
+    }
+
+    public void Play(string videoUrl, Action finished)
+    {
+        if (string.IsNullOrWhiteSpace(videoUrl))
+            throw new ArgumentException("A video URL is required.", nameof(videoUrl));
+
+        isEnding = false;
+        onFinished = finished;
+
+        HideUntilFirstFrame();
+        videoPlayer.loopPointReached += HandleFinished;
+        videoPlayer.source = VideoSource.Url;
+        videoPlayer.url = videoUrl;
 
         videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
         videoPlayer.SetTargetAudioSource(0, audioSource);

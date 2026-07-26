@@ -10,21 +10,22 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
     [TestFixture]
     public class CutsceneManagerTests
     {
-        private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
+        private const string _prefabPath = "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
         private const string _clipPath =
             "Assets/Tests/EditMode/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
 
         private VideoClip _clip;
         private CutsceneManager _manager;
-        private GameObject _secondaryObject;
+        private GameObject _managerObject;
+        private GameObject _playerPrefab;
 
         [SetUp]
         public void SetUp()
         {
-            _manager = UIComponentTestHelper.InstantiatePrefabComponent<CutsceneManager>(
-                _prefabPath
-            );
-            UIComponentTestHelper.InvokeLifecycle(_manager, "Awake");
+            _playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
+            _managerObject = new GameObject("CutsceneManager");
+            _manager = _managerObject.AddComponent<CutsceneManager>();
+            _manager.Initialize(_playerPrefab);
             _clip = AssetDatabase.LoadAssetAtPath<VideoClip>(_clipPath);
         }
 
@@ -41,44 +42,20 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                 }
 
                 UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
-                UnityEngine.Object.DestroyImmediate(_manager.gameObject);
+                UnityEngine.Object.DestroyImmediate(_managerObject);
             }
-
-            if (_secondaryObject != null)
-                UnityEngine.Object.DestroyImmediate(_secondaryObject);
 
             Time.timeScale = 1f;
         }
 
         [Test]
-        public void Awake_AuthoredPrefab_AssignsSingleton()
+        public void Initialize_NullPrefab_ThrowsArgumentNullException()
         {
-            Assert.AreSame(_manager, CutsceneManager.Instance);
-        }
-
-        [Test]
-        public void Awake_MissingCutscenePrefab_ThrowsMissingReferenceException()
-        {
-            SetField("cutscenePrefab", null);
-
-            MissingReferenceException exception = Assert.Throws<MissingReferenceException>(() =>
-                UIComponentTestHelper.InvokeLifecycle(_manager, "Awake")
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(() =>
+                _manager.Initialize(null)
             );
 
-            Assert.AreEqual($"{_manager.name}/CutscenePrefab is missing.", exception.Message);
-        }
-
-        [Test]
-        public void Awake_SecondManager_ThrowsInvalidOperationException()
-        {
-            _secondaryObject = new GameObject("SecondaryCutsceneManager");
-            CutsceneManager secondary = _secondaryObject.AddComponent<CutsceneManager>();
-
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                UIComponentTestHelper.InvokeLifecycle(secondary, "Awake")
-            );
-
-            Assert.AreEqual("Only one CutsceneManager may be active.", exception.Message);
+            Assert.AreEqual("prefab", exception.ParamName);
         }
 
         [Test]
@@ -87,7 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             int completedCount = 0;
             Time.timeScale = 0.75f;
 
-            _manager.Play(null, () => completedCount++);
+            _manager.Play((VideoClip)null, () => completedCount++);
 
             Assert.AreEqual(1, completedCount);
             Assert.AreEqual(0.75f, Time.timeScale);
@@ -135,27 +112,6 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             _manager = null;
 
             Assert.AreEqual(0.75f, Time.timeScale);
-        }
-
-        [Test]
-        public void OnDestroy_OwnedSingleton_ClearsInstance()
-        {
-            UIComponentTestHelper.InvokeLifecycle(_manager, "OnDestroy");
-            UnityEngine.Object.DestroyImmediate(_manager.gameObject);
-            _manager = null;
-
-            Assert.IsNull(CutsceneManager.Instance);
-        }
-
-        [Test]
-        public void OnDestroy_Nonowner_PreservesSingleton()
-        {
-            _secondaryObject = new GameObject("SecondaryCutsceneManager");
-            CutsceneManager secondary = _secondaryObject.AddComponent<CutsceneManager>();
-
-            UIComponentTestHelper.InvokeLifecycle(secondary, "OnDestroy");
-
-            Assert.AreSame(_manager, CutsceneManager.Instance);
         }
 
         private T GetField<T>(string fieldName)

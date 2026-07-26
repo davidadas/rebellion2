@@ -796,6 +796,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5759189334190098214}
   - component: {fileID: 733235465646641184}
+  - component: {fileID: 1779777024325449330}
   m_Layer: 0
   m_Name: ScrollArea
   m_TagString: Untagged
@@ -844,3 +845,15 @@ MonoBehaviour:
   scrollUpButton: {fileID: 5870527709332589351}
   scrollDownButton: {fileID: 4354980605191688747}
   dragRelay: {fileID: 6860008701994441293}
+--- !u!114 &1779777024325449330
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9051593132294972050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt

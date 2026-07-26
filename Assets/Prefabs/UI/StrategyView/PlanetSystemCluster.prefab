@@ -82,6 +82,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7174319715444097939}
   - component: {fileID: 2174491011411682574}
+  - component: {fileID: 6000498576431670439}
   m_Layer: 0
   m_Name: PlanetSystemCluster
   m_TagString: Untagged
@@ -128,6 +129,18 @@ MonoBehaviour:
   systemNameTextField: {fileID: 6265669370406929140}
   starImageTemplate: {fileID: 4757274420608987503}
   headquartersImageTemplate: {fileID: 5658373860088705051}
+--- !u!114 &6000498576431670439
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4382104101326232124}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &5403015247126825143
 GameObject:
   m_ObjectHideFlags: 0

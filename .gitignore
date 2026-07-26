@@ -13,6 +13,20 @@
 
 # Unity Files
 *.meta
+!Assets/Content.meta
+!Assets/Content/Art.meta
+!Assets/Content/Audio.meta
+!Assets/Content/Configs.meta
+!Assets/Content/Configs/*.meta
+!Assets/Content/Data.meta
+!Assets/Content/Data/*.meta
+!Assets/Content/Videos.meta
+!Assets/Editor/Content.meta
+!Assets/Editor/Content/*.meta
+!Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture.meta
+!Assets/Scripts/App/SceneLoader.cs.meta
+!Assets/Scripts/UI/Components/ExternalContentArt.cs.meta
+!Assets/Tests/EditMode/UI/Components/ExternalContentArtTests.cs.meta
 Unity_lic.alf
 /temp
 /[Ll]ibrary/
@@ -42,10 +56,10 @@ node_modules
 
 # Assets - local files not tracked in source control
 Assets/_Recovery/
-Assets/Resources/Art/
-Assets/Resources/Audio/
-Assets/Resources/UI/
-Assets/Resources/Videos/
+Assets/Content/Art/
+Assets/Content/Audio/
+Assets/Content/UI/
+Assets/Content/Videos/
 Assets/Videos/
 Assets/TextMesh Pro/
 

@@ -165,6 +165,7 @@ GameObject:
   - component: {fileID: 6378356701150520876}
   - component: {fileID: 4463916748615370264}
   - component: {fileID: 4003963149978522077}
+  - component: {fileID: 9223354546888357671}
   m_Layer: 0
   m_Name: MissionsParticipantRow
   m_TagString: Untagged
@@ -245,6 +246,18 @@ MonoBehaviour:
   m_FlexibleWidth: 0
   m_FlexibleHeight: 0
   m_LayoutPriority: 1
+--- !u!114 &9223354546888357671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3215385773548687717}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &4992952082593123264
 GameObject:
   m_ObjectHideFlags: 0

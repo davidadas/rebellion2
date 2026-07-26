@@ -1,30 +1,42 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 [TestFixture]
-public sealed class AudioImportSettingsTests
+public sealed class AudioContentLoadingTests
 {
     private const int _requestedDspBufferSize = 512;
     private const string _audioSettingsPath = "ProjectSettings/AudioManager.asset";
     private const string _mainMenuPrefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
 
-    [Test]
-    public void FixedCueAssets_ConfiguredForImmediatePlayback()
+    [TearDown]
+    public void TearDown()
     {
+        ResourceManager.SetContentRootPathForTests(null);
+    }
+
+    [UnityTest]
+    public IEnumerator InitializeAsync_ConfiguredImmediateCues_AreResident()
+    {
+        ResourceManager.SetContentRootPathForTests(null);
+        Task initialization = ResourceManager.InitializeAsync();
+        while (!initialization.IsCompleted)
+            yield return null;
+        if (initialization.IsFaulted)
+            throw initialization.Exception.GetBaseException();
+
         foreach (string resourcePath in GetFixedCuePaths())
         {
-            AudioImporter importer = GetAudioImporter(resourcePath);
-            AudioImporterSampleSettings settings = importer.defaultSampleSettings;
-
-            Assert.AreEqual(AudioClipLoadType.DecompressOnLoad, settings.loadType, resourcePath);
-            Assert.AreEqual(AudioCompressionFormat.PCM, settings.compressionFormat, resourcePath);
-            Assert.IsTrue(settings.preloadAudioData, resourcePath);
-            Assert.IsFalse(importer.loadInBackground, resourcePath);
+            AudioClip clip = ResourceManager.GetAudio(resourcePath);
+            Assert.IsNotNull(clip, resourcePath);
+            Assert.AreEqual(AudioDataLoadState.Loaded, clip.loadState, resourcePath);
         }
     }
 
@@ -71,17 +83,5 @@ public sealed class AudioImportSettingsTests
         {
             PrefabUtility.UnloadPrefabContents(prefabRoot);
         }
-    }
-
-    private static AudioImporter GetAudioImporter(string resourcePath)
-    {
-        AudioClip clip =
-            Resources.Load<AudioClip>(resourcePath)
-            ?? throw new InvalidOperationException(
-                $"No AudioClip exists at Resources path '{resourcePath}'."
-            );
-        string assetPath = AssetDatabase.GetAssetPath(clip);
-        return AssetImporter.GetAtPath(assetPath) as AudioImporter
-            ?? throw new InvalidOperationException($"No audio importer exists at '{assetPath}'.");
     }
 }

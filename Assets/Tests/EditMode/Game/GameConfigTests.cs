@@ -248,7 +248,7 @@ namespace Rebellion.Tests.Game
         {
             string configPath = Path.Combine(
                 UnityEngine.Application.dataPath,
-                "Resources",
+                "Content",
                 "Configs",
                 "GameConfig.xml"
             );

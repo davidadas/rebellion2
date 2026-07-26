@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -104,6 +105,80 @@ namespace Rebellion.Tests.Managers
             GameRoot loadedGame = manager.LoadGameData(_saveFileName);
 
             Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
+        }
+
+        [Test]
+        public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveSlotGameData(game, 0, "Core Worlds");
+
+            string fileName = _saveGameManager.GetSaveSlotFileName(0);
+            Assert.IsTrue(File.Exists(_saveGameManager.GetSaveMetadataFilePath(fileName)));
+            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
+            Assert.AreEqual(fileName, entry.FileName);
+            Assert.AreEqual("Core Worlds", entry.Metadata.SaveDisplayName);
+            Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
+        }
+
+        [Test]
+        public void GetSaveSlotEntries_LegacySaveWithoutSidecar_CreatesSidecar()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveSlotGameData(game, 1, "Legacy Slot");
+            string fileName = _saveGameManager.GetSaveSlotFileName(1);
+            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(fileName);
+            File.Delete(metadataPath);
+
+            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
+
+            Assert.AreEqual("Legacy Slot", entry.Metadata.SaveDisplayName);
+            Assert.IsTrue(File.Exists(metadataPath));
+        }
+
+        [Test]
+        public void GetSaveSlotEntries_UnrelatedSave_IgnoresSave()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, "simulation_seed_1");
+
+            Assert.IsEmpty(_saveGameManager.GetSaveSlotEntries());
+        }
+
+        [Test]
+        public void GetSaveSlotEntries_CorruptSidecar_ReadsMainSave()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveSlotGameData(game, 2, "Recovered Slot");
+            string fileName = _saveGameManager.GetSaveSlotFileName(2);
+            string metadataPath = _saveGameManager.GetSaveMetadataFilePath(fileName);
+            File.WriteAllText(metadataPath, "<Metadata>");
+            File.SetLastWriteTimeUtc(metadataPath, DateTime.UtcNow.AddMinutes(1));
+
+            SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
+
+            Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
         }
 
         [Test]

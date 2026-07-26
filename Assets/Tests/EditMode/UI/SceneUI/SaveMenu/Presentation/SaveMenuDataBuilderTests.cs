@@ -63,7 +63,8 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
                 0.25f,
                 0.75f,
                 options,
-                "Confirm"
+                "Confirm",
+                Array.Empty<SaveGameEntry>()
             );
 
             Assert.IsNotNull(data.ReturnStrategyButtonUpTexture);
@@ -96,7 +97,8 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
                 0f,
                 0f,
                 CreateTacticalOptions(),
-                null
+                null,
+                Array.Empty<SaveGameEntry>()
             );
 
             Assert.IsTrue(data.Slots.All(slot => !slot.CanSave));
@@ -107,8 +109,24 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         {
             SaveMenuDataBuilder builder = CreateBuilder("Version");
 
-            builder.CreateRenderData("FNALL1", true, 0f, 0f, CreateTacticalOptions(), null);
-            builder.CreateRenderData("FNALL1", true, 0f, 0f, CreateTacticalOptions(), null);
+            builder.CreateRenderData(
+                "FNALL1",
+                true,
+                0f,
+                0f,
+                CreateTacticalOptions(),
+                null,
+                Array.Empty<SaveGameEntry>()
+            );
+            builder.CreateRenderData(
+                "FNALL1",
+                true,
+                0f,
+                0f,
+                CreateTacticalOptions(),
+                null,
+                Array.Empty<SaveGameEntry>()
+            );
 
             Assert.GreaterOrEqual(_loadCounts.Count, 2);
             Assert.IsTrue(_loadCounts.Values.All(count => count == 1));
@@ -125,10 +143,40 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
                 0f,
                 0f,
                 CreateTacticalOptions(),
-                null
+                null,
+                Array.Empty<SaveGameEntry>()
             );
 
             Assert.AreEqual(string.Empty, data.VersionText);
+        }
+
+        [Test]
+        public void CreateRenderData_SaveEntries_ProjectsMatchingSlots()
+        {
+            SaveMenuDataBuilder builder = CreateBuilder("Version");
+            SaveGameEntry save = new SaveGameEntry(
+                SaveGameManager.Instance.GetSaveSlotFileName(1),
+                new Rebellion.Game.GameMetadata
+                {
+                    SaveDisplayName = "Outer Rim",
+                    PlayerFactionID = "FNALL1",
+                }
+            );
+
+            SaveMenuWindowRenderData data = builder.CreateRenderData(
+                "FNALL1",
+                true,
+                0f,
+                0f,
+                CreateTacticalOptions(),
+                null,
+                new[] { save }
+            );
+
+            Assert.IsFalse(data.Slots[0].CanLoad);
+            Assert.IsTrue(data.Slots[1].CanLoad);
+            Assert.AreEqual("Outer Rim", data.Slots[1].Label);
+            Assert.IsNotNull(data.Slots[1].FactionIconTexture);
         }
 
         private SaveMenuDataBuilder CreateBuilder(string version)

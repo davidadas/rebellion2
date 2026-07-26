@@ -111,6 +111,33 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies newly loaded idle frames without interrupting active or queued playback.
+    /// </summary>
+    /// <param name="protocolIdleTexture">The available protocol advisor idle frame.</param>
+    /// <param name="droidIdleTexture">The available droid advisor idle frame.</param>
+    internal void RefreshIdleFrames(Texture2D protocolIdleTexture, Texture2D droidIdleTexture)
+    {
+        if (presentation?.Visible != true)
+            return;
+
+        presentation = new StrategyAdvisorViewData(
+            true,
+            protocolIdleTexture ?? presentation.ProtocolIdleTexture,
+            droidIdleTexture ?? presentation.DroidIdleTexture,
+            presentation.ProtocolBounds,
+            presentation.DroidBounds,
+            presentation.FrameIntervalSeconds
+        );
+
+        bool animatingDroid = activeAnimation?.UsesDroid == true;
+        bool animatingProtocol = activeAnimation?.UsesDroid == false;
+        if (!animatingProtocol)
+            SetIdleFrame(false);
+        if (!animatingDroid)
+            SetIdleFrame(true);
+    }
+
+    /// <summary>
     /// Queues a complete ordered advisor playback batch and starts it when the view is idle.
     /// </summary>
     /// <param name="animations">The animations in playback order.</param>

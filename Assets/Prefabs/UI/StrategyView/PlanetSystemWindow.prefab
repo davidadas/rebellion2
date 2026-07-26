@@ -771,6 +771,7 @@ GameObject:
   - component: {fileID: 4215136203789453731}
   - component: {fileID: 4438010882071754982}
   - component: {fileID: 7873067556871629679}
+  - component: {fileID: 6351758176093232789}
   m_Layer: 0
   m_Name: PlanetSystemWindow
   m_TagString: Untagged
@@ -857,6 +858,18 @@ MonoBehaviour:
   galaxyProjectionWidth: 315
   galaxyProjectionHeight: 215
   planetPositionOffsetY: -1
+--- !u!114 &6351758176093232789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8041239553116007562}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &9163476318569938930
 GameObject:
   m_ObjectHideFlags: 0

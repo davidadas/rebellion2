@@ -4,7 +4,7 @@
 
   This file contains constants that control simulation behavior.
   Changes apply to ALL saves (not frozen into save files).
-  Loaded on every game start/load via Resources.Load<TextAsset>("Configs/GameConfig").
+  Loaded from the core content catalog on every game start or load.
 
   DO NOT put player choices here - those belong in GameSummary.
   DO NOT put new game setup here - those belong in GameGenerationConfig.xml.

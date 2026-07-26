@@ -1,4 +1,8 @@
+using System.Threading.Tasks;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Initializes the GameRuntime and wires up global systems and
@@ -7,6 +11,11 @@ using UnityEngine;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
+#if UNITY_EDITOR
+    private const string _editorCutscenePrefabPath =
+        "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
+#endif
+
     /// <summary>
     /// Gets the active application bootstrap instance.
     /// </summary>
@@ -22,7 +31,9 @@ public sealed class AppBootstrap : MonoBehaviour
     private AudioManager audioManager;
 
     private CancelStack _cancelStack;
+    private CutsceneManager _cutsceneManager;
     private GameRuntime _runtime;
+    private SceneLoader _sceneLoader;
     private UserSettingsManager _userSettingsManager;
 
     /// <summary>
@@ -65,11 +76,25 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     private void InitializeRuntime()
     {
-        _runtime = new GameRuntime();
         _cancelStack ??= new CancelStack();
+        _sceneLoader = GetComponent<SceneLoader>();
+        if (_sceneLoader == null)
+            _sceneLoader = gameObject.AddComponent<SceneLoader>();
+        _runtime = new GameRuntime(_sceneLoader.Load);
 
         if (audioManager == null)
             audioManager = AudioManager.EnsureExists(transform);
+
+        _cutsceneManager = GetComponent<CutsceneManager>();
+        if (_cutsceneManager == null)
+            _cutsceneManager = gameObject.AddComponent<CutsceneManager>();
+
+#if UNITY_EDITOR
+        GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            _editorCutscenePrefabPath
+        );
+        _cutsceneManager.Initialize(cutscenePrefab);
+#endif
 
         if (inputManager == null)
             inputManager = CreateInputManager();
@@ -81,6 +106,26 @@ public sealed class AppBootstrap : MonoBehaviour
             inputController = CreateInputController();
 
         inputController?.Initialize(inputManager, _cancelStack, _runtime);
+    }
+
+    internal Task InitializeContentAsync()
+    {
+        return ResourceManager.InitializeAsync();
+    }
+
+    internal void LoadScene(string sceneAddress)
+    {
+        _sceneLoader.Load(sceneAddress);
+    }
+
+    internal void InitializeCutsceneManager(GameObject cutscenePrefab)
+    {
+        _cutsceneManager.Initialize(cutscenePrefab);
+    }
+
+    internal CutsceneManager GetCutsceneManager()
+    {
+        return _cutsceneManager;
     }
 
     /// <summary>

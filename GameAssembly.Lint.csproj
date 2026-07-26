@@ -15,12 +15,27 @@
          assemblies (CI provides them there before the project's own Library is compiled), then fall
          back to the locally compiled project output. Resolving these keeps the semantic model
          complete so IDE0005 / CS8019 do not flag genuinely-used using directives. -->
-    <UGuiHintPath Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UI.dll')">$(UnityManagedAssembliesPath)/UnityEngine.UI.dll</UGuiHintPath>
-    <UGuiHintPath Condition="'$(UGuiHintPath)' == '' And Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')">Library/ScriptAssemblies/UnityEngine.UI.dll</UGuiHintPath>
-    <TextMeshProHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll')">$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll</TextMeshProHintPath>
-    <TextMeshProHintPath Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')">Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath>
-    <InputSystemHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.InputSystem.dll')">$(UnityManagedAssembliesPath)/Unity.InputSystem.dll</InputSystemHintPath>
-    <InputSystemHintPath Condition="'$(InputSystemHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.InputSystem.dll')">Library/ScriptAssemblies/Unity.InputSystem.dll</InputSystemHintPath>
+    <UGuiHintPath Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UI.dll')"
+      >$(UnityManagedAssembliesPath)/UnityEngine.UI.dll</UGuiHintPath
+    >
+    <UGuiHintPath
+      Condition="'$(UGuiHintPath)' == '' And Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')"
+      >Library/ScriptAssemblies/UnityEngine.UI.dll</UGuiHintPath
+    >
+    <TextMeshProHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll</TextMeshProHintPath
+    >
+    <TextMeshProHintPath
+      Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')"
+      >Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath
+    >
+    <InputSystemHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.InputSystem.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.InputSystem.dll</InputSystemHintPath
+    >
+    <InputSystemHintPath
+      Condition="'$(InputSystemHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.InputSystem.dll')"
+      >Library/ScriptAssemblies/Unity.InputSystem.dll</InputSystemHintPath
+    >
   </PropertyGroup>
   <ItemGroup>
     <Reference
@@ -56,6 +71,27 @@
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll')"
     >
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.UnityWebRequestModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UnityWebRequestModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.UnityWebRequestModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.UnityWebRequestAudioModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UnityWebRequestAudioModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.ImageConversionModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.ImageConversionModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.ImageConversionModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference

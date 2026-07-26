@@ -1204,6 +1204,7 @@ GameObject:
   - component: {fileID: 6149874930598146656}
   - component: {fileID: 7551403682261351741}
   - component: {fileID: 3082742489580390392}
+  - component: {fileID: 4446007880562630297}
   m_Layer: 0
   m_Name: MessagesWindow
   m_TagString: Untagged
@@ -1278,6 +1279,18 @@ MonoBehaviour:
   commandBar: {fileID: 4227509545895773737}
   indexPanel: {fileID: 8099837589952137875}
   detailPanel: {fileID: 3464698521553886571}
+--- !u!114 &4446007880562630297
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2195234949540294010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &2574728901742119256
 GameObject:
   m_ObjectHideFlags: 0
@@ -4667,7 +4680,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6035434475995279877}
+      addedObject: {fileID: 6744393973711528241}
   m_SourcePrefab: {fileID: 100100000, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
 --- !u!224 &1493469034435218621 stripped
 RectTransform:
@@ -4679,7 +4692,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 6581199428874406811}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &6035434475995279877
+--- !u!114 &6744393973711528241
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

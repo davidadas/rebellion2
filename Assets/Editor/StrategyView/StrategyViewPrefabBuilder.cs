@@ -77,145 +77,145 @@ public static class StrategyViewPrefabBuilder
     private const string _activeGalacticInformationFilterLabelName =
         "ActiveGalacticInformationFilterLabel";
     private const string _galaxyStarPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_galaxy_star_preview.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_galaxy_star_preview.png";
     private const string _planetPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview.png";
     private const string _windowOpenSectorPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_open_sector_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_open_sector_button.png";
     private const string _windowOpenSectorDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_open_sector_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_open_sector_button_pressed.png";
     private const string _windowSwapPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_swap_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_swap_button.png";
     private const string _windowClosePreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_close_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_close_button.png";
     private const string _windowCloseDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_close_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_close_button_pressed.png";
     private const string _windowMinimizePreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_minimize_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_minimize_button.png";
     private const string _windowMinimizeDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_window_minimize_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_minimize_button_pressed.png";
     private const string _confirmButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_confirm_ok_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_ok_button.png";
     private const string _confirmButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_confirm_ok_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_ok_button_pressed.png";
     private const string _cancelButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_confirm_cancel_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_cancel_button.png";
     private const string _cancelButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_confirm_cancel_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_cancel_button_pressed.png";
     private const string _facilityWindowBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_window_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_window_background.png";
     private const string _facilityWindowTabPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_tab.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_tab.png";
     private const string _facilityManufacturingStripPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_strip.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_strip.png";
     private const string _facilityManufacturingCardPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_lane_card.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_lane_card.png";
     private const string _facilityManufacturingCardStatePreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_lane_state.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_lane_state.png";
     private const string _facilityManufacturingSelectPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_selection.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_selection.png";
     private const string _facilityInventoryItemPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_facility_inventory_item.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_inventory_item.png";
     private const string _facilityCardEntityPreviewPath =
-        "Assets/Resources/Art/HD/UI/Units/ent_building_ship_yard.png";
+        "Assets/Content/Art/HD/UI/Units/ent_building_ship_yard.png";
     private const string _facilityCardEntitySmallPreviewPath =
-        "Assets/Resources/Art/HD/UI/Units/ent_building_ship_yard_small.png";
+        "Assets/Content/Art/HD/UI/Units/ent_building_ship_yard_small.png";
     private const string _constructionWindowBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_window_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_window_background.png";
     private const string _constructionOpenButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_open_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_open_button.png";
     private const string _constructionOpenButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_open_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_open_button_pressed.png";
     private const string _constructionInfoButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_info_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_info_button.png";
     private const string _constructionInfoButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_info_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_info_button_pressed.png";
     private const string _constructionOkButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button.png";
     private const string _constructionOkButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button_pressed.png";
     private const string _constructionOkButtonDisabledPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button_disabled.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button_disabled.png";
     private const string _constructionCancelButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_cancel_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_cancel_button.png";
     private const string _constructionCancelButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_cancel_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_cancel_button_pressed.png";
     private const string _constructionIncrementButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_increment_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_increment_button.png";
     private const string _constructionIncrementButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_increment_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_increment_button_pressed.png";
     private const string _constructionDecrementButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_decrement_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_decrement_button.png";
     private const string _constructionDecrementButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_decrement_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_decrement_button_pressed.png";
     private const string _constructionDropdownBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_construction_dropdown_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_dropdown_background.png";
     private const string _defenseWindowBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_defense_window_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_window_background.png";
     private const string _defenseWindowTabPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_defense_tab.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_tab.png";
     private const string _defenseSelectionPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_defense_selection.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_selection.png";
     private const string _defensePersonnelBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_defense_personnel_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_personnel_background.png";
     private const string _defenseEnrouteBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_defense_window_enroute_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_window_enroute_background.png";
     private const string _fleetWindowBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_fleet_window_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_window_background.png";
     private const string _fleetIconPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_fleet_window_icon.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_window_icon.png";
     private const string _fleetSelectionPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_fleet_selection.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_selection.png";
     private const string _fleetShipSelectionPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_fleet_ship_selection.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_ship_selection.png";
     private const string _fleetPersonnelEnrouteBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_defense_window_enroute_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_window_enroute_background.png";
     private const string _fleetDetailBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_fleet_detail_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_detail_background.png";
     private const string _fleetTabPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_fleet_tab.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_tab.png";
     private const string _missionsWindowBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missions_window_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missions_window_background.png";
     private const string _missionsTabPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missions_tab.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missions_tab.png";
     private const string _missionCreateMissionBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_mission_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_mission_background.png";
     private const string _missionCreatePersonnelBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_personnel_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_personnel_background.png";
     private const string _missionCreateMoveRightButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_right_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_right_button.png";
     private const string _missionCreateMoveRightButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_right_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_right_button_pressed.png";
     private const string _missionCreateMoveLeftButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_left_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_left_button.png";
     private const string _missionCreateMoveLeftButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_left_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_left_button_pressed.png";
     private const string _statusWindowBackgroundPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_status_window_background.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_window_background.png";
     private const string _advisorReportGalaxyPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_advisor_report_galaxy.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_advisor_report_galaxy.png";
     private const string _statusInfoButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_status_info_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_info_button.png";
     private const string _statusInfoButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_status_info_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_info_button_pressed.png";
     private const string _statusInfoButtonDisabledPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_status_info_button_disabled.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_info_button_disabled.png";
     private const string _statusCloseButtonPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_status_close_button.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_close_button.png";
     private const string _statusCloseButtonDownPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_status_close_button_pressed.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_close_button_pressed.png";
     private const string _scrollUpArrowPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_up.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_up.png";
     private const string _scrollDownArrowPreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_pressed_2.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_pressed_2.png";
     private const string _scrollBarMiddlePreviewPath =
-        "Assets/Resources/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_middle.png";
+        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_middle.png";
     private const float _sourcePixelsPerUnit = UILayout.HdPixelsPerSourceUnit;
     private const float _screenWidth = 3840f / _sourcePixelsPerUnit;
     private const float _screenHeight = 2160f / _sourcePixelsPerUnit;
     private const int _fullSizeTextureMaxSize = 4096;
     private const string _fullSizeStrategyViewTextureRoot =
-        "Assets/Resources/Art/HD/UI/StrategyView/";
+        "Assets/Content/Art/HD/UI/StrategyView/";
     private const int _contextMenuIconPreviewSize = 14;
     private const int _contextMenuIconPanelWidth = 25;
     private const int _contextMenuCommandHeight = 20;
@@ -653,6 +653,7 @@ public static class StrategyViewPrefabBuilder
         GameObject root = new GameObject(_sceneInstanceName, typeof(RectTransform));
         RectTransform rootRect = root.GetComponent<RectTransform>();
         FillParent(rootRect);
+        CanvasGroup rootContentGroup = root.AddComponent<CanvasGroup>();
 
         StrategyController controller = EnableRuntimeComponent(
             root.AddComponent<StrategyController>()
@@ -855,6 +856,7 @@ public static class StrategyViewPrefabBuilder
 
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
 
+        AssignReference(controller, "contentGroup", rootContentGroup);
         AssignReference(controller, "strategySurface", surfaceRect);
         AssignReference(controller, "strategySurfaceImage", surfaceImage);
         AssignReference(controller, "strategyHud", hudView);
@@ -6825,6 +6827,9 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The saved prefab asset root.</returns>
     private static GameObject SaveGeneratedPrefabAsset(GameObject root, string path)
     {
+        if (root.GetComponent<ExternalContentArt>() == null)
+            root.AddComponent<ExternalContentArt>();
+
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         if (!success || saved == null)
@@ -8574,7 +8579,7 @@ public static class StrategyViewPrefabBuilder
         if (path.StartsWith("Assets/", System.StringComparison.Ordinal))
             return ResolveTextureFilePath(path);
 
-        string resourcePath = Path.Combine("Assets/Resources", path).Replace("\\", "/");
+        string resourcePath = Path.Combine("Assets/Content", path).Replace("\\", "/");
         return ResolveTextureFilePath(resourcePath);
     }
 
