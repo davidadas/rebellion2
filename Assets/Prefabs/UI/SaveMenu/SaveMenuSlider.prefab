@@ -120,6 +120,7 @@ GameObject:
   - component: {fileID: 1980785036195254533}
   - component: {fileID: 8145343395354628334}
   - component: {fileID: 8605024272454550509}
+  - component: {fileID: 4583795333882650259}
   m_Layer: 0
   m_Name: SaveMenuSlider
   m_TagString: Untagged
@@ -251,3 +252,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::SaveMenuSliderView
   slider: {fileID: 8145343395354628334}
   thumbImage: {fileID: 8081396136438227761}
+--- !u!114 &4583795333882650259
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8086418564228532066}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt

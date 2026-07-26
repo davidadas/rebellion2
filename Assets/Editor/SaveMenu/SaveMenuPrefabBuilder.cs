@@ -22,47 +22,47 @@ public static class SaveMenuPrefabBuilder
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
 
     private const string _backgroundTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_background.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_background.png";
     private const string _cockpitButtonTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_cockpit_button.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_cockpit_button.png";
     private const string _cockpitButtonPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_cockpit_button_pressed.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_cockpit_button_pressed.png";
     private const string _exitButtonTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_airlock_button.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_airlock_button.png";
     private const string _exitButtonPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_airlock_button_pressed.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_airlock_button_pressed.png";
     private const string _musicButtonTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_music_button.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_music_button.png";
     private const string _musicButtonPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_music_button_pressed.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_music_button_pressed.png";
     private const string _optionButtonTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_option_button.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_option_button.png";
     private const string _optionButtonPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_option_button_pressed.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_option_button_pressed.png";
     private const string _saveButtonTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_save_button.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_save_button.png";
     private const string _saveButtonPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_save_button_pressed.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_save_button_pressed.png";
     private const string _saveButtonDisabledTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_save_button_disabled.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_save_button_disabled.png";
     private const string _loadButtonTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_load_button.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_load_button.png";
     private const string _loadButtonPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_load_button_pressed.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_load_button_pressed.png";
     private const string _loadButtonDisabledTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_load_button_disabled.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_load_button_disabled.png";
     private const string _sliderThumbTexturePath =
-        "Assets/Resources/Art/HD/UI/SaveMenu/ui_savemenu_slider_thumb.png";
+        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_slider_thumb.png";
     private const string _confirmDialogTexturePath =
-        "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_dialog.png";
+        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_dialog.png";
     private const string _confirmationYesTexturePath =
-        "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_yes_button.png";
+        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_yes_button.png";
     private const string _confirmationYesPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_yes_button_pressed.png";
+        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_yes_button_pressed.png";
     private const string _confirmationNoTexturePath =
-        "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_no_button.png";
+        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_no_button.png";
     private const string _confirmationNoPressedTexturePath =
-        "Assets/Resources/Art/HD/UI/Common/ui_common_confirmation_no_button_pressed.png";
+        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_no_button_pressed.png";
 
     private const int _windowWidth = 640;
     private const int _windowHeight = 480;
@@ -989,7 +989,7 @@ public static class SaveMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Loads one required texture from either an asset or Resources-style path.
+    /// Loads one required texture from either an asset or content-address path.
     /// </summary>
     /// <param name="path">The configured texture path.</param>
     /// <returns>The loaded texture asset.</returns>
@@ -1003,9 +1003,9 @@ public static class SaveMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Resolves a configured Resources path to its concrete texture asset path.
+    /// Resolves a configured content address to its concrete texture asset path.
     /// </summary>
-    /// <param name="path">The asset or Resources-style path.</param>
+    /// <param name="path">The asset path or content address.</param>
     /// <returns>The concrete asset path including an image extension.</returns>
     private static string ResolveTextureAssetPath(string path)
     {
@@ -1014,7 +1014,7 @@ public static class SaveMenuPrefabBuilder
 
         string assetPath = path.StartsWith("Assets/", StringComparison.Ordinal)
             ? path
-            : Path.Combine("Assets/Resources", path).Replace("\\", "/");
+            : Path.Combine("Assets/Content", path).Replace("\\", "/");
         if (File.Exists(assetPath))
             return assetPath;
         if (File.Exists(assetPath + ".png"))
@@ -1203,6 +1203,9 @@ public static class SaveMenuPrefabBuilder
     /// <returns>The saved prefab asset root.</returns>
     private static GameObject SavePrefab(GameObject root, string path)
     {
+        if (root.GetComponent<ExternalContentArt>() == null)
+            root.AddComponent<ExternalContentArt>();
+
         string directory = Path.GetDirectoryName(path);
         if (!Directory.Exists(directory))
         {

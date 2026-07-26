@@ -4,7 +4,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Generation;
 using UnityEngine;
-using UnityEngine.Video;
 
 /// <summary>
 /// Consumes launch state and initializes the strategy scene for a new or loaded game.
@@ -18,6 +17,7 @@ public sealed class GameFlowController : MonoBehaviour
     private GameManager activeGameManager;
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
+    private UIContext uiContext;
 
     /// <summary>
     /// Resolves composed scene dependencies and creates the shared theme library.
@@ -45,20 +45,28 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Starts or resumes gameplay according to the current launch state.
     /// </summary>
-    private void Start()
+    private async void Start()
     {
-        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-        GameRuntime runtime = bootstrap.GetRuntime();
-        if (runtime?.HasActiveGame == true)
+        try
         {
-            EnterGameplay(runtime.GetActiveGameManager());
-            return;
-        }
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            await bootstrap.InitializeContentAsync();
+            GameRuntime runtime = bootstrap.GetRuntime();
+            if (runtime?.HasActiveGame == true)
+            {
+                EnterGameplay(runtime.GetActiveGameManager());
+                return;
+            }
 
-        if (GameLaunchContext.IsLoadGame)
-            LoadGame();
-        else
-            StartNewGame();
+            if (GameLaunchContext.IsLoadGame)
+                LoadGame();
+            else
+                StartNewGame();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 
     /// <summary>
@@ -124,8 +132,10 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
-        VideoClip clip = ResourceManager.GetVideo(theme.IntroCutscenePath);
-        CutsceneManager.Instance.Play(clip, EnterGameplay);
+        AppBootstrap
+            .EnsureExists()
+            .GetCutsceneManager()
+            .Play(theme.IntroCutscenePath, EnterGameplay);
     }
 
     /// <summary>
@@ -142,16 +152,19 @@ public sealed class GameFlowController : MonoBehaviour
     /// Initializes strategy UI for an active game manager.
     /// </summary>
     /// <param name="gameManager">The active game manager.</param>
-    private void EnterGameplay(GameManager gameManager)
+    private async void EnterGameplay(GameManager gameManager)
     {
-        activeGameManager = gameManager;
-        EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build();
-        UIContext uiContext = new UIContext(
-            gameManager.GetGame(),
-            themeLibrary,
-            encyclopediaCatalog
-        );
+        try
+        {
+            EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build();
+            uiContext = new UIContext(gameManager.GetGame(), themeLibrary, encyclopediaCatalog);
 
-        strategyController.Initialize(gameManager, uiContext);
+            await strategyController.InitializeAsync(gameManager, uiContext);
+            activeGameManager = gameManager;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 }

@@ -32,11 +32,25 @@ The game's art, audio, and video assets are not included in this repository. To 
 2. Follow the instructions in the server to verify ownership of the original game.
 3. Once verified, you will be granted access to the asset pack.
 4. Place the downloaded assets into the following directories:
-   - `Assets/Resources/Art/`
-   - `Assets/Resources/Audio/`
-   - `Assets/Resources/Videos/`
+   - `Assets/Content/Art/`
+   - `Assets/Content/Audio/`
+   - `Assets/Content/Videos/`
 
 > **Note:** The game will not run without these assets.
+
+### Packaged Content and Mods
+
+Standalone builds place a raw `Content` directory beside the game executable or `.app` bundle. Art, audio, video, configuration, and game-data files are loaded from that directory at runtime rather than from a Unity asset bundle.
+
+To modify a packaged build, replace files under `Content/` while preserving their relative paths and file names, then restart the game. Numbered main-menu animation frames are loaded from their existing file-name sequence while retaining the timings authored by the game.
+
+An alternate content directory can be selected when launching the game:
+
+```bash
+"/path/to/Rebellion 2" -contentPath "/path/to/custom/Content"
+```
+
+On macOS, pass the same option to the executable inside the application bundle or use a launcher that forwards command-line arguments.
 
 ## Building, Testing, and Linting
 

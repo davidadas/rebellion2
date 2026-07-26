@@ -71,6 +71,21 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
+        public void Play_ValidUrl_ConfiguresUrlVideoSource()
+        {
+            const string videoUrl = "file:///tmp/cutscene.mp4";
+
+            _player.Play(videoUrl, null);
+
+            Assert.AreEqual(VideoSource.Url, _videoPlayer.source);
+            Assert.AreEqual(videoUrl, _videoPlayer.url);
+            Assert.AreEqual(VideoAudioOutputMode.AudioSource, _videoPlayer.audioOutputMode);
+            Assert.AreSame(_audioSource, _videoPlayer.GetTargetAudioSource(0));
+            Assert.IsTrue(_videoPlayer.sendFrameReadyEvents);
+            Assert.AreEqual(Color.black, _screen.color);
+        }
+
+        [Test]
         public void HandleFirstFrameReady_NewFrame_RevealsVideoScreen()
         {
             _player.Play(_clip, null);

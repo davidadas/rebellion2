@@ -65,6 +65,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void AuthoredPrefab_DesignSurface_ConstrainsMenuToSixteenByNine()
+        {
+            Transform canvas = _prefabRoot.transform.Find("UI/Canvas");
+            Transform designSurface = canvas.Find("DesignSurface");
+            AspectRatioFitter aspectRatioFitter = designSurface.GetComponent<AspectRatioFitter>();
+
+            Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, aspectRatioFitter.aspectMode);
+            Assert.AreEqual(16f / 9f, aspectRatioFitter.aspectRatio, 0.0001f);
+            Assert.IsNotNull(designSurface.GetComponent<Image>());
+            Assert.IsNull(canvas.GetComponent<Image>());
+            Assert.AreSame(designSurface, designSurface.Find("MainMenuControls").parent);
+        }
+
+        [Test]
         public void TryGetSelectedDifficulty_SelectedAuthoredToggle_ReturnsMappedDifficulty()
         {
             Array bindings = GetBindings("difficultyBindings");

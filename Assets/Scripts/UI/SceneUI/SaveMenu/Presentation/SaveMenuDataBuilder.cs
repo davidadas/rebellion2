@@ -47,6 +47,7 @@ public sealed class SaveMenuDataBuilder
     /// <param name="sfxVolume">The normalized sound-effect volume.</param>
     /// <param name="tacticalOptions">The tactical option states.</param>
     /// <param name="confirmationMessage">The active confirmation message, or null.</param>
+    /// <param name="saves">The already-loaded save metadata entries.</param>
     /// <returns>Immutable presentation data for the save-menu window.</returns>
     public SaveMenuWindowRenderData CreateRenderData(
         string playerFactionId,
@@ -54,9 +55,13 @@ public sealed class SaveMenuDataBuilder
         float musicVolume,
         float sfxVolume,
         IReadOnlyDictionary<UserTacticalOption, bool> tacticalOptions,
-        string confirmationMessage
+        string confirmationMessage,
+        IReadOnlyList<SaveGameEntry> saves
     )
     {
+        if (saves == null)
+            throw new ArgumentNullException(nameof(saves));
+
         FactionTheme playerTheme = GetTheme(playerFactionId);
         return new SaveMenuWindowRenderData(
             GetTexture(playerTheme?.SaveMenuReturnStrategyButtonImagePath),
@@ -65,7 +70,7 @@ public sealed class SaveMenuDataBuilder
             sfxVolume,
             versionText,
             tacticalOptions,
-            BuildSaveMenuSlots(canSave),
+            BuildSaveMenuSlots(canSave, saves),
             confirmationMessage
         );
     }
@@ -74,10 +79,13 @@ public sealed class SaveMenuDataBuilder
     /// Builds presentation data for every configured save slot.
     /// </summary>
     /// <param name="canSave">Whether save commands are currently enabled.</param>
+    /// <param name="saves">The already-loaded save metadata entries.</param>
     /// <returns>Presentation data ordered by save-slot index.</returns>
-    private IReadOnlyList<SaveSlotRenderData> BuildSaveMenuSlots(bool canSave)
+    private IReadOnlyList<SaveSlotRenderData> BuildSaveMenuSlots(
+        bool canSave,
+        IReadOnlyList<SaveGameEntry> saves
+    )
     {
-        IReadOnlyList<SaveGameEntry> saves = saveGameManager.GetSavedGames();
         Dictionary<string, SaveGameEntry> savesByFileName = saves.ToDictionary(save =>
             save.FileName
         );
@@ -155,7 +163,8 @@ public sealed class SaveMenuDataBuilder
             return texture;
 
         texture = loadTexture(path);
-        texturesByPath.Add(path, texture);
+        if (texture != null)
+            texturesByPath.Add(path, texture);
         return texture;
     }
 }

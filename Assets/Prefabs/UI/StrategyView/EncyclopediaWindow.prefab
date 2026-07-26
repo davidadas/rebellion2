@@ -2955,6 +2955,7 @@ GameObject:
   - component: {fileID: 5107071520127182270}
   - component: {fileID: 1035780082958175167}
   - component: {fileID: 4264753467360232797}
+  - component: {fileID: 4225684261748663863}
   m_Layer: 0
   m_Name: EncyclopediaWindow
   m_TagString: Untagged
@@ -3054,6 +3055,18 @@ MonoBehaviour:
   - {fileID: 1224106385095205723}
   indexPanel: {fileID: 1327900562481203133}
   detailPanel: {fileID: 4042874458409998970}
+--- !u!114 &4225684261748663863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8004424102744978503}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &8166875748798958711
 GameObject:
   m_ObjectHideFlags: 0
@@ -4189,7 +4202,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8036566717761705241}
+      addedObject: {fileID: 2413138126462942870}
   m_SourcePrefab: {fileID: 100100000, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
 --- !u!224 &629263077545391248 stripped
 RectTransform:
@@ -4201,7 +4214,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 5140673435374072758}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8036566717761705241
+--- !u!114 &2413138126462942870
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

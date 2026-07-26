@@ -21,7 +21,7 @@ public static class MainMenuPrefabAuthoring
     private const string _exitButtonControllerPath =
         "Assets/Prefabs/UI/MainMenu/ExitButton.controller";
     private const string _standardVictorySpritePath =
-        "Assets/Resources/Art/HD/UI/MainMenu/ui_mainmenu_hq_icon.png";
+        "Assets/Content/Art/HD/UI/MainMenu/ui_mainmenu_hq_icon.png";
 
     /// <summary>
     /// Rebuilds the authored main-menu view bindings and removes controller-targeted UnityEvents.
@@ -37,6 +37,8 @@ public static class MainMenuPrefabAuthoring
         try
         {
             RebuildMainMenuViewBindings(root);
+            if (root.GetComponent<ExternalContentArt>() == null)
+                root.AddComponent<ExternalContentArt>();
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
             AssetDatabase.SaveAssets();
         }

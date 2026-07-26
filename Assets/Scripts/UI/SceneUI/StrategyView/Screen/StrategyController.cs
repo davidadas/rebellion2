@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -12,7 +13,6 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -40,6 +40,9 @@ public sealed class StrategyController
         IStatusWindowActions,
         IBattleAlertWindowActions
 {
+    [SerializeField]
+    private CanvasGroup contentGroup;
+
     [SerializeField]
     private RectTransform strategySurface;
 
@@ -79,6 +82,7 @@ public sealed class StrategyController
     private UIContext uiContext;
 
     private bool dirty = true;
+    private bool contentReady;
     private bool initialized;
     private bool cancelHandlersRegistered;
     private RectInt windowMovePreviewBounds;
@@ -122,7 +126,8 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="manager">The active game manager.</param>
     /// <param name="context">The active strategy UI context.</param>
-    public void Initialize(GameManager manager, UIContext context)
+    /// <returns>A task that completes when the initial strategy presentation is resident.</returns>
+    public Task InitializeAsync(GameManager manager, UIContext context)
     {
         if (manager == null)
             throw new InvalidOperationException(
@@ -156,6 +161,17 @@ public sealed class StrategyController
         initialized = true;
         RegisterCancelHandlers();
         OnGameReady();
+        LoadInitialContent();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Conceals strategy content before any runtime render can expose unresolved textures.
+    /// </summary>
+    private void Awake()
+    {
+        if (contentGroup != null)
+            SetContentReady(false);
     }
 
     /// <summary>
@@ -538,7 +554,7 @@ public sealed class StrategyController
     /// <summary>
     /// Plays a strategy sound effect through the shared audio manager.
     /// </summary>
-    /// <param name="resourcePath">The Resources path of the sound effect.</param>
+    /// <param name="resourcePath">The content address of the sound effect.</param>
     private static void PlaySfx(string resourcePath)
     {
         AudioManager.EnsureExists().PlaySfx(resourcePath);
@@ -547,7 +563,7 @@ public sealed class StrategyController
     /// <summary>
     /// Plays one strategy music track through the shared audio manager.
     /// </summary>
-    /// <param name="resourcePath">The Resources path of the music track.</param>
+    /// <param name="resourcePath">The content address of the music track.</param>
     private static void PlayTrack(string resourcePath)
     {
         AudioManager.EnsureExists().PlayTrack(resourcePath);
@@ -562,13 +578,34 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Starts strategy music and performs the initial render.
+    /// Starts strategy music and builds the initial strategy snapshot.
     /// </summary>
     private void OnGameReady()
     {
         strategyMusicController.Resume();
         RebuildSnapshot();
+    }
+
+    /// <summary>
+    /// Renders the initial strategy working set behind the concealed root and then reveals it.
+    /// </summary>
+    private void LoadInitialContent()
+    {
+        RequestInitialTextures();
+        SetContentReady(true);
+    }
+
+    /// <summary>
+    /// Renders visible strategy content and requests the small fixed art needed by immediate
+    /// strategy interactions.
+    /// </summary>
+    private void RequestInitialTextures()
+    {
         Render();
+        galaxyMapController.RequestMarkerTextures();
+        bookmarkController.RequestIconTextures();
+        galacticInformationDisplayController.RequestTextures();
+        strategyContextMenu.RequestIconTextures();
     }
 
     /// <summary>
@@ -614,7 +651,7 @@ public sealed class StrategyController
     /// </summary>
     private void Update()
     {
-        if (gameManager == null)
+        if (gameManager == null || !contentReady)
             return;
 
         if (battleAlertWindowController.SyncPendingCombatWindow())
@@ -702,6 +739,9 @@ public sealed class StrategyController
 
         if (strategySurfaceImage == null)
             throw new MissingReferenceException("Viewport is missing RawImage.");
+
+        if (contentGroup == null)
+            throw new MissingReferenceException("Strategy content CanvasGroup is missing.");
 
         ValidateWindowLayer();
         ValidateOverlayLayer();
@@ -898,6 +938,27 @@ public sealed class StrategyController
     {
         RenderGalaxyMap();
         RenderBookmarks();
+        RenderWindows();
+
+        RenderHud();
+        RenderContextMenu();
+        RenderOverlay();
+        dirty = false;
+    }
+
+    /// <summary>
+    /// Renders strategy windows from the current controller state.
+    /// </summary>
+    private void RenderWindows()
+    {
+        RenderWindowContent();
+    }
+
+    /// <summary>
+    /// Renders every registered strategy window from its current controller state.
+    /// </summary>
+    private void RenderWindowContent()
+    {
         strategyWindowLayerView.RenderModalState(strategyWindowManager.HasModalWindow());
         advisorReportWindowController.RenderWindows();
         statusWindowController.RenderWindows();
@@ -913,11 +974,18 @@ public sealed class StrategyController
         defenseWindowController.RenderWindows();
         missionsWindowController.RenderWindows();
         planetSystemWindowController.RenderWindows();
+    }
 
-        RenderHud();
-        RenderContextMenu();
-        RenderOverlay();
-        dirty = false;
+    /// <summary>
+    /// Applies strategy-root visibility and input readiness as one state change.
+    /// </summary>
+    /// <param name="ready">Whether the complete initial strategy presentation is resident.</param>
+    private void SetContentReady(bool ready)
+    {
+        contentReady = ready;
+        contentGroup.alpha = ready ? 1f : 0f;
+        contentGroup.interactable = ready;
+        contentGroup.blocksRaycasts = ready;
     }
 
     /// <summary>
@@ -1678,7 +1746,7 @@ public sealed class StrategyController
         {
             case StrategyHudAction.Options:
                 SaveMenuLaunchContext.OpenFromStrategyView();
-                SceneManager.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+                AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
                 break;
             case StrategyHudAction.SystemFinder:
                 finderWindowController.Open(FinderMode.Systems);

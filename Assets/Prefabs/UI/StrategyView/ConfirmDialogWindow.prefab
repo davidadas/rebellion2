@@ -251,6 +251,7 @@ GameObject:
   - component: {fileID: 5112164942790412816}
   - component: {fileID: 2177052497233858592}
   - component: {fileID: 5911522200037579441}
+  - component: {fileID: 6270346342895316399}
   m_Layer: 0
   m_Name: ConfirmDialogWindow
   m_TagString: Untagged
@@ -335,6 +336,18 @@ MonoBehaviour:
   cancelButtonDownTexture: {fileID: 2800000, guid: afeab334cbc794cbc91d03dc6c2d337a, type: 3}
   linesScrollArea: {fileID: 5684049482313685267}
   lineTemplate: {fileID: 1046609662462340050}
+--- !u!114 &6270346342895316399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3565488617194287465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &5239638524041858009
 GameObject:
   m_ObjectHideFlags: 0

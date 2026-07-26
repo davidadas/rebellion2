@@ -148,6 +148,15 @@ public sealed class GalaxyMapController
     }
 
     /// <summary>
+    /// Requests the complete set of small marker textures that can appear as galaxy knowledge
+    /// changes.
+    /// </summary>
+    internal void RequestMarkerTextures()
+    {
+        projector.RequestMarkerTextures();
+    }
+
+    /// <summary>
     /// Resolves a galaxy-map pointer hit into a planet mission target.
     /// </summary>
     /// <param name="eventData">The current pointer event.</param>

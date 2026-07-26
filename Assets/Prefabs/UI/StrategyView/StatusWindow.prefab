@@ -505,6 +505,7 @@ GameObject:
   - component: {fileID: 8208886866317168318}
   - component: {fileID: 6440156703422734649}
   - component: {fileID: 3983956325636538954}
+  - component: {fileID: 9039909221352993970}
   m_Layer: 0
   m_Name: StatusWindow
   m_TagString: Untagged
@@ -597,6 +598,18 @@ MonoBehaviour:
   infoButtonDisabledTexture: {fileID: 2800000, guid: dbdb56d8ef9f64acdb6dd75e7d41e9c0, type: 3}
   closeButtonUpTexture: {fileID: 2800000, guid: 6db5d4cb90b4447b3bf29c28234fdf46, type: 3}
   closeButtonDownTexture: {fileID: 2800000, guid: 9951c8340ade34a3baa16fda9bd0b269, type: 3}
+--- !u!114 &9039909221352993970
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5074232417779753497}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &5341567507642771566
 GameObject:
   m_ObjectHideFlags: 0

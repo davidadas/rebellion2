@@ -57,6 +57,30 @@ public sealed class GalaxyMapProjector
     }
 
     /// <summary>
+    /// Requests every small galaxy marker that can become visible as player knowledge changes.
+    /// </summary>
+    internal void RequestMarkerTextures()
+    {
+        UIContext context = GetRequiredContext();
+        List<FactionTheme> themes = context.GetAllThemes();
+        themes.Add(context.GetTheme(null));
+        foreach (FactionTheme theme in themes)
+        {
+            GalaxyBackground background = theme?.GalaxyBackground;
+            context.GetTexture(background?.UnexploredPlanetIconPath);
+            context.GetTexture(background?.DestroyedPlanetIconPath);
+
+            PlanetIcons icons = background?.PlanetIcons;
+            context.GetTexture(icons?.Small);
+            context.GetTexture(icons?.Medium);
+            context.GetTexture(icons?.Large);
+            context.GetTexture(icons?.XL);
+            context.GetTexture(icons?.Mixed);
+            context.GetTexture(theme?.PlanetOverlayTheme?.GalaxyHeadquartersImagePath);
+        }
+    }
+
+    /// <summary>
     /// Projects the centered label for the active galactic-information filter.
     /// </summary>
     /// <param name="theme">The active faction's galactic-information theme.</param>

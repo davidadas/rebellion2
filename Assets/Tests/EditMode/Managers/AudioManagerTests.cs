@@ -101,12 +101,22 @@ public sealed class AudioManagerTests
     {
         AudioManager manager = AudioManager.EnsureExists();
         const string path = "Audio/SFX/StrategyView/sfx_strategyview_control_press";
+        AudioClip clip = AudioClip.Create("Preloaded", 1, 1, 44100, false);
+        GetResourceAudioClips().Add(path, clip);
+        try
+        {
+            manager.PreloadSfx(new[] { null, string.Empty, " ", path, $" {path} " });
 
-        manager.PreloadSfx(new[] { null, string.Empty, " ", path, $" {path} " });
-
-        Dictionary<string, AudioClip> clips = GetPreloadedSfx(manager);
-        Assert.AreEqual(1, clips.Count);
-        Assert.AreEqual(AudioDataLoadState.Loaded, clips[path].loadState);
+            Dictionary<string, AudioClip> clips = GetPreloadedSfx(manager);
+            Assert.AreEqual(1, clips.Count);
+            Assert.AreSame(clip, clips[path]);
+            Assert.AreEqual(AudioDataLoadState.Loaded, clips[path].loadState);
+        }
+        finally
+        {
+            GetResourceAudioClips().Remove(path);
+            Object.DestroyImmediate(clip);
+        }
     }
 
     [Test]
@@ -137,6 +147,110 @@ public sealed class AudioManagerTests
             GetPreloadedSfx(manager).Add("Audio/SFX/Missing/preloaded_only", clip);
 
             Assert.DoesNotThrow(() => manager.PlaySfx(" Audio/SFX/Missing/preloaded_only "));
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlaySfx_RetainedOnDemandPath_ReusesLoadedClip()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("RetainedOnDemand", 1, 1, 44100, false);
+        try
+        {
+            GetLoadedSfx(manager).Add("Audio/SFX/Missing/retained_on_demand", clip);
+
+            Assert.DoesNotThrow(() => manager.PlaySfx(" Audio/SFX/Missing/retained_on_demand "));
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlayTrack_LoadedClip_AssignsLoopingMusicUntilStopped()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Track", 1, 1, 44100, false);
+        try
+        {
+            manager.PlayTrack(clip, true);
+            AudioSource source = GetAudioSource(manager, "musicSource");
+
+            Assert.AreSame(clip, source.clip);
+            Assert.IsTrue(source.loop);
+
+            manager.StopMusic();
+
+            Assert.IsNull(source.clip);
+            Assert.IsFalse(source.isPlaying);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlayTrack_BlankPath_DoesNotReplaceLoadedClip()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Track", 1, 1, 44100, false);
+        try
+        {
+            manager.PlayTrack(clip);
+            AudioSource source = GetAudioSource(manager, "musicSource");
+
+            manager.PlayTrack(" ");
+
+            Assert.AreSame(clip, source.clip);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlayPlaylist_EmptyPaths_DoesNotReplaceLoadedClip()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Track", 1, 1, 44100, false);
+        try
+        {
+            manager.PlayTrack(clip);
+            AudioSource source = GetAudioSource(manager, "musicSource");
+
+            manager.PlayPlaylist(new[] { null, string.Empty, " " });
+
+            Assert.AreSame(clip, source.clip);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PlayAmbience_LoadedClip_ConfiguresAmbienceChannel()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Ambience", 1, 1, 44100, false);
+        try
+        {
+            manager.SetMasterVolume(0.5f);
+            manager.SetAmbienceVolume(0.25f);
+
+            manager.PlayAmbience(clip, true);
+            AudioSource source = GetAudioSource(manager, "ambienceSource");
+
+            Assert.AreSame(clip, source.clip);
+            Assert.IsTrue(source.loop);
+            Assert.AreEqual(0.125f, source.volume);
         }
         finally
         {
@@ -191,6 +305,30 @@ public sealed class AudioManagerTests
         return (Dictionary<string, AudioClip>)
             typeof(AudioManager)
                 .GetField("_preloadedSfx", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(manager);
+    }
+
+    private static Dictionary<string, AudioClip> GetLoadedSfx(AudioManager manager)
+    {
+        return (Dictionary<string, AudioClip>)
+            typeof(AudioManager)
+                .GetField("_loadedSfx", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(manager);
+    }
+
+    private static Dictionary<string, AudioClip> GetResourceAudioClips()
+    {
+        return (Dictionary<string, AudioClip>)
+            typeof(ResourceManager)
+                .GetField("_audioClips", BindingFlags.Static | BindingFlags.NonPublic)
+                .GetValue(null);
+    }
+
+    private static AudioSource GetAudioSource(AudioManager manager, string fieldName)
+    {
+        return (AudioSource)
+            typeof(AudioManager)
+                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                 .GetValue(manager);
     }
 }

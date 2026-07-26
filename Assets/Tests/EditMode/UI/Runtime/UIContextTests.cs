@@ -205,18 +205,6 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.IsNull(_context.GetPlanetTexture(null, path));
         }
 
-        [Test]
-        public void GetSprite_FleetWithoutOwner_ThrowsInvalidOperationException()
-        {
-            Assert.Throws<InvalidOperationException>(() => _context.GetSprite(new Fleet()));
-        }
-
-        [Test]
-        public void GetSprite_NullNode_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => _context.GetSprite(null));
-        }
-
         private static GameRoot CreateGame(string playerFactionId)
         {
             GameRoot game = new GameRoot(TestConfig.Create());

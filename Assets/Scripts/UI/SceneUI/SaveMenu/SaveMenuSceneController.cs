@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Owns save-menu state, game operations, audio settings, and scene navigation.
@@ -24,6 +24,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     private GameRuntime runtime;
     private UserSettingsManager userSettingsManager;
     private UserVideoSettings videoSettings;
+    private IReadOnlyList<SaveGameEntry> saveEntries = Array.Empty<SaveGameEntry>();
     private bool exitConfirmationPending;
     private bool userSettingsDirty;
     private bool viewBound;
@@ -43,7 +44,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         dataBuilder = new SaveMenuDataBuilder(
             new FactionThemeLibrary(),
             saveGameManager,
-            ResourceManager.TryGetTexture,
+            ResourceManager.GetTexture,
             GetVersionText()
         );
     }
@@ -59,9 +60,21 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// <summary>
     /// Fits the authored source canvas to the current viewport and performs the initial render.
     /// </summary>
-    private void Start()
+    private async void Start()
     {
         Render();
+        try
+        {
+            saveEntries = await Task.Run(saveGameManager.GetSaveSlotEntries);
+            if (this == null)
+                return;
+
+            Render();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 
     /// <summary>
@@ -139,7 +152,8 @@ public sealed class SaveMenuSceneController : MonoBehaviour
                 audioManager.MusicVolume,
                 audioManager.SfxVolume,
                 CreateTacticalOptionSnapshot(),
-                exitConfirmationPending ? _exitConfirmationMessage : null
+                exitConfirmationPending ? _exitConfirmationMessage : null,
+                saveEntries
             )
         );
     }
@@ -177,6 +191,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
             return;
 
         saveGameManager.SaveSlotGameData(runtime.GetActiveGame(), slot, displayName);
+        saveEntries = saveGameManager.GetSaveSlotEntries();
         Render();
     }
 
@@ -206,10 +221,12 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         if (runtime == null)
             return false;
 
+        bool hadActiveGame = runtime.HasActiveGame;
         if (!runtime.LoadGame(fileName))
             return false;
         SaveMenuLaunchContext.OpenFromStrategyView();
-        SceneManager.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+        if (hadActiveGame)
+            AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
         return true;
     }
 
@@ -327,7 +344,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
             && runtime?.HasActiveGame == true
         )
         {
-            SceneManager.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+            AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
             return;
         }
 
@@ -341,7 +358,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     {
         runtime?.EndGame();
         SaveMenuLaunchContext.Reset();
-        SceneManager.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
     }
 
     /// <summary>

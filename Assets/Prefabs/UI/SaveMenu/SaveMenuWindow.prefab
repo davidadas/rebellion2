@@ -587,78 +587,6 @@ MonoBehaviour:
   m_EffectColor: {r: 0, g: 0, b: 0, a: 1}
   m_EffectDistance: {x: 1, y: -1}
   m_UseGraphicAlpha: 1
---- !u!1 &1785473900359456832
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7308859606825736803}
-  - component: {fileID: 22902828046036050}
-  - component: {fileID: 2682164044590329018}
-  m_Layer: 0
-  m_Name: BackgroundImage
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &7308859606825736803
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1785473900359456832}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2184746506960578200}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 114, y: -150}
-  m_SizeDelta: {x: 412, y: 176}
-  m_Pivot: {x: 0, y: 1}
---- !u!222 &22902828046036050
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1785473900359456832}
-  m_CullTransparentMesh: 1
---- !u!114 &2682164044590329018
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1785473900359456832}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 73e1826c84bf845188e44134bfa2b31e, type: 3}
-  m_UVRect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 1
-    height: 1
 --- !u!1 &1886400728692006572
 GameObject:
   m_ObjectHideFlags: 0
@@ -1110,7 +1038,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7138646949679844221}
-  - {fileID: 7308859606825736803}
+  - {fileID: 5535155345723693136}
   - {fileID: 5355060561666275867}
   - {fileID: 2685062671946380582}
   - {fileID: 8217650186238614445}
@@ -1133,7 +1061,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 421f4cc85dca1491b806085e60b2305c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameAssembly::SaveMenuConfirmDialogView
-  backgroundImage: {fileID: 2682164044590329018}
+  backgroundImage: {fileID: 2440702612678129643}
   messageTextColor: {r: 1, g: 1, b: 1, a: 1}
   confirmButtonImage: {fileID: 7959401949986866320}
   confirmButton: {fileID: 4204620324974165375}
@@ -1598,6 +1526,7 @@ GameObject:
   - component: {fileID: 3288215003520995081}
   - component: {fileID: 5297418555348237177}
   - component: {fileID: 1589970558290244136}
+  - component: {fileID: 1994287514735066697}
   m_Layer: 0
   m_Name: SaveMenuWindow
   m_TagString: Untagged
@@ -1719,6 +1648,18 @@ MonoBehaviour:
   playMusicStateTextField: {fileID: 2565669158193831447}
   versionTextField: {fileID: 2032276401988359438}
   confirmDialog: {fileID: 7114786200487809474}
+--- !u!114 &1994287514735066697
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6616971139157371761}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &6817486011617691053
 GameObject:
   m_ObjectHideFlags: 0
@@ -2293,6 +2234,78 @@ MonoBehaviour:
   button: {fileID: 6510533815612037859}
   upTexture: {fileID: 2800000, guid: 2aabc033aa9ec4c44b51b434caf82a46, type: 3}
   downTexture: {fileID: 2800000, guid: 2aabc033aa9ec4c44b51b434caf82a46, type: 3}
+--- !u!1 &8894100560580460049
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5535155345723693136}
+  - component: {fileID: 6096016038289619581}
+  - component: {fileID: 2440702612678129643}
+  m_Layer: 0
+  m_Name: BackgroundImage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &5535155345723693136
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8894100560580460049}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2184746506960578200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 114, y: -150}
+  m_SizeDelta: {x: 412, y: 176}
+  m_Pivot: {x: 0, y: 1}
+--- !u!222 &6096016038289619581
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8894100560580460049}
+  m_CullTransparentMesh: 1
+--- !u!114 &2440702612678129643
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8894100560580460049}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Texture: {fileID: 2800000, guid: 73e1826c84bf845188e44134bfa2b31e, type: 3}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
 --- !u!1001 &119974259602167660
 PrefabInstance:
   m_ObjectHideFlags: 0

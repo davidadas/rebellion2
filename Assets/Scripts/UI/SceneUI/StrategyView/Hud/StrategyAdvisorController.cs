@@ -87,13 +87,22 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Applies a changed advisor theme and resets notification and playback state from the old theme.
+    /// Applies a changed advisor theme or refreshes asynchronously loaded idle frames.
     /// </summary>
     /// <param name="nextTheme">The active faction advisor theme.</param>
     public void Render(StrategyAdvisorTheme nextTheme)
     {
         if (ReferenceEquals(theme, nextTheme))
+        {
+            if (theme != null)
+            {
+                StrategyAdvisorViewData data = CreateViewData(theme);
+                GetRequiredView()
+                    .RefreshIdleFrames(data.ProtocolIdleTexture, data.DroidIdleTexture);
+            }
+
             return;
+        }
 
         ClearNotificationState();
         theme = nextTheme;
@@ -158,20 +167,37 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             )
                 continue;
 
-            pendingNotifications.Remove(priority.TableID);
             int expirationTick = pendingExpirationTicks[priority.TableID];
-            pendingExpirationTicks.Remove(priority.TableID);
             if (expirationTick < currentTick)
+            {
+                pendingNotifications.Remove(priority.TableID);
+                pendingExpirationTicks.Remove(priority.TableID);
                 continue;
+            }
 
             int nextAllowedTick = nextAllowedTicks.TryGetValue(priority.TableID, out int tick)
                 ? tick
                 : 0;
             if (nextAllowedTick >= currentTick)
+            {
+                pendingNotifications.Remove(priority.TableID);
+                pendingExpirationTicks.Remove(priority.TableID);
                 continue;
+            }
 
+            if (
+                !TryCreatePlaybackBatch(
+                    notification,
+                    announcementsEnabled,
+                    out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
+                )
+            )
+                return;
+
+            pendingNotifications.Remove(priority.TableID);
+            pendingExpirationTicks.Remove(priority.TableID);
             nextAllowedTicks[priority.TableID] = currentTick + theme.RepeatCooldownTicks;
-            targetView.EnqueuePlaybacks(CreatePlaybackBatch(notification, announcementsEnabled));
+            targetView.EnqueuePlaybacks(playbackBatch);
             break;
         }
     }
@@ -413,47 +439,57 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Projects droid and optional protocol animations in their established playback order.
+    /// Tries to project droid and optional protocol animations after every frame is available.
     /// </summary>
     /// <param name="notification">The selected advisor notification.</param>
     /// <param name="announcementsEnabled">Whether gated protocol announcements may play.</param>
-    /// <returns>The ordered immutable playback batch.</returns>
-    private IReadOnlyList<StrategyAdvisorAnimationViewData> CreatePlaybackBatch(
+    /// <param name="playbackBatch">Receives the ordered immutable playback batch.</param>
+    /// <returns>True when every required animation frame is available.</returns>
+    private bool TryCreatePlaybackBatch(
         StrategyAdvisorNotificationTheme notification,
-        bool announcementsEnabled
+        bool announcementsEnabled,
+        out IReadOnlyList<StrategyAdvisorAnimationViewData> playbackBatch
     )
     {
         List<StrategyAdvisorAnimationViewData> playbacks =
             new List<StrategyAdvisorAnimationViewData>();
-        AddPlayback(playbacks, notification.Droid, true);
+        bool droidReady = TryAddPlayback(playbacks, notification.Droid, true);
+        bool protocolReady = true;
         if (notification.Protocol?.RequiresAnnouncementsEnabled != true || announcementsEnabled)
-            AddPlayback(playbacks, notification.Protocol, false);
+            protocolReady = TryAddPlayback(playbacks, notification.Protocol, false);
 
-        return playbacks;
+        playbackBatch = playbacks;
+        return droidReady && protocolReady;
     }
 
     /// <summary>
-    /// Projects one valid configured animation into an ordered texture sequence.
+    /// Tries to project one configured animation after every frame is available.
     /// </summary>
     /// <param name="playbacks">The destination playback batch.</param>
     /// <param name="animation">The configured animation.</param>
     /// <param name="usesDroid">Whether the droid image presents the animation.</param>
-    private void AddPlayback(
+    /// <returns>True when the animation is absent, empty, or fully available.</returns>
+    private bool TryAddPlayback(
         ICollection<StrategyAdvisorAnimationViewData> playbacks,
         StrategyAdvisorAnimationTheme animation,
         bool usesDroid
     )
     {
         if (animation == null || animation.FrameCount <= 0)
-            return;
+            return true;
 
         Texture2D[] frames = new Texture2D[animation.FrameCount];
+        bool ready = true;
         for (int frameIndex = 0; frameIndex < animation.FrameCount; frameIndex++)
         {
             frames[frameIndex] = ResolveTexture(
                 theme.GetFramePath(animation.BitmapID, frameIndex, usesDroid)
             );
+            ready &= frames[frameIndex] != null;
         }
+
+        if (!ready)
+            return false;
 
         playbacks.Add(
             new StrategyAdvisorAnimationViewData(
@@ -462,6 +498,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 animation.WaveID == 0 ? null : theme.GetAudioPath(animation.WaveID)
             )
         );
+        return true;
     }
 
     /// <summary>

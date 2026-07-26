@@ -1,6 +1,5 @@
+using System;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.Video;
 
 /// <summary>
 /// Controls the initial boot sequence of the application.
@@ -10,14 +9,27 @@ public sealed class BootController : MonoBehaviour
 {
     private static readonly string[] _bootVideoPaths = { "Videos/intro", "Videos/opening_crawl" };
 
+    [SerializeField]
+    private GameObject cutscenePlayerPrefab;
+
     private int currentVideoIndex;
 
     /// <summary>
     /// Begins the boot video sequence when the scene starts.
     /// </summary>
-    private void Start()
+    private async void Start()
     {
-        PlayNext();
+        try
+        {
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            bootstrap.InitializeCutsceneManager(cutscenePlayerPrefab);
+            await bootstrap.InitializeContentAsync();
+            PlayNext();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 
     /// <summary>
@@ -28,15 +40,13 @@ public sealed class BootController : MonoBehaviour
     {
         if (currentVideoIndex >= _bootVideoPaths.Length)
         {
-            SceneManager.LoadScene("MainMenu");
+            AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
             return;
         }
 
         string path = _bootVideoPaths[currentVideoIndex];
         currentVideoIndex++;
 
-        VideoClip clip = ResourceManager.GetVideo(path);
-
-        CutsceneManager.Instance.Play(clip, PlayNext);
+        AppBootstrap.Instance.GetCutsceneManager().Play(path, PlayNext);
     }
 }

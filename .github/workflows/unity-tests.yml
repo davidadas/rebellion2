@@ -47,9 +47,9 @@ jobs:
 
       - name: Install media
         run: |
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Content/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Content/Audio/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Content/Videos/
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -155,7 +155,7 @@ jobs:
           done
           rm -rf /tmp/unity-libcache
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll; do
+          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1
@@ -197,8 +197,9 @@ jobs:
 
       - name: Install media
         run: |
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Content/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Content/Audio/
+          mkdir -p Assets/Content/Videos
           rm -rf .ci
 
       - uses: actions/cache@v4

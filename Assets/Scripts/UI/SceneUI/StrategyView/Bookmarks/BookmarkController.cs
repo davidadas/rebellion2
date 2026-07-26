@@ -47,6 +47,23 @@ public sealed class BookmarkController
     }
 
     /// <summary>
+    /// Requests every small bookmark icon that can appear as bookmark ownership changes.
+    /// </summary>
+    internal void RequestIconTextures()
+    {
+        List<FactionTheme> themes = uiContext.GetAllThemes();
+        themes.Add(uiContext.GetTheme(null));
+        foreach (FactionTheme theme in themes)
+        {
+            StrategyBookmarkIcons icons = theme?.StrategyBookmarkIcons;
+            uiContext.GetTexture(icons?.FacilityImagePath);
+            uiContext.GetTexture(icons?.DefenseImagePath);
+            uiContext.GetTexture(icons?.FleetImagePath);
+            uiContext.GetTexture(icons?.MissionImagePath);
+        }
+    }
+
+    /// <summary>
     /// Adds one bookmark to the first available authored slot.
     /// </summary>
     /// <param name="icon">The bookmarked feature category.</param>

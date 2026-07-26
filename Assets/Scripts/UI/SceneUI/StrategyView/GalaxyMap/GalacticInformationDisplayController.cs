@@ -116,6 +116,21 @@ public sealed class GalacticInformationDisplayController : ICancelable
     }
 
     /// <summary>
+    /// Requests the selector textures needed by its first open and every category submenu.
+    /// </summary>
+    internal void RequestTextures()
+    {
+        projector.Project(
+            new GalacticInformationDisplayState(
+                true,
+                activeCategoryIndex,
+                hoveredFilterIndex,
+                displayOffHovered
+            )
+        );
+    }
+
+    /// <summary>
     /// Cancels the open selector using the same dismissal behavior as an outside click.
     /// </summary>
     /// <returns>True when an open selector was dismissed.</returns>

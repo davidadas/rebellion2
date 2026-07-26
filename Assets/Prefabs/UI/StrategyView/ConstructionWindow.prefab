@@ -2468,6 +2468,7 @@ GameObject:
   - component: {fileID: 4588179938158258154}
   - component: {fileID: 841655515118095512}
   - component: {fileID: 6926864592844347457}
+  - component: {fileID: 8416003017023277999}
   m_Layer: 0
   m_Name: ConstructionWindow
   m_TagString: Untagged
@@ -2622,6 +2623,18 @@ MonoBehaviour:
   okButtonDisabledTexture: {fileID: 2800000, guid: eaf5f4529d3b34e46846f7e7ee06214e, type: 3}
   cancelButtonUpTexture: {fileID: 2800000, guid: c0d7eabb451f94390b54a93750ab5d37, type: 3}
   cancelButtonDownTexture: {fileID: 2800000, guid: c2c5a326c1ba84417bb1dc9c46115fca, type: 3}
+--- !u!114 &8416003017023277999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4495017127816207386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &4535668333376755013
 GameObject:
   m_ObjectHideFlags: 0
