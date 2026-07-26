@@ -21,8 +21,11 @@
 !Assets/Content/Data.meta
 !Assets/Content/Data/*.meta
 !Assets/Content/Videos.meta
-!Assets/Editor/Content.meta
-!Assets/Editor/Content/*.meta
+!Assets/Editor/Build.meta
+!Assets/Editor/Build/*.meta
+!Assets/Editor/PrefabBuilders.meta
+!Assets/Editor/PrefabBuilders/*.meta
+!Assets/Editor/PrefabBuilders/*/*.meta
 !Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture.meta
 !Assets/Scripts/App/SceneLoader.cs.meta
 !Assets/Scripts/UI/Components/ExternalContentArt.cs.meta
