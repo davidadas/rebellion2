@@ -32,6 +32,7 @@ namespace Rebellion.AI.Planners
         General,
         TroopTransport,
         Bombardment,
+        Interdiction,
     }
 
     /// <summary>

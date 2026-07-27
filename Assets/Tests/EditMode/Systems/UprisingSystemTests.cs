@@ -483,6 +483,35 @@ namespace Rebellion.Tests.Systems
             planet.NextUprisingTimerOrder = 2;
         }
 
+        private static void AttachActivePlanetDestroyingCapitalShip(
+            GameRoot game,
+            PlanetSystem system,
+            string ownerInstanceId
+        )
+        {
+            const string capitalShipTypeId = "planet-destroyer";
+            game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
+            {
+                capitalShipTypeId,
+            };
+            Planet orbit = new Planet { InstanceID = "planet-destroyer-orbit" };
+            game.AttachNode(orbit, system);
+            Fleet fleet = EntityFactory.CreateFleet("planet-destroyer-fleet", ownerInstanceId);
+            game.AttachNode(fleet, orbit);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "planet-destroyer",
+                    TypeID = capitalShipTypeId,
+                    OwnerInstanceID = ownerInstanceId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1,
+                    CurrentHullStrength = 1,
+                },
+                fleet
+            );
+        }
+
         private static Mission AttachActiveMission(
             GameRoot game,
             Planet planet,
@@ -603,6 +632,32 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_IncidentWithPlanetDestroyerInSector_DoublesEmpireTroopStrength()
+        {
+            (GameRoot game, Planet planet, UprisingSystem system) = BuildScene(
+                ownerSupport: 10,
+                troopCount: 1
+            );
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            empire.Settings.UprisingResistance = 2;
+            AttachActivePlanetDestroyingCapitalShip(
+                game,
+                planet.GetParentOfType<PlanetSystem>(),
+                empire.InstanceID
+            );
+            ScheduleIncident(planet, 1);
+            game.CurrentTick = 1;
+            planet.EnergyCapacity = 1;
+            Building facility = EntityFactory.CreateBuilding("b1", empire.InstanceID);
+            facility.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(facility, planet);
+
+            system.ProcessTick();
+
+            Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+        }
+
+        [Test]
         public void ProcessTick_NeutralPlanet_Skipped()
         {
             GameConfig config = TestConfig.Create();
@@ -639,117 +694,38 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_EmpireGarrisonOnCoreSystem_HalvesRequirement()
+        public void ProcessTick_EmpireGarrisonWithPlanetDestroyerInSector_HalvesRequirement()
         {
-            // On a core system with GarrisonEfficiency=2, the base garrison requirement of 3
-            // is halved to 1. One troop meets it, so no uprising.
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            Faction empire = new Faction
-            {
-                InstanceID = "empire",
-                Settings = new FactionSettings { GarrisonEfficiency = 2 },
-            };
-            game.Factions.Add(empire);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            (GameRoot game, Planet planet, UprisingSystem uprisingSystem) = BuildScene(
+                ownerSupport: 30,
+                troopCount: 1
+            );
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            empire.Settings.GarrisonEfficiency = 2;
+            AttachActivePlanetDestroyingCapitalShip(
+                game,
+                planet.GetParentOfType<PlanetSystem>(),
+                empire.InstanceID
+            );
 
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.CoreSystem,
-            };
-            game.AttachNode(system, game.Galaxy);
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PopularSupport = new Dictionary<string, int> { { "empire", 30 }, { "rebels", 50 } },
-            };
-            game.AttachNode(planet, system);
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(regiment, planet);
-
-            MovementSystem movementSystem = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
-                game,
-                movementSystem,
-                new ManufacturingSystem(game, new FleetSystem(game)),
-                new FogOfWarSystem(game)
-            );
-            UprisingSystem uprisingSystem = new UprisingSystem(
-                game,
-                new StubRNG(),
-                planetaryControl
-            );
             uprisingSystem.ProcessTick();
 
-            Assert.IsFalse(
-                planet.IsInUprising,
-                "GarrisonEfficiency=2 on core system should halve the garrison requirement"
-            );
+            Assert.IsFalse(planet.IsInUprising);
         }
 
         [Test]
-        public void ProcessTick_EmpireGarrisonOnOuterRim_NoBonus()
+        public void ProcessTick_EmpireGarrisonWithoutPlanetDestroyerInSector_NoBonus()
         {
-            // On an outer rim planet, GarrisonEfficiency does not apply. Garrison requirement
-            // stays at 3 with one troop, so the deficit triggers an uprising.
-            GameConfig config = TestConfig.Create();
-            GameRoot game = new GameRoot(config);
-            Faction empire = new Faction
-            {
-                InstanceID = "empire",
-                Settings = new FactionSettings { GarrisonEfficiency = 2 },
-            };
-            game.Factions.Add(empire);
-            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            (GameRoot game, Planet planet, UprisingSystem uprisingSystem) = BuildScene(
+                ownerSupport: 30,
+                troopCount: 1,
+                isCoreSystem: true
+            );
+            game.GetFactionByOwnerInstanceID("empire").Settings.GarrisonEfficiency = 2;
 
-            PlanetSystem system = new PlanetSystem
-            {
-                InstanceID = "sys1",
-                SystemType = PlanetSystemType.OuterRim,
-            };
-            game.AttachNode(system, game.Galaxy);
-            Planet planet = new Planet
-            {
-                InstanceID = "p1",
-                OwnerInstanceID = "empire",
-                IsColonized = true,
-                PopularSupport = new Dictionary<string, int> { { "empire", 30 }, { "rebels", 50 } },
-            };
-            game.AttachNode(planet, system);
-            Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
-            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
-            game.AttachNode(regiment, planet);
-
-            MovementSystem movementSystem = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-            PlanetaryControlSystem planetaryControl = new PlanetaryControlSystem(
-                game,
-                movementSystem,
-                new ManufacturingSystem(game, new FleetSystem(game)),
-                new FogOfWarSystem(game)
-            );
-            UprisingSystem uprisingSystem = new UprisingSystem(
-                game,
-                new StubRNG(),
-                planetaryControl
-            );
             uprisingSystem.ProcessTick();
 
-            Assert.IsTrue(
-                planet.IsInUprising,
-                "Outer rim should NOT apply GarrisonEfficiency — garrison deficit triggers uprising"
-            );
+            Assert.IsTrue(planet.IsInUprising);
         }
     }
 
@@ -791,17 +767,13 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            int garrison = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                faction,
-                config.AI.Garrison
-            );
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(planet, faction, game);
 
             Assert.AreEqual(expectedGarrison, garrison, $"Garrison for support={support}");
         }
 
         [Test]
-        public void CalculateGarrisonRequirement_CoreWorldEmpire_Halved()
+        public void CalculateGarrisonRequirement_PlanetDestroyerInSectorEmpire_Halved()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -828,18 +800,14 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            // Base: ceil((60-20)/10) = 4. Halved: 4/2 = 2.
-            int garrison = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                empire,
-                config.AI.Garrison
-            );
+            AttachActivePlanetDestroyingCapitalShip(game, system, empire.InstanceID);
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(planet, empire, game);
 
-            Assert.AreEqual(2, garrison, "Empire core world should halve garrison");
+            Assert.AreEqual(2, garrison);
         }
 
         [Test]
-        public void CalculateGarrisonRequirement_CoreWorldAlliance_NotHalved()
+        public void CalculateGarrisonRequirement_PlanetDestroyerInSectorAlliance_NotHalved()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -866,18 +834,14 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            // Base: ceil((60-20)/10) = 4. Alliance: no halving.
-            int garrison = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                alliance,
-                config.AI.Garrison
-            );
+            AttachActivePlanetDestroyingCapitalShip(game, system, alliance.InstanceID);
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(planet, alliance, game);
 
-            Assert.AreEqual(4, garrison, "Alliance core world should NOT halve garrison");
+            Assert.AreEqual(4, garrison);
         }
 
         [Test]
-        public void CalculateGarrisonRequirement_CoreWorldEmpire_CanBeZero()
+        public void CalculateGarrisonRequirement_PlanetDestroyerInSectorEmpire_CanBeZero()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
@@ -904,17 +868,76 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(planet, system);
 
-            // Base: ceil((60-55)/10) = 1. Halved: 1/2 = 0 (integer division).
-            int garrison = UprisingSystem.CalculateGarrisonRequirement(
-                planet,
-                empire,
-                config.AI.Garrison
-            );
+            AttachActivePlanetDestroyingCapitalShip(game, system, empire.InstanceID);
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(planet, empire, game);
 
-            Assert.AreEqual(
-                0,
-                garrison,
-                "Empire core world garrison can be 0 via integer division (no min-1 floor)"
+            Assert.AreEqual(0, garrison);
+        }
+
+        [Test]
+        public void CalculateGarrisonRequirement_PlanetDestroyerInDifferentSector_NotHalved()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = new GameRoot(config);
+            Faction empire = new Faction
+            {
+                InstanceID = "empire",
+                Settings = new FactionSettings { GarrisonEfficiency = 2 },
+            };
+            game.Factions.Add(empire);
+            PlanetSystem targetSystem = new PlanetSystem
+            {
+                InstanceID = "target-system",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            game.AttachNode(targetSystem, game.Galaxy);
+            Planet target = new Planet
+            {
+                InstanceID = "target",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                PopularSupport = new Dictionary<string, int> { { empire.InstanceID, 20 } },
+            };
+            game.AttachNode(target, targetSystem);
+            PlanetSystem otherSystem = new PlanetSystem
+            {
+                InstanceID = "other-system",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            game.AttachNode(otherSystem, game.Galaxy);
+            AttachActivePlanetDestroyingCapitalShip(game, otherSystem, empire.InstanceID);
+
+            int garrison = UprisingSystem.CalculateGarrisonRequirement(target, empire, game);
+
+            Assert.AreEqual(4, garrison);
+        }
+
+        private static void AttachActivePlanetDestroyingCapitalShip(
+            GameRoot game,
+            PlanetSystem system,
+            string ownerInstanceId
+        )
+        {
+            const string capitalShipTypeId = "planet-destroyer";
+            game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
+            {
+                capitalShipTypeId,
+            };
+            Planet orbit = new Planet { InstanceID = "planet-destroyer-orbit" };
+            game.AttachNode(orbit, system);
+            Fleet fleet = EntityFactory.CreateFleet("planet-destroyer-fleet", ownerInstanceId);
+            game.AttachNode(fleet, orbit);
+            game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "planet-destroyer",
+                    TypeID = capitalShipTypeId,
+                    OwnerInstanceID = ownerInstanceId,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1,
+                    CurrentHullStrength = 1,
+                },
+                fleet
             );
         }
     }

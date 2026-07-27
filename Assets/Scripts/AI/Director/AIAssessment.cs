@@ -908,7 +908,7 @@ namespace Rebellion.AI.Director
                     int stableGarrison = UprisingSystem.CalculateGarrisonRequirement(
                         planet,
                         _context.Faction,
-                        _context.Game.Config.AI.Garrison
+                        _context.Game
                     );
                     return Math.Max(minimum, GetDefendingRegimentCount(planet) + stableGarrison);
                 }

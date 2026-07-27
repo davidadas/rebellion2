@@ -165,10 +165,11 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotEmpty(combatResult.ShipDamage);
             foreach (ShipDamageResult damage in combatResult.ShipDamage)
             {
-                GameObjectDamagedResult lastDamageEvent = combatResult
+                int totalDamage = combatResult
                     .Events.OfType<GameObjectDamagedResult>()
-                    .Last(result => result.GameObject == damage.Ship);
-                Assert.AreEqual(damage.HullBefore - damage.HullAfter, lastDamageEvent.DamageValue);
+                    .Where(result => result.GameObject == damage.Ship)
+                    .Sum(result => result.DamageValue);
+                Assert.AreEqual(damage.HullBefore - damage.HullAfter, totalDamage);
             }
             CombatUnitSnapshot empireShipSnapshot = combatResult.AttackingUnits.Single(unit =>
                 unit.Unit.GetInstanceID() == empireShip.GetInstanceID()
@@ -237,7 +238,7 @@ namespace Rebellion.Tests.Systems
             );
             Assert.AreEqual(
                 repeatedDamage.Damage.HullBefore - repeatedDamage.Damage.HullAfter,
-                repeatedDamage.Events.Last().DamageValue
+                repeatedDamage.Events.Sum(result => result.DamageValue)
             );
         }
 
@@ -807,7 +808,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void Resolve_ShieldAbsorption_ReducesDamage()
+        public void Resolve_MaxShieldStrength_AbsorbsDamageBeforeHull()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
             Faction empire = new Faction { InstanceID = "empire" };
@@ -820,23 +821,301 @@ namespace Rebellion.Tests.Systems
             game.AttachNode(system, game.Galaxy);
             game.AttachNode(planet, system);
 
-            Fleet shieldedFleet = CreateFleet(game, "f1", "empire", planet, 1, 100, 20);
-            Fleet unshieldedFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 20);
-            CapitalShip shieldedShip = shieldedFleet.CapitalShips[0];
-            CapitalShip unshieldedShip = unshieldedFleet.CapitalShips[0];
+            Fleet attacker = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1,
+                10,
+                shieldRechargeRate: 0
+            );
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                100,
+                shieldRechargeRate: 0
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.MaxShieldStrength = 100;
 
-            shieldedFleet.CapitalShips[0].ShieldRechargeRate = 15;
-            unshieldedFleet.CapitalShips[0].ShieldRechargeRate = 0;
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
 
-            QueueRNG rng = new QueueRNG(0.5, 0.5, 0.5, 0.5);
-            SpaceCombatSystem manager = MakeSpaceCombat(game, rng);
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
 
-            TryRunCombat(manager, out List<GameResult> results);
+            Assert.AreEqual(100, defenderShip.CurrentHullStrength);
+            Assert.IsFalse(HasDamageFor(results, defenderShip));
+        }
 
-            int shieldedDamage = GetDamageFor(results, shieldedShip);
-            int unshieldedDamage = GetDamageFor(results, unshieldedShip);
+        [Test]
+        public void Resolve_ShieldRechargeRateWithoutShieldStrength_DoesNotAbsorbDamage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
 
-            Assert.Greater(unshieldedDamage, shieldedDamage, "Shields should reduce damage");
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet attacker = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1,
+                10,
+                shieldRechargeRate: 0
+            );
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                100,
+                shieldRechargeRate: 15
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.MaxShieldStrength = 0;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
+
+            Assert.AreEqual(60, defenderShip.CurrentHullStrength);
+            Assert.AreEqual(40, GetDamageFor(results, defenderShip));
+        }
+
+        [Test]
+        public void Resolve_ShieldRechargeRate_RestoresShieldStrengthBetweenRounds()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet attacker = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1000,
+                10,
+                shieldRechargeRate: 0
+            );
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                0,
+                shieldRechargeRate: 40
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.MaxShieldStrength = 50;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
+
+            Assert.AreEqual(100, defenderShip.CurrentHullStrength);
+            Assert.IsFalse(HasDamageFor(results, defenderShip));
+        }
+
+        [Test]
+        public void Resolve_DepletedShieldStrength_PersistsBetweenRounds()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet attacker = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1000,
+                10,
+                shieldRechargeRate: 0
+            );
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                0,
+                shieldRechargeRate: 10
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.MaxShieldStrength = 50;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
+
+            Assert.AreEqual(0, defenderShip.CurrentHullStrength);
+            ShipDamageResult damage = GetCombatResult(results)
+                .ShipDamage.Single(result => result.Ship == defenderShip);
+            Assert.AreEqual(100, damage.HullBefore - damage.HullAfter);
+        }
+
+        [Test]
+        [Timeout(5000)]
+        public void Resolve_PreDamagedShipWithStableShields_DoesNotReportExistingHullDamage()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet attacker = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1000,
+                1,
+                shieldRechargeRate: 0
+            );
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                0,
+                shieldRechargeRate: 8
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.CurrentHullStrength = 50;
+            defenderShip.MaxShieldStrength = 100;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
+
+            Assert.AreEqual(50, defenderShip.CurrentHullStrength);
+            Assert.IsFalse(HasDamageFor(results, defenderShip));
+        }
+
+        [Test]
+        [Timeout(5000)]
+        public void Resolve_DamagedHull_ReducesShieldRechargeRate()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet attacker = CreateFleet(
+                game,
+                "f1",
+                "empire",
+                planet,
+                1,
+                1000,
+                1,
+                shieldRechargeRate: 0
+            );
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                0,
+                shieldRechargeRate: 4
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.CurrentHullStrength = 50;
+            defenderShip.MaxShieldStrength = 100;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, attacker, defender, out _);
+
+            Assert.AreEqual(0, defenderShip.CurrentHullStrength);
+        }
+
+        [Test]
+        public void Resolve_FighterDamage_IsAbsorbedByCapitalShipShields()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+
+            Fleet attacker = CreateFleetWithFighters(game, "f1", "empire", planet, 1, 100, 0, 12);
+            Fleet defender = CreateFleet(
+                game,
+                "f2",
+                "alliance",
+                planet,
+                1,
+                100,
+                0,
+                shieldRechargeRate: 120
+            );
+            CapitalShip defenderShip = defender.CapitalShips[0];
+            defenderShip.MaxShieldStrength = 200;
+
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG(0.5, 0.5, 0.5, 0.5));
+
+            TryResolveCombat(manager, attacker, defender, out List<GameResult> results);
+
+            Assert.AreEqual(100, defenderShip.CurrentHullStrength);
+            Assert.IsFalse(HasDamageFor(results, defenderShip));
         }
 
         [Test]

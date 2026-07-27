@@ -1222,6 +1222,7 @@ namespace Rebellion.Tests.AI.Planners
             );
             bombardmentShip.TypeID = "bombardment";
             bombardmentShip.Bombardment = 20;
+            bombardmentShip.HasGravityWell = true;
             empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
                 new Technology(lineShip),
@@ -1240,6 +1241,87 @@ namespace Rebellion.Tests.AI.Planners
             Assert.AreSame(bombardmentShip, proposal.Product.GetReference());
             Assert.AreEqual(
                 AICapitalShipProductionRole.Bombardment,
+                proposal.Demand.CapitalShipRole
+            );
+        }
+
+        [Test]
+        public void Plan_WithInterdictionDemand_SelectsHighestShieldRechargeGravityWellShip()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "shipyard",
+                empire.InstanceID
+            );
+            Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
+            target.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AITestSceneBuilder.RevealPlanet(game, empire, target);
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                planet,
+                "shipyard-facility",
+                BuildingType.Shipyard,
+                ManufacturingType.Ship
+            );
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = target.InstanceID,
+            };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "existing",
+                    empire.InstanceID,
+                    combatStrength: 100,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                fleet
+            );
+            CapitalShip lowerRecharge = AITestSceneBuilder.CreateCapitalShip(
+                "lower-recharge-template",
+                empire.InstanceID
+            );
+            lowerRecharge.TypeID = "lower-recharge";
+            lowerRecharge.HasGravityWell = true;
+            lowerRecharge.ShieldRechargeRate = 10;
+            lowerRecharge.MaintenanceCost = 0;
+            CapitalShip higherRecharge = AITestSceneBuilder.CreateCapitalShip(
+                "higher-recharge-template",
+                empire.InstanceID
+            );
+            higherRecharge.TypeID = "higher-recharge";
+            higherRecharge.HasGravityWell = true;
+            higherRecharge.ShieldRechargeRate = 20;
+            higherRecharge.MaintenanceCost = 0;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(lowerRecharge),
+                new Technology(higherRecharge),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item =>
+                    item.Demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.Destination == fleet
+                );
+
+            Assert.AreSame(higherRecharge, proposal.Product.GetReference());
+            Assert.AreEqual(
+                AICapitalShipProductionRole.Interdiction,
                 proposal.Demand.CapitalShipRole
             );
         }

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -62,6 +64,25 @@ namespace Rebellion.Game.Galaxy
         public Point GetPosition()
         {
             return new Point(PositionX, PositionY);
+        }
+
+        public bool HasActivePlanetDestroyingCapitalShip(
+            IReadOnlyCollection<string> capitalShipTypeIds
+        )
+        {
+            if (capitalShipTypeIds == null || capitalShipTypeIds.Count == 0)
+                return false;
+
+            return Planets
+                .SelectMany(planet => planet.Fleets)
+                .Where(fleet => fleet.Movement == null)
+                .SelectMany(fleet => fleet.CapitalShips)
+                .Any(capitalShip =>
+                    capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
+                    && capitalShip.Movement == null
+                    && capitalShip.CurrentHullStrength > 0
+                    && capitalShipTypeIds.Contains(capitalShip.GetTypeID())
+                );
         }
 
         /// <summary>

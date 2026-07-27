@@ -1387,6 +1387,114 @@ namespace Rebellion.Tests.AI.Planners
         }
 
         [Test]
+        public void Generate_WithReadyAttackFleetAndUnlockedGravityWell_AddsInterdictionDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            game.AttachNode(
+                AITestSceneBuilder.CreateCapitalShip(
+                    "existing",
+                    empire.InstanceID,
+                    combatStrength: 100,
+                    regimentCapacity: 0,
+                    starfighterCapacity: 0
+                ),
+                fleet
+            );
+            CapitalShip interdictor = AITestSceneBuilder.CreateCapitalShip(
+                "interdictor-template",
+                empire.InstanceID
+            );
+            interdictor.TypeID = "interdictor";
+            interdictor.HasGravityWell = true;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(interdictor),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item =>
+                    item.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && item.DestinationFleet == fleet
+                );
+
+            Assert.AreEqual(1, demand.QuantityNeeded);
+            Assert.AreEqual(AICapitalShipProductionRole.Interdiction, demand.CapitalShipRole);
+        }
+
+        [TestCase(ManufacturingStatus.Building)]
+        [TestCase(ManufacturingStatus.Complete)]
+        public void Generate_WithCommittedGravityWellShip_DoesNotAddInterdictionDemand(
+            ManufacturingStatus manufacturingStatus
+        )
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
+            game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 0;
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
+            Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
+            enemy.SetPopularSupport(empire.InstanceID, game.Config.AI.Garrison.SupportThreshold);
+            AITestSceneBuilder.RevealPlanet(game, empire, enemy);
+            Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
+            fleet.RoleType = FleetRoleType.Battle;
+            fleet.Order = new FleetOrder
+            {
+                OrderType = FleetOrderType.Attack,
+                Status = FleetOrderStatus.Staging,
+                TargetPlanetId = enemy.InstanceID,
+            };
+            game.AttachNode(fleet, owned);
+            CapitalShip interdictor = AITestSceneBuilder.CreateCapitalShip(
+                "interdictor",
+                empire.InstanceID,
+                combatStrength: 100,
+                regimentCapacity: 0,
+                starfighterCapacity: 0
+            );
+            interdictor.HasGravityWell = true;
+            interdictor.ManufacturingStatus = manufacturingStatus;
+            game.AttachNode(interdictor, fleet);
+            CapitalShip template = AITestSceneBuilder.CreateCapitalShip(
+                "interdictor-template",
+                empire.InstanceID
+            );
+            template.TypeID = "interdictor";
+            template.HasGravityWell = true;
+            empire.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
+            {
+                new Technology(template),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(
+                demands.Any(demand =>
+                    demand.Kind == AIProductionDemandKind.FleetCapitalShip
+                    && demand.DestinationFleet == fleet
+                )
+            );
+        }
+
+        [Test]
         public void Generate_WithUnderstrengthHeadquartersDefenseFleet_AddsCapitalShipDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);

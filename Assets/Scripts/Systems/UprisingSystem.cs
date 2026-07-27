@@ -369,7 +369,7 @@ namespace Rebellion.Systems
         private int CalculateGarrisonSurplus(Planet planet, Faction faction)
         {
             return CountControllingRegiments(planet, faction)
-                - CalculateGarrisonRequirement(planet, faction, _game.Config.AI.Garrison);
+                - CalculateGarrisonRequirement(planet, faction, _game);
         }
 
         /// <summary>
@@ -809,12 +809,13 @@ namespace Rebellion.Systems
         /// <param name="planet">The planet in uprising.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <returns>The troop multiplier for this planet and faction.</returns>
-        private static int GetUprisingTroopMultiplier(Planet planet, Faction faction)
+        private int GetUprisingTroopMultiplier(Planet planet, Faction faction)
         {
             PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
             if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                parentSystem?.HasActivePlanetDestroyingCapitalShip(
+                    _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs
+                ) == true
                 && faction.Settings.UprisingResistance > 1
             )
             {
@@ -1172,19 +1173,19 @@ namespace Rebellion.Systems
         /// <summary>
         /// Calculates how many garrison troops a planet requires for the given faction.
         /// Returns 0 when popular support is at or above the threshold.
-        /// Core worlds with faction garrison efficiency receive a reduced requirement.
         /// Planets in active uprisings apply the uprising multiplier.
         /// </summary>
         /// <param name="planet">The planet to calculate garrison requirements for.</param>
         /// <param name="faction">The controlling faction.</param>
-        /// <param name="config">Garrison configuration parameters.</param>
+        /// <param name="game">The current game state.</param>
         /// <returns>The number of garrison troops required, or 0 if support is sufficient.</returns>
         public static int CalculateGarrisonRequirement(
             Planet planet,
             Faction faction,
-            GameConfig.GarrisonConfig config
+            GameRoot game
         )
         {
+            GameConfig.GarrisonConfig config = game.Config.AI.Garrison;
             int popularSupport = planet.GetPopularSupport(faction.InstanceID);
 
             if (popularSupport >= config.SupportThreshold)
@@ -1197,8 +1198,9 @@ namespace Rebellion.Systems
 
             PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
             if (
-                parentSystem != null
-                && parentSystem.SystemType == PlanetSystemType.CoreSystem
+                parentSystem?.HasActivePlanetDestroyingCapitalShip(
+                    game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs
+                ) == true
                 && faction.Settings.GarrisonEfficiency > 1
             )
             {

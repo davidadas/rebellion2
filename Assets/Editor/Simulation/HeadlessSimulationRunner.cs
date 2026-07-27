@@ -2529,7 +2529,7 @@ public static class HeadlessSimulationRunner
         int stableGarrison = UprisingSystem.CalculateGarrisonRequirement(
             targetPlanet,
             faction,
-            game.Config.AI.Garrison
+            game
         );
         return Math.Max(
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount,

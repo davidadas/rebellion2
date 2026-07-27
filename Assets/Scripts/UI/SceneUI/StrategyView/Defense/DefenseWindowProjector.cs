@@ -142,7 +142,7 @@ internal sealed class DefenseWindowProjector
         int requirement = UprisingSystem.CalculateGarrisonRequirement(
             mapPlanet.Planet,
             playerFaction,
-            uiContext.Game.Config.AI.Garrison
+            uiContext.Game
         );
         return $"Garrison Requirement: {requirement}";
     }

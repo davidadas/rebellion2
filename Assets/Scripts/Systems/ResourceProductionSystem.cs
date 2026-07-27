@@ -359,7 +359,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Advances one mine and deposits one raw material when its cycle completes.
+        /// Advances one mine and produces one raw material when its cycle completes.
         /// </summary>
         /// <param name="faction">The owning faction.</param>
         /// <param name="mine">The mine to process.</param>
@@ -371,12 +371,12 @@ namespace Rebellion.Systems
             if (!AdvanceResourceCycle(faction, mine))
                 return;
 
-            faction.RawMaterialStockpile++;
+            GetResourceRecipient(faction, mine).RawMaterialStockpile++;
             mine.ProductionInputReserved = true;
         }
 
         /// <summary>
-        /// Advances one refinery and deposits one refined material when its cycle completes.
+        /// Advances one refinery and produces one refined material when its cycle completes.
         /// </summary>
         /// <param name="faction">The owning faction.</param>
         /// <param name="refinery">The refinery to process.</param>
@@ -391,8 +391,89 @@ namespace Rebellion.Systems
             if (!AdvanceResourceCycle(faction, refinery))
                 return;
 
-            faction.RefinedMaterialStockpile++;
+            GetResourceRecipient(faction, refinery).RefinedMaterialStockpile++;
             faction.RequestRawMaterial(refinery);
+        }
+
+        private Faction GetResourceRecipient(Faction faction, Building facility)
+        {
+            Planet planet = facility.GetParentOfType<Planet>();
+            int smugglingChance = CalculateSmugglingChance(planet, faction);
+            if (smugglingChance <= 0 || _game.Random.NextInt(0, _percentScale) >= smugglingChance)
+            {
+                return faction;
+            }
+
+            return _game
+                    .GetFactions()
+                    .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID)
+                ?? faction;
+        }
+
+        private int CalculateSmugglingChance(Planet planet, Faction faction)
+        {
+            if (planet == null)
+                return 0;
+
+            GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
+            int popularSupport = planet.GetPopularSupport(faction.InstanceID);
+            if (popularSupport > config.ShiftThreshold)
+                return 0;
+
+            List<CapitalShip> capitalShips = planet
+                .Fleets.Where(fleet =>
+                    fleet.OwnerInstanceID == faction.InstanceID && fleet.Movement == null
+                )
+                .SelectMany(fleet => fleet.CapitalShips)
+                .Where(capitalShip =>
+                    capitalShip.OwnerInstanceID == faction.InstanceID
+                    && capitalShip.ManufacturingStatus == ManufacturingStatus.Complete
+                    && capitalShip.Movement == null
+                    && capitalShip.CurrentHullStrength > 0
+                )
+                .ToList();
+            List<string> planetDestroyingTypeIds = _game
+                .Config
+                .Combat
+                .Bombardment
+                .PlanetDestroyingCapitalShipTypeIDs;
+            if (
+                capitalShips.Any(capitalShip =>
+                    planetDestroyingTypeIds?.Contains(capitalShip.GetTypeID()) == true
+                )
+            )
+            {
+                return 0;
+            }
+
+            int chance =
+                popularSupport <= config.LowBracketCeiling ? config.LowBracketShift
+                : popularSupport <= config.MidBracketCeiling ? config.MidBracketShift
+                : config.HighBracketShift;
+            int fighterCount = planet.Starfighters.Count(starfighter =>
+                starfighter.OwnerInstanceID == faction.InstanceID
+                && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                && starfighter.Movement == null
+                && starfighter.CurrentSquadronSize > 0
+            );
+            int troopCount = planet.Regiments.Count(regiment =>
+                regiment.OwnerInstanceID == faction.InstanceID
+                && regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                && regiment.Movement == null
+            );
+            PlanetSystem parentSystem = planet.GetParentOfType<PlanetSystem>();
+            if (
+                parentSystem?.HasActivePlanetDestroyingCapitalShip(planetDestroyingTypeIds) == true
+                && faction.Settings.TroopEffectiveness > 1
+            )
+            {
+                troopCount *= faction.Settings.TroopEffectiveness;
+            }
+
+            chance -= capitalShips.Count * config.FleetPenalty;
+            chance -= fighterCount * config.FighterPenalty;
+            chance -= troopCount * config.TroopPenalty;
+            return Math.Clamp(chance, 0, _percentScale);
         }
 
         /// <summary>

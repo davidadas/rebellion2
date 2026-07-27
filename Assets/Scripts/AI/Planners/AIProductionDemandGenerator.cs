@@ -813,6 +813,12 @@ namespace Rebellion.AI.Planners
                 deficit = combatDeficit;
                 target = targetCombat;
             }
+            else if (NeedsInterdictionCapitalShip(context, fleet, targetPlanet, defenseTarget))
+            {
+                capitalShipRole = AICapitalShipProductionRole.Interdiction;
+                deficit = 1;
+                target = 1;
+            }
             else
             {
                 return;
@@ -830,6 +836,35 @@ namespace Rebellion.AI.Planners
                     capitalShipRole
                 )
             );
+        }
+
+        private static bool NeedsInterdictionCapitalShip(
+            AITurnContext context,
+            Fleet fleet,
+            Planet attackTarget,
+            Planet defenseTarget
+        )
+        {
+            if (
+                (attackTarget == null && defenseTarget == null)
+                || fleet.CapitalShips.Any(capitalShip => capitalShip.HasGravityWell)
+            )
+                return false;
+
+            List<string> planetDestroyingTypeIds = context
+                .Game
+                .Config
+                .Combat
+                .Bombardment
+                .PlanetDestroyingCapitalShipTypeIDs;
+            return context
+                .Faction.GetUnlockedTechnologies(ManufacturingType.Ship)
+                .Any(technology =>
+                    technology.GetReference() is CapitalShip capitalShip
+                    && capitalShip.HasAllowedOwnerInstanceID(context.Faction.InstanceID)
+                    && capitalShip.HasGravityWell
+                    && planetDestroyingTypeIds?.Contains(capitalShip.GetTypeID()) != true
+                );
         }
 
         /// <summary>
@@ -1700,7 +1735,7 @@ namespace Rebellion.AI.Planners
             int stabilityTarget = UprisingSystem.CalculateGarrisonRequirement(
                 planet,
                 context.Faction,
-                context.Game.Config.AI.Garrison
+                context.Game
             );
 
             return System.Math.Max(

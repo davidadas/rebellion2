@@ -14,6 +14,7 @@ namespace Rebellion.Tests.Systems
         private GameRoot _game;
         private ResourceProductionSystem _system;
         private Faction _faction;
+        private Faction _opposingFaction;
         private PlanetSystem _planetSystem;
         private Planet _planet;
         private int _nextBuildingId;
@@ -26,8 +27,9 @@ namespace Rebellion.Tests.Systems
                 Random = new StubRNG(),
             };
             _faction = new Faction { InstanceID = "FACTION1" };
+            _opposingFaction = new Faction { InstanceID = "FACTION2" };
             _game.Factions.Add(_faction);
-            _game.Factions.Add(new Faction { InstanceID = "FACTION2" });
+            _game.Factions.Add(_opposingFaction);
 
             _planetSystem = new PlanetSystem
             {
@@ -405,6 +407,177 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, mine.ProductionCycleProgress);
         }
 
+        [Test]
+        public void ProcessTick_CompletedMineCycleWithLowSupport_DivertsRawMaterial()
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.LowBracketCeiling
+            );
+            Building mine = AddReadyResourceFacility(_planet, BuildingType.Mine);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.AreEqual(1, _opposingFaction.RawMaterialStockpile);
+            Assert.IsTrue(mine.ProductionInputReserved);
+        }
+
+        [Test]
+        public void ProcessTick_CompletedRefineryCycleWithLowSupport_DivertsRefinedMaterial()
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.LowBracketCeiling
+            );
+            AddReadyResourceFacility(_planet, BuildingType.Refinery);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
+            Assert.AreEqual(1, _opposingFaction.RefinedMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_SmugglingRollOutsideChance_KeepsProducedMaterial()
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.MidBracketCeiling
+            );
+            _game.Random = new SequenceRNG(
+                intValues: new[] { _game.Config.SupportShift.MidBracketShift }
+            );
+            AddReadyResourceFacility(_planet, BuildingType.Mine);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(1, _faction.RawMaterialStockpile);
+            Assert.AreEqual(0, _opposingFaction.RawMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_LocalPlanetDestroyerPreventsSmuggling()
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.LowBracketCeiling
+            );
+            AttachActivePlanetDestroyingCapitalShip(_planet);
+            AddReadyResourceFacility(_planet, BuildingType.Mine);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(1, _faction.RawMaterialStockpile);
+            Assert.AreEqual(0, _opposingFaction.RawMaterialStockpile);
+        }
+
+        [TestCase(32, true)]
+        [TestCase(33, false)]
+        public void ProcessTick_LocalDefendersReduceSmugglingChance(
+            int roll,
+            bool expectedSmuggling
+        )
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.MidBracketCeiling
+            );
+            _game.Random = new SequenceRNG(intValues: new[] { roll });
+            Fleet fleet = EntityFactory.CreateFleet("FLEET", _faction.InstanceID);
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "CAPITAL_SHIP",
+                    TypeID = "line-ship",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1,
+                    CurrentHullStrength = 1,
+                },
+                fleet
+            );
+            _game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "STARFIGHTER",
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxSquadronSize = 1,
+                    CurrentSquadronSize = 1,
+                },
+                _planet
+            );
+            Regiment regiment = EntityFactory.CreateRegiment("REGIMENT", _faction.InstanceID);
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            _game.AttachNode(regiment, _planet);
+            AddReadyResourceFacility(_planet, BuildingType.Mine);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(expectedSmuggling ? 1 : 0, _opposingFaction.RawMaterialStockpile);
+            Assert.AreEqual(expectedSmuggling ? 0 : 1, _faction.RawMaterialStockpile);
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void ProcessTick_PlanetDestroyerSectorPresenceControlsTroopPenalty(
+            bool sameSector,
+            bool expectedSmuggling
+        )
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.MidBracketCeiling
+            );
+            _faction.Settings.TroopEffectiveness = 2;
+            _game.Random = new SequenceRNG(intValues: new[] { 20 });
+            for (int index = 0; index < 10; index++)
+            {
+                Regiment regiment = EntityFactory.CreateRegiment(
+                    $"REGIMENT{index}",
+                    _faction.InstanceID
+                );
+                regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+                _game.AttachNode(regiment, _planet);
+            }
+
+            PlanetSystem planetDestroyerSystem = _planetSystem;
+            if (!sameSector)
+            {
+                planetDestroyerSystem = new PlanetSystem { InstanceID = "SYSTEM2" };
+                _game.AttachNode(planetDestroyerSystem, _game.Galaxy);
+            }
+
+            Planet orbit = CreateOwnedPlanet("PLANET_DESTROYER_ORBIT");
+            _game.AttachNode(orbit, planetDestroyerSystem);
+            AttachActivePlanetDestroyingCapitalShip(orbit);
+            AddReadyResourceFacility(_planet, BuildingType.Mine);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(expectedSmuggling ? 1 : 0, _opposingFaction.RawMaterialStockpile);
+            Assert.AreEqual(expectedSmuggling ? 0 : 1, _faction.RawMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_MovingLocalPlanetDestroyerDoesNotPreventSmuggling()
+        {
+            _planet.SetPopularSupport(
+                _faction.InstanceID,
+                _game.Config.SupportShift.LowBracketCeiling
+            );
+            Fleet fleet = AttachActivePlanetDestroyingCapitalShip(_planet);
+            fleet.Movement = new Rebellion.Game.Movement.MovementState();
+            AddReadyResourceFacility(_planet, BuildingType.Mine);
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.AreEqual(1, _opposingFaction.RawMaterialStockpile);
+        }
+
         private Planet CreateOwnedPlanet(string instanceId)
         {
             return new Planet
@@ -436,6 +609,42 @@ namespace Rebellion.Tests.Systems
             };
             _game.AttachNode(building, planet);
             return building;
+        }
+
+        private Building AddReadyResourceFacility(Planet planet, BuildingType type)
+        {
+            Building facility = AddCompleteBuilding(planet, type, processRate: 1);
+            facility.ProductionInputReserved = true;
+            facility.ProductionCycleDuration = 1;
+            facility.ResourceStartupCyclePending = false;
+            return facility;
+        }
+
+        private Fleet AttachActivePlanetDestroyingCapitalShip(Planet planet)
+        {
+            const string capitalShipTypeId = "planet-destroyer";
+            _game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
+            {
+                capitalShipTypeId,
+            };
+            Fleet fleet = EntityFactory.CreateFleet(
+                $"FLEET_{planet.InstanceID}",
+                _faction.InstanceID
+            );
+            _game.AttachNode(fleet, planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = $"PLANET_DESTROYER_{planet.InstanceID}",
+                    TypeID = capitalShipTypeId,
+                    OwnerInstanceID = _faction.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1,
+                    CurrentHullStrength = 1,
+                },
+                fleet
+            );
+            return fleet;
         }
 
         private void ProcessTicks(int count)

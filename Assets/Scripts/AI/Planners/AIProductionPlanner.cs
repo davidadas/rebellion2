@@ -403,6 +403,7 @@ namespace Rebellion.AI.Planners
                         demand.DestinationFleet,
                         capitalShip
                     ),
+                AICapitalShipProductionRole.Interdiction => 1,
                 _ => 0,
             };
             if (contribution <= 0)
@@ -857,6 +858,7 @@ namespace Rebellion.AI.Planners
                     && !capitalShip.HasGravityWell
                     && GetMaximumPrimaryWeaponWeight(capitalShip) == 0,
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0,
+                AICapitalShipProductionRole.Interdiction => capitalShip.HasGravityWell,
                 _ => false,
             };
         }
@@ -873,6 +875,7 @@ namespace Rebellion.AI.Planners
                     / System.Math.Max(1, capitalShip.MaintenanceCost),
                 AICapitalShipProductionRole.TroopTransport => capitalShip.RegimentCapacity,
                 AICapitalShipProductionRole.Bombardment => capitalShip.Bombardment > 0 ? 1 : 0,
+                AICapitalShipProductionRole.Interdiction => capitalShip.ShieldRechargeRate,
                 _ => 0,
             };
         }
