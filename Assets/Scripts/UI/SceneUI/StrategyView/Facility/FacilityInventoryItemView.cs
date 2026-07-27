@@ -7,7 +7,10 @@ using UnityEngine.UI;
 /// Renders one facility inventory item and reports pointer interaction.
 /// </summary>
 [RequireComponent(typeof(UIPointerGestureRelay))]
-public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDoubleClickTarget
+public sealed class FacilityInventoryItemView
+    : MonoBehaviour,
+        IStrategyStatusDoubleClickTarget,
+        IApplicationTextureReceiver
 {
     [SerializeField]
     private RawImage hitAreaImage;
@@ -176,5 +179,13 @@ public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDo
         image.raycastTarget = false;
         if (texture != null)
             UILayout.SetSourceRect(image.rectTransform, 0, 0, width, height);
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        if (key != nameof(defaultItemTexture))
+            throw new ArgumentOutOfRangeException(nameof(key), key, null);
+
+        defaultItemTexture = texture;
     }
 }

@@ -17,11 +17,16 @@ public sealed class CutsceneManager : MonoBehaviour
     private const float _runningTimeScale = 1f;
 
     private GameObject cutscenePrefab;
+    private ContentAssets contentAssets;
 
     private CutscenePlayer activePlayer;
     private bool ownsTimePause;
     private float previousTimeScale = _runningTimeScale;
 
+    /// <summary>
+    /// Binds the authored player prefab used for cutscene instances.
+    /// </summary>
+    /// <param name="prefab">The authored cutscene player prefab.</param>
     internal void Initialize(GameObject prefab)
     {
         cutscenePrefab =
@@ -29,12 +34,29 @@ public sealed class CutsceneManager : MonoBehaviour
             ?? throw new ArgumentNullException(nameof(prefab), "Cutscene prefab is missing.");
     }
 
+    /// <summary>
+    /// Binds the application-owned external content assets used for addressed videos.
+    /// </summary>
+    /// <param name="assets">The active content asset store.</param>
+    internal void InitializeContent(ContentAssets assets)
+    {
+        contentAssets = assets ?? throw new ArgumentNullException(nameof(assets));
+    }
+
+    /// <summary>
+    /// Cancels active playback and restores scaled application time on destruction.
+    /// </summary>
     private void OnDestroy()
     {
         DestroyActivePlayer();
         RestoreTimeScale();
     }
 
+    /// <summary>
+    /// Plays a video from a content address and completes the supplied callback afterward.
+    /// </summary>
+    /// <param name="clipAddress">The video content address.</param>
+    /// <param name="onFinished">The callback invoked after playback completes.</param>
     public void Play(string clipAddress, Action onFinished)
     {
         CancelPlayback();
@@ -44,7 +66,12 @@ public sealed class CutsceneManager : MonoBehaviour
             return;
         }
 
-        StartPlayback(ResourceManager.GetVideoUrl(clipAddress), onFinished);
+        if (contentAssets == null)
+            throw new InvalidOperationException(
+                "CutsceneManager has not been initialized with a content asset store."
+            );
+
+        StartPlayback(contentAssets.GetVideoUrl(clipAddress), onFinished);
     }
 
     /// <summary>
@@ -69,6 +96,11 @@ public sealed class CutsceneManager : MonoBehaviour
         StartPlayback(clip, onFinished);
     }
 
+    /// <summary>
+    /// Creates a player instance and begins playback from an imported video clip.
+    /// </summary>
+    /// <param name="clip">The imported video clip.</param>
+    /// <param name="onFinished">The callback invoked after playback completes.</param>
     private void StartPlayback(VideoClip clip, Action onFinished)
     {
         if (cutscenePrefab == null)
@@ -98,6 +130,11 @@ public sealed class CutsceneManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Creates a player instance and begins playback from a local video URL.
+    /// </summary>
+    /// <param name="videoUrl">The local video file URL.</param>
+    /// <param name="onFinished">The callback invoked after playback completes.</param>
     private void StartPlayback(string videoUrl, Action onFinished)
     {
         if (cutscenePrefab == null)
@@ -183,6 +220,9 @@ public sealed class CutsceneManager : MonoBehaviour
             DestroyImmediate(playerObject);
     }
 
+    /// <summary>
+    /// Cancels the current playback request without invoking its completion callback.
+    /// </summary>
     private void CancelPlayback()
     {
         DestroyActivePlayer();

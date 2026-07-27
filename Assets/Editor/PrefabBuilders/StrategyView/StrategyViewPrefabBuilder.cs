@@ -77,145 +77,108 @@ public static class StrategyViewPrefabBuilder
     private const string _activeGalacticInformationFilterLabelName =
         "ActiveGalacticInformationFilterLabel";
     private const string _galaxyStarPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_galaxy_star_preview.png";
+        "application/strategy/ui/windows/ui_strategyview_galaxy_star_preview.png";
     private const string _planetPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_planetsystem_planet_preview.png";
+        "application/strategy/ui/windows/ui_strategyview_planetsystem_planet_preview.png";
     private const string _windowOpenSectorPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_open_sector_button.png";
+        "application/strategy/ui/shell/ui_strategyview_window_open_sector_button.png";
     private const string _windowOpenSectorDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_open_sector_button_pressed.png";
+        "application/strategy/ui/shell/ui_strategyview_window_open_sector_button_pressed.png";
     private const string _windowSwapPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_swap_button.png";
+        "application/strategy/ui/shell/ui_strategyview_window_swap_button.png";
     private const string _windowClosePreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_close_button.png";
+        "application/strategy/ui/shell/ui_strategyview_window_close_button.png";
     private const string _windowCloseDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_close_button_pressed.png";
+        "application/strategy/ui/shell/ui_strategyview_window_close_button_pressed.png";
     private const string _windowMinimizePreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_minimize_button.png";
+        "application/strategy/ui/shell/ui_strategyview_window_minimize_button.png";
     private const string _windowMinimizeDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_window_minimize_button_pressed.png";
+        "application/strategy/ui/shell/ui_strategyview_window_minimize_button_pressed.png";
     private const string _confirmButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_ok_button.png";
+        "application/strategy/ui/windows/ui_strategyview_confirm_ok_button.png";
     private const string _confirmButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_ok_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_confirm_ok_button_pressed.png";
     private const string _cancelButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_cancel_button.png";
+        "application/strategy/ui/windows/ui_strategyview_confirm_cancel_button.png";
     private const string _cancelButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_confirm_cancel_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_confirm_cancel_button_pressed.png";
     private const string _facilityWindowBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_window_background.png";
-    private const string _facilityWindowTabPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_tab.png";
+        "application/strategy/ui/windows/ui_strategyview_facility_window_background.png";
     private const string _facilityManufacturingStripPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_strip.png";
+        "application/strategy/ui/windows/ui_strategyview_facility_manufacturing_strip.png";
     private const string _facilityManufacturingCardPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_lane_card.png";
-    private const string _facilityManufacturingCardStatePreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_lane_state.png";
-    private const string _facilityManufacturingSelectPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_manufacturing_selection.png";
+        "application/strategy/ui/windows/ui_strategyview_facility_manufacturing_lane_card.png";
     private const string _facilityInventoryItemPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_facility_inventory_item.png";
-    private const string _facilityCardEntityPreviewPath =
-        "Assets/Content/Art/HD/UI/Units/ent_building_ship_yard.png";
-    private const string _facilityCardEntitySmallPreviewPath =
-        "Assets/Content/Art/HD/UI/Units/ent_building_ship_yard_small.png";
+        "application/strategy/ui/windows/ui_strategyview_facility_inventory_item.png";
     private const string _constructionWindowBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_window_background.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_window_background.png";
     private const string _constructionOpenButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_open_button.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_open_button.png";
     private const string _constructionOpenButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_open_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_open_button_pressed.png";
     private const string _constructionInfoButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_info_button.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_info_button.png";
     private const string _constructionInfoButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_info_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_info_button_pressed.png";
     private const string _constructionOkButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_ok_button.png";
     private const string _constructionOkButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_ok_button_pressed.png";
     private const string _constructionOkButtonDisabledPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_ok_button_disabled.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_ok_button_disabled.png";
     private const string _constructionCancelButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_cancel_button.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_cancel_button.png";
     private const string _constructionCancelButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_cancel_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_cancel_button_pressed.png";
     private const string _constructionIncrementButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_increment_button.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_increment_button.png";
     private const string _constructionIncrementButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_increment_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_increment_button_pressed.png";
     private const string _constructionDecrementButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_decrement_button.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_decrement_button.png";
     private const string _constructionDecrementButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_decrement_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_decrement_button_pressed.png";
     private const string _constructionDropdownBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_construction_dropdown_background.png";
+        "application/strategy/ui/windows/ui_strategyview_construction_dropdown_background.png";
     private const string _defenseWindowBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_window_background.png";
-    private const string _defenseWindowTabPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_tab.png";
-    private const string _defenseSelectionPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_selection.png";
-    private const string _defensePersonnelBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_personnel_background.png";
-    private const string _defenseEnrouteBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_window_enroute_background.png";
+        "application/strategy/ui/windows/ui_strategyview_defense_window_background.png";
     private const string _fleetWindowBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_window_background.png";
-    private const string _fleetIconPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_window_icon.png";
-    private const string _fleetSelectionPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_selection.png";
-    private const string _fleetShipSelectionPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_ship_selection.png";
-    private const string _fleetPersonnelEnrouteBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_defense_window_enroute_background.png";
-    private const string _fleetDetailBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_detail_background.png";
+        "application/strategy/ui/windows/ui_strategyview_fleet_window_background.png";
     private const string _fleetTabPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_fleet_tab.png";
+        "application/strategy/ui/windows/ui_strategyview_fleet_tab.png";
     private const string _missionsWindowBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missions_window_background.png";
-    private const string _missionsTabPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missions_tab.png";
+        "application/strategy/ui/windows/ui_strategyview_missions_window_background.png";
     private const string _missionCreateMissionBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_mission_background.png";
+        "application/strategy/ui/windows/ui_strategyview_missioncreate_mission_background.png";
     private const string _missionCreatePersonnelBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_personnel_background.png";
+        "application/strategy/ui/windows/ui_strategyview_missioncreate_personnel_background.png";
     private const string _missionCreateMoveRightButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_right_button.png";
+        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_right_button.png";
     private const string _missionCreateMoveRightButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_right_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_right_button_pressed.png";
     private const string _missionCreateMoveLeftButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_left_button.png";
+        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_left_button.png";
     private const string _missionCreateMoveLeftButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_missioncreate_move_left_button_pressed.png";
-    private const string _statusWindowBackgroundPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_window_background.png";
-    private const string _advisorReportGalaxyPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_advisor_report_galaxy.png";
+        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_left_button_pressed.png";
     private const string _statusInfoButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_info_button.png";
+        "application/strategy/ui/windows/ui_strategyview_status_info_button.png";
     private const string _statusInfoButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_info_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_status_info_button_pressed.png";
     private const string _statusInfoButtonDisabledPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_info_button_disabled.png";
+        "application/strategy/ui/windows/ui_strategyview_status_info_button_disabled.png";
     private const string _statusCloseButtonPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_close_button.png";
+        "application/strategy/ui/windows/ui_strategyview_status_close_button.png";
     private const string _statusCloseButtonDownPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_status_close_button_pressed.png";
+        "application/strategy/ui/windows/ui_strategyview_status_close_button_pressed.png";
     private const string _scrollUpArrowPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_up.png";
+        "application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up.png";
     private const string _scrollDownArrowPreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_pressed_2.png";
+        "application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
     private const string _scrollBarMiddlePreviewPath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_middle.png";
+        "application/strategy/ui/controls/ui_strategyview_scrollbar_middle.png";
     private const float _sourcePixelsPerUnit = UILayout.HdPixelsPerSourceUnit;
     private const float _screenWidth = 3840f / _sourcePixelsPerUnit;
     private const float _screenHeight = 2160f / _sourcePixelsPerUnit;
-    private const int _fullSizeTextureMaxSize = 4096;
-    private const string _fullSizeStrategyViewTextureRoot =
-        "Assets/Content/Art/HD/UI/StrategyView/";
     private const int _contextMenuIconPreviewSize = 14;
     private const int _contextMenuIconPanelWidth = 25;
     private const int _contextMenuCommandHeight = 20;
@@ -302,7 +265,7 @@ public static class StrategyViewPrefabBuilder
     {
         get
         {
-            _previewThemes ??= ResourceManager.GetConfig<FactionThemes>();
+            _previewThemes ??= ContentPackEditor.LoadGameData().FactionThemes;
             return _previewThemes;
         }
     }
@@ -607,7 +570,6 @@ public static class StrategyViewPrefabBuilder
         UIAuthoringGuard.EnsureEditMode();
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
-        EnsureStrategyViewBackgroundTexturesImportedAtFullSize();
         PlanetSystemWindowView planetSystemWindowPrefab = LoadWindowPrefab<PlanetSystemWindowView>(
             _planetSystemWindowPrefabPath
         );
@@ -929,7 +891,6 @@ public static class StrategyViewPrefabBuilder
     {
         UIAuthoringGuard.EnsureEditMode();
         _previewThemes = null;
-        EnsureStrategyViewBackgroundTexturesImportedAtFullSize();
         CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
@@ -1007,7 +968,6 @@ public static class StrategyViewPrefabBuilder
     public static void RebuildBattleAlertWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
-        EnsureStrategyViewBackgroundTexturesImportedAtFullSize();
         BuildBattleAlertWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1228,7 +1188,7 @@ public static class StrategyViewPrefabBuilder
             RawImage tabImage = CreateRawButton(
                 $"{FacilityWindowRenderData.OrderedTabs[i]}TabButtonImage",
                 tabs,
-                _facilityWindowTabPreviewPath
+                null
             );
             SetSourceRect(tabImage.rectTransform, i * 38, 20, 38, 33);
             tabImages.Add(tabImage);
@@ -1452,13 +1412,7 @@ public static class StrategyViewPrefabBuilder
         for (int index = 0; index < buttonImages.Count; index++)
             buttonPressVisuals.Add(buttonImages[index].GetComponent<RawImagePressVisual>());
 
-        RawImage selectedItem = CreateRawImage(
-            "SelectedItemImage",
-            window.transform,
-            _facilityCardEntityPreviewPath,
-            0,
-            22
-        );
+        RawImage selectedItem = CreateRawImage("SelectedItemImage", window.transform, null, 0, 22);
         SetSourceRect(selectedItem.rectTransform, 0, 22, 210, 50);
         TextMeshProUGUI selectedName = CreateTextLabel("SelectedNameTextField", window.transform);
         selectedName.text = "Nebulon-B Frigate";
@@ -1700,7 +1654,7 @@ public static class StrategyViewPrefabBuilder
             new RectInt(0, 4, 180, 70),
             new RectInt(0, 0, 180, 48),
             new RectInt(0, 48, 180, 18),
-            _facilityCardEntityPreviewPath,
+            null,
             "Nebulon-B Frigate",
             12,
             TextAlignmentOptions.Top
@@ -1936,7 +1890,7 @@ public static class StrategyViewPrefabBuilder
             RawImage tabImage = CreateRawButton(
                 $"{DefenseWindowRenderData.OrderedTabs[i]}TabButtonImage",
                 tabs,
-                _defenseWindowTabPreviewPath
+                null
             );
             SetSourceRect(tabImage.rectTransform, 27 + i * 36, 20, 36, 33);
             tabImages.Add(tabImage);
@@ -2044,23 +1998,11 @@ public static class StrategyViewPrefabBuilder
         hitArea.raycastTarget = true;
         hitArea.canvasRenderer.cullTransparentMesh = false;
         SetSourceRect(hitArea.rectTransform, 0, 0, _defenseItemWidth, _defenseItemHeight);
-        RawImage background = CreateRawButton(
-            "BackgroundImage",
-            item.transform,
-            _defensePersonnelBackgroundPreviewPath
-        );
+        RawImage background = CreateRawButton("BackgroundImage", item.transform, null);
         SetSourceRect(background.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
-        RawImage entity = CreateRawButton(
-            "EntityImage",
-            item.transform,
-            _facilityCardEntityPreviewPath
-        );
+        RawImage entity = CreateRawButton("EntityImage", item.transform, null);
         SetSourceRect(entity.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
-        RawImage enrouteOverlay = CreateRawButton(
-            "EnrouteOverlayImage",
-            item.transform,
-            _defenseEnrouteBackgroundPreviewPath
-        );
+        RawImage enrouteOverlay = CreateRawButton("EnrouteOverlayImage", item.transform, null);
         SetSourceRect(
             enrouteOverlay.rectTransform,
             0,
@@ -2088,11 +2030,7 @@ public static class StrategyViewPrefabBuilder
             _defenseItemWidth,
             _defenseItemImageHeight
         );
-        RawImage selection = CreateRawButton(
-            "SelectionImage",
-            item.transform,
-            _defenseSelectionPreviewPath
-        );
+        RawImage selection = CreateRawButton("SelectionImage", item.transform, null);
         SetSourceRect(selection.rectTransform, 0, 0, _defenseItemWidth, _defenseItemImageHeight);
 
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", item.transform);
@@ -2235,7 +2173,7 @@ public static class StrategyViewPrefabBuilder
         RawImage detailBackground = CreateRawImage(
             "DetailBackgroundImage",
             window.transform,
-            _fleetDetailBackgroundPreviewPath,
+            null,
             97,
             29,
             _fleetDetailBackgroundWidth,
@@ -2409,7 +2347,7 @@ public static class StrategyViewPrefabBuilder
         RawImage selection = CreateRawImage(
             "SelectionImage",
             row.transform,
-            _fleetSelectionPreviewPath,
+            null,
             0,
             0,
             _fleetListSelectionWidth,
@@ -2418,7 +2356,7 @@ public static class StrategyViewPrefabBuilder
         RawImage icon = CreateRawImage(
             "IconImage",
             row.transform,
-            _fleetIconPreviewPath,
+            null,
             5,
             5,
             _fleetListIconWidth,
@@ -2512,21 +2450,9 @@ public static class StrategyViewPrefabBuilder
         hitArea.raycastTarget = true;
         hitArea.canvasRenderer.cullTransparentMesh = false;
         SetSourceRect(hitArea.rectTransform, 0, 0, 125, 50);
-        RawImage background = CreateRawImage(
-            "BackgroundImage",
-            item.transform,
-            _defensePersonnelBackgroundPreviewPath,
-            25,
-            5
-        );
+        RawImage background = CreateRawImage("BackgroundImage", item.transform, null, 25, 5);
         SetSourceRect(background.rectTransform, 25, 5, 61, 25);
-        RawImage entity = CreateRawImage(
-            "EntityImage",
-            item.transform,
-            _facilityCardEntityPreviewPath,
-            25,
-            5
-        );
+        RawImage entity = CreateRawImage("EntityImage", item.transform, null, 25, 5);
         SetSourceRect(entity.rectTransform, 25, 5, 61, 25);
         RawImage enrouteOverlay = CreateRawImage(
             "EnrouteOverlayImage",
@@ -2579,7 +2505,7 @@ public static class StrategyViewPrefabBuilder
         RawImage selection = CreateRawImage(
             "SelectionImage",
             item.transform,
-            _fleetShipSelectionPreviewPath,
+            null,
             2,
             0,
             _fleetDetailSelectionWidth,
@@ -2741,13 +2667,7 @@ public static class StrategyViewPrefabBuilder
         targetTitle.alignment = TextAlignmentOptions.Top;
         SetSourceRect(targetTitle.rectTransform, 116, 27, 100, 16);
 
-        RawImage targetImage = CreateRawImage(
-            "TargetImage",
-            window.transform,
-            _facilityCardEntityPreviewPath,
-            135,
-            44
-        );
+        RawImage targetImage = CreateRawImage("TargetImage", window.transform, null, 135, 44);
         SetSourceRect(targetImage.rectTransform, 135, 44, 73, 48);
 
         TextMeshProUGUI targetName = CreateTextLabel("TargetNameTextField", window.transform);
@@ -2769,7 +2689,7 @@ public static class StrategyViewPrefabBuilder
             RawImage tab = CreateRawButton(
                 $"{MissionsWindowRenderData.OrderedRoles[i]}TabButtonImage",
                 tabs,
-                _missionsTabPreviewPath
+                null
             );
             SetSourceRect(tab.rectTransform, 105 + i * 61, 127, 61, 16);
             tabImages.Add(tab);
@@ -2929,22 +2849,6 @@ public static class StrategyViewPrefabBuilder
             windowHeight
         );
         List<RawImage> tabImages = new List<RawImage>();
-        List<Texture2D> tabActiveTextures = new List<Texture2D>
-        {
-            LoadTexture(PreviewTheme?.StrategyWindows?.MissionCreate?.MissionTab?.ActiveImagePath),
-            LoadTexture(
-                PreviewTheme?.StrategyWindows?.MissionCreate?.PersonnelTab?.ActiveImagePath
-            ),
-        };
-        List<Texture2D> tabInactiveTextures = new List<Texture2D>
-        {
-            LoadTexture(
-                PreviewTheme?.StrategyWindows?.MissionCreate?.MissionTab?.InactiveImagePath
-            ),
-            LoadTexture(
-                PreviewTheme?.StrategyWindows?.MissionCreate?.PersonnelTab?.InactiveImagePath
-            ),
-        };
         RawImage firstTab = CreateRawButton(
             "MissionTabButtonImage",
             tabs,
@@ -3042,7 +2946,7 @@ public static class StrategyViewPrefabBuilder
         RawImage selectedMission = CreateRawImage(
             "SelectedMissionImage",
             missionSelection,
-            _facilityCardEntityPreviewPath,
+            null,
             70,
             86
         );
@@ -3209,7 +3113,7 @@ public static class StrategyViewPrefabBuilder
             new RectInt(0, 0, 197, 110),
             new RectInt(2, 25, 197, 85),
             new RectInt(3, 3, 190, 16),
-            _facilityCardEntityPreviewPath,
+            null,
             "Espionage",
             13,
             TextAlignmentOptions.Top
@@ -3258,8 +3162,6 @@ public static class StrategyViewPrefabBuilder
         AssignReferenceArray(view, "tabImages", tabImages);
         AssignReferenceArray(view, "tabPressVisuals", tabPressVisuals);
         AssignReferenceArray(view, "tabButtons", tabButtons);
-        AssignReferenceArray(view, "tabActiveTextures", tabActiveTextures);
-        AssignReferenceArray(view, "tabInactiveTextures", tabInactiveTextures);
         AssignReference(view, "infoButton", infoButtonComponent);
         AssignReference(view, "okButton", okButtonComponent);
         AssignReference(view, "cancelButton", cancelButtonComponent);
@@ -3293,11 +3195,6 @@ public static class StrategyViewPrefabBuilder
             view,
             "personnelBackgroundTexture",
             LoadTexture(_missionCreatePersonnelBackgroundPreviewPath)
-        );
-        AssignReference(
-            view,
-            "titleTexture",
-            LoadTexture(PreviewTheme?.StrategyWindows?.MissionCreate?.TitleImagePath)
         );
         AssignReference(
             view,
@@ -3347,13 +3244,7 @@ public static class StrategyViewPrefabBuilder
             new Color(1f, 1f, 1f, 0f)
         );
         SetSourceRect(hitArea.rectTransform, 0, 0, 95, 50);
-        RawImage icon = CreateRawImage(
-            "IconImage",
-            row.transform,
-            _facilityCardEntityPreviewPath,
-            0,
-            0
-        );
+        RawImage icon = CreateRawImage("IconImage", row.transform, null, 0, 0);
         SetSourceRect(icon.rectTransform, 0, 0, 73, 48);
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", row.transform);
         nameText.text = "Espionage";
@@ -3600,18 +3491,12 @@ public static class StrategyViewPrefabBuilder
         RawImage background = CreateRawImage(
             "BackgroundImage",
             row.transform,
-            _defensePersonnelBackgroundPreviewPath,
+            null,
             entityX,
             entityY
         );
         SetSourceRect(background.rectTransform, entityX, entityY, entityWidth, entityHeight);
-        RawImage entity = CreateRawImage(
-            "EntityImage",
-            row.transform,
-            _facilityCardEntityPreviewPath,
-            entityX,
-            entityY
-        );
+        RawImage entity = CreateRawImage("EntityImage", row.transform, null, entityX, entityY);
         SetSourceRect(entity.rectTransform, entityX, entityY, entityWidth, entityHeight);
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", row.transform);
         nameText.text = "Leia Organa";
@@ -3626,16 +3511,6 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "backgroundImage", background);
         AssignReference(view, "entityImage", entity);
         AssignReference(view, "nameTextField", nameText);
-        AssignReference(
-            view,
-            "backgroundTexture",
-            LoadTexture(_defensePersonnelBackgroundPreviewPath)
-        );
-        AssignReference(
-            view,
-            "inTransitBackgroundTexture",
-            LoadTexture(_fleetPersonnelEnrouteBackgroundPreviewPath)
-        );
         view.enabled = true;
         return view;
     }
@@ -3676,6 +3551,7 @@ public static class StrategyViewPrefabBuilder
                 LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath)
             );
 
+            ApplicationTextureBindingAuthoring.Capture(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath, out bool success);
             if (!success)
                 throw new System.InvalidOperationException(
@@ -3802,13 +3678,7 @@ public static class StrategyViewPrefabBuilder
         ConfigureWindowRoot(window.GetComponent<UIWindow>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, 379, 272);
 
-        RawImage background = CreateRawImage(
-            "BackgroundImage",
-            window.transform,
-            _statusWindowBackgroundPreviewPath,
-            0,
-            0
-        );
+        RawImage background = CreateRawImage("BackgroundImage", window.transform, null, 0, 0);
 
         TextMeshProUGUI header = CreateTextLabel("HeaderTextField", window.transform);
         header.text = "Planet Status";
@@ -3829,11 +3699,7 @@ public static class StrategyViewPrefabBuilder
         statusImageAreaTemplate.gameObject.SetActive(false);
         background.raycastTarget = true;
 
-        RawImage statusImageTemplate = CreateRawButton(
-            "StatusImageTemplate",
-            images,
-            _facilityCardEntityPreviewPath
-        );
+        RawImage statusImageTemplate = CreateRawButton("StatusImageTemplate", images, null);
         SetSourceRect(statusImageTemplate.rectTransform, 244, 20, 61, 25);
         statusImageTemplate.gameObject.SetActive(false);
 
@@ -3972,13 +3838,7 @@ public static class StrategyViewPrefabBuilder
             0
         );
         background.raycastTarget = true;
-        RawImage galaxy = CreateRawImage(
-            "GalaxyImage",
-            window.transform,
-            _advisorReportGalaxyPreviewPath,
-            244,
-            20
-        );
+        RawImage galaxy = CreateRawImage("GalaxyImage", window.transform, null, 244, 20);
 
         TextMeshProUGUI title = CreateTextLabel("TitleTextField", window.transform);
         title.text = "Galaxy Overview";
@@ -4166,7 +4026,7 @@ public static class StrategyViewPrefabBuilder
         RawImage background = CreateRawButton(
             "BackgroundImage",
             window.transform,
-            "Art/HD/UI/StrategyView/ui_strategyview_finder_window_system_finder_background"
+            PreviewTheme?.StrategyWindows?.Finder?.SystemFinderBackgroundImagePath
         );
         SetSourceRect(background.rectTransform, 12, 13, 400, 306);
 
@@ -4250,11 +4110,11 @@ public static class StrategyViewPrefabBuilder
         RectTransform tabs = CreateSourceRectLayer("Tabs", window.transform, 470, 331);
         string[] finderTabPreviewPaths =
         {
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_all_systems_button_up",
-            GetFactionTabPreviewTheme(0)?.StrategyWindows?.Finder?.SystemsButton?.UpImagePath,
-            GetFactionTabPreviewTheme(1)?.StrategyWindows?.Finder?.SystemsButton?.UpImagePath,
-            "Art/HD/UI/StrategyView/ui_strategyview_finder_window_neutral_systems_button_up",
-            "Art/HD/UI/StrategyView/ui_strategyview_finder_window_unexplored_systems_button_up",
+            PreviewTheme?.StrategyWindows?.Finder?.AllSystemsButton?.UpImagePath,
+            PreviewTheme?.StrategyWindows?.Finder?.SystemsButton?.UpImagePath,
+            PreviewTheme?.StrategyWindows?.Finder?.SystemsButton?.UpImagePath,
+            PreviewTheme?.StrategyWindows?.Finder?.NeutralSystemsButton?.UpImagePath,
+            PreviewTheme?.StrategyWindows?.Finder?.UnexploredSystemsButton?.UpImagePath,
         };
         List<RawImage> tabSlots = new List<RawImage>();
         for (int i = 0; i < finderTabPreviewPaths.Length; i++)
@@ -4571,7 +4431,7 @@ public static class StrategyViewPrefabBuilder
         RawImage background = CreateRawButton(
             "BackgroundImage",
             indexPanelTransform,
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_background"
+            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_background"
         );
         SetSourceRect(background.rectTransform, 12, 13, 400, 306);
         background.raycastTarget = true;
@@ -4686,16 +4546,16 @@ public static class StrategyViewPrefabBuilder
         RectTransform tabs = CreateSourceRectLayer("Tabs", indexPanelTransform, 470, 331);
         string[] messageTabPreviewPaths =
         {
-            "Art/HD/UI/StrategyView/ui_strategyview_messages_window_all_button_up",
-            PreviewTheme?.StrategyWindows?.Messages?.SupportButton?.UpImagePath,
-            PreviewTheme?.StrategyWindows?.Messages?.FleetButton?.UpImagePath,
-            PreviewTheme?.StrategyWindows?.Messages?.MissionsButton?.UpImagePath,
-            "Art/HD/UI/StrategyView/ui_strategyview_messages_window_resource_button_up",
-            "Art/HD/UI/StrategyView/ui_strategyview_messages_window_manufacturing_button_up",
-            "Art/HD/UI/StrategyView/ui_strategyview_messages_window_defense_button_up",
-            "Art/HD/UI/StrategyView/ui_strategyview_messages_window_conflict_button_up",
-            "Art/HD/UI/StrategyView/ui_strategyview_messages_window_chat_button_up",
-            PreviewTheme?.StrategyWindows?.Messages?.AdviceButton?.UpImagePath,
+            messagesTheme?.AllButton?.UpImagePath,
+            messagesTheme?.SupportButton?.UpImagePath,
+            messagesTheme?.FleetButton?.UpImagePath,
+            messagesTheme?.MissionsButton?.UpImagePath,
+            messagesTheme?.ResourceButton?.UpImagePath,
+            messagesTheme?.ManufacturingButton?.UpImagePath,
+            messagesTheme?.DefenseButton?.UpImagePath,
+            messagesTheme?.ConflictButton?.UpImagePath,
+            messagesTheme?.ChatButton?.UpImagePath,
+            messagesTheme?.AdviceButton?.UpImagePath,
         };
         int[] messageTabSourceX = { 0, 38, 76, 114, 151, 189, 227, 263, 301, 338 };
         int[] messageTabSourceWidth = { 36, 36, 36, 36, 36, 36, 36, 36, 36, 37 };
@@ -5065,7 +4925,7 @@ public static class StrategyViewPrefabBuilder
         RawImage background = CreateRawButton(
             "BackgroundImage",
             window.transform,
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_background"
+            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_background"
         );
         SetSourceRect(background.rectTransform, 12, 13, 400, 306);
         background.raycastTarget = true;
@@ -5146,8 +5006,8 @@ public static class StrategyViewPrefabBuilder
         RectTransform tabs = CreateSourceRectLayer("Tabs", indexPanelRoot, 470, 331);
         string[] encyclopediaTabPreviewPaths =
         {
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_all_systems_button_up",
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_system_button_up",
+            PreviewTheme?.StrategyWindows?.Encyclopedia?.AllDatabasesButton?.UpImagePath,
+            PreviewTheme?.StrategyWindows?.Encyclopedia?.SystemsButton?.UpImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.ShipButton?.UpImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.FacilityButton?.UpImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.MissionsButton?.UpImagePath,
@@ -5156,8 +5016,8 @@ public static class StrategyViewPrefabBuilder
         };
         string[] encyclopediaTabPreviewDownPaths =
         {
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_all_systems_button_pressed",
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_system_button_pressed",
+            PreviewTheme?.StrategyWindows?.Encyclopedia?.AllDatabasesButton?.DownImagePath,
+            PreviewTheme?.StrategyWindows?.Encyclopedia?.SystemsButton?.DownImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.ShipButton?.DownImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.FacilityButton?.DownImagePath,
             PreviewTheme?.StrategyWindows?.Encyclopedia?.MissionsButton?.DownImagePath,
@@ -5173,7 +5033,8 @@ public static class StrategyViewPrefabBuilder
                 encyclopediaTabPreviewPaths[i]
             );
             Texture upTexture = image.texture;
-            Texture downTexture = LoadTexture(encyclopediaTabPreviewDownPaths[i]);
+            Texture downTexture =
+                LoadOptionalTexture(encyclopediaTabPreviewDownPaths[i]) ?? upTexture;
             int upWidth = GetTextureSourceWidthOrDefault(upTexture, 49);
             int downWidth = GetTextureSourceWidthOrDefault(downTexture, 49);
             int upHeight = GetTextureSourceHeightOrDefault(upTexture, 41);
@@ -5247,7 +5108,7 @@ public static class StrategyViewPrefabBuilder
         RawImage detailBackground = CreateRawButton(
             "DetailBackgroundImage",
             detailPanelRoot,
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_topic_background"
+            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_topic_background"
         );
         SetSourceRect(detailBackground.rectTransform, 12, 13, 400, 306);
         RawImage detailCard = CreateRawButton("DetailCardImage", detailPanelRoot);
@@ -5255,14 +5116,14 @@ public static class StrategyViewPrefabBuilder
         RawImage detailPrevious = CreateRawButton(
             "DetailPreviousButtonImage",
             detailPanelRoot,
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_previous_button_up"
+            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_previous_button_up"
         );
         SetSourceRect(detailPrevious.rectTransform, 31, 13, 21, 17);
         Button detailPreviousButton = CreateButton(detailPrevious);
         RawImage detailNext = CreateRawButton(
             "DetailNextButtonImage",
             detailPanelRoot,
-            "Art/HD/UI/StrategyView/ui_strategyview_encyclopedia_window_next_button_up"
+            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_next_button_up"
         );
         SetSourceRect(detailNext.rectTransform, 380, 13, 21, 17);
         Button detailNextButton = CreateButton(detailNext);
@@ -5324,28 +5185,6 @@ public static class StrategyViewPrefabBuilder
         AssignReference(indexPanel, "rowTextTemplate", rowTextTemplate);
         AssignReference(indexPanel, "navigationScope", window.GetComponent<RectTransform>());
         AssignInt(indexPanel, "contentBottomPadding", 1);
-        AssignReference(
-            indexPanel,
-            "systemButtonDownTexture",
-            LoadStrategyViewTexture("ui_strategyview_encyclopedia_window_system_button_pressed")
-        );
-        AssignReference(
-            indexPanel,
-            "systemButtonUpTexture",
-            LoadStrategyViewTexture("ui_strategyview_encyclopedia_window_system_button_up")
-        );
-        AssignReference(
-            indexPanel,
-            "allSystemsButtonUpTexture",
-            LoadStrategyViewTexture("ui_strategyview_encyclopedia_window_all_systems_button_up")
-        );
-        AssignReference(
-            indexPanel,
-            "allSystemsButtonDownTexture",
-            LoadStrategyViewTexture(
-                "ui_strategyview_encyclopedia_window_all_systems_button_pressed"
-            )
-        );
 
         AssignReference(detailPanel, "cardImage", detailCard);
         AssignReference(detailPanel, "previousButtonImage", detailPrevious);
@@ -5433,7 +5272,7 @@ public static class StrategyViewPrefabBuilder
         RawImage stateCard = CreateRawImage(
             "StateCardImage",
             card.transform,
-            _facilityManufacturingCardStatePreviewPath,
+            null,
             55,
             cardY,
             _facilityManufacturingCardStateWidth,
@@ -5441,11 +5280,7 @@ public static class StrategyViewPrefabBuilder
         );
         RectTransform entitySlot = CreateChildLayer("EntitySlot", card.transform);
         SetSourceRect(entitySlot, 150, cardY + 16, 67, 48);
-        RawImage entity = CreateRightCenteredRawImage(
-            "EntityImage",
-            entitySlot,
-            _facilityCardEntitySmallPreviewPath
-        );
+        RawImage entity = CreateRightCenteredRawImage("EntityImage", entitySlot, null);
         Image progress = CreateImage("ProgressFillImage", card.transform);
         progress.color = new Color32(255, 255, 84, 255);
         SetSourceRect(progress.rectTransform, 56, cardY + 70, 161, 4);
@@ -5537,11 +5372,7 @@ public static class StrategyViewPrefabBuilder
             _facilityInventoryItemPreviewPath
         );
         SetSourceRect(itemImage.rectTransform, 0, 0, 67, 40);
-        RawImage selectionImage = CreateRawButton(
-            "SelectionImage",
-            item.transform,
-            _facilityManufacturingSelectPreviewPath
-        );
+        RawImage selectionImage = CreateRawButton("SelectionImage", item.transform, null);
         SetSourceRect(selectionImage.rectTransform, 0, 0, 67, 40);
 
         AssignReference(view, "hitAreaImage", hitArea);
@@ -5788,9 +5619,7 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI resultPlanetaryForceHeader = CreateBattleResultText(
             "ResultPlanetaryForceHeaderTextField",
             window.transform,
-            string.IsNullOrEmpty(theme?.FirstForcesHeaderText)
-                ? "First Forces"
-                : theme.FirstForcesHeaderText,
+            "Forces",
             new RectInt(12, 36, 347, 20),
             18,
             FontStyles.Normal,
@@ -5799,9 +5628,7 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI resultFleetForceHeader = CreateBattleResultText(
             "ResultFleetForceHeaderTextField",
             window.transform,
-            string.IsNullOrEmpty(theme?.FirstForcesHeaderText)
-                ? "First Forces"
-                : theme.FirstForcesHeaderText,
+            "Forces",
             new RectInt(12, 36, 347, 20),
             18,
             FontStyles.Normal,
@@ -6827,10 +6654,8 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The saved prefab asset root.</returns>
     private static GameObject SaveGeneratedPrefabAsset(GameObject root, string path)
     {
-        if (root.GetComponent<ExternalContentArt>() == null)
-            root.AddComponent<ExternalContentArt>();
-
         Directory.CreateDirectory(Path.GetDirectoryName(path));
+        ApplicationTextureBindingAuthoring.Capture(root);
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         if (!success || saved == null)
             throw new System.InvalidOperationException(
@@ -7080,20 +6905,11 @@ public static class StrategyViewPrefabBuilder
     )
     {
         GalacticInformationDisplayTheme theme = PreviewTheme?.GalacticInformationDisplay;
-        GalacticInformationFilterTheme filter = theme?.GetFilter(
-            GalacticInformationFilterMode.PopularSupport
-        );
-        Texture2D legendTexture = LoadTexture(filter?.LegendImagePath);
-        if (
-            theme?.LegendSourcePosition == null
-            || theme.CloseSourceInset == null
-            || legendTexture == null
-        )
+        if (theme?.LegendSourcePosition == null || theme.CloseSourceInset == null)
             throw new MissingReferenceException(
-                "Preview GalacticInformationDisplay legend is missing."
+                "Preview GalacticInformationDisplay legend layout is missing."
             );
 
-        Vector2Int legendSize = UILayout.GetTextureSourceSize(legendTexture);
         GameObject root = CreateLayer("GalacticInformationLegend", parent);
         root.SetActive(false);
         GalacticInformationLegendView view = EnableRuntimeComponent(
@@ -7103,39 +6919,16 @@ public static class StrategyViewPrefabBuilder
             root.GetComponent<RectTransform>(),
             theme.LegendSourcePosition.X,
             theme.LegendSourcePosition.Y,
-            legendSize.x,
-            legendSize.y
-        );
-        RawImage legend = CreateRawImage(
-            "LegendImage",
-            root.transform,
-            filter.LegendImagePath,
             0,
-            0,
-            legendSize.x,
-            legendSize.y
+            0
         );
+        RawImage legend = CreateRawImage("LegendImage", root.transform, null, 0, 0, 0, 0);
         GalacticInformationFrameView frame = CreateGalacticInformationFrameView(root.transform);
-        RawImage close = CreateRawImage("CloseImage", root.transform, theme.CloseUpImagePath, 0, 0);
-        Vector2Int closeSize = UILayout.GetTextureSourceSize(close.texture);
-        SourceRectLayout closeLayout = new SourceRectLayout
-        {
-            X = legendSize.x - closeSize.x - theme.CloseSourceInset.X,
-            Y = theme.CloseSourceInset.Y,
-            Width = closeSize.x,
-            Height = closeSize.y,
-        };
-        SetSourceRect(
-            close.rectTransform,
-            closeLayout.X,
-            closeLayout.Y,
-            closeLayout.Width,
-            closeLayout.Height
-        );
+        RawImage close = CreateRawImage("CloseImage", root.transform, null, 0, 0, 0, 0);
         UIRaycastArea closeHitArea = CreateHudButtonView(
             "CloseHitArea",
             root.transform,
-            closeLayout
+            new SourceRectLayout()
         );
 
         AssignReference(view, "legendImage", legend);
@@ -8196,7 +7989,7 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The required authored cell count.</returns>
     private static int GetPlanetSystemSegmentedBarCellCount()
     {
-        GameGenerationConfig config = ResourceManager.GetConfig<GameGenerationConfig>();
+        GameGenerationConfig config = ContentPackEditor.LoadGameData().GenerationConfig;
         IReadOnlyList<SystemResourceProfile> profiles = config?.SystemResources?.Profiles;
         if (profiles == null || profiles.Count == 0)
         {
@@ -8367,144 +8160,6 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Ensures full-surface Strategy textures retain their imported dimensions.
-    /// </summary>
-    private static void EnsureStrategyViewBackgroundTexturesImportedAtFullSize()
-    {
-        HashSet<string> assetPaths = new HashSet<string>(System.StringComparer.Ordinal);
-        foreach (FactionTheme theme in PreviewThemes)
-        {
-            AddFullSizeTexturePath(assetPaths, theme?.TacticalHUDLayout?.ImagePath);
-            AddFullSizeTexturePath(assetPaths, theme?.GalaxyBackground?.ImagePath);
-            AddBattleAlertFullSizeTexturePaths(assetPaths, theme?.StrategyWindows?.BattleAlert);
-        }
-
-        foreach (string assetPath in assetPaths)
-            EnsureTextureImportedAtFullSize(assetPath);
-    }
-
-    /// <summary>
-    /// Adds every full-surface battle-alert texture path to an import set.
-    /// </summary>
-    /// <param name="assetPaths">The import-path set.</param>
-    /// <param name="theme">The optional battle-alert theme.</param>
-    private static void AddBattleAlertFullSizeTexturePaths(
-        HashSet<string> assetPaths,
-        BattleAlertWindowTheme theme
-    )
-    {
-        if (theme == null)
-            return;
-
-        AddFullSizeTexturePath(assetPaths, theme.FrameImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.ResultFrameImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.ResultSummaryImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.FirstForcesDefeatedImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.FirstForcesVictoriousImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.SecondForcesDefeatedImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.SecondForcesVictoriousImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.SummaryBackgroundImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.ListBackgroundImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.ResultListBackgroundImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.ResultPersonnelListBackgroundImagePath);
-        AddFullSizeTexturePath(assetPaths, theme.ResultDirectBackgroundImagePath);
-    }
-
-    /// <summary>
-    /// Adds one eligible full-surface texture path to an import set.
-    /// </summary>
-    /// <param name="assetPaths">The import-path set.</param>
-    /// <param name="path">The optional resource or asset path.</param>
-    private static void AddFullSizeTexturePath(HashSet<string> assetPaths, string path)
-    {
-        if (string.IsNullOrEmpty(path))
-            return;
-
-        string assetPath = ResolveTextureAssetPath(path);
-        if (
-            !assetPath.StartsWith(_fullSizeStrategyViewTextureRoot, System.StringComparison.Ordinal)
-        )
-        {
-            return;
-        }
-
-        assetPaths.Add(assetPath);
-    }
-
-    /// <summary>
-    /// Applies the required import settings to one full-surface texture.
-    /// </summary>
-    /// <param name="assetPath">The texture asset path.</param>
-    private static void EnsureTextureImportedAtFullSize(string assetPath)
-    {
-        AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
-        if (AssetImporter.GetAtPath(assetPath) is not TextureImporter importer)
-            return;
-
-        bool changed = false;
-        if (importer.textureType != TextureImporterType.Default)
-        {
-            importer.textureType = TextureImporterType.Default;
-            changed = true;
-        }
-
-        if (importer.spriteImportMode != SpriteImportMode.None)
-        {
-            importer.spriteImportMode = SpriteImportMode.None;
-            changed = true;
-        }
-
-        if (importer.alphaSource != TextureImporterAlphaSource.FromInput)
-        {
-            importer.alphaSource = TextureImporterAlphaSource.FromInput;
-            changed = true;
-        }
-
-        if (!importer.alphaIsTransparency)
-        {
-            importer.alphaIsTransparency = true;
-            changed = true;
-        }
-
-        if (importer.mipmapEnabled)
-        {
-            importer.mipmapEnabled = false;
-            changed = true;
-        }
-
-        changed |= EnsurePlatformTextureMaxSize(
-            importer,
-            importer.GetDefaultPlatformTextureSettings()
-        );
-        changed |= EnsurePlatformTextureMaxSize(
-            importer,
-            importer.GetPlatformTextureSettings("Standalone")
-        );
-
-        if (changed)
-            importer.SaveAndReimport();
-    }
-
-    /// <summary>
-    /// Raises one platform texture limit when it would truncate authored art.
-    /// </summary>
-    /// <param name="importer">The texture importer.</param>
-    /// <param name="settings">The platform settings.</param>
-    /// <returns>True when the settings changed.</returns>
-    private static bool EnsurePlatformTextureMaxSize(
-        TextureImporter importer,
-        TextureImporterPlatformSettings settings
-    )
-    {
-        if (settings.maxTextureSize >= _fullSizeTextureMaxSize)
-            return false;
-
-        settings.maxTextureSize = _fullSizeTextureMaxSize;
-        importer.SetPlatformTextureSettings(settings);
-        return true;
-    }
-
-    /// <summary>
     /// Applies a source layout with explicit fallback dimensions.
     /// </summary>
     /// <param name="rect">The target transform.</param>
@@ -8548,15 +8203,31 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Loads an optional texture from a resource-relative or asset-relative path.
+    /// Loads an optional application texture.
     /// </summary>
-    /// <param name="path">The optional texture path.</param>
+    /// <param name="path">The optional Unity asset path.</param>
     /// <returns>The loaded texture, or null.</returns>
     private static Texture2D LoadTexture(string path)
     {
-        return string.IsNullOrEmpty(path)
-            ? null
-            : AssetDatabase.LoadAssetAtPath<Texture2D>(ResolveTextureAssetPath(path));
+        if (
+            string.IsNullOrEmpty(path)
+            || !path.StartsWith("application/", System.StringComparison.Ordinal)
+        )
+        {
+            return null;
+        }
+
+        return ApplicationTextureBindingAuthoring.LoadTexture(path);
+    }
+
+    /// <summary>
+    /// Loads an optional application texture.
+    /// </summary>
+    /// <param name="path">The optional Unity asset path.</param>
+    /// <returns>The loaded texture, or null.</returns>
+    private static Texture2D LoadOptionalTexture(string path)
+    {
+        return LoadTexture(path);
     }
 
     /// <summary>
@@ -8566,46 +8237,7 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The loaded texture, or null.</returns>
     private static Texture2D LoadStrategyViewTexture(string assetName)
     {
-        return LoadTexture("Art/HD/UI/StrategyView/" + assetName);
-    }
-
-    /// <summary>
-    /// Resolves a resource-relative or asset-relative texture path.
-    /// </summary>
-    /// <param name="path">The texture path.</param>
-    /// <returns>The resolved asset path.</returns>
-    private static string ResolveTextureAssetPath(string path)
-    {
-        if (path.StartsWith("Assets/", System.StringComparison.Ordinal))
-            return ResolveTextureFilePath(path);
-
-        string resourcePath = Path.Combine("Assets/Content", path).Replace("\\", "/");
-        return ResolveTextureFilePath(resourcePath);
-    }
-
-    /// <summary>
-    /// Resolves an extensionless texture path to an existing image asset when possible.
-    /// </summary>
-    /// <param name="path">The candidate asset path.</param>
-    /// <returns>The resolved image path or original candidate.</returns>
-    private static string ResolveTextureFilePath(string path)
-    {
-        if (File.Exists(path))
-            return path;
-
-        string pngPath = path + ".png";
-        if (File.Exists(pngPath))
-            return pngPath;
-
-        string jpgPath = path + ".jpg";
-        if (File.Exists(jpgPath))
-            return jpgPath;
-
-        string jpegPath = path + ".jpeg";
-        if (File.Exists(jpegPath))
-            return jpegPath;
-
-        return path;
+        return LoadTexture("application/strategy/ui/windows/" + assetName + ".png");
     }
 
     /// <summary>

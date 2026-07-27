@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders one save slot and emits save or load requests for that slot.
 /// </summary>
-public sealed class SaveMenuSlotRowView : MonoBehaviour
+public sealed class SaveMenuSlotRowView : MonoBehaviour, IApplicationTextureReceiver
 {
     [SerializeField]
     private RawImage factionImage;
@@ -260,5 +260,32 @@ public sealed class SaveMenuSlotRowView : MonoBehaviour
             && loadButtonUpTexture
             && loadButtonDownTexture
             && loadButtonDisabledTexture;
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(saveButtonUpTexture):
+                saveButtonUpTexture = texture;
+                break;
+            case nameof(saveButtonDownTexture):
+                saveButtonDownTexture = texture;
+                break;
+            case nameof(saveButtonDisabledTexture):
+                saveButtonDisabledTexture = texture;
+                break;
+            case nameof(loadButtonUpTexture):
+                loadButtonUpTexture = texture;
+                break;
+            case nameof(loadButtonDownTexture):
+                loadButtonDownTexture = texture;
+                break;
+            case nameof(loadButtonDisabledTexture):
+                loadButtonDisabledTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

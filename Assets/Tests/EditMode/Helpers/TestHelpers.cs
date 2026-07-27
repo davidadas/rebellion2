@@ -146,23 +146,15 @@ public class SequenceRNG : IRandomNumberProvider
 
 public static class TestConfig
 {
-    private static readonly string _configPath = Path.Combine(
-        UnityEngine.Application.dataPath,
-        "Content",
-        "Configs",
-        "GameConfig.xml"
-    );
+    private static string ConfigPath =>
+        Path.Combine(TestContent.Pack.PackRootPath, TestContent.Pack.Definition.GameConfigPath);
 
-    private static readonly string _schemaPath = Path.Combine(
-        UnityEngine.Application.dataPath,
-        "Content",
-        "Configs",
-        "GameConfigSchema.xml"
-    );
+    private static string SchemaPath =>
+        Path.Combine(TestContent.Pack.ContentRootPath, "application", "schemas", "game-config.xsd");
 
     public static GameConfig Create()
     {
-        string xml = File.ReadAllText(_configPath);
+        string xml = File.ReadAllText(ConfigPath);
         GameSerializer serializer = new GameSerializer(typeof(GameConfig));
         using StringReader reader = new StringReader(xml);
         GameConfig config = (GameConfig)serializer.Deserialize(reader);
@@ -171,7 +163,7 @@ public static class TestConfig
 
     public static GameConfig CreateWithSchema()
     {
-        string xml = File.ReadAllText(_configPath);
+        string xml = File.ReadAllText(ConfigPath);
         GameSerializerSettings settings = BuildSchemaSettings();
         GameSerializer serializer = new GameSerializer(typeof(GameConfig), settings);
         using StringReader reader = new StringReader(xml);
@@ -189,7 +181,7 @@ public static class TestConfig
     private static GameSerializerSettings BuildSchemaSettings()
     {
         XmlSchemaSet schemas = new XmlSchemaSet();
-        schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(_schemaPath))));
+        schemas.Add(null, XmlReader.Create(new StringReader(File.ReadAllText(SchemaPath))));
         return new GameSerializerSettings { Schemas = schemas };
     }
 }

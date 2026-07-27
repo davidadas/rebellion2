@@ -629,9 +629,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             return new MissionParticipantRowRenderData(
                 name,
                 Color.white,
-                null,
-                _texture,
-                inTransit
+                inTransit ? _texture : null,
+                _texture
             );
         }
 

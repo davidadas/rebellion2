@@ -11,7 +11,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns main-menu control bindings and local presentation while emitting semantic user requests.
 /// </summary>
-public sealed class MainMenuView : MonoBehaviour
+public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
 {
     /// <summary>
     /// Associates a galaxy-size toggle with its launch value.
@@ -67,10 +67,37 @@ public sealed class MainMenuView : MonoBehaviour
 
         public string FactionId => factionId;
 
+        public Image Image => button?.targetGraphic as Image;
+
+        public Sprite[] Frames { get; private set; } = Array.Empty<Sprite>();
+
+        public float FrameIntervalSeconds { get; private set; }
+
+        public int FrameIndex { get; set; }
+
+        public float FrameElapsedSeconds { get; set; }
+
         /// <summary>
         /// Gets whether the binding has a button and faction identifier.
         /// </summary>
-        public bool IsConfigured => button != null && !string.IsNullOrEmpty(factionId);
+        public bool IsConfigured => button != null && Image != null;
+
+        /// <summary>
+        /// Applies a faction identifier and loaded launch-animation frames to this binding.
+        /// </summary>
+        /// <param name="id">The configured faction identifier.</param>
+        /// <param name="frames">The loaded launch-animation sprites.</param>
+        /// <param name="frameIntervalSeconds">The elapsed time between animation frames.</param>
+        public void Configure(string id, Sprite[] frames, float frameIntervalSeconds)
+        {
+            factionId = id;
+            Frames = frames ?? Array.Empty<Sprite>();
+            FrameIntervalSeconds = frameIntervalSeconds;
+            FrameIndex = 0;
+            FrameElapsedSeconds = 0f;
+            if (Frames.Length > 0)
+                Image.sprite = Frames[0];
+        }
     }
 
     /// <summary>
@@ -138,6 +165,7 @@ public sealed class MainMenuView : MonoBehaviour
     private AudioCueBinding[] audioCueBindings = Array.Empty<AudioCueBinding>();
 
     private readonly List<Action> removeControlListeners = new List<Action>();
+    private readonly List<Sprite> ownedFactionSprites = new List<Sprite>();
     private bool controlsBound;
 
     /// <summary>
@@ -176,6 +204,29 @@ public sealed class MainMenuView : MonoBehaviour
     public event Action<string> AudioCueRequested;
 
     /// <summary>
+    /// Advances every active faction launch animation.
+    /// </summary>
+    private void Update()
+    {
+        foreach (FactionLaunchBinding binding in factionLaunchBindings)
+            AdvanceFactionAnimation(binding, Time.unscaledDeltaTime);
+    }
+
+    /// <summary>
+    /// Releases sprites created from external content textures.
+    /// </summary>
+    private void OnDestroy()
+    {
+        foreach (Sprite sprite in ownedFactionSprites)
+        {
+            if (sprite != null)
+                Destroy(sprite);
+        }
+
+        ownedFactionSprites.Clear();
+    }
+
+    /// <summary>
     /// Validates the authored references before runtime interaction begins.
     /// </summary>
     private void Awake()
@@ -212,6 +263,52 @@ public sealed class MainMenuView : MonoBehaviour
             : standardVictoryConditionSprite;
         victoryConditionIcon.gameObject.SetActive(true);
         victoryConditionText.text = headquarters ? "Headquarters Victory" : "Standard Game";
+    }
+
+    /// <summary>
+    /// Populates the authored launch positions from the active scenario's playable factions.
+    /// </summary>
+    /// <param name="factionIDs">The playable faction identifiers in display order.</param>
+    /// <param name="getTheme">The active faction-theme resolver.</param>
+    /// <param name="getTexture">The active content texture resolver.</param>
+    internal void RenderFactions(
+        IReadOnlyList<string> factionIDs,
+        Func<string, FactionTheme> getTheme,
+        Func<string, Texture2D> getTexture
+    )
+    {
+        if (factionIDs == null)
+            throw new ArgumentNullException(nameof(factionIDs));
+        if (getTheme == null)
+            throw new ArgumentNullException(nameof(getTheme));
+        if (getTexture == null)
+            throw new ArgumentNullException(nameof(getTexture));
+        if (factionIDs.Count > factionLaunchBindings.Length)
+        {
+            throw new InvalidOperationException(
+                $"The active scenario has {factionIDs.Count} playable factions, "
+                    + $"but the main menu has {factionLaunchBindings.Length} launch positions."
+            );
+        }
+
+        ClearFactionSprites();
+        for (int index = 0; index < factionLaunchBindings.Length; index++)
+        {
+            FactionLaunchBinding binding = factionLaunchBindings[index];
+            bool active = index < factionIDs.Count;
+            binding.Button.gameObject.SetActive(active);
+            if (!active)
+                continue;
+
+            string factionID = factionIDs[index];
+            MainMenuFactionTheme mainMenuTheme =
+                getTheme(factionID)?.MainMenu
+                ?? throw new InvalidOperationException(
+                    $"Faction '{factionID}' has no main-menu theme."
+                );
+            Sprite[] frames = LoadFactionAnimationFrames(mainMenuTheme, getTexture);
+            binding.Configure(factionID, frames, mainMenuTheme.LaunchAnimationFrameIntervalSeconds);
+        }
     }
 
     /// <summary>
@@ -273,6 +370,81 @@ public sealed class MainMenuView : MonoBehaviour
             "faction launch"
         );
         VerifyBindings(audioCueBindings, binding => binding?.IsConfigured == true, "audio cue");
+    }
+
+    /// <summary>
+    /// Loads and converts every configured launch-animation texture to a sprite.
+    /// </summary>
+    /// <param name="theme">The faction's main-menu theme.</param>
+    /// <param name="getTexture">The active content texture resolver.</param>
+    /// <returns>The created launch-animation sprites.</returns>
+    private Sprite[] LoadFactionAnimationFrames(
+        MainMenuFactionTheme theme,
+        Func<string, Texture2D> getTexture
+    )
+    {
+        if (
+            string.IsNullOrWhiteSpace(theme.LaunchAnimationRoot)
+            || theme.LaunchAnimationFrameCount <= 0
+            || theme.LaunchAnimationFrameIntervalSeconds <= 0f
+        )
+            throw new InvalidOperationException("A main-menu faction animation is incomplete.");
+
+        Sprite[] frames = new Sprite[theme.LaunchAnimationFrameCount];
+        for (int index = 0; index < frames.Length; index++)
+        {
+            string path = theme.GetLaunchAnimationFramePath(index + 1);
+            Texture2D texture =
+                getTexture(path)
+                ?? throw new InvalidOperationException(
+                    $"Main-menu faction animation frame is missing: {path}"
+                );
+            Sprite sprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, texture.width, texture.height),
+                new Vector2(0.5f, 0.5f),
+                100f
+            );
+            sprite.name = texture.name;
+            frames[index] = sprite;
+            ownedFactionSprites.Add(sprite);
+        }
+
+        return frames;
+    }
+
+    /// <summary>
+    /// Releases every faction launch sprite currently owned by this view.
+    /// </summary>
+    private void ClearFactionSprites()
+    {
+        foreach (Sprite sprite in ownedFactionSprites)
+        {
+            if (sprite != null)
+                Destroy(sprite);
+        }
+
+        ownedFactionSprites.Clear();
+    }
+
+    /// <summary>
+    /// Advances one faction launch animation by elapsed unscaled time.
+    /// </summary>
+    /// <param name="binding">The configured faction launch binding.</param>
+    /// <param name="elapsedSeconds">The elapsed unscaled frame time.</param>
+    private static void AdvanceFactionAnimation(FactionLaunchBinding binding, float elapsedSeconds)
+    {
+        if (binding?.Frames?.Length < 2 || binding.FrameIntervalSeconds <= 0f)
+            return;
+
+        binding.FrameElapsedSeconds += elapsedSeconds;
+        while (binding.FrameElapsedSeconds >= binding.FrameIntervalSeconds)
+        {
+            binding.FrameElapsedSeconds -= binding.FrameIntervalSeconds;
+            binding.FrameIndex = (binding.FrameIndex + 1) % binding.Frames.Length;
+        }
+
+        binding.Image.sprite = binding.Frames[binding.FrameIndex];
     }
 
     /// <summary>
@@ -445,5 +617,29 @@ public sealed class MainMenuView : MonoBehaviour
 
         removeControlListeners.Clear();
         controlsBound = false;
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        Sprite sprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        sprite.name = texture.name;
+        ownedFactionSprites.Add(sprite);
+
+        switch (key)
+        {
+            case nameof(standardVictoryConditionSprite):
+                standardVictoryConditionSprite = sprite;
+                break;
+            case nameof(headquartersVictoryConditionSprite):
+                headquartersVictoryConditionSprite = sprite;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

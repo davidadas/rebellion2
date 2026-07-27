@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the authored save-menu hierarchy and emits semantic UI requests.
 /// </summary>
-public sealed class SaveMenuWindowView : MonoBehaviour
+public sealed class SaveMenuWindowView : MonoBehaviour, IApplicationTextureReceiver
 {
     [SerializeField]
     private Color enabledTextColor;
@@ -28,9 +28,6 @@ public sealed class SaveMenuWindowView : MonoBehaviour
 
     [SerializeField]
     private RawImagePressVisual returnStrategyButtonPressVisual;
-
-    [SerializeField]
-    private Texture2D returnStrategyButtonUpTexture;
 
     [SerializeField]
     private RawImagePressVisual musicButtonPressVisual;
@@ -137,7 +134,6 @@ public sealed class SaveMenuWindowView : MonoBehaviour
 
         VerifyReferences();
         BindControls();
-        RenderReturnStrategyButton(data);
         RenderAudioControls(data.MusicVolume, data.SfxVolume);
         SetTextContent(versionTextField, data.VersionText, versionTextColor);
         RenderTacticalOptions(data);
@@ -262,20 +258,6 @@ public sealed class SaveMenuWindowView : MonoBehaviour
         }
 
         bound = false;
-    }
-
-    /// <summary>
-    /// Applies the current faction textures to the return-to-strategy command.
-    /// </summary>
-    /// <param name="data">The current save-menu presentation data.</param>
-    private void RenderReturnStrategyButton(SaveMenuWindowRenderData data)
-    {
-        Texture2D returnUpTexture =
-            data.ReturnStrategyButtonUpTexture ?? returnStrategyButtonUpTexture;
-        returnStrategyButtonPressVisual.SetTextures(
-            returnUpTexture,
-            data.ReturnStrategyButtonDownTexture ?? returnUpTexture
-        );
     }
 
     /// <summary>
@@ -502,8 +484,6 @@ public sealed class SaveMenuWindowView : MonoBehaviour
             throw new MissingReferenceException(
                 "Return strategy button references are incomplete."
             );
-        if (returnStrategyButtonUpTexture == null)
-            throw new MissingReferenceException("Return strategy button texture is missing.");
     }
 
     /// <summary>
@@ -545,7 +525,6 @@ public sealed class SaveMenuWindowView : MonoBehaviour
             || exitButton == null
             || returnStrategyButton == null
             || returnStrategyButtonPressVisual == null
-            || returnStrategyButtonUpTexture == null
             || musicButtonPressVisual == null
             || musicButton == null
             || musicButtonUpTexture == null
@@ -584,5 +563,20 @@ public sealed class SaveMenuWindowView : MonoBehaviour
         }
 
         return true;
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(musicButtonUpTexture):
+                musicButtonUpTexture = texture;
+                break;
+            case nameof(musicButtonDownTexture):
+                musicButtonDownTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

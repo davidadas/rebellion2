@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored modal confirmation dialog and emits the selected response.
 /// </summary>
-public sealed class SaveMenuConfirmDialogView : MonoBehaviour
+public sealed class SaveMenuConfirmDialogView : MonoBehaviour, IApplicationTextureReceiver
 {
     [SerializeField]
     private RawImage backgroundImage;
@@ -172,5 +172,26 @@ public sealed class SaveMenuConfirmDialogView : MonoBehaviour
             && cancelButtonUpTexture != null
             && cancelButtonDownTexture != null
             && messageTextField != null;
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(confirmButtonUpTexture):
+                confirmButtonUpTexture = texture;
+                break;
+            case nameof(confirmButtonDownTexture):
+                confirmButtonDownTexture = texture;
+                break;
+            case nameof(cancelButtonUpTexture):
+                cancelButtonUpTexture = texture;
+                break;
+            case nameof(cancelButtonDownTexture):
+                cancelButtonDownTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

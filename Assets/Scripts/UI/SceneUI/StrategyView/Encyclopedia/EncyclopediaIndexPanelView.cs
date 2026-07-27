@@ -41,24 +41,11 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     private RectTransform navigationScope;
 
     [SerializeField]
-    private Texture2D allSystemsButtonUpTexture;
-
-    [SerializeField]
-    private Texture2D allSystemsButtonDownTexture;
-
-    [SerializeField]
-    private Texture2D systemButtonUpTexture;
-
-    [SerializeField]
-    private Texture2D systemButtonDownTexture;
-
-    [SerializeField]
     private int contentBottomPadding;
 
     private readonly List<string> renderedEntryTypeIds = new List<string>();
 
     private bool activeWindow;
-    private Texture[] defaultTabTextures = Array.Empty<Texture>();
     private EncyclopediaWindowTab renderedActiveTab;
     private bool renderedAnyRows;
     private SelectableListView<EncyclopediaWindowRowView, EncyclopediaWindowRowRenderData> rowsList;
@@ -94,7 +81,6 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     private void Awake()
     {
         VerifyReferences();
-        defaultTabTextures = CaptureTextures(tabImageSlots);
         BindControls();
     }
 
@@ -236,10 +222,7 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
         {
             RawImage image = tabImageSlots[i];
             EncyclopediaTabRenderData tab = data.Tabs[i];
-            Texture texture =
-                tab.Texture
-                ?? GetAuthoredTabTexture(tab.Tab, tab.Tab == data.ActiveTab)
-                ?? defaultTabTextures[i];
+            Texture texture = tab.Texture;
             UILayout.SetImageTexture(image, texture);
             image.raycastTarget = texture != null;
             tabButtons[i].interactable = texture != null;
@@ -335,42 +318,6 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     private bool CanNavigateRows()
     {
         return activeWindow;
-    }
-
-    /// <summary>
-    /// Captures immutable prefab textures for authored tab slots.
-    /// </summary>
-    /// <param name="images">The authored tab images.</param>
-    /// <returns>The captured textures in slot order.</returns>
-    private static Texture[] CaptureTextures(IReadOnlyList<RawImage> images)
-    {
-        if (images == null)
-            return Array.Empty<Texture>();
-
-        Texture[] textures = new Texture[images.Count];
-        for (int index = 0; index < images.Count; index++)
-            textures[index] = images[index]?.texture;
-        return textures;
-    }
-
-    /// <summary>
-    /// Returns the authored fallback texture for faction-neutral database tabs.
-    /// </summary>
-    /// <param name="tab">The semantic database tab.</param>
-    /// <param name="selected">Whether the tab is selected.</param>
-    /// <returns>The authored fallback texture, or null when none is assigned.</returns>
-    private Texture GetAuthoredTabTexture(EncyclopediaWindowTab tab, bool selected)
-    {
-        return tab switch
-        {
-            EncyclopediaWindowTab.AllDatabases => selected
-                ? allSystemsButtonDownTexture
-                : allSystemsButtonUpTexture,
-            EncyclopediaWindowTab.Systems => selected
-                ? systemButtonDownTexture
-                : systemButtonUpTexture,
-            _ => null,
-        };
     }
 
     private SelectableListView<EncyclopediaWindowRowView, EncyclopediaWindowRowRenderData> RowsList

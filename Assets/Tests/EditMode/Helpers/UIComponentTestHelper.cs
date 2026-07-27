@@ -12,7 +12,9 @@ public static class UIComponentTestHelper
         if (prefab == null)
             throw new InvalidOperationException($"Missing test prefab at {prefabPath}.");
 
-        return UnityEngine.Object.Instantiate(prefab);
+        GameObject instance = UnityEngine.Object.Instantiate(prefab);
+        ApplyApplicationTextures(instance);
+        return instance;
     }
 
     public static T InstantiatePrefabComponent<T>(string prefabPath)
@@ -25,13 +27,17 @@ public static class UIComponentTestHelper
                 $"Missing {typeof(T).Name} test component in {prefabPath}."
             );
 
-        return UnityEngine.Object.Instantiate(component);
+        T instance = UnityEngine.Object.Instantiate(component);
+        ApplyApplicationTextures(instance.transform.root.gameObject);
+        return instance;
     }
 
     public static void InvokeLifecycle(Component component, string methodName)
     {
         if (component == null)
             throw new ArgumentNullException(nameof(component));
+
+        ApplyApplicationTextures(component.transform.root.gameObject);
 
         MethodInfo method = component
             .GetType()
@@ -47,6 +53,18 @@ public static class UIComponentTestHelper
         {
             ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
             throw;
+        }
+    }
+
+    private static void ApplyApplicationTextures(GameObject root)
+    {
+        foreach (
+            ApplicationTextureBindings bindings in root.GetComponentsInChildren<ApplicationTextureBindings>(
+                true
+            )
+        )
+        {
+            bindings.Apply(TestContent.Assets);
         }
     }
 }

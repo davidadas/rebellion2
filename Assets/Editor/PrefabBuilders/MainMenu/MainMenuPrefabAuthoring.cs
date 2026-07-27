@@ -18,10 +18,10 @@ using Object = UnityEngine.Object;
 public static class MainMenuPrefabAuthoring
 {
     private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
-    private const string _exitButtonControllerPath =
-        "Assets/Prefabs/UI/MainMenu/ExitButton.controller";
+    private const string _headquartersVictorySpritePath =
+        "application/main-menu/ui/ui_mainmenu_hqonly_icon.png";
     private const string _standardVictorySpritePath =
-        "Assets/Content/Art/HD/UI/MainMenu/ui_mainmenu_hq_icon.png";
+        "application/main-menu/ui/ui_mainmenu_hq_icon.png";
 
     /// <summary>
     /// Rebuilds the authored main-menu view bindings and removes controller-targeted UnityEvents.
@@ -37,8 +37,7 @@ public static class MainMenuPrefabAuthoring
         try
         {
             RebuildMainMenuViewBindings(root);
-            if (root.GetComponent<ExternalContentArt>() == null)
-                root.AddComponent<ExternalContentArt>();
+            ApplicationTextureBindingAuthoring.Capture(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
             AssetDatabase.SaveAssets();
         }
@@ -71,6 +70,7 @@ public static class MainMenuPrefabAuthoring
         List<(Button Button, string FactionId)> factionLaunches = ReadFactionLaunchBindings(view);
         if (factionLaunches.Count == 0)
             factionLaunches = DiscoverFactionLaunchBindings(root, controller);
+        RemoveAuthoredFactionAnimations(factionLaunches);
 
         List<(
             EventTrigger Trigger,
@@ -100,17 +100,10 @@ public static class MainMenuPrefabAuthoring
         TMP_Text victoryConditionText =
             ReadReference<TMP_Text>(view, "victoryConditionText")
             ?? FindRequiredComponent<TMP_Text>(root, "VictoryConditionText");
-        Sprite standardVictoryConditionSprite =
-            ReadReference<Sprite>(view, "standardVictoryConditionSprite")
-            ?? LoadRequiredSprite(_standardVictorySpritePath);
-        Sprite headquartersVictoryConditionSprite =
-            ReadReference<Sprite>(view, "headquartersVictoryConditionSprite")
-            ?? victoryConditionIcon.sprite;
-        Animator exitButtonAnimator = FindRequiredComponent<Animator>(root, "ExitButton");
-        exitButtonAnimator.runtimeAnimatorController = LoadRequiredAsset<RuntimeAnimatorController>(
-            _exitButtonControllerPath
+        Sprite standardVictoryConditionSprite = LoadRequiredSprite(_standardVictorySpritePath);
+        Sprite headquartersVictoryConditionSprite = LoadRequiredSprite(
+            _headquartersVictorySpritePath
         );
-
         ConfigureView(
             view,
             loadGameButton,
@@ -130,8 +123,28 @@ public static class MainMenuPrefabAuthoring
         RemoveControllerPersistentCalls(root, controller);
         RebuildEventTriggers(pressVisuals, audioCues);
         EditorUtility.SetDirty(controller);
-        EditorUtility.SetDirty(exitButtonAnimator);
         EditorUtility.SetDirty(view);
+    }
+
+    private static void RemoveAuthoredFactionAnimations(
+        IReadOnlyList<(Button Button, string FactionId)> factionLaunches
+    )
+    {
+        foreach ((Button button, _) in factionLaunches)
+        {
+            button.transition = Selectable.Transition.None;
+            if (button.targetGraphic is Image image)
+            {
+                image.sprite = null;
+                image.overrideSprite = null;
+                EditorUtility.SetDirty(image);
+            }
+
+            Animator animator = button.GetComponent<Animator>();
+            if (animator != null)
+                Object.DestroyImmediate(animator, true);
+            EditorUtility.SetDirty(button);
+        }
     }
 
     /// <summary>
@@ -918,24 +931,6 @@ public static class MainMenuPrefabAuthoring
     /// <returns>The loaded sprite.</returns>
     private static Sprite LoadRequiredSprite(string path)
     {
-        Sprite[] sprites = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>().ToArray();
-        if (sprites.Length == 0)
-            throw new FileNotFoundException(path);
-        if (sprites.Length > 1)
-            throw new InvalidOperationException($"Expected one sprite at {path}.");
-
-        return sprites[0];
-    }
-
-    /// <summary>
-    /// Loads one required Unity asset at an authored project path.
-    /// </summary>
-    /// <typeparam name="T">The required asset type.</typeparam>
-    /// <param name="path">The project-relative asset path.</param>
-    /// <returns>The loaded asset.</returns>
-    private static T LoadRequiredAsset<T>(string path)
-        where T : Object
-    {
-        return AssetDatabase.LoadAssetAtPath<T>(path) ?? throw new FileNotFoundException(path);
+        return ApplicationTextureBindingAuthoring.LoadSprite(path);
     }
 }

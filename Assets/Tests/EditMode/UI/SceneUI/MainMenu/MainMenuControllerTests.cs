@@ -13,7 +13,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [SetUp]
         public void SetUp()
         {
-            GameLaunchContext.Reset();
+            GameLaunchContext.Reset(TestContent.Pack);
             _gameObject = new GameObject("MainMenuControllerUnderTest");
             _controller = _gameObject.AddComponent<MainMenuController>();
         }
@@ -22,7 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_gameObject);
-            GameLaunchContext.Reset();
+            GameLaunchContext.Reset(TestContent.Pack);
         }
 
         [Test]

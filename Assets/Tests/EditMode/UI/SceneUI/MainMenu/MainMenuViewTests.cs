@@ -209,9 +209,9 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             CollectionAssert.AreEquivalent(
                 new[]
                 {
-                    "Audio/SFX/MainMenu/sfx_ui_mainmenu_select",
-                    "Audio/SFX/MainMenu/sfx_ui_mainmenu_galaxysize_select",
-                    "Audio/SFX/MainMenu/sfx_ui_mainmenu_exit_select",
+                    "application/main-menu/audio/select",
+                    "application/main-menu/audio/galaxysize-select",
+                    "application/main-menu/audio/exit-select",
                 },
                 _view.GetAudioCuePaths()
             );

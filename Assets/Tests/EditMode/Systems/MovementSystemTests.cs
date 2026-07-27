@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Systems
             MovementSystem movement
         ) BuildScene()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
 
             Faction empire = new Faction { InstanceID = "empire" };
@@ -488,7 +488,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_SameSystemDestination_CanUseLocalTransitMinimum()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -536,7 +536,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_DifferentSystemDestination_UsesGlobalTransitMinimum()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -1566,7 +1566,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void UpdateMovement_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
 
             game.Factions.Add(new Faction { InstanceID = "empire" });
@@ -1654,7 +1654,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_FleetWithInboundUnits_RetargetsInboundUnits()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -1811,7 +1811,7 @@ namespace Rebellion.Tests.Systems
             int capitalShip2Transit
         ) BuildFleetWithInTransitChildrenScene()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 
@@ -2590,7 +2590,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
 

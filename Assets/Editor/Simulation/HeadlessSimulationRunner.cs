@@ -68,6 +68,7 @@ public static class HeadlessSimulationRunner
     {
         string logPath = GetLogPath(options.OutputPath);
         GameLogger.Configure(logPath, enableFileLogging: true);
+        ContentPack contentPack = ContentPackLoader.OpenActive();
 
         GameSummary summary = new GameSummary
         {
@@ -76,6 +77,11 @@ public static class HeadlessSimulationRunner
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
             StartingResearchLevel = 1,
+            StartingFactionIDs = contentPack.Scenario.PlayableFactionIDs.ToArray(),
+            PlayerFactionID = contentPack.Scenario.PlayableFactionIDs.FirstOrDefault(),
+            PackID = contentPack.Definition.ID,
+            PackVersion = contentPack.Definition.Version,
+            ScenarioID = contentPack.Scenario.ID,
         };
 
         string startMessage =
@@ -83,8 +89,8 @@ public static class HeadlessSimulationRunner
         UnityEngine.Debug.Log(startMessage);
         LogToFile(logPath, startMessage);
 
-        GameRoot game = CreateGameBuilder(summary, options.Seed).BuildGame();
-        GameManager manager = new GameManager(game);
+        GameRoot game = CreateGameBuilder(summary, contentPack.GameData, options.Seed).BuildGame();
+        GameManager manager = new GameManager(game, contentPack.GameData);
         ManufacturingIdleTracker idleTracker = new ManufacturingIdleTracker();
         ManufacturedUnitTracker manufacturedUnitTracker = new ManufacturedUnitTracker();
         FleetHistoryTracker fleetHistoryTracker = new FleetHistoryTracker();
@@ -125,13 +131,18 @@ public static class HeadlessSimulationRunner
     /// Creates a game builder for the requested scenario.
     /// </summary>
     /// <param name="summary">The game summary used for generation.</param>
+    /// <param name="gameData">The active pack's composed game data.</param>
     /// <param name="seed">The optional generation seed.</param>
     /// <returns>The configured game builder.</returns>
-    private static GameBuilder CreateGameBuilder(GameSummary summary, int? seed)
+    private static GameBuilder CreateGameBuilder(
+        GameSummary summary,
+        GameDataCatalog gameData,
+        int? seed
+    )
     {
         return seed.HasValue
-            ? new GameBuilder(summary, new SystemRandomProvider(seed.Value))
-            : new GameBuilder(summary);
+            ? new GameBuilder(summary, gameData, new SystemRandomProvider(seed.Value))
+            : new GameBuilder(summary, gameData);
     }
 
     /// <summary>

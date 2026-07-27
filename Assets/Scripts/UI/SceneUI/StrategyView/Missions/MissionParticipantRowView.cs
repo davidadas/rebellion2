@@ -22,12 +22,6 @@ public sealed class MissionParticipantRowView : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI nameTextField;
 
-    [SerializeField]
-    private Texture2D backgroundTexture;
-
-    [SerializeField]
-    private Texture2D inTransitBackgroundTexture;
-
     private RectInt entitySlotRect;
     private bool hasEntitySlotRect;
 
@@ -122,11 +116,7 @@ public sealed class MissionParticipantRowView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
-        UILayout.SetInteractiveImageTexture(
-            backgroundImage,
-            data.BackgroundTexture
-                ?? (data.UseInTransitBackground ? inTransitBackgroundTexture : backgroundTexture)
-        );
+        UILayout.SetInteractiveImageTexture(backgroundImage, data.BackgroundTexture);
         UILayout.SetCenteredImage(entityImage, data.EntityTexture, entitySlotRect);
         UILayout.SetTextContent(nameTextField, data.Name, data.NameColor);
         gameObject.SetActive(true);
@@ -145,11 +135,6 @@ public sealed class MissionParticipantRowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/EntityImage is missing.");
         if (nameTextField == null)
             throw new MissingReferenceException($"{name}/NameTextField is missing.");
-        if (backgroundTexture == null)
-            throw new MissingReferenceException($"{name}/BackgroundTexture is missing.");
-        if (inTransitBackgroundTexture == null)
-            throw new MissingReferenceException($"{name}/InTransitBackgroundTexture is missing.");
-
         if (hasEntitySlotRect)
             return;
 
@@ -170,20 +155,17 @@ public sealed class MissionParticipantRowRenderData
     /// <param name="nameColor">The displayed participant-name color.</param>
     /// <param name="backgroundTexture">The optional state background.</param>
     /// <param name="entityTexture">The displayed participant image.</param>
-    /// <param name="useInTransitBackground">Whether the authored in-transit background is the fallback.</param>
     public MissionParticipantRowRenderData(
         string name,
         Color32 nameColor,
         Texture backgroundTexture,
-        Texture entityTexture,
-        bool useInTransitBackground = false
+        Texture entityTexture
     )
     {
         Name = name ?? string.Empty;
         NameColor = nameColor;
         BackgroundTexture = backgroundTexture;
         EntityTexture = entityTexture;
-        UseInTransitBackground = useInTransitBackground;
     }
 
     public string Name { get; }
@@ -193,6 +175,4 @@ public sealed class MissionParticipantRowRenderData
     public Texture BackgroundTexture { get; }
 
     public Texture EntityTexture { get; }
-
-    public bool UseInTransitBackground { get; }
 }

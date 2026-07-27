@@ -1,0 +1,243 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Regiments>
+  <Regiment>
+    <TypeID>REAL001</TypeID>
+    <DisplayName>Alliance Fleet Regiment</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/real001/display</DisplayImagePath>
+    <Description>Refined Material Cost:		8
+Maintenance Cost:			6
+Attack Strength:			6
+Defense Strength:			3
+Bombardment Defense:		5
+
+Alliance fleet regiments are the Alliance's main capital ship support troops.  Usually stationed aboard capital ships, fleet regiments handle everything from ship security to planetary assaults.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/real001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance fleet regiments are the Alliance's main capital ship support troops.  Usually stationed aboard capital ships, fleet regiments handle everything from ship security to planetary assaults.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>8</ConstructionCost>
+    <MaintenanceCost>6</MaintenanceCost>
+    <AttackRating>6</AttackRating>
+    <DefenseRating>3</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>15</DetectionRating>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL002</TypeID>
+    <DisplayName>Alliance Army Regiment</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/real002/display</DisplayImagePath>
+    <Description>Refined Material Cost:		6
+Maintenance Cost:			3
+Attack Strength:			3
+Defense Strength:			5
+Bombardment Defense:		5
+
+Army regiments make up the bulk of Alliance ground troops.  While not as armored or well armed as Fleet regiments, Army regiments are quick to build and cheap to maintain.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/real002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Army regiments make up the bulk of Alliance ground troops.  While not as armored or well armed as Fleet regiments, Army regiments are quick to build and cheap to maintain.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <AttackRating>3</AttackRating>
+    <DefenseRating>5</DefenseRating>
+    <BombardmentDefense>5</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>15</DetectionRating>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL003</TypeID>
+    <DisplayName>Sullustan Regiment</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/real003/display</DisplayImagePath>
+    <Description>Refined Material Cost:		3
+Maintenance Cost:			1
+Attack Strength:			1
+Defense Strength:			4
+Bombardment Defense:		2
+
+Sullustan regiments have been used by the Alliance primarily as garrison troops because of their low maintenance costs and weak attack strength.  Sullustan troops are excellent at detecting and foiling covert operations on systems where they are based.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/real003/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Sullustan regiments have been used by the Alliance primarily as garrison troops because of their low maintenance costs and weak attack strength.  Sullustan troops are excellent at detecting and foiling covert operations on systems where they are based.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <AttackRating>1</AttackRating>
+    <DefenseRating>4</DefenseRating>
+    <BombardmentDefense>2</BombardmentDefense>
+    <UprisingDefense>3</UprisingDefense>
+    <DetectionRating>35</DetectionRating>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>12</ResearchDifficulty>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL004</TypeID>
+    <DisplayName>Mon Calamari regiment</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/real004/display</DisplayImagePath>
+    <Description>Refined Material Cost:		6
+Maintenance Cost:			4
+Attack Strength:			2
+Defense Strength:			8
+Bombardment Defense:		9
+
+The Alliance Mon Calamari regiments have the highest defense and bombardment ratings of any troop regiment in the Alliance or the Empire.  This makes them the ideal garrison for holding important systems.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/real004/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>9</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Alliance Mon Calamari regiments have the highest defense and bombardment ratings of any troop regiment in the Alliance or the Empire.  This makes them the ideal garrison for holding important systems.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>6</ConstructionCost>
+    <MaintenanceCost>4</MaintenanceCost>
+    <AttackRating>2</AttackRating>
+    <DefenseRating>8</DefenseRating>
+    <BombardmentDefense>9</BombardmentDefense>
+    <UprisingDefense>5</UprisingDefense>
+    <DetectionRating>20</DetectionRating>
+    <ResearchOrder>2</ResearchOrder>
+    <ResearchDifficulty>40</ResearchDifficulty>
+  </Regiment>
+  <Regiment>
+    <TypeID>REAL005</TypeID>
+    <DisplayName>Wookiee Regiment</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/real005/display</DisplayImagePath>
+    <Description>Refined Material Cost:		10
+Maintenance Cost:			8
+Attack Strength:			8
+Defense Strength:			4
+Bombardment Defense:		4
+
+Wookiee regiments are the heavy hitters of the Alliance's ground troops.  Their strong attack and defense strengths make them a fierce opponent even for the most fortified stormtrooper regiment.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/real005/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Defense Strength</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Bombardment Defense</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Wookiee regiments are the heavy hitters of the Alliance's ground troops.  Their strong attack and defense strengths make them a fierce opponent even for the most fortified stormtrooper regiment.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>10</ConstructionCost>
+    <MaintenanceCost>8</MaintenanceCost>
+    <AttackRating>8</AttackRating>
+    <DefenseRating>4</DefenseRating>
+    <BombardmentDefense>4</BombardmentDefense>
+    <UprisingDefense>6</UprisingDefense>
+    <DetectionRating>20</DetectionRating>
+    <ResearchOrder>3</ResearchOrder>
+    <ResearchDifficulty>60</ResearchDifficulty>
+  </Regiment>
+</Regiments>

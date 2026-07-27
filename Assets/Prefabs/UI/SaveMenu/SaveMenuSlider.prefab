@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 3f3c38ae8ecac441590ca88993eb1434, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -120,7 +120,7 @@ GameObject:
   - component: {fileID: 1980785036195254533}
   - component: {fileID: 8145343395354628334}
   - component: {fileID: 8605024272454550509}
-  - component: {fileID: 4583795333882650259}
+  - component: {fileID: 8916845636659933054}
   m_Layer: 0
   m_Name: SaveMenuSlider
   m_TagString: Untagged
@@ -252,7 +252,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::SaveMenuSliderView
   slider: {fileID: 8145343395354628334}
   thumbImage: {fileID: 8081396136438227761}
---- !u!114 &4583795333882650259
+--- !u!114 &8916845636659933054
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -261,6 +261,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 8086418564228532066}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: 2b6c5984300d046618468cb2c752bc9a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
+  m_EditorClassIdentifier: GameAssembly::ApplicationTextureBindings
+  rawImages:
+  - target: {fileID: 8081396136438227761}
+    address: application/save-menu/ui/ui_savemenu_slider_thumb
+  images: []
+  receivers: []
+  buttons: []

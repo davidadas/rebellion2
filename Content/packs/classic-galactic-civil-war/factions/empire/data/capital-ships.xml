@@ -1,0 +1,2047 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<CapitalShips>
+  <CapitalShip>
+    <TypeID>CSEM001</TypeID>
+    <DisplayName>Imperial Dreadnaught</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem001/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem001/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem001/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem001/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem001/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem001/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem001/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem001/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem001/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	44
+Maintenance Cost:		33
+Fighter Capacity:		1
+Troop Capacity:			2
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			40		20		70		70
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		0		0
+
+The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. Standard Imperial Dreadnaughts are basically the same as the original Old Republic Dreadnaughts except they now carry a hangar deck for a squadron of TIE fighters. Because of its relatively slow speed, the Imperial Dreadnaught primarily serves as a convoy escort or patrol ship.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>44</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>33</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>40		20		70		70</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. Standard Imperial Dreadnaughts are basically the same as the original Old Republic Dreadnaughts except they now carry a hangar deck for a squadron of TIE fighters. Because of its relatively slow speed, the Imperial Dreadnaught primarily serves as a convoy escort or patrol ship.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>44</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>33</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>1</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>20</int>
+            <int>70</int>
+            <int>70</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>7</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM002</TypeID>
+    <DisplayName>Galleon</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem002/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem002/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem002/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem002/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem002/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem002/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem002/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem002/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem002/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	10
+Maintenance Cost:		10
+Fighter Capacity:		0
+Troop Capacity:			2
+Shield Strength:			100
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		0		0
+
+This older model starship dates from the time of the Old Republic.  Specifically designed as a transport ship, the Galleon is completely unarmed.  Later adopted by the Empire, the Galleon now serves mainly as a troop transport. </Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>100</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>This older model starship dates from the time of the Old Republic.  Specifically designed as a transport ship, the Galleon is completely unarmed.  Later adopted by the Empire, the Galleon now serves mainly as a troop transport.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>10</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>10</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>300</MaxHullStrength>
+    <CurrentHullStrength>300</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>100</MaxShieldStrength>
+    <ShieldRechargeRate>5</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>2</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>0</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM003</TypeID>
+    <DisplayName>Imperial Escort Carrier</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem003/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem003/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem003/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem003/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem003/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem003/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem003/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem003/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem003/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	34
+Maintenance Cost:		30
+Fighter Capacity:		6
+Troop Capacity:			0
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		30		30		60		60
+
+Imperial escort carriers were designed to complement a fleet's starfighter capacity and provide a hyperspace capable platform for TIE class fighters to use during hyperspace transport.  Escort carriers are very lightly armed and shielded, but are capable of carrying entire wings of fighters and shuttles.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem003/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>34</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>30		30		60		60</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Imperial escort carriers were designed to complement a fleet's starfighter capacity and provide a hyperspace capable platform for TIE class fighters to use during hyperspace transport.  Escort carriers are very lightly armed and shielded, but are capable of carrying entire wings of fighters and shuttles.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>34</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>30</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1000</MaxHullStrength>
+    <CurrentHullStrength>1000</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>6</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>30</int>
+            <int>30</int>
+            <int>60</int>
+            <int>60</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>4</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>4</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM004</TypeID>
+    <DisplayName>Carrack Light Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem004/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem004/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem004/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem004/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem004/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem004/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem004/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem004/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem004/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	26
+Maintenance Cost:		24
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			5		5		15		15
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		60		60		90		90
+
+The Carrack light cruiser is by far the fastest Imperial escort ship.  Approximately 350 meters in length, it carries a crew of just over one thousand and an ample amount of firepower. It is well suited for a variety of escort and combat missions.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem004/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>26</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>24</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>5		5		15		15</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>60		60		90		90</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Carrack light cruiser is by far the fastest Imperial escort ship.  Approximately 350 meters in length, it carries a crew of just over one thousand and an ample amount of firepower. It is well suited for a variety of escort and combat missions.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>26</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>24</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1000</MaxHullStrength>
+    <CurrentHullStrength>1000</CurrentHullStrength>
+    <DamageControl>30</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>6</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>60</int>
+            <int>90</int>
+            <int>90</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>6</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>20</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM005</TypeID>
+    <DisplayName>Victory Destroyer I</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem005/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem005/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem005/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem005/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem005/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem005/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem005/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem005/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem005/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	68
+Maintenance Cost:		44
+Fighter Capacity:		2
+Troop Capacity:			2
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			120		0		100		100
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		0		0
+
+The Victory Destroyer is an older star cruiser that proved to be an important part of the Imperial space fleet. This vessel was designed with planetary bombardment in mind. While a capable combat vessel, the Victory Star Destroyer can deliver accurate and devastating bombardments from orbit.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem005/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>68</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>44</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>120		0		100		100</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Victory Destroyer is an older star cruiser that proved to be an important part of the Imperial space fleet. This vessel was designed with planetary bombardment in mind. While a capable combat vessel, the Victory Star Destroyer can deliver accurate and devastating bombardments from orbit.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>68</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>44</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1800</MaxHullStrength>
+    <CurrentHullStrength>1800</CurrentHullStrength>
+    <DamageControl>20</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>2</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>120</int>
+            <int>0</int>
+            <int>100</int>
+            <int>100</int>
+            <int>50</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>12</WeaponRecharge>
+    <Bombardment>4</Bombardment>
+    <TractorBeamPower>2</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM006</TypeID>
+    <DisplayName>Imperial Star Destroyer</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem006/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem006/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem006/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem006/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem006/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem006/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem006/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem006/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem006/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	112
+Maintenance Cost:		71
+Fighter Capacity:		6
+Troop Capacity:			3
+Shield Strength:			300
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			100		40		60		60
+	Ion Cannon:			100		40		40		40
+	Laser Cannon:		0		0		0		0
+
+The Empire's awesome, wedge-shaped, Imperial-class Star Destroyers form the core of the Imperial Navy.  True marvels of starship engineering,  Imperial Star Destroyers are 1,600 meters long and have over one hundred weapon emplacements for deep-space combat.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem006/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>112</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>71</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>100		40		60		60</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>100		40		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Empire's awesome, wedge-shaped, Imperial-class Star Destroyers form the core of the Imperial Navy.  True marvels of starship engineering,  Imperial Star Destroyers are 1,600 meters long and have over one hundred weapon emplacements for deep-space combat.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>112</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>71</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>2750</MaxHullStrength>
+    <CurrentHullStrength>2750</CurrentHullStrength>
+    <DamageControl>30</DamageControl>
+    <MaxShieldStrength>300</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>6</StarfighterCapacity>
+    <RegimentCapacity>3</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>100</int>
+            <int>40</int>
+            <int>60</int>
+            <int>60</int>
+            <int>50</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>100</int>
+            <int>40</int>
+            <int>40</int>
+            <int>40</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>20</WeaponRecharge>
+    <Bombardment>2</Bombardment>
+    <TractorBeamPower>3</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM007</TypeID>
+    <DisplayName>Lancer Frigate</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem007/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem007/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem007/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem007/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem007/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem007/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem007/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem007/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem007/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	14
+Maintenance Cost:		30
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			300
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		150		150		150		150
+
+The Lancer frigate is a 250-meter long, capital combat starship that the Empire designed specifically to combat Rebel starfighters.  These vessels were designed by the Empire shortly after a small number of Rebel X-wing and Y-wing fighters destroyed the Death Star battle station.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem007/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>14</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>150		150		150		150</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Lancer frigate is a 250-meter long, capital combat starship that the Empire designed specifically to combat Rebel starfighters.  These vessels were designed by the Empire shortly after a small number of Rebel X-wing and Y-wing fighters destroyed the Death Star battle station.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>14</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>30</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>2</ResearchOrder>
+    <ResearchDifficulty>28</ResearchDifficulty>
+    <MaxHullStrength>500</MaxHullStrength>
+    <CurrentHullStrength>500</CurrentHullStrength>
+    <DamageControl>20</DamageControl>
+    <MaxShieldStrength>300</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>6</SublightSpeed>
+    <Maneuverability>3</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>150</int>
+            <int>150</int>
+            <int>150</int>
+            <int>150</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>10</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>30</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM008</TypeID>
+    <DisplayName>Star Galleon</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem008/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem008/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem008/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem008/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem008/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem008/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem008/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem008/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem008/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	15
+Maintenance Cost:		20
+Fighter Capacity:		0
+Troop Capacity:			3
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		30		30		30
+
+The 300-meter long Imperial Star Galleon is designed to combine the cargo space of a bulk freighter with the armament of a combat ship.  This vessel can carry cargo and defend itself, thus eliminating the need to have separate freighters and escort craft.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem008/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>15</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>20</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		30		30		30</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The 300-meter long Imperial Star Galleon is designed to combine the cargo space of a bulk freighter with the armament of a combat ship.  This vessel can carry cargo and defend itself, thus eliminating the need to have separate freighters and escort craft.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>15</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>20</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>4</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
+    <MaxHullStrength>400</MaxHullStrength>
+    <CurrentHullStrength>400</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>3</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>30</int>
+            <int>30</int>
+            <int>30</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>1</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>4</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM009</TypeID>
+    <DisplayName>Assault Transport</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem009/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem009/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem009/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem009/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem009/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem009/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem009/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem009/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem009/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	12
+Maintenance Cost:		29
+Fighter Capacity:		0
+Troop Capacity:			1
+Shield Strength:			300
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		150		0		60		60
+
+Assault transports are designed to delivery Imperial assault troops anywhere in the galaxy quickly with little or no escort. While only capable of carrying one regiment, the Assault transport has the firepower, speed, and maneuverability to attack lightly defended systems without escort. Additionally, Assault transports are equipped with the fastest available hyperdrive systems.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem009/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>29</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>150		0		60		60</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Assault transports are designed to delivery Imperial assault troops anywhere in the galaxy quickly with little or no escort. While only capable of carrying one regiment, the Assault transport has the firepower, speed, and maneuverability to attack lightly defended systems without escort. Additionally, Assault transports are equipped with the fastest available hyperdrive systems.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>12</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>29</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>5</ResearchOrder>
+    <ResearchDifficulty>40</ResearchDifficulty>
+    <MaxHullStrength>320</MaxHullStrength>
+    <CurrentHullStrength>320</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>300</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>50</Hyperdrive>
+    <SublightSpeed>8</SublightSpeed>
+    <Maneuverability>3</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>1</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>150</int>
+            <int>0</int>
+            <int>60</int>
+            <int>60</int>
+            <int>25</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>10</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>1</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM010</TypeID>
+    <DisplayName>Interdictor Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem010/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem010/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem010/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem010/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem010/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem010/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem010/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem010/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem010/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	40
+Maintenance Cost:		34
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			600
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			10		0		20		20
+	Ion Cannon:			0		0		10		10
+	Laser Cannon:		90		0		60		60
+
+The 600-meter long star cruiser is built on a standard, heavy-cruiser hull , but it carries an artificial gravity-well generator and four gravity-well projectors which, when activated, prevent nearby starships from escaping into hyperspace.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem010/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>34</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>10		0		20		20</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		10		10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>90		0		60		60</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The 600-meter long star cruiser is built on a standard, heavy-cruiser hull , but it carries an artificial gravity-well generator and four gravity-well projectors which, when activated, prevent nearby starships from escaping into hyperspace.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Interdictor</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>40</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>34</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>6</ResearchOrder>
+    <ResearchDifficulty>70</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>600</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>10</int>
+            <int>0</int>
+            <int>20</int>
+            <int>20</int>
+            <int>50</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>10</int>
+            <int>10</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>90</int>
+            <int>0</int>
+            <int>60</int>
+            <int>60</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>7</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>true</HasGravityWell>
+    <DetectionRating>30</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM011</TypeID>
+    <DisplayName>Victory II Star Destroyer</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem011/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem011/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem011/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem011/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem011/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem011/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem011/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem011/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem011/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	72
+Maintenance Cost:		63
+Fighter Capacity:		2
+Troop Capacity:			0
+Shield Strength:			600
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			120		80		80		80
+	Ion Cannon:			40		40		40		40
+	Laser Cannon:		0		0		0		0
+
+The Victory II is an upgrade of the older Victory model starship.  The Victory II was designed with space combat in mind, outfitted with larger weapons and hangar bays than the original Victory.  The Victory II works well as a patrol or blockade starship and maintains its predecessor's bombardment capabilities.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem011/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>72</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>63</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>120		80		80		80</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>40		40		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Victory II is an upgrade of the older Victory model starship.  The Victory II was designed with space combat in mind, outfitted with larger weapons and hangar bays than the original Victory.  The Victory II works well as a patrol or blockade starship and maintains its predecessor's bombardment capabilities.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>72</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>63</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>7</ResearchOrder>
+    <ResearchDifficulty>80</ResearchDifficulty>
+    <MaxHullStrength>1800</MaxHullStrength>
+    <CurrentHullStrength>1800</CurrentHullStrength>
+    <DamageControl>25</DamageControl>
+    <MaxShieldStrength>600</MaxShieldStrength>
+    <ShieldRechargeRate>30</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>2</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>120</int>
+            <int>80</int>
+            <int>80</int>
+            <int>80</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>40</int>
+            <int>40</int>
+            <int>40</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>16</WeaponRecharge>
+    <Bombardment>5</Bombardment>
+    <TractorBeamPower>2</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM012</TypeID>
+    <DisplayName>Strike Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem012/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem012/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem012/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem012/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem012/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem012/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem012/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem012/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem012/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	70
+Maintenance Cost:		60
+Fighter Capacity:		1
+Troop Capacity:			0
+Shield Strength:			600
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			120		80		40		40
+	Ion Cannon:			60		0		40		40
+	Laser Cannon:		0		0		0		0
+
+This 450-meter long Imperial star cruiser was designed to be massed-produced in a short amount of time.  Thanks to their modular design, the cruisers' interiors can be configured to accommodate specific mission profiles.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem012/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>70</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>60</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>120		80		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>60		0		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>This 450-meter long Imperial star cruiser was designed to be massed-produced in a short amount of time.  Thanks to their modular design, the cruisers' interiors can be configured to accommodate specific mission profiles.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>70</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>60</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>9</ResearchOrder>
+    <ResearchDifficulty>80</ResearchDifficulty>
+    <MaxHullStrength>1600</MaxHullStrength>
+    <CurrentHullStrength>1600</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>600</MaxShieldStrength>
+    <ShieldRechargeRate>30</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>1</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>120</int>
+            <int>80</int>
+            <int>40</int>
+            <int>40</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>0</int>
+            <int>40</int>
+            <int>40</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>18</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>3</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM013</TypeID>
+    <DisplayName>Imperial Star Destroyer II</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem013/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem013/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem013/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem013/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem013/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem013/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem013/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem013/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem013/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	158
+Maintenance Cost:		99
+Fighter Capacity:		6
+Troop Capacity:			3
+Shield Strength:			800
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			200		60		120		120
+	Ion Cannon:			200		20		80		80
+	Laser Cannon:		0		0		0		0
+
+An upgraded version of the Imperial Star Destroyer which boasts a heavily reinforced hull and more powerful heavy turbolaser batteries and cannons.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem013/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>158</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>99</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>800</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>200		60		120		120</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>200		20		80		80</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>An upgraded version of the Imperial Star Destroyer which boasts a heavily reinforced hull and more powerful heavy turbolaser batteries and cannons.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>158</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>99</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>10</ResearchOrder>
+    <ResearchDifficulty>100</ResearchDifficulty>
+    <MaxHullStrength>3000</MaxHullStrength>
+    <CurrentHullStrength>3000</CurrentHullStrength>
+    <DamageControl>35</DamageControl>
+    <MaxShieldStrength>800</MaxShieldStrength>
+    <ShieldRechargeRate>20</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>6</StarfighterCapacity>
+    <RegimentCapacity>3</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>200</int>
+            <int>60</int>
+            <int>120</int>
+            <int>120</int>
+            <int>70</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>200</int>
+            <int>20</int>
+            <int>80</int>
+            <int>80</int>
+            <int>40</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>40</WeaponRecharge>
+    <Bombardment>2</Bombardment>
+    <TractorBeamPower>3</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM014</TypeID>
+    <DisplayName>Super Star Destroyer</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem014/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem014/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem014/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem014/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem014/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem014/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem014/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem014/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem014/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	282
+Maintenance Cost:		170
+Fighter Capacity:		12
+Troop Capacity:			9
+Shield Strength:			1200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			500		150		300		300
+	Ion Cannon:			200		100		200		200
+	Laser Cannon:		0		0		0		0
+
+The Super-class Star Destroyer, the newest model in the fleet, is eight kilometers long, dwarfing even the massive Imperial Star Destroyers. The Super Star Destroyer is approximately five times as powerful as its smaller predecessor. Frequently used as a command vessel, the Super Star Destroyer is the most powerful conventional warship in the Imperial inventory.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem014/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>282</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>170</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>9</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>1200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>500		150		300		300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>200		100		200		200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Super-class Star Destroyer, the newest model in the fleet, is eight kilometers long, dwarfing even the massive Imperial Star Destroyers. The Super Star Destroyer is approximately five times as powerful as its smaller predecessor. Frequently used as a command vessel, the Super Star Destroyer is the most powerful conventional warship in the Imperial inventory.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Flagship</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>282</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>170</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>11</ResearchOrder>
+    <ResearchDifficulty>100</ResearchDifficulty>
+    <MaxHullStrength>5000</MaxHullStrength>
+    <CurrentHullStrength>5000</CurrentHullStrength>
+    <DamageControl>20</DamageControl>
+    <MaxShieldStrength>1200</MaxShieldStrength>
+    <ShieldRechargeRate>60</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>2</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>12</StarfighterCapacity>
+    <RegimentCapacity>9</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>500</int>
+            <int>150</int>
+            <int>300</int>
+            <int>300</int>
+            <int>70</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>200</int>
+            <int>100</int>
+            <int>200</int>
+            <int>200</int>
+            <int>40</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>70</WeaponRecharge>
+    <Bombardment>3</Bombardment>
+    <TractorBeamPower>6</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>5</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSEM015</TypeID>
+    <DisplayName>Death Star</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/csem015/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/csem015/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/csem015/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/csem015/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/csem015/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/csem015/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/csem015/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/csem015/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/csem015/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	584
+Maintenance Cost:		600
+Fighter Capacity:		24
+Troop Capacity:			18
+
+An immense battle station 120-kilometers in diameter, the Death Star was the pinnacle of Imperial engineering.  Designed by Chief Engineer Bevel Lemelisk and constructed above the penal colony of Despyre, the Death Star was Grand Moff Tarkin's ultimate symbol of rule by fear of force.  It carried a crew of over 750,000 and enough firepower to destroy an entire system.  Tarkin demonstrated the power of his masterpiece by destroying the world of Alderaan in an attempt to persuade Princess Leia Organa to reveal the location of the Alliance base.  The Death Star relies on its world destroying superlaser and vast numbers of turbolasers on its surface to defend against large scale attacks, but appears to be vulnerable to small starfighters.  The Death Star was later destroyed in the Battle of Yavin.  Grand Moff Tarkin died with his creation at Yavin, but it is unknown how many more Death Stars he was constructing.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/csem015/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>584</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>24</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>18</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>An immense battle station 120-kilometers in diameter, the Death Star was the pinnacle of Imperial engineering.  Designed by Chief Engineer Bevel Lemelisk and constructed above the penal colony of Despyre, the Death Star was Grand Moff Tarkin's ultimate symbol of rule by fear of force.  It carried a crew of over 750,000 and enough firepower to destroy an entire system.  Tarkin demonstrated the power of his masterpiece by destroying the world of Alderaan in an attempt to persuade Princess Leia Organa to reveal the location of the Alliance base.  The Death Star relies on its world destroying superlaser and vast numbers of turbolasers on its surface to defend against large scale attacks, but appears to be vulnerable to small starfighters.  The Death Star was later destroyed in the Battle of Yavin.  Grand Moff Tarkin died with his creation at Yavin, but it is unknown how many more Death Stars he was constructing.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Flagship</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>584</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>600</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>25000</MaxHullStrength>
+    <CurrentHullStrength>25000</CurrentHullStrength>
+    <DamageControl>60</DamageControl>
+    <MaxShieldStrength>2000</MaxShieldStrength>
+    <ShieldRechargeRate>100</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>1</SublightSpeed>
+    <Maneuverability>0</Maneuverability>
+    <StarfighterCapacity>24</StarfighterCapacity>
+    <RegimentCapacity>18</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>1400</int>
+            <int>1400</int>
+            <int>1400</int>
+            <int>1400</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>400</int>
+            <int>400</int>
+            <int>400</int>
+            <int>400</int>
+            <int>40</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>180</WeaponRecharge>
+    <Bombardment>15</Bombardment>
+    <TractorBeamPower>15</TractorBeamPower>
+    <TractorBeamnRange>24</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>5</DetectionRating>
+  </CapitalShip>
+</CapitalShips>

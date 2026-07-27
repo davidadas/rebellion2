@@ -31,9 +31,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _windowObject = new GameObject(
@@ -91,12 +91,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void Build_SelectedCapturedOfficer_ReturnsPersonnelCardPresentation()
         {
-            Officer definition = ResourceManager
-                .GetEntityData<Officer>()
-                .First(officer =>
-                    officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
-                    && !string.IsNullOrEmpty(officer.CapturedOverlayImagePath)
-                );
+            Officer definition = TestContent.Data.Officers.First(officer =>
+                officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                && !string.IsNullOrEmpty(officer.CapturedOverlayImagePath)
+            );
             Officer officer = new Officer
             {
                 InstanceID = "officer",
@@ -171,9 +169,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void Build_MovingOfficerWithoutTransitArtwork_UsesThemedEnrouteBackground()
         {
-            Officer definition = ResourceManager
-                .GetEntityData<Officer>()
-                .First(officer => officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true);
+            Officer definition = TestContent.Data.Officers.First(officer =>
+                officer.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+            );
             Officer officer = new Officer
             {
                 InstanceID = "officer",
@@ -225,13 +223,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void Build_MovingDamagedStarfighter_ReturnsEnrouteAndDamageOverlays()
         {
-            Starfighter definition = ResourceManager
-                .GetEntityData<Starfighter>()
-                .First(fighter =>
-                    fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
-                    && !string.IsNullOrEmpty(fighter.InTransitSmallImagePath)
-                    && !string.IsNullOrEmpty(fighter.DamagedSmallImagePath)
-                );
+            Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
+                fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                && !string.IsNullOrEmpty(fighter.InTransitSmallImagePath)
+                && !string.IsNullOrEmpty(fighter.DamagedSmallImagePath)
+            );
             Starfighter starfighter = new Starfighter
             {
                 InstanceID = "fighter",
@@ -262,12 +258,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
         [Test]
         public void Build_ShieldUnderConstruction_ReturnsDefenseBuildingCard()
         {
-            Building definition = ResourceManager
-                .GetEntityData<Building>()
-                .First(building =>
-                    building.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
-                    && building.DefenseFacilityClass == DefenseFacilityClass.Shield
-                );
+            Building definition = TestContent.Data.Buildings.First(building =>
+                building.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+                && building.DefenseFacilityClass == DefenseFacilityClass.Shield
+            );
             Building shield = new Building
             {
                 InstanceID = "shield",
@@ -306,9 +300,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 
         private static Starfighter CreateStarfighter(string instanceId, string displayName)
         {
-            Starfighter definition = ResourceManager
-                .GetEntityData<Starfighter>()
-                .First(fighter => fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true);
+            Starfighter definition = TestContent.Data.Starfighters.First(fighter =>
+                fighter.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+            );
             return new Starfighter
             {
                 InstanceID = instanceId,

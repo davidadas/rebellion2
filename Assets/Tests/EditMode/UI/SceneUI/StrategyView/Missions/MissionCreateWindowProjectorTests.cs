@@ -35,9 +35,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _entityImagePath = _uiContext.GetPlayerFactionTheme().GalaxyBackground.ImagePath;
@@ -177,19 +177,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(2, data.AgentRows.Count);
             Assert.AreEqual("Selected", data.AgentRows[0].Name);
             Assert.AreEqual((Color32)Color.white, data.AgentRows[0].NameColor);
-            Assert.IsNull(data.AgentRows[0].BackgroundTexture);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .StrategyWindows.Defense.PersonnelBackgroundImagePath
+                ),
+                data.AgentRows[0].BackgroundTexture
+            );
             Assert.AreSame(
                 _uiContext.GetTexture(_entityImagePath),
                 data.AgentRows[0].EntityTexture
             );
-            Assert.IsFalse(data.AgentRows[0].UseInTransitBackground);
             Assert.AreEqual("In Transit", data.AgentRows[1].Name);
             Assert.AreEqual((Color32)Color.gray, data.AgentRows[1].NameColor);
             Assert.AreSame(
                 _uiContext.GetTexture(_entityImagePath),
                 data.AgentRows[1].BackgroundTexture
             );
-            Assert.IsTrue(data.AgentRows[1].UseInTransitBackground);
             Assert.IsEmpty(data.DecoyRows);
         }
 
@@ -213,7 +218,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _uiContext.GetTexture(_entityImagePath),
                 data.AgentRows[0].BackgroundTexture
             );
-            Assert.IsTrue(data.AgentRows[0].UseInTransitBackground);
         }
 
         [Test]

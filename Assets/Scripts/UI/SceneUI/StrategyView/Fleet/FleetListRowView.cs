@@ -157,20 +157,18 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
     }
 
     /// <summary>
-    /// Reports whether a pointer event originated on this row's authored drag image.
+    /// Reports whether a pointer event originated within this fleet row.
     /// </summary>
     /// <param name="eventData">The pointer event to inspect.</param>
-    /// <returns>True when the pointer is inside the fleet icon.</returns>
+    /// <returns>True when the pressed raycast target belongs to this row.</returns>
     internal bool ContainsDragSource(PointerEventData eventData)
     {
-        if (eventData == null || !TryGetDragImage(out _, out RectTransform sourceTransform))
+        if (eventData == null)
             return false;
 
-        return RectTransformUtility.RectangleContainsScreenPoint(
-            sourceTransform,
-            eventData.position,
-            eventData.pressEventCamera
-        );
+        GameObject target =
+            eventData.pointerPressRaycast.gameObject ?? eventData.pointerCurrentRaycast.gameObject;
+        return ContainsRaycastTarget(target);
     }
 
     /// <summary>

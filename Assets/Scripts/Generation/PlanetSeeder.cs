@@ -74,7 +74,7 @@ namespace Rebellion.Generation
             if (section?.Profiles == null || section.Profiles.Count == 0)
             {
                 throw new InvalidOperationException(
-                    "SystemResources must define at least one profile. Check GameGenerationConfig.xml."
+                    "SystemResources must define at least one profile in the active scenario."
                 );
             }
 

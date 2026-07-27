@@ -32,9 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _windowObject = new GameObject(
@@ -281,19 +281,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 
         private static Building GetBuildingDefinition(BuildingType buildingType)
         {
-            return ResourceManager
-                .GetEntityData<Building>()
-                .First(building =>
-                    building.BuildingType == buildingType
-                    && building.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
-                );
+            return TestContent.Data.Buildings.First(building =>
+                building.BuildingType == buildingType
+                && building.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+            );
         }
 
         private static CapitalShip CreateCapitalShip(string instanceId, string displayName)
         {
-            CapitalShip definition = ResourceManager
-                .GetEntityData<CapitalShip>()
-                .First(ship => ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true);
+            CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
+                ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+            );
             return new CapitalShip
             {
                 InstanceID = instanceId,

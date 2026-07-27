@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Game
             _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
             // Initialize the _game.
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             _game = new GameRoot(_summary, config);
             _game.Factions.Add(_faction1);
             _game.Factions.Add(_faction2);
@@ -556,7 +556,7 @@ namespace Rebellion.Tests.Game
         {
             // Create game with summary but no player faction ID.
             GameSummary summaryWithoutPlayer = new GameSummary();
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot gameWithoutPlayerID = new GameRoot(summaryWithoutPlayer, config);
 
             // Attempt to get player faction.
@@ -574,7 +574,7 @@ namespace Rebellion.Tests.Game
             {
                 PlayerFactionID = "NONEXISTENT",
             };
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot gameWithInvalidPlayer = new GameRoot(summaryWithInvalidPlayer, config);
             gameWithInvalidPlayer.Factions.Add(_faction1);
 

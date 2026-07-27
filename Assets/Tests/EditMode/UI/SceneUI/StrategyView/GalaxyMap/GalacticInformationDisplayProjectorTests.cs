@@ -23,9 +23,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Alliance" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _projector = new GalacticInformationDisplayProjector(() => _uiContext);

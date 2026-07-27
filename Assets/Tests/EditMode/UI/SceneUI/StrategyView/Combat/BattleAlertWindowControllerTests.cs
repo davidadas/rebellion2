@@ -52,9 +52,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 out GameFleet playerFleet,
                 out GameFleet opponentFleet
             );
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _pending = new PendingCombatResult

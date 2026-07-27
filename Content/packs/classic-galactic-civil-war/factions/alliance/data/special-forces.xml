@@ -1,0 +1,216 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SpecialForces>
+  <SpecialForce>
+    <TypeID>SPAL001</TypeID>
+    <DisplayName>Guerrillas</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/spal001/display</DisplayImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/spal001/small-display</SmallDisplayImagePath>
+    <MessageImagePath>pack/factions/alliance/entities/spal001/message</MessageImagePath>
+    <Description>Refined Material Cost:	1
+Maintenance Cost:		1
+
+Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/spal001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance guerrilla cells have been the nemesis of many Imperial governors, spreading insurrection and revolt wherever they go.  The Alliance has effectively used guerrilla troops to start uprisings on many Imperial-controlled worlds.  Guerrillas can also be used to suppress unrest on planets controlled by the Alliance.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>20</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>50</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>InciteUprising</String>
+      <String>SubdueUprising</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+  <SpecialForce>
+    <TypeID>SPAL002</TypeID>
+    <DisplayName>Infiltrators</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/spal002/display</DisplayImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/spal002/small-display</SmallDisplayImagePath>
+    <MessageImagePath>pack/factions/alliance/entities/spal002/message</MessageImagePath>
+    <Description>Refined Material Cost:	2
+Maintenance Cost:		1
+
+Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/spal002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Infiltrators are the Alliance's elite commando forces.  They are able to enter and sabotage even the most heavily guarded Imperial installations.  Infiltrators can also be utilized to abduct enemy personnel or rescue captured Alliance personnel.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>60</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>55</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>Rescue</String>
+      <String>Sabotage</String>
+      <String>Abduction</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+  <SpecialForce>
+    <TypeID>SPAL003</TypeID>
+    <DisplayName>Longprobe Y-wing Recon Team</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/spal003/display</DisplayImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/spal003/small-display</SmallDisplayImagePath>
+    <MessageImagePath>pack/factions/alliance/entities/spal003/message</MessageImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/spal003/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/spal003/in-transit-small</InTransitSmallImagePath>
+    <Description>Refined Material Cost:	2
+Maintenance Cost:		1
+
+Longprobe Y-wing recon teams are used by the Alliance for scouting unknown systems.  Longprobe Y-wings have sacrificed their weapon loads in favor of extended fuel tanks and improved hyperdrive systems.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/spal003/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Longprobe Y-wing recon teams are used by the Alliance for scouting unknown systems.  Longprobe Y-wings have sacrificed their weapon loads in favor of extended fuel tanks and improved hyperdrive systems.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>2</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>2</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>40</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>30</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>Reconnaissance</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+  <SpecialForce>
+    <TypeID>SPAL004</TypeID>
+    <DisplayName>Bothan Spies</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/spal004/display</DisplayImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/spal004/small-display</SmallDisplayImagePath>
+    <MessageImagePath>pack/factions/alliance/entities/spal004/message</MessageImagePath>
+    <Description>Refined Material Cost:	1
+Maintenance Cost:		1
+
+Bothan spies are a wondrous source of intelligence information for the Alliance.  Bothans are experts at finding and extracting vital information from sources unknown.  Joining the Alliance after the Battle of Yavin, the Bothan spy network has become an essential component of the Alliance's successes against the Empire.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/spal004/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Bothan spies are a wondrous source of intelligence information for the Alliance.  Bothans are experts at finding and extracting vital information from sources unknown.  Joining the Alliance after the Battle of Yavin, the Bothan spy network has become an essential component of the Alliance's successes against the Empire.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>1</ConstructionCost>
+    <MaintenanceCost>1</MaintenanceCost>
+    <BaseBuildSpeed>1</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <Ratings>
+      <Entry>
+        <Key>Diplomacy</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Espionage</Key>
+        <Value>70</Value>
+      </Entry>
+      <Entry>
+        <Key>Combat</Key>
+        <Value>0</Value>
+      </Entry>
+      <Entry>
+        <Key>Leadership</Key>
+        <Value>0</Value>
+      </Entry>
+    </Ratings>
+    <AllowedMissionTypeIDs>
+      <String>Espionage</String>
+    </AllowedMissionTypeIDs>
+  </SpecialForce>
+</SpecialForces>

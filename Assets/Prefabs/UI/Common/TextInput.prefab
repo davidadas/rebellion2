@@ -318,7 +318,6 @@ GameObject:
   - component: {fileID: 6042911366107800981}
   - component: {fileID: 7790320534886954680}
   - component: {fileID: 6839404491668672099}
-  - component: {fileID: 4394714813798181009}
   m_Layer: 0
   m_Name: TextInput
   m_TagString: Untagged
@@ -486,15 +485,3 @@ MonoBehaviour:
   isAlert: 0
   m_InputValidator: {fileID: 0}
   m_ShouldActivateOnSelect: 1
---- !u!114 &4394714813798181009
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6180337071905394503}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ExternalContentArt

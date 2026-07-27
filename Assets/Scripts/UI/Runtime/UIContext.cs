@@ -15,6 +15,7 @@ public sealed class UIContext
 {
     private GameRoot game;
     private readonly FactionThemeLibrary themeLibrary;
+    private readonly Func<string, Texture2D> loadTexture;
     private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>();
 
     /// <summary>
@@ -23,10 +24,12 @@ public sealed class UIContext
     /// <param name="game">The active game.</param>
     /// <param name="themeLibrary">The faction-theme library.</param>
     /// <param name="encyclopediaCatalog">The Encyclopedia catalog.</param>
+    /// <param name="loadTexture">The active content texture resolver.</param>
     public UIContext(
         GameRoot game,
         FactionThemeLibrary themeLibrary,
-        EncyclopediaCatalog encyclopediaCatalog
+        EncyclopediaCatalog encyclopediaCatalog,
+        Func<string, Texture2D> loadTexture
     )
     {
         if (game == null)
@@ -37,9 +40,12 @@ public sealed class UIContext
 
         if (encyclopediaCatalog == null)
             throw new ArgumentNullException(nameof(encyclopediaCatalog));
+        if (loadTexture == null)
+            throw new ArgumentNullException(nameof(loadTexture));
 
         this.game = game;
         this.themeLibrary = themeLibrary;
+        this.loadTexture = loadTexture;
         EncyclopediaCatalog = encyclopediaCatalog;
     }
 
@@ -107,7 +113,7 @@ public sealed class UIContext
         if (textures.TryGetValue(path, out Texture2D texture))
             return texture;
 
-        texture = ResourceManager.GetTexture(path);
+        texture = loadTexture(path);
         if (texture == null)
             return null;
 

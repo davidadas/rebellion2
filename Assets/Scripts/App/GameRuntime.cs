@@ -10,6 +10,7 @@ using Rebellion.Game;
 public sealed class GameRuntime
 {
     private readonly Action<string> _loadScene;
+    private readonly ContentPack _contentPack;
     private GameManager _activeGameSession;
 
     /// <summary>
@@ -22,9 +23,15 @@ public sealed class GameRuntime
     /// </summary>
     public event Action ToggleSettingsMenuRequested;
 
-    internal GameRuntime(Action<string> loadScene)
+    /// <summary>
+    /// Creates an application runtime backed by the active content pack.
+    /// </summary>
+    /// <param name="loadScene">The application scene transition delegate.</param>
+    /// <param name="contentPack">The active content pack.</param>
+    internal GameRuntime(Action<string> loadScene, ContentPack contentPack)
     {
         _loadScene = loadScene ?? throw new ArgumentNullException(nameof(loadScene));
+        _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
     }
 
     /// <summary>
@@ -58,7 +65,8 @@ public sealed class GameRuntime
             EndGame();
         }
 
-        _activeGameSession = new GameManager(game);
+        ValidateGameContent(game);
+        _activeGameSession = new GameManager(game, _contentPack.GameData);
         return _activeGameSession;
     }
 
@@ -139,6 +147,7 @@ public sealed class GameRuntime
     private void HotReloadGame(string fileName)
     {
         GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(fileName);
+        ValidateGameContent(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
     }
 
@@ -152,5 +161,25 @@ public sealed class GameRuntime
         GameLaunchContext.SaveFileName = fileName;
         GameLaunchContext.PlayIntroCutscene = false;
         _loadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+    }
+
+    /// <summary>
+    /// Verifies that a game was created by the active pack, version, and scenario.
+    /// </summary>
+    /// <param name="game">The game whose content identity is being validated.</param>
+    internal void ValidateGameContent(GameRoot game)
+    {
+        if (game?.Summary == null)
+            throw new InvalidOperationException("Game content identity is missing.");
+
+        GameSummary summary = game.Summary;
+        if (!_contentPack.MatchesContentIdentity(summary))
+        {
+            throw new InvalidOperationException(
+                $"Save requires content pack '{summary.PackID}' version '{summary.PackVersion}' "
+                    + $"scenario '{summary.ScenarioID}', but '{_contentPack.Definition.ID}' version "
+                    + $"'{_contentPack.Definition.Version}' scenario '{_contentPack.Scenario.ID}' is active."
+            );
+        }
     }
 }

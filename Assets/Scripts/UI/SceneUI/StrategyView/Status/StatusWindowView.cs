@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored status window and emits semantic window commands.
 /// </summary>
-public sealed class StatusWindowView : MonoBehaviour
+public sealed class StatusWindowView : MonoBehaviour, IApplicationTextureReceiver
 {
     private readonly List<TextMeshProUGUI> labelTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> leftRowTextFields = new List<TextMeshProUGUI>();
@@ -506,5 +506,29 @@ public sealed class StatusWindowView : MonoBehaviour
         labelTextTemplate.gameObject.SetActive(false);
         leftRowTextTemplate.gameObject.SetActive(false);
         rightRowTextTemplate.gameObject.SetActive(false);
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(infoButtonUpTexture):
+                infoButtonUpTexture = texture;
+                break;
+            case nameof(infoButtonDownTexture):
+                infoButtonDownTexture = texture;
+                break;
+            case nameof(infoButtonDisabledTexture):
+                infoButtonDisabledTexture = texture;
+                break;
+            case nameof(closeButtonUpTexture):
+                closeButtonUpTexture = texture;
+                break;
+            case nameof(closeButtonDownTexture):
+                closeButtonDownTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

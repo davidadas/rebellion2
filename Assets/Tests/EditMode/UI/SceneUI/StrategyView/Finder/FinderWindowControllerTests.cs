@@ -37,9 +37,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sectors = Array.Empty<GalaxyMapSector>();

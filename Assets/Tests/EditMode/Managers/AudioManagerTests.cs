@@ -97,35 +97,13 @@ public sealed class AudioManagerTests
     }
 
     [Test]
-    public void PreloadSfx_DuplicateAndBlankPaths_CachesOneLoadedClip()
-    {
-        AudioManager manager = AudioManager.EnsureExists();
-        const string path = "Audio/SFX/StrategyView/sfx_strategyview_control_press";
-        AudioClip clip = AudioClip.Create("Preloaded", 1, 1, 44100, false);
-        GetResourceAudioClips().Add(path, clip);
-        try
-        {
-            manager.PreloadSfx(new[] { null, string.Empty, " ", path, $" {path} " });
-
-            Dictionary<string, AudioClip> clips = GetPreloadedSfx(manager);
-            Assert.AreEqual(1, clips.Count);
-            Assert.AreSame(clip, clips[path]);
-            Assert.AreEqual(AudioDataLoadState.Loaded, clips[path].loadState);
-        }
-        finally
-        {
-            GetResourceAudioClips().Remove(path);
-            Object.DestroyImmediate(clip);
-        }
-    }
-
-    [Test]
     public void PreloadSfx_MissingRequiredPath_Throws()
     {
         AudioManager manager = AudioManager.EnsureExists();
+        manager.InitializeContent(TestContent.Assets);
 
-        Assert.Throws<System.Exception>(() =>
-            manager.PreloadSfx(new[] { "Audio/SFX/Missing/required_clip" })
+        Assert.Throws<System.InvalidOperationException>(() =>
+            manager.PreloadSfx(new[] { "application/main-menu/audio/missing-required-clip" })
         );
     }
 
@@ -314,14 +292,6 @@ public sealed class AudioManagerTests
             typeof(AudioManager)
                 .GetField("_loadedSfx", BindingFlags.Instance | BindingFlags.NonPublic)
                 .GetValue(manager);
-    }
-
-    private static Dictionary<string, AudioClip> GetResourceAudioClips()
-    {
-        return (Dictionary<string, AudioClip>)
-            typeof(ResourceManager)
-                .GetField("_audioClips", BindingFlags.Static | BindingFlags.NonPublic)
-                .GetValue(null);
     }
 
     private static AudioSource GetAudioSource(AudioManager manager, string fieldName)

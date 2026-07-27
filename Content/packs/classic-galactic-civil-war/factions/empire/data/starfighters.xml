@@ -1,0 +1,283 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Starfighters>
+  <Starfighter>
+    <TypeID>SFEM01</TypeID>
+    <DisplayName>TIE Fighter Squadron</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/sfem01/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/sfem01/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/sfem01/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/sfem01/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/sfem01/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/sfem01/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/sfem01/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/sfem01/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/sfem01/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:				3
+Maintenance Cost:					3
+Attack Strength (Laser Cannon):		5
+Attack Strength (Ion Cannon):		0
+Shield Energy:						0
+Hyperdrive:							No
+
+TIE fighters make up the bulk of all the Imperial starfighter corps.  The small craft has no life support mechanism, shield generators, or hyperdrive making them cheap to produce in large numbers.  Armaments are restricted to two laser cannons mounted below the pilot's control pod.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/sfem01/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>No</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>TIE fighters make up the bulk of all the Imperial starfighter corps.  The small craft has no life support mechanism, shield generators, or hyperdrive making them cheap to produce in large numbers.  Armaments are restricted to two laser cannons mounted below the pilot's control pod.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>12</DetectionRating>
+    <Bombardment>0</Bombardment>
+    <ShieldStrength>0</ShieldStrength>
+    <Hyperdrive>0</Hyperdrive>
+    <SublightSpeed>9</SublightSpeed>
+    <Agility>5</Agility>
+    <LaserCannon>5</LaserCannon>
+    <IonCannon>0</IonCannon>
+    <Torpedoes>0</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>0</IonRange>
+    <TorpedoRange>0</TorpedoRange>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+  </Starfighter>
+  <Starfighter>
+    <TypeID>SFEM02</TypeID>
+    <DisplayName>TIE Bomber Squadron</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/sfem02/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/sfem02/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/sfem02/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/sfem02/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/sfem02/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/sfem02/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/sfem02/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/sfem02/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/sfem02/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:				3
+Maintenance Cost:					3
+Attack Strength (Laser Cannon):		5
+Attack Strength (Ion Cannon):		3
+Shield Energy:						0
+Hyperdrive:							No
+
+A special purpose TIE model, the TIE bomber has two pods contained between bent wing solar panels.  One pod contains the pilot and gunner, and is used to control the craft.  The secondary pod contains the starfighter's weapon suite, including laser cannons, and heavy assault bombs.  The bomber, like other TIE models, has no hyperdrive, life support or shielding.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/sfem02/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>No</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>A special purpose TIE model, the TIE bomber has two pods contained between bent wing solar panels.  One pod contains the pilot and gunner, and is used to control the craft.  The secondary pod contains the starfighter's weapon suite, including laser cannons, and heavy assault bombs.  The bomber, like other TIE models, has no hyperdrive, life support or shielding.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>12</DetectionRating>
+    <Bombardment>2</Bombardment>
+    <ShieldStrength>0</ShieldStrength>
+    <Hyperdrive>0</Hyperdrive>
+    <SublightSpeed>7</SublightSpeed>
+    <Agility>4</Agility>
+    <LaserCannon>5</LaserCannon>
+    <IonCannon>3</IonCannon>
+    <Torpedoes>8</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>12</IonRange>
+    <TorpedoRange>7</TorpedoRange>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>8</ResearchDifficulty>
+  </Starfighter>
+  <Starfighter>
+    <TypeID>SFEM03</TypeID>
+    <DisplayName>TIE Interceptor Squadron</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/sfem03/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/sfem03/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/sfem03/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/sfem03/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/sfem03/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/sfem03/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/sfem03/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/sfem03/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/sfem03/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:				3
+Maintenance Cost:					3
+Attack Strength (Laser Cannon):		8
+Attack Strength (Ion Cannon):		0
+Shield Energy:						0
+Hyperdrive:							No
+
+An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and maneuverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/sfem03/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>8</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>No</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>An improvement over the original TIE design, the interceptor incorporates the bent wing solar panels and mounts four laser cannons instead of the original two.  A large engine system has also been added making the interceptor as fast and maneuverable as the Alliance's A-wing.  However, it still lacks shield generators, hyperdrives and life support systems found on most Alliance starfighters.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>3</ConstructionCost>
+    <MaintenanceCost>3</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>20</DetectionRating>
+    <Bombardment>0</Bombardment>
+    <ShieldStrength>0</ShieldStrength>
+    <Hyperdrive>0</Hyperdrive>
+    <SublightSpeed>10</SublightSpeed>
+    <Agility>8</Agility>
+    <LaserCannon>8</LaserCannon>
+    <IonCannon>0</IonCannon>
+    <Torpedoes>0</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>0</IonRange>
+    <TorpedoRange>0</TorpedoRange>
+    <ResearchOrder>3</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
+  </Starfighter>
+  <Starfighter>
+    <TypeID>SFEM04</TypeID>
+    <DisplayName>TIE Defender Squadron</DisplayName>
+    <DisplayImagePath>pack/factions/empire/entities/sfem04/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/empire/entities/sfem04/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/empire/entities/sfem04/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/empire/entities/sfem04/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/empire/entities/sfem04/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/empire/entities/sfem04/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/empire/entities/sfem04/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/empire/entities/sfem04/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/empire/entities/sfem04/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:				5
+Maintenance Cost:					7
+Attack Strength (Laser Cannon):		10
+Attack Strength (Ion Cannon):		0
+Shield Energy:						5
+Hyperdrive:							Yes
+
+The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient maneuvering thrusters are housed in the three odd shaped solar panels which give the Defender maneuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</Description>
+    <EncyclopediaImagePath>pack/factions/empire/entities/sfem04/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>7</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Laser Cannon)</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength (Ion Cannon)</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Energy</Label>
+        <Value>5</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Hyperdrive</Label>
+        <Value>Yes</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The TIE defender marks a departure from the normal line of Imperial fighter design.  It is one of the few production fighters to be equipped with both a shield generator and hyperdrive system.  The Defender mounts considerable firepower in the form of automatic laser cannons which allow it to engage multiple enemies at once.  Efficient maneuvering thrusters are housed in the three odd shaped solar panels which give the Defender maneuverability almost on the level of the TIE Interceptor and the Alliance's A-wing. In all, the Defender is a dangerous adversary to all Alliance fighters.</EncyclopediaDescription>
+    <AllowedOwnerInstanceIDs>
+      <String>FNEMP1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>5</ConstructionCost>
+    <MaintenanceCost>7</MaintenanceCost>
+    <MaxSquadronSize>12</MaxSquadronSize>
+    <CurrentSquadronSize>12</CurrentSquadronSize>
+    <DetectionRating>25</DetectionRating>
+    <Bombardment>1</Bombardment>
+    <ShieldStrength>5</ShieldStrength>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>8</SublightSpeed>
+    <Agility>6</Agility>
+    <LaserCannon>10</LaserCannon>
+    <IonCannon>0</IonCannon>
+    <Torpedoes>10</Torpedoes>
+    <LaserRange>12</LaserRange>
+    <IonRange>0</IonRange>
+    <TorpedoRange>10</TorpedoRange>
+    <ResearchOrder>8</ResearchOrder>
+    <ResearchDifficulty>50</ResearchDifficulty>
+  </Starfighter>
+</Starfighters>

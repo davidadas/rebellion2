@@ -1194,9 +1194,8 @@ namespace Rebellion.Tests.Systems
             Fleet fleet = new Fleet { InstanceID = "alliance-fleet", OwnerInstanceID = "FNALL1" };
             game.AttachNode(fleet, planet);
 
-            CapitalShip corvette = ResourceManager
-                .GetEntityData<CapitalShip>()
-                .Single(ship => ship.GetTypeID() == "ALCS006")
+            CapitalShip corvette = TestContent
+                .Data.CapitalShips.Single(ship => ship.GetTypeID() == "ALCS006")
                 .GetDeepCopy();
             corvette.InstanceID = "corellian-corvette";
             corvette.OwnerInstanceID = "FNALL1";
@@ -1204,9 +1203,8 @@ namespace Rebellion.Tests.Systems
             corvette.Movement = null;
             game.AttachNode(corvette, fleet);
 
-            Starfighter tie = ResourceManager
-                .GetEntityData<Starfighter>()
-                .Single(fighter => fighter.GetTypeID() == "SFEM01")
+            Starfighter tie = TestContent
+                .Data.Starfighters.Single(fighter => fighter.GetTypeID() == "SFEM01")
                 .GetDeepCopy();
             tie.InstanceID = "planet-tie";
             tie.OwnerInstanceID = "FNEMP1";

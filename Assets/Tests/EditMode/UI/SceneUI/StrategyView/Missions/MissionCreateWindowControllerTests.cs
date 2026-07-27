@@ -43,10 +43,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _closedWindow = null;
             _dirtyCount = 0;
             _game = CreateGame(out Planet origin, out GalaxyMapPlanet targetPlanet);
-            _gameManager = new GameManager(_game);
-            _uiContext = new UIContext(
+            _gameManager = TestContent.CreateGameManager(_game);
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _specialForces = new SpecialForces

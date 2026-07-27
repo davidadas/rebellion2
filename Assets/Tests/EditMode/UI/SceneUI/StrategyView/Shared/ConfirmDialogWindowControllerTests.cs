@@ -42,9 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _dirtyCount = 0;
             _requestedCloseWindow = null;
             GameRoot game = CreateGame();
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
@@ -120,6 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             _controller.OpenScrap(_sourceWindow, new ISceneNode[] { _sourceShip }, Confirm);
             UIWindow window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConfirmDialogWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
 
             _controller.RenderWindows();
 

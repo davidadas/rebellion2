@@ -36,10 +36,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             _dirtyCount = 0;
             GameRoot game = CreateGame();
-            _gameManager = new GameManager(game);
-            _uiContext = new UIContext(
+            _gameManager = TestContent.CreateGameManager(game);
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _planet = CreatePlanet(game);
@@ -294,6 +294,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);
             window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConstructionWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             return view;
         }
 

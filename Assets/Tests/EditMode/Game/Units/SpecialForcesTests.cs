@@ -141,9 +141,9 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetEntityData_ConfiguredSpecialForces_LoadsMissionRatings()
         {
-            SpecialForces specialForces = ResourceManager
-                .GetEntityData<SpecialForces>()
-                .Single(item => item.TypeID == "SPAL001");
+            SpecialForces specialForces = TestContent.Data.SpecialForces.Single(item =>
+                item.TypeID == "SPAL001"
+            );
 
             Assert.AreEqual(0, specialForces.GetBaseRating(OfficerRating.Diplomacy));
             Assert.AreEqual(55, specialForces.GetBaseRating(OfficerRating.Espionage));

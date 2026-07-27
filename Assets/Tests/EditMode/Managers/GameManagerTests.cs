@@ -34,7 +34,7 @@ namespace Rebellion.Tests.Managers
             );
             Assume.That(empire.ResearchCatalog, Is.Empty);
 
-            _ = new GameManager(game);
+            _ = TestContent.CreateGameManager(game);
 
             Assert.IsNotEmpty(
                 alliance.ResearchCatalog,
@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             manager.ProcessTick();
 
@@ -85,7 +85,7 @@ namespace Rebellion.Tests.Managers
             Faction faction = new Faction { InstanceID = "FACTION" };
             game.Factions.Add(faction);
             faction.AddMessage(new Message(MessageType.Conflict, "Expired") { CreatedTick = 100 });
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             manager.ProcessTick();
 
@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Managers
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             manager.SetGameSpeed(TickSpeed.Fast);
             int completedTicks = 0;
             manager.TickCompleted += () => completedTicks++;
@@ -114,7 +114,7 @@ namespace Rebellion.Tests.Managers
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = new GameRoot(config);
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             manager.SetGameSpeed(TickSpeed.Fast);
             int completedTicks = 0;
             manager.TickCompleted += () => completedTicks++;
@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Managers
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(starfighter, origin);
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             manager.MovementSystem.RequestMove(starfighter, destination);
 
             Fleet blockadingFleet = EntityFactory.CreateFleet(
@@ -196,7 +196,7 @@ namespace Rebellion.Tests.Managers
         [Test]
         public void ProcessTick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
-            GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
+            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction
             {
                 InstanceID = "FNALL1",
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Managers
                 }
             );
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             manager.ProcessTick();
 
@@ -327,7 +327,7 @@ namespace Rebellion.Tests.Managers
             );
             defendingFleet.CapitalShips[0].HasGravityWell = true;
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);
 
             manager.ProcessTick();
@@ -408,7 +408,7 @@ namespace Rebellion.Tests.Managers
             };
             game.AttachNode(defender, destination);
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             manager.MovementSystem.RequestMove(new List<IMovable> { arrivingFleet }, destination);
 
             manager.ProcessTick();
@@ -466,7 +466,7 @@ namespace Rebellion.Tests.Managers
                 weaponPower: 100
             );
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             int completedTicks = 0;
             manager.TickCompleted += () => completedTicks++;
 
@@ -482,7 +482,7 @@ namespace Rebellion.Tests.Managers
         public void ProcessTick_PausedGame_DoesNotAdvanceTick()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             manager.SetGameSpeed(TickSpeed.Paused);
 
             manager.ProcessTick();
@@ -558,7 +558,7 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
             Assert.IsTrue(
                 manager.MissionSystem.InitiateMission(
                     new MissionStartRequest
@@ -638,7 +638,7 @@ namespace Rebellion.Tests.Managers
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             Assert.IsTrue(
                 manager.MovementSystem.TryRequestMove(
@@ -690,7 +690,7 @@ namespace Rebellion.Tests.Managers
             Regiment regiment = EntityFactory.CreateRegiment("REGIMENT", owner.InstanceID);
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, planet);
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             bool scrapped = manager.MaintenanceSystem.TryScrap(
                 new IManufacturable[] { regiment },

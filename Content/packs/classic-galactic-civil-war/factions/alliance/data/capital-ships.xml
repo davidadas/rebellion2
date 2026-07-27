@@ -1,0 +1,2078 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<CapitalShips>
+  <CapitalShip>
+    <TypeID>CSAL001</TypeID>
+    <DisplayName>Alliance Dreadnaught</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal001/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal001/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal001/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal001/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal001/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal001/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal001/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal001/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal001/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	44
+Maintenance Cost:		33
+Fighter Capacity:		1
+Troop Capacity:			2
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			40		20		70		70
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		0		0
+
+The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. The Alliance has refit many of these ancient vessels with automated controls and faster sublight engines.  Many of these became what are known as Rebel Assault Frigates.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal001/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>44</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>33</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>40		20		70		70</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Dreadnaught is an ancient heavy cruiser that dates from the time of the Old Republic. The Alliance has refit many of these ancient vessels with automated controls and faster sublight engines.  Many of these became what are known as Rebel Assault Frigates.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>44</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>33</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>1</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>20</int>
+            <int>70</int>
+            <int>70</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>7</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL002</TypeID>
+    <DisplayName>Bulk Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal002/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal002/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal002/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal002/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal002/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal002/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal002/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal002/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal002/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	30
+Maintenance Cost:		30
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			15		0		30		30
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		0		0
+
+The aging bulk cruiser class of capital ships has existed since the time of the Old Republic.  Extremely reliable and rugged, the cruiser has become one of the mainstay ships of the Alliance fleet.  Sporting a reasonable amount of firepower and shielding, the cruiser is suited for most any type of operation.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal002/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>15		0		30		30</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The aging bulk cruiser class of capital ships has existed since the time of the Old Republic.  Extremely reliable and rugged, the cruiser has become one of the mainstay ships of the Alliance fleet.  Sporting a reasonable amount of firepower and shielding, the cruiser is suited for most any type of operation.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>30</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>30</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>15</int>
+            <int>0</int>
+            <int>30</int>
+            <int>30</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>6</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>ALCS003</TypeID>
+    <DisplayName>Medium Transport</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/alcs003/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/alcs003/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/alcs003/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/alcs003/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/alcs003/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/alcs003/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/alcs003/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/alcs003/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/alcs003/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	10
+Maintenance Cost:		12
+Fighter Capacity:		0
+Troop Capacity:			2
+Shield Strength:			100
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		30		30
+
+These vessels can haul an immense amount of equipment considering that they are only 90 meters long.  The medium transport's outer hull is little more than a thick shell; the interior is mainly open space.  These transports are useful in transporting medicine, food, fuel, spare parts, weapons, raw materials, and troops.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/alcs003/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>12</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>100</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		30		30</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>These vessels can haul an immense amount of equipment considering that they are only 90 meters long.  The medium transport's outer hull is little more than a thick shell; the interior is mainly open space.  These transports are useful in transporting medicine, food, fuel, spare parts, weapons, raw materials, and troops.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>10</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>12</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>360</MaxHullStrength>
+    <CurrentHullStrength>360</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>100</MaxShieldStrength>
+    <ShieldRechargeRate>5</ShieldRechargeRate>
+    <Hyperdrive>100</Hyperdrive>
+    <SublightSpeed>2</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>30</int>
+            <int>30</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>2</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>5</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>ALCS004</TypeID>
+    <DisplayName>Bulk Transport</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/alcs004/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/alcs004/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/alcs004/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/alcs004/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/alcs004/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/alcs004/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/alcs004/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/alcs004/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/alcs004/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	24
+Maintenance Cost:		22
+Fighter Capacity:		0
+Troop Capacity:			6
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		0		0		0		  0
+
+The bulk transport is the life blood of intergalactic trade and commerce.  The extensive cargo capacity of the transport makes it ideal for moving everything from loads of juri juice to regiments of troops.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/alcs004/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>24</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>22</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		  0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The bulk transport is the life blood of intergalactic trade and commerce.  The extensive cargo capacity of the transport makes it ideal for moving everything from loads of juri juice to regiments of troops.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Transport</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>24</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>22</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>600</MaxHullStrength>
+    <CurrentHullStrength>600</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>90</Hyperdrive>
+    <SublightSpeed>1</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>6</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>0</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>1</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>ALCS005</TypeID>
+    <DisplayName>Alliance Escort Carrier</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/alcs005/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/alcs005/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/alcs005/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/alcs005/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/alcs005/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/alcs005/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/alcs005/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/alcs005/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/alcs005/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	32
+Maintenance Cost:		29
+Fighter Capacity:		6
+Troop Capacity:			0
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		30		0		60		60
+
+Alliance escort carriers serve a similar purpose to their Imperial counterparts.  Escort carriers are capable of carrying and refueling wings of starfighters and dramatically increase the starfighter capacity of the fleet to which they are attached.  Alliance carriers have better shielding than the Imperial models, but have relatively weak firepower.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/alcs005/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>32</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>29</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>30		0		60		60</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>Alliance escort carriers serve a similar purpose to their Imperial counterparts.  Escort carriers are capable of carrying and refueling wings of starfighters and dramatically increase the starfighter capacity of the fleet to which they are attached.  Alliance carriers have better shielding than the Imperial models, but have relatively weak firepower.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>32</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>29</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>900</MaxHullStrength>
+    <CurrentHullStrength>900</CurrentHullStrength>
+    <DamageControl>5</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>2</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>6</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>30</int>
+            <int>0</int>
+            <int>60</int>
+            <int>60</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>4</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>ALCS006</TypeID>
+    <DisplayName>Corellian Corvette</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/alcs006/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/alcs006/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/alcs006/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/alcs006/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/alcs006/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/alcs006/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/alcs006/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/alcs006/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/alcs006/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	14
+Maintenance Cost:		23
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		120		9 0		120		120
+
+A mid-sized capital ship constructed in the Corellian shipyards, the Corvette has had a long history of service. At 150 meters long and carrying a reasonable complement of shielding and armament, it can function as a cargo transport, or front line warship. Since this vessel sees a lot of action with the Corellian pirates and the Alliance, it has been nicknamed the Blockade Runner.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/alcs006/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>14</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>23</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>120		9 0		120		120</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>A mid-sized capital ship constructed in the Corellian shipyards, the Corvette has had a long history of service. At 150 meters long and carrying a reasonable complement of shielding and armament, it can function as a cargo transport, or front line warship. Since this vessel sees a lot of action with the Corellian pirates and the Alliance, it has been nicknamed the Blockade Runner.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>14</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>23</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>0</ResearchOrder>
+    <ResearchDifficulty>0</ResearchDifficulty>
+    <MaxHullStrength>500</MaxHullStrength>
+    <CurrentHullStrength>500</CurrentHullStrength>
+    <DamageControl>10</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>6</SublightSpeed>
+    <Maneuverability>3</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>120</int>
+            <int>90</int>
+            <int>120</int>
+            <int>120</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>8</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>20</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <DisplayName>Nebulon-B Frigate</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/alcs007/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/alcs007/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/alcs007/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/alcs007/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/alcs007/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/alcs007/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/alcs007/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/alcs007/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/alcs007/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	34
+Maintenance Cost:		35
+Fighter Capacity:		2
+Troop Capacity:			0
+Shield Strength:			300
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			80		0		40		40
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		60		60		30		30
+
+The Nebulon-B frigate is 300 meters long and was originally designed for use against starfighters. This vessel has more weaponry than most ships of its class, and its capacity to carry two squadrons of fighters makes it a superior vessel.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/alcs007/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>34</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>35</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>80		0		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>60		60		30		30</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Nebulon-B frigate is 300 meters long and was originally designed for use against starfighters. This vessel has more weaponry than most ships of its class, and its capacity to carry two squadrons of fighters makes it a superior vessel.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <TypeID>ALCS007</TypeID>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>34</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>35</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>1</ResearchOrder>
+    <ResearchDifficulty>12</ResearchDifficulty>
+    <MaxHullStrength>600</MaxHullStrength>
+    <CurrentHullStrength>600</CurrentHullStrength>
+    <DamageControl>20</DamageControl>
+    <MaxShieldStrength>300</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>2</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>80</int>
+            <int>0</int>
+            <int>40</int>
+            <int>40</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>60</int>
+            <int>30</int>
+            <int>30</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>12</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>30</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>ALCS008</TypeID>
+    <DisplayName>Mon Calamari Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/alcs008/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/alcs008/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/alcs008/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/alcs008/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/alcs008/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/alcs008/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/alcs008/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/alcs008/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/alcs008/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	92
+Maintenance Cost:		70
+Fighter Capacity:		3
+Troop Capacity:			1
+Shield Strength:			300
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			60		60		120		120
+	Ion Cannon:			40		40		60		60
+	Laser Cannon:		0		0		0		0
+
+The Mon Calamari cruisers were originally spaceliners which were converted into military use.  This 1,200-meter long cylindrical ship looks more organic than technological, but they are considered to be among the finest vessels traveling space.  Built with many redundant systems, the Mon Cal cruiser is difficult to repair and service but extremely reliable in combat situations.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/alcs008/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>92</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>70</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>60		60		120		120</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>40		40		60		60</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Mon Calamari cruisers were originally spaceliners which were converted into military use.  This 1,200-meter long cylindrical ship looks more organic than technological, but they are considered to be among the finest vessels traveling space.  Built with many redundant systems, the Mon Cal cruiser is difficult to repair and service but extremely reliable in combat situations.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>92</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>70</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>2</ResearchOrder>
+    <ResearchDifficulty>24</ResearchDifficulty>
+    <MaxHullStrength>2400</MaxHullStrength>
+    <CurrentHullStrength>2400</CurrentHullStrength>
+    <DamageControl>50</DamageControl>
+    <MaxShieldStrength>300</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>3</StarfighterCapacity>
+    <RegimentCapacity>1</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>60</int>
+            <int>120</int>
+            <int>120</int>
+            <int>50</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>40</int>
+            <int>60</int>
+            <int>60</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>18</WeaponRecharge>
+    <Bombardment>2</Bombardment>
+    <TractorBeamPower>2</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL009</TypeID>
+    <DisplayName>Corellian Gunship</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal009/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal009/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal009/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal009/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal009/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal009/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal009/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal009/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal009/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	10
+Maintenance Cost:		23
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			200
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			0		0		0		0
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		90		90		150		150
+
+The Corellian Gunship was designed to be two things, fast and deadly.  Engines fill more than half of its interior structure while the external hull mounts a large number of turbolaser batteries, and quad laser cannons making it an ideal anti-starfighter platform.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal009/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>23</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>90		90		150		150</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Corellian Gunship was designed to be two things, fast and deadly.  Engines fill more than half of its interior structure while the external hull mounts a large number of turbolaser batteries, and quad laser cannons making it an ideal anti-starfighter platform.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>10</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>23</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>4</ResearchOrder>
+    <ResearchDifficulty>48</ResearchDifficulty>
+    <MaxHullStrength>300</MaxHullStrength>
+    <CurrentHullStrength>300</CurrentHullStrength>
+    <DamageControl>20</DamageControl>
+    <MaxShieldStrength>200</MaxShieldStrength>
+    <ShieldRechargeRate>10</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>10</SublightSpeed>
+    <Maneuverability>4</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>90</int>
+            <int>90</int>
+            <int>150</int>
+            <int>150</int>
+            <int>25</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>10</WeaponRecharge>
+    <Bombardment>0</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>30</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL010</TypeID>
+    <DisplayName>CC-7700 Frigate</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal010/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal010/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal010/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal010/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal010/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal010/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal010/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal010/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal010/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	42
+Maintenance Cost:		37
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			300
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			10		0		20		20
+	Ion Cannon:			0		0		0		0
+	Laser Cannon:		60		90		90		90
+
+The CC-7700 is an older sibling to the Corellian Gunship. While lightly armed, the CC-7700 is designed primarily as a platform for a gravity well projector. The function of this vessel is to prevent the withdrawal of enemy vessels from a battle zone. </Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal010/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>42</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>37</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>10		0		20		20</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>60		90		90		90</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The CC-7700 is an older sibling to the Corellian Gunship. While lightly armed, the CC-7700 is designed primarily as a platform for a gravity well projector. The function of this vessel is to prevent the withdrawal of enemy vessels from a battle zone.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Interdictor</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>42</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>37</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>6</ResearchOrder>
+    <ResearchDifficulty>70</ResearchDifficulty>
+    <MaxHullStrength>1400</MaxHullStrength>
+    <CurrentHullStrength>1400</CurrentHullStrength>
+    <DamageControl>30</DamageControl>
+    <MaxShieldStrength>300</MaxShieldStrength>
+    <ShieldRechargeRate>15</ShieldRechargeRate>
+    <Hyperdrive>70</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>10</int>
+            <int>0</int>
+            <int>20</int>
+            <int>20</int>
+            <int>50</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>90</int>
+            <int>90</int>
+            <int>90</int>
+            <int>17</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>8</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>true</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL011</TypeID>
+    <DisplayName>Assault Frigate</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal011/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal011/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal011/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal011/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal011/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal011/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal011/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal011/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal011/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	60
+Maintenance Cost:		60
+Fighter Capacity:		0
+Troop Capacity:			0
+Shield Strength:			600
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			70		0		120		120
+	Ion Cannon:			50		0		40		40
+	Laser Cannon:		0		0		0		0
+
+The assault frigate is one of the Rebel Alliance's main front line warships. Built using the framework of Old Republic Dreadnaughts, Alliance engineers created a ship with greater speed and maneuverability while still retaining the Dreadnaught's weapon complement.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal011/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>60</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>60</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>70		0		120		120</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>50		0		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The assault frigate is one of the Rebel Alliance's main front line warships. Built using the framework of Old Republic Dreadnaughts, Alliance engineers created a ship with greater speed and maneuverability while still retaining the Dreadnaught's weapon complement.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+      <CapitalShipRole>Escort</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>60</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>60</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>7</ResearchOrder>
+    <ResearchDifficulty>60</ResearchDifficulty>
+    <MaxHullStrength>1400</MaxHullStrength>
+    <CurrentHullStrength>1400</CurrentHullStrength>
+    <DamageControl>30</DamageControl>
+    <MaxShieldStrength>600</MaxShieldStrength>
+    <ShieldRechargeRate>30</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>5</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>0</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>70</int>
+            <int>0</int>
+            <int>120</int>
+            <int>120</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>50</int>
+            <int>0</int>
+            <int>40</int>
+            <int>40</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>16</WeaponRecharge>
+    <Bombardment>2</Bombardment>
+    <TractorBeamPower>0</TractorBeamPower>
+    <TractorBeamnRange>0</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>15</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL012</TypeID>
+    <DisplayName>Liberator Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal012/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal012/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal012/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal012/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal012/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal012/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal012/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal012/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal012/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	66
+Maintenance Cost:		55
+Fighter Capacity:		6
+Troop Capacity:			3
+Shield Strength:			600
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			40		40		80		80
+	Ion Cannon:			40		0		80		80
+	Laser Cannon:		0		0		0		0
+
+The SoroSuub Liberator's slender hull disguises the fact that it can carry three troop regiments and six fighter squadrons.  For a capital ship, the Liberator is diminutive of size, but still finds room to host a formidable weapons complement consisting of ion cannons and heavy turbolaser batteries. Utilizing state-of-the-art hull armor, new shielding and drive unit technology, the Liberator is one of the most advanced warships in the galaxy.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal012/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>66</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>55</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>6</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>3</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>40		40		80		80</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>40		0		80		80</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The SoroSuub Liberator's slender hull disguises the fact that it can carry three troop regiments and six fighter squadrons.  For a capital ship, the Liberator is diminutive of size, but still finds room to host a formidable weapons complement consisting of ion cannons and heavy turbolaser batteries. Utilizing state-of-the-art hull armor, new shielding and drive unit technology, the Liberator is one of the most advanced warships in the galaxy.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>66</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>55</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>8</ResearchOrder>
+    <ResearchDifficulty>80</ResearchDifficulty>
+    <MaxHullStrength>1840</MaxHullStrength>
+    <CurrentHullStrength>1840</CurrentHullStrength>
+    <DamageControl>25</DamageControl>
+    <MaxShieldStrength>600</MaxShieldStrength>
+    <ShieldRechargeRate>30</ShieldRechargeRate>
+    <Hyperdrive>80</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>6</StarfighterCapacity>
+    <RegimentCapacity>3</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>40</int>
+            <int>80</int>
+            <int>80</int>
+            <int>60</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>0</int>
+            <int>80</int>
+            <int>80</int>
+            <int>40</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>16</WeaponRecharge>
+    <Bombardment>2</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL013</TypeID>
+    <DisplayName>CC-9600 Frigate</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal013/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal013/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal013/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal013/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal013/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal013/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal013/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal013/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal013/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	58
+Maintenance Cost:		53
+Fighter Capacity:		0
+Troop Capacity:			1
+Shield Strength:			600
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			60		40		120		120
+	Ion Cannon:			40		0		40		40
+	Laser Cannon:		0		0		0		0
+
+The CC-9600 is the latest iteration of the CC series of capital ships.  It is more compact and requires fewer crew members than the previous CC-7700.  While the CC-7700 was primarily a platform for gravity well projectors, the CC-9600 is a pure combat vessel. The firepower and shielding of the CC-9600 are considerable, while allowing enough cargo space to accommodate two regiments of ground troops.
+</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal013/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>58</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>53</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>0</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>1</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>600</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>60		40		120		120</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>40		0		40		40</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The CC-9600 is the latest iteration of the CC series of capital ships.  It is more compact and requires fewer crew members than the previous CC-7700.  While the CC-7700 was primarily a platform for gravity well projectors, the CC-9600 is a pure combat vessel. The firepower and shielding of the CC-9600 are considerable, while allowing enough cargo space to accommodate two regiments of ground troops.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>58</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>53</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>9</ResearchOrder>
+    <ResearchDifficulty>80</ResearchDifficulty>
+    <MaxHullStrength>1200</MaxHullStrength>
+    <CurrentHullStrength>1200</CurrentHullStrength>
+    <DamageControl>35</DamageControl>
+    <MaxShieldStrength>600</MaxShieldStrength>
+    <ShieldRechargeRate>30</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>6</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>0</StarfighterCapacity>
+    <RegimentCapacity>1</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>40</int>
+            <int>120</int>
+            <int>120</int>
+            <int>75</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>40</int>
+            <int>0</int>
+            <int>40</int>
+            <int>40</int>
+            <int>35</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>16</WeaponRecharge>
+    <Bombardment>1</Bombardment>
+    <TractorBeamPower>1</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL014</TypeID>
+    <DisplayName>Dauntless Cruiser</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal014/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal014/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal014/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal014/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal014/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal014/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal014/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal014/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal014/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	136
+Maintenance Cost:		90
+Fighter Capacity:		4
+Troop Capacity:			2
+Shield Strength:			800
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			120		60		200		200
+	Ion Cannon:			60		60		200		200
+	Laser Cannon:		0		0		0		0
+
+The Dauntless is the second largest cruiser in the Alliance fleet.  Built from the hull of a luxury liner, it carries an excellent sensor package and countermeasure equipment.  Extra shielding and armaments were added to make the Dauntless an effective front line ship.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal014/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>136</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>90</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>2</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>800</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>120		60		200		200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>60		60		200		200</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The Dauntless is the second largest cruiser in the Alliance fleet.  Built from the hull of a luxury liner, it carries an excellent sensor package and countermeasure equipment.  Extra shielding and armaments were added to make the Dauntless an effective front line ship.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+      <CapitalShipRole>SecondaryLine</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>136</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>90</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>10</ResearchOrder>
+    <ResearchDifficulty>100</ResearchDifficulty>
+    <MaxHullStrength>2200</MaxHullStrength>
+    <CurrentHullStrength>2200</CurrentHullStrength>
+    <DamageControl>45</DamageControl>
+    <MaxShieldStrength>800</MaxShieldStrength>
+    <ShieldRechargeRate>20</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>4</SublightSpeed>
+    <Maneuverability>1</Maneuverability>
+    <StarfighterCapacity>4</StarfighterCapacity>
+    <RegimentCapacity>2</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>120</int>
+            <int>60</int>
+            <int>200</int>
+            <int>200</int>
+            <int>65</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>60</int>
+            <int>60</int>
+            <int>200</int>
+            <int>200</int>
+            <int>40</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>40</WeaponRecharge>
+    <Bombardment>2</Bombardment>
+    <TractorBeamPower>2</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+  <CapitalShip>
+    <TypeID>CSAL015</TypeID>
+    <DisplayName>Bulwark Battlecruiser</DisplayName>
+    <DisplayImagePath>pack/factions/alliance/entities/csal015/display</DisplayImagePath>
+    <BattleResultImagePath>pack/factions/alliance/entities/csal015/battle-result</BattleResultImagePath>
+    <BattleResultInTransitImagePath>pack/factions/alliance/entities/csal015/battle-result-in-transit</BattleResultInTransitImagePath>
+    <BattleResultDamagedImagePath>pack/factions/alliance/entities/csal015/battle-result-damaged</BattleResultDamagedImagePath>
+    <SmallDisplayImagePath>pack/factions/alliance/entities/csal015/small-display</SmallDisplayImagePath>
+    <InTransitImagePath>pack/factions/alliance/entities/csal015/in-transit</InTransitImagePath>
+    <InTransitSmallImagePath>pack/factions/alliance/entities/csal015/in-transit-small</InTransitSmallImagePath>
+    <DamagedImagePath>pack/factions/alliance/entities/csal015/damaged</DamagedImagePath>
+    <DamagedSmallImagePath>pack/factions/alliance/entities/csal015/damaged-small</DamagedSmallImagePath>
+    <Description>Refined Material Cost:	248
+Maintenance Cost:		175
+Fighter Capacity:		10
+Troop Capacity:			4
+Shield Strength:			1100
+
+Attack Strength:		Fore	Aft		Port	Starboard
+
+	Turbolaser:			600		120		300		300
+	Ion Cannon:			200		80		150		150
+	Laser Cannon:		0		0		0		0
+
+The TransGalMeg Industries Bulwark class capital ship is a mobile fortress.  It is one of the most battle-proof ships employed by the Rebel Alliance.  Though plagued by rumors of unreliable electronics and sensors, the Bulwark's extensive arsenal, shielding and carrying capacity make it ideal for large scale operations.</Description>
+    <EncyclopediaImagePath>pack/factions/alliance/entities/csal015/encyclopedia</EncyclopediaImagePath>
+    <EncyclopediaStats>
+      <EncyclopediaEntryStat>
+        <Label>Refined Material Cost</Label>
+        <Value>248</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Maintenance Cost</Label>
+        <Value>175</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Fighter Capacity</Label>
+        <Value>10</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Troop Capacity</Label>
+        <Value>4</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Shield Strength</Label>
+        <Value>1100</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Attack Strength</Label>
+        <Value>Fore	Aft		Port	Starboard</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Turbolaser</Label>
+        <Value>600		120		300		300</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Ion Cannon</Label>
+        <Value>200		80		150		150</Value>
+      </EncyclopediaEntryStat>
+      <EncyclopediaEntryStat>
+        <Label>Laser Cannon</Label>
+        <Value>0		0		0		0</Value>
+      </EncyclopediaEntryStat>
+    </EncyclopediaStats>
+    <EncyclopediaDescription>The TransGalMeg Industries Bulwark class capital ship is a mobile fortress.  It is one of the most battle-proof ships employed by the Rebel Alliance.  Though plagued by rumors of unreliable electronics and sensors, the Bulwark's extensive arsenal, shielding and carrying capacity make it ideal for large scale operations.</EncyclopediaDescription>
+    <Roles>
+      <CapitalShipRole>PrimaryLine</CapitalShipRole>
+      <CapitalShipRole>Carrier</CapitalShipRole>
+    </Roles>
+    <AllowedOwnerInstanceIDs>
+      <String>FNALL1</String>
+    </AllowedOwnerInstanceIDs>
+    <ConstructionCost>248</ConstructionCost>
+    <ProductionCapacity>40</ProductionCapacity>
+    <MaintenanceCost>175</MaintenanceCost>
+    <BaseBuildSpeed>0</BaseBuildSpeed>
+    <ResearchOrder>11</ResearchOrder>
+    <ResearchDifficulty>100</ResearchDifficulty>
+    <MaxHullStrength>3000</MaxHullStrength>
+    <CurrentHullStrength>3000</CurrentHullStrength>
+    <DamageControl>40</DamageControl>
+    <MaxShieldStrength>1100</MaxShieldStrength>
+    <ShieldRechargeRate>60</ShieldRechargeRate>
+    <Hyperdrive>60</Hyperdrive>
+    <SublightSpeed>3</SublightSpeed>
+    <Maneuverability>2</Maneuverability>
+    <StarfighterCapacity>10</StarfighterCapacity>
+    <RegimentCapacity>4</RegimentCapacity>
+    <PrimaryWeapons>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>Turbolaser</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>600</int>
+            <int>120</int>
+            <int>300</int>
+            <int>300</int>
+            <int>70</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>IonCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>200</int>
+            <int>80</int>
+            <int>150</int>
+            <int>150</int>
+            <int>40</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+      <Entry>
+        <Key>
+          <PrimaryWeaponType>LaserCannon</PrimaryWeaponType>
+        </Key>
+        <Value>
+          <ArrayOfInt>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+            <int>0</int>
+          </ArrayOfInt>
+        </Value>
+      </Entry>
+    </PrimaryWeapons>
+    <WeaponRecharge>80</WeaponRecharge>
+    <Bombardment>4</Bombardment>
+    <TractorBeamPower>6</TractorBeamPower>
+    <TractorBeamnRange>20</TractorBeamnRange>
+    <HasGravityWell>false</HasGravityWell>
+    <DetectionRating>10</DetectionRating>
+  </CapitalShip>
+</CapitalShips>

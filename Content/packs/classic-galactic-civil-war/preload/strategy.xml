@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ContentPreload>
+  <TexturesPerFrame>64</TexturesPerFrame>
+  <Textures />
+  <TextureDirectories />
+  <Audio>
+    <Path>pack/factions/empire/strategy/audio/messages/message-confirm-scrap-retire</Path>
+    <Path>pack/factions/empire/strategy/audio/controls/window-minimize</Path>
+    <Path>pack/factions/empire/strategy/audio/controls/window-restore</Path>
+  </Audio>
+</ContentPreload>

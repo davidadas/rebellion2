@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ContentPack>
+  <ID>classic-galactic-civil-war</ID>
+  <Version>1.0.0</Version>
+  <DisplayName>Classic Galactic Civil War</DisplayName>
+  <DefaultScenarioID>standard</DefaultScenarioID>
+  <GameConfigPath>rules/game.xml</GameConfigPath>
+  <PlanetSystemsPath>shared/data/planet-systems.xml</PlanetSystemsPath>
+  <BuildingsPath>shared/data/buildings.xml</BuildingsPath>
+  <GameEventsPath>shared/data/game-events.xml</GameEventsPath>
+  <MessageDefinitionsPath>shared/data/message-definitions.xml</MessageDefinitionsPath>
+  <EncyclopediaEntriesPath>shared/data/encyclopedia-entries.xml</EncyclopediaEntriesPath>
+  <NeutralThemePath>shared/strategy/ui/neutral/theme.xml</NeutralThemePath>
+  <FactionPaths>
+    <Path>factions/alliance/faction.xml</Path>
+    <Path>factions/empire/faction.xml</Path>
+  </FactionPaths>
+  <ScenarioPaths>
+    <Path>scenarios/standard/scenario.xml</Path>
+  </ScenarioPaths>
+  <Preloads>
+    <Preload>
+      <ID>main-menu</ID>
+      <Path>preload/main-menu.xml</Path>
+    </Preload>
+    <Preload>
+      <ID>save-menu</ID>
+      <Path>preload/save-menu.xml</Path>
+    </Preload>
+    <Preload>
+      <ID>strategy</ID>
+      <Path>preload/strategy.xml</Path>
+    </Preload>
+  </Preloads>
+</ContentPack>

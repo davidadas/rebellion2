@@ -1,4 +1,8 @@
+using System;
 using NUnit.Framework;
+using Rebellion.Game;
+using Rebellion.Game.Encyclopedia;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
@@ -76,9 +80,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 SpaceCombatSideOutcome.Destroyed
             );
 
-            string path = BattleResultPresentation.GetSummaryImagePath(theme, result);
+            string path = BattleResultPresentation.GetSummaryImagePath(
+                CreateContext(),
+                theme,
+                result
+            );
 
-            Assert.AreEqual("first-victory", path);
+            Assert.AreEqual("attacker-victory", path);
         }
 
         [Test]
@@ -91,9 +99,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 SpaceCombatSideOutcome.Withdrawn
             );
 
-            string path = BattleResultPresentation.GetSummaryImagePath(theme, result);
+            string path = BattleResultPresentation.GetSummaryImagePath(
+                CreateContext(),
+                theme,
+                result
+            );
 
-            Assert.AreEqual("second-defeat", path);
+            Assert.AreEqual("defender-defeat", path);
         }
 
         [Test]
@@ -106,7 +118,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 SpaceCombatSideOutcome.Active
             );
 
-            string path = BattleResultPresentation.GetSummaryImagePath(theme, result);
+            string path = BattleResultPresentation.GetSummaryImagePath(
+                CreateContext(),
+                theme,
+                result
+            );
 
             Assert.AreEqual("summary", path);
         }
@@ -115,16 +131,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         public void GetSummaryImagePath_MissingPreferredArtwork_UsesOrderedFallback()
         {
             BattleAlertWindowTheme theme = CreateTheme();
-            theme.SecondForcesDefeatedImagePath = null;
+            UIContext context = CreateContext();
+            context.GetTheme(_defenderId).BattleParticipant.DefeatedImagePath = null;
             SpaceCombatResult result = CreateResult(
                 CombatSide.Attacker,
                 SpaceCombatSideOutcome.Active,
                 SpaceCombatSideOutcome.Withdrawn
             );
 
-            string path = BattleResultPresentation.GetSummaryImagePath(theme, result);
+            string path = BattleResultPresentation.GetSummaryImagePath(context, theme, result);
 
-            Assert.AreEqual("first-victory", path);
+            Assert.AreEqual("attacker-victory", path);
         }
 
         [Test]
@@ -142,16 +159,42 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
         private static BattleAlertWindowTheme CreateTheme()
         {
-            return new BattleAlertWindowTheme
+            return new BattleAlertWindowTheme { ResultSummaryImagePath = "summary" };
+        }
+
+        private static UIContext CreateContext()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(new Faction { InstanceID = _attackerId });
+            game.Factions.Add(new Faction { InstanceID = _defenderId });
+            FactionThemes themes = new FactionThemes
             {
-                FirstForcesOwnerInstanceID = _attackerId,
-                SecondForcesOwnerInstanceID = _defenderId,
-                FirstForcesVictoriousImagePath = "first-victory",
-                FirstForcesDefeatedImagePath = "first-defeat",
-                SecondForcesVictoriousImagePath = "second-victory",
-                SecondForcesDefeatedImagePath = "second-defeat",
-                ResultSummaryImagePath = "summary",
+                new FactionTheme { FactionInstanceID = "DEFAULT" },
+                new FactionTheme
+                {
+                    FactionInstanceID = _attackerId,
+                    BattleParticipant = new BattleParticipantTheme
+                    {
+                        DefeatedImagePath = "attacker-defeat",
+                        VictoriousImagePath = "attacker-victory",
+                    },
+                },
+                new FactionTheme
+                {
+                    FactionInstanceID = _defenderId,
+                    BattleParticipant = new BattleParticipantTheme
+                    {
+                        DefeatedImagePath = "defender-defeat",
+                        VictoriousImagePath = "defender-victory",
+                    },
+                },
             };
+            return new UIContext(
+                game,
+                new FactionThemeLibrary(themes),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>()),
+                _ => null
+            );
         }
 
         private static SpaceCombatResult CreateResult(
