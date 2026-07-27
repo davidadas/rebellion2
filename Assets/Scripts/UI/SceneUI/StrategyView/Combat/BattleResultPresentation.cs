@@ -12,6 +12,10 @@ internal abstract class BattleResultPresentation
     /// </summary>
     internal abstract BattleResultCategory DefaultCategory { get; }
 
+    internal abstract string AttackerOwnerInstanceID { get; }
+
+    internal abstract string DefenderOwnerInstanceID { get; }
+
     /// <summary>
     /// Returns the planet represented by this result.
     /// </summary>
@@ -64,14 +68,9 @@ internal abstract class BattleResultPresentation
     /// Builds the summary text for this result.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="playerFactionId">The current player faction identifier.</param>
     /// <returns>The displayed result summary.</returns>
-    internal abstract string GetSummary(
-        UIContext uiContext,
-        BattleAlertWindowTheme theme,
-        string playerFactionId
-    );
+    internal abstract string GetSummary(UIContext uiContext, string playerFactionId);
 
     /// <summary>
     /// Returns the summary artwork for this result.
@@ -150,10 +149,12 @@ internal abstract class BattleResultPresentation
     /// <summary>
     /// Returns victory artwork, or the withdrawing faction's defeated artwork for withdrawal.
     /// </summary>
+    /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="result">The completed combat result.</param>
     /// <returns>The selected summary artwork path.</returns>
     internal static string GetSummaryImagePath(
+        UIContext uiContext,
         BattleAlertWindowTheme theme,
         SpaceCombatResult result
     )
@@ -168,14 +169,14 @@ internal abstract class BattleResultPresentation
         )
         {
             return FirstNonBlank(
-                GetDefeatedImagePath(theme, result, losingSide.Value),
-                GetVictoryImagePath(theme, result, result.Winner),
+                GetDefeatedImagePath(uiContext, result, losingSide.Value),
+                GetVictoryImagePath(uiContext, result, result.Winner),
                 theme.ResultSummaryImagePath
             );
         }
 
         return FirstNonBlank(
-            GetVictoryImagePath(theme, result, result.Winner),
+            GetVictoryImagePath(uiContext, result, result.Winner),
             theme.ResultSummaryImagePath
         );
     }
@@ -199,43 +200,51 @@ internal abstract class BattleResultPresentation
     /// <summary>
     /// Returns victory artwork for the owner represented by one combat side.
     /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="result">The completed combat result.</param>
     /// <param name="side">The victorious combat side.</param>
     /// <returns>The configured victory artwork path.</returns>
     private static string GetVictoryImagePath(
-        BattleAlertWindowTheme theme,
+        UIContext uiContext,
         SpaceCombatResult result,
         CombatSide side
     )
     {
         string ownerInstanceId = GetOwnerIDForSide(result, side);
-        if (ownerInstanceId == theme.FirstForcesOwnerInstanceID)
-            return theme.FirstForcesVictoriousImagePath;
-        if (ownerInstanceId == theme.SecondForcesOwnerInstanceID)
-            return theme.SecondForcesVictoriousImagePath;
-        return null;
+        return string.IsNullOrEmpty(ownerInstanceId)
+            ? null
+            : uiContext?.GetTheme(ownerInstanceId)?.BattleParticipant?.VictoriousImagePath;
     }
 
     /// <summary>
     /// Returns defeated artwork for the owner represented by one combat side.
     /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="uiContext">The current strategy UI context.</param>
     /// <param name="result">The completed combat result.</param>
     /// <param name="side">The defeated or withdrawing combat side.</param>
     /// <returns>The configured defeated artwork path.</returns>
     private static string GetDefeatedImagePath(
-        BattleAlertWindowTheme theme,
+        UIContext uiContext,
         SpaceCombatResult result,
         CombatSide side
     )
     {
         string ownerInstanceId = GetOwnerIDForSide(result, side);
-        if (ownerInstanceId == theme.FirstForcesOwnerInstanceID)
-            return theme.FirstForcesDefeatedImagePath;
-        if (ownerInstanceId == theme.SecondForcesOwnerInstanceID)
-            return theme.SecondForcesDefeatedImagePath;
-        return null;
+        return string.IsNullOrEmpty(ownerInstanceId)
+            ? null
+            : uiContext?.GetTheme(ownerInstanceId)?.BattleParticipant?.DefeatedImagePath;
+    }
+
+    /// <summary>
+    /// Gets the owner identifier represented by a result-window force panel.
+    /// </summary>
+    /// <param name="panel">The selected result-window panel.</param>
+    /// <returns>The represented attacker or defender owner identifier.</returns>
+    internal string GetOwnerInstanceID(BattleResultPanel panel)
+    {
+        return panel == BattleResultPanel.SecondForces
+            ? DefenderOwnerInstanceID
+            : AttackerOwnerInstanceID;
     }
 
     /// <summary>
@@ -272,6 +281,10 @@ internal abstract class BattleResultPresentation
 
         internal override BattleResultCategory DefaultCategory => BattleResultCategory.CapitalShips;
 
+        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
+
         internal override Planet Planet => result.Planet;
 
         internal override string Title =>
@@ -303,18 +316,12 @@ internal abstract class BattleResultPresentation
         /// Builds the completed space-combat summary.
         /// </summary>
         /// <param name="uiContext">The current strategy UI context.</param>
-        /// <param name="theme">The active battle-alert theme.</param>
         /// <param name="playerFactionId">The current player faction identifier.</param>
         /// <returns>The displayed result summary.</returns>
-        internal override string GetSummary(
-            UIContext uiContext,
-            BattleAlertWindowTheme theme,
-            string playerFactionId
-        )
+        internal override string GetSummary(UIContext uiContext, string playerFactionId)
         {
             return BattleAlertWindowProjector.GetSpaceResultSummary(
                 uiContext,
-                theme,
                 result,
                 playerFactionId
             );
@@ -331,7 +338,7 @@ internal abstract class BattleResultPresentation
             BattleAlertWindowTheme theme
         )
         {
-            return BattleResultPresentation.GetSummaryImagePath(theme, result);
+            return BattleResultPresentation.GetSummaryImagePath(uiContext, theme, result);
         }
 
         /// <summary>
@@ -371,6 +378,10 @@ internal abstract class BattleResultPresentation
 
         internal override BattleResultCategory DefaultCategory => BattleResultCategory.CapitalShips;
 
+        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
+
         internal override Planet Planet => result.Planet;
 
         internal override string Title =>
@@ -382,16 +393,11 @@ internal abstract class BattleResultPresentation
         /// Builds the completed orbital-bombardment summary.
         /// </summary>
         /// <param name="uiContext">The current strategy UI context.</param>
-        /// <param name="theme">The active battle-alert theme.</param>
         /// <param name="playerFactionId">The current player faction identifier.</param>
         /// <returns>The displayed result summary.</returns>
-        internal override string GetSummary(
-            UIContext uiContext,
-            BattleAlertWindowTheme theme,
-            string playerFactionId
-        )
+        internal override string GetSummary(UIContext uiContext, string playerFactionId)
         {
-            return BattleAlertWindowProjector.GetBombardmentSummary(uiContext, theme, result);
+            return BattleAlertWindowProjector.GetBombardmentSummary(uiContext, result);
         }
 
         /// <summary>
@@ -445,6 +451,10 @@ internal abstract class BattleResultPresentation
 
         internal override BattleResultCategory DefaultCategory => BattleResultCategory.Troops;
 
+        internal override string AttackerOwnerInstanceID => result.AttackerOwnerInstanceID;
+
+        internal override string DefenderOwnerInstanceID => result.DefenderOwnerInstanceID;
+
         internal override Planet Planet => result.Planet;
 
         internal override string SoundEffectPath => StrategyUISoundPaths.PlanetaryAssault;
@@ -458,16 +468,11 @@ internal abstract class BattleResultPresentation
         /// Builds the completed planetary-assault summary.
         /// </summary>
         /// <param name="uiContext">The current strategy UI context.</param>
-        /// <param name="theme">The active battle-alert theme.</param>
         /// <param name="playerFactionId">The current player faction identifier.</param>
         /// <returns>The displayed result summary.</returns>
-        internal override string GetSummary(
-            UIContext uiContext,
-            BattleAlertWindowTheme theme,
-            string playerFactionId
-        )
+        internal override string GetSummary(UIContext uiContext, string playerFactionId)
         {
-            return BattleAlertWindowProjector.GetPlanetaryAssaultSummary(uiContext, theme, result);
+            return BattleAlertWindowProjector.GetPlanetaryAssaultSummary(uiContext, result);
         }
 
         /// <summary>

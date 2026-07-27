@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetConfig_LoadsValidXML_Successfully()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
 
             Assert.IsNotNull(config, "GameConfig should not be null");
             Assert.IsNotNull(config.AI, "AIConfig should not be null");
@@ -33,7 +33,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetConfig_LoadsDefaultValues_Correctly()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
 
             // AI defaults
             Assert.AreEqual(7, config.AI.TickInterval);
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetGenerationConfig_LoadsBudgetDifficultyMapping_Correctly()
         {
-            GameGenerationConfig config = ResourceManager.GetConfig<GameGenerationConfig>();
+            GameGenerationConfig config = TestContent.Data.GenerationConfig;
 
             Assert.IsNotNull(config.UnitDeployment.BudgetDifficultyMappings);
             Assert.AreEqual(1, config.UnitDeployment.BudgetDifficultyMappings.Count);
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GameRoot_ConfigConstructor_SetsConfig()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot(config);
 
             Assert.IsNotNull(game.Config, "Game.Config should not be null");
@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SetConfig_ValidConfig_SetsConfig()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot game = new GameRoot();
 
             game.SetConfig(config);
@@ -138,7 +138,7 @@ namespace Rebellion.Tests.Game
         public void GameManager_NoConfigSet_InjectsConfig()
         {
             GameRoot game = new GameRoot();
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             Assert.IsNotNull(game.Config, "GameManager should inject config");
             Assert.AreEqual(7, game.Config.AI.TickInterval, "Config should have default values");
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.Game
             config.GameSpeed.SlowTickIntervalSeconds = 90.5f;
             config.GameSpeed.VerySlowTickIntervalSeconds = 120.5f;
             GameRoot game = new GameRoot(config);
-            GameManager manager = new GameManager(game);
+            GameManager manager = TestContent.CreateGameManager(game);
 
             manager.SetGameSpeed(TickSpeed.Fast);
             Assert.AreEqual(2.5f, GetTickInterval(manager));
@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void GetConfig_LoadsProbabilityTables_Correctly()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
 
             Assert.IsNotNull(config.ProbabilityTables, "ProbabilityTables should not be null");
             Assert.IsNotNull(
@@ -247,10 +247,8 @@ namespace Rebellion.Tests.Game
         public void GetConfig_SchemaValidation_RejectsNonPositiveDistanceScale()
         {
             string configPath = Path.Combine(
-                UnityEngine.Application.dataPath,
-                "Content",
-                "Configs",
-                "GameConfig.xml"
+                TestContent.Pack.PackRootPath,
+                TestContent.Pack.Definition.GameConfigPath
             );
             string xml = File.ReadAllText(configPath)
                 .Replace("<DistanceScale>12</DistanceScale>", "<DistanceScale>0</DistanceScale>");

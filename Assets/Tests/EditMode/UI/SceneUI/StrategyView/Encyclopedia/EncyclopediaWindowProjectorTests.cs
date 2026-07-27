@@ -25,7 +25,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
         [SetUp]
         public void SetUp()
         {
-            FactionThemeLibrary themes = new FactionThemeLibrary();
+            FactionThemeLibrary themes = TestContent.CreateThemeLibrary();
             string imagePath = themes.GetTheme(_playerFactionId).GalaxyBackground.ImagePath;
             _firstEntry = CreateEntry(
                 "first",
@@ -66,7 +66,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
                 new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(game, themes, _catalog);
+            _uiContext = TestContent.CreateUIContext(game, themes, _catalog);
             _windowObject = new GameObject(
                 "EncyclopediaWindow",
                 typeof(RectTransform),

@@ -10,6 +10,7 @@ public static class StandalonePlayerBuild
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _contentDirectoryName = "Content";
+    private const string _gameCIBuildPathArgument = "-customBuildPath";
 
     /// <summary>
     /// Runs the standalone player build requested by the Unity command line.
@@ -17,7 +18,9 @@ public static class StandalonePlayerBuild
     public static void Build()
     {
         UnityEditor.BuildTarget target = GetBuildTarget();
-        string outputPath = ResolveProjectPath(GetRequiredArgument(_buildPlayerPathArgument));
+        string outputPath = ResolveProjectPath(
+            GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
+        );
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
@@ -106,7 +109,11 @@ public static class StandalonePlayerBuild
     /// <param name="playerPath">The completed player artifact path.</param>
     private static void CopyExternalContent(string playerPath)
     {
-        string sourcePath = Path.Combine(UnityEngine.Application.dataPath, _contentDirectoryName);
+        DirectoryInfo projectDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
+        if (projectDirectory == null)
+            throw new InvalidOperationException("Could not resolve project directory.");
+
+        string sourcePath = Path.Combine(projectDirectory.FullName, _contentDirectoryName);
         if (!Directory.Exists(sourcePath))
             throw new DirectoryNotFoundException($"Content directory not found: {sourcePath}");
 
@@ -156,14 +163,18 @@ public static class StandalonePlayerBuild
     /// <summary>
     /// Reads a required command-line argument value.
     /// </summary>
-    /// <param name="argument">The argument name to find.</param>
+    /// <param name="arguments">The equivalent argument names to find.</param>
     /// <returns>The non-empty value following the argument.</returns>
-    private static string GetRequiredArgument(string argument)
+    private static string GetRequiredArgument(params string[] arguments)
     {
         string[] args = Environment.GetCommandLineArgs();
         for (int i = 0; i < args.Length - 1; i++)
         {
-            if (string.Equals(args[i], argument, StringComparison.OrdinalIgnoreCase))
+            if (
+                arguments.Any(argument =>
+                    string.Equals(args[i], argument, StringComparison.OrdinalIgnoreCase)
+                )
+            )
             {
                 string value = args[i + 1];
                 if (!string.IsNullOrWhiteSpace(value))
@@ -173,7 +184,9 @@ public static class StandalonePlayerBuild
             }
         }
 
-        throw new InvalidOperationException($"{argument} argument missing.");
+        throw new InvalidOperationException(
+            $"Required argument missing: {string.Join(" or ", arguments)}."
+        );
     }
 
     /// <summary>

@@ -12,20 +12,24 @@ namespace Rebellion.Game.Encyclopedia
     public sealed class EncyclopediaCatalogBuilder
     {
         /// <summary>
-        /// Builds the encyclopedia catalog from resource data.
+        /// Builds the encyclopedia catalog from the active pack's composed game data.
         /// </summary>
+        /// <param name="gameData">The active pack's composed game data.</param>
         /// <returns>The built encyclopedia catalog.</returns>
-        public EncyclopediaCatalog Build()
+        public EncyclopediaCatalog Build(GameDataCatalog gameData)
         {
+            if (gameData == null)
+                throw new System.ArgumentNullException(nameof(gameData));
+
             return Build(
-                ResourceManager.GetData<EncyclopediaEntries>(),
-                ResourceManager.GetEntityData<PlanetSystem>(),
-                ResourceManager.GetEntityData<Building>(),
-                ResourceManager.GetEntityData<CapitalShip>(),
-                ResourceManager.GetEntityData<Starfighter>(),
-                ResourceManager.GetEntityData<Regiment>(),
-                ResourceManager.GetEntityData<SpecialForces>(),
-                ResourceManager.GetEntityData<Officer>()
+                gameData.EncyclopediaEntries,
+                gameData.PlanetSystems,
+                gameData.Buildings,
+                gameData.CapitalShips,
+                gameData.Starfighters,
+                gameData.Regiments,
+                gameData.SpecialForces,
+                gameData.Officers
             );
         }
 

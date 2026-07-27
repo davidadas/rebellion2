@@ -9,13 +9,13 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         [SetUp]
         public void SetUp()
         {
-            GameLaunchContext.Reset();
+            GameLaunchContext.Reset(TestContent.Pack);
         }
 
         [TearDown]
         public void TearDown()
         {
-            GameLaunchContext.Reset();
+            GameLaunchContext.Reset(TestContent.Pack);
         }
 
         [Test]
@@ -28,7 +28,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             GameLaunchContext.IsLoadGame = true;
             GameLaunchContext.PlayIntroCutscene = true;
 
-            GameLaunchContext.Reset();
+            GameLaunchContext.Reset(TestContent.Pack);
 
             Assert.AreEqual(GameDifficulty.Easy, GameLaunchContext.Summary.Difficulty);
             Assert.AreEqual(GameSize.Large, GameLaunchContext.Summary.GalaxySize);
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         {
             GameSummary original = GameLaunchContext.Summary;
 
-            GameLaunchContext.Reset();
+            GameLaunchContext.Reset(TestContent.Pack);
 
             Assert.AreNotSame(original, GameLaunchContext.Summary);
         }

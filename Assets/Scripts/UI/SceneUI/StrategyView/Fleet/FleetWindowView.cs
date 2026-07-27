@@ -132,11 +132,6 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     internal event Action<FleetWindowView, PointerEventData> FleetDestinationDropped;
 
     /// <summary>
-    /// Occurs when a pointer drop is received by the fleet list.
-    /// </summary>
-    internal event Action<FleetWindowView, PointerEventData> FleetListDropped;
-
-    /// <summary>
     /// Occurs when the fleet row is double-clicked.
     /// </summary>
     internal event Action<FleetWindowView, int, PointerEventData> FleetRowDoubleClicked;
@@ -428,11 +423,11 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     }
 
     /// <summary>
-    /// Reports whether a row press began on its fleet drag image.
+    /// Reports whether a row press began within the fleet row.
     /// </summary>
     /// <param name="index">The fleet-row index.</param>
     /// <param name="eventData">The pointer event.</param>
-    /// <returns>True when the event began on the fleet icon.</returns>
+    /// <returns>True when the pressed raycast target belongs to the fleet row.</returns>
     internal bool FleetRowContainsDragSource(int index, PointerEventData eventData)
     {
         return index >= 0
@@ -906,7 +901,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
 
         fleetListScrollArea.Dragged += HandleScrollDragged;
         fleetListScrollArea.DragEnded += HandleScrollDragEnded;
-        fleetListScrollArea.Dropped += HandleFleetListDropped;
+        fleetListScrollArea.Dropped += HandleFleetDestinationDropped;
         detailItemsScrollArea.Dragged += HandleScrollDragged;
         detailItemsScrollArea.DragEnded += HandleScrollDragEnded;
         detailItemsScrollArea.Dropped += HandleFleetDestinationDropped;
@@ -923,7 +918,7 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
 
         fleetListScrollArea.Dragged -= HandleScrollDragged;
         fleetListScrollArea.DragEnded -= HandleScrollDragEnded;
-        fleetListScrollArea.Dropped -= HandleFleetListDropped;
+        fleetListScrollArea.Dropped -= HandleFleetDestinationDropped;
         detailItemsScrollArea.Dragged -= HandleScrollDragged;
         detailItemsScrollArea.DragEnded -= HandleScrollDragEnded;
         detailItemsScrollArea.Dropped -= HandleFleetDestinationDropped;
@@ -1041,15 +1036,6 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     )
     {
         DetailItemDoubleClicked?.Invoke(this, item.Index, eventData);
-    }
-
-    /// <summary>
-    /// Forwards a drop on the fleet-list surface.
-    /// </summary>
-    /// <param name="eventData">The pointer event.</param>
-    private void HandleFleetListDropped(PointerEventData eventData)
-    {
-        FleetListDropped?.Invoke(this, eventData);
     }
 
     /// <summary>

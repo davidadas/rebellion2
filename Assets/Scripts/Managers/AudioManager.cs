@@ -59,8 +59,25 @@ public sealed class AudioManager : MonoBehaviour
     private Coroutine _playlistCoroutine;
     private Coroutine _musicLoadCoroutine;
     private Coroutine _fadeOutCoroutine;
+    private ContentAssets _contentAssets;
     private Task<AudioClip> _musicClipLoad;
     private bool _activeTrackLoop;
+
+    /// <summary>
+    /// Binds this manager to the application-owned external content assets.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset store.</param>
+    internal void InitializeContent(ContentAssets contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+        if (_contentAssets != null && _contentAssets != contentAssets)
+            throw new InvalidOperationException(
+                "AudioManager is already bound to a content asset store."
+            );
+
+        _contentAssets = contentAssets;
+    }
 
     /// <summary>
     /// Gets the active global audio manager instance.
@@ -264,6 +281,10 @@ public sealed class AudioManager : MonoBehaviour
         _playlistCoroutine = StartCoroutine(RunPathPlaylist());
     }
 
+    /// <summary>
+    /// Plays tracks selected on demand by a dynamic content-path provider.
+    /// </summary>
+    /// <param name="nextTrackPathProvider">The provider invoked before each track load.</param>
     internal void PlayDynamicPlaylist(Func<string> nextTrackPathProvider)
     {
         if (nextTrackPathProvider == null)
@@ -347,7 +368,7 @@ public sealed class AudioManager : MonoBehaviour
             if (_preloadedSfx.ContainsKey(normalizedPath))
                 continue;
 
-            AudioClip clip = ResourceManager.GetAudio(normalizedPath);
+            AudioClip clip = GetContentAssets().GetPreloadedAudio(normalizedPath);
             if (
                 clip.loadState == AudioDataLoadState.Unloaded
                 && (!clip.LoadAudioData() || clip.loadState == AudioDataLoadState.Failed)
@@ -673,6 +694,10 @@ public sealed class AudioManager : MonoBehaviour
         _playlistCoroutine = null;
     }
 
+    /// <summary>
+    /// Plays tracks selected by the active dynamic playlist provider until it is stopped.
+    /// </summary>
+    /// <returns>The playlist coroutine.</returns>
     private IEnumerator RunDynamicPathPlaylist()
     {
         while (_nextTrackPathProvider != null)
@@ -711,6 +736,12 @@ public sealed class AudioManager : MonoBehaviour
         _playlistCoroutine = null;
     }
 
+    /// <summary>
+    /// Loads one addressed music track and starts playback when it is ready.
+    /// </summary>
+    /// <param name="path">The music content address.</param>
+    /// <param name="loop">Whether the loaded track should loop.</param>
+    /// <returns>The loading coroutine.</returns>
     private IEnumerator LoadAndPlayTrack(string path, bool loop)
     {
         BeginMusicClipLoad(path);
@@ -732,9 +763,14 @@ public sealed class AudioManager : MonoBehaviour
         _musicLoadCoroutine = null;
     }
 
+    /// <summary>
+    /// Loads one addressed sound effect, caches it, and plays it once.
+    /// </summary>
+    /// <param name="path">The sound-effect content address.</param>
+    /// <returns>The loading coroutine.</returns>
     private IEnumerator LoadAndPlaySfx(string path)
     {
-        Task<AudioClip> load = ResourceManager.LoadAudioAsync(path);
+        Task<AudioClip> load = GetContentAssets().LoadAudioAsync(path);
         _sfxLoads.Add(path, load);
         while (!load.IsCompleted)
             yield return null;
@@ -747,11 +783,19 @@ public sealed class AudioManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Starts the shared content-asset task for one music address.
+    /// </summary>
+    /// <param name="path">The music content address.</param>
     private void BeginMusicClipLoad(string path)
     {
-        _musicClipLoad = ResourceManager.LoadAudioAsync(path);
+        _musicClipLoad = GetContentAssets().LoadAudioAsync(path);
     }
 
+    /// <summary>
+    /// Assigns a successfully loaded music clip to the music source.
+    /// </summary>
+    /// <returns>True when the completed load produced a clip.</returns>
     private bool AssignLoadedMusicClip()
     {
         if (_musicClipLoad?.IsCompletedSuccessfully != true || _musicClipLoad.Result == null)
@@ -764,6 +808,9 @@ public sealed class AudioManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Stops the active music-loading coroutine and releases its pending task reference.
+    /// </summary>
     private void StopMusicLoad()
     {
         if (_musicLoadCoroutine == null)
@@ -774,6 +821,9 @@ public sealed class AudioManager : MonoBehaviour
         _musicClipLoad = null;
     }
 
+    /// <summary>
+    /// Stops and unassigns the currently active music clip.
+    /// </summary>
     private void StopCurrentMusicClip()
     {
         if (musicSource != null)
@@ -783,6 +833,18 @@ public sealed class AudioManager : MonoBehaviour
         }
 
         _musicClipLoad = null;
+    }
+
+    /// <summary>
+    /// Gets the content asset store required for addressed audio operations.
+    /// </summary>
+    /// <returns>The active content asset store.</returns>
+    private ContentAssets GetContentAssets()
+    {
+        return _contentAssets
+            ?? throw new InvalidOperationException(
+                "AudioManager has not been initialized with a content asset store."
+            );
     }
 
     /// <summary>

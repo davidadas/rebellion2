@@ -225,15 +225,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
             {
                 InstanceID = "mission-message",
             };
-            Faction faction = new Faction { InstanceID = "player" };
+            Faction faction = new Faction { InstanceID = "FNALL1" };
             faction.Messages[MessageType.Fleet] = new List<Message> { fleetMessage };
             faction.Messages[MessageType.Mission] = new List<Message> { missionMessage };
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(faction);
             game.Summary.PlayerFactionID = faction.InstanceID;
-            UIContext uiContext = new UIContext(
+            UIContext uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             GameObject root = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);

@@ -18,9 +18,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         [Test]
         public void TryStartConstruction_BuildCountExceedsFacilityCount_UsesDestinationCapacity()
         {
-            Building template = ResourceManager
-                .GetEntityData<Building>()
-                .Where(building =>
+            Building template = TestContent
+                .Data.Buildings.Where(building =>
                     building.GetBuildingType()
                         is BuildingType.Mine
                             or BuildingType.Refinery
@@ -79,10 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         [Test]
         public void GetBuildSelection_ShipyardTab_ExcludesLockedTechnologies()
         {
-            List<IManufacturable> templates = ResourceManager
-                .GetEntityData<CapitalShip>()
-                .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetEntityData<Starfighter>())
+            List<IManufacturable> templates = TestContent
+                .Data.CapitalShips.Cast<IManufacturable>()
+                .Concat(TestContent.Data.Starfighters)
                 .Where(template => template.AllowedOwnerInstanceIDs?.Count > 0)
                 .ToList();
             IGrouping<string, IManufacturable> ownerTemplates = templates

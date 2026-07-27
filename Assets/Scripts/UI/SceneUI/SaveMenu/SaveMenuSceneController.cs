@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Rebellion.Game;
 using UnityEngine;
 
 /// <summary>
@@ -41,10 +40,12 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         userSettingsManager = bootstrap.GetUserSettingsManager();
         videoSettings = userSettingsManager.Settings.Video;
         saveGameManager = SaveGameManager.Instance;
+        ContentPack contentPack = bootstrap.GetContentPack();
         dataBuilder = new SaveMenuDataBuilder(
-            new FactionThemeLibrary(),
+            new FactionThemeLibrary(contentPack.GameData.FactionThemes),
             saveGameManager,
-            ResourceManager.GetTexture,
+            bootstrap.GetContentAssets().GetTexture,
+            contentPack.MatchesContentIdentity,
             GetVersionText()
         );
     }
@@ -62,9 +63,13 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// </summary>
     private async void Start()
     {
-        Render();
         try
         {
+            await AppBootstrap.Instance.InitializeSaveMenuContentAsync();
+            if (this == null)
+                return;
+
+            Render();
             saveEntries = await Task.Run(saveGameManager.GetSaveSlotEntries);
             if (this == null)
                 return;
@@ -147,7 +152,6 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         UpdateContentHostLayout();
         saveMenuWindow.Render(
             dataBuilder.CreateRenderData(
-                GetPlayerFactionID(),
                 IsSavingAvailable(),
                 audioManager.MusicVolume,
                 audioManager.SfxVolume,
@@ -373,16 +377,6 @@ public sealed class SaveMenuSceneController : MonoBehaviour
 #else
         Application.Quit();
 #endif
-    }
-
-    /// <summary>
-    /// Resolves the current player's faction identifier from the active game.
-    /// </summary>
-    /// <returns>The current player's faction identifier, or null.</returns>
-    private string GetPlayerFactionID()
-    {
-        GameRoot game = runtime?.GetActiveGame();
-        return game?.Summary?.PlayerFactionID;
     }
 
     /// <summary>

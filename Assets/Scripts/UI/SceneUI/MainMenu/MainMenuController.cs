@@ -6,8 +6,8 @@ using UnityEngine;
 /// </summary>
 public sealed class MainMenuController : MonoBehaviour
 {
-    private const string _creditsVideoPath = "Videos/credits";
-    private const string _menuMusicPath = "Audio/Music/battle_of_endor_1_medley";
+    private const string _creditsVideoPath = "application/credits/videos/credits";
+    private const string _menuMusicPath = "application/main-menu/audio/battle-of-endor-1-medley";
 
     [SerializeField]
     private MainMenuView view;
@@ -29,7 +29,8 @@ public sealed class MainMenuController : MonoBehaviour
                 throw new MissingReferenceException($"{name} has no main-menu view.");
         }
 
-        GameLaunchContext.Reset();
+        ContentPack contentPack = AppBootstrap.EnsureExists().GetContentPack();
+        GameLaunchContext.Reset(contentPack);
         SaveMenuLaunchContext.Reset();
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
 
@@ -65,7 +66,17 @@ public sealed class MainMenuController : MonoBehaviour
     {
         try
         {
-            await AppBootstrap.EnsureExists().InitializeContentAsync();
+            await AppBootstrap.EnsureExists().InitializeMainMenuContentAsync();
+            AppBootstrap bootstrap = AppBootstrap.Instance;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
+                contentPack.GameData.FactionThemes
+            );
+            view?.RenderFactions(
+                contentPack.Scenario.PlayableFactionIDs,
+                themeLibrary.GetTheme,
+                bootstrap.GetContentAssets().GetTexture
+            );
             AudioManager audioManager = AudioManager.EnsureExists();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
             audioManager.PlayTrack(_menuMusicPath, true);

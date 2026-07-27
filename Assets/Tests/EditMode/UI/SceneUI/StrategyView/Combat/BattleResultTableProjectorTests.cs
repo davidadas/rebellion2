@@ -457,9 +457,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            return new UIContext(
+            return TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
         }
@@ -475,15 +475,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            CapitalShip definition = ResourceManager
-                .GetEntityData<CapitalShip>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            CapitalShip definition = TestContent.Data.CapitalShips.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new CapitalShip
             {
                 InstanceID = instanceId,
                 TypeID = definition.TypeID,
                 OwnerInstanceID = ownerId,
                 DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitImagePath = definition.InTransitImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DamagedImagePath = definition.DamagedImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                BattleResultImagePath = definition.BattleResultImagePath,
+                BattleResultInTransitImagePath = definition.BattleResultInTransitImagePath,
+                BattleResultDamagedImagePath = definition.BattleResultDamagedImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
@@ -494,15 +503,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            Starfighter definition = ResourceManager
-                .GetEntityData<Starfighter>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            Starfighter definition = TestContent.Data.Starfighters.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Starfighter
             {
                 InstanceID = instanceId,
                 TypeID = definition.TypeID,
                 OwnerInstanceID = ownerId,
                 DisplayName = displayName,
+                DisplayImagePath = definition.DisplayImagePath,
+                SmallDisplayImagePath = definition.SmallDisplayImagePath,
+                InTransitImagePath = definition.InTransitImagePath,
+                InTransitSmallImagePath = definition.InTransitSmallImagePath,
+                DamagedImagePath = definition.DamagedImagePath,
+                DamagedSmallImagePath = definition.DamagedSmallImagePath,
+                BattleResultImagePath = definition.BattleResultImagePath,
+                BattleResultInTransitImagePath = definition.BattleResultInTransitImagePath,
+                BattleResultDamagedImagePath = definition.BattleResultDamagedImagePath,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
@@ -514,9 +532,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             BuildingType buildingType
         )
         {
-            Building definition = ResourceManager
-                .GetEntityData<Building>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            Building definition = TestContent.Data.Buildings.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Building
             {
                 InstanceID = instanceId,
@@ -538,9 +556,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            Regiment definition = ResourceManager
-                .GetEntityData<Regiment>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            Regiment definition = TestContent.Data.Regiments.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Regiment
             {
                 InstanceID = instanceId,
@@ -554,12 +572,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
         private static Officer CreateOfficer(string instanceId, string ownerId, string displayName)
         {
-            Officer definition = ResourceManager
-                .GetEntityData<Officer>()
-                .First(item =>
-                    item.OwnerInstanceID == ownerId
-                    || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
-                );
+            Officer definition = TestContent.Data.Officers.First(item =>
+                item.OwnerInstanceID == ownerId
+                || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Officer
             {
                 InstanceID = instanceId,
@@ -577,12 +593,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            SpecialForces definition = ResourceManager
-                .GetEntityData<SpecialForces>()
-                .First(item =>
-                    item.OwnerInstanceID == ownerId
-                    || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
-                );
+            SpecialForces definition = TestContent.Data.SpecialForces.First(item =>
+                item.OwnerInstanceID == ownerId
+                || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new SpecialForces
             {
                 InstanceID = instanceId,

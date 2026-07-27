@@ -26,7 +26,13 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         public void Constructor_NullThemeLibrary_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new SaveMenuDataBuilder(null, SaveGameManager.Instance, LoadTexture, "Version")
+                new SaveMenuDataBuilder(
+                    null,
+                    SaveGameManager.Instance,
+                    LoadTexture,
+                    _ => true,
+                    "Version"
+                )
             );
         }
 
@@ -34,7 +40,13 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         public void Constructor_NullSaveGameManager_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new SaveMenuDataBuilder(new FactionThemeLibrary(), null, LoadTexture, "Version")
+                new SaveMenuDataBuilder(
+                    TestContent.CreateThemeLibrary(),
+                    null,
+                    LoadTexture,
+                    _ => true,
+                    "Version"
+                )
             );
         }
 
@@ -43,8 +55,23 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new SaveMenuDataBuilder(
-                    new FactionThemeLibrary(),
+                    TestContent.CreateThemeLibrary(),
                     SaveGameManager.Instance,
+                    null,
+                    _ => true,
+                    "Version"
+                )
+            );
+        }
+
+        [Test]
+        public void Constructor_NullContentCompatibilityCheck_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new SaveMenuDataBuilder(
+                    TestContent.CreateThemeLibrary(),
+                    SaveGameManager.Instance,
+                    LoadTexture,
                     null,
                     "Version"
                 )
@@ -52,13 +79,12 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         }
 
         [Test]
-        public void CreateRenderData_PlayerTheme_ProjectsMenuAndSlotState()
+        public void CreateRenderData_MenuState_ProjectsWindowAndSlots()
         {
             SaveMenuDataBuilder builder = CreateBuilder("Version 1");
             IReadOnlyDictionary<UserTacticalOption, bool> options = CreateTacticalOptions();
 
             SaveMenuWindowRenderData data = builder.CreateRenderData(
-                "FNALL1",
                 true,
                 0.25f,
                 0.75f,
@@ -67,12 +93,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
                 Array.Empty<SaveGameEntry>()
             );
 
-            Assert.IsNotNull(data.ReturnStrategyButtonUpTexture);
-            Assert.IsNotNull(data.ReturnStrategyButtonDownTexture);
-            Assert.AreNotSame(
-                data.ReturnStrategyButtonUpTexture,
-                data.ReturnStrategyButtonDownTexture
-            );
             Assert.AreEqual(0.25f, data.MusicVolume);
             Assert.AreEqual(0.75f, data.SfxVolume);
             Assert.AreEqual("Version 1", data.VersionText);
@@ -92,7 +112,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             SaveMenuDataBuilder builder = CreateBuilder("Version");
 
             SaveMenuWindowRenderData data = builder.CreateRenderData(
-                "FNALL1",
                 false,
                 0f,
                 0f,
@@ -108,28 +127,28 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         public void CreateRenderData_RepeatedPaths_LoadsEachTextureOnce()
         {
             SaveMenuDataBuilder builder = CreateBuilder("Version");
+            SaveGameEntry firstSave = CreateSaveEntry(0, "First", "FNALL1");
+            SaveGameEntry secondSave = CreateSaveEntry(1, "Second", "FNALL1");
 
             builder.CreateRenderData(
-                "FNALL1",
                 true,
                 0f,
                 0f,
                 CreateTacticalOptions(),
                 null,
-                Array.Empty<SaveGameEntry>()
+                new[] { firstSave, secondSave }
             );
             builder.CreateRenderData(
-                "FNALL1",
                 true,
                 0f,
                 0f,
                 CreateTacticalOptions(),
                 null,
-                Array.Empty<SaveGameEntry>()
+                new[] { firstSave, secondSave }
             );
 
-            Assert.GreaterOrEqual(_loadCounts.Count, 2);
-            Assert.IsTrue(_loadCounts.Values.All(count => count == 1));
+            Assert.AreEqual(1, _loadCounts.Count);
+            Assert.AreEqual(1, _loadCounts.Single().Value);
         }
 
         [Test]
@@ -138,7 +157,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             SaveMenuDataBuilder builder = CreateBuilder(null);
 
             SaveMenuWindowRenderData data = builder.CreateRenderData(
-                "FNALL1",
                 true,
                 0f,
                 0f,
@@ -164,7 +182,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             );
 
             SaveMenuWindowRenderData data = builder.CreateRenderData(
-                "FNALL1",
                 true,
                 0f,
                 0f,
@@ -179,13 +196,59 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             Assert.IsNotNull(data.Slots[1].FactionIconTexture);
         }
 
+        [Test]
+        public void CreateRenderData_IncompatibleSave_DisablesLoadWithoutResolvingFactionTheme()
+        {
+            SaveMenuDataBuilder builder = new SaveMenuDataBuilder(
+                TestContent.CreateThemeLibrary(),
+                SaveGameManager.Instance,
+                LoadTexture,
+                _ => false,
+                "Version"
+            );
+            SaveGameEntry save = new SaveGameEntry(
+                SaveGameManager.Instance.GetSaveSlotFileName(1),
+                new Rebellion.Game.GameMetadata
+                {
+                    SaveDisplayName = "Other Pack",
+                    PlayerFactionID = "unknown-faction",
+                }
+            );
+
+            SaveMenuWindowRenderData data = builder.CreateRenderData(
+                true,
+                0f,
+                0f,
+                CreateTacticalOptions(),
+                null,
+                new[] { save }
+            );
+
+            Assert.IsFalse(data.Slots[1].CanLoad);
+            Assert.AreEqual("Other Pack", data.Slots[1].Label);
+            Assert.IsNull(data.Slots[1].FactionIconTexture);
+        }
+
         private SaveMenuDataBuilder CreateBuilder(string version)
         {
             return new SaveMenuDataBuilder(
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 SaveGameManager.Instance,
                 LoadTexture,
+                _ => true,
                 version
+            );
+        }
+
+        private static SaveGameEntry CreateSaveEntry(int slot, string displayName, string factionId)
+        {
+            return new SaveGameEntry(
+                SaveGameManager.Instance.GetSaveSlotFileName(slot),
+                new Rebellion.Game.GameMetadata
+                {
+                    SaveDisplayName = displayName,
+                    PlayerFactionID = factionId,
+                }
             );
         }
 

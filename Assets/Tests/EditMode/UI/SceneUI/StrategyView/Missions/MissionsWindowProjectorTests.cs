@@ -42,9 +42,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _entityImagePath = _uiContext.GetPlayerFactionTheme().GalaxyBackground.ImagePath;
@@ -173,7 +173,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _uiContext.GetTexture(_entityImagePath),
                 data.Participants[0].EntityTexture
             );
-            Assert.IsTrue(data.Participants[0].UseInTransitBackground);
         }
 
         [Test]
@@ -192,8 +191,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual(MissionParticipantRole.Decoy, data.ActiveRole);
             Assert.AreEqual(1, data.Participants.Count);
             Assert.AreEqual("Decoy", data.Participants[0].Name);
-            Assert.IsNull(data.Participants[0].BackgroundTexture);
-            Assert.IsFalse(data.Participants[0].UseInTransitBackground);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .StrategyWindows.Defense.PersonnelBackgroundImagePath
+                ),
+                data.Participants[0].BackgroundTexture
+            );
         }
 
         [Test]
@@ -213,7 +218,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _uiContext.GetTexture(_entityImagePath),
                 data.Participants[0].BackgroundTexture
             );
-            Assert.IsTrue(data.Participants[0].UseInTransitBackground);
         }
 
         [Test]

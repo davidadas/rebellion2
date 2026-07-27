@@ -9,6 +9,7 @@ using UnityEngine.UI;
 [RequireComponent(typeof(RawImage))]
 public sealed class RawImagePressVisual
     : MonoBehaviour,
+        IApplicationTextureReceiver,
         IPointerDownHandler,
         IPointerUpHandler,
         IPointerExitHandler
@@ -161,5 +162,20 @@ public sealed class RawImagePressVisual
     {
         if (image == null)
             throw new MissingReferenceException($"{name}/Image is missing.");
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(upTexture):
+                upTexture = texture;
+                break;
+            case nameof(downTexture):
+                downTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

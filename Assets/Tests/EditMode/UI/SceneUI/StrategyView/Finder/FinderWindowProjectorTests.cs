@@ -32,9 +32,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 new Faction { InstanceID = _opponentFactionId, DisplayName = "Empire" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _windowObject = new GameObject("FinderWindow", typeof(RectTransform), typeof(UIWindow));

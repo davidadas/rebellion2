@@ -104,13 +104,13 @@ internal sealed class BattleAlertWindowProjector
         IReadOnlyList<BattleAlertRowRenderData> rows =
             panel == BattleAlertPanel.Summary
                 ? Array.Empty<BattleAlertRowRenderData>()
-                : GetPendingRows(uiContext, theme, pending, panel);
+                : GetPendingRows(uiContext, pending, panel);
         BattleAlertPendingRenderData pendingData = new BattleAlertPendingRenderData(
             panel,
             $"Battle at {GetPlanetName(pending.Planet)}",
-            GetPendingHeader(theme, panel),
+            GetPendingHeader(uiContext, pending, panel),
             panel == BattleAlertPanel.Summary
-                ? GetPendingSummary(uiContext, theme, pending)
+                ? GetPendingSummary(uiContext, pending)
                 : string.Empty,
             rows,
             CreatePendingCommandButtons(uiContext, theme, pending, playerFactionId)
@@ -162,7 +162,7 @@ internal sealed class BattleAlertWindowProjector
         bool detail = panel is BattleResultPanel.FirstForces or BattleResultPanel.SecondForces;
         bool direct = panel == BattleResultPanel.Direct;
         bool planetaryResult = result.UsesPlanetaryLayout;
-        string ownerInstanceId = GetResultOwnerID(theme, panel);
+        string ownerInstanceId = result.GetOwnerInstanceID(panel);
         BattleResultTableRenderData table = detail
             ? resultTableProjector.Project(uiContext, result, ownerInstanceId, category)
             : null;
@@ -172,11 +172,10 @@ internal sealed class BattleAlertWindowProjector
             result.Title,
             direct
                     ? "Select one of the following buttons to close this display and go directly to..."
-                : panel == BattleResultPanel.Summary
-                    ? result.GetSummary(uiContext, theme, playerFactionId)
+                : panel == BattleResultPanel.Summary ? result.GetSummary(uiContext, playerFactionId)
                 : string.Empty,
             CreateButton(uiContext, theme?.ResultCloseButton, true, false),
-            detail ? GetResultHeader(theme, panel) : string.Empty,
+            detail ? GetForcesHeader(uiContext, ownerInstanceId) : string.Empty,
             detail ? GetOwnerColor(uiContext, ownerInstanceId) : Color.white,
             detail ? GetCategoryTitle(category) : string.Empty,
             detail ? GetColumnHeaders(category) : Array.Empty<string>(),
@@ -422,13 +421,11 @@ internal sealed class BattleAlertWindowProjector
     /// Projects pending-combat rows for the selected panel.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="pending">The pending encounter.</param>
     /// <param name="panel">The selected pending panel.</param>
     /// <returns>The displayed rows, including an empty-state row when needed.</returns>
     private static IReadOnlyList<BattleAlertRowRenderData> GetPendingRows(
         UIContext uiContext,
-        BattleAlertWindowTheme theme,
         PendingCombatResult pending,
         BattleAlertPanel panel
     )
@@ -437,10 +434,10 @@ internal sealed class BattleAlertWindowProjector
         switch (panel)
         {
             case BattleAlertPanel.FirstForces:
-                AddFleetRows(rows, pending, theme?.FirstForcesOwnerInstanceID, uiContext);
+                AddFleetRows(rows, pending, GetPendingOwnerInstanceID(pending, panel), uiContext);
                 break;
             case BattleAlertPanel.SecondForces:
-                AddFleetRows(rows, pending, theme?.SecondForcesOwnerInstanceID, uiContext);
+                AddFleetRows(rows, pending, GetPendingOwnerInstanceID(pending, panel), uiContext);
                 break;
             case BattleAlertPanel.SystemAssets:
                 AddSystemRows(rows, pending?.Planet, uiContext);
@@ -628,20 +625,21 @@ internal sealed class BattleAlertWindowProjector
     /// <summary>
     /// Returns the active pending-panel header.
     /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="pending">The pending encounter.</param>
     /// <param name="panel">The selected pending panel.</param>
     /// <returns>The displayed panel header.</returns>
-    private static string GetPendingHeader(BattleAlertWindowTheme theme, BattleAlertPanel panel)
+    private static string GetPendingHeader(
+        UIContext uiContext,
+        PendingCombatResult pending,
+        BattleAlertPanel panel
+    )
     {
         return panel switch
         {
-            BattleAlertPanel.FirstForces => GetThemeText(
-                theme?.FirstForcesHeaderText,
-                "First Forces"
-            ),
-            BattleAlertPanel.SecondForces => GetThemeText(
-                theme?.SecondForcesHeaderText,
-                "Second Forces"
+            BattleAlertPanel.FirstForces or BattleAlertPanel.SecondForces => GetForcesHeader(
+                uiContext,
+                GetPendingOwnerInstanceID(pending, panel)
             ),
             BattleAlertPanel.SystemAssets => "System Assets",
             _ => "Battle Summary",
@@ -649,21 +647,37 @@ internal sealed class BattleAlertWindowProjector
     }
 
     /// <summary>
+    /// Returns the owner represented by a pending-combat force panel.
+    /// </summary>
+    /// <param name="pending">The pending encounter.</param>
+    /// <param name="panel">The selected pending panel.</param>
+    /// <returns>The represented owner identifier.</returns>
+    private static string GetPendingOwnerInstanceID(
+        PendingCombatResult pending,
+        BattleAlertPanel panel
+    )
+    {
+        return panel == BattleAlertPanel.SecondForces
+            ? BattleResultPresentation.FirstNonBlank(
+                pending?.DefenderOwnerInstanceID,
+                pending?.DefenderFleet?.GetOwnerInstanceID()
+            )
+            : BattleResultPresentation.FirstNonBlank(
+                pending?.AttackerOwnerInstanceID,
+                pending?.AttackerFleet?.GetOwnerInstanceID()
+            );
+    }
+
+    /// <summary>
     /// Builds the pending-combat summary text.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="pending">The pending encounter.</param>
     /// <returns>The displayed pending-combat summary.</returns>
-    private static string GetPendingSummary(
-        UIContext uiContext,
-        BattleAlertWindowTheme theme,
-        PendingCombatResult pending
-    )
+    private static string GetPendingSummary(UIContext uiContext, PendingCombatResult pending)
     {
         string attackerSide = GetOwnerLabel(
             uiContext,
-            theme,
             BattleResultPresentation.FirstNonBlank(
                 pending.AttackerOwnerInstanceID,
                 pending.AttackerFleet?.GetOwnerInstanceID()
@@ -672,7 +686,6 @@ internal sealed class BattleAlertWindowProjector
         );
         string defenderSide = GetOwnerLabel(
             uiContext,
-            theme,
             BattleResultPresentation.FirstNonBlank(
                 pending.DefenderOwnerInstanceID,
                 pending.DefenderFleet?.GetOwnerInstanceID()
@@ -686,13 +699,11 @@ internal sealed class BattleAlertWindowProjector
     /// Builds the completed space-combat summary text.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="result">The completed space-combat result.</param>
     /// <param name="playerFactionId">The current player faction identifier.</param>
     /// <returns>The displayed completed-result summary.</returns>
     internal static string GetSpaceResultSummary(
         UIContext uiContext,
-        BattleAlertWindowTheme theme,
         SpaceCombatResult result,
         string playerFactionId
     )
@@ -703,11 +714,11 @@ internal sealed class BattleAlertWindowProjector
         string planetName = GetPlanetName(result.Planet);
         CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
         CombatSide? losingSide = BattleResultPresentation.GetOpposingSide(result.Winner);
-        string winnerName = GetSideLabel(uiContext, theme, result, result.Winner, "Victorious");
+        string winnerName = GetSideLabel(uiContext, result, result.Winner, "Victorious");
 
         if (playerSide.HasValue && result.Winner != playerSide.Value)
         {
-            string playerName = GetSideLabel(uiContext, theme, result, playerSide.Value, "Your");
+            string playerName = GetSideLabel(uiContext, result, playerSide.Value, "Your");
             return
                 BattleResultPresentation.GetOutcome(result, playerSide.Value)
                 == SpaceCombatSideOutcome.Destroyed
@@ -718,7 +729,7 @@ internal sealed class BattleAlertWindowProjector
         string losingFleetText = string.Empty;
         if (losingSide.HasValue)
         {
-            string loserName = GetSideLabel(uiContext, theme, result, losingSide.Value, "opposing");
+            string loserName = GetSideLabel(uiContext, result, losingSide.Value, "opposing");
             losingFleetText =
                 BattleResultPresentation.GetOutcome(result, losingSide.Value)
                 == SpaceCombatSideOutcome.Destroyed
@@ -733,31 +744,16 @@ internal sealed class BattleAlertWindowProjector
     /// Builds the completed orbital-bombardment summary text.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="result">The completed bombardment result.</param>
     /// <returns>The displayed bombardment summary.</returns>
-    internal static string GetBombardmentSummary(
-        UIContext uiContext,
-        BattleAlertWindowTheme theme,
-        BombardmentResult result
-    )
+    internal static string GetBombardmentSummary(UIContext uiContext, BombardmentResult result)
     {
-        string attacker = GetOwnerLabel(
-            uiContext,
-            theme,
-            result?.AttackerOwnerInstanceID,
-            "Attacking"
-        );
+        string attacker = GetOwnerLabel(uiContext, result?.AttackerOwnerInstanceID, "Attacking");
         string planet = GetPlanetName(result?.Planet);
         if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
             return $"{attacker} ships have conducted an orbital strike on the non-aligned system {planet}.";
 
-        string defender = GetOwnerLabel(
-            uiContext,
-            theme,
-            result.DefenderOwnerInstanceID,
-            "defending"
-        );
+        string defender = GetOwnerLabel(uiContext, result.DefenderOwnerInstanceID, "defending");
         return $"{attacker} ships have conducted an orbital strike on the {defender} system of {planet}.";
     }
 
@@ -765,21 +761,14 @@ internal sealed class BattleAlertWindowProjector
     /// Builds the completed planetary-assault summary text.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="result">The completed planetary-assault result.</param>
     /// <returns>The displayed planetary-assault summary.</returns>
     internal static string GetPlanetaryAssaultSummary(
         UIContext uiContext,
-        BattleAlertWindowTheme theme,
         PlanetaryAssaultResult result
     )
     {
-        string attacker = GetOwnerLabel(
-            uiContext,
-            theme,
-            result?.AttackerOwnerInstanceID,
-            "Attacking"
-        );
+        string attacker = GetOwnerLabel(uiContext, result?.AttackerOwnerInstanceID, "Attacking");
         string planet = GetPlanetName(result?.Planet);
         if (string.IsNullOrEmpty(result?.DefenderOwnerInstanceID))
         {
@@ -788,12 +777,7 @@ internal sealed class BattleAlertWindowProjector
                 : $"The neutral system {planet} has repulsed an attack by {attacker} troops.";
         }
 
-        string defender = GetOwnerLabel(
-            uiContext,
-            theme,
-            result.DefenderOwnerInstanceID,
-            "defending"
-        );
+        string defender = GetOwnerLabel(uiContext, result.DefenderOwnerInstanceID, "defending");
         return result.Success
             ? $"{attacker} troops have taken control of the {defender} system {planet}."
             : $"{defender} Troops have defended {planet} from an {attacker} assault.";
@@ -897,29 +881,14 @@ internal sealed class BattleAlertWindowProjector
     }
 
     /// <summary>
-    /// Returns the header for the selected result force panel.
+    /// Returns the header for a represented force.
     /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="panel">The selected result panel.</param>
+    /// <param name="uiContext">The current strategy UI context.</param>
+    /// <param name="ownerInstanceId">The represented owner identifier.</param>
     /// <returns>The displayed force header.</returns>
-    private static string GetResultHeader(BattleAlertWindowTheme theme, BattleResultPanel panel)
+    private static string GetForcesHeader(UIContext uiContext, string ownerInstanceId)
     {
-        return panel == BattleResultPanel.SecondForces
-            ? GetThemeText(theme?.SecondForcesHeaderText, "Second Forces")
-            : GetThemeText(theme?.FirstForcesHeaderText, "First Forces");
-    }
-
-    /// <summary>
-    /// Returns the owner represented by a completed-result force panel.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="panel">The selected result panel.</param>
-    /// <returns>The represented owner identifier.</returns>
-    private static string GetResultOwnerID(BattleAlertWindowTheme theme, BattleResultPanel panel)
-    {
-        return panel == BattleResultPanel.SecondForces
-            ? theme?.SecondForcesOwnerInstanceID
-            : theme?.FirstForcesOwnerInstanceID;
+        return $"{GetOwnerLabel(uiContext, ownerInstanceId, "Unknown")} Forces";
     }
 
     /// <summary>
@@ -1056,28 +1025,18 @@ internal sealed class BattleAlertWindowProjector
     }
 
     /// <summary>
-    /// Returns a themed or faction-derived label for an owner.
+    /// Returns a faction-derived label for an owner.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="ownerInstanceId">The represented owner identifier.</param>
     /// <param name="fallback">The fallback label.</param>
     /// <returns>The displayed side label.</returns>
     private static string GetOwnerLabel(
         UIContext uiContext,
-        BattleAlertWindowTheme theme,
         string ownerInstanceId,
         string fallback
     )
     {
-        if (!string.IsNullOrEmpty(ownerInstanceId))
-        {
-            if (ownerInstanceId == theme?.FirstForcesOwnerInstanceID)
-                return GetThemeText(theme?.FirstForcesSummaryLabel, fallback);
-            if (ownerInstanceId == theme?.SecondForcesOwnerInstanceID)
-                return GetThemeText(theme?.SecondForcesSummaryLabel, fallback);
-        }
-
         Faction faction = uiContext?.Game?.Factions?.FirstOrDefault(item =>
             item?.InstanceID == ownerInstanceId
         );
@@ -1089,14 +1048,12 @@ internal sealed class BattleAlertWindowProjector
     /// Returns a completed-result side label from its fleet.
     /// </summary>
     /// <param name="uiContext">The current strategy UI context.</param>
-    /// <param name="theme">The active battle-alert theme.</param>
     /// <param name="result">The completed combat result.</param>
     /// <param name="side">The represented combat side.</param>
     /// <param name="fallback">The fallback label.</param>
     /// <returns>The displayed side label.</returns>
     private static string GetSideLabel(
         UIContext uiContext,
-        BattleAlertWindowTheme theme,
         SpaceCombatResult result,
         CombatSide side,
         string fallback
@@ -1108,7 +1065,7 @@ internal sealed class BattleAlertWindowProjector
             CombatSide.Defender => result?.DefenderOwnerInstanceID,
             _ => null,
         };
-        return GetOwnerLabel(uiContext, theme, ownerInstanceId, fallback);
+        return GetOwnerLabel(uiContext, ownerInstanceId, fallback);
     }
 
     /// <summary>
@@ -1130,16 +1087,5 @@ internal sealed class BattleAlertWindowProjector
     internal static string GetPlanetName(Planet planet)
     {
         return planet?.GetDisplayName() ?? "Unknown System";
-    }
-
-    /// <summary>
-    /// Returns configured theme text or a fallback when configuration is empty.
-    /// </summary>
-    /// <param name="text">The configured text.</param>
-    /// <param name="fallback">The fallback text.</param>
-    /// <returns>The selected text.</returns>
-    private static string GetThemeText(string text, string fallback)
-    {
-        return string.IsNullOrEmpty(text) ? fallback : text;
     }
 }

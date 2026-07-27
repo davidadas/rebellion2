@@ -2946,7 +2946,7 @@ namespace Rebellion.Tests.Game.Messages
             Planet destination
         ) BuildMessageScene()
         {
-            GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
+            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.Factions.Add(alliance);
             PlanetSystem system = new PlanetSystem { InstanceID = "CORE", DisplayName = "Core" };
@@ -2981,7 +2981,7 @@ namespace Rebellion.Tests.Game.Messages
             Planet target
         ) BuildTwoFactionMessageScene()
         {
-            GameRoot game = new GameRoot(ResourceManager.GetConfig<GameConfig>());
+            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.Factions.Add(alliance);

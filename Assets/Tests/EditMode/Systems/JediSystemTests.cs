@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Systems
         [SetUp]
         public void SetUp()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             _game = new GameRoot(config);
             _system = new JediSystem(_game, new FixedRNG());
 

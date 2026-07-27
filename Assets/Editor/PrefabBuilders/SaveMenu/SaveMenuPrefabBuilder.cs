@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -22,47 +21,51 @@ public static class SaveMenuPrefabBuilder
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
 
     private const string _backgroundTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_background.png";
+        "application/save-menu/ui/ui_savemenu_background.png";
     private const string _cockpitButtonTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_cockpit_button.png";
+        "application/save-menu/ui/ui_savemenu_cockpit_button.png";
     private const string _cockpitButtonPressedTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_cockpit_button_pressed.png";
+        "application/save-menu/ui/ui_savemenu_cockpit_button_pressed.png";
     private const string _exitButtonTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_airlock_button.png";
+        "application/save-menu/ui/ui_savemenu_airlock_button.png";
     private const string _exitButtonPressedTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_airlock_button_pressed.png";
+        "application/save-menu/ui/ui_savemenu_airlock_button_pressed.png";
+    private const string _returnStrategyButtonTexturePath =
+        "application/save-menu/ui/ui_savemenu_strategy_button.png";
+    private const string _returnStrategyButtonPressedTexturePath =
+        "application/save-menu/ui/ui_savemenu_strategy_button_pressed.png";
     private const string _musicButtonTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_music_button.png";
+        "application/save-menu/ui/ui_savemenu_music_button.png";
     private const string _musicButtonPressedTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_music_button_pressed.png";
+        "application/save-menu/ui/ui_savemenu_music_button_pressed.png";
     private const string _optionButtonTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_option_button.png";
+        "application/save-menu/ui/ui_savemenu_option_button.png";
     private const string _optionButtonPressedTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_option_button_pressed.png";
+        "application/save-menu/ui/ui_savemenu_option_button_pressed.png";
     private const string _saveButtonTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_save_button.png";
+        "application/save-menu/ui/ui_savemenu_save_button.png";
     private const string _saveButtonPressedTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_save_button_pressed.png";
+        "application/save-menu/ui/ui_savemenu_save_button_pressed.png";
     private const string _saveButtonDisabledTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_save_button_disabled.png";
+        "application/save-menu/ui/ui_savemenu_save_button_disabled.png";
     private const string _loadButtonTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_load_button.png";
+        "application/save-menu/ui/ui_savemenu_load_button.png";
     private const string _loadButtonPressedTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_load_button_pressed.png";
+        "application/save-menu/ui/ui_savemenu_load_button_pressed.png";
     private const string _loadButtonDisabledTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_load_button_disabled.png";
+        "application/save-menu/ui/ui_savemenu_load_button_disabled.png";
     private const string _sliderThumbTexturePath =
-        "Assets/Content/Art/HD/UI/SaveMenu/ui_savemenu_slider_thumb.png";
+        "application/save-menu/ui/ui_savemenu_slider_thumb.png";
     private const string _confirmDialogTexturePath =
-        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_dialog.png";
+        "application/common/ui/ui_common_confirmation_dialog.png";
     private const string _confirmationYesTexturePath =
-        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_yes_button.png";
+        "application/common/ui/ui_common_confirmation_yes_button.png";
     private const string _confirmationYesPressedTexturePath =
-        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_yes_button_pressed.png";
+        "application/common/ui/ui_common_confirmation_yes_button_pressed.png";
     private const string _confirmationNoTexturePath =
-        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_no_button.png";
+        "application/common/ui/ui_common_confirmation_no_button.png";
     private const string _confirmationNoPressedTexturePath =
-        "Assets/Content/Art/HD/UI/Common/ui_common_confirmation_no_button_pressed.png";
+        "application/common/ui/ui_common_confirmation_no_button_pressed.png";
 
     private const int _windowWidth = 640;
     private const int _windowHeight = 480;
@@ -119,15 +122,7 @@ public static class SaveMenuPrefabBuilder
             LoadRequiredTexture(_saveButtonPressedTexturePath),
             out RawImagePressVisual saveButtonPressVisual
         );
-        RawImage factionImage = CreateRawImage(
-            "FactionImage",
-            root.transform,
-            ResolvePreviewTheme().SaveMenuSlotIconImagePath,
-            51,
-            1,
-            26,
-            19
-        );
+        RawImage factionImage = CreateRawImage("FactionImage", root.transform, null, 51, 1, 26, 19);
         factionImage.raycastTarget = false;
 
         TMP_InputField nameInput = CreateSaveNameInput(root.transform);
@@ -356,12 +351,11 @@ public static class SaveMenuPrefabBuilder
             out _
         );
 
-        FactionTheme previewTheme = ResolvePreviewTheme();
         Button returnStrategyButton = CreateWindowCommandButton(
             "ReturnStrategyButtonImage",
             window.transform,
-            previewTheme.SaveMenuReturnStrategyButtonImagePath,
-            previewTheme.SaveMenuReturnStrategyButtonPressedImagePath,
+            _returnStrategyButtonTexturePath,
+            _returnStrategyButtonPressedTexturePath,
             162,
             382,
             out RawImage returnStrategyButtonImage,
@@ -480,11 +474,6 @@ public static class SaveMenuPrefabBuilder
         AssignReference(view, "exitButton", exitButton);
         AssignReference(view, "returnStrategyButton", returnStrategyButton);
         AssignReference(view, "returnStrategyButtonPressVisual", returnStrategyButtonPressVisual);
-        AssignReference(
-            view,
-            "returnStrategyButtonUpTexture",
-            LoadRequiredTexture(previewTheme.SaveMenuReturnStrategyButtonImagePath)
-        );
         AssignReference(view, "musicButtonPressVisual", musicButtonPressVisual);
         AssignReference(view, "musicButton", musicButton);
         AssignReference(view, "musicButtonUpTexture", LoadRequiredTexture(_musicButtonTexturePath));
@@ -916,7 +905,7 @@ public static class SaveMenuPrefabBuilder
         );
         imageObject.transform.SetParent(parent, false);
         RawImage image = imageObject.GetComponent<RawImage>();
-        image.texture = LoadRequiredTexture(texturePath);
+        image.texture = string.IsNullOrEmpty(texturePath) ? null : LoadRequiredTexture(texturePath);
         image.raycastTarget = false;
         SetSourceRect(image.rectTransform, x, y, width, height);
         return image;
@@ -963,67 +952,16 @@ public static class SaveMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Selects a deterministic configured theme that supplies Save Menu preview art.
+    /// Loads one required application texture.
     /// </summary>
-    /// <returns>The first semantically eligible theme ordered by stable identifier.</returns>
-    private static FactionTheme ResolvePreviewTheme()
-    {
-        FactionThemes themes = ResourceManager.GetConfig<FactionThemes>();
-        FactionTheme theme = themes
-            .Where(candidate => candidate != null)
-            .Where(candidate => !string.IsNullOrEmpty(candidate.FactionInstanceID))
-            .Where(candidate =>
-                !string.IsNullOrEmpty(candidate.SaveMenuReturnStrategyButtonImagePath)
-            )
-            .Where(candidate =>
-                !string.IsNullOrEmpty(candidate.SaveMenuReturnStrategyButtonPressedImagePath)
-            )
-            .Where(candidate => !string.IsNullOrEmpty(candidate.SaveMenuSlotIconImagePath))
-            .OrderBy(candidate => candidate.FactionInstanceID, StringComparer.Ordinal)
-            .FirstOrDefault();
-        if (theme == null)
-            throw new InvalidOperationException(
-                "No configured theme supplies complete Save Menu art."
-            );
-        return theme;
-    }
-
-    /// <summary>
-    /// Loads one required texture from either an asset or content-address path.
-    /// </summary>
-    /// <param name="path">The configured texture path.</param>
+    /// <param name="path">The Unity asset path.</param>
     /// <returns>The loaded texture asset.</returns>
     private static Texture2D LoadRequiredTexture(string path)
-    {
-        string assetPath = ResolveTextureAssetPath(path);
-        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
-        if (texture == null)
-            throw new FileNotFoundException(assetPath);
-        return texture;
-    }
-
-    /// <summary>
-    /// Resolves a configured content address to its concrete texture asset path.
-    /// </summary>
-    /// <param name="path">The asset path or content address.</param>
-    /// <returns>The concrete asset path including an image extension.</returns>
-    private static string ResolveTextureAssetPath(string path)
     {
         if (string.IsNullOrEmpty(path))
             throw new ArgumentException("A texture path is required.", nameof(path));
 
-        string assetPath = path.StartsWith("Assets/", StringComparison.Ordinal)
-            ? path
-            : Path.Combine("Assets/Content", path).Replace("\\", "/");
-        if (File.Exists(assetPath))
-            return assetPath;
-        if (File.Exists(assetPath + ".png"))
-            return assetPath + ".png";
-        if (File.Exists(assetPath + ".jpg"))
-            return assetPath + ".jpg";
-        if (File.Exists(assetPath + ".jpeg"))
-            return assetPath + ".jpeg";
-        return assetPath;
+        return ApplicationTextureBindingAuthoring.LoadTexture(path);
     }
 
     /// <summary>
@@ -1203,15 +1141,13 @@ public static class SaveMenuPrefabBuilder
     /// <returns>The saved prefab asset root.</returns>
     private static GameObject SavePrefab(GameObject root, string path)
     {
-        if (root.GetComponent<ExternalContentArt>() == null)
-            root.AddComponent<ExternalContentArt>();
-
         string directory = Path.GetDirectoryName(path);
         if (!Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
             AssetDatabase.Refresh();
         }
+        ApplicationTextureBindingAuthoring.Capture(root);
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         UnityEngine.Object.DestroyImmediate(root);
         if (!success || prefab == null)

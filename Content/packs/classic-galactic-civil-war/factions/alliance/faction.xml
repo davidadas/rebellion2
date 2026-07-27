@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Faction>
+  <ID>FNALL1</ID>
+  <DisplayName>Alliance</DisplayName>
+  <FactionDataPath>factions/alliance/data/faction.xml</FactionDataPath>
+  <CapitalShipsPath>factions/alliance/data/capital-ships.xml</CapitalShipsPath>
+  <StarfightersPath>factions/alliance/data/starfighters.xml</StarfightersPath>
+  <RegimentsPath>factions/alliance/data/regiments.xml</RegimentsPath>
+  <SpecialForcesPath>factions/alliance/data/special-forces.xml</SpecialForcesPath>
+  <OfficersPath>factions/alliance/data/officers.xml</OfficersPath>
+  <EncyclopediaEntriesPath>factions/alliance/data/encyclopedia-entries.xml</EncyclopediaEntriesPath>
+  <ThemePath>factions/alliance/strategy/ui/theme.xml</ThemePath>
+</Faction>

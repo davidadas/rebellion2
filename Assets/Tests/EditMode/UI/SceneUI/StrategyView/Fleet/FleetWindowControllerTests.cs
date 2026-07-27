@@ -20,7 +20,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
     [TestFixture]
     public class FleetWindowControllerTests
     {
-        private const string _opposingFactionId = "FNALL2";
+        private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
@@ -45,16 +45,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         {
             _dirtyCount = 0;
             _game = CreateGame();
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _planet = CreatePlanet(_game);
             _fleet = CreateFleet("fleet", "First Fleet", out _officer);
             _planet.Planet.Fleets.Add(_fleet);
             AttachFleetGraph(_planet.Planet, _fleet);
-            _gameManager = new GameManager(_game);
+            _gameManager = TestContent.CreateGameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);
@@ -217,6 +217,80 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_planet, target.Planet);
             Assert.IsNull(target.Item);
             Assert.AreSame(_planet.Planet, target.GetMoveDestination());
+        }
+
+        [Test]
+        public void FleetListDrop_ActiveTargeting_SelectsCurrentFleet()
+        {
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            RecordingTargetingReceiver receiver = new RecordingTargetingReceiver();
+            _targetingController.Begin(new TargetingRequest("Target", null, receiver));
+            ScrollAreaView fleetScrollArea = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.gameObject.activeInHierarchy)
+                .GetComponentInParent<ScrollAreaView>();
+
+            fleetScrollArea.RelayDrop(new PointerEventData(null));
+
+            Assert.IsFalse(_targetingController.IsTargeting);
+            Assert.IsInstanceOf<StrategyMissionTarget>(receiver.Target);
+            StrategyMissionTarget target = (StrategyMissionTarget)receiver.Target;
+            Assert.AreSame(_planet, target.Planet);
+            Assert.AreSame(_fleet, target.Item);
+            Assert.AreSame(_fleet, target.GetMoveDestination());
+        }
+
+        [Test]
+        public void FleetRowPress_UnselectedFleetLabel_StartsDragOnFirstGesture()
+        {
+            GameFleet secondFleet = CreateFleet("second-fleet", "Second Fleet", out _);
+            _planet.Planet.Fleets.Add(secondFleet);
+            AttachFleetGraph(_planet.Planet, secondFleet);
+            UIWindow draggedWindow = null;
+            PointerEventData draggedEvent = null;
+            _controller.Initialize(
+                _actions,
+                _actions,
+                _actions,
+                (window, eventData) =>
+                {
+                    draggedWindow = window;
+                    draggedEvent = eventData;
+                },
+                _ => { },
+                _ => { }
+            );
+            FleetWindowView view = OpenWindow(out UIWindow window);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            _controller.RenderWindow(view, window, true);
+            FleetListRowView row = view.GetComponentsInChildren<FleetListRowView>(true)
+                .Single(item => item.Index == 1 && item.gameObject.activeInHierarchy);
+            UIComponentTestHelper.InvokeLifecycle(row, "Awake");
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerId = 1,
+                pressPosition = new Vector2(20, 30),
+                pointerCurrentRaycast = new RaycastResult
+                {
+                    gameObject = row.NameTextField.gameObject,
+                },
+                pointerPressRaycast = new RaycastResult
+                {
+                    gameObject = row.NameTextField.gameObject,
+                },
+            };
+
+            row.GetComponent<UIPointerGestureRelay>().OnPointerDown(eventData);
+
+            Assert.AreSame(window, draggedWindow);
+            Assert.AreSame(eventData, draggedEvent);
+            Assert.AreEqual(1, _controller.GetSelectedFleetIndex(view));
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { secondFleet },
+                _controller.GetContextItems(window)
+            );
         }
 
         [Test]

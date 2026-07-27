@@ -11,6 +11,10 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
+    private const string _mainMenuPreloadID = "main-menu";
+    private const string _saveMenuPreloadID = "save-menu";
+    private const string _strategyPreloadID = "strategy";
+
 #if UNITY_EDITOR
     private const string _editorCutscenePrefabPath =
         "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
@@ -31,9 +35,17 @@ public sealed class AppBootstrap : MonoBehaviour
     private AudioManager audioManager;
 
     private CancelStack _cancelStack;
+    private ContentPreloadManifest _mainMenuApplicationPreload;
+    private ContentAssets _contentAssets;
+    private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
+    private Task _mainMenuContentTask;
+    private Task _saveMenuContentTask;
+    private Task _strategyContentTask;
     private GameRuntime _runtime;
     private SceneLoader _sceneLoader;
+    private ContentPreloadManifest _saveMenuApplicationPreload;
+    private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
 
     /// <summary>
@@ -80,14 +92,31 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
-        _runtime = new GameRuntime(_sceneLoader.Load);
+        _contentPack = ContentPackLoader.OpenActive();
+        _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
+            _contentPack.ContentRootPath,
+            _mainMenuPreloadID
+        );
+        _saveMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
+            _contentPack.ContentRootPath,
+            _saveMenuPreloadID
+        );
+        _strategyApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
+            _contentPack.ContentRootPath,
+            _strategyPreloadID
+        );
+        _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
+        GameLaunchContext.Reset(_contentPack);
+        _runtime = new GameRuntime(_sceneLoader.Load, _contentPack);
 
         if (audioManager == null)
             audioManager = AudioManager.EnsureExists(transform);
+        audioManager.InitializeContent(_contentAssets);
 
         _cutsceneManager = GetComponent<CutsceneManager>();
         if (_cutsceneManager == null)
             _cutsceneManager = gameObject.AddComponent<CutsceneManager>();
+        _cutsceneManager.InitializeContent(_contentAssets);
 
 #if UNITY_EDITOR
         GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -108,24 +137,100 @@ public sealed class AppBootstrap : MonoBehaviour
         inputController?.Initialize(inputManager, _cancelStack, _runtime);
     }
 
-    internal Task InitializeContentAsync()
+    /// <summary>
+    /// Loads content required by the main-menu scene and begins warming strategy content.
+    /// </summary>
+    /// <returns>The shared main-menu preload task.</returns>
+    internal Task InitializeMainMenuContentAsync()
     {
-        return ResourceManager.InitializeAsync();
+        _mainMenuContentTask ??= PreloadMainMenuContentAsync();
+        return _mainMenuContentTask;
     }
 
+    /// <summary>
+    /// Loads all content required by the save-menu scene.
+    /// </summary>
+    /// <returns>The shared save-menu preload task.</returns>
+    internal Task InitializeSaveMenuContentAsync()
+    {
+        _saveMenuContentTask ??= Task.WhenAll(
+            _contentAssets.PreloadAsync(_saveMenuApplicationPreload),
+            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_saveMenuPreloadID))
+        );
+        return _saveMenuContentTask;
+    }
+
+    /// <summary>
+    /// Loads all content required by the strategy scene.
+    /// </summary>
+    /// <returns>The shared strategy preload task.</returns>
+    internal Task InitializeStrategyContentAsync()
+    {
+        StartStrategyContentPreload();
+        return _strategyContentTask;
+    }
+
+    /// <summary>
+    /// Transitions to another application scene.
+    /// </summary>
+    /// <param name="sceneAddress">The Unity scene name to load.</param>
     internal void LoadScene(string sceneAddress)
     {
         _sceneLoader.Load(sceneAddress);
     }
 
+    /// <summary>
+    /// Composes the persistent cutscene manager with its authored player prefab.
+    /// </summary>
+    /// <param name="cutscenePrefab">The cutscene player prefab.</param>
     internal void InitializeCutsceneManager(GameObject cutscenePrefab)
     {
         _cutsceneManager.Initialize(cutscenePrefab);
     }
 
+    /// <summary>
+    /// Gets the persistent cutscene manager.
+    /// </summary>
+    /// <returns>The active cutscene manager.</returns>
     internal CutsceneManager GetCutsceneManager()
     {
         return _cutsceneManager;
+    }
+
+    /// <summary>
+    /// Loads main-menu content, then starts the strategy preload without delaying the menu.
+    /// </summary>
+    /// <returns>A task that completes when main-menu content is resident.</returns>
+    private async Task PreloadMainMenuContentAsync()
+    {
+        await Task.WhenAll(
+            _contentAssets.PreloadAsync(_mainMenuApplicationPreload),
+            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_mainMenuPreloadID))
+        );
+        StartStrategyContentPreload();
+    }
+
+    /// <summary>
+    /// Starts the shared strategy preload task when it has not already begun.
+    /// </summary>
+    private void StartStrategyContentPreload()
+    {
+        _strategyContentTask ??= Task.WhenAll(
+            _contentAssets.PreloadAsync(_strategyApplicationPreload),
+            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+        );
+    }
+
+    /// <summary>
+    /// Releases application-owned content when the active bootstrap is destroyed.
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (Instance != this)
+            return;
+
+        _contentAssets?.Dispose();
+        Instance = null;
     }
 
     /// <summary>
@@ -231,5 +336,23 @@ public sealed class AppBootstrap : MonoBehaviour
     public void SaveUserSettings()
     {
         _userSettingsManager?.Save();
+    }
+
+    /// <summary>
+    /// Gets the active external content pack.
+    /// </summary>
+    /// <returns>The active content pack.</returns>
+    internal ContentPack GetContentPack()
+    {
+        return _contentPack;
+    }
+
+    /// <summary>
+    /// Gets the application-owned external content assets.
+    /// </summary>
+    /// <returns>The active content asset store.</returns>
+    internal ContentAssets GetContentAssets()
+    {
+        return _contentAssets;
     }
 }

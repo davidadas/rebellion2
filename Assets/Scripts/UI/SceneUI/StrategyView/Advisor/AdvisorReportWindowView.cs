@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders immutable advisor-report presentations into authored controls and reusable rows.
 /// </summary>
-public sealed class AdvisorReportWindowView : MonoBehaviour
+public sealed class AdvisorReportWindowView : MonoBehaviour, IApplicationTextureReceiver
 {
     [Header("Frame")]
     [SerializeField]
@@ -258,5 +258,23 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
         overviewRowTemplate.gameObject.SetActive(false);
         objectiveRowTemplate.gameObject.SetActive(false);
         rowsPaddingTemplate.gameObject.SetActive(false);
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(infoButtonDisabledTexture):
+                infoButtonDisabledTexture = texture;
+                break;
+            case nameof(closeButtonUpTexture):
+                closeButtonUpTexture = texture;
+                break;
+            case nameof(closeButtonDownTexture):
+                closeButtonDownTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
+        }
     }
 }

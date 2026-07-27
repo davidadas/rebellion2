@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 4392630919389973362, guid: 83f052424c114450487d6cd6b2d35386, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -861,7 +861,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4499967845820217543, guid: d2aef2e47e5f844e6bde4bafa4b181bf, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -881,10 +881,10 @@ GameObject:
   m_Component:
   - component: {fileID: 1360901445644044271}
   - component: {fileID: 551184884684968311}
-  - component: {fileID: 9003897604324534244}
   - component: {fileID: 3264235398623835643}
   - component: {fileID: 4051376008167006183}
   - component: {fileID: 6950572538180370557}
+  - component: {fileID: 8407521691944398896}
   m_Layer: 5
   m_Name: EasyDifficultyToggle
   m_TagString: Untagged
@@ -920,28 +920,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1226079475835288612}
   m_CullTransparentMesh: 1
---- !u!95 &9003897604324534244
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1226079475835288612}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 06b5b8f0cff5e47fd9c18aea6c1a530c, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &3264235398623835643
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -962,7 +940,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -1433517217327295767, guid: 0ee2144f996a743688495f64ff41dd76, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1045,6 +1023,84 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls: []
+--- !u!114 &8407521691944398896
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1226079475835288612}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 160a4a1db1daf4ddc9e64850d726d152, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ApplicationSpriteSequence
+  target: {fileID: 3264235398623835643}
+  addresses:
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_01
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_01
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_02
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_03
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_04
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_05
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_06
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_07
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_08
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_09
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_10
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_11
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_12
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_13
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_14
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_15
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_16
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_17
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_18
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_19
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_20
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_21
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_22
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_23
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_24
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_25
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_26
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_27
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_28
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_29
+  - application/main-menu/ui/ui_mainmenu_difficulty_easy_30
+  frameTimes:
+  - 0
+  - 0.033333335
+  - 0.06666667
+  - 0.1
+  - 0.13333334
+  - 0.16666667
+  - 0.2
+  - 0.23333333
+  - 0.26666668
+  - 0.3
+  - 0.33333334
+  - 0.36666667
+  - 0.4
+  - 0.43333334
+  - 0.46666667
+  - 0.5
+  - 0.53333336
+  - 0.56666666
+  - 0.6
+  - 0.6333333
+  - 0.6666667
+  - 0.7
+  - 0.73333335
+  - 0.76666665
+  - 0.8
+  - 0.8333333
+  - 0.8666667
+  - 0.9
+  - 0.93333334
+  - 0.96666664
+  - 1
+  duration: 1.0333333
 --- !u!1 &1242316872077608128
 GameObject:
   m_ObjectHideFlags: 0
@@ -1170,8 +1226,8 @@ MonoBehaviour:
   - button: {fileID: 3252410292273161294}
     factionId: FNALL1
   victoryConditionIcon: {fileID: 7068155027032104386}
-  standardVictoryConditionSprite: {fileID: -3367548231926181982, guid: 428367c628bc64c7db52c0fdb8ef2692, type: 3}
-  headquartersVictoryConditionSprite: {fileID: 4392630919389973362, guid: 83f052424c114450487d6cd6b2d35386, type: 3}
+  standardVictoryConditionSprite: {fileID: 0}
+  headquartersVictoryConditionSprite: {fileID: 0}
   victoryConditionText: {fileID: 2826933773874435367}
   pressVisualBindings:
   - trigger: {fileID: 6950572538180370557}
@@ -1207,43 +1263,43 @@ MonoBehaviour:
   audioCueBindings:
   - trigger: {fileID: 6950572538180370557}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 7091060363610485331}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 2573013973403560848}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 685034576820100796}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 1493056046065846210}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 4524076129725238189}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 2072675651733084092}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_exit_select
+    resourcePath: application/main-menu/audio/exit-select
   - trigger: {fileID: 6728043342433523034}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 7709341516244639331}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 287535894737444482}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_galaxysize_select
+    resourcePath: application/main-menu/audio/galaxysize-select
   - trigger: {fileID: 8057016632890189982}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_galaxysize_select
+    resourcePath: application/main-menu/audio/galaxysize-select
   - trigger: {fileID: 991413630138085704}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
   - trigger: {fileID: 6133892355166534709}
     eventType: 2
-    resourcePath: Audio/SFX/MainMenu/sfx_ui_mainmenu_select
+    resourcePath: application/main-menu/audio/select
 --- !u!1 &1979868353273979906
 GameObject:
   m_ObjectHideFlags: 0
@@ -1693,7 +1749,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -3197665908956166884, guid: 42e8a0914073347819fddfd503261e08, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -1714,9 +1770,9 @@ GameObject:
   - component: {fileID: 8948317823356475541}
   - component: {fileID: 3487094781993236254}
   - component: {fileID: 1768376562869672873}
-  - component: {fileID: 5744679674799822484}
   - component: {fileID: 637045436869335955}
   - component: {fileID: 2072675651733084092}
+  - component: {fileID: 1085914351274202015}
   m_Layer: 5
   m_Name: ExitButton
   m_TagString: Untagged
@@ -1796,28 +1852,6 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!95 &5744679674799822484
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2517393571758265002}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 2050c6724b26546b0a10d5042113917f, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &637045436869335955
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1838,7 +1872,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -5923446240215283494, guid: f487870b265884d32ae11e06e2e54bd2, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -1873,6 +1907,82 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls: []
+--- !u!114 &1085914351274202015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2517393571758265002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 160a4a1db1daf4ddc9e64850d726d152, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ApplicationSpriteSequence
+  target: {fileID: 637045436869335955}
+  addresses:
+  - application/main-menu/ui/ui_mainmenu_exit_01
+  - application/main-menu/ui/ui_mainmenu_exit_02
+  - application/main-menu/ui/ui_mainmenu_exit_03
+  - application/main-menu/ui/ui_mainmenu_exit_04
+  - application/main-menu/ui/ui_mainmenu_exit_05
+  - application/main-menu/ui/ui_mainmenu_exit_06
+  - application/main-menu/ui/ui_mainmenu_exit_07
+  - application/main-menu/ui/ui_mainmenu_exit_08
+  - application/main-menu/ui/ui_mainmenu_exit_09
+  - application/main-menu/ui/ui_mainmenu_exit_10
+  - application/main-menu/ui/ui_mainmenu_exit_11
+  - application/main-menu/ui/ui_mainmenu_exit_12
+  - application/main-menu/ui/ui_mainmenu_exit_13
+  - application/main-menu/ui/ui_mainmenu_exit_14
+  - application/main-menu/ui/ui_mainmenu_exit_15
+  - application/main-menu/ui/ui_mainmenu_exit_16
+  - application/main-menu/ui/ui_mainmenu_exit_17
+  - application/main-menu/ui/ui_mainmenu_exit_18
+  - application/main-menu/ui/ui_mainmenu_exit_19
+  - application/main-menu/ui/ui_mainmenu_exit_20
+  - application/main-menu/ui/ui_mainmenu_exit_21
+  - application/main-menu/ui/ui_mainmenu_exit_22
+  - application/main-menu/ui/ui_mainmenu_exit_23
+  - application/main-menu/ui/ui_mainmenu_exit_24
+  - application/main-menu/ui/ui_mainmenu_exit_25
+  - application/main-menu/ui/ui_mainmenu_exit_26
+  - application/main-menu/ui/ui_mainmenu_exit_27
+  - application/main-menu/ui/ui_mainmenu_exit_28
+  - application/main-menu/ui/ui_mainmenu_exit_29
+  - application/main-menu/ui/ui_mainmenu_exit_30
+  frameTimes:
+  - 0
+  - 0.016666668
+  - 0.033333335
+  - 0.05
+  - 0.06666667
+  - 0.083333336
+  - 0.1
+  - 0.11666667
+  - 0.13333334
+  - 0.15
+  - 0.16666667
+  - 0.18333334
+  - 0.2
+  - 0.21666667
+  - 0.23333333
+  - 0.25
+  - 0.26666668
+  - 0.28333333
+  - 0.3
+  - 0.31666666
+  - 0.33333334
+  - 0.35
+  - 0.36666667
+  - 0.38333333
+  - 0.4
+  - 0.41666666
+  - 0.43333334
+  - 0.45
+  - 0.46666667
+  - 0.48333332
+  duration: 0.5
 --- !u!1 &2678318989385807387
 GameObject:
   m_ObjectHideFlags: 0
@@ -1938,7 +2048,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 7702443976129096025, guid: 9705655b95c9f45c68e3e1d32c42fc0c, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -2013,7 +2123,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 527639255941761311, guid: 4e44333766dbd4edb8ec2cace65dd5fc, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2090,7 +2200,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 9023254792070191278, guid: f490364cffda2491ab77de29ad9c0430, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2231,7 +2341,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4731054637686854587, guid: 3518b89f0252a457c80d0a98e0f0015b, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2251,10 +2361,10 @@ GameObject:
   m_Component:
   - component: {fileID: 2640384143140159489}
   - component: {fileID: 204678112071140200}
-  - component: {fileID: 1392546857210915358}
   - component: {fileID: 3352186085229923008}
   - component: {fileID: 6230295091893915882}
   - component: {fileID: 7091060363610485331}
+  - component: {fileID: 390435151989816231}
   m_Layer: 5
   m_Name: MediumDifficultyToggle
   m_TagString: Untagged
@@ -2290,28 +2400,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4925142426983178346}
   m_CullTransparentMesh: 1
---- !u!95 &1392546857210915358
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4925142426983178346}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 5d7cd01e84cd94175b9c76e49d7eae45, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &3352186085229923008
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2332,7 +2420,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -7777177733210423690, guid: 48e31af7a44b54f75aa1e18af43449ff, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2415,6 +2503,82 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls: []
+--- !u!114 &390435151989816231
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4925142426983178346}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 160a4a1db1daf4ddc9e64850d726d152, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ApplicationSpriteSequence
+  target: {fileID: 3352186085229923008}
+  addresses:
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_01
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_02
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_03
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_04
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_05
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_06
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_07
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_08
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_09
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_10
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_11
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_12
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_13
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_14
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_15
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_16
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_17
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_18
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_19
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_20
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_21
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_22
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_23
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_24
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_25
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_26
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_27
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_28
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_29
+  - application/main-menu/ui/ui_mainmenu_difficulty_medium_30
+  frameTimes:
+  - 0
+  - 0.033333335
+  - 0.06666667
+  - 0.1
+  - 0.13333334
+  - 0.16666667
+  - 0.2
+  - 0.23333333
+  - 0.26666668
+  - 0.3
+  - 0.33333334
+  - 0.36666667
+  - 0.4
+  - 0.43333334
+  - 0.46666667
+  - 0.5
+  - 0.53333336
+  - 0.56666666
+  - 0.6
+  - 0.6333333
+  - 0.6666667
+  - 0.7
+  - 0.73333335
+  - 0.76666665
+  - 0.8
+  - 0.8333333
+  - 0.8666667
+  - 0.9
+  - 0.93333334
+  - 0.96666664
+  duration: 1
 --- !u!1 &5028471959904192476
 GameObject:
   m_ObjectHideFlags: 0
@@ -2744,7 +2908,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 6158112241636284914, guid: 74ee868ef4778469da42df56e6448586, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -2765,7 +2929,6 @@ GameObject:
   - component: {fileID: 9059562689616053646}
   - component: {fileID: 1229856787208461252}
   - component: {fileID: 8357555480293811561}
-  - component: {fileID: 4801684854607709828}
   - component: {fileID: 4695173900618911208}
   - component: {fileID: 287535894737444482}
   m_Layer: 5
@@ -2821,7 +2984,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 0
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -2846,28 +3009,6 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!95 &4801684854607709828
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6007681444001268263}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: dcc09bae2e8d7467aaf79cf60b6ba7bb, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &4695173900618911208
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2888,7 +3029,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 8158316582324445524, guid: 3da95620cc8c944ef8d3d6af3c5319c8, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2932,7 +3073,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3038773154435603155}
-  - component: {fileID: 4147854565849789630}
+  - component: {fileID: 8673251045123192037}
   m_Layer: 0
   m_Name: MainMenuRoot
   m_TagString: Untagged
@@ -2958,7 +3099,7 @@ Transform:
   - {fileID: 4526267750743584795}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4147854565849789630
+--- !u!114 &8673251045123192037
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -2967,9 +3108,56 @@ MonoBehaviour:
   m_GameObject: {fileID: 6716492662942411424}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: 2b6c5984300d046618468cb2c752bc9a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
+  m_EditorClassIdentifier: GameAssembly::ApplicationTextureBindings
+  rawImages: []
+  images:
+  - target: {fileID: 511988149193674341}
+    address: application/main-menu/ui/ui_mainmenu_background
+  - target: {fileID: 3264235398623835643}
+    address: application/main-menu/ui/ui_mainmenu_difficulty_easy_01
+  - target: {fileID: 1107587961424910366}
+    address: application/main-menu/ui/ui_mainmenu_toggle_easy_selected_icon
+  - target: {fileID: 3352186085229923008}
+    address: application/main-menu/ui/ui_mainmenu_difficulty_medium_01
+  - target: {fileID: 6267165759753716286}
+    address: application/main-menu/ui/ui_mainmenu_toggle_medium_selected_icon
+  - target: {fileID: 4489815221286651001}
+    address: application/main-menu/ui/ui_mainmenu_difficulty_hard_01
+  - target: {fileID: 15557881866302039}
+    address: application/main-menu/ui/ui_mainmenu_toggle_hard_selected_icon
+  - target: {fileID: 8001419223105419053}
+    address: application/main-menu/ui/ui_mainmenu_toggle_small_map_selected_icon
+  - target: {fileID: 6561230361397674674}
+    address: application/main-menu/ui/ui_mainmenu_toggle_medium_map_selected_icon
+  - target: {fileID: 1389756185531656615}
+    address: application/main-menu/ui/ui_mainmenu_toggle_large_map_selected_icon
+  - target: {fileID: 637045436869335955}
+    address: application/main-menu/ui/ui_mainmenu_exit_01
+  - target: {fileID: 1496371334736117905}
+    address: application/main-menu/ui/ui_mainmenu_exit_pressed
+  - target: {fileID: 4469080747921590059}
+    address: application/main-menu/ui/ui_mainmenu_credits_icon
+  - target: {fileID: 7308605248486234509}
+    address: application/main-menu/ui/ui_mainmenu_load_01
+  - target: {fileID: 3762209737567910244}
+    address: application/main-menu/ui/ui_mainmenu_load_pressed
+  - target: {fileID: 7068155027032104386}
+    address: application/main-menu/ui/ui_mainmenu_hqonly_icon
+  receivers:
+  - target: {fileID: 496565184680347451}
+    key: standardVictoryConditionSprite
+    address: application/main-menu/ui/ui_mainmenu_hq_icon
+  - target: {fileID: 496565184680347451}
+    key: headquartersVictoryConditionSprite
+    address: application/main-menu/ui/ui_mainmenu_hqonly_icon
+  buttons:
+  - target: {fileID: 885846100628831479}
+    highlightedAddress: 
+    pressedAddress: application/main-menu/ui/ui_mainmenu_credits_icon_pressed
+    selectedAddress: 
+    disabledAddress: 
 --- !u!1 &6776010785333954710
 GameObject:
   m_ObjectHideFlags: 0
@@ -2981,9 +3169,9 @@ GameObject:
   - component: {fileID: 3137420004634809518}
   - component: {fileID: 11234609303440955}
   - component: {fileID: 2962588249654810872}
-  - component: {fileID: 3728366711206975647}
   - component: {fileID: 7308605248486234509}
   - component: {fileID: 7709341516244639331}
+  - component: {fileID: 2595765254051412591}
   m_Layer: 5
   m_Name: LoadGameButton
   m_TagString: Untagged
@@ -3063,28 +3251,6 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!95 &3728366711206975647
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6776010785333954710}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 7d4b33c965b5f4ac2b95060ba8f9a8e8, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &7308605248486234509
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3105,7 +3271,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 6256935228223071393, guid: 102d95d45d76e440980b6dc4060e1bd5, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -3140,6 +3306,82 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls: []
+--- !u!114 &2595765254051412591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6776010785333954710}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 160a4a1db1daf4ddc9e64850d726d152, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ApplicationSpriteSequence
+  target: {fileID: 7308605248486234509}
+  addresses:
+  - application/main-menu/ui/ui_mainmenu_load_01
+  - application/main-menu/ui/ui_mainmenu_load_02
+  - application/main-menu/ui/ui_mainmenu_load_03
+  - application/main-menu/ui/ui_mainmenu_load_04
+  - application/main-menu/ui/ui_mainmenu_load_05
+  - application/main-menu/ui/ui_mainmenu_load_06
+  - application/main-menu/ui/ui_mainmenu_load_07
+  - application/main-menu/ui/ui_mainmenu_load_08
+  - application/main-menu/ui/ui_mainmenu_load_09
+  - application/main-menu/ui/ui_mainmenu_load_10
+  - application/main-menu/ui/ui_mainmenu_load_11
+  - application/main-menu/ui/ui_mainmenu_load_12
+  - application/main-menu/ui/ui_mainmenu_load_13
+  - application/main-menu/ui/ui_mainmenu_load_14
+  - application/main-menu/ui/ui_mainmenu_load_15
+  - application/main-menu/ui/ui_mainmenu_load_16
+  - application/main-menu/ui/ui_mainmenu_load_17
+  - application/main-menu/ui/ui_mainmenu_load_18
+  - application/main-menu/ui/ui_mainmenu_load_19
+  - application/main-menu/ui/ui_mainmenu_load_20
+  - application/main-menu/ui/ui_mainmenu_load_21
+  - application/main-menu/ui/ui_mainmenu_load_22
+  - application/main-menu/ui/ui_mainmenu_load_23
+  - application/main-menu/ui/ui_mainmenu_load_24
+  - application/main-menu/ui/ui_mainmenu_load_25
+  - application/main-menu/ui/ui_mainmenu_load_26
+  - application/main-menu/ui/ui_mainmenu_load_27
+  - application/main-menu/ui/ui_mainmenu_load_28
+  - application/main-menu/ui/ui_mainmenu_load_29
+  - application/main-menu/ui/ui_mainmenu_load_30
+  frameTimes:
+  - 0
+  - 0.06666667
+  - 0.11666667
+  - 0.18333334
+  - 0.23333333
+  - 0.3
+  - 0.36666667
+  - 0.41666666
+  - 0.48333332
+  - 0.55
+  - 0.6
+  - 0.6666667
+  - 0.71666664
+  - 0.78333336
+  - 0.85
+  - 0.9
+  - 0.96666664
+  - 1.0333333
+  - 1.0833334
+  - 1.15
+  - 1.2
+  - 1.2666667
+  - 1.3333334
+  - 1.3833333
+  - 1.45
+  - 1.5166667
+  - 1.5666667
+  - 1.6333333
+  - 1.6833333
+  - 1.75
+  duration: 1.7666667
 --- !u!1 &7528271515164219608
 GameObject:
   m_ObjectHideFlags: 0
@@ -3242,7 +3484,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -6531381471609559566, guid: 1b89ae77e265f4358aa32c0c89136c1f, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3319,7 +3561,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -1181595850936368484, guid: 027d6e3dc22274d3191f2128aaab0f12, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -3359,7 +3601,7 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   m_SpriteState:
     m_HighlightedSprite: {fileID: 0}
-    m_PressedSprite: {fileID: -1738500102143540217, guid: 9153f6f2db276425d8cdf7c4e0a19810, type: 3}
+    m_PressedSprite: {fileID: 0}
     m_SelectedSprite: {fileID: 0}
     m_DisabledSprite: {fileID: 0}
   m_AnimationTriggers:
@@ -3401,7 +3643,6 @@ GameObject:
   - component: {fileID: 6369025670641061210}
   - component: {fileID: 4923960293381084311}
   - component: {fileID: 3252410292273161294}
-  - component: {fileID: 2999463670866295518}
   - component: {fileID: 2322482946369043442}
   - component: {fileID: 8057016632890189982}
   m_Layer: 5
@@ -3457,7 +3698,7 @@ MonoBehaviour:
     m_SelectOnDown: {fileID: 0}
     m_SelectOnLeft: {fileID: 0}
     m_SelectOnRight: {fileID: 0}
-  m_Transition: 1
+  m_Transition: 0
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
     m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
@@ -3482,28 +3723,6 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
---- !u!95 &2999463670866295518
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8398357503673604819}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 883c855038ddf48cc92f1c0d3e987034, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &2322482946369043442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3524,7 +3743,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -7690696933436122978, guid: 6365721318b114027b6208b097ee6ba5, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3624,7 +3843,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4372513298435329126, guid: 6853f102d90334702b9a7b65b45b8341, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3691,10 +3910,10 @@ GameObject:
   m_Component:
   - component: {fileID: 5344315945936041216}
   - component: {fileID: 5056341325683632263}
-  - component: {fileID: 8695902798159705765}
   - component: {fileID: 4489815221286651001}
   - component: {fileID: 6027004482196699947}
   - component: {fileID: 2573013973403560848}
+  - component: {fileID: 2755040727274805046}
   m_Layer: 5
   m_Name: HardDifficultyToggle
   m_TagString: Untagged
@@ -3730,28 +3949,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9179933248042482421}
   m_CullTransparentMesh: 1
---- !u!95 &8695902798159705765
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9179933248042482421}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 038779292edb54dcba4f2f80efb42b3d, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &4489815221286651001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3772,7 +3969,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -2896487267954566950, guid: ef85677229cff4906b4a46acba2c8ba5, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -3855,3 +4052,79 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls: []
+--- !u!114 &2755040727274805046
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9179933248042482421}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 160a4a1db1daf4ddc9e64850d726d152, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameAssembly::ApplicationSpriteSequence
+  target: {fileID: 4489815221286651001}
+  addresses:
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_01
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_02
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_03
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_04
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_05
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_06
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_07
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_08
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_09
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_10
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_11
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_12
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_13
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_14
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_15
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_16
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_17
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_18
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_19
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_20
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_21
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_22
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_23
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_24
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_25
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_26
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_27
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_28
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_29
+  - application/main-menu/ui/ui_mainmenu_difficulty_hard_30
+  frameTimes:
+  - 0
+  - 0.033333335
+  - 0.06666667
+  - 0.1
+  - 0.13333334
+  - 0.16666667
+  - 0.2
+  - 0.23333333
+  - 0.26666668
+  - 0.3
+  - 0.33333334
+  - 0.36666667
+  - 0.4
+  - 0.43333334
+  - 0.46666667
+  - 0.5
+  - 0.53333336
+  - 0.56666666
+  - 0.6
+  - 0.6333333
+  - 0.6666667
+  - 0.7
+  - 0.73333335
+  - 0.76666665
+  - 0.8
+  - 0.8333333
+  - 0.8666667
+  - 0.9
+  - 0.93333334
+  - 0.96666664
+  duration: 1

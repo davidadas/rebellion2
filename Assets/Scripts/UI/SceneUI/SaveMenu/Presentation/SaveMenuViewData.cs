@@ -11,8 +11,6 @@ public sealed class SaveMenuWindowRenderData
     /// <summary>
     /// Creates immutable presentation data for the save menu window.
     /// </summary>
-    /// <param name="returnStrategyButtonUpTexture">The normal return-button texture.</param>
-    /// <param name="returnStrategyButtonDownTexture">The pressed return-button texture.</param>
     /// <param name="musicVolume">The normalized music volume.</param>
     /// <param name="sfxVolume">The normalized sound-effect volume.</param>
     /// <param name="versionText">The displayed application version.</param>
@@ -20,8 +18,6 @@ public sealed class SaveMenuWindowRenderData
     /// <param name="slots">The save-slot presentation data.</param>
     /// <param name="confirmationMessage">The active confirmation message, or null.</param>
     public SaveMenuWindowRenderData(
-        Texture2D returnStrategyButtonUpTexture,
-        Texture2D returnStrategyButtonDownTexture,
         float musicVolume,
         float sfxVolume,
         string versionText,
@@ -30,8 +26,6 @@ public sealed class SaveMenuWindowRenderData
         string confirmationMessage
     )
     {
-        ReturnStrategyButtonUpTexture = returnStrategyButtonUpTexture;
-        ReturnStrategyButtonDownTexture = returnStrategyButtonDownTexture;
         MusicVolume = Mathf.Clamp01(musicVolume);
         SfxVolume = Mathf.Clamp01(sfxVolume);
         VersionText = versionText ?? string.Empty;
@@ -46,10 +40,6 @@ public sealed class SaveMenuWindowRenderData
         Slots = new List<SaveSlotRenderData>(slots).AsReadOnly();
         ConfirmationMessage = confirmationMessage;
     }
-
-    public Texture2D ReturnStrategyButtonUpTexture { get; }
-
-    public Texture2D ReturnStrategyButtonDownTexture { get; }
 
     public float MusicVolume { get; }
 

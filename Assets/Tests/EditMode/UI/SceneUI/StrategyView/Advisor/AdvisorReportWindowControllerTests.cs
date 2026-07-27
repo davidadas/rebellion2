@@ -30,9 +30,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Player" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            UIContext uiContext = new UIContext(
+            UIContext uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);

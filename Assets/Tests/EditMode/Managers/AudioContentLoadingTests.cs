@@ -1,13 +1,10 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 [TestFixture]
 public sealed class AudioContentLoadingTests
@@ -16,27 +13,39 @@ public sealed class AudioContentLoadingTests
     private const string _audioSettingsPath = "ProjectSettings/AudioManager.asset";
     private const string _mainMenuPrefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
 
-    [TearDown]
-    public void TearDown()
+    [Test]
+    public async Task PreloadAsync_MainMenuGroup_MakesMainMenuCuesResidentAsync()
     {
-        ResourceManager.SetContentRootPathForTests(null);
-    }
+        ContentPack pack = ContentPackLoader.OpenActive();
+        using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+        await PreloadApplicationAndPackAsync(pack, assets, "main-menu");
 
-    [UnityTest]
-    public IEnumerator InitializeAsync_ConfiguredImmediateCues_AreResident()
-    {
-        ResourceManager.SetContentRootPathForTests(null);
-        Task initialization = ResourceManager.InitializeAsync();
-        while (!initialization.IsCompleted)
-            yield return null;
-        if (initialization.IsFaulted)
-            throw initialization.Exception.GetBaseException();
-
-        foreach (string resourcePath in GetFixedCuePaths())
+        foreach (string resourcePath in GetMainMenuCuePaths())
         {
-            AudioClip clip = ResourceManager.GetAudio(resourcePath);
+            AudioClip clip = assets.GetPreloadedAudio(resourcePath);
             Assert.IsNotNull(clip, resourcePath);
             Assert.AreEqual(AudioDataLoadState.Loaded, clip.loadState, resourcePath);
+        }
+    }
+
+    [Test]
+    public async Task PreloadAsync_StrategyGroup_MakesStrategyCuesResidentAsync()
+    {
+        ContentPack pack = ContentPackLoader.OpenActive();
+        using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+        await PreloadApplicationAndPackAsync(pack, assets, "strategy");
+
+        FactionThemeLibrary themeLibrary = new FactionThemeLibrary(pack.GameData.FactionThemes);
+        string[] paths = themeLibrary
+            .GetAllThemes()
+            .Append(themeLibrary.GetTheme(null))
+            .SelectMany(StrategyUISoundPaths.GetPreloadPaths)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        foreach (string path in paths)
+        {
+            Assert.IsNotNull(assets.GetPreloadedAudio(path), path);
         }
     }
 
@@ -49,19 +58,6 @@ public sealed class AudioContentLoadingTests
             $"m_RequestedDSPBufferSize: {_requestedDspBufferSize}",
             audioSettings
         );
-    }
-
-    private static string[] GetFixedCuePaths()
-    {
-        FactionThemeLibrary themeLibrary = new FactionThemeLibrary();
-        IEnumerable<FactionTheme> themes = themeLibrary
-            .GetAllThemes()
-            .Append(themeLibrary.GetTheme(null));
-
-        return GetMainMenuCuePaths()
-            .Concat(themes.SelectMany(StrategyUISoundPaths.GetPreloadPaths))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
     }
 
     private static string[] GetMainMenuCuePaths()
@@ -83,5 +79,19 @@ public sealed class AudioContentLoadingTests
         {
             PrefabUtility.UnloadPrefabContents(prefabRoot);
         }
+    }
+
+    private static Task PreloadApplicationAndPackAsync(
+        ContentPack pack,
+        ContentAssets assets,
+        string preloadID
+    )
+    {
+        return Task.WhenAll(
+            assets.PreloadAsync(
+                ContentPackLoader.LoadApplicationPreloadManifest(pack.ContentRootPath, preloadID)
+            ),
+            assets.PreloadAsync(pack.GetPreloadManifest(preloadID))
+        );
     }
 }

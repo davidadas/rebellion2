@@ -33,9 +33,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
                 new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
             );
             game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _planetSystem = new GamePlanetSystem

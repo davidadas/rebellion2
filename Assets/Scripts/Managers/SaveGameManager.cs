@@ -133,11 +133,20 @@ public class SaveGameManager
         return Path.Combine(GetSaveDirectoryPath(), $"{fileName}.sav");
     }
 
+    /// <summary>
+    /// Gets the sidecar metadata path for a save file.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <returns>The full sidecar metadata path.</returns>
     internal string GetSaveMetadataFilePath(string fileName)
     {
         return Path.Combine(GetSaveDirectoryPath(), fileName + _metadataFileExtension);
     }
 
+    /// <summary>
+    /// Returns valid saves occupying the configured numbered slots.
+    /// </summary>
+    /// <returns>The discovered numbered save entries in slot order.</returns>
     public IReadOnlyList<SaveGameEntry> GetSaveSlotEntries()
     {
         List<SaveGameEntry> saves = new List<SaveGameEntry>(_saveSlotCount);
@@ -208,6 +217,9 @@ public class SaveGameManager
         game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
         game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
+        game.Metadata.PackID = game.Summary?.PackID;
+        game.Metadata.PackVersion = game.Summary?.PackVersion;
+        game.Metadata.ScenarioID = game.Summary?.ScenarioID;
         if (!string.IsNullOrEmpty(displayName))
             game.Metadata.SaveDisplayName = displayName;
         else if (fileName == QuickSaveFileName)
@@ -302,6 +314,11 @@ public class SaveGameManager
         return metadata.SaveVersion;
     }
 
+    /// <summary>
+    /// Attempts to read and validate one save entry without interrupting menu discovery.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <returns>The valid save entry, or null when its metadata cannot be read.</returns>
     private SaveGameEntry TryReadSaveEntry(string fileName)
     {
         try
@@ -319,6 +336,11 @@ public class SaveGameManager
         }
     }
 
+    /// <summary>
+    /// Reads current sidecar metadata or extracts it from the full save file.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <returns>The deserialized save metadata.</returns>
     private GameMetadata ReadSaveMetadata(string fileName)
     {
         string saveFilePath = GetSaveFilePath(fileName);
@@ -348,6 +370,12 @@ public class SaveGameManager
         return metadata;
     }
 
+    /// <summary>
+    /// Attempts to deserialize one metadata sidecar.
+    /// </summary>
+    /// <param name="metadataFilePath">The sidecar metadata file path.</param>
+    /// <param name="metadata">Receives the deserialized metadata.</param>
+    /// <returns>True when the sidecar contains valid metadata.</returns>
     private bool TryDeserializeMetadataFile(string metadataFilePath, out GameMetadata metadata)
     {
         try
@@ -369,6 +397,12 @@ public class SaveGameManager
         }
     }
 
+    /// <summary>
+    /// Attempts to write one metadata sidecar without failing the primary save operation.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <param name="metadata">The metadata to serialize.</param>
+    /// <returns>True when the sidecar was written.</returns>
     private bool TryWriteSaveMetadata(string fileName, GameMetadata metadata)
     {
         try
@@ -393,6 +427,10 @@ public class SaveGameManager
         }
     }
 
+    /// <summary>
+    /// Creates the serializer used by save metadata sidecars.
+    /// </summary>
+    /// <returns>The configured metadata serializer.</returns>
     private static GameSerializer CreateMetadataSerializer()
     {
         return new GameSerializer(

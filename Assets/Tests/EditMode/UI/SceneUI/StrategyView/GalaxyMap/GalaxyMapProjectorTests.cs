@@ -34,9 +34,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" }
             );
             _game.Summary.PlayerFactionID = _playerFactionId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _projector = new GalaxyMapProjector(() => _uiContext);
@@ -134,9 +134,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Project_CorellianPlanets_ReturnsCorrectedSeloniaAndDurosOffsets()
         {
-            GamePlanetSystem system = ResourceManager
-                .GetEntityData<GamePlanetSystem>()
-                .Single(candidate => candidate.TypeID == "PSCOR");
+            GamePlanetSystem system = TestContent.Data.PlanetSystems.Single(candidate =>
+                candidate.TypeID == "PSCOR"
+            );
             Planet selonia = system.Planets.Single(planet => planet.InstanceID == "SELONIA");
             Planet duros = system.Planets.Single(planet => planet.InstanceID == "DUROS");
             GalaxyMapSector sector = new GalaxyMapSector(

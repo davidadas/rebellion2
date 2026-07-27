@@ -13,11 +13,11 @@ public static class CommonUIPrefabBuilder
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _scrollUpTexturePath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_up.png";
+        "application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up.png";
     private const string _scrollDownTexturePath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_arrow_pressed_2.png";
+        "application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
     private const string _scrollHandleTexturePath =
-        "Assets/Content/Art/HD/UI/StrategyView/ui_strategyview_scrollbar_middle.png";
+        "application/strategy/ui/controls/ui_strategyview_scrollbar_middle.png";
     private const int _defaultScrollbarWidth = 13;
     private const int _defaultArrowHeight = 9;
     private const int _defaultInputWidth = 3;
@@ -275,10 +275,7 @@ public static class CommonUIPrefabBuilder
     /// <returns>The loaded texture.</returns>
     private static Texture2D LoadRequiredTexture(string path)
     {
-        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
-        if (texture == null)
-            throw new FileNotFoundException(path);
-        return texture;
+        return ApplicationTextureBindingAuthoring.LoadTexture(path);
     }
 
     /// <summary>
@@ -340,15 +337,13 @@ public static class CommonUIPrefabBuilder
     /// <returns>The saved prefab asset root.</returns>
     private static GameObject SavePrefab(GameObject root, string path)
     {
-        if (root.GetComponent<ExternalContentArt>() == null)
-            root.AddComponent<ExternalContentArt>();
-
         string directory = Path.GetDirectoryName(path);
         if (!Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
             AssetDatabase.Refresh();
         }
+        ApplicationTextureBindingAuthoring.Capture(root);
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         UnityEngine.Object.DestroyImmediate(root);
         if (!success || saved == null)

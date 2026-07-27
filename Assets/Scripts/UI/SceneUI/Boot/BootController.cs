@@ -7,7 +7,11 @@ using UnityEngine;
 /// </summary>
 public sealed class BootController : MonoBehaviour
 {
-    private static readonly string[] _bootVideoPaths = { "Videos/intro", "Videos/opening_crawl" };
+    private static readonly string[] _bootVideoPaths =
+    {
+        "application/boot/videos/intro",
+        "application/boot/videos/opening-crawl",
+    };
 
     [SerializeField]
     private GameObject cutscenePlayerPrefab;
@@ -23,7 +27,7 @@ public sealed class BootController : MonoBehaviour
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             bootstrap.InitializeCutsceneManager(cutscenePlayerPrefab);
-            await bootstrap.InitializeContentAsync();
+            await bootstrap.InitializeMainMenuContentAsync();
             PlayNext();
         }
         catch (Exception exception)

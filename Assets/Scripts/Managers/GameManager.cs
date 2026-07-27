@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
-using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 /// <summary>
 /// Coordinates all game systems each tick and routes results through domain reactions and observers.
@@ -16,6 +16,7 @@ public sealed class GameManager
 {
     // Game State.
     private GameRoot _game;
+    private readonly GameDataCatalog _gameData;
     private IRandomNumberProvider _randomProvider;
 
     // Messaging and Events.
@@ -93,8 +94,10 @@ public sealed class GameManager
     /// Creates a new GameManager for the given game instance.
     /// </summary>
     /// <param name="game">The game instance to manage.</param>
-    public GameManager(GameRoot game)
+    /// <param name="gameData">The active pack's composed game data.</param>
+    public GameManager(GameRoot game, GameDataCatalog gameData)
     {
+        _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
         InitializeGame(game);
     }
 
@@ -278,7 +281,7 @@ public sealed class GameManager
 
         _game = game;
         if (_game.Config == null)
-            _game.SetConfig(ResourceManager.GetConfig<GameConfig>());
+            _game.SetConfig(_gameData.GameConfig);
 
         _randomProvider = _game.Random;
         InitializeSystems();
@@ -292,10 +295,7 @@ public sealed class GameManager
     /// </summary>
     private void InitializeSystems()
     {
-        _messageSystem = new MessageSystem(
-            _game,
-            ResourceManager.GetEntityData<MessageDefinition>()
-        );
+        _messageSystem = new MessageSystem(_game, _gameData.MessageDefinitions.GetDeepCopy());
         _eventSystem = new GameEventSystem(_game, _randomProvider);
         _fogOfWarSystem = new FogOfWarSystem(_game);
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
@@ -371,13 +371,13 @@ public sealed class GameManager
     /// </summary>
     private void RebuildDerivedState()
     {
-        IManufacturable[] templates = ResourceManager
-            .GetEntityData<Building>()
+        IManufacturable[] templates = _gameData
+            .Buildings.GetDeepCopy()
             .Cast<IManufacturable>()
-            .Concat(ResourceManager.GetEntityData<CapitalShip>())
-            .Concat(ResourceManager.GetEntityData<Starfighter>())
-            .Concat(ResourceManager.GetEntityData<Regiment>())
-            .Concat(ResourceManager.GetEntityData<SpecialForces>())
+            .Concat(_gameData.CapitalShips.GetDeepCopy())
+            .Concat(_gameData.Starfighters.GetDeepCopy())
+            .Concat(_gameData.Regiments.GetDeepCopy())
+            .Concat(_gameData.SpecialForces.GetDeepCopy())
             .ToArray();
 
         foreach (Faction faction in _game.GetFactions())

@@ -44,11 +44,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         [Test]
         public void Render_ProjectedButtons_AppliesTexturesVisibilityAndInteraction()
         {
-            Texture displayFallback = FindComponent<RawImage>("DisplayButtonImage").texture;
             MessagesCommandBarRenderData data = new MessagesCommandBarRenderData(
                 _texture,
                 CreateButton(_texture, _pressedTexture, true, true),
-                CreateButton(null, null, true, true),
+                CreateButton(_texture, _pressedTexture, true, true),
                 CreateButton(_texture, _pressedTexture, true, false),
                 CreateButton(_texture, _pressedTexture, false, true),
                 CreateButton(_texture, _pressedTexture, true, true),
@@ -59,7 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
             Assert.AreSame(_texture, FindComponent<RawImage>("ButtonStripImage").texture);
             Assert.AreSame(_texture, FindComponent<RawImage>("CloseButtonImage").texture);
-            Assert.AreSame(displayFallback, FindComponent<RawImage>("DisplayButtonImage").texture);
+            Assert.AreSame(_texture, FindComponent<RawImage>("DisplayButtonImage").texture);
             Assert.IsTrue(FindComponent<Button>("DisplayButtonImage").interactable);
             Assert.IsTrue(FindComponent<RawImage>("DisplayButtonImage").raycastTarget);
             Assert.IsTrue(FindObject("IndexButtonImage").activeSelf);

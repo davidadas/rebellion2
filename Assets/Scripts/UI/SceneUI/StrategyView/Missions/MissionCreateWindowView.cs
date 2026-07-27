@@ -9,7 +9,10 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored Mission Create window and emits semantic mission-creation gestures.
 /// </summary>
-public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandler
+public sealed class MissionCreateWindowView
+    : MonoBehaviour,
+        IPointerClickHandler,
+        IApplicationTextureReceiver
 {
     private const int _titleImageCount = 2;
 
@@ -42,12 +45,6 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
 
     [SerializeField]
     private Button[] tabButtons = Array.Empty<Button>();
-
-    [SerializeField]
-    private Texture2D[] tabActiveTextures = Array.Empty<Texture2D>();
-
-    [SerializeField]
-    private Texture2D[] tabInactiveTextures = Array.Empty<Texture2D>();
 
     [Header("Actions")]
     [SerializeField]
@@ -130,9 +127,6 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
 
     [SerializeField]
     private Texture2D personnelBackgroundTexture;
-
-    [SerializeField]
-    private Texture2D titleTexture;
 
     [SerializeField]
     private Texture2D dropdownButtonUpTexture;
@@ -280,7 +274,7 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
                 : personnelBackgroundTexture
         );
         RenderTitle(data.TitleTexture, data.ActiveTab);
-        RenderTabs(data.Tabs, data.ActiveTab);
+        RenderTabs(data.Tabs);
 
         if (data.ActiveTab == MissionCreateWindowTab.Mission)
         {
@@ -294,18 +288,6 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
         }
 
         gameObject.SetActive(true);
-    }
-
-    /// <summary>
-    /// Gets the authored active or inactive fallback texture for one tab.
-    /// </summary>
-    /// <param name="tab">The tab index.</param>
-    /// <param name="active">Whether the tab is selected.</param>
-    /// <returns>The fallback texture, or null.</returns>
-    private Texture2D GetFallbackTabTexture(int tab, bool active)
-    {
-        Texture2D[] textures = active ? tabActiveTextures : tabInactiveTextures;
-        return textures != null && tab >= 0 && tab < textures.Length ? textures[tab] : null;
     }
 
     /// <summary>
@@ -409,9 +391,8 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
     /// <param name="activeTab">The active workflow tab.</param>
     private void RenderTitle(Texture texture, MissionCreateWindowTab activeTab)
     {
-        Texture resolvedTexture = texture ?? titleTexture;
         foreach (RawImage titleImage in titleImages)
-            UILayout.SetInteractiveImageTexture(titleImage, resolvedTexture);
+            UILayout.SetInteractiveImageTexture(titleImage, texture);
 
         titleTextField.color =
             activeTab == MissionCreateWindowTab.Mission ? Color.black : Color.white;
@@ -421,11 +402,7 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
     /// Applies ordered faction tab textures.
     /// </summary>
     /// <param name="tabs">The ordered tab snapshots.</param>
-    /// <param name="activeTab">The selected workflow tab.</param>
-    private void RenderTabs(
-        IReadOnlyList<MissionCreateTabRenderData> tabs,
-        MissionCreateWindowTab activeTab
-    )
+    private void RenderTabs(IReadOnlyList<MissionCreateTabRenderData> tabs)
     {
         if (tabs == null || tabs.Count != tabImages.Length)
             throw new ArgumentException(
@@ -441,11 +418,7 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
                 );
 
             tabImages[index].gameObject.SetActive(true);
-            tabPressVisuals[index]
-                .SetTextures(
-                    tab.Texture ?? GetFallbackTabTexture(index, tab.Tab == activeTab),
-                    tab.PressedTexture ?? GetFallbackTabTexture(index, true)
-                );
+            tabPressVisuals[index].SetTextures(tab.Texture, tab.PressedTexture);
         }
     }
 
@@ -903,16 +876,6 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
             "TabPressVisuals"
         );
         VerifyReferenceArray(tabButtons, MissionCreateWindowRenderData.TabCount, "TabButtons");
-        VerifyReferenceArray(
-            tabActiveTextures,
-            MissionCreateWindowRenderData.TabCount,
-            "TabActiveTextures"
-        );
-        VerifyReferenceArray(
-            tabInactiveTextures,
-            MissionCreateWindowRenderData.TabCount,
-            "TabInactiveTextures"
-        );
         if (infoButton == null)
             throw new MissingReferenceException($"{name}/InfoButton is missing.");
         if (okButton == null)
@@ -967,8 +930,6 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
             throw new MissingReferenceException($"{name}/MissionBackgroundTexture is missing.");
         if (personnelBackgroundTexture == null)
             throw new MissingReferenceException($"{name}/PersonnelBackgroundTexture is missing.");
-        if (titleTexture == null)
-            throw new MissingReferenceException($"{name}/TitleTexture is missing.");
         if (dropdownButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/DropdownButtonUpTexture is missing.");
         if (dropdownButtonDownTexture == null)
@@ -1001,6 +962,27 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
         {
             if (items[index] == null)
                 throw new MissingReferenceException($"{name}/{fieldName}[{index}] is missing.");
+        }
+    }
+
+    public void SetApplicationTexture(string key, Texture2D texture)
+    {
+        switch (key)
+        {
+            case nameof(missionBackgroundTexture):
+                missionBackgroundTexture = texture;
+                break;
+            case nameof(personnelBackgroundTexture):
+                personnelBackgroundTexture = texture;
+                break;
+            case nameof(dropdownButtonUpTexture):
+                dropdownButtonUpTexture = texture;
+                break;
+            case nameof(dropdownButtonDownTexture):
+                dropdownButtonDownTexture = texture;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(key), key, null);
         }
     }
 }

@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: ec09a737134d74155b1818cdb2c4929b, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -237,7 +237,6 @@ GameObject:
   - component: {fileID: 944930593160283074}
   - component: {fileID: 461125935423362374}
   - component: {fileID: 4346933298047620438}
-  - component: {fileID: 2424634620777082298}
   m_Layer: 0
   m_Name: MissionCreateParticipantRow
   m_TagString: Untagged
@@ -296,8 +295,6 @@ MonoBehaviour:
   backgroundImage: {fileID: 2207023897390402541}
   entityImage: {fileID: 5494759491155939025}
   nameTextField: {fileID: 1503236490225143063}
-  backgroundTexture: {fileID: 2800000, guid: ec09a737134d74155b1818cdb2c4929b, type: 3}
-  inTransitBackgroundTexture: {fileID: 2800000, guid: 23a6ed9a02ca2456d910372c2f53b89b, type: 3}
 --- !u!114 &4346933298047620438
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -318,18 +315,6 @@ MonoBehaviour:
   m_FlexibleWidth: 0
   m_FlexibleHeight: 0
   m_LayoutPriority: 1
---- !u!114 &2424634620777082298
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7142571044170545901}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
 --- !u!1 &8155369251971928377
 GameObject:
   m_ObjectHideFlags: 0
@@ -395,7 +380,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: cb6ce1eecb474420ead4f9a237184739, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0

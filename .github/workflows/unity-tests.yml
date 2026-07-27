@@ -11,7 +11,7 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
-  REBELLION2_MEDIA_REVISION: bcc9a0c1bcffb50053991bc5db44e1325366adcd
+  REBELLION2_MEDIA_REVISION: 36a052a20bb3c672efa802ebf8be88dd94701396
 
 jobs:
   build:
@@ -40,22 +40,18 @@ jobs:
           persist-credentials: false
           lfs: true
           sparse-checkout: |
-            Art
-            Audio
-            Videos
+            Content
           path: .ci/rebellion2-media
 
       - name: Install media
         run: |
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Content/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Content/Audio/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Content/Videos/
+          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Content/ Content/
           rm -rf .ci
 
       - uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Assets/**', 'Content/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-${{ matrix.targetPlatform }}-
             Library-
@@ -85,6 +81,7 @@ jobs:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.targetPlatform }}
+          buildMethod: StandalonePlayerBuild.Build
 
       - name: Reset package files
         run: |
@@ -191,21 +188,18 @@ jobs:
           persist-credentials: false
           lfs: true
           sparse-checkout: |
-            Art
-            Audio
+            Content
           path: .ci/rebellion2-media
 
       - name: Install media
         run: |
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Content/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Content/Audio/
-          mkdir -p Assets/Content/Videos
+          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Content/ Content/
           rm -rf .ci
 
       - uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ hashFiles('Assets/**', 'Content/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-
 

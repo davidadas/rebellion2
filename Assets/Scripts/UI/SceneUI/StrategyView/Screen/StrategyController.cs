@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -126,8 +125,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="manager">The active game manager.</param>
     /// <param name="context">The active strategy UI context.</param>
-    /// <returns>A task that completes when the initial strategy presentation is resident.</returns>
-    public Task InitializeAsync(GameManager manager, UIContext context)
+    public void Initialize(GameManager manager, UIContext context)
     {
         if (manager == null)
             throw new InvalidOperationException(
@@ -162,7 +160,6 @@ public sealed class StrategyController
         RegisterCancelHandlers();
         OnGameReady();
         LoadInitialContent();
-        return Task.CompletedTask;
     }
 
     /// <summary>

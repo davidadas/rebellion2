@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 6db5d4cb90b4447b3bf29c28234fdf46, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -132,7 +132,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 8518478827029554200}
   button: {fileID: 7031868459172231514}
-  upTexture: {fileID: 2800000, guid: 6db5d4cb90b4447b3bf29c28234fdf46, type: 3}
+  upTexture: {fileID: 0}
   downTexture: {fileID: 0}
 --- !u!1 &822855583765626919
 GameObject:
@@ -201,7 +201,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: 997b61aceedb44d53812f1c05cb855c8, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -266,7 +266,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 8961248351909761468}
   button: {fileID: 5304039325304986268}
-  upTexture: {fileID: 2800000, guid: 997b61aceedb44d53812f1c05cb855c8, type: 3}
+  upTexture: {fileID: 0}
   downTexture: {fileID: 0}
 --- !u!1 &1865930613637116251
 GameObject:
@@ -505,7 +505,7 @@ GameObject:
   - component: {fileID: 8208886866317168318}
   - component: {fileID: 6440156703422734649}
   - component: {fileID: 3983956325636538954}
-  - component: {fileID: 9039909221352993970}
+  - component: {fileID: 8657565192406453002}
   m_Layer: 0
   m_Name: StatusWindow
   m_TagString: Untagged
@@ -593,12 +593,12 @@ MonoBehaviour:
   closeButtonPressVisual: {fileID: 4179735522771161989}
   infoButton: {fileID: 5304039325304986268}
   closeButton: {fileID: 7031868459172231514}
-  infoButtonUpTexture: {fileID: 2800000, guid: 997b61aceedb44d53812f1c05cb855c8, type: 3}
-  infoButtonDownTexture: {fileID: 2800000, guid: dec27ae0d00454fd6a487d3ab8feb230, type: 3}
-  infoButtonDisabledTexture: {fileID: 2800000, guid: dbdb56d8ef9f64acdb6dd75e7d41e9c0, type: 3}
-  closeButtonUpTexture: {fileID: 2800000, guid: 6db5d4cb90b4447b3bf29c28234fdf46, type: 3}
-  closeButtonDownTexture: {fileID: 2800000, guid: 9951c8340ade34a3baa16fda9bd0b269, type: 3}
---- !u!114 &9039909221352993970
+  infoButtonUpTexture: {fileID: 0}
+  infoButtonDownTexture: {fileID: 0}
+  infoButtonDisabledTexture: {fileID: 0}
+  closeButtonUpTexture: {fileID: 0}
+  closeButtonDownTexture: {fileID: 0}
+--- !u!114 &8657565192406453002
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -607,9 +607,44 @@ MonoBehaviour:
   m_GameObject: {fileID: 5074232417779753497}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 14a35250030de4a488843bfd6c8b9d0f, type: 3}
+  m_Script: {fileID: 11500000, guid: 2b6c5984300d046618468cb2c752bc9a, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ExternalContentArt
+  m_EditorClassIdentifier: GameAssembly::ApplicationTextureBindings
+  rawImages:
+  - target: {fileID: 3520476940300855225}
+    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
+  - target: {fileID: 1824109103459985516}
+    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2
+  - target: {fileID: 5313269448097388705}
+    address: application/strategy/ui/controls/ui_strategyview_scrollbar_middle
+  - target: {fileID: 8961248351909761468}
+    address: application/strategy/ui/windows/ui_strategyview_status_info_button
+  - target: {fileID: 8518478827029554200}
+    address: application/strategy/ui/windows/ui_strategyview_status_close_button
+  images: []
+  receivers:
+  - target: {fileID: 3983956325636538954}
+    key: infoButtonUpTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_info_button
+  - target: {fileID: 3983956325636538954}
+    key: infoButtonDownTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_info_button_pressed
+  - target: {fileID: 3983956325636538954}
+    key: infoButtonDisabledTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_info_button_disabled
+  - target: {fileID: 3983956325636538954}
+    key: closeButtonUpTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_close_button
+  - target: {fileID: 3983956325636538954}
+    key: closeButtonDownTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_close_button_pressed
+  - target: {fileID: 6187487873036888724}
+    key: upTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_info_button
+  - target: {fileID: 4179735522771161989}
+    key: upTexture
+    address: application/strategy/ui/windows/ui_strategyview_status_close_button
+  buttons: []
 --- !u!1 &5341567507642771566
 GameObject:
   m_ObjectHideFlags: 0
@@ -675,7 +710,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: cb6ce1eecb474420ead4f9a237184739, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -717,7 +752,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 379, y: 272}
+  m_SizeDelta: {x: 14, y: 14}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &2693027375636890775
 CanvasRenderer:
@@ -747,7 +782,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: b4a6334b700214464a44c3dc94216b89, type: 3}
+  m_Texture: {fileID: 0}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1373,6 +1408,39 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 5759189334190098214, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 4976598366525627402}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1824109103459985516 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6647564049058198630, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
+  m_PrefabInstance: {fileID: 4976598366525627402}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+--- !u!114 &3520476940300855225 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8487968937766206387, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
+  m_PrefabInstance: {fileID: 4976598366525627402}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+--- !u!114 &5313269448097388705 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 913363971556983979, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
+  m_PrefabInstance: {fileID: 4976598366525627402}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
 --- !u!114 &5709601282157349930 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 733235465646641184, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}

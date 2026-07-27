@@ -1,6 +1,5 @@
 using System.Reflection;
 using NUnit.Framework;
-using Rebellion.Game.Factions;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
@@ -38,13 +37,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Awake_ComposedStrategyController_CreatesFactionThemeLibrary()
+        public void Awake_ComposedStrategyController_DoesNotThrow()
         {
             UIComponentTestHelper.InvokeLifecycle(_controller, "Reset");
 
-            UIComponentTestHelper.InvokeLifecycle(_controller, "Awake");
-
-            Assert.IsNotNull(GetField<FactionThemeLibrary>("themeLibrary"));
+            Assert.DoesNotThrow(() => UIComponentTestHelper.InvokeLifecycle(_controller, "Awake"));
         }
 
         [Test]

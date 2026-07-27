@@ -20,7 +20,7 @@ public sealed class GameFlowController : MonoBehaviour
     private UIContext uiContext;
 
     /// <summary>
-    /// Resolves composed scene dependencies and creates the shared theme library.
+    /// Resolves composed scene dependencies.
     /// </summary>
     private void Awake()
     {
@@ -30,8 +30,6 @@ public sealed class GameFlowController : MonoBehaviour
                 $"{name} must be composed with a StrategyController."
             );
         }
-
-        themeLibrary = new FactionThemeLibrary();
     }
 
     /// <summary>
@@ -50,7 +48,10 @@ public sealed class GameFlowController : MonoBehaviour
         try
         {
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-            await bootstrap.InitializeContentAsync();
+            await bootstrap.InitializeMainMenuContentAsync();
+            await bootstrap.InitializeStrategyContentAsync();
+            ContentPack contentPack = bootstrap.GetContentPack();
+            themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
             GameRuntime runtime = bootstrap.GetRuntime();
             if (runtime?.HasActiveGame == true)
             {
@@ -91,7 +92,8 @@ public sealed class GameFlowController : MonoBehaviour
             );
         }
 
-        GameBuilder builder = new GameBuilder(summary);
+        ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
+        GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
         game = builder.Build();
         PlayFactionIntro(game.GetPlayerFaction());
     }
@@ -107,6 +109,7 @@ public sealed class GameFlowController : MonoBehaviour
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
         game = SaveGameManager.Instance.LoadGameData(fileName);
+        AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
         EnterGameplay();
     }
 
@@ -152,14 +155,23 @@ public sealed class GameFlowController : MonoBehaviour
     /// Initializes strategy UI for an active game manager.
     /// </summary>
     /// <param name="gameManager">The active game manager.</param>
-    private async void EnterGameplay(GameManager gameManager)
+    private void EnterGameplay(GameManager gameManager)
     {
         try
         {
-            EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build();
-            uiContext = new UIContext(gameManager.GetGame(), themeLibrary, encyclopediaCatalog);
+            AppBootstrap bootstrap = AppBootstrap.Instance;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
+                contentPack.GameData
+            );
+            uiContext = new UIContext(
+                gameManager.GetGame(),
+                themeLibrary,
+                encyclopediaCatalog,
+                bootstrap.GetContentAssets().GetTexture
+            );
 
-            await strategyController.InitializeAsync(gameManager, uiContext);
+            strategyController.Initialize(gameManager, uiContext);
             activeGameManager = gameManager;
         }
         catch (Exception exception)

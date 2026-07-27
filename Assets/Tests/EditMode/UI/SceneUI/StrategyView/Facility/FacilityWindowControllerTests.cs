@@ -38,10 +38,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
         {
             _dirtyCount = 0;
             _game = CreateGame();
-            _gameManager = new GameManager(_game);
-            _uiContext = new UIContext(
+            _gameManager = TestContent.CreateGameManager(_game);
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _planet = CreatePlanet(_game);

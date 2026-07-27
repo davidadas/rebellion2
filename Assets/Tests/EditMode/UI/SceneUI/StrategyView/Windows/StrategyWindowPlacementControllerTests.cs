@@ -218,9 +218,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _playerFactionId });
             game.Summary.PlayerFactionID = _playerFactionId;
-            return new UIContext(
+            return TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
         }

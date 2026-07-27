@@ -391,13 +391,12 @@ namespace Rebellion.Tests.Game.Factions
             // use a known faction so RebuildResearchCatalog retains entries.
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
 
-            IManufacturable[] templates = ResourceManager
-                .GetEntityData<Building>()
-                .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetEntityData<CapitalShip>())
-                .Concat(ResourceManager.GetEntityData<Starfighter>())
-                .Concat(ResourceManager.GetEntityData<Regiment>())
-                .Concat(ResourceManager.GetEntityData<SpecialForces>())
+            IManufacturable[] templates = TestContent
+                .Data.Buildings.Cast<IManufacturable>()
+                .Concat(TestContent.Data.CapitalShips)
+                .Concat(TestContent.Data.Starfighters)
+                .Concat(TestContent.Data.Regiments)
+                .Concat(TestContent.Data.SpecialForces)
                 .ToArray();
             alliance.RebuildResearchCatalog(templates);
 

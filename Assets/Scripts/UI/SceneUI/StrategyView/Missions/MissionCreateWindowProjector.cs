@@ -162,6 +162,11 @@ internal sealed class MissionCreateWindowProjector
     )
     {
         List<MissionParticipantRowRenderData> rows = new List<MissionParticipantRowRenderData>();
+        DefenseWindowTheme defenseTheme = uiContext
+            .GetPlayerFactionTheme()
+            ?.StrategyWindows?.Defense;
+        Texture normalBackground = uiContext.GetTexture(defenseTheme?.PersonnelBackgroundImagePath);
+        Texture enrouteBackground = uiContext.GetTexture(defenseTheme?.EnrouteBackgroundImagePath);
         for (int index = 0; index < participants.Count; index++)
         {
             if (participants[index] is not ISceneNode node)
@@ -169,15 +174,14 @@ internal sealed class MissionCreateWindowProjector
 
             bool isInTransit = node is IMovable movable && movable.GetTransitMovement() != null;
             Texture backgroundTexture = isInTransit
-                ? uiContext.GetEntityStatusTexture(node, true)
-                : null;
+                ? uiContext.GetEntityStatusTexture(node, true) ?? enrouteBackground
+                : normalBackground;
             rows.Add(
                 new MissionParticipantRowRenderData(
                     node.GetDisplayName(),
                     selection.Contains(index) ? _white : _gray,
                     backgroundTexture,
-                    uiContext.GetEntityTexture(node, true),
-                    isInTransit
+                    uiContext.GetEntityTexture(node, true)
                 )
             );
         }

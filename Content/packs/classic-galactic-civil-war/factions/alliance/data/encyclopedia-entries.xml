@@ -1,0 +1,115 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<EncyclopediaEntries>
+  <EncyclopediaEntry>
+    <TypeID>FLEET</TypeID>
+    <DisplayName>Fleet</DisplayName>
+    <Category>Concept</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/strategy/ui/encyclopedia/fleet</ImagePath>
+    <Description>Fleets are basically groups of ships that work or travel together.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Abduction</TypeID>
+    <DisplayName>Abduction</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/abduction/asset</ImagePath>
+    <Description>Abduction missions are used to capture a specific character. The target of this mission must be an enemy character on a specific enemy fleet or system. The success of this mission depends on the combat attributes of the characters and the SpecForces assigned to the mission team.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Diplomacy</TypeID>
+    <DisplayName>Diplomacy</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/diplomacy/asset</ImagePath>
+    <Description>Diplomacy missions increase loyalty for your side in a planetary system. The success of this mission depends on the diplomacy attribute of the characters and the current loyalty of the population.  Diplomacy missions can only be targeted at friendly or explored neutral systems.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Espionage</TypeID>
+    <DisplayName>Espionage</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/espionage/asset</ImagePath>
+    <Description>Espionage missions gather information about your opponent's planetary systems, military forces and personnel. The objective of this mission must be an enemy or neutral controlled system. The success of this mission depends on the espionage attributes of the characters assigned to the mission team.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>InciteUprising</TypeID>
+    <DisplayName>Incite Uprising</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/incite-uprising/asset</ImagePath>
+    <Description>The objective of the incite uprising mission is to create or assist in a revolt on an enemy controlled system. The success of this mission depends on the leadership attributes of the characters and the SpecForces assigned to the mission team and the loyalty of the system.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>JediTraining</TypeID>
+    <DisplayName>Jedi Training</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/jedi-training/asset</ImagePath>
+    <Description>Jedi training missions are used to enhance the abilities of Force using characters. Whenever Darth Vader or Luke Skywalker is placed together with other Force using characters, a Jedi Training mission can be formed. At the conclusion of the mission, the character or characters may have increased their Force abilities. If the system on which the training is occurring suffers a planetary bombardment, or planetary assault, or control passes over to the enemy, the training mission is considered foiled.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Reconnaissance</TypeID>
+    <DisplayName>Reconnaissance</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/reconnaissance/asset</ImagePath>
+    <Description>Reconnaissance missions give the player information about a system. The target of this mission is a system not currently controlled by the player. This mission reveals if the system is controlled by the opponent, the facilities located on the system, the fleets and ships in the system and the trooper regiments on the system. Reconnaissance missions may only be conducted by certain SpecForces units and not by characters.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Recruitment</TypeID>
+    <DisplayName>Recruitment</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/recruitment/asset</ImagePath>
+    <Description>A recruitment mission is used to recruit minor characters to a player's side. Any major character can be placed on a recruitment mission. Recruitment missions may be directed to any friendly system.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Rescue</TypeID>
+    <DisplayName>Rescue</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/rescue/asset</ImagePath>
+    <Description>The rescue mission frees captured characters from the opponent's control. The target of this mission must be a character on the same enemy fleet or enemy system. The success of this mission depends upon the espionage attribute of the mission leader, the average combat attributes of the characters and the SpecForces involved in the mission, the presence of opposing characters, and the number of opposing trooper regiments.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>ResearchShipDesign</TypeID>
+    <DisplayName>Ship Design Research</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/research-ship-design/asset</ImagePath>
+    <Description>The ship design R&amp;D mission causes a character to contribute to the research and development process of new ships for the player's side. The character must be sent to a system which has a shipyard and the character must be capable of conducting ship design research. The success of this mission depends on the attributes of the character involved.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>ResearchTroopTraining</TypeID>
+    <DisplayName>Troop Training Research</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/research-troop-training/asset</ImagePath>
+    <Description>The troop training R&amp;D mission causes a character to contribute to the research and development process of new troop types for the player's side. The character must be sent to a system which has a troop training facility and the character must be capable of conducting troop training research. The success of this mission depends on the attributes of the character involved.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>DeathStarSabotage</TypeID>
+    <DisplayName>Death Star Sabotage</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/death-star-sabotage/asset</ImagePath>
+    <Description>The Death Star sabotage mission is restricted to the Alliance and the location of the targeted Death Star must be known. The success of this mission depends on the espionage and combat attributes of the characters and SpecForces assigned to the mission team.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>Sabotage</TypeID>
+    <DisplayName>Sabotage</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/sabotage/asset</ImagePath>
+    <Description>A sabotage mission destroys a facility, capital ship or an object on a planetary system. The target of this mission must be a single facility, capital ship or other unit on an enemy or neutral system. The success of this mission depends on the espionage and combat attributes of the characters, and the SpecForces assigned to the mission team.</Description>
+  </EncyclopediaEntry>
+  <EncyclopediaEntry>
+    <TypeID>SubdueUprising</TypeID>
+    <DisplayName>Subdue Uprising</DisplayName>
+    <Category>Mission</Category>
+    <VisibleFactionInstanceID>FNALL1</VisibleFactionInstanceID>
+    <ImagePath>pack/factions/alliance/entities/subdue-uprising/asset</ImagePath>
+    <Description>This mission can only be used on a system in a state of uprising. Characters and SpecForces on this mission are used to reduce the effects of an uprising. The success of this mission depends on the leadership attributes of the characters and the SpecForces assigned to the mission team and the current loyalty of the population.</Description>
+  </EncyclopediaEntry>
+</EncyclopediaEntries>

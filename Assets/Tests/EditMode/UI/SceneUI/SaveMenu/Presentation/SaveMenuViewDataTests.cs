@@ -13,8 +13,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new SaveMenuWindowRenderData(
-                    null,
-                    null,
                     0f,
                     0f,
                     null,
@@ -30,8 +28,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new SaveMenuWindowRenderData(
-                    null,
-                    null,
                     0f,
                     0f,
                     null,
@@ -45,8 +41,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void WindowRenderData_CompletePresentation_ClampsAndCopiesCollections()
         {
-            Texture2D upTexture = new Texture2D(4, 4);
-            Texture2D downTexture = new Texture2D(4, 4);
             Dictionary<UserTacticalOption, bool> options = new Dictionary<UserTacticalOption, bool>
             {
                 { UserTacticalOption.Starfield, true },
@@ -57,8 +51,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             };
 
             SaveMenuWindowRenderData data = new SaveMenuWindowRenderData(
-                upTexture,
-                downTexture,
                 -1f,
                 2f,
                 null,
@@ -69,8 +61,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             options[UserTacticalOption.Starfield] = false;
             slots.Clear();
 
-            Assert.AreSame(upTexture, data.ReturnStrategyButtonUpTexture);
-            Assert.AreSame(downTexture, data.ReturnStrategyButtonDownTexture);
             Assert.AreEqual(0f, data.MusicVolume);
             Assert.AreEqual(1f, data.SfxVolume);
             Assert.AreEqual(string.Empty, data.VersionText);
@@ -87,9 +77,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             Assert.Throws<NotSupportedException>(() =>
                 ((IList<SaveSlotRenderData>)data.Slots).Add(SaveSlotRenderData.Empty(1))
             );
-
-            UnityEngine.Object.DestroyImmediate(downTexture);
-            UnityEngine.Object.DestroyImmediate(upTexture);
         }
 
         [Test]

@@ -176,9 +176,9 @@ public class StrategyAdvisorTheme
     /// <returns>The animation frame resource path.</returns>
     public string GetFramePath(int bitmapID, int frameIndex, bool droid)
     {
-        string roleDirectory = droid ? "Droid" : "Protocol";
+        string roleDirectory = droid ? "droid" : "protocol";
         string roleName = droid ? "droid" : "protocol";
-        return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/{AnimationFilePrefix}_{roleName}_{bitmapID}_frame_{frameIndex:D3}";
+        return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/{AnimationFilePrefix}-{roleName}-{bitmapID}-frame-{frameIndex:D3}";
     }
 
     /// <summary>
@@ -188,6 +188,6 @@ public class StrategyAdvisorTheme
     /// <returns>The advisor audio resource path.</returns>
     public string GetAudioPath(int waveID)
     {
-        return $"{AudioRoot}/{AudioFilePrefix}_{waveID:D4}";
+        return $"{AudioRoot}/{AudioFilePrefix}-{waveID:D4}";
     }
 }

@@ -13,7 +13,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
     {
         private const string _prefabPath = "Assets/Prefabs/UI/SaveMenu/SaveMenuWindow.prefab";
 
-        private readonly List<Texture2D> _textures = new List<Texture2D>();
         private GameObject _rootObject;
         private GameObject _viewportObject;
         private SaveMenuWindowView _view;
@@ -28,9 +27,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [TearDown]
         public void TearDown()
         {
-            foreach (Texture2D texture in _textures)
-                UnityEngine.Object.DestroyImmediate(texture);
-
             if (_rootObject != null)
                 UnityEngine.Object.DestroyImmediate(_rootObject);
             if (_viewportObject != null)
@@ -52,22 +48,15 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void Render_CompleteData_AppliesWindowAndChildPresentation()
         {
-            Texture2D returnUpTexture = CreateTexture("Return Up");
-            Texture2D returnDownTexture = CreateTexture("Return Down");
-            SaveMenuWindowRenderData data = CreateRenderData(
-                returnUpTexture,
-                returnDownTexture,
-                0.5f,
-                0.25f,
-                "Version 2",
-                "Exit?",
-                1
-            );
+            Texture authoredReturnTexture = GetPressVisualImage(
+                GetField<RawImagePressVisual>(_view, "returnStrategyButtonPressVisual")
+            ).texture;
+            SaveMenuWindowRenderData data = CreateRenderData(0.5f, 0.25f, "Version 2", "Exit?", 1);
 
             _view.Render(data);
 
             Assert.AreSame(
-                returnUpTexture,
+                authoredReturnTexture,
                 GetPressVisualImage(
                     GetField<RawImagePressVisual>(_view, "returnStrategyButtonPressVisual")
                 ).texture
@@ -118,26 +107,9 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         }
 
         [Test]
-        public void Render_NoCustomReturnTexture_UsesAuthoredNormalTexture()
-        {
-            Texture2D authoredTexture = GetField<Texture2D>(_view, "returnStrategyButtonUpTexture");
-
-            _view.Render(CreateRenderData(null, null, 0f, 0f, null, null, 0));
-
-            Assert.AreSame(
-                authoredTexture,
-                GetPressVisualImage(
-                    GetField<RawImagePressVisual>(_view, "returnStrategyButtonPressVisual")
-                ).texture
-            );
-        }
-
-        [Test]
         public void Render_MissingTacticalOption_ThrowsInvalidOperationException()
         {
             SaveMenuWindowRenderData data = new SaveMenuWindowRenderData(
-                null,
-                null,
                 0f,
                 0f,
                 null,
@@ -152,9 +124,9 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void Render_EmptyConfirmation_HidesVisibleDialog()
         {
-            _view.Render(CreateRenderData(null, null, 0f, 0f, null, "Exit?", 0));
+            _view.Render(CreateRenderData(0f, 0f, null, "Exit?", 0));
 
-            _view.Render(CreateRenderData(null, null, 0f, 0f, null, null, 0));
+            _view.Render(CreateRenderData(0f, 0f, null, null, 0));
 
             Assert.IsFalse(
                 GetField<SaveMenuConfirmDialogView>(_view, "confirmDialog").gameObject.activeSelf
@@ -164,7 +136,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void CommandButtons_Click_RaiseSemanticRequests()
         {
-            _view.Render(CreateRenderData(null, null, 0f, 0f, null, null, 0));
+            _view.Render(CreateRenderData(0f, 0f, null, null, 0));
             int cockpitCount = 0;
             int exitCount = 0;
             int strategyCount = 0;
@@ -188,7 +160,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void ChildControls_Change_ForwardSemanticRequests()
         {
-            _view.Render(CreateRenderData(null, null, 0f, 0f, null, "Exit?", 1));
+            _view.Render(CreateRenderData(0f, 0f, null, "Exit?", 1));
             float musicVolume = -1f;
             float sfxVolume = -1f;
             UserTacticalOption? tacticalOption = null;
@@ -241,7 +213,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void RenderAudioSettings_ChangedValues_UpdatesOnlyAudioPresentation()
         {
-            _view.Render(CreateRenderData(null, null, 1f, 0.25f, "Version", null, 1));
+            _view.Render(CreateRenderData(1f, 0.25f, "Version", null, 1));
             SaveMenuSlotRowView slotRow = GetField<SaveMenuSlotRowView[]>(_view, "saveSlotRows")[0];
             GetField<TMP_InputField>(slotRow, "nameInputField").text = "Draft";
 
@@ -260,7 +232,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         [Test]
         public void OnDisable_BoundWindow_UnsubscribesParentFromControls()
         {
-            _view.Render(CreateRenderData(null, null, 0f, 0f, null, "Exit?", 1));
+            _view.Render(CreateRenderData(0f, 0f, null, "Exit?", 1));
             int requestCount = 0;
             _view.ReturnCockpitRequested += () => requestCount++;
             _view.MusicVolumeChanged += _ => requestCount++;
@@ -326,8 +298,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         }
 
         private SaveMenuWindowRenderData CreateRenderData(
-            Texture2D returnUpTexture,
-            Texture2D returnDownTexture,
             float musicVolume,
             float sfxVolume,
             string version,
@@ -342,8 +312,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             }
 
             return new SaveMenuWindowRenderData(
-                returnUpTexture,
-                returnDownTexture,
                 musicVolume,
                 sfxVolume,
                 version,
@@ -351,13 +319,6 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
                 slots,
                 confirmation
             );
-        }
-
-        private Texture2D CreateTexture(string textureName)
-        {
-            Texture2D texture = new Texture2D(4, 4) { name = textureName };
-            _textures.Add(texture);
-            return texture;
         }
 
         private static IReadOnlyDictionary<UserTacticalOption, bool> CreateTacticalOptions()

@@ -75,6 +75,11 @@ public sealed class CutscenePlayer : MonoBehaviour
         audioSource.Play();
     }
 
+    /// <summary>
+    /// Begins playback from a local video URL.
+    /// </summary>
+    /// <param name="videoUrl">The local video file URL.</param>
+    /// <param name="finished">The callback invoked after playback ends or is skipped.</param>
     public void Play(string videoUrl, Action finished)
     {
         if (string.IsNullOrWhiteSpace(videoUrl))
