@@ -9,25 +9,25 @@
     <SmallDisplayImagePath>pack/factions/alliance/entities/ofal001/small-display</SmallDisplayImagePath>
     <MessageImagePath>pack/factions/alliance/entities/ofal001/message</MessageImagePath>
     <OrderVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/order-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/order-01</String>
     </OrderVoicePaths>
     <PersonnelArrivedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/personnel-arrived-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/personnel-arrived-01</String>
     </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/mission-success-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/mission-success-01</String>
     </MissionSuccessVoicePaths>
     <MissionFailureVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/mission-failure-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/mission-failure-01</String>
     </MissionFailureVoicePaths>
     <MissionAbortVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/mission-abort-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/mission-abort-01</String>
     </MissionAbortVoicePaths>
     <ReleasedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/released-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/released-01</String>
     </ReleasedVoicePaths>
     <RecoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal001/recovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal001/voice/recovered-01</String>
     </RecoveredVoicePaths>
     <CapturedOverlayImagePath>pack/factions/alliance/entities/ofal001/captured-overlay</CapturedOverlayImagePath>
     <Description>A former Senator in the Old Republic, Mon Mothma is the leader of the Rebel Alliance and an old foe of Emperor Palpatine. An accomplished diplomat and skilled negotiator, she is the beacon around which much of the support for the Rebellion gathers.</Description>
@@ -83,43 +83,43 @@
     <SmallDisplayImagePath>pack/factions/alliance/entities/ofal002/small-display</SmallDisplayImagePath>
     <MessageImagePath>pack/factions/alliance/entities/ofal002/message</MessageImagePath>
     <OrderVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/order-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal002/order-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/order-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/order-02</String>
     </OrderVoicePaths>
     <PersonnelArrivedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/personnel-arrived-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/personnel-arrived-01</String>
     </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/mission-success-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal002/mission-success-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/mission-success-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/mission-success-02</String>
     </MissionSuccessVoicePaths>
     <MissionFailureVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/mission-failure-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal002/mission-failure-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/mission-failure-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/mission-failure-02</String>
     </MissionFailureVoicePaths>
     <MissionAbortVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/mission-abort-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/mission-abort-01</String>
     </MissionAbortVoicePaths>
     <ReleasedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/released-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/released-01</String>
     </ReleasedVoicePaths>
     <RecoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/recovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/recovered-01</String>
     </RecoveredVoicePaths>
     <EnemyDetectedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/enemy-detected-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/enemy-detected-01</String>
     </EnemyDetectedVoicePaths>
     <ForceGrowthVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/force-growth-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/force-growth-01</String>
     </ForceGrowthVoicePaths>
     <ForceAbilityRevealedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/force-ability-revealed-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/force-ability-revealed-01</String>
     </ForceAbilityRevealedVoicePaths>
     <TraitorDiscoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/traitor-discovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/traitor-discovered-01</String>
     </TraitorDiscoveredVoicePaths>
     <RescueAttemptVoicePaths>
-      <String>pack/factions/alliance/entities/ofal002/rescue-attempt-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal002/voice/rescue-attempt-01</String>
     </RescueAttemptVoicePaths>
     <CapturedOverlayImagePath>pack/factions/alliance/entities/ofal002/captured-overlay</CapturedOverlayImagePath>
     <Description>Adopted daughter of the Old Republic Senator Bail Organa of Alderaan and a senator herself until the disbanding of the Imperial Senate, Princess Leia Organa is a fiery visionary and an unequaled diplomat. She is one of  the most passionate voices of dissent against the Emperor's New Order.  It was her bravery that provided the Alliance with the technical data they used to destroy the first Death Star.</Description>
@@ -176,73 +176,76 @@
     <SmallDisplayImagePath>pack/factions/alliance/entities/ofal003/small-display</SmallDisplayImagePath>
     <MessageImagePath>pack/factions/alliance/entities/ofal003/message</MessageImagePath>
     <OrderVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/order-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/order-voice-02</String>
-      <String>pack/factions/alliance/entities/ofal003/order-voice-03</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/order-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/order-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/order-03</String>
     </OrderVoicePaths>
     <PersonnelArrivedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/personnel-arrived-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/personnel-arrived-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/personnel-arrived-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/personnel-arrived-02</String>
     </PersonnelArrivedVoicePaths>
     <AdvancedPersonnelArrivedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-personnel-arrived-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/advanced-personnel-arrived-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-personnel-arrived-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-personnel-arrived-02</String>
     </AdvancedPersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/mission-success-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/mission-success-voice-02</String>
-      <String>pack/factions/alliance/entities/ofal003/mission-success-voice-03</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-success-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-success-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-success-03</String>
     </MissionSuccessVoicePaths>
     <MissionFailureVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/mission-failure-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/mission-failure-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-failure-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-failure-02</String>
     </MissionFailureVoicePaths>
     <MissionAbortVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/mission-abort-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/mission-abort-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-abort-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/mission-abort-02</String>
     </MissionAbortVoicePaths>
     <AdvancedMissionAbortVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-mission-abort-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-mission-abort-01</String>
     </AdvancedMissionAbortVoicePaths>
     <ReleasedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/released-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal003/released-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/released-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/released-02</String>
     </ReleasedVoicePaths>
     <AdvancedReleasedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-released-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-released-01</String>
     </AdvancedReleasedVoicePaths>
     <RecoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/recovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/recovered-01</String>
     </RecoveredVoicePaths>
     <AdvancedRecoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-recovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-recovered-01</String>
     </AdvancedRecoveredVoicePaths>
     <EnemyDetectedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/enemy-detected-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/enemy-detected-01</String>
     </EnemyDetectedVoicePaths>
     <AdvancedEnemyDetectedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-enemy-detected-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-enemy-detected-01</String>
     </AdvancedEnemyDetectedVoicePaths>
     <ForceGrowthVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/force-growth-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/force-growth-01</String>
     </ForceGrowthVoicePaths>
     <AdvancedForceGrowthVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-force-growth-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-force-growth-01</String>
     </AdvancedForceGrowthVoicePaths>
     <ForceUserDiscoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/force-user-discovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/force-user-discovered-01</String>
     </ForceUserDiscoveredVoicePaths>
     <TraitorDiscoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/traitor-discovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/traitor-discovered-01</String>
     </TraitorDiscoveredVoicePaths>
+    <AdvancedTraitorDiscoveredVoicePaths>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-traitor-discovered-01</String>
+    </AdvancedTraitorDiscoveredVoicePaths>
     <RescueAttemptVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/rescue-attempt-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/rescue-attempt-01</String>
     </RescueAttemptVoicePaths>
     <AdvancedRescueAttemptVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/advanced-enemy-detected-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/advanced-rescue-attempt-01</String>
     </AdvancedRescueAttemptVoicePaths>
     <DagobahCompletedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal003/dagobah-completed-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal003/voice/dagobah-completed-01</String>
     </DagobahCompletedVoicePaths>
     <CapturedOverlayImagePath>pack/factions/alliance/entities/ofal003/captured-overlay</CapturedOverlayImagePath>
     <Description>A farm boy raised on Tatooine, Luke is a student of the Force and a Jedi in training.  A skilled and daring pilot, Skywalker was responsible for the destruction of the first Death Star. His developing abilities with the Force make him an invaluable asset to the Rebellion.</Description>
@@ -301,34 +304,34 @@
     <SmallDisplayImagePath>pack/factions/alliance/entities/ofal004/small-display</SmallDisplayImagePath>
     <MessageImagePath>pack/factions/alliance/entities/ofal004/message</MessageImagePath>
     <OrderVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/order-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/order-01</String>
     </OrderVoicePaths>
     <PersonnelArrivedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/personnel-arrived-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal004/personnel-arrived-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/personnel-arrived-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/personnel-arrived-02</String>
     </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/mission-success-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal004/mission-success-voice-02</String>
-      <String>pack/factions/alliance/entities/ofal004/mission-success-voice-03</String>
-      <String>pack/factions/alliance/entities/ofal004/mission-success-voice-04</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-success-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-success-02</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-success-03</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-success-04</String>
     </MissionSuccessVoicePaths>
     <MissionFailureVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/mission-failure-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal004/mission-failure-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-failure-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-failure-02</String>
     </MissionFailureVoicePaths>
     <MissionAbortVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/mission-abort-voice-01</String>
-      <String>pack/factions/alliance/entities/ofal004/mission-abort-voice-02</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-abort-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/mission-abort-02</String>
     </MissionAbortVoicePaths>
     <ReleasedVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/released-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/released-01</String>
     </ReleasedVoicePaths>
     <RecoveredVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/recovered-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/recovered-01</String>
     </RecoveredVoicePaths>
     <BountyAttackVoicePaths>
-      <String>pack/factions/alliance/entities/ofal004/bounty-attack-voice-01</String>
+      <String>pack/factions/alliance/entities/ofal004/voice/bounty-attack-01</String>
     </BountyAttackVoicePaths>
     <CapturedOverlayImagePath>pack/factions/alliance/entities/ofal004/captured-overlay</CapturedOverlayImagePath>
     <Description>A former smuggler for the infamous Jabba the Hutt, this scruffy-looking mercenary only recently joined the Alliance. An ace pilot, accomplished spy and leader, Solo has the ability to get into and out of dangerous situations virtually unscratched. Together with his first mate Chewbacca, Solo captains the freighter Millennium Falcon.</Description>

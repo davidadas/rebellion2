@@ -9,34 +9,34 @@
     <SmallDisplayImagePath>pack/factions/empire/entities/ofem001/small-display</SmallDisplayImagePath>
     <MessageImagePath>pack/factions/empire/entities/ofem001/message</MessageImagePath>
     <OrderVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/order-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/order-01</String>
     </OrderVoicePaths>
     <PersonnelArrivedVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/personnel-arrived-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/personnel-arrived-01</String>
     </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/mission-success-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/mission-success-01</String>
     </MissionSuccessVoicePaths>
     <MissionFailureVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/mission-failure-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/mission-failure-01</String>
     </MissionFailureVoicePaths>
     <MissionAbortVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/mission-abort-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/mission-abort-01</String>
     </MissionAbortVoicePaths>
     <ReleasedVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/released-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/released-01</String>
     </ReleasedVoicePaths>
     <RecoveredVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/recovered-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/recovered-01</String>
     </RecoveredVoicePaths>
     <EnemyDetectedVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/enemy-detected-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/enemy-detected-01</String>
     </EnemyDetectedVoicePaths>
     <TraitorDiscoveredVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/traitor-discovered-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/traitor-discovered-01</String>
     </TraitorDiscoveredVoicePaths>
     <SeatOfPowerVoicePaths>
-      <String>pack/factions/empire/entities/ofem001/seat-of-power-voice-01</String>
+      <String>pack/factions/empire/entities/ofem001/voice/seat-of-power-01</String>
     </SeatOfPowerVoicePaths>
     <CapturedOverlayImagePath>pack/factions/empire/entities/ofem001/captured-overlay</CapturedOverlayImagePath>
     <Description>Although aged and decrepit looking, Emperor Palpatine is the ultimate power in the Empire.  Palpatine formed the Empire and declared himself Emperor when the Old Republic Senate fell.  Since that time, the Empire under Palpatine's direction has virtually conquered the known galaxy.  A true master in the dark side of the Force, Palpatine was responsible for Darth Vader's instruction in the dark side.  The true extent of his powers is as yet unknown.</Description>
@@ -93,31 +93,31 @@
     <SmallDisplayImagePath>pack/factions/empire/entities/ofem002/small-display</SmallDisplayImagePath>
     <MessageImagePath>pack/factions/empire/entities/ofem002/message</MessageImagePath>
     <OrderVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/order-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/order-01</String>
     </OrderVoicePaths>
     <PersonnelArrivedVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/personnel-arrived-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/personnel-arrived-01</String>
     </PersonnelArrivedVoicePaths>
     <MissionSuccessVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/mission-success-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/mission-success-01</String>
     </MissionSuccessVoicePaths>
     <MissionFailureVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/mission-failure-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/mission-failure-01</String>
     </MissionFailureVoicePaths>
     <MissionAbortVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/mission-abort-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/mission-abort-01</String>
     </MissionAbortVoicePaths>
     <ReleasedVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/released-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/released-01</String>
     </ReleasedVoicePaths>
     <RecoveredVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/recovered-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/recovered-01</String>
     </RecoveredVoicePaths>
     <EnemyDetectedVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/enemy-detected-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/enemy-detected-01</String>
     </EnemyDetectedVoicePaths>
     <TraitorDiscoveredVoicePaths>
-      <String>pack/factions/empire/entities/ofem002/traitor-discovered-voice-01</String>
+      <String>pack/factions/empire/entities/ofem002/voice/traitor-discovered-01</String>
     </TraitorDiscoveredVoicePaths>
     <CapturedOverlayImagePath>pack/factions/empire/entities/ofem002/captured-overlay</CapturedOverlayImagePath>
     <Description>Encased in imposing black armor and death's head mask, Darth Vader, Dark Lord of the Sith, is the most visible symbol of the Empire and its New Order.  Vader is a powerful dark Jedi and primarily responsible for the almost complete extermination of the Order of the Jedi Knights. Once a student of Obi-Wan Kenobi, Vader was corrupted by the dark side of the Force and joined the Empire.  He is a brilliant military tactician and excellent starfighter pilot.  Known for his ruthlessness, few who fail Lord Vader ever live to regret their mistake.  The Alliance hoped that Vader was lost during the destruction of the Death Star, but he has recently returned in command of one of the new Super Star Destroyers.</Description>
