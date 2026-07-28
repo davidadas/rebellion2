@@ -987,7 +987,7 @@
     <MessageType>Mission</MessageType>
     <TitleTemplate>Luke Discovers His Heritage</TitleTemplate>
     <BodyTemplate>Luke has learned that Vader is his father.</BodyTemplate>
-    <VoicePath>pack/shared/strategy/audio/messages/voice-event-1397</VoicePath>
+    <VoicePath>pack/shared/events/luke-discovers-heritage/audio/dialogue</VoicePath>
     <ImageKey>mission_report</ImageKey>
   </MessageDefinition>
   <MessageDefinition>
