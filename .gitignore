@@ -23,6 +23,7 @@ Unity_lic.alf
 **/[Oo]bj/
 /[Bb]uild/
 /[Bb]uilds/
+/dist/
 /UIElementsSchema/
 *[Tt]est*[Rr]esults*.xml
 *[Tt]est*[Ll]og*
@@ -69,3 +70,12 @@ Assets/TextMesh Pro/
 **/*.ini
 *.bak
 *.log
+
+# 3D model assets (binaries, materials, render textures, metas) live in
+# rebellion2-media and sync to disk. Nothing under MainMenu is tracked here.
+Assets/Art/Models/**/*.fbx
+Assets/Art/Models/**/*.png
+Assets/Art/Models/MainMenu/
+
+# App icon lives in private rebellion2-media, not here
+/Assets/GameIcon/

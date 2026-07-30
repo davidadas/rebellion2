@@ -74,43 +74,6 @@ public sealed class MainMenuView : MonoBehaviour
     }
 
     /// <summary>
-    /// Defines the visual changes applied while a main-menu control is pressed.
-    /// </summary>
-    [Serializable]
-    private sealed class PressVisualBinding
-    {
-        [SerializeField]
-        private EventTrigger trigger;
-
-        [SerializeField]
-        private Graphic[] graphicsHiddenWhilePressed = Array.Empty<Graphic>();
-
-        [SerializeField]
-        private GameObject[] objectsShownWhilePressed = Array.Empty<GameObject>();
-
-        public EventTrigger Trigger => trigger;
-
-        public IReadOnlyList<Graphic> GraphicsHiddenWhilePressed =>
-            graphicsHiddenWhilePressed ?? Array.Empty<Graphic>();
-
-        public IReadOnlyList<GameObject> ObjectsShownWhilePressed =>
-            objectsShownWhilePressed ?? Array.Empty<GameObject>();
-
-        public bool IsConfigured =>
-            trigger != null
-            && (
-                Array.Exists(
-                    graphicsHiddenWhilePressed ?? Array.Empty<Graphic>(),
-                    graphic => graphic != null
-                )
-                || Array.Exists(
-                    objectsShownWhilePressed ?? Array.Empty<GameObject>(),
-                    activeObject => activeObject != null
-                )
-            );
-    }
-
-    /// <summary>
     /// Defines an audio cue emitted by a specific pointer event.
     /// </summary>
     [Serializable]
@@ -171,9 +134,6 @@ public sealed class MainMenuView : MonoBehaviour
     private TMP_Text victoryConditionText;
 
     [Header("Pointer Presentation")]
-    [SerializeField]
-    private PressVisualBinding[] pressVisualBindings = Array.Empty<PressVisualBinding>();
-
     [SerializeField]
     private AudioCueBinding[] audioCueBindings = Array.Empty<AudioCueBinding>();
 
@@ -238,8 +198,6 @@ public sealed class MainMenuView : MonoBehaviour
     private void OnDisable()
     {
         UnbindControls();
-        foreach (PressVisualBinding binding in pressVisualBindings)
-            SetPressed(binding, false);
     }
 
     /// <summary>
@@ -314,11 +272,6 @@ public sealed class MainMenuView : MonoBehaviour
             binding => binding?.IsConfigured == true,
             "faction launch"
         );
-        VerifyBindings(
-            pressVisualBindings,
-            binding => binding?.IsConfigured == true,
-            "press visual"
-        );
         VerifyBindings(audioCueBindings, binding => binding?.IsConfigured == true, "audio cue");
     }
 
@@ -391,7 +344,6 @@ public sealed class MainMenuView : MonoBehaviour
             BindButton(binding.Button, () => StartGameRequested?.Invoke(binding.FactionId));
         }
 
-        BindPressVisuals();
         BindAudioCues();
         controlsBound = true;
     }
@@ -419,34 +371,6 @@ public sealed class MainMenuView : MonoBehaviour
     {
         toggle.onValueChanged.AddListener(listener);
         removeControlListeners.Add(() => toggle.onValueChanged.RemoveListener(listener));
-    }
-
-    /// <summary>
-    /// Binds pointer events that control local pressed presentation.
-    /// </summary>
-    private void BindPressVisuals()
-    {
-        foreach (PressVisualBinding binding in pressVisualBindings)
-        {
-            if (binding?.Trigger == null)
-                continue;
-
-            BindTrigger(
-                binding.Trigger,
-                EventTriggerType.PointerDown,
-                _ => SetPressed(binding, true)
-            );
-            BindTrigger(
-                binding.Trigger,
-                EventTriggerType.PointerUp,
-                _ => SetPressed(binding, false)
-            );
-            BindTrigger(
-                binding.Trigger,
-                EventTriggerType.PointerExit,
-                _ => SetPressed(binding, false)
-            );
-        }
     }
 
     /// <summary>
@@ -509,29 +433,6 @@ public sealed class MainMenuView : MonoBehaviour
         throw new MissingReferenceException(
             $"{trigger.name} has no {eventType} event-trigger entry."
         );
-    }
-
-    /// <summary>
-    /// Applies or clears one authored pressed-visual state.
-    /// </summary>
-    /// <param name="binding">The pressed-visual binding.</param>
-    /// <param name="pressed">Whether the control is pressed.</param>
-    private static void SetPressed(PressVisualBinding binding, bool pressed)
-    {
-        if (binding == null)
-            return;
-
-        foreach (Graphic graphic in binding.GraphicsHiddenWhilePressed)
-        {
-            if (graphic != null)
-                graphic.enabled = !pressed;
-        }
-
-        foreach (GameObject activeObject in binding.ObjectsShownWhilePressed)
-        {
-            if (activeObject)
-                activeObject.SetActive(pressed);
-        }
     }
 
     /// <summary>
