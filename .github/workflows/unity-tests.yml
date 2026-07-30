@@ -11,6 +11,7 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
+  REBELLION2_MEDIA_REVISION: 5245e50ed23e518b2d67e696e40964e146df84df
 
 jobs:
   build:
@@ -30,19 +31,41 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch media from R2
+      - name: Checkout media (git only, no LFS)
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          persist-credentials: false
+          lfs: false
+          sparse-checkout: |
+            Art
+            Audio
+            Videos
+            Models
+          path: .ci/rebellion2-media
+
+      - name: Pull media LFS from R2
+        working-directory: .ci/rebellion2-media
         env:
-          RCLONE_S3_PROVIDER: Cloudflare
-          RCLONE_S3_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          RCLONE_S3_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          RCLONE_S3_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          RCLONE_S3_REGION: auto
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
-          curl https://rclone.org/install.sh | sudo bash
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Art"    Assets/Resources/Art    --transfers 32 --checkers 16 --s3-no-check-bucket
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Audio"  Assets/Resources/Audio  --transfers 32 --checkers 16 --s3-no-check-bucket
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Videos" Assets/Resources/Videos --transfers 32 --checkers 16 --s3-no-check-bucket
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Models" Assets/Art/Models       --transfers 32 --checkers 16 --s3-no-check-bucket
+          HOST="${R2_ENDPOINT#https://}"
+          git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
+          git lfs pull
+
+      - name: Install media
+        run: |
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
+          mkdir -p Assets/Art/Models
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Models/ Assets/Art/Models/
+          rm -rf .ci
 
       - uses: actions/cache@v4
         with:
@@ -174,18 +197,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch media from R2
+      - name: Checkout media (git only, no LFS)
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          persist-credentials: false
+          lfs: false
+          sparse-checkout: |
+            Art
+            Audio
+            Models
+          path: .ci/rebellion2-media
+
+      - name: Pull media LFS from R2
+        working-directory: .ci/rebellion2-media
         env:
-          RCLONE_S3_PROVIDER: Cloudflare
-          RCLONE_S3_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          RCLONE_S3_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          RCLONE_S3_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          RCLONE_S3_REGION: auto
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
-          curl https://rclone.org/install.sh | sudo bash
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Art"    Assets/Resources/Art   --transfers 32 --checkers 16 --s3-no-check-bucket
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Audio"  Assets/Resources/Audio --transfers 32 --checkers 16 --s3-no-check-bucket
-          rclone copy ":s3:${{ vars.R2_BUCKET }}/Models" Assets/Art/Models      --transfers 32 --checkers 16 --s3-no-check-bucket
+          HOST="${R2_ENDPOINT#https://}"
+          git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
+          git lfs pull
+
+      - name: Install media
+        run: |
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
+          mkdir -p Assets/Art/Models
+          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Models/ Assets/Art/Models/
+          rm -rf .ci
 
       - uses: actions/cache@v4
         with:
