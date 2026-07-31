@@ -41,6 +41,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 GameLaunchContext.Summary.ResourceAvailability
             );
             Assert.AreEqual(1, GameLaunchContext.Summary.StartingResearchLevel);
+            Assert.AreEqual("FNALL1", GameLaunchContext.Summary.PlayerFactionID);
             Assert.IsNull(GameLaunchContext.SaveFileName);
             Assert.IsFalse(GameLaunchContext.IsLoadGame);
             Assert.IsFalse(GameLaunchContext.PlayIntroCutscene);

@@ -457,6 +457,19 @@ public static class ContentPackLoader
                 );
             }
         }
+
+        if (
+            string.IsNullOrWhiteSpace(activeScenario.DefaultPlayerFactionID)
+            || !activeScenario.PlayableFactionIDs.Contains(
+                activeScenario.DefaultPlayerFactionID,
+                StringComparer.Ordinal
+            )
+        )
+        {
+            throw new InvalidDataException(
+                $"Scenario '{activeScenario.ID}' requires a playable DefaultPlayerFactionID."
+            );
+        }
     }
 
     /// <summary>

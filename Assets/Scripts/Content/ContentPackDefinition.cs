@@ -131,6 +131,9 @@ public sealed class ContentScenarioDefinition
     [XmlElement]
     public string GenerationConfigPath { get; set; }
 
+    [XmlElement]
+    public string DefaultPlayerFactionID { get; set; }
+
     [XmlArray]
     [XmlArrayItem("FactionID")]
     public List<string> PlayableFactionIDs { get; set; } = new List<string>();

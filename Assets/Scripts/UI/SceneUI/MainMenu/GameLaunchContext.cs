@@ -48,7 +48,7 @@ public static class GameLaunchContext
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
             StartingResearchLevel = 1,
-            PlayerFactionID = startingFactionIds.FirstOrDefault(),
+            PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
             StartingFactionIDs = startingFactionIds,
             PackID = contentPack.Definition.ID,
             PackVersion = contentPack.Definition.Version,
