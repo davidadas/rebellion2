@@ -11,7 +11,7 @@ using UnityEngine.UI;
 /// </summary>
 public static class StrategyViewPrefabBuilder
 {
-    private const string _defaultPreviewThemeId = "DEFAULT";
+    private const string _fallbackPreviewThemeId = "DEFAULT";
     private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
     private const string _planetSystemWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSystemWindow.prefab";
@@ -255,6 +255,7 @@ public static class StrategyViewPrefabBuilder
     private static readonly Color32 _modalBackgroundDimColor = new Color32(80, 80, 80, 160);
 
     private static FactionThemes _previewThemes;
+    private static string _previewThemeId;
 
     /// <summary>
     /// Gets the preview theme.
@@ -271,18 +272,19 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Gets the explicit default theme used for faction-neutral prefab previews.
+    /// Gets the active scenario's default player-faction theme for prefab previews.
     /// </summary>
     /// <returns>The configured default preview theme.</returns>
     private static FactionTheme GetDefaultPreviewTheme()
     {
+        _previewThemeId ??= ContentPackEditor.LoadActivePack().Scenario.DefaultPlayerFactionID;
         for (int index = 0; index < PreviewThemes.Count; index++)
         {
             FactionTheme theme = PreviewThemes[index];
             if (
                 string.Equals(
                     theme?.FactionInstanceID,
-                    _defaultPreviewThemeId,
+                    _previewThemeId,
                     System.StringComparison.OrdinalIgnoreCase
                 )
             )
@@ -292,7 +294,7 @@ public static class StrategyViewPrefabBuilder
         }
 
         throw new System.InvalidOperationException(
-            $"Faction theme '{_defaultPreviewThemeId}' is required for prefab authoring."
+            $"Faction theme '{_previewThemeId}' is required for prefab authoring."
         );
     }
 
@@ -312,7 +314,7 @@ public static class StrategyViewPrefabBuilder
                 && theme.StrategyWindows?.Finder?.SystemsButton != null
                 && !string.Equals(
                     theme.FactionInstanceID,
-                    _defaultPreviewThemeId,
+                    _fallbackPreviewThemeId,
                     System.StringComparison.OrdinalIgnoreCase
                 )
             )
@@ -569,6 +571,7 @@ public static class StrategyViewPrefabBuilder
         UIAuthoringGuard.EnsureEditMode();
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
+        _previewThemeId = null;
         PlanetSystemWindowView planetSystemWindowPrefab = LoadWindowPrefab<PlanetSystemWindowView>(
             _planetSystemWindowPrefabPath
         );
@@ -889,6 +892,7 @@ public static class StrategyViewPrefabBuilder
     {
         UIAuthoringGuard.EnsureEditMode();
         _previewThemes = null;
+        _previewThemeId = null;
         CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
