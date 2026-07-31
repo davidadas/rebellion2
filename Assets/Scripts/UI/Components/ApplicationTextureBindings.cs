@@ -9,8 +9,13 @@ public interface IApplicationTextureReceiver
 }
 
 [DefaultExecutionOrder(-1000)]
+[ExecuteAlways]
 public sealed class ApplicationTextureBindings : MonoBehaviour
 {
+#if UNITY_EDITOR
+    private static ContentAssets editorPreviewAssets;
+    private static bool editorPreviewUnavailable;
+#endif
     [Serializable]
     public sealed class RawImageBinding
     {
@@ -163,6 +168,33 @@ public sealed class ApplicationTextureBindings : MonoBehaviour
             return;
 
         Apply(AppBootstrap.EnsureExists().GetContentAssets());
+    }
+
+    private void OnEnable()
+    {
+#if UNITY_EDITOR
+        if (Application.isPlaying || isApplied || editorPreviewUnavailable)
+            return;
+
+        try
+        {
+            if (editorPreviewAssets == null)
+            {
+                ContentPack pack = ContentPackLoader.OpenActive();
+                editorPreviewAssets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+            }
+
+            Apply(editorPreviewAssets);
+        }
+        catch (Exception exception)
+        {
+            editorPreviewUnavailable = true;
+            Debug.LogWarning(
+                $"Application content could not be loaded for prefab preview: {exception.Message}",
+                this
+            );
+        }
+#endif
     }
 
     internal void Apply(ContentAssets assets)
