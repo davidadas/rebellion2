@@ -3542,7 +3542,6 @@ public static class StrategyViewPrefabBuilder
                 LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath)
             );
 
-            ApplicationTextureBindingAuthoring.Capture(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath, out bool success);
             if (!success)
                 throw new System.InvalidOperationException(
@@ -6645,7 +6644,6 @@ public static class StrategyViewPrefabBuilder
     private static GameObject SaveGeneratedPrefabAsset(GameObject root, string path)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path));
-        ApplicationTextureBindingAuthoring.Capture(root);
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         if (!success || saved == null)
             throw new System.InvalidOperationException(
@@ -8210,7 +8208,7 @@ public static class StrategyViewPrefabBuilder
             return null;
         }
 
-        return ApplicationTextureBindingAuthoring.LoadTexture(path);
+        return ContentPackEditor.Assets.GetTexture(path);
     }
 
     /// <summary>

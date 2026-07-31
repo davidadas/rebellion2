@@ -274,7 +274,7 @@ public static class CommonUIPrefabBuilder
     /// <returns>The loaded texture.</returns>
     private static Texture2D LoadRequiredTexture(string path)
     {
-        return ApplicationTextureBindingAuthoring.LoadTexture(path);
+        return ContentPackEditor.Assets.GetTexture(path);
     }
 
     /// <summary>
@@ -342,7 +342,6 @@ public static class CommonUIPrefabBuilder
             Directory.CreateDirectory(directory);
             AssetDatabase.Refresh();
         }
-        ApplicationTextureBindingAuthoring.Capture(root);
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         UnityEngine.Object.DestroyImmediate(root);
         if (!success || saved == null)

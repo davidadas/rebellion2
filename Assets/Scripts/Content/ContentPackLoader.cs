@@ -526,13 +526,7 @@ public static class ContentPackLoader
             return Path.GetFullPath(commandLinePath);
 
 #if UNITY_EDITOR
-        DirectoryInfo projectDirectory = Directory.GetParent(Application.dataPath);
-        if (projectDirectory == null)
-            throw new InvalidOperationException(
-                "The project content directory could not be resolved."
-            );
-
-        return Path.Combine(projectDirectory.FullName, _contentDirectoryName);
+        return Path.Combine(Application.dataPath, _contentDirectoryName);
 #else
         return ResolvePlayerContentRootPath(Application.dataPath, Application.platform);
 #endif

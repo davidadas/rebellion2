@@ -9,7 +9,7 @@ using UnityEngine.Networking;
 /// <summary>
 /// Loads and owns addressed media from application content and one active pack.
 /// </summary>
-public sealed class ContentAssets : IDisposable
+public sealed class ContentAssets : IContentAssetSource, IDisposable
 {
     private const string _packAddressPrefix = "pack/";
     private const string _applicationAddressPrefix = "application/";
@@ -23,6 +23,9 @@ public sealed class ContentAssets : IDisposable
         Task<AudioClip>
     >(StringComparer.Ordinal);
     private readonly Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>(
+        StringComparer.Ordinal
+    );
+    private readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>(
         StringComparer.Ordinal
     );
     private readonly HashSet<string> unavailableTextures = new HashSet<string>(
@@ -176,6 +179,33 @@ public sealed class ContentAssets : IDisposable
     }
 
     /// <summary>
+    /// Resolves and caches a sprite backed by an addressed texture.
+    /// </summary>
+    public Sprite GetSprite(string path)
+    {
+        string normalizedPath = NormalizeAddress(path);
+        if (string.IsNullOrEmpty(normalizedPath))
+            return null;
+        if (sprites.TryGetValue(normalizedPath, out Sprite sprite) && sprite != null)
+            return sprite;
+
+        sprites.Remove(normalizedPath);
+        Texture2D texture = GetTexture(normalizedPath);
+        if (texture == null)
+            return null;
+
+        sprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f),
+            100f
+        );
+        sprite.name = texture.name;
+        sprites.Add(normalizedPath, sprite);
+        return sprite;
+    }
+
+    /// <summary>
     /// Asynchronously resolves and caches audio from an explicitly scoped content address.
     /// </summary>
     /// <param name="path">The application or pack content address.</param>
@@ -231,12 +261,15 @@ public sealed class ContentAssets : IDisposable
 
         foreach (AudioClip clip in audioClips.Values)
             DestroyAsset(clip);
+        foreach (Sprite sprite in sprites.Values)
+            DestroyAsset(sprite);
         foreach (Texture2D texture in textures.Values)
             DestroyAsset(texture);
 
         audioClips.Clear();
         audioLoads.Clear();
         textures.Clear();
+        sprites.Clear();
         unavailableTextures.Clear();
         disposed = true;
     }

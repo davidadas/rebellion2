@@ -3,6 +3,10 @@
 /// </summary>
 public static class ContentPackEditor
 {
+    private static EditorContentAssetSource assets;
+
+    public static IContentAssetSource Assets => assets ??= new EditorContentAssetSource();
+
     /// <summary>
     /// Loads the active pack's typed game-data catalog for editor authoring.
     /// </summary>

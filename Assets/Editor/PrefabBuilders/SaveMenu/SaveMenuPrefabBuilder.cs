@@ -989,7 +989,7 @@ public static class SaveMenuPrefabBuilder
         if (string.IsNullOrEmpty(path))
             throw new ArgumentException("A texture path is required.", nameof(path));
 
-        return ApplicationTextureBindingAuthoring.LoadTexture(path);
+        return ContentPackEditor.Assets.GetTexture(path);
     }
 
     /// <summary>
@@ -1175,7 +1175,6 @@ public static class SaveMenuPrefabBuilder
             Directory.CreateDirectory(directory);
             AssetDatabase.Refresh();
         }
-        ApplicationTextureBindingAuthoring.Capture(root);
         GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         UnityEngine.Object.DestroyImmediate(root);
         if (!success || prefab == null)

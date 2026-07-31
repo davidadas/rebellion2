@@ -181,7 +181,6 @@ public static class MainMenuPrefabBuilder
             RebuildViewBindings(root);
             InstallPlanet(root);
             InstallSpinning3DIcons(root);
-            ApplicationTextureBindingAuthoring.Capture(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
         }
         finally
@@ -1045,7 +1044,7 @@ public static class MainMenuPrefabBuilder
     /// <returns>The sprite at the address.</returns>
     private static Sprite LoadSprite(string address)
     {
-        return ApplicationTextureBindingAuthoring.LoadSprite(address);
+        return ContentPackEditor.Assets.GetSprite(address);
     }
 
     /// <summary>
@@ -1110,7 +1109,7 @@ public static class MainMenuPrefabBuilder
             ?? FindRequiredComponent<TMP_Text>(root, "VictoryConditionText");
         Sprite standardVictoryConditionSprite =
             ReadReference<Sprite>(view, "standardVictoryConditionSprite")
-            ?? ApplicationTextureBindingAuthoring.LoadSprite(_standardVictorySpriteAddress);
+            ?? ContentPackEditor.Assets.GetSprite(_standardVictorySpriteAddress);
         Sprite headquartersVictoryConditionSprite =
             ReadReference<Sprite>(view, "headquartersVictoryConditionSprite")
             ?? victoryConditionIcon.sprite;
