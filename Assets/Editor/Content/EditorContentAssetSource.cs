@@ -8,6 +8,7 @@ using UnityEngine;
 /// </summary>
 public sealed class EditorContentAssetSource : IContentAssetSource
 {
+    private const int _fullSizeTextureLimit = 4096;
     private static readonly string[] _textureExtensions = { ".png", ".jpg", ".jpeg" };
 
     private readonly string contentRoot;
@@ -23,6 +24,27 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     public Texture2D GetTexture(string address)
     {
         return AssetDatabase.LoadAssetAtPath<Texture2D>(ResolveAssetPath(address));
+    }
+
+    /// <summary>
+    /// Loads a preview texture without Unity's default 2048-pixel import reduction.
+    /// </summary>
+    /// <param name="address">The content-relative texture address.</param>
+    /// <returns>The imported full-resolution texture.</returns>
+    public Texture2D GetFullSizeTexture(string address)
+    {
+        string assetPath = ResolveAssetPath(address);
+        TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+        if (importer == null)
+            throw new InvalidOperationException($"Content texture importer is missing: {assetPath}");
+
+        if (importer.maxTextureSize < _fullSizeTextureLimit)
+        {
+            importer.maxTextureSize = _fullSizeTextureLimit;
+            importer.SaveAndReimport();
+        }
+
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
     }
 
     public Sprite GetSprite(string address)

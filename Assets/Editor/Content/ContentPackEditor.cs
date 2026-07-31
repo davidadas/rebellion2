@@ -8,6 +8,17 @@ public static class ContentPackEditor
     public static IContentAssetSource Assets => assets ??= new EditorContentAssetSource();
 
     /// <summary>
+    /// Loads a development-preview texture at its full authored resolution.
+    /// </summary>
+    /// <param name="address">The content-relative texture address.</param>
+    /// <returns>The imported full-resolution texture.</returns>
+    public static UnityEngine.Texture2D GetFullSizeTexture(string address)
+    {
+        assets ??= new EditorContentAssetSource();
+        return assets.GetFullSizeTexture(address);
+    }
+
+    /// <summary>
     /// Loads the active content pack for editor authoring.
     /// </summary>
     /// <returns>The active content pack.</returns>
