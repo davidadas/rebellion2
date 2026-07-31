@@ -192,8 +192,6 @@ public static class StrategyViewPrefabBuilder
     private const int _fleetBombardmentContextMenuWidth = 140;
     private const int _destinationCursorSize = 22;
     private const int _destinationCursorRadius = 8;
-    private const int _defaultGalaxyBackgroundX = 52;
-    private const int _defaultGalaxyBackgroundY = 25;
     private const int _constructionWindowOffsetX = 15;
     private const int _constructionWindowOffsetY = 25;
     private const int _itemDragStartDistance = 5;
@@ -652,13 +650,7 @@ public static class StrategyViewPrefabBuilder
         Texture2D backgroundTexture = LoadTexture(previewGalaxyBackground?.ImagePath);
         backgroundImage.texture = backgroundTexture;
         if (backgroundTexture != null)
-            SetSourceRect(
-                background,
-                previewGalaxyBackground?.SourcePosition?.X ?? _defaultGalaxyBackgroundX,
-                previewGalaxyBackground?.SourcePosition?.Y ?? _defaultGalaxyBackgroundY,
-                ToSourceUnits(backgroundTexture.width),
-                ToSourceUnits(backgroundTexture.height)
-            );
+            FillParent(background);
 
         RectTransform planetSystemClusters = CreateChildLayer(
             _planetSystemClustersName,
@@ -8115,16 +8107,6 @@ public static class StrategyViewPrefabBuilder
         rect.anchoredPosition = new Vector2(x, -y);
         rect.sizeDelta = new Vector2(width, height);
         rect.localScale = Vector3.one;
-    }
-
-    /// <summary>
-    /// Converts imported texture pixels to source-space units.
-    /// </summary>
-    /// <param name="texturePixels">The imported texture dimension.</param>
-    /// <returns>The rounded source-space dimension.</returns>
-    private static int ToSourceUnits(int texturePixels)
-    {
-        return Mathf.RoundToInt(texturePixels / _sourcePixelsPerUnit);
     }
 
     /// <summary>
