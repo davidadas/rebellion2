@@ -70,5 +70,25 @@ namespace Rebellion.Tests.Content
 
             Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
         }
+
+        [Test]
+        public void ResolvePlayerContentRootPath_MacBundleLayout_DoesNotDependOnPlatformEnum()
+        {
+            string playerDirectory = Path.Combine(Path.GetTempPath(), "content-pack-mac-layout");
+            string dataPath = Path.Combine(
+                playerDirectory,
+                "Game.app",
+                "Contents",
+                "Resources",
+                "Data"
+            );
+
+            string contentRoot = ContentPackLoader.ResolvePlayerContentRootPath(
+                dataPath,
+                RuntimePlatform.LinuxPlayer
+            );
+
+            Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
+        }
     }
 }

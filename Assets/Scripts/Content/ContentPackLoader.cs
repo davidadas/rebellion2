@@ -120,16 +120,32 @@ public static class ContentPackLoader
             throw new ArgumentException("A player data path is required.", nameof(dataPath));
 
         DirectoryInfo dataDirectory = new DirectoryInfo(Path.GetFullPath(dataPath));
-        DirectoryInfo playerDirectory =
-            platform == RuntimePlatform.OSXPlayer
-                ? dataDirectory.Parent?.Parent?.Parent?.Parent
-                : dataDirectory.Parent;
+        DirectoryInfo playerDirectory = ResolvePlayerDirectory(dataDirectory, platform);
         if (playerDirectory == null)
             throw new InvalidOperationException(
                 "The player content directory could not be resolved."
             );
 
         return Path.Combine(playerDirectory.FullName, _contentDirectoryName);
+    }
+
+    private static DirectoryInfo ResolvePlayerDirectory(
+        DirectoryInfo dataDirectory,
+        RuntimePlatform platform
+    )
+    {
+        DirectoryInfo resourcesDirectory = dataDirectory.Parent;
+        DirectoryInfo contentsDirectory = resourcesDirectory?.Parent;
+        DirectoryInfo appDirectory = contentsDirectory?.Parent;
+        bool hasMacBundleLayout =
+            string.Equals(dataDirectory.Name, "Data", StringComparison.Ordinal)
+            && string.Equals(resourcesDirectory?.Name, "Resources", StringComparison.Ordinal)
+            && string.Equals(contentsDirectory?.Name, "Contents", StringComparison.Ordinal)
+            && string.Equals(appDirectory?.Extension, ".app", StringComparison.OrdinalIgnoreCase);
+        if (platform == RuntimePlatform.OSXPlayer || hasMacBundleLayout)
+            return appDirectory?.Parent;
+
+        return dataDirectory.Parent;
     }
 
     internal static ContentPreloadManifest LoadApplicationPreloadManifest(
