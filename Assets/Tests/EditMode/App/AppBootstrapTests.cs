@@ -38,7 +38,7 @@ namespace Rebellion.Tests.App
             UIComponentTestHelper.InvokeLifecycle(bootstrap, "InitializeRuntime");
 
             Assert.AreEqual(
-                TestContent.Pack.Scenario.PlayableFactionIDs[0],
+                TestContent.Pack.Scenario.DefaultPlayerFactionID,
                 GameLaunchContext.Summary.PlayerFactionID
             );
             Assert.AreEqual(TestContent.Pack.Definition.ID, GameLaunchContext.Summary.PackID);
