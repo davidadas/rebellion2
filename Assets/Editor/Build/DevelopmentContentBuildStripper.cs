@@ -53,7 +53,7 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
             if (property.propertyType != SerializedPropertyType.ObjectReference)
                 continue;
 
-            Object value = property.objectReferenceValue;
+            UnityEngine.Object value = property.objectReferenceValue;
             if (value == null)
                 continue;
 
