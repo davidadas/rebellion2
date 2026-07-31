@@ -65,11 +65,8 @@ node_modules
 Assets/_Recovery/
 Assets/Videos/
 Assets/TextMesh Pro/
-/Content/**/*.jpeg
-/Content/**/*.jpg
-/Content/**/*.mp4
-/Content/**/*.png
-/Content/**/*.wav
+# Installed content is supplied by rebellion2-media beside the project/player.
+/Content/
 
 # C# Files
 **/*.sln

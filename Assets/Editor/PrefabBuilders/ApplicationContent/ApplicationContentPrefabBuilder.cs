@@ -8,7 +8,7 @@ public static class ApplicationContentPrefabBuilder
         UIAuthoringGuard.EnsureEditMode();
         SaveMenuPrefabBuilder.RebuildAllSaveMenuPrefabs();
         StrategyViewPrefabBuilder.RebuildAllStrategyViewPrefabs();
-        MainMenuPrefabAuthoring.RebuildMainMenuViewBindings();
+        MainMenuPrefabBuilder.RebuildMainMenuPrefab();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
