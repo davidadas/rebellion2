@@ -7,6 +7,7 @@ using System.Linq;
 /// </summary>
 public static class StandalonePlayerBuild
 {
+    private const string _developmentContentAssetPrefix = "Assets/Content/";
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _contentDirectoryName = "Content";
@@ -54,12 +55,39 @@ public static class StandalonePlayerBuild
             );
         }
 
+        VerifyDevelopmentContentWasNotPacked(report);
+
         if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
         {
             throw new InvalidOperationException($"Player build output not found at {outputPath}.");
         }
 
         CopyExternalContent(outputPath);
+    }
+
+    /// <summary>
+    /// Fails the build if editor-only preview content leaked into Unity's player data.
+    /// </summary>
+    private static void VerifyDevelopmentContentWasNotPacked(
+        UnityEditor.Build.Reporting.BuildReport report
+    )
+    {
+        string[] packedDevelopmentAssets = report
+            .packedAssets.SelectMany(packed => packed.contents)
+            .Select(info => info.sourceAssetPath)
+            .Where(path =>
+                path.StartsWith(_developmentContentAssetPrefix, StringComparison.Ordinal)
+            )
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+        if (packedDevelopmentAssets.Length == 0)
+            return;
+
+        throw new InvalidOperationException(
+            "Development content was packed into the player:\n"
+                + string.Join("\n", packedDevelopmentAssets.Take(20))
+        );
     }
 
     /// <summary>
