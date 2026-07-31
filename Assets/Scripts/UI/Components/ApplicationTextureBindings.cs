@@ -13,8 +13,7 @@ public interface IApplicationTextureReceiver
 public sealed class ApplicationTextureBindings : MonoBehaviour
 {
 #if UNITY_EDITOR
-    private static ContentAssets editorPreviewAssets;
-    private static bool editorPreviewUnavailable;
+    private ContentAssets editorPreviewAssets;
 #endif
     [Serializable]
     public sealed class RawImageBinding
@@ -173,7 +172,7 @@ public sealed class ApplicationTextureBindings : MonoBehaviour
     private void OnEnable()
     {
 #if UNITY_EDITOR
-        if (Application.isPlaying || isApplied || editorPreviewUnavailable)
+        if (Application.isPlaying || isApplied)
             return;
 
         try
@@ -188,7 +187,8 @@ public sealed class ApplicationTextureBindings : MonoBehaviour
         }
         catch (Exception exception)
         {
-            editorPreviewUnavailable = true;
+            editorPreviewAssets?.Dispose();
+            editorPreviewAssets = null;
             Debug.LogWarning(
                 $"Application content could not be loaded for prefab preview: {exception.Message}",
                 this
@@ -239,6 +239,11 @@ public sealed class ApplicationTextureBindings : MonoBehaviour
         }
 
         ownedSprites.Clear();
+
+#if UNITY_EDITOR
+        editorPreviewAssets?.Dispose();
+        editorPreviewAssets = null;
+#endif
     }
 
     private void ApplySprite(ImageBinding binding, Texture2D texture)
