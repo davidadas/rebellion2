@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
@@ -14,6 +17,15 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
 
     public int callbackOrder => 0;
 
+    /// <summary>
+    /// Temporarily removes preview references from generated UI prefabs while Unity collects
+    /// player dependencies. Disposing the returned scope restores the exact original files.
+    /// </summary>
+    public static IDisposable StripPrefabPreviews()
+    {
+        return new PrefabPreviewStripScope();
+    }
+
     public void OnProcessScene(Scene scene, BuildReport report)
     {
         if (report == null)
@@ -26,10 +38,10 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
         }
     }
 
-    private static void StripPreviewReferences(Component component)
+    private static bool StripPreviewReferences(Component component)
     {
         if (component == null)
-            return;
+            return false;
 
         SerializedObject serializedObject = new SerializedObject(component);
         SerializedProperty property = serializedObject.GetIterator();
@@ -55,5 +67,65 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
 
         if (changed)
             serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        return changed;
+    }
+
+    private sealed class PrefabPreviewStripScope : IDisposable
+    {
+        private readonly Dictionary<string, byte[]> originalFiles = new Dictionary<string, byte[]>(
+            StringComparer.Ordinal
+        );
+        private bool disposed;
+
+        public PrefabPreviewStripScope()
+        {
+            string[] guids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs/UI" });
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                StripPrefab(path);
+            }
+
+            AssetDatabase.SaveAssets();
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            try
+            {
+                foreach (KeyValuePair<string, byte[]> file in originalFiles)
+                    File.WriteAllBytes(file.Key, file.Value);
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+            }
+            finally
+            {
+                disposed = true;
+            }
+        }
+
+        private void StripPrefab(string assetPath)
+        {
+            string absolutePath = Path.GetFullPath(assetPath);
+            GameObject root = PrefabUtility.LoadPrefabContents(assetPath);
+            bool changed = false;
+            try
+            {
+                foreach (Component component in root.GetComponentsInChildren<Component>(true))
+                    changed |= StripPreviewReferences(component);
+
+                if (!changed)
+                    return;
+
+                originalFiles.Add(absolutePath, File.ReadAllBytes(absolutePath));
+                PrefabUtility.SaveAsPrefabAsset(root, assetPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
     }
 }

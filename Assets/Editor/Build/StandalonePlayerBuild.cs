@@ -45,9 +45,9 @@ public static class StandalonePlayerBuild
             options = UnityEditor.BuildOptions.None,
         };
 
-        UnityEditor.Build.Reporting.BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(
-            options
-        );
+        UnityEditor.Build.Reporting.BuildReport report;
+        using (DevelopmentContentBuildStripper.StripPrefabPreviews())
+            report = UnityEditor.BuildPipeline.BuildPlayer(options);
         if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             throw new InvalidOperationException(
