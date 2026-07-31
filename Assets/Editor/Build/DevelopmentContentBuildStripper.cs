@@ -49,7 +49,7 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
         bool changed = false;
         while (property.NextVisible(enterChildren))
         {
-            enterChildren = false;
+            enterChildren = property.propertyType == SerializedPropertyType.Generic;
             if (property.propertyType != SerializedPropertyType.ObjectReference)
                 continue;
 
