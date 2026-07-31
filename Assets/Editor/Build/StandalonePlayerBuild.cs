@@ -109,11 +109,7 @@ public static class StandalonePlayerBuild
     /// <param name="playerPath">The completed player artifact path.</param>
     private static void CopyExternalContent(string playerPath)
     {
-        DirectoryInfo projectDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
-        if (projectDirectory == null)
-            throw new InvalidOperationException("Could not resolve project directory.");
-
-        string sourcePath = Path.Combine(projectDirectory.FullName, _contentDirectoryName);
+        string sourcePath = Path.Combine(UnityEngine.Application.dataPath, _contentDirectoryName);
         if (!Directory.Exists(sourcePath))
             throw new DirectoryNotFoundException($"Content directory not found: {sourcePath}");
 
