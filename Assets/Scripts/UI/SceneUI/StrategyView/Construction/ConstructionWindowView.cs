@@ -10,8 +10,7 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ConstructionWindowView
     : MonoBehaviour,
-        IPointerClickHandler,
-        IApplicationTextureReceiver
+        IPointerClickHandler
 {
     private readonly List<StrategyDropdownItemView> dropdownItemRows =
         new List<StrategyDropdownItemView>();
@@ -803,54 +802,4 @@ public sealed class ConstructionWindowView
             throw new MissingReferenceException($"{name}/CancelButtonDownTexture is missing.");
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(closeButtonUpTexture):
-                closeButtonUpTexture = texture;
-                break;
-            case nameof(incrementButtonUpTexture):
-                incrementButtonUpTexture = texture;
-                break;
-            case nameof(incrementButtonDownTexture):
-                incrementButtonDownTexture = texture;
-                break;
-            case nameof(decrementButtonUpTexture):
-                decrementButtonUpTexture = texture;
-                break;
-            case nameof(decrementButtonDownTexture):
-                decrementButtonDownTexture = texture;
-                break;
-            case nameof(dropdownButtonUpTexture):
-                dropdownButtonUpTexture = texture;
-                break;
-            case nameof(dropdownButtonDownTexture):
-                dropdownButtonDownTexture = texture;
-                break;
-            case nameof(infoButtonUpTexture):
-                infoButtonUpTexture = texture;
-                break;
-            case nameof(infoButtonDownTexture):
-                infoButtonDownTexture = texture;
-                break;
-            case nameof(okButtonUpTexture):
-                okButtonUpTexture = texture;
-                break;
-            case nameof(okButtonDownTexture):
-                okButtonDownTexture = texture;
-                break;
-            case nameof(okButtonDisabledTexture):
-                okButtonDisabledTexture = texture;
-                break;
-            case nameof(cancelButtonUpTexture):
-                cancelButtonUpTexture = texture;
-                break;
-            case nameof(cancelButtonDownTexture):
-                cancelButtonDownTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

@@ -11,8 +11,7 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class MissionCreateWindowView
     : MonoBehaviour,
-        IPointerClickHandler,
-        IApplicationTextureReceiver
+        IPointerClickHandler
 {
     private const int _titleImageCount = 2;
 
@@ -965,24 +964,4 @@ public sealed class MissionCreateWindowView
         }
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(missionBackgroundTexture):
-                missionBackgroundTexture = texture;
-                break;
-            case nameof(personnelBackgroundTexture):
-                personnelBackgroundTexture = texture;
-                break;
-            case nameof(dropdownButtonUpTexture):
-                dropdownButtonUpTexture = texture;
-                break;
-            case nameof(dropdownButtonDownTexture):
-                dropdownButtonDownTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

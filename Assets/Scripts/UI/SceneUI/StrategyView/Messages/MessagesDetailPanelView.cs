@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns the authored message-detail panel, text wrapping, repeated lines, and detail navigation.
 /// </summary>
-public sealed class MessagesDetailPanelView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class MessagesDetailPanelView : MonoBehaviour
 {
     private readonly List<TextMeshProUGUI> detailLineTextFields = new List<TextMeshProUGUI>();
     private readonly List<string> renderedDetailLines = new List<string>();
@@ -406,36 +406,4 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IApplicationTexture
             throw new MissingReferenceException($"{name}/DetailLines are missing.");
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(stripTexture):
-                stripTexture = texture;
-                break;
-            case nameof(bodyTexture):
-                bodyTexture = texture;
-                break;
-            case nameof(nextButtonUpTexture):
-                nextButtonUpTexture = texture;
-                break;
-            case nameof(nextButtonDownTexture):
-                nextButtonDownTexture = texture;
-                break;
-            case nameof(nextButtonDisabledTexture):
-                nextButtonDisabledTexture = texture;
-                break;
-            case nameof(previousButtonUpTexture):
-                previousButtonUpTexture = texture;
-                break;
-            case nameof(previousButtonDownTexture):
-                previousButtonDownTexture = texture;
-                break;
-            case nameof(previousButtonDisabledTexture):
-                previousButtonDisabledTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

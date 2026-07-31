@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored strategy confirmation dialog and emits semantic choices.
 /// </summary>
-public sealed class ConfirmDialogWindowView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class ConfirmDialogWindowView : MonoBehaviour
 {
     [Header("Frame")]
     [SerializeField]
@@ -225,24 +225,4 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IApplicationTexture
         lineTemplate.gameObject.SetActive(false);
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(confirmButtonUpTexture):
-                confirmButtonUpTexture = texture;
-                break;
-            case nameof(confirmButtonDownTexture):
-                confirmButtonDownTexture = texture;
-                break;
-            case nameof(cancelButtonUpTexture):
-                cancelButtonUpTexture = texture;
-                break;
-            case nameof(cancelButtonDownTexture):
-                cancelButtonDownTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

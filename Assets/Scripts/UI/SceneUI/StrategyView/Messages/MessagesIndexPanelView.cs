@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns the authored messages index, its repeated rows, and index-local input controls.
 /// </summary>
-public sealed class MessagesIndexPanelView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class MessagesIndexPanelView : MonoBehaviour
 {
     private readonly List<string> renderedMessageIds = new List<string>();
     private readonly List<UnityAction> tabListeners = new List<UnityAction>();
@@ -455,27 +455,4 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IApplicationTextureR
         }
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(backgroundTexture):
-                backgroundTexture = texture;
-                break;
-            case nameof(selectAllButtonUpTexture):
-                selectAllButtonUpTexture = texture;
-                break;
-            case nameof(selectAllButtonDownTexture):
-                selectAllButtonDownTexture = texture;
-                break;
-            case nameof(removeSelectedButtonUpTexture):
-                removeSelectedButtonUpTexture = texture;
-                break;
-            case nameof(removeSelectedButtonDownTexture):
-                removeSelectedButtonDownTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

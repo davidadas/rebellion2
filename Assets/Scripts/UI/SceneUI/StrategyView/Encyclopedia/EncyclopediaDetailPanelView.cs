@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the selected Encyclopedia topic and emits entry-navigation requests.
 /// </summary>
-public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class EncyclopediaDetailPanelView : MonoBehaviour
 {
     [SerializeField]
     private RawImage cardImage;
@@ -519,24 +519,4 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IApplicationTex
         public bool IsTabbed { get; }
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(previousButtonUpTexture):
-                previousButtonUpTexture = texture;
-                break;
-            case nameof(previousButtonDisabledTexture):
-                previousButtonDisabledTexture = texture;
-                break;
-            case nameof(nextButtonUpTexture):
-                nextButtonUpTexture = texture;
-                break;
-            case nameof(nextButtonDisabledTexture):
-                nextButtonDisabledTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

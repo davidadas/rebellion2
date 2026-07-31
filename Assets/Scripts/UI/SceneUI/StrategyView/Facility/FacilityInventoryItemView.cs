@@ -9,8 +9,7 @@ using UnityEngine.UI;
 [RequireComponent(typeof(UIPointerGestureRelay))]
 public sealed class FacilityInventoryItemView
     : MonoBehaviour,
-        IStrategyStatusDoubleClickTarget,
-        IApplicationTextureReceiver
+        IStrategyStatusDoubleClickTarget
 {
     [SerializeField]
     private RawImage hitAreaImage;
@@ -181,11 +180,4 @@ public sealed class FacilityInventoryItemView
             UILayout.SetSourceRect(image.rectTransform, 0, 0, width, height);
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        if (key != nameof(defaultItemTexture))
-            throw new ArgumentOutOfRangeException(nameof(key), key, null);
-
-        defaultItemTexture = texture;
-    }
 }

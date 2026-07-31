@@ -11,8 +11,7 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class FacilityWindowView
     : MonoBehaviour,
-        IPointerClickHandler,
-        IApplicationTextureReceiver
+        IPointerClickHandler
 {
     [SerializeField]
     private RawImage titleImage;
@@ -710,57 +709,4 @@ public sealed class FacilityWindowView
             throw new MissingReferenceException($"{name}/{label}TabDisabledTexture is missing.");
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(shipyardTabActiveTexture):
-                shipyardTabActiveTexture = texture;
-                break;
-            case nameof(shipyardTabInactiveTexture):
-                shipyardTabInactiveTexture = texture;
-                break;
-            case nameof(shipyardTabDisabledTexture):
-                shipyardTabDisabledTexture = texture;
-                break;
-            case nameof(troopTabActiveTexture):
-                troopTabActiveTexture = texture;
-                break;
-            case nameof(troopTabInactiveTexture):
-                troopTabInactiveTexture = texture;
-                break;
-            case nameof(troopTabDisabledTexture):
-                troopTabDisabledTexture = texture;
-                break;
-            case nameof(constructionTabActiveTexture):
-                constructionTabActiveTexture = texture;
-                break;
-            case nameof(constructionTabInactiveTexture):
-                constructionTabInactiveTexture = texture;
-                break;
-            case nameof(constructionTabDisabledTexture):
-                constructionTabDisabledTexture = texture;
-                break;
-            case nameof(refineryTabActiveTexture):
-                refineryTabActiveTexture = texture;
-                break;
-            case nameof(refineryTabInactiveTexture):
-                refineryTabInactiveTexture = texture;
-                break;
-            case nameof(refineryTabDisabledTexture):
-                refineryTabDisabledTexture = texture;
-                break;
-            case nameof(mineTabActiveTexture):
-                mineTabActiveTexture = texture;
-                break;
-            case nameof(mineTabInactiveTexture):
-                mineTabInactiveTexture = texture;
-                break;
-            case nameof(mineTabDisabledTexture):
-                mineTabDisabledTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

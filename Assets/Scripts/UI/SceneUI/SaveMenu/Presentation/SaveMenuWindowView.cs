@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the authored save-menu hierarchy and emits semantic UI requests.
 /// </summary>
-public sealed class SaveMenuWindowView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class SaveMenuWindowView : MonoBehaviour
 {
     [SerializeField]
     private Color enabledTextColor;
@@ -565,18 +565,4 @@ public sealed class SaveMenuWindowView : MonoBehaviour, IApplicationTextureRecei
         return true;
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(musicButtonUpTexture):
-                musicButtonUpTexture = texture;
-                break;
-            case nameof(musicButtonDownTexture):
-                musicButtonDownTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

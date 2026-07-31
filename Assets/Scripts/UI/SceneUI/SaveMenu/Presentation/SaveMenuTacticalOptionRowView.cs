@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders one tactical option and emits a typed toggle request.
 /// </summary>
-public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
 {
     [SerializeField]
     private UserTacticalOption option;
@@ -133,18 +133,4 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour, IApplicationT
             && enabledTexture != null;
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        switch (key)
-        {
-            case nameof(disabledTexture):
-                disabledTexture = texture;
-                break;
-            case nameof(enabledTexture):
-                enabledTexture = texture;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }

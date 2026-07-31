@@ -11,7 +11,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns main-menu control bindings and local presentation while emitting semantic user requests.
 /// </summary>
-public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
+public sealed class MainMenuView : MonoBehaviour
 {
     /// <summary>
     /// Associates a galaxy-size toggle with its launch value.
@@ -626,27 +626,4 @@ public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
         controlsBound = false;
     }
 
-    public void SetApplicationTexture(string key, Texture2D texture)
-    {
-        Sprite sprite = Sprite.Create(
-            texture,
-            new Rect(0f, 0f, texture.width, texture.height),
-            new Vector2(0.5f, 0.5f),
-            100f
-        );
-        sprite.name = texture.name;
-        ownedFactionSprites.Add(sprite);
-
-        switch (key)
-        {
-            case nameof(standardVictoryConditionSprite):
-                standardVictoryConditionSprite = sprite;
-                break;
-            case nameof(headquartersVictoryConditionSprite):
-                headquartersVictoryConditionSprite = sprite;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(key), key, null);
-        }
-    }
 }
