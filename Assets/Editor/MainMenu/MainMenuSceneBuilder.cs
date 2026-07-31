@@ -17,7 +17,7 @@ public static class MainMenuSceneBuilder
     public static void InstallMainMenuRootPrefabInScene()
     {
         UIAuthoringGuard.EnsureEditMode();
-        MainMenuPrefabAuthoring.RebuildMainMenuViewBindings();
+        MainMenuPrefabBuilder.RebuildMainMenuPrefab();
 
         if (AssetDatabase.LoadAssetAtPath<UnityEngine.GameObject>(_prefabPath) == null)
             throw new FileNotFoundException(_prefabPath);
