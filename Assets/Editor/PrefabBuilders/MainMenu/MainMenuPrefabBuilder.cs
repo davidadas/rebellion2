@@ -1776,6 +1776,7 @@ public static class MainMenuPrefabBuilder
     /// <param name="root">The prefab root.</param>
     private static void InstallPlanet(GameObject root)
     {
+        ConfigureTextureImport(_starfieldPath, TextureImporterType.Default);
         Texture starfield = AssetDatabase.LoadAssetAtPath<Texture>(_starfieldPath);
         RenderTexture rt = LoadOrCreateRenderTexture();
 
@@ -2001,7 +2002,7 @@ public static class MainMenuPrefabBuilder
         // The albedo imported as a Sprite before, so LoadAssetAtPath<Texture> returned null and the
         // material showed the Standard shader's white default. Force it to Default (fresh import) so
         // it binds.
-        EnsureTextureType(_planetAlbedoPath, TextureImporterType.Default);
+        ConfigureTextureImport(_planetAlbedoPath, TextureImporterType.Default);
         // Force a re-import so external edits to the albedo PNG are always picked up on a rebuild
         // (Unity otherwise keeps the cached import and the planet appears unchanged).
         AssetDatabase.ImportAsset(_planetAlbedoPath, ImportAssetOptions.ForceUpdate);
@@ -2038,16 +2039,30 @@ public static class MainMenuPrefabBuilder
     /// </summary>
     /// <param name="path">The texture asset path.</param>
     /// <param name="type">The importer texture type to enforce.</param>
-    private static void EnsureTextureType(string path, TextureImporterType type)
+    private static void ConfigureTextureImport(string path, TextureImporterType type)
     {
-        if (
-            AssetImporter.GetAtPath(path) is TextureImporter importer
-            && importer.textureType != type
-        )
+        if (AssetImporter.GetAtPath(path) is not TextureImporter importer)
+            throw new InvalidOperationException($"Texture importer not found at {path}.");
+
+        bool changed = false;
+        if (importer.textureType != type)
         {
             importer.textureType = type;
-            importer.SaveAndReimport();
+            changed = true;
         }
+        if (importer.maxTextureSize != 4096)
+        {
+            importer.maxTextureSize = 4096;
+            changed = true;
+        }
+        if (importer.mipmapEnabled)
+        {
+            importer.mipmapEnabled = false;
+            changed = true;
+        }
+
+        if (changed)
+            importer.SaveAndReimport();
     }
 
     /// <summary>
@@ -2315,14 +2330,10 @@ public static class MainMenuPrefabBuilder
     /// <returns>The ship material asset.</returns>
     private static Material LoadOrCreateShipMaterial(Face face)
     {
-        if (
-            AssetImporter.GetAtPath(face.NormalPath) is TextureImporter normalImporter
-            && normalImporter.textureType != TextureImporterType.NormalMap
-        )
-        {
-            normalImporter.textureType = TextureImporterType.NormalMap;
-            normalImporter.SaveAndReimport();
-        }
+        ConfigureTextureImport(face.AlbedoPath, TextureImporterType.Default);
+        ConfigureTextureImport(face.NormalPath, TextureImporterType.NormalMap);
+        ConfigureTextureImport(face.MetalSmoothPath, TextureImporterType.Default);
+        ConfigureTextureImport(face.EmissionPath, TextureImporterType.Default);
 
         Shader standard = Shader.Find("Standard");
         Material mat = AssetDatabase.LoadAssetAtPath<Material>(face.MaterialPath);

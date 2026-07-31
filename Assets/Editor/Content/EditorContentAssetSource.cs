@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public sealed class EditorContentAssetSource : IContentAssetSource
 {
-    private const int _fullSizeTextureLimit = 4096;
+    private const int _previewTextureLimit = 4096;
     private static readonly string[] _textureExtensions = { ".png", ".jpg", ".jpeg" };
 
     private readonly string contentRoot;
@@ -23,45 +23,63 @@ public sealed class EditorContentAssetSource : IContentAssetSource
 
     public Texture2D GetTexture(string address)
     {
-        return AssetDatabase.LoadAssetAtPath<Texture2D>(ResolveAssetPath(address));
-    }
-
-    /// <summary>
-    /// Loads a preview texture without Unity's default 2048-pixel import reduction.
-    /// </summary>
-    /// <param name="address">The content-relative texture address.</param>
-    /// <returns>The imported full-resolution texture.</returns>
-    public Texture2D GetFullSizeTexture(string address)
-    {
         string assetPath = ResolveAssetPath(address);
-        TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
-        if (importer == null)
-            throw new InvalidOperationException($"Content texture importer is missing: {assetPath}");
-
-        if (importer.maxTextureSize < _fullSizeTextureLimit)
-        {
-            importer.maxTextureSize = _fullSizeTextureLimit;
-            importer.SaveAndReimport();
-        }
-
+        ConfigureImporter(assetPath, TextureImporterType.Default, SpriteImportMode.None);
         return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
     }
 
     public Sprite GetSprite(string address)
     {
         string assetPath = ResolveAssetPath(address);
+        ConfigureImporter(assetPath, TextureImporterType.Sprite, SpriteImportMode.Single);
+        return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+    }
+
+    private static void ConfigureImporter(
+        string assetPath,
+        TextureImporterType textureType,
+        SpriteImportMode spriteImportMode
+    )
+    {
         TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
         if (importer == null)
             throw new InvalidOperationException($"Content texture importer is missing: {assetPath}");
 
-        if (importer.textureType != TextureImporterType.Sprite)
-        {
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
-            importer.SaveAndReimport();
-        }
+        bool changed = false;
+        changed |= SetIfDifferent(importer.textureType, textureType, value => importer.textureType = value);
+        changed |= SetIfDifferent(
+            importer.spriteImportMode,
+            spriteImportMode,
+            value => importer.spriteImportMode = value
+        );
+        changed |= SetIfDifferent(
+            importer.maxTextureSize,
+            _previewTextureLimit,
+            value => importer.maxTextureSize = value
+        );
+        changed |= SetIfDifferent(importer.mipmapEnabled, false, value => importer.mipmapEnabled = value);
+        changed |= SetIfDifferent(
+            importer.alphaSource,
+            TextureImporterAlphaSource.FromInput,
+            value => importer.alphaSource = value
+        );
+        changed |= SetIfDifferent(
+            importer.alphaIsTransparency,
+            true,
+            value => importer.alphaIsTransparency = value
+        );
 
-        return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+        if (changed)
+            importer.SaveAndReimport();
+    }
+
+    private static bool SetIfDifferent<T>(T current, T expected, Action<T> assign)
+    {
+        if (Equals(current, expected))
+            return false;
+
+        assign(expected);
+        return true;
     }
 
     private string ResolveAssetPath(string address)

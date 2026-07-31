@@ -649,9 +649,7 @@ public static class StrategyViewPrefabBuilder
         RawImage backgroundImage = background.gameObject.AddComponent<RawImage>();
         backgroundImage.raycastTarget = false;
         GalaxyBackground previewGalaxyBackground = PreviewTheme?.GalaxyBackground;
-        Texture2D backgroundTexture = ContentPackEditor.GetFullSizeTexture(
-            previewGalaxyBackground?.ImagePath
-        );
+        Texture2D backgroundTexture = LoadTexture(previewGalaxyBackground?.ImagePath);
         backgroundImage.texture = backgroundTexture;
         if (backgroundTexture != null)
             SetSourceRect(
