@@ -128,7 +128,14 @@ public sealed class ContentAssets : IDisposable
         if (string.IsNullOrEmpty(normalizedPath))
             return null;
         if (textures.TryGetValue(normalizedPath, out Texture2D texture))
-            return texture;
+        {
+            if (texture != null)
+                return texture;
+
+            // Unity can destroy transient editor-preview objects when a prefab stage closes while
+            // domain reload is disabled. Never retain a dead Unity object in the content cache.
+            textures.Remove(normalizedPath);
+        }
         if (unavailableTextures.Contains(normalizedPath))
             return null;
 
