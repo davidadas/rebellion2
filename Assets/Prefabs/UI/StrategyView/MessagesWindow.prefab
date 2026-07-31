@@ -1294,6 +1294,26 @@ MonoBehaviour:
   rawImages:
   - target: {fileID: 4223219214382079502}
     address: application/strategy/ui/windows/ui_strategyview_encyclopedia_window_background
+  - target: {fileID: 5498332269528948027}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-all-button-up
+  - target: {fileID: 1472417546831355876}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-support-button-up
+  - target: {fileID: 3191029041103305600}
+    address: pack/shared/strategy/ui/windows/fleet/messages-window-fleet-button-up
+  - target: {fileID: 2679059402225453128}
+    address: pack/shared/strategy/ui/windows/missions/messages-window-missions-button-up
+  - target: {fileID: 9119782302168594413}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-resource-button-up
+  - target: {fileID: 6936522892694958114}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-manufacturing-button-up
+  - target: {fileID: 7979870784522231066}
+    address: pack/shared/strategy/ui/windows/defense/messages-window-defense-button-up
+  - target: {fileID: 6218154813291638093}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-conflict-button-up
+  - target: {fileID: 6401935430929416583}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-chat-button-up
+  - target: {fileID: 5062043217501056780}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-advice-button-up
   - target: {fileID: 3359206777064960040}
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
   - target: {fileID: 510589334145302525}
@@ -1306,6 +1326,22 @@ MonoBehaviour:
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2
   - target: {fileID: 6961972296751047187}
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_middle
+  - target: {fileID: 1173694844541594440}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-overlay-frame
+  - target: {fileID: 3374281260595953146}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-button-strip
+  - target: {fileID: 3451614994461274204}
+    address: pack/shared/strategy/ui/context-menus/dialog-close-button
+  - target: {fileID: 7930862518940557874}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-display-button-up
+  - target: {fileID: 6006812881766053790}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-index-button-up
+  - target: {fileID: 53206573477646170}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-signal-button-up
+  - target: {fileID: 7207409056182246856}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-location-button-up
+  - target: {fileID: 2467651536007640267}
+    address: pack/shared/strategy/ui/windows/messages/messages-window-chat-command-button-up
   images: []
   receivers:
   - target: {fileID: 8099837589952137875}
@@ -1323,6 +1359,36 @@ MonoBehaviour:
   - target: {fileID: 8099837589952137875}
     key: removeSelectedButtonDownTexture
     address: application/strategy/ui/windows/ui_strategyview_messages_window_remove_selected_button_pressed
+  - target: {fileID: 114649395018283720}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-all-button-up
+  - target: {fileID: 1491305387641488212}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-support-button-up
+  - target: {fileID: 3874915809036450982}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/fleet/messages-window-fleet-button-up
+  - target: {fileID: 4352196913562927108}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/missions/messages-window-missions-button-up
+  - target: {fileID: 2518847177035414981}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-resource-button-up
+  - target: {fileID: 5699770031176219844}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-manufacturing-button-up
+  - target: {fileID: 2326171416126815818}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/defense/messages-window-defense-button-up
+  - target: {fileID: 3530561640198211596}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-conflict-button-up
+  - target: {fileID: 1813421591324012239}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-chat-button-up
+  - target: {fileID: 5972109463058489269}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-advice-button-up
   - target: {fileID: 3464698521553886571}
     key: stripTexture
     address: application/strategy/ui/windows/ui_strategyview_messages_window_detail_strip
@@ -1347,6 +1413,24 @@ MonoBehaviour:
   - target: {fileID: 3464698521553886571}
     key: previousButtonDisabledTexture
     address: application/strategy/ui/windows/ui_strategyview_messages_window_previous_button_disabled
+  - target: {fileID: 7683319850930392881}
+    key: upTexture
+    address: pack/shared/strategy/ui/context-menus/dialog-close-button
+  - target: {fileID: 3595302455657407901}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-display-button-up
+  - target: {fileID: 1069110320427067520}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-index-button-up
+  - target: {fileID: 1412577792301634471}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-signal-button-up
+  - target: {fileID: 2893272636378911694}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-location-button-up
+  - target: {fileID: 8143409320252646797}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/messages/messages-window-chat-command-button-up
   buttons: []
 --- !u!1 &2574728901742119256
 GameObject:
@@ -4737,7 +4821,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8072185252681563266}
+      addedObject: {fileID: 1995382611208593983}
   m_SourcePrefab: {fileID: 100100000, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
 --- !u!114 &510589334145302525 stripped
 MonoBehaviour:
@@ -4760,7 +4844,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 6581199428874406811}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8072185252681563266
+--- !u!114 &1995382611208593983
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

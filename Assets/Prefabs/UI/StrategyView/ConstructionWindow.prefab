@@ -439,7 +439,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 2, y: -2}
-  m_SizeDelta: {x: 206, y: 14}
+  m_SizeDelta: {x: 206, y: 16}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &7773441919535505800
 CanvasRenderer:
@@ -2638,6 +2638,8 @@ MonoBehaviour:
   rawImages:
   - target: {fileID: 1433915879524381987}
     address: application/strategy/ui/windows/ui_strategyview_construction_window_background
+  - target: {fileID: 5499680172291386974}
+    address: pack/shared/strategy/ui/windows/window-title-active
   - target: {fileID: 6235136081638184321}
     address: application/strategy/ui/shell/ui_strategyview_window_close_button
   - target: {fileID: 5812898396443129915}

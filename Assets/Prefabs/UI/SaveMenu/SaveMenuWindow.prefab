@@ -1,77 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &521537492694334355
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 4571844113535212319}
-  - component: {fileID: 4763577577123221538}
-  - component: {fileID: 5490866892277211682}
-  m_Layer: 0
-  m_Name: BackgroundImage
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &4571844113535212319
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 521537492694334355}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2184746506960578200}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 114, y: -150}
-  m_SizeDelta: {x: 412, y: 176}
-  m_Pivot: {x: 0, y: 1}
---- !u!222 &4763577577123221538
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 521537492694334355}
-  m_CullTransparentMesh: 1
---- !u!114 &5490866892277211682
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 521537492694334355}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Texture: {fileID: 0}
-  m_UVRect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 1
-    height: 1
 --- !u!1 &1393974733007950753
 GameObject:
   m_ObjectHideFlags: 0
@@ -855,6 +783,78 @@ MonoBehaviour:
   button: {fileID: 1680391861916601374}
   upTexture: {fileID: 0}
   downTexture: {fileID: 0}
+--- !u!1 &2780272378368151189
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6717250036596271500}
+  - component: {fileID: 1208093145969157307}
+  - component: {fileID: 6597493865265107907}
+  m_Layer: 0
+  m_Name: BackgroundImage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &6717250036596271500
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2780272378368151189}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2184746506960578200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 114, y: -150}
+  m_SizeDelta: {x: 412, y: 176}
+  m_Pivot: {x: 0, y: 1}
+--- !u!222 &1208093145969157307
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2780272378368151189}
+  m_CullTransparentMesh: 1
+--- !u!114 &6597493865265107907
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2780272378368151189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Texture: {fileID: 0}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
 --- !u!1 &3591835970488845268
 GameObject:
   m_ObjectHideFlags: 0
@@ -1038,7 +1038,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 7138646949679844221}
-  - {fileID: 4571844113535212319}
+  - {fileID: 6717250036596271500}
   - {fileID: 5355060561666275867}
   - {fileID: 2685062671946380582}
   - {fileID: 8217650186238614445}
@@ -1061,7 +1061,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 421f4cc85dca1491b806085e60b2305c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameAssembly::SaveMenuConfirmDialogView
-  backgroundImage: {fileID: 5490866892277211682}
+  backgroundImage: {fileID: 6597493865265107907}
   messageTextColor: {r: 1, g: 1, b: 1, a: 1}
   confirmButtonImage: {fileID: 7959401949986866320}
   confirmButton: {fileID: 4204620324974165375}
@@ -1624,7 +1624,7 @@ RectTransform:
   - {fileID: 469917176905162266}
   - {fileID: 1977754263567505190}
   - {fileID: 1951636284378211544}
-  - {fileID: 2064860859360711478}
+  - {fileID: 8946521858660349829}
   - {fileID: 9167406654558828496}
   - {fileID: 3104996066314082256}
   - {fileID: 362221887183157282}
@@ -1701,7 +1701,7 @@ MonoBehaviour:
   musicButtonUpTexture: {fileID: 0}
   musicButtonDownTexture: {fileID: 0}
   musicSlider: {fileID: 932534399216305029}
-  sfxSlider: {fileID: 2064860859360711480}
+  sfxSlider: {fileID: 7767851733640351960}
   tacticalOptionRows:
   - {fileID: 1018719458992640050}
   - {fileID: 5282678700002004395}
@@ -1742,7 +1742,7 @@ MonoBehaviour:
     address: application/save-menu/ui/ui_savemenu_strategy_button
   - target: {fileID: 194269533559047627}
     address: application/save-menu/ui/ui_savemenu_music_button_pressed
-  - target: {fileID: 5490866892277211682}
+  - target: {fileID: 6597493865265107907}
     address: application/common/ui/ui_common_confirmation_dialog
   - target: {fileID: 7959401949986866320}
     address: application/common/ui/ui_common_confirmation_yes_button
@@ -2474,18 +2474,13 @@ PrefabInstance:
     - target: {fileID: 8145343395354628334, guid: 32fc0664976624b55922bc9202c23b98, type: 3}
       propertyPath: m_TargetGraphic
       value: 
-      objectReference: {fileID: 2064860859360711479}
+      objectReference: {fileID: 566034616551359024}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 32fc0664976624b55922bc9202c23b98, type: 3}
---- !u!224 &2064860859360711478 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 6957975903443494064, guid: 32fc0664976624b55922bc9202c23b98, type: 3}
-  m_PrefabInstance: {fileID: 2064860859360711477}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &2064860859360711479 stripped
+--- !u!114 &566034616551359024 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 1980785036195254533, guid: 32fc0664976624b55922bc9202c23b98, type: 3}
   m_PrefabInstance: {fileID: 2064860859360711477}
@@ -2496,7 +2491,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
---- !u!114 &2064860859360711480 stripped
+--- !u!114 &7767851733640351960 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8605024272454550509, guid: 32fc0664976624b55922bc9202c23b98, type: 3}
   m_PrefabInstance: {fileID: 2064860859360711477}
@@ -2507,6 +2502,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e25a23444214d4beea487838c1dd0742, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameAssembly::SaveMenuSliderView
+--- !u!224 &8946521858660349829 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 6957975903443494064, guid: 32fc0664976624b55922bc9202c23b98, type: 3}
+  m_PrefabInstance: {fileID: 2064860859360711477}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2161644524369520717
 PrefabInstance:
   m_ObjectHideFlags: 0

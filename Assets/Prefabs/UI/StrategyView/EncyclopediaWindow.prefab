@@ -926,8 +926,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 426, y: -143}
-  m_SizeDelta: {x: 44, y: 41}
+  m_AnchoredPosition: {x: 438, y: -143}
+  m_SizeDelta: {x: 32, y: 31}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &6965172643131909362
 CanvasRenderer:
@@ -1347,8 +1347,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 426, y: -21}
-  m_SizeDelta: {x: 44, y: 41}
+  m_AnchoredPosition: {x: 438, y: -21}
+  m_SizeDelta: {x: 32, y: 31}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &2372080447777711552
 CanvasRenderer:
@@ -1858,8 +1858,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 411, y: -147}
-  m_SizeDelta: {x: 44, y: 41}
+  m_AnchoredPosition: {x: 423, y: -147}
+  m_SizeDelta: {x: 32, y: 31}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &3102499963772553939
 CanvasRenderer:
@@ -2699,8 +2699,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 426, y: -89}
-  m_SizeDelta: {x: 44, y: 41}
+  m_AnchoredPosition: {x: 438, y: -89}
+  m_SizeDelta: {x: 32, y: 31}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &5864791691284684121
 CanvasRenderer:
@@ -3066,6 +3066,24 @@ MonoBehaviour:
   rawImages:
   - target: {fileID: 3301991987008647589}
     address: application/strategy/ui/windows/ui_strategyview_encyclopedia_window_background
+  - target: {fileID: 6266280672388580677}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-overlay-frame
+  - target: {fileID: 3316274331288610120}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-three-button-strip
+  - target: {fileID: 6921777831326273712}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-all-systems-button-up
+  - target: {fileID: 7606880596246301116}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-system-button-up
+  - target: {fileID: 3818163184527433743}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-ship-button-up
+  - target: {fileID: 6561543239469007409}
+    address: pack/shared/strategy/ui/windows/facility/encyclopedia-window-facility-button-up
+  - target: {fileID: 4360810428580774305}
+    address: pack/shared/strategy/ui/windows/missions/encyclopedia-window-missions-button-up
+  - target: {fileID: 5896361606912995705}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-troop-button-up
+  - target: {fileID: 2951782172307440550}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-personnel-button-up
   - target: {fileID: 7380429275039879425}
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
   - target: {fileID: 5757636472504753876}
@@ -3084,8 +3102,41 @@ MonoBehaviour:
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2
   - target: {fileID: 3541455311746178195}
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_middle
+  - target: {fileID: 5487986815951433974}
+    address: pack/shared/strategy/ui/context-menus/dialog-close-button
+  - target: {fileID: 904683620284999084}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-topic-button-up
+  - target: {fileID: 749478335219546266}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-index-button-up
+  - target: {fileID: 4508647478223602529}
+    address: pack/shared/strategy/ui/context-menus/dialog-close-button
+  - target: {fileID: 8907789273855221073}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-topic-button-up
+  - target: {fileID: 2188822325065013327}
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-index-button-up
   images: []
   receivers:
+  - target: {fileID: 952229278158932925}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-all-systems-button-up
+  - target: {fileID: 6425997496082405213}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-system-button-up
+  - target: {fileID: 4289544280050217388}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-ship-button-up
+  - target: {fileID: 780639441238921998}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/facility/encyclopedia-window-facility-button-up
+  - target: {fileID: 5926529600969534954}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/missions/encyclopedia-window-missions-button-up
+  - target: {fileID: 2584419932638432775}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-troop-button-up
+  - target: {fileID: 1488727511404895880}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-personnel-button-up
   - target: {fileID: 4042874458409998970}
     key: previousButtonUpTexture
     address: application/strategy/ui/windows/ui_strategyview_encyclopedia_window_previous_button_up
@@ -3104,6 +3155,24 @@ MonoBehaviour:
   - target: {fileID: 2688829218308519000}
     key: upTexture
     address: application/strategy/ui/windows/ui_strategyview_encyclopedia_window_next_button_up
+  - target: {fileID: 3908692490654411117}
+    key: upTexture
+    address: pack/shared/strategy/ui/context-menus/dialog-close-button
+  - target: {fileID: 3707896328218203415}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-topic-button-up
+  - target: {fileID: 2787273437299754571}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-index-button-up
+  - target: {fileID: 439490437987698704}
+    key: upTexture
+    address: pack/shared/strategy/ui/context-menus/dialog-close-button
+  - target: {fileID: 1631025211684426009}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-topic-button-up
+  - target: {fileID: 1589052117505139541}
+    key: upTexture
+    address: pack/shared/strategy/ui/windows/encyclopedia/encyclopedia-window-index-button-up
   buttons: []
 --- !u!1 &8166875748798958711
 GameObject:
@@ -3294,8 +3363,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 411, y: -25}
-  m_SizeDelta: {x: 44, y: 41}
+  m_AnchoredPosition: {x: 423, y: -25}
+  m_SizeDelta: {x: 32, y: 31}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &3343291001215836543
 CanvasRenderer:
@@ -3429,7 +3498,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 348, y: -78}
-  m_SizeDelta: {x: 49, y: 41}
+  m_SizeDelta: {x: 50, y: 57}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &8598222506393979239
 CanvasRenderer:
@@ -3562,8 +3631,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 411, y: -93}
-  m_SizeDelta: {x: 44, y: 41}
+  m_AnchoredPosition: {x: 423, y: -93}
+  m_SizeDelta: {x: 32, y: 31}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &1989337428058760326
 CanvasRenderer:
@@ -4107,7 +4176,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7229166490244091608}
+      addedObject: {fileID: 7157785991715092012}
   m_SourcePrefab: {fileID: 100100000, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
 --- !u!114 &1840607002014382738 stripped
 MonoBehaviour:
@@ -4157,7 +4226,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 1416346441370036914}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7229166490244091608
+--- !u!114 &7157785991715092012
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

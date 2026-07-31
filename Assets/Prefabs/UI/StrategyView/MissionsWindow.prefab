@@ -639,7 +639,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 2, y: -2}
-  m_SizeDelta: {x: 231, y: 14}
+  m_SizeDelta: {x: 231, y: 16}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &779848858250127798
 CanvasRenderer:
@@ -1259,12 +1259,16 @@ MonoBehaviour:
   rawImages:
   - target: {fileID: -4399627874889466781}
     address: application/strategy/ui/windows/ui_strategyview_missions_window_background
+  - target: {fileID: 6804691826645888444}
+    address: pack/shared/strategy/ui/windows/window-title-active
   - target: {fileID: 56474578790907225}
     address: application/strategy/ui/shell/ui_strategyview_window_open_sector_button
   - target: {fileID: 9195376669921033769}
     address: application/strategy/ui/shell/ui_strategyview_window_minimize_button
   - target: {fileID: 1929450467241929364}
     address: application/strategy/ui/shell/ui_strategyview_window_close_button
+  - target: {fileID: 6819961841289822206}
+    address: pack/shared/strategy/ui/windows/missions/missions-selection
   - target: {fileID: 8936410657854146222}
     address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
   - target: {fileID: 6165204320476629371}
@@ -2529,7 +2533,7 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7826453892292146788}
+      addedObject: {fileID: 4231544990921861288}
   m_SourcePrefab: {fileID: 100100000, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
 --- !u!224 &862991584827961125 stripped
 RectTransform:
@@ -2563,7 +2567,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 4905887196697651203}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7826453892292146788
+--- !u!114 &4231544990921861288
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
