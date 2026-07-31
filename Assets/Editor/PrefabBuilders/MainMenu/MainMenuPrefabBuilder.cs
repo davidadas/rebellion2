@@ -21,13 +21,8 @@ public static class MainMenuPrefabBuilder
 {
     // Prefab + authored-asset paths.
     private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
-    private const string _exitButtonControllerPath =
-        "Assets/Prefabs/UI/MainMenu/ExitButton.controller";
-    private const string _standardVictorySpritePath =
-        "Assets/Resources/Art/HD/UI/MainMenu/ui_mainmenu_hq_icon.png";
-    private const string _cutscenePlayerPrefabPath =
-        "Assets/Prefabs/UI/Cutscenes/CutscenePlayer.prefab";
-    private const string _creditsVideoPath = "Assets/Resources/Videos/credits.mp4";
+    private const string _standardVictorySpriteAddress =
+        "application/main-menu/ui/ui_mainmenu_hq_icon";
     private const string _victoryTextFontPath =
         "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
@@ -36,10 +31,10 @@ public static class MainMenuPrefabBuilder
     private const string _rebelFactionId = "FNALL1";
 
     // Resource paths for the SFX cues authored on the pointer-up event triggers.
-    private const string _selectSfxPath = "Audio/SFX/MainMenu/sfx_ui_mainmenu_select";
-    private const string _exitSelectSfxPath = "Audio/SFX/MainMenu/sfx_ui_mainmenu_exit_select";
+    private const string _selectSfxPath = "application/main-menu/audio/select";
+    private const string _exitSelectSfxPath = "application/main-menu/audio/exit-select";
     private const string _galaxySizeSelectSfxPath =
-        "Audio/SFX/MainMenu/sfx_ui_mainmenu_galaxysize_select";
+        "application/main-menu/audio/galaxysize-select";
 
     // Icon turntable speed: one full revolution per second (matched the original 2D flipbook loop).
     private const float _iconTurnDegreesPerSecond = 360f;
@@ -173,7 +168,6 @@ public static class MainMenuPrefabBuilder
     /// <summary>
     /// Rebuilds the main-menu prefab: view bindings, the spinning planet, and the 3D icon rigs.
     /// </summary>
-    [MenuItem("Rebellion/Main Menu/Rebuild Main Menu Prefab")]
     public static void RebuildMainMenuPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -246,9 +240,9 @@ public static class MainMenuPrefabBuilder
         serializedView.FindProperty("victoryConditionIcon").objectReferenceValue =
             FindRequiredComponent<Image>(root, "VictoryConditionIcon");
         serializedView.FindProperty("standardVictoryConditionSprite").objectReferenceValue =
-            LoadSprite(-3367548231926181982, "428367c628bc64c7db52c0fdb8ef2692");
+            LoadSprite("application/main-menu/ui/ui_mainmenu_hq_icon");
         serializedView.FindProperty("headquartersVictoryConditionSprite").objectReferenceValue =
-            LoadSprite(4392630919389973362, "83f052424c114450487d6cd6b2d35386");
+            LoadSprite("application/main-menu/ui/ui_mainmenu_hqonly_icon");
         serializedView.FindProperty("victoryConditionText").objectReferenceValue =
             FindRequiredComponent<TMP_Text>(root, "VictoryConditionText");
         WriteToggleBindings(serializedView.FindProperty("galaxySizeBindings"), galaxySizes);
@@ -327,13 +321,6 @@ public static class MainMenuPrefabBuilder
         AssignReference(audioManager, "sfxSource", sfxSource);
         AssignReference(audioManager, "ambienceSource", ambienceSource);
 
-        GameObject cutsceneObject = NewChild("CutsceneManager", services.transform);
-        CutsceneManager cutsceneManager = cutsceneObject.AddComponent<CutsceneManager>();
-        AssignReference(
-            cutsceneManager,
-            "cutscenePrefab",
-            LoadRequiredAsset<GameObject>(_cutscenePlayerPrefabPath).GetComponent<CutscenePlayer>()
-        );
     }
 
     /// <summary>
@@ -361,11 +348,6 @@ public static class MainMenuPrefabBuilder
         MainMenuController controller = controllerObject.AddComponent<MainMenuController>();
         MainMenuView view = controllerObject.AddComponent<MainMenuView>();
         AssignReference(controller, "view", view);
-        AssignReference(
-            controller,
-            "creditsClip",
-            LoadRequiredAsset<UnityEngine.Video.VideoClip>(_creditsVideoPath)
-        );
         AssignFloat(controller, "creditsMusicFadeDuration", 0.5f);
         return controller;
     }
@@ -384,9 +366,7 @@ public static class MainMenuPrefabBuilder
             typeof(RectTransform),
             typeof(Canvas),
             typeof(CanvasScaler),
-            typeof(GraphicRaycaster),
-            typeof(CanvasRenderer),
-            typeof(Image)
+            typeof(GraphicRaycaster)
         );
         RectTransform canvasRect = canvasObject.GetComponent<RectTransform>();
         canvasRect.localScale = Vector3.zero;
@@ -410,11 +390,23 @@ public static class MainMenuPrefabBuilder
         scaler.matchWidthOrHeight = 0f;
         scaler.referencePixelsPerUnit = 100f;
 
-        Image cockpit = canvasObject.GetComponent<Image>();
-        cockpit.sprite = LoadSprite(9023254792070191278, "f490364cffda2491ab77de29ad9c0430");
+        GameObject designSurface = NewChild(
+            "DesignSurface",
+            canvasObject.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(AspectRatioFitter)
+        );
+        FillParent(designSurface.GetComponent<RectTransform>());
+        AspectRatioFitter fitter = designSurface.GetComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        fitter.aspectRatio = 16f / 9f;
+        Image cockpit = designSurface.GetComponent<Image>();
+        cockpit.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_background");
         cockpit.raycastTarget = false;
 
-        BuildControls(canvasObject.transform);
+        BuildControls(designSurface.transform);
     }
 
     /// <summary>
@@ -468,8 +460,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.06820129f, 0.10708914f),
             new Vector2(0.2561981f, 0.84946275f),
             true,
-            -3197665908956166884,
-            "42e8a0914073347819fddfd503261e08",
+            "application/main-menu/ui/ui_mainmenu_toggle_easy_selected_icon",
             new Vector2(-0.276861f, -0.09802225f),
             new Vector2(1.2448332f, 1.0780834f),
             toggleGroup
@@ -480,8 +471,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.38978013f, 0.10708914f),
             new Vector2(0.5777769f, 0.84946275f),
             false,
-            -4731054637686854587,
-            "3518b89f0252a457c80d0a98e0f0015b",
+            "application/main-menu/ui/ui_mainmenu_toggle_medium_selected_icon",
             new Vector2(-0.28138146f, -0.31242868f),
             new Vector2(1.3778297f, 1.1104269f),
             toggleGroup
@@ -492,8 +482,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.7154325f, 0.10708914f),
             new Vector2(0.9034293f, 0.84946275f),
             false,
-            -4372513298435329126,
-            "6853f102d90334702b9a7b65b45b8341",
+            "application/main-menu/ui/ui_mainmenu_toggle_hard_selected_icon",
             new Vector2(-0.3241689f, -0.25795534f),
             new Vector2(1.3976756f, 1.1844419f),
             toggleGroup
@@ -509,8 +498,7 @@ public static class MainMenuPrefabBuilder
     /// <param name="anchorMin">The toggle anchor minimum.</param>
     /// <param name="anchorMax">The toggle anchor maximum.</param>
     /// <param name="isOn">Whether the toggle starts selected.</param>
-    /// <param name="overlayFileId">The selection overlay sprite local file id.</param>
-    /// <param name="overlayGuid">The selection overlay sprite guid.</param>
+    /// <param name="overlayAddress">The selection overlay content address.</param>
     /// <param name="overlayAnchorMin">The selection overlay anchor minimum.</param>
     /// <param name="overlayAnchorMax">The selection overlay anchor maximum.</param>
     /// <param name="toggleGroup">The owning toggle group.</param>
@@ -520,8 +508,7 @@ public static class MainMenuPrefabBuilder
         Vector2 anchorMin,
         Vector2 anchorMax,
         bool isOn,
-        long overlayFileId,
-        string overlayGuid,
+        string overlayAddress,
         Vector2 overlayAnchorMin,
         Vector2 overlayAnchorMax,
         ToggleGroup toggleGroup
@@ -550,7 +537,7 @@ public static class MainMenuPrefabBuilder
             overlayAnchorMax
         );
         Image overlay = overlayObject.GetComponent<Image>();
-        overlay.sprite = LoadSprite(overlayFileId, overlayGuid);
+        overlay.sprite = LoadSprite(overlayAddress);
 
         Toggle toggle = toggleObject.GetComponent<Toggle>();
         toggle.transition = Selectable.Transition.None;
@@ -585,8 +572,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.29431152f, 0.889017f),
             new Vector2(-0.0000019073486f, 0f),
             true,
-            -4499967845820217543,
-            "d2aef2e47e5f844e6bde4bafa4b181bf",
+            "application/main-menu/ui/ui_mainmenu_toggle_small_map_selected_icon",
             new Vector2(-0.21818379f, -0.23880222f),
             new Vector2(1.1548722f, 1.171793f),
             toggleGroup
@@ -598,8 +584,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.62713313f, 0.86021256f),
             Vector2.zero,
             false,
-            -6531381471609559566,
-            "1b89ae77e265f4358aa32c0c89136c1f",
+            "application/main-menu/ui/ui_mainmenu_toggle_medium_map_selected_icon",
             new Vector2(-0.24899858f, -0.3004693f),
             new Vector2(1.1906377f, 1.2052346f),
             toggleGroup
@@ -611,8 +596,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.96001405f, 0.8824111f),
             Vector2.zero,
             false,
-            527639255941761311,
-            "4e44333766dbd4edb8ec2cace65dd5fc",
+            "application/main-menu/ui/ui_mainmenu_toggle_large_map_selected_icon",
             new Vector2(-0.2263274f, -0.3004693f),
             new Vector2(1.230318f, 1.2052346f),
             toggleGroup
@@ -628,8 +612,7 @@ public static class MainMenuPrefabBuilder
     /// <param name="anchorMax">The toggle anchor maximum.</param>
     /// <param name="sizeDelta">The toggle size delta.</param>
     /// <param name="isOn">Whether the toggle starts selected.</param>
-    /// <param name="overlayFileId">The selection overlay sprite local file id.</param>
-    /// <param name="overlayGuid">The selection overlay sprite guid.</param>
+    /// <param name="overlayAddress">The selection overlay content address.</param>
     /// <param name="overlayAnchorMin">The selection overlay anchor minimum.</param>
     /// <param name="overlayAnchorMax">The selection overlay anchor maximum.</param>
     /// <param name="toggleGroup">The owning toggle group.</param>
@@ -640,8 +623,7 @@ public static class MainMenuPrefabBuilder
         Vector2 anchorMax,
         Vector2 sizeDelta,
         bool isOn,
-        long overlayFileId,
-        string overlayGuid,
+        string overlayAddress,
         Vector2 overlayAnchorMin,
         Vector2 overlayAnchorMax,
         ToggleGroup toggleGroup
@@ -679,7 +661,7 @@ public static class MainMenuPrefabBuilder
             overlayAnchorMax
         );
         Image overlay = overlayObject.GetComponent<Image>();
-        overlay.sprite = LoadSprite(overlayFileId, overlayGuid);
+        overlay.sprite = LoadSprite(overlayAddress);
 
         Toggle toggle = toggleObject.GetComponent<Toggle>();
         toggle.transition = Selectable.Transition.None;
@@ -704,7 +686,6 @@ public static class MainMenuPrefabBuilder
             typeof(RectTransform),
             typeof(CanvasRenderer),
             typeof(Button),
-            typeof(Animator),
             typeof(Image),
             typeof(EventTrigger)
         );
@@ -719,7 +700,7 @@ public static class MainMenuPrefabBuilder
 
         Button button = buttonObject.GetComponent<Button>();
         Image image = buttonObject.GetComponent<Image>();
-        image.sprite = LoadSprite(-5923446240215283494, "f487870b265884d32ae11e06e2e54bd2");
+        image.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_exit_01");
         button.transition = Selectable.Transition.ColorTint;
         button.targetGraphic = image;
 
@@ -727,8 +708,7 @@ public static class MainMenuPrefabBuilder
 
         GameObject pressed = BuildPressedImage(
             buttonObject.transform,
-            7702443976129096025,
-            "9705655b95c9f45c68e3e1d32c42fc0c"
+            "application/main-menu/ui/ui_mainmenu_exit_pressed"
         );
         pressed.GetComponent<RectTransform>().pivot = new Vector2(1f, 1f);
 
@@ -761,15 +741,14 @@ public static class MainMenuPrefabBuilder
         rect.pivot = new Vector2(1f, 1f);
 
         Image image = buttonObject.GetComponent<Image>();
-        image.sprite = LoadSprite(-1181595850936368484, "027d6e3dc22274d3191f2128aaab0f12");
+        image.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_credits_icon");
 
         Button button = buttonObject.GetComponent<Button>();
         button.transition = Selectable.Transition.SpriteSwap;
         button.targetGraphic = image;
         SpriteState spriteState = button.spriteState;
         spriteState.pressedSprite = LoadSprite(
-            -1738500102143540217,
-            "9153f6f2db276425d8cdf7c4e0a19810"
+            "application/main-menu/ui/ui_mainmenu_credits_icon_pressed"
         );
         button.spriteState = spriteState;
 
@@ -788,7 +767,6 @@ public static class MainMenuPrefabBuilder
             typeof(RectTransform),
             typeof(CanvasRenderer),
             typeof(Image),
-            typeof(Animator),
             typeof(Button),
             typeof(EventTrigger)
         );
@@ -800,13 +778,8 @@ public static class MainMenuPrefabBuilder
             new Vector2(0f, 0.000015258789f)
         );
 
-        Animator animator = buttonObject.GetComponent<Animator>();
-        animator.runtimeAnimatorController = LoadRequiredAsset<RuntimeAnimatorController>(
-            AssetDatabase.GUIDToAssetPath("7d4b33c965b5f4ac2b95060ba8f9a8e8")
-        );
-
         Image image = buttonObject.GetComponent<Image>();
-        image.sprite = LoadSprite(6256935228223071393, "102d95d45d76e440980b6dc4060e1bd5");
+        image.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_load_01");
 
         Button button = buttonObject.GetComponent<Button>();
         button.transition = Selectable.Transition.ColorTint;
@@ -814,8 +787,7 @@ public static class MainMenuPrefabBuilder
 
         BuildPressedImage(
             buttonObject.transform,
-            6158112241636284914,
-            "74ee868ef4778469da42df56e6448586"
+            "application/main-menu/ui/ui_mainmenu_load_pressed"
         );
 
         AddPointerUpTrigger(buttonObject.GetComponent<EventTrigger>());
@@ -825,13 +797,11 @@ public static class MainMenuPrefabBuilder
     /// Authors one hidden pressed-state overlay image that fills its button.
     /// </summary>
     /// <param name="parent">The button transform.</param>
-    /// <param name="spriteFileId">The pressed sprite local file id.</param>
-    /// <param name="spriteGuid">The pressed sprite guid.</param>
+    /// <param name="spriteAddress">The pressed sprite content address.</param>
     /// <returns>The created pressed-state overlay GameObject.</returns>
     private static GameObject BuildPressedImage(
         Transform parent,
-        long spriteFileId,
-        string spriteGuid
+        string spriteAddress
     )
     {
         GameObject pressed = NewChild(
@@ -844,7 +814,7 @@ public static class MainMenuPrefabBuilder
         pressed.layer = 5;
         pressed.SetActive(false);
         FillParent(pressed.GetComponent<RectTransform>());
-        pressed.GetComponent<Image>().sprite = LoadSprite(spriteFileId, spriteGuid);
+        pressed.GetComponent<Image>().sprite = LoadSprite(spriteAddress);
         return pressed;
     }
 
@@ -956,7 +926,7 @@ public static class MainMenuPrefabBuilder
         iconRect.anchorMin = Vector2.zero;
         iconRect.anchorMax = Vector2.one;
         Image icon = iconObject.GetComponent<Image>();
-        icon.sprite = LoadSprite(4392630919389973362, "83f052424c114450487d6cd6b2d35386");
+        icon.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_hqonly_icon");
         icon.raycastTarget = false;
         icon.preserveAspect = true;
         Button iconButton = iconObject.GetComponent<Button>();
@@ -1076,35 +1046,13 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Loads one sprite sub-asset by its serialized local file id and owning guid.
+    /// Loads one sprite from external application content.
     /// </summary>
-    /// <param name="fileId">The sprite local file identifier.</param>
-    /// <param name="guid">The owning asset guid.</param>
-    /// <returns>The matching sprite.</returns>
-    private static Sprite LoadSprite(long fileId, string guid)
+    /// <param name="address">The external content address.</param>
+    /// <returns>The sprite at the address.</returns>
+    private static Sprite LoadSprite(string address)
     {
-        string path = AssetDatabase.GUIDToAssetPath(guid);
-        if (string.IsNullOrEmpty(path))
-            throw new FileNotFoundException($"No asset for guid {guid}.");
-
-        foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(path))
-        {
-            if (
-                asset is Sprite sprite
-                && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
-                    sprite,
-                    out string _,
-                    out long localId
-                )
-                && localId == fileId
-            )
-            {
-                return sprite;
-            }
-        }
-
-        Sprite fallback = AssetDatabase.LoadAssetAtPath<Sprite>(path);
-        return fallback ?? throw new FileNotFoundException($"No sprite {fileId} at {path}.");
+        return ApplicationTextureBindingAuthoring.LoadSprite(address);
     }
 
     /// <summary>
@@ -1169,15 +1117,10 @@ public static class MainMenuPrefabBuilder
             ?? FindRequiredComponent<TMP_Text>(root, "VictoryConditionText");
         Sprite standardVictoryConditionSprite =
             ReadReference<Sprite>(view, "standardVictoryConditionSprite")
-            ?? LoadRequiredSprite(_standardVictorySpritePath);
+            ?? ApplicationTextureBindingAuthoring.LoadSprite(_standardVictorySpriteAddress);
         Sprite headquartersVictoryConditionSprite =
             ReadReference<Sprite>(view, "headquartersVictoryConditionSprite")
             ?? victoryConditionIcon.sprite;
-        Animator exitButtonAnimator = FindRequiredComponent<Animator>(root, "ExitButton");
-        exitButtonAnimator.runtimeAnimatorController = LoadRequiredAsset<RuntimeAnimatorController>(
-            _exitButtonControllerPath
-        );
-
         ConfigureView(
             view,
             loadGameButton,
@@ -1196,7 +1139,6 @@ public static class MainMenuPrefabBuilder
         RemoveControllerPersistentCalls(root, controller);
         RebuildEventTriggers(audioCues);
         EditorUtility.SetDirty(controller);
-        EditorUtility.SetDirty(exitButtonAnimator);
         EditorUtility.SetDirty(view);
     }
 

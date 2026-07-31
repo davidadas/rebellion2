@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 17c34165637f34eecaa5871dbfb33cc1, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -132,7 +132,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 8487968937766206387}
   button: {fileID: 5870527709332589351}
-  upTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: 17c34165637f34eecaa5871dbfb33cc1, type: 3}
   downTexture: {fileID: 0}
 --- !u!1 &2218392660984341095
 GameObject:
@@ -537,7 +537,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: ed8cb835e302a4828944fe0eec3d41c7, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -602,7 +602,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 6647564049058198630}
   button: {fileID: 4354980605191688747}
-  upTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: ed8cb835e302a4828944fe0eec3d41c7, type: 3}
   downTexture: {fileID: 0}
 --- !u!1 &6473040332624402340
 GameObject:
@@ -669,7 +669,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 69cdfb01f3cf741c88daad170e0f7ec1, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0

@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: eb609ea19003a4cba81abb6505be7113, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -132,8 +132,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 8664373787597713335}
   button: {fileID: 7994147573495769588}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: 6950e0fee6ff1423d9bf1ada75b3a9c2, type: 3}
+  downTexture: {fileID: 2800000, guid: a9944e1eaaec54e7f9b28389f6ac8d74, type: 3}
 --- !u!1 &1047105676727452348
 GameObject:
   m_ObjectHideFlags: 0
@@ -273,7 +273,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 2c7bcc5fc8aad4651ad4df9ee6dfb318, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -338,8 +338,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 6606343357149426800}
   button: {fileID: 7232455326578804128}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: 2c8c78ec5d40144258d91ab641cbaac5, type: 3}
+  downTexture: {fileID: 2800000, guid: 66fe1fad7cd394fb9836c6c04dac4eb8, type: 3}
 --- !u!1 &6949857862209552702
 GameObject:
   m_ObjectHideFlags: 0
@@ -399,12 +399,12 @@ MonoBehaviour:
   saveButtonPressVisual: {fileID: 586072216543148343}
   loadButtonPressVisual: {fileID: 5334680375312428556}
   nameInputField: {fileID: 3757836379252625791}
-  saveButtonUpTexture: {fileID: 0}
-  saveButtonDownTexture: {fileID: 0}
-  saveButtonDisabledTexture: {fileID: 0}
-  loadButtonUpTexture: {fileID: 0}
-  loadButtonDownTexture: {fileID: 0}
-  loadButtonDisabledTexture: {fileID: 0}
+  saveButtonUpTexture: {fileID: 2800000, guid: 6950e0fee6ff1423d9bf1ada75b3a9c2, type: 3}
+  saveButtonDownTexture: {fileID: 2800000, guid: a9944e1eaaec54e7f9b28389f6ac8d74, type: 3}
+  saveButtonDisabledTexture: {fileID: 2800000, guid: eb609ea19003a4cba81abb6505be7113, type: 3}
+  loadButtonUpTexture: {fileID: 2800000, guid: 2c8c78ec5d40144258d91ab641cbaac5, type: 3}
+  loadButtonDownTexture: {fileID: 2800000, guid: 66fe1fad7cd394fb9836c6c04dac4eb8, type: 3}
+  loadButtonDisabledTexture: {fileID: 2800000, guid: 2c7bcc5fc8aad4651ad4df9ee6dfb318, type: 3}
 --- !u!114 &3977916710561007955
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -80,7 +80,7 @@ public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
         /// <summary>
         /// Gets whether the binding has a button and faction identifier.
         /// </summary>
-        public bool IsConfigured => button != null && Image != null;
+        public bool IsConfigured => button != null && !string.IsNullOrWhiteSpace(factionId);
 
         /// <summary>
         /// Applies a faction identifier and loaded launch-animation frames to this binding.
@@ -95,7 +95,7 @@ public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
             FrameIntervalSeconds = frameIntervalSeconds;
             FrameIndex = 0;
             FrameElapsedSeconds = 0f;
-            if (Frames.Length > 0)
+            if (Frames.Length > 0 && Image != null)
                 Image.sprite = Frames[0];
         }
     }
@@ -306,6 +306,12 @@ public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
                 ?? throw new InvalidOperationException(
                     $"Faction '{factionID}' has no main-menu theme."
                 );
+            if (binding.Image == null)
+            {
+                binding.Configure(factionID, Array.Empty<Sprite>(), 0f);
+                continue;
+            }
+
             Sprite[] frames = LoadFactionAnimationFrames(mainMenuTheme, getTexture);
             binding.Configure(factionID, frames, mainMenuTheme.LaunchAnimationFrameIntervalSeconds);
         }
@@ -434,7 +440,11 @@ public sealed class MainMenuView : MonoBehaviour, IApplicationTextureReceiver
     /// <param name="elapsedSeconds">The elapsed unscaled frame time.</param>
     private static void AdvanceFactionAnimation(FactionLaunchBinding binding, float elapsedSeconds)
     {
-        if (binding?.Frames?.Length < 2 || binding.FrameIntervalSeconds <= 0f)
+        if (
+            binding?.Image == null
+            || binding.Frames?.Length < 2
+            || binding.FrameIntervalSeconds <= 0f
+        )
             return;
 
         binding.FrameElapsedSeconds += elapsedSeconds;

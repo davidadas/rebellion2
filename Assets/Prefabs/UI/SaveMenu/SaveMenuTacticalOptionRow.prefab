@@ -373,7 +373,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 9521eb404715149f785e89bff6028d54, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -438,8 +438,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 2011170526188995118}
   button: {fileID: 1286732412697213687}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: 9521eb404715149f785e89bff6028d54, type: 3}
+  downTexture: {fileID: 2800000, guid: 9521eb404715149f785e89bff6028d54, type: 3}
 --- !u!1 &7116155551666582879
 GameObject:
   m_ObjectHideFlags: 0
@@ -499,8 +499,8 @@ MonoBehaviour:
   button: {fileID: 1286732412697213687}
   labelTextField: {fileID: 2374918449626110057}
   stateTextField: {fileID: 2831191630440619479}
-  disabledTexture: {fileID: 0}
-  enabledTexture: {fileID: 0}
+  disabledTexture: {fileID: 2800000, guid: f40b6a2cfca334c4784226e13cfa518f, type: 3}
+  enabledTexture: {fileID: 2800000, guid: 9521eb404715149f785e89bff6028d54, type: 3}
 --- !u!114 &2345429857791798213
 MonoBehaviour:
   m_ObjectHideFlags: 0

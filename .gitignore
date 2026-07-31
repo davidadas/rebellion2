@@ -20,6 +20,7 @@
 !Assets/Editor/PrefabBuilders.meta
 !Assets/Editor/PrefabBuilders/*.meta
 !Assets/Editor/PrefabBuilders/*/*.meta
+!Assets/Prefabs/**/*.meta
 !Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture.meta
 !Assets/Scripts/App/SceneLoader.cs.meta
 !Assets/Scripts/Content.meta
@@ -63,7 +64,9 @@ node_modules
 
 # Assets - local files not tracked in source control
 Assets/_Recovery/
+/Assets/Editor/ContentPreview/
 Assets/Videos/
+Assets/Resources/Art/GameIcon/
 Assets/TextMesh Pro/
 /Content/**/*.jpeg
 /Content/**/*.jpg

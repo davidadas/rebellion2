@@ -265,7 +265,7 @@ Canvas:
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
   m_UseReflectionProbes: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 0
@@ -470,9 +470,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7192252806535184278, guid: 7050113e7cbc345fda3edd60c9d5bd3f, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 8057933818091860885, guid: 7050113e7cbc345fda3edd60c9d5bd3f, type: 3}
       propertyPath: m_Name
       value: SaveMenuRoot
+      objectReference: {fileID: 0}
+    - target: {fileID: 8569570671878304164, guid: 7050113e7cbc345fda3edd60c9d5bd3f, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

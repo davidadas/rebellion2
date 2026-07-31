@@ -21,8 +21,10 @@ This is a development build, not a public playable release. The project can be o
 1. Clone this repository to a local directory.
 2. Install Unity 6000.4.0f1 via Unity Hub.
 3. In Unity Hub, select **Projects** from the left-hand menu, click **Open**, and select the cloned `rebellion2` folder.
-4. Once the project opens, import TextMesh Pro assets if Unity prompts for them, or use **Window > TextMeshPro > Import TMP Essential Resources**.
-5. Hit the play button.
+4. Copy the separately distributed `rebellion2-media/Content` directory to the project-root `Content` directory.
+5. In Unity, run **Rebellion > Rebuild All UI Prefabs** once. This creates the ignored editor preview mirror and rebuilds every authored UI prefab.
+6. Once the project opens, import TextMesh Pro assets if Unity prompts for them, or use **Window > TextMeshPro > Import TMP Essential Resources**.
+7. Hit the play button.
 
 ### Game Assets
 
@@ -31,12 +33,11 @@ The game's art, audio, and video assets are not included in this repository. To 
 1. Join the [Star Wars Rebellion Discord](https://discord.com/invite/rWP4vzw8Gg).
 2. Follow the instructions in the server to verify ownership of the original game.
 3. Once verified, you will be granted access to the asset pack.
-4. Place the downloaded assets into the following directories:
-   - `Assets/Content/Art/`
-   - `Assets/Content/Audio/`
-   - `Assets/Content/Videos/`
+4. Copy the pack's `Content` directory to `rebellion2/Content`.
 
 > **Note:** The game will not run without these assets.
+
+`Assets/Editor/ContentPreview` is an ignored editor-only mirror used to make prefab defaults visible while authoring. Unity excludes that directory from player builds. The rebuild command refreshes it from the external project-root `Content` directory; do not maintain a second copy by hand.
 
 ### Packaged Content and Mods
 

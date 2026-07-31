@@ -32,11 +32,11 @@ public static class StrategyViewPrefabBuilder
     private const string _missionsWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/MissionsWindow.prefab";
     private const string _missionsParticipantRowPrefabPath =
-        "Assets/Prefabs/UI/StrategyView/Missions/MissionsParticipantRow.prefab";
+        "Assets/Prefabs/UI/StrategyView/MissionsParticipantRow.prefab";
     private const string _missionCreateWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/MissionCreateWindow.prefab";
     private const string _missionCreateParticipantRowPrefabPath =
-        "Assets/Prefabs/UI/StrategyView/Missions/MissionCreateParticipantRow.prefab";
+        "Assets/Prefabs/UI/StrategyView/MissionCreateParticipantRow.prefab";
     private const string _statusWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/StatusWindow.prefab";
     private const string _advisorReportWindowPrefabPath =
@@ -564,7 +564,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds the authored Strategy View root prefab and its registered window references.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Strategy View Root Prefab")]
     public static void BuildStrategyViewRootPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -886,12 +885,22 @@ public static class StrategyViewPrefabBuilder
     /// Rebuilds shared controls, every Strategy window, and the Strategy View root in dependency
     /// order.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild All Strategy View Prefabs")]
     public static void RebuildAllStrategyViewPrefabs()
+    {
+        RebuildAllStrategyViewPrefabs(true);
+    }
+
+    /// <summary>
+    /// Rebuilds shared controls, every Strategy window, and the Strategy View root in dependency
+    /// order.
+    /// </summary>
+    /// <param name="rebuildSharedControls">Whether to rebuild shared controls first.</param>
+    public static void RebuildAllStrategyViewPrefabs(bool rebuildSharedControls)
     {
         UIAuthoringGuard.EnsureEditMode();
         _previewThemes = null;
-        CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
+        if (rebuildSharedControls)
+            CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
         BuildPlanetSystemWindowPrefab(planetPrefab);
@@ -917,7 +926,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds the planet-system prefabs and refreshes the Strategy window registry.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Planet System Prefabs")]
     public static void BuildPlanetSystemPrefabs()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -933,7 +941,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds the planet-system cluster prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Planet System Cluster Prefab")]
     public static void RebuildPlanetSystemClusterPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -943,7 +950,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Refreshes the Strategy root's serialized window-prefab registry.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Refresh Strategy View Root Window Prefabs")]
     public static void RefreshStrategyViewRootWindowPrefabs()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -953,7 +959,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the confirmation-dialog window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Confirm Dialog Window Prefab")]
     public static void RebuildConfirmDialogWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -964,7 +969,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the battle-alert window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Battle Alert Window Prefab")]
     public static void RebuildBattleAlertWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -975,7 +979,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the facility window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Facility Window Prefab")]
     public static void RebuildFacilityWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -986,7 +989,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the construction window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Construction Window Prefab")]
     public static void RebuildConstructionWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -997,7 +999,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the defense window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Defense Window Prefab")]
     public static void RebuildDefenseWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1008,7 +1009,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the fleet window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Fleet Window Prefab")]
     public static void RebuildFleetWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1019,7 +1019,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the missions window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Missions Window Prefab")]
     public static void RebuildMissionsWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1030,7 +1029,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the mission-creation window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Mission Create Window Prefab")]
     public static void RebuildMissionCreateWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1041,7 +1039,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the status window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Status Window Prefab")]
     public static void RebuildStatusWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1052,7 +1049,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the advisor-report window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Advisor Report Window Prefab")]
     public static void RebuildAdvisorReportWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1063,7 +1059,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the Finder window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Finder Window Prefab")]
     public static void RebuildFinderWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1074,7 +1069,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the messages window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Messages Window Prefab")]
     public static void RebuildMessagesWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -1085,7 +1079,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Rebuilds and registers the encyclopedia window prefab.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Rebuild Encyclopedia Window Prefab")]
     public static void RebuildEncyclopediaWindowPrefab()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -6583,7 +6576,6 @@ public static class StrategyViewPrefabBuilder
     /// <summary>
     /// Installs the generated Strategy root beneath the authored scene host.
     /// </summary>
-    [MenuItem("Rebellion/Strategy View/Install Strategy View Root Prefab In Scene")]
     public static void InstallStrategyViewRootPrefabInScene()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -8211,7 +8203,10 @@ public static class StrategyViewPrefabBuilder
     {
         if (
             string.IsNullOrEmpty(path)
-            || !path.StartsWith("application/", System.StringComparison.Ordinal)
+            || (
+                !path.StartsWith("application/", System.StringComparison.Ordinal)
+                && !path.StartsWith("pack/", System.StringComparison.Ordinal)
+            )
         )
         {
             return null;

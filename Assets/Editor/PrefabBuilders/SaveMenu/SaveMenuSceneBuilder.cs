@@ -15,7 +15,6 @@ public static class SaveMenuSceneBuilder
     /// <summary>
     /// Rebuilds the Save Menu prefab family and replaces only its scene-root instance.
     /// </summary>
-    [MenuItem("Rebellion/Save Menu/Rebuild Save Menu Scene")]
     public static void RebuildSaveMenuScene()
     {
         UIAuthoringGuard.EnsureEditMode();

@@ -13,7 +13,6 @@ public static class MainMenuSceneBuilder
     /// <summary>
     /// Rebuilds view bindings and installs the authored main-menu root in its scene.
     /// </summary>
-    [MenuItem("Rebellion/Main Menu/Install Main Menu Root Prefab In Scene")]
     public static void InstallMainMenuRootPrefabInScene()
     {
         UIAuthoringGuard.EnsureEditMode();

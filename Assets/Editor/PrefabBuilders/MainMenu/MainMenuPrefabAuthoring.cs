@@ -26,7 +26,6 @@ public static class MainMenuPrefabAuthoring
     /// <summary>
     /// Rebuilds the authored main-menu view bindings and removes controller-targeted UnityEvents.
     /// </summary>
-    [MenuItem("Rebellion/Main Menu/Rebuild Main Menu View Bindings")]
     public static void RebuildMainMenuViewBindings()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -36,8 +35,9 @@ public static class MainMenuPrefabAuthoring
         GameObject root = PrefabUtility.LoadPrefabContents(_prefabPath);
         try
         {
-            RebuildMainMenuViewBindings(root);
+            ApplicationTextureBindingAuthoring.RestoreDefaults(root);
             ApplicationTextureBindingAuthoring.Capture(root);
+            ApplicationTextureBindingAuthoring.RestoreDefaults(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
             AssetDatabase.SaveAssets();
         }
@@ -322,6 +322,8 @@ public static class MainMenuPrefabAuthoring
         List<(Toggle Toggle, int Value)> bindings = new List<(Toggle Toggle, int Value)>();
         for (int i = 0; i < toggles.Length; i++)
             bindings.Add((toggles[i], Convert.ToInt32(values[i])));
+        if (bindings.Count == 0)
+            throw new InvalidOperationException("No authored pressed-visual bindings were found.");
         return bindings;
     }
 
@@ -397,8 +399,6 @@ public static class MainMenuPrefabAuthoring
                 bindings.Add((trigger, hiddenGraphics.ToArray(), shownObjects.ToArray()));
         }
 
-        if (bindings.Count == 0)
-            throw new InvalidOperationException("No authored pressed-visual bindings were found.");
         return bindings;
     }
 

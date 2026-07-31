@@ -80,11 +80,20 @@ public static class SaveMenuPrefabBuilder
     /// <summary>
     /// Rebuilds every Save Menu prefab in dependency order.
     /// </summary>
-    [MenuItem("Rebellion/Save Menu/Rebuild Save Menu Prefabs")]
     public static void RebuildAllSaveMenuPrefabs()
     {
+        RebuildAllSaveMenuPrefabs(true);
+    }
+
+    /// <summary>
+    /// Rebuilds every Save Menu prefab in dependency order.
+    /// </summary>
+    /// <param name="rebuildSharedControls">Whether to rebuild shared controls first.</param>
+    public static void RebuildAllSaveMenuPrefabs(bool rebuildSharedControls)
+    {
         UIAuthoringGuard.EnsureEditMode();
-        CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
+        if (rebuildSharedControls)
+            CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
         GameObject slotRowPrefab = BuildSaveSlotRowPrefab();
         GameObject tacticalRowPrefab = BuildTacticalOptionRowPrefab();
         GameObject sliderPrefab = BuildSliderPrefab();
