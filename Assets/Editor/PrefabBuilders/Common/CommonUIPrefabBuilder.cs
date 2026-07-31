@@ -26,7 +26,6 @@ public static class CommonUIPrefabBuilder
     /// <summary>
     /// Rebuilds every reusable generated control prefab.
     /// </summary>
-    [MenuItem("Rebellion/UI/Rebuild Common Control Prefabs")]
     public static void RebuildSharedControlPrefabs()
     {
         UIAuthoringGuard.EnsureEditMode();

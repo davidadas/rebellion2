@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -11,6 +12,9 @@ using UnityEngine.UI;
 /// </summary>
 public static class SaveMenuPrefabBuilder
 {
+    private const string _scenePath = "Assets/Scenes/SaveMenu.unity";
+    private const string _sceneRootName = "SaveMenuRoot";
+    private const string _sceneCanvasPath = "Canvas";
     private const string _saveMenuWindowPrefabPath =
         "Assets/Prefabs/UI/SaveMenu/SaveMenuWindow.prefab";
     private const string _saveMenuRootPrefabPath = "Assets/Prefabs/UI/SaveMenu/SaveMenuRoot.prefab";
@@ -80,7 +84,6 @@ public static class SaveMenuPrefabBuilder
     /// <summary>
     /// Rebuilds every Save Menu prefab in dependency order.
     /// </summary>
-    [MenuItem("Rebellion/Save Menu/Rebuild Save Menu Prefabs")]
     public static void RebuildAllSaveMenuPrefabs()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -96,6 +99,31 @@ public static class SaveMenuPrefabBuilder
         BuildSaveMenuRootPrefab(windowPrefab);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Rebuilds the complete Save Game UI and installs it in its scene.
+    /// </summary>
+    public static void Rebuild()
+    {
+        if (!File.Exists(_scenePath))
+            throw new FileNotFoundException(_scenePath);
+
+        RebuildAllSaveMenuPrefabs();
+        SceneRootPrefabInstaller.InstallRootPrefabInScene(
+            _scenePath,
+            _saveMenuRootPrefabPath,
+            _sceneRootName,
+            _sceneCanvasPath
+        );
+
+        EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
+        if (!scenes.Any(scene => scene.path == _scenePath))
+        {
+            EditorBuildSettings.scenes = scenes
+                .Concat(new[] { new EditorBuildSettingsScene(_scenePath, true) })
+                .ToArray();
+        }
     }
 
     /// <summary>

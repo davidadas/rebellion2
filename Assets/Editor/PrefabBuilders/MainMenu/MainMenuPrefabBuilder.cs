@@ -19,6 +19,8 @@ using Object = UnityEngine.Object;
 /// </summary>
 public static class MainMenuPrefabBuilder
 {
+    private const string _scenePath = "Assets/Scenes/MainMenu.unity";
+    private const string _sceneInstanceName = "MainMenuRoot";
     // Prefab + authored-asset paths.
     private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";
     private const string _standardVictorySpriteAddress =
@@ -2585,6 +2587,20 @@ public static class MainMenuPrefabBuilder
         rawImage.texture = renderTexture;
         rawImage.raycastTarget = true;
         return rawImage;
+    }
+
+    /// <summary>
+    /// Rebuilds the complete Main Menu UI and installs it in its scene.
+    /// </summary>
+    public static void Rebuild()
+    {
+        RebuildMainMenuPrefab();
+        SceneRootPrefabInstaller.InstallRootPrefabInScene(
+            _scenePath,
+            _prefabPath,
+            _sceneInstanceName,
+            null
+        );
     }
 
     /// <summary>
