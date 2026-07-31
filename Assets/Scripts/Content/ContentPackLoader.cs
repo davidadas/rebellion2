@@ -134,6 +134,12 @@ public static class ContentPackLoader
         RuntimePlatform platform
     )
     {
+        if (
+            string.Equals(dataDirectory.Name, "Contents", StringComparison.Ordinal)
+            && string.Equals(dataDirectory.Parent?.Extension, ".app", StringComparison.OrdinalIgnoreCase)
+        )
+            return dataDirectory.Parent.Parent;
+
         DirectoryInfo resourcesDirectory = dataDirectory.Parent;
         DirectoryInfo contentsDirectory = resourcesDirectory?.Parent;
         DirectoryInfo appDirectory = contentsDirectory?.Parent;
