@@ -65,17 +65,15 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void AuthoredPrefab_DesignSurface_ConstrainsMenuToSixteenByNine()
+        public void AuthoredPrefab_CockpitPlanetAndControlsShareFullCanvas()
         {
             Transform canvas = _prefabRoot.transform.Find("UI/Canvas");
-            Transform designSurface = canvas.Find("DesignSurface");
-            AspectRatioFitter aspectRatioFitter = designSurface.GetComponent<AspectRatioFitter>();
-
-            Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, aspectRatioFitter.aspectMode);
-            Assert.AreEqual(16f / 9f, aspectRatioFitter.aspectRatio, 0.0001f);
-            Assert.IsNotNull(designSurface.GetComponent<Image>());
-            Assert.IsNull(canvas.GetComponent<Image>());
-            Assert.AreSame(designSurface, designSurface.Find("MainMenuControls").parent);
+            Assert.IsNull(canvas.Find("DesignSurface"));
+            Assert.IsNotNull(canvas.GetComponent<Image>());
+            Assert.IsNotNull(canvas.Find("SpaceBackdrop/Planet"));
+            Assert.IsNotNull(canvas.Find("Cockpit"));
+            Assert.AreSame(canvas, canvas.Find("MainMenuControls").parent);
+            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]
