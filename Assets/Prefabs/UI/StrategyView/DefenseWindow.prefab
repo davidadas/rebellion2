@@ -185,7 +185,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6617400878523185571}
-  - {fileID: 7201380844694762127}
+  - {fileID: 2244124002340202318}
   - {fileID: 5469958469258633027}
   - {fileID: 6477559466876624285}
   - {fileID: 6307072938688192765}
@@ -225,7 +225,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GameAssembly::StrategyUnitCardView
   hitAreaImage: {fileID: 4282006616865095419}
-  backgroundImage: {fileID: 1502208601047315421}
+  backgroundImage: {fileID: 3137835444070221470}
   enrouteOverlayImage: {fileID: 3254121450711944378}
   damagedOverlayImage: {fileID: 4681268192143085237}
   entityImage: {fileID: 8673858507283874516}
@@ -471,7 +471,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 46198a614b4b945729ca6850e3f5d8d1, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -536,80 +536,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 7676252765603325194}
   button: {fileID: 6588637400850953494}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
---- !u!1 &2260664985431443696
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7201380844694762127}
-  - component: {fileID: 2348685690054979675}
-  - component: {fileID: 1502208601047315421}
-  m_Layer: 0
-  m_Name: BackgroundImage
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &7201380844694762127
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2260664985431443696}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 3042444463887591221}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 61, y: 25}
-  m_Pivot: {x: 0, y: 1}
---- !u!222 &2348685690054979675
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2260664985431443696}
-  m_CullTransparentMesh: 1
---- !u!114 &1502208601047315421
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2260664985431443696}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 0
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Texture: {fileID: 0}
-  m_UVRect:
-    serializedVersion: 2
-    x: 0
-    y: 0
-    width: 1
-    height: 1
+  upTexture: {fileID: 2800000, guid: 46198a614b4b945729ca6850e3f5d8d1, type: 3}
+  downTexture: {fileID: 2800000, guid: 112ee9eb180564b89b4000d532b2ca6d, type: 3}
 --- !u!1 &2525874096186147057
 GameObject:
   m_ObjectHideFlags: 0
@@ -694,7 +622,6 @@ GameObject:
   - component: {fileID: 3780131149432334705}
   - component: {fileID: 4985219186544149795}
   - component: {fileID: 1544307929031926275}
-  - component: {fileID: 5647343036146465669}
   m_Layer: 0
   m_Name: DefenseWindow
   m_TagString: Untagged
@@ -797,58 +724,6 @@ MonoBehaviour:
   itemsScrollArea: {fileID: 520360214140240844}
   itemsGridLayout: {fileID: 8095239098517049010}
   itemCardTemplate: {fileID: 5997574834363698174}
---- !u!114 &5647343036146465669
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2594122763555709320}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b6c5984300d046618468cb2c752bc9a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ApplicationTextureBindings
-  rawImages:
-  - target: {fileID: 6585885739378905438}
-    address: application/strategy/ui/windows/ui_strategyview_defense_window_background
-  - target: {fileID: 3492205426554568041}
-    address: pack/shared/strategy/ui/windows/window-title-active
-  - target: {fileID: 1726448934344293081}
-    address: application/strategy/ui/shell/ui_strategyview_window_open_sector_button
-  - target: {fileID: 7676252765603325194}
-    address: application/strategy/ui/shell/ui_strategyview_window_minimize_button
-  - target: {fileID: 2855570217020810154}
-    address: application/strategy/ui/shell/ui_strategyview_window_close_button
-  - target: {fileID: 4681268192143085237}
-    address: pack/shared/strategy/ui/windows/fleet/fleet-list-damaged
-  - target: {fileID: 8709710827032143967}
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
-  - target: {fileID: 5860499603085862794}
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2
-  - target: {fileID: 124027864919971655}
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_middle
-  images: []
-  receivers:
-  - target: {fileID: 4320150064422343565}
-    key: upTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_open_sector_button
-  - target: {fileID: 4320150064422343565}
-    key: downTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_open_sector_button_pressed
-  - target: {fileID: 106422400096140939}
-    key: upTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_minimize_button
-  - target: {fileID: 106422400096140939}
-    key: downTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_minimize_button_pressed
-  - target: {fileID: 2757882693560760419}
-    key: upTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_close_button
-  - target: {fileID: 2757882693560760419}
-    key: downTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_close_button_pressed
-  buttons: []
 --- !u!1 &3208431551149934693
 GameObject:
   m_ObjectHideFlags: 0
@@ -915,7 +790,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 4a8b2e52075084a46aed360cd3889402, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1748,7 +1623,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: b50b86a8c6fa14cb58b88a17c26883cc, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1813,8 +1688,80 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 2855570217020810154}
   button: {fileID: 8545305801733219768}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: b50b86a8c6fa14cb58b88a17c26883cc, type: 3}
+  downTexture: {fileID: 2800000, guid: e1a61032b1df44603be2f83fffb8ea20, type: 3}
+--- !u!1 &6279346409707212841
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2244124002340202318}
+  - component: {fileID: 1548803971454506975}
+  - component: {fileID: 3137835444070221470}
+  m_Layer: 0
+  m_Name: BackgroundImage
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &2244124002340202318
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6279346409707212841}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3042444463887591221}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 61, y: 25}
+  m_Pivot: {x: 0, y: 1}
+--- !u!222 &1548803971454506975
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6279346409707212841}
+  m_CullTransparentMesh: 1
+--- !u!114 &3137835444070221470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6279346409707212841}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Texture: {fileID: 0}
+  m_UVRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
 --- !u!1 &6632455719827970770
 GameObject:
   m_ObjectHideFlags: 0
@@ -1952,7 +1899,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 698118e578ad44595a313829c136cd4c, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -2585,7 +2532,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 9091e23faae78496dae07a0794973d6f, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -2650,8 +2597,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 1726448934344293081}
   button: {fileID: 7005957316878782823}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: 9091e23faae78496dae07a0794973d6f, type: 3}
+  downTexture: {fileID: 2800000, guid: ece74f82b5184477ca81f7d36a86e346, type: 3}
 --- !u!1 &8694617621471422622
 GameObject:
   m_ObjectHideFlags: 0
@@ -2757,7 +2704,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: ee5cfdaa7613342879cee67ac8ed08a8, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -2915,17 +2862,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 8095239098517049010}
   m_SourcePrefab: {fileID: 100100000, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
---- !u!114 &124027864919971655 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 913363971556983979, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
-  m_PrefabInstance: {fileID: 942458619478496236}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
 --- !u!114 &520360214140240844 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 733235465646641184, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
@@ -2947,28 +2883,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 5759189334190098214, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
   m_PrefabInstance: {fileID: 942458619478496236}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &5860499603085862794 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6647564049058198630, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
-  m_PrefabInstance: {fileID: 942458619478496236}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
---- !u!114 &8709710827032143967 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8487968937766206387, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}
-  m_PrefabInstance: {fileID: 942458619478496236}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
 --- !u!1 &9126827134797496620 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8339903391602119360, guid: 6a941af49e5f54d34beb73bb39eedd98, type: 3}

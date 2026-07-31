@@ -139,7 +139,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: b080cc3e174ba4492bfebd5dd2678297, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -204,8 +204,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 9115024284695317766}
   button: {fileID: 4294563386112105450}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: b080cc3e174ba4492bfebd5dd2678297, type: 3}
+  downTexture: {fileID: 2800000, guid: 6865fcf5aa39341bcabd2f5b126227d2, type: 3}
 --- !u!1 &2851970324782482450
 GameObject:
   m_ObjectHideFlags: 0
@@ -570,7 +570,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: b50b86a8c6fa14cb58b88a17c26883cc, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -635,8 +635,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 2500020214601275593}
   button: {fileID: 708717077044653545}
-  upTexture: {fileID: 0}
-  downTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: b50b86a8c6fa14cb58b88a17c26883cc, type: 3}
+  downTexture: {fileID: 2800000, guid: e1a61032b1df44603be2f83fffb8ea20, type: 3}
 --- !u!1 &5923915780802034715
 GameObject:
   m_ObjectHideFlags: 0
@@ -771,7 +771,6 @@ GameObject:
   - component: {fileID: 4215136203789453731}
   - component: {fileID: 4438010882071754982}
   - component: {fileID: 7873067556871629679}
-  - component: {fileID: 5928446511738097064}
   m_Layer: 0
   m_Name: PlanetSystemWindow
   m_TagString: Untagged
@@ -858,38 +857,6 @@ MonoBehaviour:
   galaxyProjectionWidth: 315
   galaxyProjectionHeight: 215
   planetPositionOffsetY: -1
---- !u!114 &5928446511738097064
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8041239553116007562}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b6c5984300d046618468cb2c752bc9a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ApplicationTextureBindings
-  rawImages:
-  - target: {fileID: 9115024284695317766}
-    address: application/strategy/ui/shell/ui_strategyview_window_swap_button
-  - target: {fileID: 2500020214601275593}
-    address: application/strategy/ui/shell/ui_strategyview_window_close_button
-  images: []
-  receivers:
-  - target: {fileID: 3384845727538129277}
-    key: upTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_swap_button
-  - target: {fileID: 3384845727538129277}
-    key: downTexture
-    address: application/strategy/ui/windows/ui_strategyview_planetsystem_window_swap_button_pressed
-  - target: {fileID: 3919136158028724150}
-    key: upTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_close_button
-  - target: {fileID: 3919136158028724150}
-    key: downTexture
-    address: application/strategy/ui/shell/ui_strategyview_window_close_button_pressed
-  buttons: []
 --- !u!1 &9163476318569938930
 GameObject:
   m_ObjectHideFlags: 0

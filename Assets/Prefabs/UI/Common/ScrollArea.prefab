@@ -67,7 +67,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 17c34165637f34eecaa5871dbfb33cc1, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -132,7 +132,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 8487968937766206387}
   button: {fileID: 5870527709332589351}
-  upTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: 17c34165637f34eecaa5871dbfb33cc1, type: 3}
   downTexture: {fileID: 0}
 --- !u!1 &2218392660984341095
 GameObject:
@@ -537,7 +537,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: ed8cb835e302a4828944fe0eec3d41c7, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -602,7 +602,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameAssembly::RawImagePressVisual
   image: {fileID: 6647564049058198630}
   button: {fileID: 4354980605191688747}
-  upTexture: {fileID: 0}
+  upTexture: {fileID: 2800000, guid: ed8cb835e302a4828944fe0eec3d41c7, type: 3}
   downTexture: {fileID: 0}
 --- !u!1 &6473040332624402340
 GameObject:
@@ -669,7 +669,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 0}
+  m_Texture: {fileID: 2800000, guid: 69cdfb01f3cf741c88daad170e0f7ec1, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -796,7 +796,6 @@ GameObject:
   m_Component:
   - component: {fileID: 5759189334190098214}
   - component: {fileID: 733235465646641184}
-  - component: {fileID: 3509167323539547330}
   m_Layer: 0
   m_Name: ScrollArea
   m_TagString: Untagged
@@ -845,31 +844,3 @@ MonoBehaviour:
   scrollUpButton: {fileID: 5870527709332589351}
   scrollDownButton: {fileID: 4354980605191688747}
   dragRelay: {fileID: 6860008701994441293}
---- !u!114 &3509167323539547330
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9051593132294972050}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2b6c5984300d046618468cb2c752bc9a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GameAssembly::ApplicationTextureBindings
-  rawImages:
-  - target: {fileID: 8487968937766206387}
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
-  - target: {fileID: 6647564049058198630}
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2
-  - target: {fileID: 913363971556983979}
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_middle
-  images: []
-  receivers:
-  - target: {fileID: 660191110817353188}
-    key: upTexture
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up
-  - target: {fileID: 3716412810987269522}
-    key: upTexture
-    address: application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2
-  buttons: []
