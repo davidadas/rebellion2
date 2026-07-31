@@ -26,6 +26,7 @@
 !Assets/Scripts/Content/*.meta
 !Assets/Scripts/UI/Components/ApplicationSpriteSequence.cs.meta
 !Assets/Scripts/UI/Components/ApplicationTextureBindings.cs.meta
+!Assets/Scripts/UI/Components/AutoRotate.cs.meta
 !Assets/Tests/EditMode/App.meta
 !Assets/Tests/EditMode/App/AppBootstrapTests.cs.meta
 !Assets/Tests/EditMode/App/GameRuntimeTests.cs.meta

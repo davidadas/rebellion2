@@ -367,7 +367,9 @@ public static class MainMenuPrefabBuilder
             typeof(RectTransform),
             typeof(Canvas),
             typeof(CanvasScaler),
-            typeof(GraphicRaycaster)
+            typeof(GraphicRaycaster),
+            typeof(CanvasRenderer),
+            typeof(Image)
         );
         RectTransform canvasRect = canvasObject.GetComponent<RectTransform>();
         canvasRect.localScale = Vector3.zero;
@@ -391,23 +393,11 @@ public static class MainMenuPrefabBuilder
         scaler.matchWidthOrHeight = 0f;
         scaler.referencePixelsPerUnit = 100f;
 
-        GameObject designSurface = NewChild(
-            "DesignSurface",
-            canvasObject.transform,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image),
-            typeof(AspectRatioFitter)
-        );
-        FillParent(designSurface.GetComponent<RectTransform>());
-        AspectRatioFitter fitter = designSurface.GetComponent<AspectRatioFitter>();
-        fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
-        fitter.aspectRatio = 16f / 9f;
-        Image cockpit = designSurface.GetComponent<Image>();
+        Image cockpit = canvasObject.GetComponent<Image>();
         cockpit.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_background");
         cockpit.raycastTarget = false;
 
-        BuildControls(designSurface.transform);
+        BuildControls(canvasObject.transform);
     }
 
     /// <summary>
