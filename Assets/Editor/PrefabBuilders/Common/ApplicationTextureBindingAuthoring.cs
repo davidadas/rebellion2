@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public static class ApplicationTextureBindingAuthoring
 {
     private const string _applicationAddressPrefix = "application/";
+    private const string _packAddressPrefix = "pack/";
     private static readonly Dictionary<UnityEngine.Object, string> _addressesByTransientAsset =
         new Dictionary<UnityEngine.Object, string>();
 
@@ -261,11 +262,14 @@ public static class ApplicationTextureBindingAuthoring
         string address = contentAddress?.Trim().Replace('\\', '/');
         if (
             string.IsNullOrWhiteSpace(address)
-            || !address.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal)
+            || (
+                !address.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal)
+                && !address.StartsWith(_packAddressPrefix, StringComparison.Ordinal)
+            )
         )
         {
             throw new ArgumentException(
-                $"Not an application content address: {contentAddress}",
+                $"Not an application or pack content address: {contentAddress}",
                 nameof(contentAddress)
             );
         }
@@ -289,11 +293,24 @@ public static class ApplicationTextureBindingAuthoring
             Directory.GetParent(Application.dataPath)?.FullName
             ?? throw new InvalidOperationException("Could not resolve the project directory.");
         string contentRoot = Path.GetFullPath(Path.Combine(projectRoot, "Content"));
-        string path = Path.GetFullPath(Path.Combine(contentRoot, address));
-        string contentPrefix =
-            contentRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if (!path.StartsWith(contentPrefix, StringComparison.Ordinal))
-            throw new ArgumentException($"Content address leaves the content root: {address}");
+        string assetRoot;
+        string relativePath;
+        if (address.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal))
+        {
+            assetRoot = contentRoot;
+            relativePath = address;
+        }
+        else
+        {
+            assetRoot = ContentPackLoader.OpenActive().PackRootPath;
+            relativePath = address[_packAddressPrefix.Length..];
+        }
+
+        string path = Path.GetFullPath(Path.Combine(assetRoot, relativePath));
+        string assetPrefix =
+            assetRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!path.StartsWith(assetPrefix, StringComparison.Ordinal))
+            throw new ArgumentException($"Content address leaves its content root: {address}");
 
         foreach (string extension in new[] { ".png", ".jpg", ".jpeg" })
         {
@@ -302,6 +319,6 @@ public static class ApplicationTextureBindingAuthoring
                 return candidate;
         }
 
-        throw new FileNotFoundException($"Application content texture not found: {address}");
+        throw new FileNotFoundException($"Content texture not found: {address}");
     }
 }

@@ -8211,7 +8211,10 @@ public static class StrategyViewPrefabBuilder
     {
         if (
             string.IsNullOrEmpty(path)
-            || !path.StartsWith("application/", System.StringComparison.Ordinal)
+            || (
+                !path.StartsWith("application/", System.StringComparison.Ordinal)
+                && !path.StartsWith("pack/", System.StringComparison.Ordinal)
+            )
         )
         {
             return null;
