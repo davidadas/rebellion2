@@ -11,7 +11,7 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
-  REBELLION2_MEDIA_REVISION: 36a052a20bb3c672efa802ebf8be88dd94701396
+  REBELLION2_MEDIA_REVISION: bc12a520
 
 jobs:
   build:
@@ -38,14 +38,31 @@ jobs:
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           persist-credentials: false
-          lfs: true
+          lfs: false
           sparse-checkout: |
             Content
+            Art/GameIcon
+            Models
           path: .ci/rebellion2-media
+
+      - name: Pull media LFS from R2
+        working-directory: .ci/rebellion2-media
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          HOST="${R2_ENDPOINT#https://}"
+          git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
+          git lfs pull
 
       - name: Install media
         run: |
           rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Content/ Content/
+          mkdir -p Assets/Art/Models Assets/Resources/Art/GameIcon
+          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Models/ Assets/Art/Models/
+          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Art/GameIcon/ Assets/Resources/Art/GameIcon/
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -186,14 +203,31 @@ jobs:
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           persist-credentials: false
-          lfs: true
+          lfs: false
           sparse-checkout: |
             Content
+            Art/GameIcon
+            Models
           path: .ci/rebellion2-media
+
+      - name: Pull media LFS from R2
+        working-directory: .ci/rebellion2-media
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          HOST="${R2_ENDPOINT#https://}"
+          git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
+          git lfs pull
 
       - name: Install media
         run: |
           rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Content/ Content/
+          mkdir -p Assets/Art/Models Assets/Resources/Art/GameIcon
+          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Models/ Assets/Art/Models/
+          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Art/GameIcon/ Assets/Resources/Art/GameIcon/
           rm -rf .ci
 
       - uses: actions/cache@v4

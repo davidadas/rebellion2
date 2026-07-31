@@ -84,6 +84,27 @@
       <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.UIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference
+      Include="UnityEngine.AudioModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.AudioModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.AudioModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.VideoModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.VideoModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
+      Include="UnityEngine.PhysicsModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine.UI" Condition="'$(UGuiHintPath)' != ''">
       <HintPath>$(UGuiHintPath)</HintPath>
       <Private>false</Private>

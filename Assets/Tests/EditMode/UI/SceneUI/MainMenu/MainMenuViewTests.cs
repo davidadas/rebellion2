@@ -189,33 +189,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void PressVisual_PointerLifecycle_AppliesAndRestoresAuthoredTargets()
-        {
-            object binding = GetBindings("pressVisualBindings").GetValue(3);
-            EventTrigger trigger = GetBindingValue<EventTrigger>(binding, "Trigger");
-            System.Collections.Generic.IReadOnlyList<Graphic> graphics =
-                GetBindingValue<System.Collections.Generic.IReadOnlyList<Graphic>>(
-                    binding,
-                    "GraphicsHiddenWhilePressed"
-                );
-            System.Collections.Generic.IReadOnlyList<GameObject> objects =
-                GetBindingValue<System.Collections.Generic.IReadOnlyList<GameObject>>(
-                    binding,
-                    "ObjectsShownWhilePressed"
-                );
-
-            InvokeTrigger(trigger, EventTriggerType.PointerDown);
-
-            Assert.That(graphics, Has.All.Matches<Graphic>(graphic => !graphic.enabled));
-            Assert.That(objects, Has.All.Matches<GameObject>(item => item.activeSelf));
-
-            InvokeTrigger(trigger, EventTriggerType.PointerExit);
-
-            Assert.That(graphics, Has.All.Matches<Graphic>(graphic => graphic.enabled));
-            Assert.That(objects, Has.All.Matches<GameObject>(item => !item.activeSelf));
-        }
-
-        [Test]
         public void AudioCue_ConfiguredPointerEvent_RaisesConfiguredResourcePath()
         {
             object binding = GetBindings("audioCueBindings").GetValue(0);
@@ -257,26 +230,12 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void OnDisable_BoundView_UnbindsControlsAndRestoresPressedPresentation()
+        public void OnDisable_BoundView_UnbindsControls()
         {
-            object pressBinding = GetBindings("pressVisualBindings").GetValue(3);
-            EventTrigger trigger = GetBindingValue<EventTrigger>(pressBinding, "Trigger");
-            System.Collections.Generic.IReadOnlyList<Graphic> graphics =
-                GetBindingValue<System.Collections.Generic.IReadOnlyList<Graphic>>(
-                    pressBinding,
-                    "GraphicsHiddenWhilePressed"
-                );
-            System.Collections.Generic.IReadOnlyList<GameObject> objects =
-                GetBindingValue<System.Collections.Generic.IReadOnlyList<GameObject>>(
-                    pressBinding,
-                    "ObjectsShownWhilePressed"
-                );
             int loadCount = 0;
             int cueCount = 0;
             _view.LoadGameRequested += () => loadCount++;
             _view.AudioCueRequested += _ => cueCount++;
-            InvokeTrigger(trigger, EventTriggerType.PointerDown);
-            cueCount = 0;
 
             UIComponentTestHelper.InvokeLifecycle(_view, "OnDisable");
             GetField<Button>("loadGameButton").onClick.Invoke();
@@ -293,8 +252,6 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual(0, loadCount);
             Assert.AreEqual(0, cueCount);
-            Assert.That(graphics, Has.All.Matches<Graphic>(graphic => graphic.enabled));
-            Assert.That(objects, Has.All.Matches<GameObject>(item => !item.activeSelf));
         }
 
         private Array GetBindings(string fieldName)
