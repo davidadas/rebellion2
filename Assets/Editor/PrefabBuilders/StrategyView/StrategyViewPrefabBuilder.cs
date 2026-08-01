@@ -379,7 +379,7 @@ public static class StrategyViewPrefabBuilder
             RawImage image = CreateRawButton(
                 $"{notification.Tab}MessageNotificationButton",
                 parent,
-                notification?.DefaultImagePath
+                notification?.HighlightedImagePath
             );
             SetSourceRect(
                 image.rectTransform,
