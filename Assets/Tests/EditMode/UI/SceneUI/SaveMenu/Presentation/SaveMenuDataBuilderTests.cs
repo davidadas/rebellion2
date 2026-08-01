@@ -241,11 +241,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         {
             return new SaveGameEntry(
                 SaveGameManager.Instance.GetSaveSlotFileName(slot),
-                new GameMetadata
-                {
-                    SaveDisplayName = displayName,
-                    PlayerFactionID = factionId,
-                }
+                new GameMetadata { SaveDisplayName = displayName, PlayerFactionID = factionId }
             );
         }
 
