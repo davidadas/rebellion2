@@ -126,6 +126,50 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void RefreshIdleFrames_DuringPlayback_PreservesPlaybackAndUpdatesIdleFrames()
+        {
+            _view.Render(CreatePresentation(true));
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _protocolFirstTexture, _protocolSecondTexture },
+                        false,
+                        null
+                    ),
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _droidPlaybackTexture },
+                        true,
+                        null
+                    ),
+                }
+            );
+            Texture2D replacementProtocol = new Texture2D(20, 30);
+            Texture2D replacementDroid = new Texture2D(20, 30);
+            try
+            {
+                _view.RefreshIdleFrames(replacementProtocol, replacementDroid);
+
+                Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
+                Assert.AreSame(replacementDroid, GetField<RawImage>("droidImage").texture);
+
+                _view.AdvanceAnimation(1f);
+
+                Assert.AreSame(replacementProtocol, GetField<RawImage>("protocolImage").texture);
+                Assert.AreSame(_droidPlaybackTexture, GetField<RawImage>("droidImage").texture);
+
+                _view.AdvanceAnimation(0.5f);
+
+                Assert.AreSame(replacementDroid, GetField<RawImage>("droidImage").texture);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(replacementDroid);
+                UnityEngine.Object.DestroyImmediate(replacementProtocol);
+            }
+        }
+
+        [Test]
         public void EnqueuePlaybacks_OrderedAnimations_PlaysFramesAndRestoresIdleImages()
         {
             _view.Render(CreatePresentation(true));

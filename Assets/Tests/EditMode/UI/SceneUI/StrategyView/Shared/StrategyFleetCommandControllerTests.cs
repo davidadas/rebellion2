@@ -41,7 +41,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 NumRawResourceNodes = 10,
             };
             _game.AttachNode(_planet, system);
-            _gameManager = new GameManager(_game);
+            _gameManager = TestContent.CreateGameManager(_game);
         }
 
         [Test]

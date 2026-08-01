@@ -54,6 +54,7 @@ run_unity_editmode_tests() {
     "$UNITY" \
         -runTests \
         -testPlatform EditMode \
+        -executeMethod UIBuilderMenu.BuildAll \
         -projectPath "$PROJECT_PATH" \
         -testResults "$TEST_RESULTS" \
         -batchmode \
@@ -124,9 +125,9 @@ do_format() {
 
 do_xmlformat() {
     echo "=== XML Format ==="
-    find Assets/Resources -name "*.xml" | while read -r f; do
-        xmllint --format "$f" --output "$f"
-        echo "Formatted $f"
+    find Content -type f \( -name "*.xml" -o -name "*.xsd" \) | while read -r content_xml_path; do
+        xmllint --format "$content_xml_path" --output "$content_xml_path"
+        echo "Formatted $content_xml_path"
     done
     echo ""
     echo "XML format complete."

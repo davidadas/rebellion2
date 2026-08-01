@@ -158,6 +158,7 @@ namespace Rebellion.Game.Units
         public List<string> ForceUserDiscoveredVoicePaths { get; set; } = new List<string>();
         public List<string> ForceAbilityRevealedVoicePaths { get; set; } = new List<string>();
         public List<string> TraitorDiscoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> AdvancedTraitorDiscoveredVoicePaths { get; set; } = new List<string>();
         public List<string> RescueAttemptVoicePaths { get; set; } = new List<string>();
         public List<string> AdvancedRescueAttemptVoicePaths { get; set; } = new List<string>();
         public List<string> BountyAttackVoicePaths { get; set; } = new List<string>();
@@ -376,6 +377,12 @@ namespace Rebellion.Game.Units
             return Movement == null;
         }
 
+        /// <summary>
+        /// Selects one available voice path for an officer event.
+        /// </summary>
+        /// <param name="voiceLineType">The officer event requesting a voice response.</param>
+        /// <param name="provider">The random source used when multiple paths are available.</param>
+        /// <returns>The selected path, or null when no matching voice exists.</returns>
         public string GetVoicePath(
             OfficerVoiceLineType voiceLineType,
             IRandomNumberProvider provider
@@ -384,6 +391,11 @@ namespace Rebellion.Game.Units
             return SelectVoicePath(GetVoicePaths(voiceLineType), provider);
         }
 
+        /// <summary>
+        /// Reports whether an officer event has at least one available voice path.
+        /// </summary>
+        /// <param name="voiceLineType">The officer event to inspect.</param>
+        /// <returns>True when a matching voice path exists.</returns>
         public bool HasVoicePath(OfficerVoiceLineType voiceLineType)
         {
             IReadOnlyList<string> paths = GetVoicePaths(voiceLineType);
@@ -405,6 +417,7 @@ namespace Rebellion.Game.Units
                 OfficerVoiceLineType.Recovered => AdvancedRecoveredVoicePaths,
                 OfficerVoiceLineType.EnemyDetected => AdvancedEnemyDetectedVoicePaths,
                 OfficerVoiceLineType.ForceGrowth => AdvancedForceGrowthVoicePaths,
+                OfficerVoiceLineType.TraitorDiscovered => AdvancedTraitorDiscoveredVoicePaths,
                 OfficerVoiceLineType.RescueAttempt => AdvancedRescueAttemptVoicePaths,
                 _ => null,
             };
@@ -433,6 +446,12 @@ namespace Rebellion.Game.Units
             };
         }
 
+        /// <summary>
+        /// Selects one path from an available voice collection.
+        /// </summary>
+        /// <param name="paths">The available voice paths.</param>
+        /// <param name="provider">The optional random source.</param>
+        /// <returns>The selected path, or null when the collection is empty.</returns>
         private static string SelectVoicePath(
             IReadOnlyList<string> paths,
             IRandomNumberProvider provider

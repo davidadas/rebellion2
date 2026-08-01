@@ -613,9 +613,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 game.AttachNode(opponentFleet, planet);
             }
 
-            UIContext context = new UIContext(
+            UIContext context = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             return (game, context, planet, playerFleet, opponentFleet);
@@ -641,9 +641,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            CapitalShip definition = ResourceManager
-                .GetEntityData<CapitalShip>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            CapitalShip definition = TestContent.Data.CapitalShips.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new CapitalShip
             {
                 InstanceID = instanceId,
@@ -661,9 +661,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            Building definition = ResourceManager
-                .GetEntityData<Building>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            Building definition = TestContent.Data.Buildings.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Building
             {
                 InstanceID = instanceId,
@@ -677,12 +677,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
         private static Officer CreateOfficer(string instanceId, string ownerId, string displayName)
         {
-            Officer definition = ResourceManager
-                .GetEntityData<Officer>()
-                .First(item =>
-                    item.OwnerInstanceID == ownerId
-                    || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
-                );
+            Officer definition = TestContent.Data.Officers.First(item =>
+                item.OwnerInstanceID == ownerId
+                || item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Officer
             {
                 InstanceID = instanceId,
@@ -699,9 +697,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             string displayName
         )
         {
-            Starfighter definition = ResourceManager
-                .GetEntityData<Starfighter>()
-                .First(item => item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true);
+            Starfighter definition = TestContent.Data.Starfighters.First(item =>
+                item.AllowedOwnerInstanceIDs?.Contains(ownerId) == true
+            );
             return new Starfighter
             {
                 InstanceID = instanceId,

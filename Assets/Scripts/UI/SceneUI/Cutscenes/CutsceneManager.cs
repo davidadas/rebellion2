@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.Video;
 
 /// <summary>
@@ -17,40 +16,62 @@ public sealed class CutsceneManager : MonoBehaviour
     private const float _pausedTimeScale = 0f;
     private const float _runningTimeScale = 1f;
 
-    public static CutsceneManager Instance { get; private set; }
-
-    [SerializeField]
-    [FormerlySerializedAs("CutscenePrefab")]
-    private CutscenePlayer cutscenePrefab;
+    private GameObject cutscenePrefab;
+    private ContentAssets contentAssets;
 
     private CutscenePlayer activePlayer;
     private bool ownsTimePause;
     private float previousTimeScale = _runningTimeScale;
 
     /// <summary>
-    /// Initializes the singleton instance.
+    /// Binds the authored player prefab used for cutscene instances.
     /// </summary>
-    private void Awake()
+    /// <param name="prefab">The authored cutscene player prefab.</param>
+    internal void Initialize(GameObject prefab)
     {
-        if (Instance != null && Instance != this)
-            throw new InvalidOperationException("Only one CutsceneManager may be active.");
-        if (cutscenePrefab == null)
-            throw new MissingReferenceException($"{name}/CutscenePrefab is missing.");
-
-        Instance = this;
+        cutscenePrefab =
+            prefab
+            ?? throw new ArgumentNullException(nameof(prefab), "Cutscene prefab is missing.");
     }
 
     /// <summary>
-    /// Clears the global reference when this manager leaves the active scene.
+    /// Binds the application-owned external content assets used for addressed videos.
+    /// </summary>
+    /// <param name="assets">The active content asset store.</param>
+    internal void InitializeContent(ContentAssets assets)
+    {
+        contentAssets = assets ?? throw new ArgumentNullException(nameof(assets));
+    }
+
+    /// <summary>
+    /// Cancels active playback and restores scaled application time on destruction.
     /// </summary>
     private void OnDestroy()
     {
-        if (Instance != this)
-            return;
-
         DestroyActivePlayer();
         RestoreTimeScale();
-        Instance = null;
+    }
+
+    /// <summary>
+    /// Plays a video from a content address and completes the supplied callback afterward.
+    /// </summary>
+    /// <param name="clipAddress">The video content address.</param>
+    /// <param name="onFinished">The callback invoked after playback completes.</param>
+    public void Play(string clipAddress, Action onFinished)
+    {
+        CancelPlayback();
+        if (string.IsNullOrWhiteSpace(clipAddress))
+        {
+            onFinished?.Invoke();
+            return;
+        }
+
+        if (contentAssets == null)
+            throw new InvalidOperationException(
+                "CutsceneManager has not been initialized with a content asset store."
+            );
+
+        StartPlayback(contentAssets.GetVideoUrl(clipAddress), onFinished);
     }
 
     /// <summary>
@@ -65,21 +86,75 @@ public sealed class CutsceneManager : MonoBehaviour
     /// </param>
     public void Play(VideoClip clip, Action onFinished)
     {
+        CancelPlayback();
         if (clip == null)
         {
             onFinished?.Invoke();
             return;
         }
 
-        if (activePlayer != null)
-            DestroyActivePlayer();
+        StartPlayback(clip, onFinished);
+    }
 
-        CutscenePlayer player = Instantiate(cutscenePrefab);
+    /// <summary>
+    /// Creates a player instance and begins playback from an imported video clip.
+    /// </summary>
+    /// <param name="clip">The imported video clip.</param>
+    /// <param name="onFinished">The callback invoked after playback completes.</param>
+    private void StartPlayback(VideoClip clip, Action onFinished)
+    {
+        if (cutscenePrefab == null)
+            throw new InvalidOperationException("CutsceneManager has not been initialized.");
+
+        GameObject playerObject = Instantiate(cutscenePrefab);
+        CutscenePlayer player = playerObject.GetComponent<CutscenePlayer>();
+        if (player == null)
+        {
+            Destroy(playerObject);
+            throw new MissingComponentException(
+                $"{cutscenePrefab.name} has no CutscenePlayer component."
+            );
+        }
+
         activePlayer = player;
         PauseTimeScale();
         try
         {
             player.Play(clip, () => FinishPlayback(player, onFinished));
+        }
+        catch
+        {
+            DestroyActivePlayer();
+            RestoreTimeScale();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates a player instance and begins playback from a local video URL.
+    /// </summary>
+    /// <param name="videoUrl">The local video file URL.</param>
+    /// <param name="onFinished">The callback invoked after playback completes.</param>
+    private void StartPlayback(string videoUrl, Action onFinished)
+    {
+        if (cutscenePrefab == null)
+            throw new InvalidOperationException("CutsceneManager has not been initialized.");
+
+        GameObject playerObject = Instantiate(cutscenePrefab);
+        CutscenePlayer player = playerObject.GetComponent<CutscenePlayer>();
+        if (player == null)
+        {
+            Destroy(playerObject);
+            throw new MissingComponentException(
+                $"{cutscenePrefab.name} has no CutscenePlayer component."
+            );
+        }
+
+        activePlayer = player;
+        PauseTimeScale();
+        try
+        {
+            player.Play(videoUrl, () => FinishPlayback(player, onFinished));
         }
         catch
         {
@@ -143,5 +218,14 @@ public sealed class CutsceneManager : MonoBehaviour
             Destroy(playerObject);
         else
             DestroyImmediate(playerObject);
+    }
+
+    /// <summary>
+    /// Cancels the current playback request without invoking its completion callback.
+    /// </summary>
+    private void CancelPlayback()
+    {
+        DestroyActivePlayer();
+        RestoreTimeScale();
     }
 }

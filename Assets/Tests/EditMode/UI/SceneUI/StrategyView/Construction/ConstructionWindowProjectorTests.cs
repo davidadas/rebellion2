@@ -24,9 +24,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             GameRoot game = new GameRoot(TestConfig.Create());
             game.Factions.Add(new Faction { InstanceID = _ownerId });
             game.Summary.PlayerFactionID = _ownerId;
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _projector = new ConstructionWindowProjector(() => _uiContext);
@@ -238,9 +238,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             int maintenanceCost
         )
         {
-            CapitalShip definition = ResourceManager
-                .GetEntityData<CapitalShip>()
-                .First(ship => ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true);
+            CapitalShip definition = TestContent.Data.CapitalShips.First(ship =>
+                ship.AllowedOwnerInstanceIDs?.Contains(_ownerId) == true
+            );
             return new CapitalShip
             {
                 InstanceID = instanceId,

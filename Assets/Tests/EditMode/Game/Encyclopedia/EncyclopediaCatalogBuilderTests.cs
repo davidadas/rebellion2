@@ -173,14 +173,13 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
-        public void Build_FromResourceData_UsesEncyclopediaImages()
+        public void Build_FromActivePack_UsesPackEncyclopediaImages()
         {
-            EncyclopediaCatalog catalog = new EncyclopediaCatalogBuilder().Build();
+            EncyclopediaCatalog catalog = new EncyclopediaCatalogBuilder().Build(TestContent.Data);
 
             List<EncyclopediaEntry> entriesWithWrongImagePath = catalog
                 .Where(entry =>
-                    string.IsNullOrEmpty(entry.ImagePath)
-                    || !entry.ImagePath.StartsWith("Art/HD/UI/Encyclopedia/")
+                    string.IsNullOrEmpty(entry.ImagePath) || !entry.ImagePath.StartsWith("Pack/")
                 )
                 .ToList();
 

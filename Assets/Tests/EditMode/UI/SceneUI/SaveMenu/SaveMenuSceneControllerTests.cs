@@ -3,6 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.SaveMenu
 {
@@ -36,6 +37,16 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu
             Assert.DoesNotThrow(() =>
                 UIComponentTestHelper.InvokeLifecycle(_controller, "VerifyReferences")
             );
+        }
+
+        [Test]
+        public void AuthoredPrefab_FitsCenteredSixteenByNineViewport()
+        {
+            AspectRatioFitter fitter = _rootObject.GetComponent<AspectRatioFitter>();
+
+            Assert.IsNotNull(fitter);
+            Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, fitter.aspectMode);
+            Assert.AreEqual(16f / 9f, fitter.aspectRatio, 0.0001f);
         }
 
         [Test]

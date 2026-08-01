@@ -8,6 +8,16 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class SaveMenuConfirmDialogView : MonoBehaviour
 {
+    private const string _backgroundAddress = "Application/Common/UI/ui_common_confirmation_dialog";
+    private const string _confirmUpAddress =
+        "Application/Common/UI/ui_common_confirmation_yes_button";
+    private const string _confirmDownAddress =
+        "Application/Common/UI/ui_common_confirmation_yes_button_pressed";
+    private const string _cancelUpAddress =
+        "Application/Common/UI/ui_common_confirmation_no_button";
+    private const string _cancelDownAddress =
+        "Application/Common/UI/ui_common_confirmation_no_button_pressed";
+
     [SerializeField]
     private RawImage backgroundImage;
 
@@ -58,6 +68,21 @@ public sealed class SaveMenuConfirmDialogView : MonoBehaviour
     /// Occurs when the operation is canceled.
     /// </summary>
     public event Action Canceled;
+
+    /// <summary>
+    /// Replaces editor previews with confirmation artwork loaded from installation content.
+    /// </summary>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        backgroundImage.texture = GetRequiredTexture(contentAssets, _backgroundAddress);
+        confirmButtonUpTexture = GetRequiredTexture(contentAssets, _confirmUpAddress);
+        confirmButtonDownTexture = GetRequiredTexture(contentAssets, _confirmDownAddress);
+        cancelButtonUpTexture = GetRequiredTexture(contentAssets, _cancelUpAddress);
+        cancelButtonDownTexture = GetRequiredTexture(contentAssets, _cancelDownAddress);
+    }
 
     /// <summary>
     /// Shows the dialog with the supplied message.
@@ -172,5 +197,17 @@ public sealed class SaveMenuConfirmDialogView : MonoBehaviour
             && cancelButtonUpTexture != null
             && cancelButtonDownTexture != null
             && messageTextField != null;
+    }
+
+    /// <summary>
+    /// Loads required confirmation artwork.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The confirmation artwork address.</param>
+    /// <returns>The required texture.</returns>
+    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
+    {
+        return contentAssets.GetTexture(address)
+            ?? throw new InvalidOperationException($"Confirmation artwork is missing: {address}");
     }
 }

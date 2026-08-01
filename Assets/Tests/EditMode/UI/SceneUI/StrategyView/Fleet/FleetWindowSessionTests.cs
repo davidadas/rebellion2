@@ -309,14 +309,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
-        public void PrepareDragSelection_UnselectedFleet_SelectsFleetBeforeDrag()
+        public void PrepareDragSelection_UnselectedFleet_SelectsFleetAndAllowsDrag()
         {
             bool canStartDrag = _session.PrepareDragSelection(_secondFleet);
 
-            Assert.IsFalse(canStartDrag);
+            Assert.IsTrue(canStartDrag);
             Assert.AreSame(_secondFleet, _session.SelectedFleet);
             CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedFleetItems);
             CollectionAssert.AreEqual(new[] { 0 }, _session.SelectedDetailItems);
+        }
+
+        [Test]
+        public void PrepareDragSelection_UnselectedDetail_SelectsItemAndAllowsDrag()
+        {
+            CapitalShip additionalShip = CreateCapitalShip("additional-ship", "Additional Ship");
+            _fleet.CapitalShips.Add(additionalShip);
+            additionalShip.SetParent(_fleet);
+            _session.Reconcile();
+
+            bool canStartDrag = _session.PrepareDragSelection(additionalShip);
+
+            Assert.IsTrue(canStartDrag);
+            CollectionAssert.AreEqual(new[] { 1 }, _session.SelectedDetailItems);
+            CollectionAssert.AreEqual(
+                new ISceneNode[] { additionalShip },
+                _session.GetContextItems()
+            );
         }
 
         [Test]

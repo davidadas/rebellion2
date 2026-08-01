@@ -40,26 +40,6 @@ public class BattleAlertWindowTheme
 
     public string ResultDirectBackgroundImagePath { get; set; }
 
-    public string FirstForcesOwnerInstanceID { get; set; }
-
-    public string SecondForcesOwnerInstanceID { get; set; }
-
-    public string FirstForcesDefeatedImagePath { get; set; }
-
-    public string FirstForcesVictoriousImagePath { get; set; }
-
-    public string SecondForcesDefeatedImagePath { get; set; }
-
-    public string SecondForcesVictoriousImagePath { get; set; }
-
-    public string FirstForcesHeaderText { get; set; }
-
-    public string SecondForcesHeaderText { get; set; }
-
-    public string FirstForcesSummaryLabel { get; set; }
-
-    public string SecondForcesSummaryLabel { get; set; }
-
     public WindowButtonImageTheme SummaryButton { get; set; }
 
     public WindowButtonImageTheme FirstForcesButton { get; set; }
@@ -115,4 +95,12 @@ public class BattleAlertWindowTheme
     public WindowButtonImageTheme TakeCommandButton { get; set; }
 
     public WindowButtonImageTheme ResultCloseButton { get; set; }
+}
+
+[PersistableObject]
+public sealed class BattleParticipantTheme
+{
+    public string DefeatedImagePath { get; set; }
+
+    public string VictoriousImagePath { get; set; }
 }

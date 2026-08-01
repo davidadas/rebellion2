@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Generation
                 PlayerFactionID = "FNALL1",
             };
 
-            GameBuilder builder = new GameBuilder(summary);
+            GameBuilder builder = new GameBuilder(summary, TestContent.Data);
             _game = builder.Build();
         }
 
@@ -153,13 +153,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_AfterRebuild_TechnologiesSurvive()
         {
-            IManufacturable[] templates = ResourceManager
-                .GetEntityData<Building>()
-                .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetEntityData<CapitalShip>())
-                .Concat(ResourceManager.GetEntityData<Starfighter>())
-                .Concat(ResourceManager.GetEntityData<Regiment>())
-                .Concat(ResourceManager.GetEntityData<SpecialForces>())
+            IManufacturable[] templates = TestContent
+                .Data.Buildings.Cast<IManufacturable>()
+                .Concat(TestContent.Data.CapitalShips)
+                .Concat(TestContent.Data.Starfighters)
+                .Concat(TestContent.Data.Regiments)
+                .Concat(TestContent.Data.SpecialForces)
                 .ToArray();
 
             foreach (Faction faction in _game.Factions)
@@ -193,12 +192,11 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_RebuildTechnologies_IncludesAllManufacturingTypes()
         {
-            IManufacturable[] templates = ResourceManager
-                .GetEntityData<Building>()
-                .Cast<IManufacturable>()
-                .Concat(ResourceManager.GetEntityData<CapitalShip>())
-                .Concat(ResourceManager.GetEntityData<Starfighter>())
-                .Concat(ResourceManager.GetEntityData<Regiment>())
+            IManufacturable[] templates = TestContent
+                .Data.Buildings.Cast<IManufacturable>()
+                .Concat(TestContent.Data.CapitalShips)
+                .Concat(TestContent.Data.Starfighters)
+                .Concat(TestContent.Data.Regiments)
                 .ToArray();
 
             foreach (Faction faction in _game.Factions)
@@ -460,7 +458,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_FogOfWar_OuterRimPlanetsStartUnexplored()
         {
-            GameGenerationConfig rules = ResourceManager.GetConfig<GameGenerationConfig>();
+            GameGenerationConfig rules = TestContent.Data.GenerationConfig;
             Dictionary<string, string> planetInstanceIdsByTypeId = _game
                 .Galaxy.PlanetSystems.SelectMany(system => system.Planets)
                 .Where(planet => !string.IsNullOrEmpty(planet.TypeID))

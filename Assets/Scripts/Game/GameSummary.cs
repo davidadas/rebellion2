@@ -44,6 +44,9 @@ namespace Rebellion.Game
         public string[] StartingFactionIDs = Array.Empty<string>();
         public int StartingResearchLevel = 1;
         public string PlayerFactionID;
+        public string PackID;
+        public string PackVersion;
+        public string ScenarioID;
         public int Seed = Guid.NewGuid().GetHashCode();
 
         /// <summary>

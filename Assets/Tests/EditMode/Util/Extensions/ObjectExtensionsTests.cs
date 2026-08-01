@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Util.Extensions;
 
@@ -296,6 +297,28 @@ namespace Rebellion.Tests.Util.Extensions
             CollectionAssert.AreEqual(
                 original.NestedDictionary["outer"],
                 copy.NestedDictionary["outer"]
+            );
+        }
+
+        [Test]
+        public void GetDeepCopy_DictionaryWithTypeKeys_CopiesDictionaryAndPreservesKeys()
+        {
+            Dictionary<Type, List<int>> original = new Dictionary<Type, List<int>>
+            {
+                {
+                    typeof(SimpleTestClass),
+                    new List<int> { 1, 2 }
+                },
+            };
+
+            Dictionary<Type, List<int>> copy = original.GetDeepCopy();
+
+            Assert.AreNotSame(original, copy);
+            Assert.AreSame(original.Keys.Single(), copy.Keys.Single());
+            Assert.AreNotSame(original[typeof(SimpleTestClass)], copy[typeof(SimpleTestClass)]);
+            CollectionAssert.AreEqual(
+                original[typeof(SimpleTestClass)],
+                copy[typeof(SimpleTestClass)]
             );
         }
 

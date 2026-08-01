@@ -13,6 +13,26 @@
 
 # Unity Files
 *.meta
+!Assets/Editor/Content.meta
+!Assets/Editor/Content/*.meta
+!Assets/Editor/Build.meta
+!Assets/Editor/Build/*.meta
+!Assets/Editor/PrefabBuilders.meta
+!Assets/Editor/PrefabBuilders/*.meta
+!Assets/Editor/PrefabBuilders/*/*.meta
+!Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture.meta
+!Assets/Scripts/App/SceneLoader.cs.meta
+!Assets/Scripts/Content.meta
+!Assets/Scripts/Content/*.meta
+!Assets/Scripts/UI/Components/AutoRotate.cs.meta
+!Assets/Tests/EditMode/App.meta
+!Assets/Tests/EditMode/App/AppBootstrapTests.cs.meta
+!Assets/Tests/EditMode/App/GameRuntimeTests.cs.meta
+!Assets/Tests/EditMode/Content.meta
+!Assets/Tests/EditMode/Content/ContentAssetsTests.cs.meta
+!Assets/Tests/EditMode/Content/ContentPackTests.cs.meta
+!Assets/Tests/EditMode/Helpers/TestContent.cs.meta
+!Assets/Tests/EditMode/UI/Runtime/Themes/StrategyAdvisorThemeTests.cs.meta
 Unity_lic.alf
 /temp
 /[Ll]ibrary/
@@ -42,12 +62,23 @@ node_modules
 
 # Assets - local files not tracked in source control
 Assets/_Recovery/
-Assets/Resources/Art/
-Assets/Resources/Audio/
-Assets/Resources/UI/
-Assets/Resources/Videos/
 Assets/Videos/
 Assets/TextMesh Pro/
+/Assets/Content/
+# Installed content is supplied by rebellion2-media beside the project/player.
+/Content/
+
+# UI builders and committed base-scene templates are the source of truth for generated UI assets.
+/Assets/Prefabs/UI/Common/*.prefab
+/Assets/Prefabs/UI/MainMenu/*.prefab
+/Assets/Prefabs/UI/SaveMenu/*.prefab
+/Assets/Prefabs/UI/StrategyView/**/*.prefab
+/Assets/Scenes/MainMenu.unity
+/Assets/Scenes/MainMenu.unity.meta
+/Assets/Scenes/SaveMenu.unity
+/Assets/Scenes/SaveMenu.unity.meta
+/Assets/Scenes/StrategyView.unity
+/Assets/Scenes/StrategyView.unity.meta
 
 # C# Files
 **/*.sln

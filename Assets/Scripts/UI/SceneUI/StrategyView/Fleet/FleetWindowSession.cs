@@ -216,7 +216,7 @@ internal sealed class FleetWindowSession
     /// Applies selection rules for the start of a fleet or detail drag gesture.
     /// </summary>
     /// <param name="target">The pressed fleet or detail item.</param>
-    /// <returns>True when the existing selection can start dragging immediately.</returns>
+    /// <returns>True when the target belongs to a current selectable collection.</returns>
     public bool PrepareDragSelection(ISceneNode target)
     {
         if (target is Fleet)
@@ -225,30 +225,20 @@ internal sealed class FleetWindowSession
             if (!TrySetFleetInteractionTarget(fleetIndex))
                 return false;
 
-            bool canStartDrag = PrepareDragSelection(
-                selectedFleetItems,
-                fleetIndex,
-                fleets,
-                selectedFleetNodes
-            );
+            PrepareDragSelection(selectedFleetItems, fleetIndex, fleets, selectedFleetNodes);
             selectedDetailNodes.Clear();
             selectedDetailItems.Clear();
             SelectRequiredItems();
-            return canStartDrag;
+            return true;
         }
 
         int itemIndex = FindNodeIndex(detailItems, target);
         if (!TrySetDetailInteractionTarget(itemIndex))
             return false;
 
-        bool detailCanStartDrag = PrepareDragSelection(
-            selectedDetailItems,
-            itemIndex,
-            detailItems,
-            selectedDetailNodes
-        );
+        PrepareDragSelection(selectedDetailItems, itemIndex, detailItems, selectedDetailNodes);
         SelectRequiredItems();
-        return detailCanStartDrag;
+        return true;
     }
 
     /// <summary>
@@ -598,8 +588,7 @@ internal sealed class FleetWindowSession
     /// <param name="pressedIndex">The pressed visual index.</param>
     /// <param name="items">The current ordered items.</param>
     /// <param name="selectedNodes">The identity-backed selection.</param>
-    /// <returns>True when the pressed item already belonged to the draggable selection.</returns>
-    private static bool PrepareDragSelection<T>(
+    private static void PrepareDragSelection<T>(
         HashSet<int> selectedIndexes,
         int pressedIndex,
         IReadOnlyList<T> items,
@@ -607,17 +596,12 @@ internal sealed class FleetWindowSession
     )
         where T : class, ISceneNode
     {
-        bool canStartDrag = SelectableListSelection.CanDragExistingSelection(
-            selectedIndexes,
-            pressedIndex
-        );
         SelectableListSelection.SelectIndexedItemForDrag(
             selectedIndexes,
             pressedIndex,
             items.Count
         );
         CaptureSelection(selectedIndexes, items, selectedNodes);
-        return canStartDrag;
     }
 
     /// <summary>

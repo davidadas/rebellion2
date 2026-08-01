@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using TMPro;
 using UnityEngine;
@@ -36,10 +37,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
         {
             _dirtyCount = 0;
             GameRoot game = CreateGame();
-            _gameManager = new GameManager(game);
-            _uiContext = new UIContext(
+            _gameManager = TestContent.CreateGameManager(game);
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _planet = CreatePlanet(game);
@@ -294,12 +295,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
             _controller.OpenFromAdvisor(_planet, _planet, FacilityWindowTab.Shipyards);
             window = _windowManager.Windows.Single();
             _windowManager.TryGetWindowView(window, out ConstructionWindowView view);
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             return view;
         }
 
         private sealed class TestActions : IConstructionWindowActions
         {
-            public void OpenConstructionInfo(Rebellion.SceneGraph.ISceneNode item) { }
+            public void OpenConstructionInfo(ISceneNode item) { }
 
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
 

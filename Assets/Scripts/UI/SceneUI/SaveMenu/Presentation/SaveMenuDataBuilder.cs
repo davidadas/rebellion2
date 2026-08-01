@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using UnityEngine;
 
 /// <summary>
@@ -11,6 +12,7 @@ public sealed class SaveMenuDataBuilder
     private readonly FactionThemeLibrary themeLibrary;
     private readonly SaveGameManager saveGameManager;
     private readonly Func<string, Texture2D> loadTexture;
+    private readonly Func<GameMetadata, bool> canLoadSave;
     private readonly Dictionary<string, Texture2D> texturesByPath = new Dictionary<
         string,
         Texture2D
@@ -23,11 +25,13 @@ public sealed class SaveMenuDataBuilder
     /// <param name="themeLibrary">The faction-theme source.</param>
     /// <param name="saveGameManager">The save-slot source.</param>
     /// <param name="loadTexture">The texture resolver.</param>
+    /// <param name="canLoadSave">The active content compatibility check.</param>
     /// <param name="versionText">The application version label.</param>
     public SaveMenuDataBuilder(
         FactionThemeLibrary themeLibrary,
         SaveGameManager saveGameManager,
         Func<string, Texture2D> loadTexture,
+        Func<GameMetadata, bool> canLoadSave,
         string versionText
     )
     {
@@ -35,37 +39,38 @@ public sealed class SaveMenuDataBuilder
         this.saveGameManager =
             saveGameManager ?? throw new ArgumentNullException(nameof(saveGameManager));
         this.loadTexture = loadTexture ?? throw new ArgumentNullException(nameof(loadTexture));
+        this.canLoadSave = canLoadSave ?? throw new ArgumentNullException(nameof(canLoadSave));
         this.versionText = versionText ?? string.Empty;
     }
 
     /// <summary>
     /// Builds the complete save-menu presentation for the current scene state.
     /// </summary>
-    /// <param name="playerFactionId">The current player's faction identifier.</param>
     /// <param name="canSave">Whether the active game may be saved.</param>
     /// <param name="musicVolume">The normalized music volume.</param>
     /// <param name="sfxVolume">The normalized sound-effect volume.</param>
     /// <param name="tacticalOptions">The tactical option states.</param>
     /// <param name="confirmationMessage">The active confirmation message, or null.</param>
+    /// <param name="saves">The already-loaded save metadata entries.</param>
     /// <returns>Immutable presentation data for the save-menu window.</returns>
     public SaveMenuWindowRenderData CreateRenderData(
-        string playerFactionId,
         bool canSave,
         float musicVolume,
         float sfxVolume,
         IReadOnlyDictionary<UserTacticalOption, bool> tacticalOptions,
-        string confirmationMessage
+        string confirmationMessage,
+        IReadOnlyList<SaveGameEntry> saves
     )
     {
-        FactionTheme playerTheme = GetTheme(playerFactionId);
+        if (saves == null)
+            throw new ArgumentNullException(nameof(saves));
+
         return new SaveMenuWindowRenderData(
-            GetTexture(playerTheme?.SaveMenuReturnStrategyButtonImagePath),
-            GetTexture(playerTheme?.SaveMenuReturnStrategyButtonPressedImagePath),
             musicVolume,
             sfxVolume,
             versionText,
             tacticalOptions,
-            BuildSaveMenuSlots(canSave),
+            BuildSaveMenuSlots(canSave, saves),
             confirmationMessage
         );
     }
@@ -74,10 +79,13 @@ public sealed class SaveMenuDataBuilder
     /// Builds presentation data for every configured save slot.
     /// </summary>
     /// <param name="canSave">Whether save commands are currently enabled.</param>
+    /// <param name="saves">The already-loaded save metadata entries.</param>
     /// <returns>Presentation data ordered by save-slot index.</returns>
-    private IReadOnlyList<SaveSlotRenderData> BuildSaveMenuSlots(bool canSave)
+    private IReadOnlyList<SaveSlotRenderData> BuildSaveMenuSlots(
+        bool canSave,
+        IReadOnlyList<SaveGameEntry> saves
+    )
     {
-        IReadOnlyList<SaveGameEntry> saves = saveGameManager.GetSavedGames();
         Dictionary<string, SaveGameEntry> savesByFileName = saves.ToDictionary(save =>
             save.FileName
         );
@@ -89,13 +97,14 @@ public sealed class SaveMenuDataBuilder
         {
             string fileName = saveGameManager.GetSaveSlotFileName(slot);
             savesByFileName.TryGetValue(fileName, out SaveGameEntry save);
+            bool canLoad = save != null && canLoadSave(save.Metadata);
             slots.Add(
                 new SaveSlotRenderData(
                     slot,
                     GetSaveSlotLabel(save, slot),
                     canSave,
-                    save != null,
-                    GetSaveSlotFactionIcon(save)
+                    canLoad,
+                    GetSaveSlotFactionIcon(save, canLoad)
                 )
             );
         }
@@ -123,9 +132,13 @@ public sealed class SaveMenuDataBuilder
     /// Resolves the faction icon configured for a discovered save.
     /// </summary>
     /// <param name="save">The discovered save entry, or null.</param>
+    /// <param name="canLoad">Whether the save matches the active content.</param>
     /// <returns>The configured faction icon texture, or null.</returns>
-    private Texture2D GetSaveSlotFactionIcon(SaveGameEntry save)
+    private Texture2D GetSaveSlotFactionIcon(SaveGameEntry save, bool canLoad)
     {
+        if (!canLoad)
+            return null;
+
         string factionId = save?.Metadata?.PlayerFactionID;
         return string.IsNullOrEmpty(factionId)
             ? null
@@ -155,7 +168,8 @@ public sealed class SaveMenuDataBuilder
             return texture;
 
         texture = loadTexture(path);
-        texturesByPath.Add(path, texture);
+        if (texture != null)
+            texturesByPath.Add(path, texture);
         return texture;
     }
 }

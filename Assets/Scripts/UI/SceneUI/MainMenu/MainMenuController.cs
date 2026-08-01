@@ -1,22 +1,16 @@
 using Rebellion.Game;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.Serialization;
-using UnityEngine.Video;
 
 /// <summary>
 /// Owns main-menu launch state, audio, cutscenes, and scene navigation.
 /// </summary>
 public sealed class MainMenuController : MonoBehaviour
 {
-    private const string _menuMusicPath = "Audio/Music/battle_of_endor_1_medley";
+    private const string _creditsVideoPath = "Application/Credits/Videos/credits";
+    private const string _menuMusicPath = "Application/MainMenu/Audio/battle-of-endor-1-medley";
 
     [SerializeField]
     private MainMenuView view;
-
-    [FormerlySerializedAs("CreditsClip")]
-    [SerializeField]
-    private VideoClip creditsClip;
 
     [SerializeField]
     [Min(0f)]
@@ -33,19 +27,16 @@ public sealed class MainMenuController : MonoBehaviour
         {
             if (view == null)
                 throw new MissingReferenceException($"{name} has no main-menu view.");
-            if (creditsClip == null)
-                throw new MissingReferenceException($"{name} has no credits clip.");
         }
 
-        GameLaunchContext.Reset();
+        ContentPack contentPack = AppBootstrap.EnsureExists().GetContentPack();
+        GameLaunchContext.Reset(contentPack);
         SaveMenuLaunchContext.Reset();
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
 
         if (view == null)
             return;
 
-        AudioManager.EnsureExists().PreloadSfx(view.GetAudioCuePaths());
-        view.RenderVictoryCondition(currentVictoryCondition);
         if (view.TryGetSelectedDifficulty(out GameDifficulty difficulty))
             SelectGameDifficulty(difficulty);
     }
@@ -63,16 +54,39 @@ public sealed class MainMenuController : MonoBehaviour
         view.StartGameRequested += HandleStartGameRequested;
         view.VictoryConditionToggleRequested += HandleVictoryConditionToggleRequested;
         view.LoadGameRequested += OpenLoadGameMenu;
+        view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
         view.AudioCueRequested += PlayAudioCue;
     }
 
     /// <summary>
-    /// Starts the main-menu music.
+    /// Initializes local content, preloads immediate UI cues, and starts main-menu music.
     /// </summary>
-    private void Start()
+    private async void Start()
     {
-        AudioManager.EnsureExists().PlayTrack(_menuMusicPath, true);
+        try
+        {
+            await AppBootstrap.EnsureExists().InitializeMainMenuContentAsync();
+            AppBootstrap bootstrap = AppBootstrap.Instance;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            view?.InitializeContent(bootstrap.GetContentAssets());
+            view?.RenderVictoryCondition(currentVictoryCondition);
+            FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
+                contentPack.GameData.FactionThemes
+            );
+            view?.RenderFactions(
+                contentPack.Scenario.PlayableFactionIDs,
+                themeLibrary.GetTheme,
+                bootstrap.GetContentAssets().GetTexture
+            );
+            AudioManager audioManager = AudioManager.EnsureExists();
+            audioManager.PreloadSfx(view?.GetAudioCuePaths());
+            audioManager.PlayTrack(_menuMusicPath, true);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 
     /// <summary>
@@ -88,6 +102,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.StartGameRequested -= HandleStartGameRequested;
         view.VictoryConditionToggleRequested -= HandleVictoryConditionToggleRequested;
         view.LoadGameRequested -= OpenLoadGameMenu;
+        view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
         view.AudioCueRequested -= PlayAudioCue;
     }
@@ -155,7 +170,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// <summary>
     /// Plays a UI audio cue emitted by the view.
     /// </summary>
-    /// <param name="resourcePath">The audio resource path.</param>
+    /// <param name="resourcePath">The audio content address.</param>
     private void PlayAudioCue(string resourcePath)
     {
         AudioManager.EnsureExists().PlaySfx(resourcePath);
@@ -167,7 +182,7 @@ public sealed class MainMenuController : MonoBehaviour
     private void ShowCredits()
     {
         AudioManager.EnsureExists().FadeOutMusic(creditsMusicFadeDuration);
-        CutsceneManager.Instance.Play(creditsClip, OnCreditsFinished);
+        AppBootstrap.EnsureExists().GetCutsceneManager().Play(_creditsVideoPath, OnCreditsFinished);
     }
 
     /// <summary>
@@ -176,7 +191,19 @@ public sealed class MainMenuController : MonoBehaviour
     private void OpenLoadGameMenu()
     {
         SaveMenuLaunchContext.OpenFromMainMenu();
-        SceneManager.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+    }
+
+    /// <summary>
+    /// Exits the player, or stops Play Mode when testing the command in the Unity Editor.
+    /// </summary>
+    private static void ExitApplication()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     /// <summary>
@@ -197,6 +224,6 @@ public sealed class MainMenuController : MonoBehaviour
         GameLaunchContext.PlayIntroCutscene = true;
 
         AudioManager.EnsureExists().StopMusic();
-        SceneManager.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
     }
 }

@@ -4,7 +4,6 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Generation;
 using UnityEngine;
-using UnityEngine.Video;
 
 /// <summary>
 /// Consumes launch state and initializes the strategy scene for a new or loaded game.
@@ -18,9 +17,10 @@ public sealed class GameFlowController : MonoBehaviour
     private GameManager activeGameManager;
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
+    private UIContext uiContext;
 
     /// <summary>
-    /// Resolves composed scene dependencies and creates the shared theme library.
+    /// Resolves composed scene dependencies.
     /// </summary>
     private void Awake()
     {
@@ -30,8 +30,6 @@ public sealed class GameFlowController : MonoBehaviour
                 $"{name} must be composed with a StrategyController."
             );
         }
-
-        themeLibrary = new FactionThemeLibrary();
     }
 
     /// <summary>
@@ -45,20 +43,31 @@ public sealed class GameFlowController : MonoBehaviour
     /// <summary>
     /// Starts or resumes gameplay according to the current launch state.
     /// </summary>
-    private void Start()
+    private async void Start()
     {
-        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-        GameRuntime runtime = bootstrap.GetRuntime();
-        if (runtime?.HasActiveGame == true)
+        try
         {
-            EnterGameplay(runtime.GetActiveGameManager());
-            return;
-        }
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            await bootstrap.InitializeMainMenuContentAsync();
+            await bootstrap.InitializeStrategyContentAsync();
+            ContentPack contentPack = bootstrap.GetContentPack();
+            themeLibrary = new FactionThemeLibrary(contentPack.GameData.FactionThemes);
+            GameRuntime runtime = bootstrap.GetRuntime();
+            if (runtime?.HasActiveGame == true)
+            {
+                EnterGameplay(runtime.GetActiveGameManager());
+                return;
+            }
 
-        if (GameLaunchContext.IsLoadGame)
-            LoadGame();
-        else
-            StartNewGame();
+            if (GameLaunchContext.IsLoadGame)
+                LoadGame();
+            else
+                StartNewGame();
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 
     /// <summary>
@@ -83,7 +92,8 @@ public sealed class GameFlowController : MonoBehaviour
             );
         }
 
-        GameBuilder builder = new GameBuilder(summary);
+        ContentPack contentPack = AppBootstrap.Instance.GetContentPack();
+        GameBuilder builder = new GameBuilder(summary, contentPack.GameData);
         game = builder.Build();
         PlayFactionIntro(game.GetPlayerFaction());
     }
@@ -99,6 +109,7 @@ public sealed class GameFlowController : MonoBehaviour
             throw new InvalidOperationException("LoadGame called but SaveFileName is null.");
 
         game = SaveGameManager.Instance.LoadGameData(fileName);
+        AppBootstrap.Instance.GetRuntime().ValidateGameContent(game);
         EnterGameplay();
     }
 
@@ -124,8 +135,10 @@ public sealed class GameFlowController : MonoBehaviour
             return;
         }
 
-        VideoClip clip = ResourceManager.GetVideo(theme.IntroCutscenePath);
-        CutsceneManager.Instance.Play(clip, EnterGameplay);
+        AppBootstrap
+            .EnsureExists()
+            .GetCutsceneManager()
+            .Play(theme.IntroCutscenePath, EnterGameplay);
     }
 
     /// <summary>
@@ -144,14 +157,26 @@ public sealed class GameFlowController : MonoBehaviour
     /// <param name="gameManager">The active game manager.</param>
     private void EnterGameplay(GameManager gameManager)
     {
-        activeGameManager = gameManager;
-        EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build();
-        UIContext uiContext = new UIContext(
-            gameManager.GetGame(),
-            themeLibrary,
-            encyclopediaCatalog
-        );
+        try
+        {
+            AppBootstrap bootstrap = AppBootstrap.Instance;
+            ContentPack contentPack = bootstrap.GetContentPack();
+            EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
+                contentPack.GameData
+            );
+            uiContext = new UIContext(
+                gameManager.GetGame(),
+                themeLibrary,
+                encyclopediaCatalog,
+                bootstrap.GetContentAssets().GetTexture
+            );
 
-        strategyController.Initialize(gameManager, uiContext);
+            strategyController.Initialize(gameManager, uiContext);
+            activeGameManager = gameManager;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
     }
 }

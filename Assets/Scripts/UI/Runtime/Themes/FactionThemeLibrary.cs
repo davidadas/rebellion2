@@ -16,11 +16,11 @@ public sealed class FactionThemeLibrary
     /// <summary>
     /// Constructs the theme library and loads all faction themes.
     /// </summary>
-    public FactionThemeLibrary()
+    /// <param name="themes">The configured default and faction themes.</param>
+    public FactionThemeLibrary(FactionThemes themes)
     {
-        FactionThemes themes =
-            ResourceManager.GetConfig<FactionThemes>()
-            ?? throw new InvalidOperationException("FactionThemes configuration is missing.");
+        if (themes == null)
+            throw new ArgumentNullException(nameof(themes));
 
         themesByFactionId = new Dictionary<string, FactionTheme>();
         themesInLoadOrder = new List<FactionTheme>();
@@ -69,8 +69,7 @@ public sealed class FactionThemeLibrary
     }
 
     /// <summary>
-    /// Returns the theme for the given faction.
-    /// Falls back to the default theme if not found.
+    /// Returns the default theme for an empty identifier or the exact configured faction theme.
     /// </summary>
     /// <param name="factionInstanceId">
     /// The faction InstanceID. May be null or empty.
@@ -86,7 +85,9 @@ public sealed class FactionThemeLibrary
         if (themesByFactionId.TryGetValue(factionInstanceId, out FactionTheme theme))
             return theme;
 
-        return defaultTheme;
+        throw new KeyNotFoundException(
+            $"No faction theme is configured for faction '{factionInstanceId}'."
+        );
     }
 
     /// <summary>

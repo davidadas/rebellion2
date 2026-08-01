@@ -22,7 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
     [TestFixture]
     public class PlanetSystemWindowControllerTests
     {
-        private const string _opposingFactionId = "FNALL2";
+        private const string _opposingFactionId = "FNEMP1";
         private const string _playerFactionId = "FNALL1";
         private const string _strategyViewPrefabPath =
             "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
@@ -48,13 +48,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         {
             _dirtyCount = 0;
             _game = CreateGame();
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _sector = CreateSector();
-            _gameManager = new GameManager(_game);
+            _gameManager = TestContent.CreateGameManager(_game);
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
             _windowLayer = _rootObject.GetComponentInChildren<StrategyWindowLayerView>(true);
             _windowManager = _rootObject.GetComponentInChildren<UIWindowManager>(true);

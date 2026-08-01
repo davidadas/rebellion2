@@ -24,21 +24,36 @@ namespace Rebellion.Tests.UI.Runtime
         public void SetUp()
         {
             _game = CreateGame(_playerFactionId);
-            _themeLibrary = new FactionThemeLibrary();
+            _themeLibrary = TestContent.CreateThemeLibrary();
             _encyclopediaCatalog = new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>());
-            _context = new UIContext(_game, _themeLibrary, _encyclopediaCatalog);
+            _context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture
+            );
         }
 
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new UIContext(null, _themeLibrary, _encyclopediaCatalog)
+                new UIContext(
+                    null,
+                    _themeLibrary,
+                    _encyclopediaCatalog,
+                    TestContent.Assets.GetTexture
+                )
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new UIContext(_game, null, _encyclopediaCatalog)
+                new UIContext(_game, null, _encyclopediaCatalog, TestContent.Assets.GetTexture)
             );
-            Assert.Throws<ArgumentNullException>(() => new UIContext(_game, _themeLibrary, null));
+            Assert.Throws<ArgumentNullException>(() =>
+                new UIContext(_game, _themeLibrary, null, TestContent.Assets.GetTexture)
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new UIContext(_game, _themeLibrary, _encyclopediaCatalog, null)
+            );
         }
 
         [Test]
@@ -84,8 +99,8 @@ namespace Rebellion.Tests.UI.Runtime
         {
             Assert.IsNull(_context.GetTexture(null));
             Assert.IsNull(_context.GetTexture(string.Empty));
-            Assert.IsNull(_context.GetTexture("Art/HD/UI/Missing/ui_missing_test_asset"));
-            Assert.IsNull(_context.GetTexture("Art/HD/UI/Missing/ui_missing_test_asset"));
+            Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
+            Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
         }
 
         [Test]
@@ -176,7 +191,7 @@ namespace Rebellion.Tests.UI.Runtime
         [Test]
         public void GetEntityCapturedOverlayTexture_OfficerCatalog_ReturnsOverlayForEveryOfficer()
         {
-            Officer[] officers = ResourceManager.GetEntityData<Officer>();
+            Officer[] officers = TestContent.Data.Officers;
 
             Assert.IsNotEmpty(officers);
             foreach (Officer officer in officers)
@@ -203,18 +218,6 @@ namespace Rebellion.Tests.UI.Runtime
 
             Assert.AreSame(_context.GetTexture(path), texture);
             Assert.IsNull(_context.GetPlanetTexture(null, path));
-        }
-
-        [Test]
-        public void GetSprite_FleetWithoutOwner_ThrowsInvalidOperationException()
-        {
-            Assert.Throws<InvalidOperationException>(() => _context.GetSprite(new Fleet()));
-        }
-
-        [Test]
-        public void GetSprite_NullNode_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => _context.GetSprite(null));
         }
 
         private static GameRoot CreateGame(string playerFactionId)

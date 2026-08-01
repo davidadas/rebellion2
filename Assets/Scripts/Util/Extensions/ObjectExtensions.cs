@@ -82,6 +82,11 @@ namespace Rebellion.Util.Extensions
 
             Type type = source.GetType();
 
+            if (source is Type)
+            {
+                return source;
+            }
+
             if (TypeHelper.IsValueType(type))
             {
                 if (TypeHelper.IsStruct(type))

@@ -1,11 +1,10 @@
 using System;
 using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Units;
 using Rebellion.Util.Common;
+using Rebellion.Util.Extensions;
 
 namespace Rebellion.Generation
 {
@@ -17,6 +16,7 @@ namespace Rebellion.Generation
     public sealed class GameBuilder
     {
         private readonly GameSummary _summary;
+        private readonly GameDataCatalog _gameData;
         private readonly IRandomNumberProvider _randomProvider;
         private const string _defaultPlayerId = "PLAYER1";
 
@@ -26,17 +26,24 @@ namespace Rebellion.Generation
         /// summary always produces the same world.
         /// </summary>
         /// <param name="summary">The summary describing galaxy size, difficulty, factions, and starting research.</param>
-        public GameBuilder(GameSummary summary)
-            : this(summary, CreateRandomProvider(summary)) { }
+        /// <param name="gameData">The active pack's composed game data.</param>
+        public GameBuilder(GameSummary summary, GameDataCatalog gameData)
+            : this(summary, gameData, CreateRandomProvider(summary)) { }
 
         /// <summary>
         /// Creates a builder that will generate a game with the given RNG provider.
         /// </summary>
         /// <param name="summary">The summary describing the game to generate.</param>
+        /// <param name="gameData">The active pack's composed game data.</param>
         /// <param name="randomProvider">Random number provider used by the generation pipeline.</param>
-        public GameBuilder(GameSummary summary, IRandomNumberProvider randomProvider)
+        public GameBuilder(
+            GameSummary summary,
+            GameDataCatalog gameData,
+            IRandomNumberProvider randomProvider
+        )
         {
             _summary = summary ?? throw new ArgumentNullException(nameof(summary));
+            _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _randomProvider =
                 randomProvider ?? throw new ArgumentNullException(nameof(randomProvider));
         }
@@ -81,34 +88,33 @@ namespace Rebellion.Generation
         }
 
         /// <summary>
-        /// Loads every input the pipeline needs from <see cref="ResourceManager"/> and
-        /// packages them into a new <see cref="GenerationContext"/>.
+        /// Copies every configured generation input into a new <see cref="GenerationContext"/>.
         /// </summary>
         /// <returns>A context populated with config, templates, and world entities.</returns>
         private GenerationContext LoadContext()
         {
             int galaxySize = (int)_summary.GalaxySize;
-            PlanetSystem[] systems = ResourceManager
-                .GetEntityData<PlanetSystem>()
+            PlanetSystem[] systems = _gameData
+                .PlanetSystems.GetDeepCopy(CloneMode.Full)
                 .Where(s => (int)s.Visibility <= galaxySize)
                 .ToArray();
 
             return new GenerationContext
             {
                 Summary = _summary,
-                Config = ResourceManager.GetConfig<GameGenerationConfig>(),
-                GameConfig = ResourceManager.GetConfig<GameConfig>(),
+                Config = _gameData.GenerationConfig.GetDeepCopy(CloneMode.Full),
+                GameConfig = _gameData.GameConfig.GetDeepCopy(CloneMode.Full),
                 Rng = _randomProvider,
 
                 Systems = systems,
-                Factions = ResourceManager.GetEntityData<Faction>(),
-                Buildings = ResourceManager.GetEntityData<Building>(),
-                CapitalShips = ResourceManager.GetEntityData<CapitalShip>(),
-                Starfighters = ResourceManager.GetEntityData<Starfighter>(),
-                Regiments = ResourceManager.GetEntityData<Regiment>(),
-                SpecialForces = ResourceManager.GetEntityData<SpecialForces>(),
-                Officers = ResourceManager.GetEntityData<Officer>(),
-                Events = ResourceManager.GetEntityData<GameEvent>(),
+                Factions = _gameData.Factions.GetDeepCopy(CloneMode.Full),
+                Buildings = _gameData.Buildings.GetDeepCopy(CloneMode.Full),
+                CapitalShips = _gameData.CapitalShips.GetDeepCopy(CloneMode.Full),
+                Starfighters = _gameData.Starfighters.GetDeepCopy(CloneMode.Full),
+                Regiments = _gameData.Regiments.GetDeepCopy(CloneMode.Full),
+                SpecialForces = _gameData.SpecialForces.GetDeepCopy(CloneMode.Full),
+                Officers = _gameData.Officers.GetDeepCopy(CloneMode.Full),
+                Events = _gameData.GameEvents.GetDeepCopy(CloneMode.Full),
             };
         }
 

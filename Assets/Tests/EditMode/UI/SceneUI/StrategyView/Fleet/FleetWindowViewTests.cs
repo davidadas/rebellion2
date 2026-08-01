@@ -390,12 +390,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             PointerEventData eventData = new PointerEventData(null);
             int draggedCount = 0;
             int endedCount = 0;
-            int detailItemsDropCount = 0;
-            int fleetListDropCount = 0;
+            int destinationDropCount = 0;
             _view.ScrollDragged += (_, _) => draggedCount++;
             _view.ScrollDragEnded += (_, _) => endedCount++;
-            _view.FleetDestinationDropped += (_, _) => detailItemsDropCount++;
-            _view.FleetListDropped += (_, _) => fleetListDropCount++;
+            _view.FleetDestinationDropped += (_, _) => destinationDropCount++;
             ScrollAreaView fleetScrollArea = FindFleetRows()[0]
                 .GetComponentInParent<ScrollAreaView>();
             ScrollAreaView detailScrollArea = FindDetailItems()[0]
@@ -410,8 +408,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
 
             Assert.AreEqual(2, draggedCount);
             Assert.AreEqual(2, endedCount);
-            Assert.AreEqual(1, detailItemsDropCount);
-            Assert.AreEqual(1, fleetListDropCount);
+            Assert.AreEqual(2, destinationDropCount);
         }
 
         [Test]
@@ -488,6 +485,25 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsTrue(rowSelection);
             Assert.IsTrue(itemSelection);
             Assert.IsFalse(missingSelection);
+        }
+
+        [Test]
+        public void FleetRowContainsDragSource_RowLabelRaycast_ReturnsTrue()
+        {
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[] { CreateFleetRow("Fleet") },
+                    new[] { CreateDetailItem("Ship") }
+                )
+            );
+            FleetListRowView row = FindFleetRows().Single();
+            PointerEventData eventData = CreateRaycastEvent(row.NameTextField.gameObject);
+            eventData.pointerPressRaycast = eventData.pointerCurrentRaycast;
+
+            bool contains = _view.FleetRowContainsDragSource(0, eventData);
+
+            Assert.IsTrue(contains);
         }
 
         [Test]

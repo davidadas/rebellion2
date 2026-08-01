@@ -1,7 +1,5 @@
 using System;
-using System.Linq;
 using Rebellion.Game;
-using Rebellion.Game.Factions;
 
 /// <summary>
 /// Carries new-game and load-game selections between menu and strategy scenes.
@@ -11,7 +9,7 @@ public static class GameLaunchContext
     /// <summary>
     /// Gets the launch settings for a new game.
     /// </summary>
-    public static GameSummary Summary { get; private set; } = CreateDefaultSummary();
+    public static GameSummary Summary { get; private set; } = new GameSummary();
 
     public static string SaveFileName { get; set; }
 
@@ -22,9 +20,10 @@ public static class GameLaunchContext
     /// <summary>
     /// Restores the launch context to the authored new-game defaults.
     /// </summary>
-    public static void Reset()
+    /// <param name="contentPack">The active content pack.</param>
+    public static void Reset(ContentPack contentPack)
     {
-        Summary = CreateDefaultSummary();
+        Summary = CreateDefaultSummary(contentPack);
         SaveFileName = null;
         IsLoadGame = false;
         PlayIntroCutscene = false;
@@ -33,10 +32,14 @@ public static class GameLaunchContext
     /// <summary>
     /// Creates the default launch summary.
     /// </summary>
+    /// <param name="contentPack">The active content pack.</param>
     /// <returns>The default launch summary.</returns>
-    private static GameSummary CreateDefaultSummary()
+    private static GameSummary CreateDefaultSummary(ContentPack contentPack)
     {
-        string[] startingFactionIds = GetDefaultStartingFactionIDs();
+        if (contentPack == null)
+            throw new ArgumentNullException(nameof(contentPack));
+
+        string[] startingFactionIds = contentPack.Scenario.PlayableFactionIDs.ToArray();
         return new GameSummary
         {
             Difficulty = GameDifficulty.Easy,
@@ -44,28 +47,11 @@ public static class GameLaunchContext
             VictoryCondition = GameVictoryCondition.Conquest,
             ResourceAvailability = GameResourceAvailability.Normal,
             StartingResearchLevel = 1,
-            PlayerFactionID = startingFactionIds.FirstOrDefault(),
+            PlayerFactionID = contentPack.Scenario.DefaultPlayerFactionID,
             StartingFactionIDs = startingFactionIds,
+            PackID = contentPack.Definition.ID,
+            PackVersion = contentPack.Definition.Version,
+            ScenarioID = contentPack.Scenario.ID,
         };
-    }
-
-    /// <summary>
-    /// Loads the configured faction identifiers available to a new game.
-    /// </summary>
-    /// <returns>The configured faction identifiers, or an empty array when data is unavailable.</returns>
-    private static string[] GetDefaultStartingFactionIDs()
-    {
-        try
-        {
-            return ResourceManager
-                .GetEntityData<Faction>()
-                .Where(faction => !string.IsNullOrEmpty(faction.InstanceID))
-                .Select(faction => faction.InstanceID)
-                .ToArray();
-        }
-        catch (Exception)
-        {
-            return Array.Empty<string>();
-        }
     }
 }

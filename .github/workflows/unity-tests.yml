@@ -11,7 +11,7 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
-  REBELLION2_MEDIA_REVISION: 897704994257fd35ae74af397840d428643a8948
+  REBELLION2_MEDIA_REVISION: main
 
 jobs:
   build:
@@ -37,13 +37,7 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          persist-credentials: false
           lfs: false
-          sparse-checkout: |
-            Art
-            Audio
-            Videos
-            Models
           path: .ci/rebellion2-media
 
       - name: Pull media LFS from R2
@@ -56,15 +50,18 @@ jobs:
         run: |
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git lfs pull
+          git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""
+          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
+            echo "Media checkout still contains Git LFS pointers."
+            exit 1
+          fi
 
       - name: Install media
         run: |
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Videos/ Assets/Resources/Videos/
-          mkdir -p Assets/Art/Models
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Models/ Assets/Art/Models/
+          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -100,6 +97,7 @@ jobs:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: ${{ matrix.targetPlatform }}
+          buildMethod: StandalonePlayerBuild.Build
 
       - name: Reset package files
         run: |
@@ -170,7 +168,7 @@ jobs:
           done
           rm -rf /tmp/unity-libcache
 
-          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll; do
+          for assembly in UnityEngine.CoreModule.dll UnityEditor.dll UnityEngine.UI.dll Unity.TextMeshPro.dll Unity.InputSystem.dll UnityEngine.ImageConversionModule.dll UnityEngine.UnityWebRequestModule.dll UnityEngine.UnityWebRequestAudioModule.dll; do
             if [ ! -f ".unity-lint-assemblies/$assembly" ]; then
               echo "ERROR: Missing required Unity lint assembly: $assembly"
               exit 1
@@ -203,12 +201,7 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          persist-credentials: false
           lfs: false
-          sparse-checkout: |
-            Art
-            Audio
-            Models
           path: .ci/rebellion2-media
 
       - name: Pull media LFS from R2
@@ -221,14 +214,18 @@ jobs:
         run: |
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git lfs pull
+          git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""
+          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
+            echo "Media checkout still contains Git LFS pointers."
+            exit 1
+          fi
 
       - name: Install media
         run: |
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Art/ Assets/Resources/Art/
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Audio/ Assets/Resources/Audio/
-          mkdir -p Assets/Art/Models
-          rsync -a --ignore-existing --exclude=.DS_Store .ci/rebellion2-media/Models/ Assets/Art/Models/
+          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rm -rf .ci
 
       - uses: actions/cache@v4
@@ -251,6 +248,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
+          customParameters: -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
 
       - name: Check coverage threshold

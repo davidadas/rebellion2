@@ -65,13 +65,6 @@ public sealed class MessagesCommandBarView : MonoBehaviour
     [SerializeField]
     private Button chatButton;
 
-    private Texture defaultButtonStripTexture;
-    private Texture defaultChatButtonTexture;
-    private Texture defaultCloseButtonTexture;
-    private Texture defaultDisplayButtonTexture;
-    private Texture defaultIndexButtonTexture;
-    private Texture defaultSignalButtonTexture;
-    private Texture defaultSignalTargetButtonTexture;
     private UnityAction chatButtonListener;
     private UnityAction closeButtonListener;
     private UnityAction displayButtonListener;
@@ -125,52 +118,23 @@ public sealed class MessagesCommandBarView : MonoBehaviour
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
-        UILayout.SetImageTexture(
-            buttonStripImage,
-            data.ButtonStripTexture ?? defaultButtonStripTexture
-        );
-        RenderButton(
-            closeButtonImage,
-            closeButtonPressVisual,
-            closeButton,
-            data.CloseButton,
-            defaultCloseButtonTexture
-        );
+        UILayout.SetImageTexture(buttonStripImage, data.ButtonStripTexture);
+        RenderButton(closeButtonImage, closeButtonPressVisual, closeButton, data.CloseButton);
         RenderButton(
             displayButtonImage,
             displayButtonPressVisual,
             displayButton,
-            data.DisplayButton,
-            defaultDisplayButtonTexture
+            data.DisplayButton
         );
-        RenderButton(
-            indexButtonImage,
-            indexButtonPressVisual,
-            indexButton,
-            data.IndexButton,
-            defaultIndexButtonTexture
-        );
-        RenderButton(
-            signalButtonImage,
-            signalButtonPressVisual,
-            signalButton,
-            data.SignalButton,
-            defaultSignalButtonTexture
-        );
+        RenderButton(indexButtonImage, indexButtonPressVisual, indexButton, data.IndexButton);
+        RenderButton(signalButtonImage, signalButtonPressVisual, signalButton, data.SignalButton);
         RenderButton(
             signalTargetButtonImage,
             signalTargetButtonPressVisual,
             signalTargetButton,
-            data.SignalTargetButton,
-            defaultSignalTargetButtonTexture
+            data.SignalTargetButton
         );
-        RenderButton(
-            chatButtonImage,
-            chatButtonPressVisual,
-            chatButton,
-            data.ChatButton,
-            defaultChatButtonTexture
-        );
+        RenderButton(chatButtonImage, chatButtonPressVisual, chatButton, data.ChatButton);
         gameObject.SetActive(true);
     }
 
@@ -202,7 +166,7 @@ public sealed class MessagesCommandBarView : MonoBehaviour
     }
 
     /// <summary>
-    /// Captures authored fallback textures and binds each command exactly once.
+    /// Binds each authored command exactly once.
     /// </summary>
     private void EnsureInitialized()
     {
@@ -210,14 +174,6 @@ public sealed class MessagesCommandBarView : MonoBehaviour
             return;
 
         VerifyReferences();
-        defaultButtonStripTexture = buttonStripImage.texture;
-        defaultCloseButtonTexture = closeButtonImage.texture;
-        defaultDisplayButtonTexture = displayButtonImage.texture;
-        defaultIndexButtonTexture = indexButtonImage.texture;
-        defaultSignalButtonTexture = signalButtonImage.texture;
-        defaultSignalTargetButtonTexture = signalTargetButtonImage.texture;
-        defaultChatButtonTexture = chatButtonImage.texture;
-
         closeButtonListener = BindButton(closeButton, () => CloseRequested?.Invoke());
         displayButtonListener = BindButton(displayButton, () => DisplayRequested?.Invoke());
         indexButtonListener = BindButton(indexButton, () => IndexRequested?.Invoke());
@@ -294,13 +250,11 @@ public sealed class MessagesCommandBarView : MonoBehaviour
     /// <param name="pressVisual">The authored pressed-state visual.</param>
     /// <param name="button">The authored button control.</param>
     /// <param name="data">The projected button presentation.</param>
-    /// <param name="fallbackTexture">The authored fallback texture.</param>
     private static void RenderButton(
         RawImage image,
         RawImagePressVisual pressVisual,
         Button button,
-        MessagesCommandButtonRenderData data,
-        Texture fallbackTexture
+        MessagesCommandButtonRenderData data
     )
     {
         if (!data.Visible)
@@ -311,7 +265,7 @@ public sealed class MessagesCommandBarView : MonoBehaviour
             return;
         }
 
-        Texture texture = data.Texture ?? fallbackTexture;
+        Texture texture = data.Texture;
         Texture pressedTexture = data.PressedTexture ?? texture;
         pressVisual.SetInteractiveTextures(texture, data.Enabled ? pressedTexture : null);
         button.interactable = data.Enabled && texture != null;

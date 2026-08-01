@@ -1,13 +1,19 @@
 {
     "name": "EditMode",
-    "optionalUnityReferences": [
-        "TestAssemblies"
-    ],
     "includePlatforms": [
         "Editor"
     ],
     "references": [
         "GameAssembly",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UnityEditor.TestRunner",
+        "UnityEngine.TestRunner"
+    ],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
     ]
 }

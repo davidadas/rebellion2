@@ -36,9 +36,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
         {
             _dirtyCount = 0;
             GameRoot game = CreateGame();
-            _uiContext = new UIContext(
+            _uiContext = TestContent.CreateUIContext(
                 game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _planet = CreatePlanet(game);

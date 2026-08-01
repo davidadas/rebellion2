@@ -36,6 +36,7 @@ public class SaveGameManager
     private const string _saveSlotFilePrefix = "save_slot_";
     private const string _saveSlotDisplayPrefix = "Save Slot ";
     private const string _metadataElementName = "Metadata";
+    private const string _metadataFileExtension = ".metadata.xml";
 
     // Singleton instance.
     private static SaveGameManager _instance;
@@ -133,6 +134,37 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Gets the sidecar metadata path for a save file.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <returns>The full sidecar metadata path.</returns>
+    internal string GetSaveMetadataFilePath(string fileName)
+    {
+        return Path.Combine(GetSaveDirectoryPath(), fileName + _metadataFileExtension);
+    }
+
+    /// <summary>
+    /// Returns valid saves occupying the configured numbered slots.
+    /// </summary>
+    /// <returns>The discovered numbered save entries in slot order.</returns>
+    public IReadOnlyList<SaveGameEntry> GetSaveSlotEntries()
+    {
+        List<SaveGameEntry> saves = new List<SaveGameEntry>(_saveSlotCount);
+        for (int slot = 0; slot < _saveSlotCount; slot++)
+        {
+            string fileName = GetSaveSlotFileName(slot);
+            if (!File.Exists(GetSaveFilePath(fileName)))
+                continue;
+
+            SaveGameEntry save = TryReadSaveEntry(fileName);
+            if (save != null)
+                saves.Add(save);
+        }
+
+        return saves;
+    }
+
+    /// <summary>
     /// Returns all valid save files in the save directory, sorted newest first.
     /// </summary>
     /// <returns>A read-only list of save game entries.</returns>
@@ -150,37 +182,12 @@ public class SaveGameManager
 
         List<SaveGameEntry> saves = new List<SaveGameEntry>(files.Length);
 
-        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
-
         foreach (FileInfo file in files)
         {
-            try
-            {
-                using FileStream stream = new FileStream(
-                    file.FullName,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read
-                );
-
-                GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
-                    stream,
-                    _metadataElementName
-                );
-                if (metadata == null)
-                    throw new InvalidOperationException("Save metadata is missing.");
-
-                ValidateSaveVersion(metadata.SaveVersion);
-
-                saves.Add(new SaveGameEntry(Path.GetFileNameWithoutExtension(file.Name), metadata));
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.LogWarning(
-                    $"Failed to read save metadata for {file.Name}: {ex.Message}"
-                );
-                // Skip corrupted/bad files.
-            }
+            string fileName = Path.GetFileNameWithoutExtension(file.Name);
+            SaveGameEntry save = TryReadSaveEntry(fileName);
+            if (save != null)
+                saves.Add(save);
         }
 
         // Sort newest first (based on metadata, not file system)
@@ -210,6 +217,9 @@ public class SaveGameManager
         game.Metadata.SaveVersion = GameMetadata.CurrentSaveVersion;
         game.Metadata.LastSavedUtc = DateTime.UtcNow;
         game.Metadata.PlayerFactionID = game.Summary?.PlayerFactionID;
+        game.Metadata.PackID = game.Summary?.PackID;
+        game.Metadata.PackVersion = game.Summary?.PackVersion;
+        game.Metadata.ScenarioID = game.Summary?.ScenarioID;
         if (!string.IsNullOrEmpty(displayName))
             game.Metadata.SaveDisplayName = displayName;
         else if (fileName == QuickSaveFileName)
@@ -218,8 +228,10 @@ public class SaveGameManager
         // Serialize the data to a file.
         string saveFilePath = GetSaveFilePath(fileName);
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
-        using FileStream fileStream = new FileStream(saveFilePath, FileMode.Create);
-        serializer.Serialize(fileStream, game);
+        using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Create))
+            serializer.Serialize(fileStream, game);
+
+        TryWriteSaveMetadata(fileName, game.Metadata);
     }
 
     /// <summary>
@@ -300,6 +312,131 @@ public class SaveGameManager
             throw new InvalidOperationException("Save metadata is missing.");
 
         return metadata.SaveVersion;
+    }
+
+    /// <summary>
+    /// Attempts to read and validate one save entry without interrupting menu discovery.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <returns>The valid save entry, or null when its metadata cannot be read.</returns>
+    private SaveGameEntry TryReadSaveEntry(string fileName)
+    {
+        try
+        {
+            GameMetadata metadata = ReadSaveMetadata(fileName);
+            ValidateSaveVersion(metadata.SaveVersion);
+            return new SaveGameEntry(fileName, metadata);
+        }
+        catch (Exception ex)
+        {
+            UnityEngine.Debug.LogWarning(
+                $"Failed to read save metadata for {fileName}.sav: {ex.Message}"
+            );
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Reads current sidecar metadata or extracts it from the full save file.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <returns>The deserialized save metadata.</returns>
+    private GameMetadata ReadSaveMetadata(string fileName)
+    {
+        string saveFilePath = GetSaveFilePath(fileName);
+        string metadataFilePath = GetSaveMetadataFilePath(fileName);
+        if (
+            File.Exists(metadataFilePath)
+            && File.GetLastWriteTimeUtc(metadataFilePath) >= File.GetLastWriteTimeUtc(saveFilePath)
+            && TryDeserializeMetadataFile(metadataFilePath, out GameMetadata sidecarMetadata)
+        )
+            return sidecarMetadata;
+
+        GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+        using FileStream stream = new FileStream(
+            saveFilePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read
+        );
+        GameMetadata metadata = serializer.DeserializeNode<GameMetadata>(
+            stream,
+            _metadataElementName
+        );
+        if (metadata == null)
+            throw new InvalidOperationException("Save metadata is missing.");
+
+        TryWriteSaveMetadata(fileName, metadata);
+        return metadata;
+    }
+
+    /// <summary>
+    /// Attempts to deserialize one metadata sidecar.
+    /// </summary>
+    /// <param name="metadataFilePath">The sidecar metadata file path.</param>
+    /// <param name="metadata">Receives the deserialized metadata.</param>
+    /// <returns>True when the sidecar contains valid metadata.</returns>
+    private bool TryDeserializeMetadataFile(string metadataFilePath, out GameMetadata metadata)
+    {
+        try
+        {
+            GameSerializer serializer = CreateMetadataSerializer();
+            using FileStream stream = new FileStream(
+                metadataFilePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read
+            );
+            metadata = serializer.Deserialize(stream) as GameMetadata;
+            return metadata != null;
+        }
+        catch (Exception)
+        {
+            metadata = null;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to write one metadata sidecar without failing the primary save operation.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <param name="metadata">The metadata to serialize.</param>
+    /// <returns>True when the sidecar was written.</returns>
+    private bool TryWriteSaveMetadata(string fileName, GameMetadata metadata)
+    {
+        try
+        {
+            GameSerializer serializer = CreateMetadataSerializer();
+            using FileStream stream = new FileStream(
+                GetSaveMetadataFilePath(fileName),
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None
+            );
+            serializer.Serialize(stream, metadata);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Creates the serializer used by save metadata sidecars.
+    /// </summary>
+    /// <returns>The configured metadata serializer.</returns>
+    private static GameSerializer CreateMetadataSerializer()
+    {
+        return new GameSerializer(
+            typeof(GameMetadata),
+            new GameSerializerSettings { RootName = _metadataElementName }
+        );
     }
 
     /// <summary>

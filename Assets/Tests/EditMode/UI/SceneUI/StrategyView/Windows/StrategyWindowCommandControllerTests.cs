@@ -64,10 +64,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             };
             _game.AttachNode(_officer, origin);
             _game.AttachNode(_specialForces, origin);
-            _gameManager = new GameManager(_game);
-            _uiContext = new UIContext(
+            _gameManager = TestContent.CreateGameManager(_game);
+            _uiContext = TestContent.CreateUIContext(
                 _game,
-                new FactionThemeLibrary(),
+                TestContent.CreateThemeLibrary(),
                 new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
             );
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);

@@ -19,10 +19,20 @@
          (CI provides them there before the project's own Library is compiled), then fall back
          to the locally compiled project output. Resolving these keeps the semantic model complete
          so IDE0005 does not flag genuinely-used using directives. -->
-    <UGuiHintPath Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UI.dll')">$(UnityManagedAssembliesPath)/UnityEngine.UI.dll</UGuiHintPath>
-    <UGuiHintPath Condition="'$(UGuiHintPath)' == '' And Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')">Library/ScriptAssemblies/UnityEngine.UI.dll</UGuiHintPath>
-    <TextMeshProHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll')">$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll</TextMeshProHintPath>
-    <TextMeshProHintPath Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')">Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath>
+    <UGuiHintPath Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.UI.dll')"
+      >$(UnityManagedAssembliesPath)/UnityEngine.UI.dll</UGuiHintPath
+    >
+    <UGuiHintPath
+      Condition="'$(UGuiHintPath)' == '' And Exists('Library/ScriptAssemblies/UnityEngine.UI.dll')"
+      >Library/ScriptAssemblies/UnityEngine.UI.dll</UGuiHintPath
+    >
+    <TextMeshProHintPath Condition="Exists('$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.TextMeshPro.dll</TextMeshProHintPath
+    >
+    <TextMeshProHintPath
+      Condition="'$(TextMeshProHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.TextMeshPro.dll')"
+      >Library/ScriptAssemblies/Unity.TextMeshPro.dll</TextMeshProHintPath
+    >
   </PropertyGroup>
   <ItemGroup>
     <Reference

@@ -143,6 +143,25 @@ public sealed class StrategyContextMenuPresenter : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Requests every small icon used by strategy context menus.
+    /// </summary>
+    internal void RequestIconTextures()
+    {
+        FactionTheme playerTheme = uiContext?.GetPlayerFactionTheme();
+        StrategyContextMenuTheme menuTheme = playerTheme?.StrategyContextMenuTheme;
+        uiContext?.GetTexture(menuTheme?.ArrowOnImagePath);
+        uiContext?.GetTexture(menuTheme?.ArrowOffImagePath);
+        uiContext?.GetTexture(menuTheme?.CheckMarkImagePath);
+
+        SpeedIndicatorTheme speedTheme = playerTheme?.TacticalHUDLayout?.SpeedIndicators;
+        uiContext?.GetTexture(speedTheme?.PausedImagePath);
+        uiContext?.GetTexture(speedTheme?.VerySlowImagePath);
+        uiContext?.GetTexture(speedTheme?.SlowImagePath);
+        uiContext?.GetTexture(speedTheme?.MediumImagePath);
+        uiContext?.GetTexture(speedTheme?.FastImagePath);
+    }
+
+    /// <summary>
     /// Calculates the rendered width for one Strategy command list.
     /// </summary>
     /// <param name="width">The menu's authored base width.</param>

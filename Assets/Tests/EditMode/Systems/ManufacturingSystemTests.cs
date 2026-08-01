@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Systems
         public void SetUp()
         {
             // Create game with galaxy
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             _game = new GameRoot(config);
             GalaxyMap galaxy = _game.Galaxy;
 
@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_EmptyGame_DoesNotCrash()
         {
-            GameConfig config = ResourceManager.GetConfig<GameConfig>();
+            GameConfig config = TestContent.Data.GameConfig;
             GameRoot emptyGame = new GameRoot(config);
             ManufacturingSystem emptyManager = new ManufacturingSystem(
                 emptyGame,

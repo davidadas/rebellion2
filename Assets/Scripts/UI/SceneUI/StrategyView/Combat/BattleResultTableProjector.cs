@@ -11,9 +11,6 @@ using UnityEngine;
 /// </summary>
 internal sealed class BattleResultTableProjector
 {
-    private Dictionary<string, CapitalShip> capitalShipDefinitionsByTypeId;
-    private Dictionary<string, Starfighter> starfighterDefinitionsByTypeId;
-
     /// <summary>
     /// Creates result-table presentation for one owner and category.
     /// </summary>
@@ -292,28 +289,14 @@ internal sealed class BattleResultTableProjector
     {
         if (node is CapitalShip capitalShip)
         {
-            CapitalShip definition = GetCapitalShipDefinition(capitalShip);
-            Texture2D resultTexture = GetTexture(
-                uiContext,
-                BattleResultPresentation.FirstNonBlank(
-                    definition?.BattleResultImagePath,
-                    capitalShip.BattleResultImagePath
-                )
-            );
+            Texture2D resultTexture = GetTexture(uiContext, capitalShip.BattleResultImagePath);
             if (resultTexture != null)
                 return resultTexture;
         }
 
         if (node is Starfighter starfighter)
         {
-            Starfighter definition = GetStarfighterDefinition(starfighter);
-            Texture2D resultTexture = GetTexture(
-                uiContext,
-                BattleResultPresentation.FirstNonBlank(
-                    definition?.BattleResultImagePath,
-                    starfighter.BattleResultImagePath
-                )
-            );
+            Texture2D resultTexture = GetTexture(uiContext, starfighter.BattleResultImagePath);
             if (resultTexture != null)
                 return resultTexture;
         }
@@ -341,15 +324,11 @@ internal sealed class BattleResultTableProjector
 
         if (node is CapitalShip capitalShip)
         {
-            CapitalShip definition = GetCapitalShipDefinition(capitalShip);
             return GetTexture(
                 uiContext,
                 BattleResultPresentation.FirstNonBlank(
-                    definition?.BattleResultInTransitImagePath,
                     capitalShip.BattleResultInTransitImagePath,
-                    definition?.InTransitImagePath,
                     capitalShip.InTransitImagePath,
-                    definition?.InTransitSmallImagePath,
                     capitalShip.InTransitSmallImagePath
                 )
             );
@@ -357,15 +336,11 @@ internal sealed class BattleResultTableProjector
 
         if (node is Starfighter starfighter)
         {
-            Starfighter definition = GetStarfighterDefinition(starfighter);
             return GetTexture(
                 uiContext,
                 BattleResultPresentation.FirstNonBlank(
-                    definition?.BattleResultInTransitImagePath,
                     starfighter.BattleResultInTransitImagePath,
-                    definition?.InTransitImagePath,
                     starfighter.InTransitImagePath,
-                    definition?.InTransitSmallImagePath,
                     starfighter.InTransitSmallImagePath
                 )
             );
@@ -400,15 +375,11 @@ internal sealed class BattleResultTableProjector
 
         if (node is CapitalShip capitalShip)
         {
-            CapitalShip definition = GetCapitalShipDefinition(capitalShip);
             return GetTexture(
                 uiContext,
                 BattleResultPresentation.FirstNonBlank(
-                    definition?.BattleResultDamagedImagePath,
                     capitalShip.BattleResultDamagedImagePath,
-                    definition?.DamagedImagePath,
                     capitalShip.DamagedImagePath,
-                    definition?.DamagedSmallImagePath,
                     capitalShip.DamagedSmallImagePath
                 )
             );
@@ -416,15 +387,11 @@ internal sealed class BattleResultTableProjector
 
         if (node is Starfighter starfighter)
         {
-            Starfighter definition = GetStarfighterDefinition(starfighter);
             return GetTexture(
                 uiContext,
                 BattleResultPresentation.FirstNonBlank(
-                    definition?.BattleResultDamagedImagePath,
                     starfighter.BattleResultDamagedImagePath,
-                    definition?.DamagedImagePath,
                     starfighter.DamagedImagePath,
-                    definition?.DamagedSmallImagePath,
                     starfighter.DamagedSmallImagePath
                 )
             );
@@ -437,44 +404,6 @@ internal sealed class BattleResultTableProjector
                 node?.DamagedSmallImagePath
             )
         );
-    }
-
-    /// <summary>
-    /// Resolves immutable capital-ship display data by type identifier.
-    /// </summary>
-    /// <param name="capitalShip">The runtime capital ship.</param>
-    /// <returns>The matching data definition, or null when none exists.</returns>
-    private CapitalShip GetCapitalShipDefinition(CapitalShip capitalShip)
-    {
-        string typeId = capitalShip?.GetTypeID();
-        if (string.IsNullOrEmpty(typeId))
-            return null;
-
-        capitalShipDefinitionsByTypeId ??= ResourceManager
-            .GetEntityData<CapitalShip>()
-            .Where(definition => !string.IsNullOrEmpty(definition.GetTypeID()))
-            .ToDictionary(definition => definition.GetTypeID());
-        capitalShipDefinitionsByTypeId.TryGetValue(typeId, out CapitalShip definition);
-        return definition;
-    }
-
-    /// <summary>
-    /// Resolves immutable starfighter display data by type identifier.
-    /// </summary>
-    /// <param name="starfighter">The runtime starfighter.</param>
-    /// <returns>The matching data definition, or null when none exists.</returns>
-    private Starfighter GetStarfighterDefinition(Starfighter starfighter)
-    {
-        string typeId = starfighter?.GetTypeID();
-        if (string.IsNullOrEmpty(typeId))
-            return null;
-
-        starfighterDefinitionsByTypeId ??= ResourceManager
-            .GetEntityData<Starfighter>()
-            .Where(definition => !string.IsNullOrEmpty(definition.GetTypeID()))
-            .ToDictionary(definition => definition.GetTypeID());
-        starfighterDefinitionsByTypeId.TryGetValue(typeId, out Starfighter definition);
-        return definition;
     }
 
     /// <summary>

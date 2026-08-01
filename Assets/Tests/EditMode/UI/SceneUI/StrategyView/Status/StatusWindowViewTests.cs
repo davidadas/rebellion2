@@ -66,7 +66,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             RectInt windowRect = UILayout.GetSourceRect(_view.transform as RectTransform);
             Assert.AreEqual(31, windowRect.x);
             Assert.AreEqual(47, windowRect.y);
-            Assert.AreSame(_backgroundTexture, FindComponent<RawImage>("BackgroundImage").texture);
+            RawImage backgroundImage = FindComponent<RawImage>("BackgroundImage");
+            Assert.AreSame(_backgroundTexture, backgroundImage.texture);
+            Assert.AreEqual(
+                UILayout.GetTextureSourceSize(_backgroundTexture),
+                UILayout.GetSourceRect(backgroundImage.rectTransform).size
+            );
             Assert.AreEqual("Capital Ship Status", FindText("HeaderTextField").text);
             Assert.AreEqual("Medium Transport", FindText("LabelTextField0").text);
             RawImage[] images = FindStatusImages();

@@ -65,6 +65,7 @@ public sealed class CutscenePlayer : MonoBehaviour
 
         HideUntilFirstFrame();
         videoPlayer.loopPointReached += HandleFinished;
+        videoPlayer.source = VideoSource.VideoClip;
         videoPlayer.clip = clip;
 
         videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
@@ -72,6 +73,40 @@ public sealed class CutscenePlayer : MonoBehaviour
 
         videoPlayer.Play();
         audioSource.Play();
+    }
+
+    /// <summary>
+    /// Begins playback from a local video URL.
+    /// </summary>
+    /// <param name="videoUrl">The local video file URL.</param>
+    /// <param name="finished">The callback invoked after playback ends or is skipped.</param>
+    public void Play(string videoUrl, Action finished)
+    {
+        ConfigureUrlPlayback(videoUrl, finished);
+        videoPlayer.Play();
+        audioSource.Play();
+    }
+
+    /// <summary>
+    /// Configures URL playback without starting the platform video decoder.
+    /// </summary>
+    /// <param name="videoUrl">The local video file URL.</param>
+    /// <param name="finished">The callback invoked after playback ends or is skipped.</param>
+    internal void ConfigureUrlPlayback(string videoUrl, Action finished)
+    {
+        if (string.IsNullOrWhiteSpace(videoUrl))
+            throw new ArgumentException("A video URL is required.", nameof(videoUrl));
+
+        isEnding = false;
+        onFinished = finished;
+
+        HideUntilFirstFrame();
+        videoPlayer.loopPointReached += HandleFinished;
+        videoPlayer.source = VideoSource.Url;
+        videoPlayer.url = videoUrl;
+
+        videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+        videoPlayer.SetTargetAudioSource(0, audioSource);
     }
 
     /// <summary>

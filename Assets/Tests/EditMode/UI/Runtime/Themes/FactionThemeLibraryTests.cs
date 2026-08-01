@@ -12,7 +12,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         [SetUp]
         public void SetUp()
         {
-            _library = new FactionThemeLibrary();
+            _library = TestContent.CreateThemeLibrary();
         }
 
         [Test]
@@ -24,15 +24,19 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
-        public void GetTheme_EmptyOrUnknownFaction_ReturnsDefaultTheme()
+        public void GetTheme_EmptyFaction_ReturnsDefaultTheme()
         {
             FactionTheme nullTheme = _library.GetTheme(null);
             FactionTheme emptyTheme = _library.GetTheme(string.Empty);
-            FactionTheme unknownTheme = _library.GetTheme("missing-faction");
 
             Assert.AreEqual("DEFAULT", nullTheme.FactionInstanceID);
             Assert.AreSame(nullTheme, emptyTheme);
-            Assert.AreSame(nullTheme, unknownTheme);
+        }
+
+        [Test]
+        public void GetTheme_UnknownFaction_ThrowsKeyNotFoundException()
+        {
+            Assert.Throws<KeyNotFoundException>(() => _library.GetTheme("missing-faction"));
         }
 
         [Test]
@@ -60,9 +64,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Audio/Music/rescue_of_the_princess_heroics_of_luke_and_han_wampas_lair_jedi_training_medley",
-                    "Audio/Music/main_title_death_star_tatooine_emperor_medley",
-                    "Audio/Music/brother_and_sister_father_and_son_fleet_enters_hyperspace_heroic_ewok_medley",
+                    "Pack/Shared/Strategy/Audio/Music/rescue-of-the-princess-heroics-of-luke-and-han-wampas-lair-jedi-training-medley",
+                    "Pack/Shared/Strategy/Audio/Music/main-title-death-star-tatooine-emperor-medley",
+                    "Pack/Shared/Strategy/Audio/Music/brother-and-sister-father-and-son-fleet-enters-hyperspace-heroic-ewok-medley",
                 },
                 allianceMusic.NeutralTrackPaths
             );
@@ -70,25 +74,28 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 allianceMusic.NeutralTrackPaths,
                 empireMusic.NeutralTrackPaths
             );
-            Assert.AreEqual("Audio/Music/landos_palace", allianceMusic.StrongAdvantageTrackPath);
             Assert.AreEqual(
-                "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley",
+                "Pack/Shared/Strategy/Audio/Music/landos-palace",
+                allianceMusic.StrongAdvantageTrackPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Strategy/Audio/Music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley",
                 allianceMusic.AdvantageTrackPath
             );
             Assert.AreEqual(
-                "Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger",
+                "Pack/Shared/Strategy/Audio/Music/imperial-march-darth-vaders-theme-intro-and-stinger",
                 allianceMusic.DisadvantageTrackPath
             );
             Assert.AreEqual(
-                "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley_stinger",
+                "Pack/Shared/Strategy/Audio/Music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley-stinger",
                 empireMusic.StrongAdvantageTrackPath
             );
             Assert.AreEqual(
-                "Audio/Music/imperial_march_darth_vaders_theme_intro_and_stinger",
+                "Pack/Shared/Strategy/Audio/Music/imperial-march-darth-vaders-theme-intro-and-stinger",
                 empireMusic.AdvantageTrackPath
             );
             Assert.AreEqual(
-                "Audio/Music/emperor_arrives_death_of_yoda_obi_wans_revelation_medley",
+                "Pack/Shared/Strategy/Audio/Music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley",
                 empireMusic.DisadvantageTrackPath
             );
             Assert.AreEqual(3, allianceMusic.NeutralTracksBetweenStrategicTracks);
