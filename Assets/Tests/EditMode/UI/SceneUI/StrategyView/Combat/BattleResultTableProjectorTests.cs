@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
@@ -609,7 +610,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         private static CombatUnitSnapshot Capture(
-            Rebellion.SceneGraph.ISceneNode unit,
+            ISceneNode unit,
             bool damaged = false,
             bool destroyed = false
         )

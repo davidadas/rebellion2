@@ -7,6 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Systems;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
@@ -21,7 +22,7 @@ namespace Rebellion.Tests.Game.Missions
                 Planet empPlanet,
                 Planet _,
                 Officer officer,
-                Rebellion.Systems.FogOfWarSystem _
+                FogOfWarSystem _
             ) = MissionSceneBuilder.Build();
             officer.IsMain = true;
             return (game, empPlanet, officer);

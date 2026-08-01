@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using TMPro;
 using UnityEngine;
@@ -300,7 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 
         private sealed class TestActions : IConstructionWindowActions
         {
-            public void OpenConstructionInfo(Rebellion.SceneGraph.ISceneNode item) { }
+            public void OpenConstructionInfo(ISceneNode item) { }
 
             public void OpenConstructionStatus(StrategyStatusTarget target) { }
 
