@@ -61,7 +61,6 @@ public static class StandalonePlayerBuild
         {
             throw new InvalidOperationException($"Player build output not found at {outputPath}.");
         }
-
     }
 
     /// <summary>
