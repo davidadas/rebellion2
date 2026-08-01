@@ -65,6 +65,11 @@ public sealed class SceneLoader : MonoBehaviour
         _loadCoroutine = null;
     }
 
+    /// <summary>
+    /// Selects the content initialization task required by a destination scene.
+    /// </summary>
+    /// <param name="sceneName">The destination scene name.</param>
+    /// <returns>The scene's content initialization task.</returns>
     private static Task GetSceneInitializationAsync(string sceneName)
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;

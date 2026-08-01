@@ -93,6 +93,11 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
         await Task.WhenAll(manifest.Audio.Distinct(StringComparer.Ordinal).Select(LoadAudioAsync));
     }
 
+    /// <summary>
+    /// Enumerates texture addresses beneath one content directory.
+    /// </summary>
+    /// <param name="directoryAddress">The content directory address.</param>
+    /// <returns>The discovered texture addresses.</returns>
     private IEnumerable<string> GetTextureAddresses(string directoryAddress)
     {
         string normalizedAddress = NormalizeAddress(directoryAddress);

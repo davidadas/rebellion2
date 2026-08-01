@@ -7,6 +7,9 @@ using UnityEngine;
 /// </summary>
 public static class UIBuilderMenu
 {
+    /// <summary>
+    /// Rebuilds every generated UI prefab and scene.
+    /// </summary>
     [MenuItem("Rebellion/UI/Build All", false, 0)]
     public static void BuildAll()
     {
@@ -42,6 +45,9 @@ public static class UIBuilderMenu
         SaveAndRefresh();
     }
 
+    /// <summary>
+    /// Rebuilds the generated main-menu UI.
+    /// </summary>
     [MenuItem("Rebellion/UI/Build Main Menu", false, 20)]
     public static void BuildMainMenu()
     {
@@ -50,6 +56,9 @@ public static class UIBuilderMenu
         SaveAndRefresh();
     }
 
+    /// <summary>
+    /// Rebuilds the generated save-game UI.
+    /// </summary>
     [MenuItem("Rebellion/UI/Build Save Game", false, 21)]
     public static void BuildSaveGame()
     {
@@ -58,6 +67,9 @@ public static class UIBuilderMenu
         SaveAndRefresh();
     }
 
+    /// <summary>
+    /// Rebuilds the generated strategy UI.
+    /// </summary>
     [MenuItem("Rebellion/UI/Build Strategy", false, 22)]
     public static void BuildStrategy()
     {
@@ -66,12 +78,19 @@ public static class UIBuilderMenu
         SaveAndRefresh();
     }
 
+    /// <summary>
+    /// Saves generated assets and refreshes the asset database.
+    /// </summary>
     private static void SaveAndRefresh()
     {
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
     }
 
+    /// <summary>
+    /// Removes development-content references from one generated prefab.
+    /// </summary>
+    /// <param name="prefabPath">The generated prefab path.</param>
     private static void RemoveDevelopmentContentReferences(string prefabPath)
     {
         GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
@@ -90,6 +109,11 @@ public static class UIBuilderMenu
         }
     }
 
+    /// <summary>
+    /// Removes development-content references serialized by one component.
+    /// </summary>
+    /// <param name="component">The component to inspect.</param>
+    /// <returns>True when at least one reference was removed.</returns>
     private static bool RemoveDevelopmentContentReferences(Component component)
     {
         if (component == null)

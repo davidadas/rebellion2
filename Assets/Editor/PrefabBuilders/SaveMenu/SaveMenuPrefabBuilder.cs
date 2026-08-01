@@ -564,6 +564,9 @@ public static class SaveMenuPrefabBuilder
         return SavePrefab(root, _saveMenuRootPrefabPath);
     }
 
+    /// <summary>
+    /// Applies the authored reference resolution to the generated save-menu scene canvas.
+    /// </summary>
     private static void ConfigureSceneCanvas()
     {
         Scene scene = EditorSceneManager.OpenScene(_scenePath, OpenSceneMode.Single);

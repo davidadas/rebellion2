@@ -199,6 +199,12 @@ public sealed class SaveMenuConfirmDialogView : MonoBehaviour
             && messageTextField != null;
     }
 
+    /// <summary>
+    /// Loads required confirmation artwork.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The confirmation artwork address.</param>
+    /// <returns>The required texture.</returns>
     private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
     {
         return contentAssets.GetTexture(address)

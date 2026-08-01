@@ -665,6 +665,9 @@ public sealed class MainMenuView : MonoBehaviour
         controlsBound = true;
     }
 
+    /// <summary>
+    /// Binds the exit lever's pressed-state presentation.
+    /// </summary>
     private void BindExitPresentation()
     {
         EventTrigger trigger = exitButton.GetComponent<EventTrigger>();
@@ -673,6 +676,10 @@ public sealed class MainMenuView : MonoBehaviour
         BindTrigger(trigger, EventTriggerType.PointerExit, _ => SetExitPressed(false));
     }
 
+    /// <summary>
+    /// Switches the exit lever between its default and pressed visuals.
+    /// </summary>
+    /// <param name="pressed">Whether the lever is currently pressed.</param>
     private void SetExitPressed(bool pressed)
     {
         Image defaultImage = exitButton.targetGraphic as Image;
@@ -681,17 +688,26 @@ public sealed class MainMenuView : MonoBehaviour
         exitPressedImage.SetActive(pressed);
     }
 
+    /// <summary>
+    /// Opens the exit confirmation dialog.
+    /// </summary>
     private void ShowExitConfirmation()
     {
         SetExitPressed(false);
         exitConfirmationDialog.Show("Are you sure you want to quit?");
     }
 
+    /// <summary>
+    /// Forwards a confirmed exit request.
+    /// </summary>
     private void ConfirmExit()
     {
         ExitRequested?.Invoke();
     }
 
+    /// <summary>
+    /// Restores the exit lever after cancellation.
+    /// </summary>
     private void CancelExit()
     {
         SetExitPressed(false);

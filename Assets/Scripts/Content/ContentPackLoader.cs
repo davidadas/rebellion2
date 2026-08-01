@@ -129,6 +129,12 @@ public static class ContentPackLoader
         return Path.Combine(playerDirectory.FullName, _contentDirectoryName);
     }
 
+    /// <summary>
+    /// Resolves the directory beside the player executable or application bundle.
+    /// </summary>
+    /// <param name="dataDirectory">Unity's platform-specific player data directory.</param>
+    /// <param name="platform">The current runtime platform.</param>
+    /// <returns>The directory that owns the external Content directory.</returns>
     private static DirectoryInfo ResolvePlayerDirectory(
         DirectoryInfo dataDirectory,
         RuntimePlatform platform
@@ -158,6 +164,12 @@ public static class ContentPackLoader
         return dataDirectory.Parent;
     }
 
+    /// <summary>
+    /// Loads one application-level preload manifest.
+    /// </summary>
+    /// <param name="contentRootPath">The external content root.</param>
+    /// <param name="preloadID">The application preload identifier.</param>
+    /// <returns>The validated preload manifest.</returns>
     internal static ContentPreloadManifest LoadApplicationPreloadManifest(
         string contentRootPath,
         string preloadID
@@ -413,6 +425,12 @@ public static class ContentPackLoader
         return manifests;
     }
 
+    /// <summary>
+    /// Validates preload timing and address ownership.
+    /// </summary>
+    /// <param name="manifest">The manifest to validate.</param>
+    /// <param name="requiredAddressPrefix">The required address prefix.</param>
+    /// <param name="manifestName">The manifest name used in errors.</param>
     private static void ValidatePreloadManifest(
         ContentPreloadManifest manifest,
         string requiredAddressPrefix,

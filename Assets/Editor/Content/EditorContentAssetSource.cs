@@ -14,6 +14,9 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     private readonly string _contentRoot;
     private readonly string _packRoot;
 
+    /// <summary>
+    /// Opens the active content pack used to resolve editor-preview assets.
+    /// </summary>
     public EditorContentAssetSource()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
@@ -21,6 +24,11 @@ public sealed class EditorContentAssetSource : IContentAssetSource
         _packRoot = pack.PackRootPath;
     }
 
+    /// <summary>
+    /// Loads an imported preview texture for a content address.
+    /// </summary>
+    /// <param name="address">The application- or pack-relative content address.</param>
+    /// <returns>The imported texture.</returns>
     public Texture2D GetTexture(string address)
     {
         string assetPath = ResolveAssetPath(address);
@@ -28,6 +36,11 @@ public sealed class EditorContentAssetSource : IContentAssetSource
         return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
     }
 
+    /// <summary>
+    /// Loads an imported preview sprite for a content address.
+    /// </summary>
+    /// <param name="address">The application- or pack-relative content address.</param>
+    /// <returns>The imported sprite.</returns>
     public Sprite GetSprite(string address)
     {
         string assetPath = ResolveAssetPath(address);
@@ -35,6 +48,12 @@ public sealed class EditorContentAssetSource : IContentAssetSource
         return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
+    /// <summary>
+    /// Applies the import mode required by one preview asset.
+    /// </summary>
+    /// <param name="assetPath">The Unity asset path.</param>
+    /// <param name="textureType">The required texture type.</param>
+    /// <param name="spriteImportMode">The required sprite import mode.</param>
     private static void ConfigureImporter(
         string assetPath,
         TextureImporterType textureType,
@@ -83,6 +102,14 @@ public sealed class EditorContentAssetSource : IContentAssetSource
             importer.SaveAndReimport();
     }
 
+    /// <summary>
+    /// Assigns an importer value only when it differs from the required value.
+    /// </summary>
+    /// <typeparam name="T">The importer value type.</typeparam>
+    /// <param name="current">The current value.</param>
+    /// <param name="expected">The required value.</param>
+    /// <param name="assign">Assigns the required value.</param>
+    /// <returns>True when the value changed.</returns>
     private static bool SetIfDifferent<T>(T current, T expected, Action<T> assign)
     {
         if (Equals(current, expected))
@@ -92,6 +119,11 @@ public sealed class EditorContentAssetSource : IContentAssetSource
         return true;
     }
 
+    /// <summary>
+    /// Resolves a content address to an imported Unity asset path.
+    /// </summary>
+    /// <param name="address">The application- or pack-relative content address.</param>
+    /// <returns>The imported Unity asset path.</returns>
     private string ResolveAssetPath(string address)
     {
         string normalized = address?.Trim().Replace('\\', '/');
