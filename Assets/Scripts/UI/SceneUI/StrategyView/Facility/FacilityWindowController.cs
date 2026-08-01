@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -41,7 +42,7 @@ public sealed class FacilityWindowController
     private const int _manufacturingCardIndexLimit = (int)FacilityWindowTab.Construction + 1;
     private readonly HashSet<FacilityWindowView> boundViews = new HashSet<FacilityWindowView>();
     private readonly ConstructionWindowController constructionWindowController;
-    private readonly Func<Rebellion.Game.GameRoot> getGame;
+    private readonly Func<GameRoot> getGame;
     private readonly Func<int, int, Vector2Int> getWindowPosition;
     private readonly Action markDirty;
     private readonly FacilityWindowProjector projector;
@@ -66,7 +67,7 @@ public sealed class FacilityWindowController
     /// <param name="getWindowPosition">Clamps a requested facility-window placement.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     public FacilityWindowController(
-        Func<Rebellion.Game.GameRoot> getGame,
+        Func<GameRoot> getGame,
         ConstructionWindowController constructionWindowController,
         Func<UIContext> getUIContext,
         TargetingController targetingController,

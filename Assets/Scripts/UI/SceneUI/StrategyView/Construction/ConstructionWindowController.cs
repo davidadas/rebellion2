@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -40,7 +41,7 @@ public sealed class ConstructionWindowController
     private readonly HashSet<ConstructionWindowView> boundViews =
         new HashSet<ConstructionWindowView>();
     private readonly Action<UIWindow> closeWindow;
-    private readonly Func<Rebellion.Game.GameRoot> getGame;
+    private readonly Func<GameRoot> getGame;
     private readonly Func<int, int, Vector2Int> getConstructionWindowPosition;
     private readonly Func<Vector2Int> getUtilityWindowPosition;
     private readonly Action markDirty;
@@ -67,7 +68,7 @@ public sealed class ConstructionWindowController
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
     public ConstructionWindowController(
-        Func<Rebellion.Game.GameRoot> getGame,
+        Func<GameRoot> getGame,
         Func<ManufacturingSystem> getManufacturingSystem,
         Func<MovementSystem> getMovementSystem,
         Func<UIContext> getUIContext,

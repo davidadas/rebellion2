@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
@@ -117,7 +118,7 @@ namespace Rebellion.Tests.Systems
             Officer capturedOfficer = CreateOfficer("captured");
             capturedOfficer.IsCaptured = true;
             Officer movingOfficer = CreateOfficer("moving");
-            movingOfficer.Movement = new Rebellion.Game.Movement.MovementState();
+            movingOfficer.Movement = new MovementState();
             SpecialForces buildingForces = CreateSpecialForces("building");
             buildingForces.ManufacturingStatus = ManufacturingStatus.Building;
             _game.AttachNode(capturedOfficer, _planet);

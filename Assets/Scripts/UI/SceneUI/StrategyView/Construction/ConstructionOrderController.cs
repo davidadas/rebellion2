@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
@@ -12,7 +13,7 @@ using Rebellion.Systems;
 /// </summary>
 public sealed class ConstructionOrderController
 {
-    private readonly Func<Rebellion.Game.GameRoot> getGame;
+    private readonly Func<GameRoot> getGame;
     private readonly Func<ManufacturingSystem> getManufacturingSystem;
     private readonly Func<MovementSystem> getMovementSystem;
 
@@ -23,7 +24,7 @@ public sealed class ConstructionOrderController
     /// <param name="getManufacturingSystem">Returns the active manufacturing system.</param>
     /// <param name="getMovementSystem">Returns the active movement system.</param>
     public ConstructionOrderController(
-        Func<Rebellion.Game.GameRoot> getGame,
+        Func<GameRoot> getGame,
         Func<ManufacturingSystem> getManufacturingSystem,
         Func<MovementSystem> getMovementSystem
     )
