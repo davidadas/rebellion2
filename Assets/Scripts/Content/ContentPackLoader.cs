@@ -23,13 +23,13 @@ public static class ContentPackLoader
     private const string _catalogFileName = "catalog.xml";
     private const string _contentDirectoryName = "Content";
     private const string _contentPathArgument = "-contentPath";
-    private const string _gameConfigSchemaRelativePath = "application/schemas/game-config.xsd";
-    private const string _packAddressPrefix = "pack/";
-    private const string _packsDirectoryName = "packs";
+    private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
+    private const string _packAddressPrefix = "Pack/";
+    private const string _packsDirectoryName = "Packs";
     private const string _packFileName = "pack.xml";
-    private const string _applicationAddressPrefix = "application/";
-    private const string _applicationDirectoryName = "application";
-    private const string _preloadDirectoryName = "preload";
+    private const string _applicationAddressPrefix = "Application/";
+    private const string _applicationDirectoryName = "Application";
+    private const string _preloadDirectoryName = "Preload";
 
     /// <summary>
     /// Opens the pack and scenario selected by the external content catalog.
@@ -56,7 +56,7 @@ public static class ContentPackLoader
         if (string.IsNullOrWhiteSpace(catalog.ActivePackID))
             throw new InvalidDataException("ContentCatalog.ActivePackID is required.");
 
-        string packRoot = ResolveSafePath(
+        string packRoot = ResolvePackRoot(
             Path.Combine(absoluteContentRoot, _packsDirectoryName),
             catalog.ActivePackID
         );
@@ -136,7 +136,11 @@ public static class ContentPackLoader
     {
         if (
             string.Equals(dataDirectory.Name, "Contents", StringComparison.Ordinal)
-            && string.Equals(dataDirectory.Parent?.Extension, ".app", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(
+                dataDirectory.Parent?.Extension,
+                ".app",
+                StringComparison.OrdinalIgnoreCase
+            )
         )
             return dataDirectory.Parent.Parent;
 
@@ -535,6 +539,39 @@ public static class ContentPackLoader
             ?? throw new InvalidDataException(
                 $"Failed to deserialize content definition: {filePath}"
             );
+    }
+
+    /// <summary>
+    /// Finds the pack directory whose definition declares the requested ID.
+    /// </summary>
+    /// <param name="packsRootPath">The directory containing installed packs.</param>
+    /// <param name="packID">The stable pack ID selected by the catalog.</param>
+    /// <returns>The absolute root of the selected pack.</returns>
+    private static string ResolvePackRoot(string packsRootPath, string packID)
+    {
+        if (!Directory.Exists(packsRootPath))
+            throw new DirectoryNotFoundException(
+                $"Content packs directory not found: {packsRootPath}"
+            );
+
+        string selectedRoot = null;
+        foreach (string candidateRoot in Directory.EnumerateDirectories(packsRootPath))
+        {
+            string definitionPath = Path.Combine(candidateRoot, _packFileName);
+            if (!File.Exists(definitionPath))
+                continue;
+
+            ContentPackDefinition candidate = DeserializeXml<ContentPackDefinition>(definitionPath);
+            if (!string.Equals(candidate.ID, packID, StringComparison.Ordinal))
+                continue;
+            if (selectedRoot != null)
+                throw new InvalidDataException($"Multiple content packs declare ID '{packID}'.");
+
+            selectedRoot = candidateRoot;
+        }
+
+        return selectedRoot
+            ?? throw new InvalidDataException($"No installed content pack declares ID '{packID}'.");
     }
 
     /// <summary>

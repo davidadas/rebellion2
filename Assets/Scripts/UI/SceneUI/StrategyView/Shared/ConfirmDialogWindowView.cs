@@ -224,5 +224,4 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour
 
         lineTemplate.gameObject.SetActive(false);
     }
-
 }

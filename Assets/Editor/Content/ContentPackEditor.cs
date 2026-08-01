@@ -3,9 +3,9 @@
 /// </summary>
 public static class ContentPackEditor
 {
-    private static EditorContentAssetSource assets;
+    private static EditorContentAssetSource _assets;
 
-    public static IContentAssetSource Assets => assets ??= new EditorContentAssetSource();
+    public static IContentAssetSource Assets => _assets ??= new EditorContentAssetSource();
 
     /// <summary>
     /// Loads the active content pack for editor authoring.

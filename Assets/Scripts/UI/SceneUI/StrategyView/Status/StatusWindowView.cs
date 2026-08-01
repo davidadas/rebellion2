@@ -141,7 +141,7 @@ public sealed class StatusWindowView : MonoBehaviour
 
         VerifyReferences();
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
-        UILayout.SetImageTexture(backgroundImage, data.BackgroundTexture);
+        UILayout.SetImage(backgroundImage, data.BackgroundTexture, 0, 0);
         RenderHeader(data.Header);
         RenderImages(data.ImageTextures, data.CenterImage);
         RenderLabel(data.Label);
@@ -507,5 +507,4 @@ public sealed class StatusWindowView : MonoBehaviour
         leftRowTextTemplate.gameObject.SetActive(false);
         rightRowTextTemplate.gameObject.SetActive(false);
     }
-
 }

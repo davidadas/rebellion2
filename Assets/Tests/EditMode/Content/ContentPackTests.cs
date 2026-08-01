@@ -45,12 +45,12 @@ namespace Rebellion.Tests.Content
             Assert.IsNotEmpty(applicationAddresses);
             Assert.IsTrue(
                 applicationAddresses.All(address =>
-                    address.StartsWith("application/", System.StringComparison.Ordinal)
+                    address.StartsWith("Application/", System.StringComparison.Ordinal)
                 )
             );
             Assert.IsTrue(
                 packAddresses.All(address =>
-                    address.StartsWith("pack/", System.StringComparison.Ordinal)
+                    address.StartsWith("Pack/", System.StringComparison.Ordinal)
                 )
             );
         }

@@ -142,6 +142,14 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Replaces editor-only confirmation previews with installation content.
+    /// </summary>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        confirmDialog.InitializeContent(contentAssets);
+    }
+
+    /// <summary>
     /// Renders stateful audio controls without rebuilding unrelated save-slot presentation.
     /// </summary>
     /// <param name="musicVolume">The normalized music volume.</param>
@@ -564,5 +572,4 @@ public sealed class SaveMenuWindowView : MonoBehaviour
 
         return true;
     }
-
 }

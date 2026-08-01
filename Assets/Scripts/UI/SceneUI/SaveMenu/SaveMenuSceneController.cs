@@ -69,6 +69,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
             if (this == null)
                 return;
 
+            saveMenuWindow.InitializeContent(AppBootstrap.Instance.GetContentAssets());
             Render();
             saveEntries = await Task.Run(saveGameManager.GetSaveSlotEntries);
             if (this == null)

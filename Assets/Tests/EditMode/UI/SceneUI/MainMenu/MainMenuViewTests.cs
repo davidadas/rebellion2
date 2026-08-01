@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -116,17 +117,30 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         public void CommandButtons_Click_RaiseMatchingSemanticRequests()
         {
             int loadCount = 0;
+            int exitCount = 0;
             int creditsCount = 0;
             int victoryCount = 0;
             _view.LoadGameRequested += () => loadCount++;
+            _view.ExitRequested += () => exitCount++;
             _view.CreditsRequested += () => creditsCount++;
             _view.VictoryConditionToggleRequested += () => victoryCount++;
 
             GetField<Button>("loadGameButton").onClick.Invoke();
+            GetField<Button>("exitButton").onClick.Invoke();
             GetField<Button>("creditsButton").onClick.Invoke();
             GetField<Button>("victoryConditionButton").onClick.Invoke();
 
             Assert.AreEqual(1, loadCount);
+            Assert.AreEqual(0, exitCount);
+            SaveMenuConfirmDialogView confirmation = GetField<SaveMenuConfirmDialogView>(
+                "exitConfirmationDialog"
+            );
+            Assert.IsTrue(confirmation.gameObject.activeSelf);
+            confirmation
+                .GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "ConfirmButtonImage")
+                .onClick.Invoke();
+            Assert.AreEqual(1, exitCount);
             Assert.AreEqual(1, creditsCount);
             Assert.AreEqual(1, victoryCount);
         }
@@ -207,14 +221,45 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void ExitLever_PointerPress_ShowsAndRestoresPressedVisual()
+        {
+            Button exitButton = GetField<Button>("exitButton");
+            EventTrigger trigger = exitButton.GetComponent<EventTrigger>();
+            GameObject pressedImage = GetField<GameObject>("exitPressedImage");
+            Image defaultImage = exitButton.targetGraphic as Image;
+
+            InvokeTrigger(trigger, EventTriggerType.PointerDown);
+            Assert.IsTrue(pressedImage.activeSelf);
+            Assert.IsFalse(defaultImage.enabled);
+
+            InvokeTrigger(trigger, EventTriggerType.PointerUp);
+            Assert.IsFalse(pressedImage.activeSelf);
+            Assert.IsTrue(defaultImage.enabled);
+        }
+
+        [Test]
+        public void ExitLever_PointerUp_RaisesExitAudioCue()
+        {
+            string requestedPath = null;
+            _view.AudioCueRequested += path => requestedPath = path;
+
+            InvokeTrigger(
+                GetField<Button>("exitButton").GetComponent<EventTrigger>(),
+                EventTriggerType.PointerUp
+            );
+
+            Assert.AreEqual("Application/MainMenu/Audio/exit-select", requestedPath);
+        }
+
+        [Test]
         public void GetAudioCuePaths_AuthoredBindings_ReturnsDistinctConfiguredPaths()
         {
             CollectionAssert.AreEquivalent(
                 new[]
                 {
-                    "application/main-menu/audio/select",
-                    "application/main-menu/audio/galaxysize-select",
-                    "application/main-menu/audio/exit-select",
+                    "Application/MainMenu/Audio/select",
+                    "Application/MainMenu/Audio/galaxysize-select",
+                    "Application/MainMenu/Audio/exit-select",
                 },
                 _view.GetAudioCuePaths()
             );

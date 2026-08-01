@@ -405,5 +405,4 @@ public sealed class MessagesDetailPanelView : MonoBehaviour
         if (linesScrollArea == null || lineTextTemplate == null)
             throw new MissingReferenceException($"{name}/DetailLines are missing.");
     }
-
 }

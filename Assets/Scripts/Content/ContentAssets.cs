@@ -11,8 +11,8 @@ using UnityEngine.Networking;
 /// </summary>
 public sealed class ContentAssets : IContentAssetSource, IDisposable
 {
-    private const string _packAddressPrefix = "pack/";
-    private const string _applicationAddressPrefix = "application/";
+    private const string _packAddressPrefix = "Pack/";
+    private const string _applicationAddressPrefix = "Application/";
 
     private static readonly string[] _textureExtensions = { ".png", ".jpg", ".jpeg" };
     private readonly Dictionary<string, AudioClip> audioClips = new Dictionary<string, AudioClip>(

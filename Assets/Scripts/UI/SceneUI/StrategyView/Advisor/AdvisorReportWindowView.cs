@@ -259,5 +259,4 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
         objectiveRowTemplate.gameObject.SetActive(false);
         rowsPaddingTemplate.gameObject.SetActive(false);
     }
-
 }

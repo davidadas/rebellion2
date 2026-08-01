@@ -150,7 +150,7 @@ public static class TestConfig
         Path.Combine(TestContent.Pack.PackRootPath, TestContent.Pack.Definition.GameConfigPath);
 
     private static string SchemaPath =>
-        Path.Combine(TestContent.Pack.ContentRootPath, "application", "schemas", "game-config.xsd");
+        Path.Combine(TestContent.Pack.ContentRootPath, "Application", "Schemas", "game-config.xsd");
 
     public static GameConfig Create()
     {

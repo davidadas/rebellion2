@@ -103,7 +103,7 @@ public sealed class AudioManagerTests
         manager.InitializeContent(TestContent.Assets);
 
         Assert.Throws<System.InvalidOperationException>(() =>
-            manager.PreloadSfx(new[] { "application/main-menu/audio/missing-required-clip" })
+            manager.PreloadSfx(new[] { "Application/MainMenu/Audio/missing-required-clip" })
         );
     }
 

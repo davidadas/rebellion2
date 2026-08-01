@@ -176,7 +176,7 @@ public class StrategyAdvisorTheme
     /// <returns>The animation frame resource path.</returns>
     public string GetFramePath(int bitmapID, int frameIndex, bool droid)
     {
-        string roleDirectory = droid ? "droid" : "protocol";
+        string roleDirectory = droid ? "Droid" : "Protocol";
         string roleName = droid ? "droid" : "protocol";
         return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/{AnimationFilePrefix}-{roleName}-{bitmapID}-frame-{frameIndex:D3}";
     }

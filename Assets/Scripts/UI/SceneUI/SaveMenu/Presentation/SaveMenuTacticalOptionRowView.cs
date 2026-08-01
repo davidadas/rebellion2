@@ -132,5 +132,4 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
             && disabledTexture != null
             && enabledTexture != null;
     }
-
 }

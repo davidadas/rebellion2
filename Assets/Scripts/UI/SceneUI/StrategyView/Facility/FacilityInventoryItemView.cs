@@ -7,9 +7,7 @@ using UnityEngine.UI;
 /// Renders one facility inventory item and reports pointer interaction.
 /// </summary>
 [RequireComponent(typeof(UIPointerGestureRelay))]
-public sealed class FacilityInventoryItemView
-    : MonoBehaviour,
-        IStrategyStatusDoubleClickTarget
+public sealed class FacilityInventoryItemView : MonoBehaviour, IStrategyStatusDoubleClickTarget
 {
     [SerializeField]
     private RawImage hitAreaImage;
@@ -179,5 +177,4 @@ public sealed class FacilityInventoryItemView
         if (texture != null)
             UILayout.SetSourceRect(image.rectTransform, 0, 0, width, height);
     }
-
 }

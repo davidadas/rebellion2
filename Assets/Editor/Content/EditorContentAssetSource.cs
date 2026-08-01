@@ -11,14 +11,14 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     private const int _previewTextureLimit = 4096;
     private static readonly string[] _textureExtensions = { ".png", ".jpg", ".jpeg" };
 
-    private readonly string contentRoot;
-    private readonly string packRoot;
+    private readonly string _contentRoot;
+    private readonly string _packRoot;
 
     public EditorContentAssetSource()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
-        contentRoot = pack.ContentRootPath;
-        packRoot = pack.PackRootPath;
+        _contentRoot = pack.ContentRootPath;
+        _packRoot = pack.PackRootPath;
     }
 
     public Texture2D GetTexture(string address)
@@ -43,10 +43,16 @@ public sealed class EditorContentAssetSource : IContentAssetSource
     {
         TextureImporter importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
         if (importer == null)
-            throw new InvalidOperationException($"Content texture importer is missing: {assetPath}");
+            throw new InvalidOperationException(
+                $"Content texture importer is missing: {assetPath}"
+            );
 
         bool changed = false;
-        changed |= SetIfDifferent(importer.textureType, textureType, value => importer.textureType = value);
+        changed |= SetIfDifferent(
+            importer.textureType,
+            textureType,
+            value => importer.textureType = value
+        );
         changed |= SetIfDifferent(
             importer.spriteImportMode,
             spriteImportMode,
@@ -57,7 +63,11 @@ public sealed class EditorContentAssetSource : IContentAssetSource
             _previewTextureLimit,
             value => importer.maxTextureSize = value
         );
-        changed |= SetIfDifferent(importer.mipmapEnabled, false, value => importer.mipmapEnabled = value);
+        changed |= SetIfDifferent(
+            importer.mipmapEnabled,
+            false,
+            value => importer.mipmapEnabled = value
+        );
         changed |= SetIfDifferent(
             importer.alphaSource,
             TextureImporterAlphaSource.FromInput,
@@ -90,15 +100,15 @@ public sealed class EditorContentAssetSource : IContentAssetSource
 
         string root;
         string relative;
-        if (normalized.StartsWith("application/", StringComparison.Ordinal))
+        if (normalized.StartsWith("Application/", StringComparison.Ordinal))
         {
-            root = contentRoot;
+            root = _contentRoot;
             relative = normalized;
         }
-        else if (normalized.StartsWith("pack/", StringComparison.Ordinal))
+        else if (normalized.StartsWith("Pack/", StringComparison.Ordinal))
         {
-            root = packRoot;
-            relative = normalized["pack/".Length..];
+            root = _packRoot;
+            relative = normalized["Pack/".Length..];
         }
         else
         {

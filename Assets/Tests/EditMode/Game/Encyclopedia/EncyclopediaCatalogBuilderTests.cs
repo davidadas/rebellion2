@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             List<EncyclopediaEntry> entriesWithWrongImagePath = catalog
                 .Where(entry =>
-                    string.IsNullOrEmpty(entry.ImagePath) || !entry.ImagePath.StartsWith("pack/")
+                    string.IsNullOrEmpty(entry.ImagePath) || !entry.ImagePath.StartsWith("Pack/")
                 )
                 .ToList();
 

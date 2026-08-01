@@ -11,7 +11,7 @@ on:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
-  REBELLION2_MEDIA_REVISION: 36a052a20bb3c672efa802ebf8be88dd94701396
+  REBELLION2_MEDIA_REVISION: 4a2babd91615285931cd5dd4f70258d46e9dd106
 
 jobs:
   build:
@@ -41,17 +41,20 @@ jobs:
           lfs: true
           sparse-checkout: |
             Content
+            Models/MainMenu
           path: .ci/rebellion2-media
 
       - name: Install media
         run: |
-          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Content/ Content/
+          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rm -rf .ci
 
       - uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Assets/**', 'Content/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-${{ matrix.targetPlatform }}-
             Library-
@@ -189,17 +192,20 @@ jobs:
           lfs: true
           sparse-checkout: |
             Content
+            Models/MainMenu
           path: .ci/rebellion2-media
 
       - name: Install media
         run: |
-          rsync -a --delete --exclude=.DS_Store .ci/rebellion2-media/Content/ Content/
+          mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
+          rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rm -rf .ci
 
       - uses: actions/cache@v4
         with:
           path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Content/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-
 
@@ -216,6 +222,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           dockerCpuLimit: 2
           dockerMemoryLimit: 8g
+          customParameters: -executeMethod UIBuilderMenu.BuildAll
           coverageOptions: "generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+GameAssembly"
 
       - name: Check coverage threshold

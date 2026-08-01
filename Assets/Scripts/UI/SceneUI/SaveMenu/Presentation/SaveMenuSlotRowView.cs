@@ -261,5 +261,4 @@ public sealed class SaveMenuSlotRowView : MonoBehaviour
             && loadButtonDownTexture
             && loadButtonDisabledTexture;
     }
-
 }

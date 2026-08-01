@@ -5,21 +5,21 @@ using System.Collections.Generic;
 /// </summary>
 internal static class StrategyUISoundPaths
 {
-    public const string ControlPress = "application/strategy/audio/controls/control-press";
+    public const string ControlPress = "Application/Strategy/Audio/Controls/control-press";
 
     public const string SectorWindowOpen =
-        "application/strategy/audio/controls/planet-system-panel-open";
+        "Application/Strategy/Audio/Controls/planet-system-panel-open";
 
     public const string SectorWindowClose =
-        "application/strategy/audio/controls/sector-window-close";
+        "Application/Strategy/Audio/Controls/sector-window-close";
 
     public const string GalacticInformationOpen =
-        "application/strategy/audio/controls/galactic-information-open";
+        "Application/Strategy/Audio/Controls/galactic-information-open";
 
-    public const string GalacticInformationControl = "application/strategy/audio/controls/open";
+    public const string GalacticInformationControl = "Application/Strategy/Audio/Controls/open";
 
     public const string PlanetaryAssault =
-        "application/strategy/audio/messages/message-planetary-assault";
+        "Application/Strategy/Audio/Messages/message-planetary-assault";
 
     /// <summary>
     /// Enumerates shared and themed sound-effect paths used by the strategy interface.

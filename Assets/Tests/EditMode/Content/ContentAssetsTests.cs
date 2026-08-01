@@ -34,8 +34,8 @@ namespace Rebellion.Tests.Content
             ContentPack pack = ContentPackLoader.OpenActive();
             using ContentAssets assets = CreateAssets(pack);
 
-            Assert.IsNull(assets.GetTexture("application/common/ui/missing"));
-            Assert.IsNull(assets.GetTexture("application/common/ui/missing"));
+            Assert.IsNull(assets.GetTexture("Application/Common/UI/missing"));
+            Assert.IsNull(assets.GetTexture("Application/Common/UI/missing"));
         }
 
         [Test]
@@ -47,13 +47,13 @@ namespace Rebellion.Tests.Content
                 "rebellion2-content-assets",
                 Guid.NewGuid().ToString("N")
             );
-            string textureDirectory = Path.Combine(contentRoot, "application", "common", "ui");
+            string textureDirectory = Path.Combine(contentRoot, "Application", "Common", "UI");
             Directory.CreateDirectory(textureDirectory);
             string sourcePath = Path.Combine(
                 pack.ContentRootPath,
-                "application",
-                "common",
-                "ui",
+                "Application",
+                "Common",
+                "UI",
                 "ui_common_confirmation_dialog.png"
             );
             string destinationPath = Path.Combine(
@@ -71,14 +71,14 @@ namespace Rebellion.Tests.Content
                 ContentPreloadManifest manifest = new ContentPreloadManifest
                 {
                     TexturesPerFrame = 100,
-                    TextureDirectories = { "application/common/ui" },
+                    TextureDirectories = { "Application/Common/UI" },
                 };
 
                 await assets.PreloadAsync(manifest);
                 File.Delete(destinationPath);
 
                 Assert.IsNotNull(
-                    assets.GetTexture("application/common/ui/ui_common_confirmation_dialog")
+                    assets.GetTexture("Application/Common/UI/ui_common_confirmation_dialog")
                 );
             }
             finally
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Content
             ContentPack pack = ContentPackLoader.OpenActive();
             using ContentAssets assets = CreateAssets(pack);
 
-            Assert.Throws<ArgumentException>(() => assets.GetTexture("ui/outside"));
+            Assert.Throws<ArgumentException>(() => assets.GetTexture("UI/outside"));
         }
 
         [Test]
@@ -102,7 +102,7 @@ namespace Rebellion.Tests.Content
             ContentPack pack = ContentPackLoader.OpenActive();
             using ContentAssets assets = CreateAssets(pack);
 
-            Assert.Throws<ArgumentException>(() => assets.GetTexture("pack/../../outside"));
+            Assert.Throws<ArgumentException>(() => assets.GetTexture("Pack/../../outside"));
         }
 
         [Test]
@@ -111,7 +111,7 @@ namespace Rebellion.Tests.Content
             ContentPack pack = ContentPackLoader.OpenActive();
             using ContentAssets assets = CreateAssets(pack);
 
-            string url = assets.GetVideoUrl("application/boot/videos/intro");
+            string url = assets.GetVideoUrl("Application/Boot/Videos/intro");
 
             Assert.AreEqual(Uri.UriSchemeFile, new Uri(url).Scheme);
             Assert.IsTrue(File.Exists(new Uri(url).LocalPath));
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Content
             assets.Dispose();
 
             Assert.Throws<ObjectDisposedException>(() =>
-                assets.GetTexture("application/common/ui/missing")
+                assets.GetTexture("Application/Common/UI/missing")
             );
         }
 

@@ -64,9 +64,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "pack/shared/strategy/audio/music/rescue-of-the-princess-heroics-of-luke-and-han-wampas-lair-jedi-training-medley",
-                    "pack/shared/strategy/audio/music/main-title-death-star-tatooine-emperor-medley",
-                    "pack/shared/strategy/audio/music/brother-and-sister-father-and-son-fleet-enters-hyperspace-heroic-ewok-medley",
+                    "Pack/Shared/Strategy/Audio/Music/rescue-of-the-princess-heroics-of-luke-and-han-wampas-lair-jedi-training-medley",
+                    "Pack/Shared/Strategy/Audio/Music/main-title-death-star-tatooine-emperor-medley",
+                    "Pack/Shared/Strategy/Audio/Music/brother-and-sister-father-and-son-fleet-enters-hyperspace-heroic-ewok-medley",
                 },
                 allianceMusic.NeutralTrackPaths
             );
@@ -75,27 +75,27 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 empireMusic.NeutralTrackPaths
             );
             Assert.AreEqual(
-                "pack/shared/strategy/audio/music/landos-palace",
+                "Pack/Shared/Strategy/Audio/Music/landos-palace",
                 allianceMusic.StrongAdvantageTrackPath
             );
             Assert.AreEqual(
-                "pack/shared/strategy/audio/music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley",
+                "Pack/Shared/Strategy/Audio/Music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley",
                 allianceMusic.AdvantageTrackPath
             );
             Assert.AreEqual(
-                "pack/shared/strategy/audio/music/imperial-march-darth-vaders-theme-intro-and-stinger",
+                "Pack/Shared/Strategy/Audio/Music/imperial-march-darth-vaders-theme-intro-and-stinger",
                 allianceMusic.DisadvantageTrackPath
             );
             Assert.AreEqual(
-                "pack/shared/strategy/audio/music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley-stinger",
+                "Pack/Shared/Strategy/Audio/Music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley-stinger",
                 empireMusic.StrongAdvantageTrackPath
             );
             Assert.AreEqual(
-                "pack/shared/strategy/audio/music/imperial-march-darth-vaders-theme-intro-and-stinger",
+                "Pack/Shared/Strategy/Audio/Music/imperial-march-darth-vaders-theme-intro-and-stinger",
                 empireMusic.AdvantageTrackPath
             );
             Assert.AreEqual(
-                "pack/shared/strategy/audio/music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley",
+                "Pack/Shared/Strategy/Audio/Music/emperor-arrives-death-of-yoda-obi-wans-revelation-medley",
                 empireMusic.DisadvantageTrackPath
             );
             Assert.AreEqual(3, allianceMusic.NeutralTracksBetweenStrategicTracks);

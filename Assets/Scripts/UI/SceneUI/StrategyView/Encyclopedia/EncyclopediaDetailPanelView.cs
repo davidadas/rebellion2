@@ -518,5 +518,4 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour
 
         public bool IsTabbed { get; }
     }
-
 }

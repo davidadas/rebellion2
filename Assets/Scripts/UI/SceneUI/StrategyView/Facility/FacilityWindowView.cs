@@ -9,9 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the authored facility window and reports semantic pointer interaction.
 /// </summary>
-public sealed class FacilityWindowView
-    : MonoBehaviour,
-        IPointerClickHandler
+public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField]
     private RawImage titleImage;
@@ -708,5 +706,4 @@ public sealed class FacilityWindowView
         if (disabledTexture == null)
             throw new MissingReferenceException($"{name}/{label}TabDisabledTexture is missing.");
     }
-
 }

@@ -454,5 +454,4 @@ public sealed class MessagesIndexPanelView : MonoBehaviour
             return rowsList;
         }
     }
-
 }

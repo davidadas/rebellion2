@@ -27,51 +27,51 @@ public static class SaveMenuPrefabBuilder
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
 
     private const string _backgroundTexturePath =
-        "application/save-menu/ui/ui_savemenu_background.png";
+        "Application/SaveMenu/UI/ui_savemenu_background.png";
     private const string _cockpitButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_cockpit_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_cockpit_button.png";
     private const string _cockpitButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_cockpit_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_cockpit_button_pressed.png";
     private const string _exitButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_airlock_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_airlock_button.png";
     private const string _exitButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_airlock_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_airlock_button_pressed.png";
     private const string _returnStrategyButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_strategy_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_strategy_button.png";
     private const string _returnStrategyButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_strategy_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_strategy_button_pressed.png";
     private const string _musicButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_music_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_music_button.png";
     private const string _musicButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_music_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_music_button_pressed.png";
     private const string _optionButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_option_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_option_button.png";
     private const string _optionButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_option_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_option_button_pressed.png";
     private const string _saveButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_save_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_save_button.png";
     private const string _saveButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_save_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_save_button_pressed.png";
     private const string _saveButtonDisabledTexturePath =
-        "application/save-menu/ui/ui_savemenu_save_button_disabled.png";
+        "Application/SaveMenu/UI/ui_savemenu_save_button_disabled.png";
     private const string _loadButtonTexturePath =
-        "application/save-menu/ui/ui_savemenu_load_button.png";
+        "Application/SaveMenu/UI/ui_savemenu_load_button.png";
     private const string _loadButtonPressedTexturePath =
-        "application/save-menu/ui/ui_savemenu_load_button_pressed.png";
+        "Application/SaveMenu/UI/ui_savemenu_load_button_pressed.png";
     private const string _loadButtonDisabledTexturePath =
-        "application/save-menu/ui/ui_savemenu_load_button_disabled.png";
+        "Application/SaveMenu/UI/ui_savemenu_load_button_disabled.png";
     private const string _sliderThumbTexturePath =
-        "application/save-menu/ui/ui_savemenu_slider_thumb.png";
+        "Application/SaveMenu/UI/ui_savemenu_slider_thumb.png";
     private const string _confirmDialogTexturePath =
-        "application/common/ui/ui_common_confirmation_dialog.png";
+        "Application/Common/UI/ui_common_confirmation_dialog.png";
     private const string _confirmationYesTexturePath =
-        "application/common/ui/ui_common_confirmation_yes_button.png";
+        "Application/Common/UI/ui_common_confirmation_yes_button.png";
     private const string _confirmationYesPressedTexturePath =
-        "application/common/ui/ui_common_confirmation_yes_button_pressed.png";
+        "Application/Common/UI/ui_common_confirmation_yes_button_pressed.png";
     private const string _confirmationNoTexturePath =
-        "application/common/ui/ui_common_confirmation_no_button.png";
+        "Application/Common/UI/ui_common_confirmation_no_button.png";
     private const string _confirmationNoPressedTexturePath =
-        "application/common/ui/ui_common_confirmation_no_button_pressed.png";
+        "Application/Common/UI/ui_common_confirmation_no_button_pressed.png";
 
     private const int _windowWidth = 640;
     private const int _windowHeight = 480;
@@ -682,7 +682,7 @@ public static class SaveMenuPrefabBuilder
     /// </summary>
     /// <param name="parent">The Save Menu window transform.</param>
     /// <returns>The configured confirmation dialog view.</returns>
-    private static SaveMenuConfirmDialogView CreateConfirmDialog(Transform parent)
+    internal static SaveMenuConfirmDialogView CreateConfirmDialog(Transform parent)
     {
         GameObject root = new GameObject(
             "ConfirmDialog",

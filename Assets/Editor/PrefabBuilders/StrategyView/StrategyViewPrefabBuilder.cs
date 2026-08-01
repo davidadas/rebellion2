@@ -77,105 +77,105 @@ public static class StrategyViewPrefabBuilder
     private const string _activeGalacticInformationFilterLabelName =
         "ActiveGalacticInformationFilterLabel";
     private const string _galaxyStarPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_galaxy_star_preview.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_galaxy_star_preview.png";
     private const string _planetPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_planetsystem_planet_preview.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_planetsystem_planet_preview.png";
     private const string _windowOpenSectorPreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_open_sector_button.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_open_sector_button.png";
     private const string _windowOpenSectorDownPreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_open_sector_button_pressed.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_open_sector_button_pressed.png";
     private const string _windowSwapPreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_swap_button.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_swap_button.png";
     private const string _windowClosePreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_close_button.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_close_button.png";
     private const string _windowCloseDownPreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_close_button_pressed.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_close_button_pressed.png";
     private const string _windowMinimizePreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_minimize_button.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_minimize_button.png";
     private const string _windowMinimizeDownPreviewPath =
-        "application/strategy/ui/shell/ui_strategyview_window_minimize_button_pressed.png";
+        "Application/Strategy/UI/Shell/ui_strategyview_window_minimize_button_pressed.png";
     private const string _confirmButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_confirm_ok_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_confirm_ok_button.png";
     private const string _confirmButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_confirm_ok_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_confirm_ok_button_pressed.png";
     private const string _cancelButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_confirm_cancel_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_confirm_cancel_button.png";
     private const string _cancelButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_confirm_cancel_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_confirm_cancel_button_pressed.png";
     private const string _facilityWindowBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_facility_window_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_facility_window_background.png";
     private const string _facilityManufacturingStripPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_facility_manufacturing_strip.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_facility_manufacturing_strip.png";
     private const string _facilityManufacturingCardPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_facility_manufacturing_lane_card.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_facility_manufacturing_lane_card.png";
     private const string _facilityInventoryItemPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_facility_inventory_item.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_facility_inventory_item.png";
     private const string _constructionWindowBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_window_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_window_background.png";
     private const string _constructionOpenButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_open_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button.png";
     private const string _constructionOpenButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_open_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button_pressed.png";
     private const string _constructionInfoButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_info_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_info_button.png";
     private const string _constructionInfoButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_info_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_info_button_pressed.png";
     private const string _constructionOkButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_ok_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button.png";
     private const string _constructionOkButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_ok_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button_pressed.png";
     private const string _constructionOkButtonDisabledPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_ok_button_disabled.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button_disabled.png";
     private const string _constructionCancelButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_cancel_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_cancel_button.png";
     private const string _constructionCancelButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_cancel_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_cancel_button_pressed.png";
     private const string _constructionIncrementButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_increment_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_increment_button.png";
     private const string _constructionIncrementButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_increment_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_increment_button_pressed.png";
     private const string _constructionDecrementButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_decrement_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_decrement_button.png";
     private const string _constructionDecrementButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_decrement_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_decrement_button_pressed.png";
     private const string _constructionDropdownBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_construction_dropdown_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_construction_dropdown_background.png";
     private const string _defenseWindowBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_defense_window_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_defense_window_background.png";
     private const string _fleetWindowBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_fleet_window_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_fleet_window_background.png";
     private const string _fleetTabPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_fleet_tab.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_fleet_tab.png";
     private const string _missionsWindowBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missions_window_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missions_window_background.png";
     private const string _missionCreateMissionBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missioncreate_mission_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_mission_background.png";
     private const string _missionCreatePersonnelBackgroundPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missioncreate_personnel_background.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_personnel_background.png";
     private const string _missionCreateMoveRightButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_right_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_move_right_button.png";
     private const string _missionCreateMoveRightButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_right_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_move_right_button_pressed.png";
     private const string _missionCreateMoveLeftButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_left_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_move_left_button.png";
     private const string _missionCreateMoveLeftButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_missioncreate_move_left_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_move_left_button_pressed.png";
     private const string _statusInfoButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_status_info_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_status_info_button.png";
     private const string _statusInfoButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_status_info_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_pressed.png";
     private const string _statusInfoButtonDisabledPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_status_info_button_disabled.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_disabled.png";
     private const string _statusCloseButtonPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_status_close_button.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_status_close_button.png";
     private const string _statusCloseButtonDownPreviewPath =
-        "application/strategy/ui/windows/ui_strategyview_status_close_button_pressed.png";
+        "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed.png";
     private const string _scrollUpArrowPreviewPath =
-        "application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_up.png";
+        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_up.png";
     private const string _scrollDownArrowPreviewPath =
-        "application/strategy/ui/controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
+        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
     private const string _scrollBarMiddlePreviewPath =
-        "application/strategy/ui/controls/ui_strategyview_scrollbar_middle.png";
+        "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_middle.png";
     private const float _sourcePixelsPerUnit = UILayout.HdPixelsPerSourceUnit;
     private const float _screenWidth = 3840f / _sourcePixelsPerUnit;
     private const float _screenHeight = 2160f / _sourcePixelsPerUnit;
@@ -3675,7 +3675,13 @@ public static class StrategyViewPrefabBuilder
         ConfigureWindowRoot(window.GetComponent<UIWindow>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, 379, 272);
 
-        RawImage background = CreateRawImage("BackgroundImage", window.transform, null, 0, 0);
+        RawImage background = CreateRawImage(
+            "BackgroundImage",
+            window.transform,
+            PreviewTheme?.StrategyWindows?.Status?.BackgroundImagePath,
+            0,
+            0
+        );
 
         TextMeshProUGUI header = CreateTextLabel("HeaderTextField", window.transform);
         header.text = "Planet Status";
@@ -4428,7 +4434,7 @@ public static class StrategyViewPrefabBuilder
         RawImage background = CreateRawButton(
             "BackgroundImage",
             indexPanelTransform,
-            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_background"
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_background"
         );
         SetSourceRect(background.rectTransform, 12, 13, 400, 306);
         background.raycastTarget = true;
@@ -4922,7 +4928,7 @@ public static class StrategyViewPrefabBuilder
         RawImage background = CreateRawButton(
             "BackgroundImage",
             window.transform,
-            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_background"
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_background"
         );
         SetSourceRect(background.rectTransform, 12, 13, 400, 306);
         background.raycastTarget = true;
@@ -5105,7 +5111,7 @@ public static class StrategyViewPrefabBuilder
         RawImage detailBackground = CreateRawButton(
             "DetailBackgroundImage",
             detailPanelRoot,
-            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_topic_background"
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_topic_background"
         );
         SetSourceRect(detailBackground.rectTransform, 12, 13, 400, 306);
         RawImage detailCard = CreateRawButton("DetailCardImage", detailPanelRoot);
@@ -5113,14 +5119,14 @@ public static class StrategyViewPrefabBuilder
         RawImage detailPrevious = CreateRawButton(
             "DetailPreviousButtonImage",
             detailPanelRoot,
-            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_previous_button_up"
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_previous_button_up"
         );
         SetSourceRect(detailPrevious.rectTransform, 31, 13, 21, 17);
         Button detailPreviousButton = CreateButton(detailPrevious);
         RawImage detailNext = CreateRawButton(
             "DetailNextButtonImage",
             detailPanelRoot,
-            "application/strategy/ui/windows/ui_strategyview_encyclopedia_window_next_button_up"
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_next_button_up"
         );
         SetSourceRect(detailNext.rectTransform, 380, 13, 21, 17);
         Button detailNextButton = CreateButton(detailNext);
@@ -8206,10 +8212,8 @@ public static class StrategyViewPrefabBuilder
     {
         if (
             string.IsNullOrEmpty(path)
-            || (
-                !path.StartsWith("application/", System.StringComparison.Ordinal)
-                && !path.StartsWith("pack/", System.StringComparison.Ordinal)
-            )
+            || !path.StartsWith("Application/", System.StringComparison.Ordinal)
+                && !path.StartsWith("Pack/", System.StringComparison.Ordinal)
         )
         {
             return null;
@@ -8235,7 +8239,7 @@ public static class StrategyViewPrefabBuilder
     /// <returns>The loaded texture, or null.</returns>
     private static Texture2D LoadStrategyViewTexture(string assetName)
     {
-        return LoadTexture("application/strategy/ui/windows/" + assetName + ".png");
+        return LoadTexture("Application/Strategy/UI/Windows/" + assetName + ".png");
     }
 
     /// <summary>

@@ -162,5 +162,4 @@ public sealed class RawImagePressVisual
         if (image == null)
             throw new MissingReferenceException($"{name}/Image is missing.");
     }
-
 }

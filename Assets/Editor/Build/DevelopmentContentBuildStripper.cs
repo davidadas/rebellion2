@@ -72,10 +72,10 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
 
     private sealed class PrefabPreviewStripScope : IDisposable
     {
-        private readonly Dictionary<string, byte[]> originalFiles = new Dictionary<string, byte[]>(
+        private readonly Dictionary<string, byte[]> _originalFiles = new Dictionary<string, byte[]>(
             StringComparer.Ordinal
         );
-        private bool disposed;
+        private bool _disposed;
 
         public PrefabPreviewStripScope()
         {
@@ -91,18 +91,18 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
 
         public void Dispose()
         {
-            if (disposed)
+            if (_disposed)
                 return;
 
             try
             {
-                foreach (KeyValuePair<string, byte[]> file in originalFiles)
+                foreach (KeyValuePair<string, byte[]> file in _originalFiles)
                     File.WriteAllBytes(file.Key, file.Value);
                 AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             }
             finally
             {
-                disposed = true;
+                _disposed = true;
             }
         }
 
@@ -119,7 +119,7 @@ public sealed class DevelopmentContentBuildStripper : IProcessSceneWithReport
                 if (!changed)
                     return;
 
-                originalFiles.Add(absolutePath, File.ReadAllBytes(absolutePath));
+                _originalFiles.Add(absolutePath, File.ReadAllBytes(absolutePath));
                 PrefabUtility.SaveAsPrefabAsset(root, assetPath);
             }
             finally

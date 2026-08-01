@@ -22,7 +22,9 @@ This is a development build, not a public playable release. The project can be o
 2. Install Unity 6000.4.0f1 via Unity Hub.
 3. In Unity Hub, select **Projects** from the left-hand menu, click **Open**, and select the cloned `rebellion2` folder.
 4. Once the project opens, import TextMesh Pro assets if Unity prompts for them, or use **Window > TextMeshPro > Import TMP Essential Resources**.
-5. Hit the play button.
+5. After installing the game assets below and allowing Unity to import them, select
+   **Rebellion > UI > Build All**.
+6. Hit the play button.
 
 ### Game Assets
 
@@ -31,10 +33,12 @@ The game's art, audio, and video assets are not included in this repository. To 
 1. Join the [Star Wars Rebellion Discord](https://discord.com/invite/rWP4vzw8Gg).
 2. Follow the instructions in the server to verify ownership of the original game.
 3. Once verified, you will be granted access to the asset pack.
-4. Place the downloaded assets into the following directories:
-   - `Assets/Content/Art/`
-   - `Assets/Content/Audio/`
-   - `Assets/Content/Videos/`
+4. Copy the media repository's `Content/` directory to `Assets/Content/`.
+5. Copy `Models/MainMenu/` to `Assets/Art/Models/MainMenu/`.
+
+Copy the complete directories and preserve their relative paths. Image `.meta` files are not
+part of the media contract: the Unity prefab builders configure local preview imports and assign
+preview assets, while packaged builds load the same content from the external `Content/` directory.
 
 > **Note:** The game will not run without these assets.
 

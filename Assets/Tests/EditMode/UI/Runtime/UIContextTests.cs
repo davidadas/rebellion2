@@ -99,8 +99,8 @@ namespace Rebellion.Tests.UI.Runtime
         {
             Assert.IsNull(_context.GetTexture(null));
             Assert.IsNull(_context.GetTexture(string.Empty));
-            Assert.IsNull(_context.GetTexture("pack/shared/strategy/ui/missing/test-asset"));
-            Assert.IsNull(_context.GetTexture("pack/shared/strategy/ui/missing/test-asset"));
+            Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
+            Assert.IsNull(_context.GetTexture("Pack/Shared/Strategy/UI/missing/test-asset"));
         }
 
         [Test]

@@ -6,8 +6,8 @@ using UnityEngine;
 /// </summary>
 public sealed class MainMenuController : MonoBehaviour
 {
-    private const string _creditsVideoPath = "application/credits/videos/credits";
-    private const string _menuMusicPath = "application/main-menu/audio/battle-of-endor-1-medley";
+    private const string _creditsVideoPath = "Application/Credits/Videos/credits";
+    private const string _menuMusicPath = "Application/MainMenu/Audio/battle-of-endor-1-medley";
 
     [SerializeField]
     private MainMenuView view;
@@ -37,7 +37,6 @@ public sealed class MainMenuController : MonoBehaviour
         if (view == null)
             return;
 
-        view.RenderVictoryCondition(currentVictoryCondition);
         if (view.TryGetSelectedDifficulty(out GameDifficulty difficulty))
             SelectGameDifficulty(difficulty);
     }
@@ -55,6 +54,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.StartGameRequested += HandleStartGameRequested;
         view.VictoryConditionToggleRequested += HandleVictoryConditionToggleRequested;
         view.LoadGameRequested += OpenLoadGameMenu;
+        view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
         view.AudioCueRequested += PlayAudioCue;
     }
@@ -69,6 +69,8 @@ public sealed class MainMenuController : MonoBehaviour
             await AppBootstrap.EnsureExists().InitializeMainMenuContentAsync();
             AppBootstrap bootstrap = AppBootstrap.Instance;
             ContentPack contentPack = bootstrap.GetContentPack();
+            view?.InitializeContent(bootstrap.GetContentAssets());
+            view?.RenderVictoryCondition(currentVictoryCondition);
             FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
                 contentPack.GameData.FactionThemes
             );
@@ -100,6 +102,7 @@ public sealed class MainMenuController : MonoBehaviour
         view.StartGameRequested -= HandleStartGameRequested;
         view.VictoryConditionToggleRequested -= HandleVictoryConditionToggleRequested;
         view.LoadGameRequested -= OpenLoadGameMenu;
+        view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
         view.AudioCueRequested -= PlayAudioCue;
     }
@@ -189,6 +192,18 @@ public sealed class MainMenuController : MonoBehaviour
     {
         SaveMenuLaunchContext.OpenFromMainMenu();
         AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+    }
+
+    /// <summary>
+    /// Exits the player, or stops Play Mode when testing the command in the Unity Editor.
+    /// </summary>
+    private static void ExitApplication()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     /// <summary>

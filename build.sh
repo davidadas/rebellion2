@@ -54,6 +54,7 @@ run_unity_editmode_tests() {
     "$UNITY" \
         -runTests \
         -testPlatform EditMode \
+        -executeMethod UIBuilderMenu.BuildAll \
         -projectPath "$PROJECT_PATH" \
         -testResults "$TEST_RESULTS" \
         -batchmode \

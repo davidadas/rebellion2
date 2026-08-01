@@ -8,9 +8,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored construction window and emits semantic construction interactions.
 /// </summary>
-public sealed class ConstructionWindowView
-    : MonoBehaviour,
-        IPointerClickHandler
+public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
 {
     private readonly List<StrategyDropdownItemView> dropdownItemRows =
         new List<StrategyDropdownItemView>();
@@ -801,5 +799,4 @@ public sealed class ConstructionWindowView
         if (cancelButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/CancelButtonDownTexture is missing.");
     }
-
 }

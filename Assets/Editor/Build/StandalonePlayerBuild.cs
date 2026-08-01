@@ -18,6 +18,8 @@ public static class StandalonePlayerBuild
     /// </summary>
     public static void Build()
     {
+        UIBuilderMenu.BuildAll();
+
         UnityEditor.BuildTarget target = GetBuildTarget();
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)

@@ -49,5 +49,4 @@ public static class UIComponentTestHelper
             throw;
         }
     }
-
 }

@@ -9,8 +9,8 @@ public sealed class BootController : MonoBehaviour
 {
     private static readonly string[] _bootVideoPaths =
     {
-        "application/boot/videos/intro",
-        "application/boot/videos/opening-crawl",
+        "Application/Boot/Videos/intro",
+        "Application/Boot/Videos/opening-crawl",
     };
 
     [SerializeField]

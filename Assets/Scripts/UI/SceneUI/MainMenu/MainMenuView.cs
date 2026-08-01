@@ -13,6 +13,16 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class MainMenuView : MonoBehaviour
 {
+    private const string _headquartersVictorySpriteAddress =
+        "Application/MainMenu/UI/ui_mainmenu_hqonly_icon";
+    private const string _standardVictorySpriteAddress =
+        "Application/MainMenu/UI/ui_mainmenu_hq_icon";
+    private const string _exitAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_exit_";
+    private const string _loadAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_load_";
+    private const int _commandAnimationFrameCount = 30;
+    private const float _exitAnimationFrameIntervalSeconds = 1f / 60f;
+    private const float _loadAnimationFrameIntervalSeconds = 1.7666667f / 30f;
+
     /// <summary>
     /// Associates a galaxy-size toggle with its launch value.
     /// </summary>
@@ -132,6 +142,15 @@ public sealed class MainMenuView : MonoBehaviour
     private Button loadGameButton;
 
     [SerializeField]
+    private Button exitButton;
+
+    [SerializeField]
+    private GameObject exitPressedImage;
+
+    [SerializeField]
+    private SaveMenuConfirmDialogView exitConfirmationDialog;
+
+    [SerializeField]
     private Button creditsButton;
 
     [SerializeField]
@@ -166,6 +185,12 @@ public sealed class MainMenuView : MonoBehaviour
 
     private readonly List<Action> removeControlListeners = new List<Action>();
     private readonly List<Sprite> ownedFactionSprites = new List<Sprite>();
+    private Sprite[] exitAnimationFrames = Array.Empty<Sprite>();
+    private Sprite[] loadAnimationFrames = Array.Empty<Sprite>();
+    private int exitAnimationFrameIndex;
+    private int loadAnimationFrameIndex;
+    private float exitAnimationElapsedSeconds;
+    private float loadAnimationElapsedSeconds;
     private bool controlsBound;
 
     /// <summary>
@@ -194,6 +219,11 @@ public sealed class MainMenuView : MonoBehaviour
     public event Action LoadGameRequested;
 
     /// <summary>
+    /// Occurs when the player requests exiting the application.
+    /// </summary>
+    public event Action ExitRequested;
+
+    /// <summary>
     /// Occurs when the player requests the credits sequence.
     /// </summary>
     public event Action CreditsRequested;
@@ -208,6 +238,22 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        AdvanceAnimation(
+            exitButton?.targetGraphic as Image,
+            exitAnimationFrames,
+            _exitAnimationFrameIntervalSeconds,
+            ref exitAnimationFrameIndex,
+            ref exitAnimationElapsedSeconds,
+            Time.unscaledDeltaTime
+        );
+        AdvanceAnimation(
+            loadGameButton?.targetGraphic as Image,
+            loadAnimationFrames,
+            _loadAnimationFrameIntervalSeconds,
+            ref loadAnimationFrameIndex,
+            ref loadAnimationElapsedSeconds,
+            Time.unscaledDeltaTime
+        );
         foreach (FactionLaunchBinding binding in factionLaunchBindings)
             AdvanceFactionAnimation(binding, Time.unscaledDeltaTime);
     }
@@ -263,6 +309,32 @@ public sealed class MainMenuView : MonoBehaviour
             : standardVictoryConditionSprite;
         victoryConditionIcon.gameObject.SetActive(true);
         victoryConditionText.text = headquarters ? "Headquarters Victory" : "Standard Game";
+    }
+
+    /// <summary>
+    /// Replaces editor-only preview sprites with assets loaded from the installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active external content source.</param>
+    internal void InitializeContent(IContentAssetSource contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        standardVictoryConditionSprite =
+            contentAssets.GetSprite(_standardVictorySpriteAddress)
+            ?? throw new InvalidOperationException(
+                $"Main-menu sprite is missing: {_standardVictorySpriteAddress}"
+            );
+        headquartersVictoryConditionSprite =
+            contentAssets.GetSprite(_headquartersVictorySpriteAddress)
+            ?? throw new InvalidOperationException(
+                $"Main-menu sprite is missing: {_headquartersVictorySpriteAddress}"
+            );
+        exitConfirmationDialog.InitializeContent(contentAssets);
+        exitAnimationFrames = LoadAnimationFrames(contentAssets, _exitAnimationRoot);
+        loadAnimationFrames = LoadAnimationFrames(contentAssets, _loadAnimationRoot);
+        ResetAnimation(exitButton?.targetGraphic as Image, exitAnimationFrames);
+        ResetAnimation(loadGameButton?.targetGraphic as Image, loadAnimationFrames);
     }
 
     /// <summary>
@@ -354,11 +426,12 @@ public sealed class MainMenuView : MonoBehaviour
     {
         if (
             loadGameButton == null
+            || exitButton == null
+            || exitPressedImage == null
+            || exitConfirmationDialog == null
             || creditsButton == null
             || victoryConditionButton == null
             || victoryConditionIcon == null
-            || standardVictoryConditionSprite == null
-            || headquartersVictoryConditionSprite == null
             || victoryConditionText == null
         )
         {
@@ -373,6 +446,65 @@ public sealed class MainMenuView : MonoBehaviour
             "faction launch"
         );
         VerifyBindings(audioCueBindings, binding => binding?.IsConfigured == true, "audio cue");
+    }
+
+    /// <summary>
+    /// Loads one complete command-button animation from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active external content source.</param>
+    /// <param name="addressRoot">The address prefix before the two-digit frame number.</param>
+    /// <returns>The loaded animation frames.</returns>
+    private Sprite[] LoadAnimationFrames(IContentAssetSource contentAssets, string addressRoot)
+    {
+        Sprite[] frames = new Sprite[_commandAnimationFrameCount];
+        for (int index = 0; index < frames.Length; index++)
+        {
+            string address = addressRoot + (index + 1).ToString("00");
+            Sprite sprite =
+                contentAssets.GetSprite(address)
+                ?? throw new InvalidOperationException(
+                    $"Main-menu animation frame is missing: {address}"
+                );
+            frames[index] = sprite;
+        }
+
+        return frames;
+    }
+
+    /// <summary>
+    /// Restarts one command-button animation from its first frame.
+    /// </summary>
+    /// <param name="image">The image animated by the frame sequence.</param>
+    /// <param name="frames">The loaded animation frames.</param>
+    private static void ResetAnimation(Image image, Sprite[] frames)
+    {
+        if (image != null && frames?.Length > 0)
+            image.sprite = frames[0];
+    }
+
+    /// <summary>
+    /// Advances one command-button animation by elapsed unscaled time.
+    /// </summary>
+    private static void AdvanceAnimation(
+        Image image,
+        Sprite[] frames,
+        float frameIntervalSeconds,
+        ref int frameIndex,
+        ref float elapsedSeconds,
+        float deltaTime
+    )
+    {
+        if (image == null || frames?.Length < 2 || frameIntervalSeconds <= 0f)
+            return;
+
+        elapsedSeconds += deltaTime;
+        while (elapsedSeconds >= frameIntervalSeconds)
+        {
+            elapsedSeconds -= frameIntervalSeconds;
+            frameIndex = (frameIndex + 1) % frames.Length;
+        }
+
+        image.sprite = frames[frameIndex];
     }
 
     /// <summary>
@@ -482,6 +614,7 @@ public sealed class MainMenuView : MonoBehaviour
             return;
 
         BindButton(loadGameButton, () => LoadGameRequested?.Invoke());
+        BindButton(exitButton, ShowExitConfirmation);
         BindButton(creditsButton, () => CreditsRequested?.Invoke());
         BindButton(victoryConditionButton, () => VictoryConditionToggleRequested?.Invoke());
 
@@ -524,7 +657,44 @@ public sealed class MainMenuView : MonoBehaviour
         }
 
         BindAudioCues();
+        BindExitPresentation();
+        exitConfirmationDialog.Confirmed += ConfirmExit;
+        exitConfirmationDialog.Canceled += CancelExit;
+        removeControlListeners.Add(() => exitConfirmationDialog.Confirmed -= ConfirmExit);
+        removeControlListeners.Add(() => exitConfirmationDialog.Canceled -= CancelExit);
         controlsBound = true;
+    }
+
+    private void BindExitPresentation()
+    {
+        EventTrigger trigger = exitButton.GetComponent<EventTrigger>();
+        BindTrigger(trigger, EventTriggerType.PointerDown, _ => SetExitPressed(true));
+        BindTrigger(trigger, EventTriggerType.PointerUp, _ => SetExitPressed(false));
+        BindTrigger(trigger, EventTriggerType.PointerExit, _ => SetExitPressed(false));
+    }
+
+    private void SetExitPressed(bool pressed)
+    {
+        Image defaultImage = exitButton.targetGraphic as Image;
+        if (defaultImage != null)
+            defaultImage.enabled = !pressed;
+        exitPressedImage.SetActive(pressed);
+    }
+
+    private void ShowExitConfirmation()
+    {
+        SetExitPressed(false);
+        exitConfirmationDialog.Show("Are you sure you want to quit?");
+    }
+
+    private void ConfirmExit()
+    {
+        ExitRequested?.Invoke();
+    }
+
+    private void CancelExit()
+    {
+        SetExitPressed(false);
     }
 
     /// <summary>
@@ -625,5 +795,4 @@ public sealed class MainMenuView : MonoBehaviour
         removeControlListeners.Clear();
         controlsBound = false;
     }
-
 }

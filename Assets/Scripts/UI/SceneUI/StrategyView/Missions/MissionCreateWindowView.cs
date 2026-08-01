@@ -9,9 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored Mission Create window and emits semantic mission-creation gestures.
 /// </summary>
-public sealed class MissionCreateWindowView
-    : MonoBehaviour,
-        IPointerClickHandler
+public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandler
 {
     private const int _titleImageCount = 2;
 
@@ -963,5 +961,4 @@ public sealed class MissionCreateWindowView
                 throw new MissingReferenceException($"{name}/{fieldName}[{index}] is missing.");
         }
     }
-
 }
