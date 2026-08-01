@@ -15,6 +15,8 @@ using UnityEngine.UI;
 public static class SaveMenuPrefabBuilder
 {
     private const string _scenePath = "Assets/Scenes/SaveMenu.unity";
+    private const string _sceneTemplatePath =
+        "Assets/Editor/PrefabBuilders/Templates/SaveMenu.unity";
     private const string _sceneRootName = "SaveMenuRoot";
     private const string _sceneCanvasPath = "Canvas";
     private const string _saveMenuWindowPrefabPath =
@@ -108,10 +110,8 @@ public static class SaveMenuPrefabBuilder
     /// </summary>
     public static void Rebuild()
     {
-        if (!File.Exists(_scenePath))
-            throw new FileNotFoundException(_scenePath);
-
         RebuildAllSaveMenuPrefabs();
+        SceneRootPrefabInstaller.ResetSceneFromTemplate(_sceneTemplatePath, _scenePath);
         SceneRootPrefabInstaller.InstallRootPrefabInScene(
             _scenePath,
             _saveMenuRootPrefabPath,

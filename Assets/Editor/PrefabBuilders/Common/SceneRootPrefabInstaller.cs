@@ -11,6 +11,24 @@ using InvalidOperationException = System.InvalidOperationException;
 public static class SceneRootPrefabInstaller
 {
     /// <summary>
+    /// Recreates a generated scene from its committed base-scene template.
+    /// </summary>
+    /// <param name="templatePath">The committed scene template.</param>
+    /// <param name="scenePath">The generated scene destination.</param>
+    public static void ResetSceneFromTemplate(string templatePath, string scenePath)
+    {
+        UIAuthoringGuard.EnsureEditMode();
+        if (!File.Exists(templatePath))
+            throw new FileNotFoundException(templatePath);
+
+        Scene template = EditorSceneManager.OpenScene(templatePath, OpenSceneMode.Single);
+        if (!EditorSceneManager.SaveScene(template, scenePath, true))
+            throw new IOException($"Could not generate scene: {scenePath}");
+
+        AssetDatabase.Refresh();
+    }
+
+    /// <summary>
     /// Replaces one named scene object with an instance of the requested root prefab.
     /// </summary>
     /// <param name="scenePath">The project-relative scene asset path.</param>

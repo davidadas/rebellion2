@@ -20,6 +20,8 @@ using Object = UnityEngine.Object;
 public static class MainMenuPrefabBuilder
 {
     private const string _scenePath = "Assets/Scenes/MainMenu.unity";
+    private const string _sceneTemplatePath =
+        "Assets/Editor/PrefabBuilders/Templates/MainMenu.unity";
     private const string _sceneInstanceName = "MainMenuRoot";
 
     // Prefab + authored-asset paths.
@@ -2638,6 +2640,7 @@ public static class MainMenuPrefabBuilder
     public static void Rebuild()
     {
         RebuildMainMenuPrefab();
+        SceneRootPrefabInstaller.ResetSceneFromTemplate(_sceneTemplatePath, _scenePath);
         SceneRootPrefabInstaller.InstallRootPrefabInScene(
             _scenePath,
             _prefabPath,

@@ -52,6 +52,8 @@ public static class StrategyViewPrefabBuilder
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
+    private const string _strategySceneTemplatePath =
+        "Assets/Editor/PrefabBuilders/Templates/StrategyView.unity";
     private const string _strategySceneRootParentPath = "GameRoot/UI/Canvas";
     private const string _sceneInstanceName = "StrategyViewRoot";
     private const string _surfaceName = "Viewport";
@@ -925,6 +927,10 @@ public static class StrategyViewPrefabBuilder
     public static void Rebuild()
     {
         RebuildAllStrategyViewPrefabs();
+        SceneRootPrefabInstaller.ResetSceneFromTemplate(
+            _strategySceneTemplatePath,
+            _strategyScenePath
+        );
         InstallStrategyViewRootPrefabInScene();
     }
 

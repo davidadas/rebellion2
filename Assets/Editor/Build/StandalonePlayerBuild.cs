@@ -18,7 +18,7 @@ public static class StandalonePlayerBuild
     /// </summary>
     public static void Build()
     {
-        UIBuilderMenu.BuildAll();
+        UIBuilderMenu.BuildAllForPlayer();
 
         UnityEditor.BuildTarget target = GetBuildTarget();
         string outputPath = ResolveProjectPath(
@@ -47,9 +47,9 @@ public static class StandalonePlayerBuild
             options = UnityEditor.BuildOptions.None,
         };
 
-        UnityEditor.Build.Reporting.BuildReport report;
-        using (DevelopmentContentBuildStripper.StripPrefabPreviews())
-            report = UnityEditor.BuildPipeline.BuildPlayer(options);
+        UnityEditor.Build.Reporting.BuildReport report = UnityEditor.BuildPipeline.BuildPlayer(
+            options
+        );
         if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             throw new InvalidOperationException(

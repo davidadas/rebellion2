@@ -23,7 +23,9 @@ This is a development build, not a public playable release. The project can be o
 3. In Unity Hub, select **Projects** from the left-hand menu, click **Open**, and select the cloned `rebellion2` folder.
 4. Once the project opens, import TextMesh Pro assets if Unity prompts for them, or use **Window > TextMeshPro > Import TMP Essential Resources**.
 5. After installing the game assets below and allowing Unity to import them, select
-   **Rebellion > UI > Build All**.
+   **Rebellion > UI > Build All**. Generated UI prefab payloads and the Main Menu, Save Menu, and
+   Strategy scenes are intentionally absent from a fresh clone and ignored by Git; run this command
+   whenever you first set up the project or change UI builder code.
 6. Hit the play button.
 
 ### Game Assets
@@ -37,8 +39,9 @@ The game's art, audio, and video assets are not included in this repository. To 
 5. Copy `Models/MainMenu/` to `Assets/Art/Models/MainMenu/`.
 
 Copy the complete directories and preserve their relative paths. Image `.meta` files are not
-part of the media contract: the Unity prefab builders configure local preview imports and assign
-preview assets, while packaged builds load the same content from the external `Content/` directory.
+part of the media contract. The Unity prefab builders generate ignored local prefabs with preview
+assets for editor use. Player builds regenerate clean prefabs and load the same raw files from the
+external `Content/` directory.
 
 > **Note:** The game will not run without these assets.
 
