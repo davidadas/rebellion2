@@ -1,9 +1,11 @@
 using System;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -75,6 +77,12 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         {
             const string videoUrl = "file:///tmp/cutscene.mp4";
 
+#if UNITY_EDITOR_LINUX
+            LogAssert.Expect(
+                LogType.Error,
+                new Regex("Can't create LinuxVideoMedia, format .* not supported")
+            );
+#endif
             _player.Play(videoUrl, null);
 
             Assert.AreEqual(VideoSource.Url, _videoPlayer.source);
