@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
@@ -174,7 +175,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             SaveMenuDataBuilder builder = CreateBuilder("Version");
             SaveGameEntry save = new SaveGameEntry(
                 SaveGameManager.Instance.GetSaveSlotFileName(1),
-                new Rebellion.Game.GameMetadata
+                new GameMetadata
                 {
                     SaveDisplayName = "Outer Rim",
                     PlayerFactionID = "FNALL1",
@@ -208,7 +209,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             );
             SaveGameEntry save = new SaveGameEntry(
                 SaveGameManager.Instance.GetSaveSlotFileName(1),
-                new Rebellion.Game.GameMetadata
+                new GameMetadata
                 {
                     SaveDisplayName = "Other Pack",
                     PlayerFactionID = "unknown-faction",
@@ -244,7 +245,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         {
             return new SaveGameEntry(
                 SaveGameManager.Instance.GetSaveSlotFileName(slot),
-                new Rebellion.Game.GameMetadata
+                new GameMetadata
                 {
                     SaveDisplayName = displayName,
                     PlayerFactionID = factionId,

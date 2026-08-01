@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
@@ -200,7 +202,7 @@ public sealed class BookmarkController
             return null;
 
         PlanetIcon icon = bookmark.Icon;
-        Rebellion.Game.Galaxy.Planet planet = bookmark.Planet.Planet;
+        Planet planet = bookmark.Planet.Planet;
         return icon switch
         {
             PlanetIcon.Facility => HasFacilities(planet)
@@ -220,7 +222,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The bookmarked planet.</param>
     /// <returns>The resolved fleet bookmark texture.</returns>
-    private Texture2D GetBookmarkFleetTexture(Rebellion.Game.Galaxy.Planet planet)
+    private Texture2D GetBookmarkFleetTexture(Planet planet)
     {
         return GetBookmarkFactionTexture(
             SelectPresentFactionID(GetFleetOwnerFactionIDs(planet), planet?.OwnerInstanceID),
@@ -233,7 +235,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The bookmarked planet.</param>
     /// <returns>The resolved mission bookmark texture.</returns>
-    private Texture2D GetBookmarkMissionTexture(Rebellion.Game.Galaxy.Planet planet)
+    private Texture2D GetBookmarkMissionTexture(Planet planet)
     {
         return GetBookmarkFactionTexture(
             SelectPresentFactionID(GetMissionOwnerFactionIDs(planet), planet?.OwnerInstanceID),
@@ -276,15 +278,15 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The planet to inspect.</param>
     /// <returns>True when at least one supported facility exists.</returns>
-    private static bool HasFacilities(Rebellion.Game.Galaxy.Planet planet)
+    private static bool HasFacilities(Planet planet)
     {
         return planet?.Buildings?.Any(building =>
                 building.GetBuildingType()
-                    is Rebellion.Game.Units.BuildingType.Mine
-                        or Rebellion.Game.Units.BuildingType.Refinery
-                        or Rebellion.Game.Units.BuildingType.Shipyard
-                        or Rebellion.Game.Units.BuildingType.TrainingFacility
-                        or Rebellion.Game.Units.BuildingType.ConstructionFacility
+                    is BuildingType.Mine
+                        or BuildingType.Refinery
+                        or BuildingType.Shipyard
+                        or BuildingType.TrainingFacility
+                        or BuildingType.ConstructionFacility
             ) == true;
     }
 
@@ -293,14 +295,13 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The planet to inspect.</param>
     /// <returns>True when at least one supported defense exists.</returns>
-    private static bool HasDefenses(Rebellion.Game.Galaxy.Planet planet)
+    private static bool HasDefenses(Planet planet)
     {
         return planet != null
             && (
                 planet.Buildings.Count(building =>
                     building.GetBuildingType()
-                        is Rebellion.Game.Units.BuildingType.Defense
-                            or Rebellion.Game.Units.BuildingType.Weapon
+                        is BuildingType.Defense or BuildingType.Weapon
                 ) > 0
                 || planet.Regiments.Count > 0
                 || planet.Starfighters.Count > 0
@@ -312,7 +313,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The planet to inspect.</param>
     /// <returns>The faction identifiers in domain order.</returns>
-    private static List<string> GetFleetOwnerFactionIDs(Rebellion.Game.Galaxy.Planet planet)
+    private static List<string> GetFleetOwnerFactionIDs(Planet planet)
     {
         return planet
                 ?.Fleets?.Select(fleet => fleet.OwnerInstanceID)
@@ -327,7 +328,7 @@ public sealed class BookmarkController
     /// </summary>
     /// <param name="planet">The planet to inspect.</param>
     /// <returns>The faction identifiers in domain order.</returns>
-    private static List<string> GetMissionOwnerFactionIDs(Rebellion.Game.Galaxy.Planet planet)
+    private static List<string> GetMissionOwnerFactionIDs(Planet planet)
     {
         return planet
                 ?.Missions?.Select(mission => mission.OwnerInstanceID)
