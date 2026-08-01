@@ -82,6 +82,18 @@ public sealed class CutscenePlayer : MonoBehaviour
     /// <param name="finished">The callback invoked after playback ends or is skipped.</param>
     public void Play(string videoUrl, Action finished)
     {
+        ConfigureUrlPlayback(videoUrl, finished);
+        videoPlayer.Play();
+        audioSource.Play();
+    }
+
+    /// <summary>
+    /// Configures URL playback without starting the platform video decoder.
+    /// </summary>
+    /// <param name="videoUrl">The local video file URL.</param>
+    /// <param name="finished">The callback invoked after playback ends or is skipped.</param>
+    internal void ConfigureUrlPlayback(string videoUrl, Action finished)
+    {
         if (string.IsNullOrWhiteSpace(videoUrl))
             throw new ArgumentException("A video URL is required.", nameof(videoUrl));
 
@@ -95,9 +107,6 @@ public sealed class CutscenePlayer : MonoBehaviour
 
         videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
         videoPlayer.SetTargetAudioSource(0, audioSource);
-
-        videoPlayer.Play();
-        audioSource.Play();
     }
 
     /// <summary>
