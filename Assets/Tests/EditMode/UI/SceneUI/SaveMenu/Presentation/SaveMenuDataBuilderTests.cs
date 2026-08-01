@@ -175,11 +175,7 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
             SaveMenuDataBuilder builder = CreateBuilder("Version");
             SaveGameEntry save = new SaveGameEntry(
                 SaveGameManager.Instance.GetSaveSlotFileName(1),
-                new GameMetadata
-                {
-                    SaveDisplayName = "Outer Rim",
-                    PlayerFactionID = "FNALL1",
-                }
+                new GameMetadata { SaveDisplayName = "Outer Rim", PlayerFactionID = "FNALL1" }
             );
 
             SaveMenuWindowRenderData data = builder.CreateRenderData(

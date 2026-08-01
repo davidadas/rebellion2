@@ -17,13 +17,8 @@ namespace Rebellion.Tests.Game.Missions
     {
         private (GameRoot game, Planet empPlanet, Officer officer) BuildScene()
         {
-            (
-                GameRoot game,
-                Planet empPlanet,
-                Planet _,
-                Officer officer,
-                FogOfWarSystem _
-            ) = MissionSceneBuilder.Build();
+            (GameRoot game, Planet empPlanet, Planet _, Officer officer, FogOfWarSystem _) =
+                MissionSceneBuilder.Build();
             officer.IsMain = true;
             return (game, empPlanet, officer);
         }

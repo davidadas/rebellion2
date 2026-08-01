@@ -300,8 +300,7 @@ public sealed class BookmarkController
         return planet != null
             && (
                 planet.Buildings.Count(building =>
-                    building.GetBuildingType()
-                        is BuildingType.Defense or BuildingType.Weapon
+                    building.GetBuildingType() is BuildingType.Defense or BuildingType.Weapon
                 ) > 0
                 || planet.Regiments.Count > 0
                 || planet.Starfighters.Count > 0
