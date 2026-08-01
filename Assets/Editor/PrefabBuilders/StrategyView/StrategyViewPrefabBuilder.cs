@@ -617,6 +617,9 @@ public static class StrategyViewPrefabBuilder
         GameObject root = new GameObject(_sceneInstanceName, typeof(RectTransform));
         RectTransform rootRect = root.GetComponent<RectTransform>();
         FillParent(rootRect);
+        AspectRatioFitter aspectRatio = root.AddComponent<AspectRatioFitter>();
+        aspectRatio.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        aspectRatio.aspectRatio = 16f / 9f;
         CanvasGroup rootContentGroup = root.AddComponent<CanvasGroup>();
 
         StrategyController controller = EnableRuntimeComponent(

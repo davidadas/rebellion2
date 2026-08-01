@@ -71,6 +71,24 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             }
         }
 
+        [Test]
+        public void AuthoredPrefab_FitsCenteredSixteenByNineViewport()
+        {
+            GameObject prefabRoot = PrefabUtility.LoadPrefabContents(_prefabPath);
+
+            try
+            {
+                AspectRatioFitter fitter = prefabRoot.GetComponent<AspectRatioFitter>();
+                Assert.IsNotNull(fitter);
+                Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, fitter.aspectMode);
+                Assert.AreEqual(16f / 9f, fitter.aspectRatio, 0.0001f);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(prefabRoot);
+            }
+        }
+
         private static CanvasScaler GetSceneCanvasScaler(Scene scene)
         {
             Transform gameRoot = scene

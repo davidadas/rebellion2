@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using TMPro;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -116,6 +118,7 @@ public static class SaveMenuPrefabBuilder
             _sceneRootName,
             _sceneCanvasPath
         );
+        ConfigureSceneCanvas();
 
         EditorBuildSettingsScene[] scenes = EditorBuildSettings.scenes;
         if (!scenes.Any(scene => scene.path == _scenePath))
@@ -531,6 +534,9 @@ public static class SaveMenuPrefabBuilder
     {
         GameObject root = CreateRectObject("SaveMenuRoot");
         FillParent(root.GetComponent<RectTransform>());
+        AspectRatioFitter aspectRatio = root.AddComponent<AspectRatioFitter>();
+        aspectRatio.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        aspectRatio.aspectRatio = 16f / 9f;
         SaveMenuSceneController controller = root.AddComponent<SaveMenuSceneController>();
         controller.enabled = true;
 
@@ -556,6 +562,23 @@ public static class SaveMenuPrefabBuilder
         AssignReference(controller, "saveMenuWindow", saveMenuWindow);
         SetLayerRecursively(root, LayerMask.NameToLayer("UI"));
         return SavePrefab(root, _saveMenuRootPrefabPath);
+    }
+
+    private static void ConfigureSceneCanvas()
+    {
+        Scene scene = EditorSceneManager.OpenScene(_scenePath, OpenSceneMode.Single);
+        GameObject canvasObject = scene
+            .GetRootGameObjects()
+            .Single(root => root.name == _sceneCanvasPath);
+        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+        if (scaler == null)
+            throw new MissingReferenceException("Save Menu CanvasScaler is missing.");
+
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.3333f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        EditorSceneManager.MarkSceneDirty(scene);
+        EditorSceneManager.SaveScene(scene);
     }
 
     /// <summary>

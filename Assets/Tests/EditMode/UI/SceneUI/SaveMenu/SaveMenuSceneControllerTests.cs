@@ -39,6 +39,16 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu
         }
 
         [Test]
+        public void AuthoredPrefab_FitsCenteredSixteenByNineViewport()
+        {
+            AspectRatioFitter fitter = _rootObject.GetComponent<AspectRatioFitter>();
+
+            Assert.IsNotNull(fitter);
+            Assert.AreEqual(AspectRatioFitter.AspectMode.FitInParent, fitter.aspectMode);
+            Assert.AreEqual(16f / 9f, fitter.aspectRatio, 0.0001f);
+        }
+
+        [Test]
         public void VerifyReferences_MissingContentHost_ThrowsMissingReferenceException()
         {
             SetField("contentHost", null);

@@ -369,8 +369,7 @@ public static class MainMenuPrefabBuilder
             typeof(Canvas),
             typeof(CanvasScaler),
             typeof(GraphicRaycaster),
-            typeof(CanvasRenderer),
-            typeof(Image)
+            typeof(CanvasRenderer)
         );
         RectTransform canvasRect = canvasObject.GetComponent<RectTransform>();
         canvasRect.localScale = Vector3.zero;
@@ -394,11 +393,25 @@ public static class MainMenuPrefabBuilder
         scaler.matchWidthOrHeight = 0f;
         scaler.referencePixelsPerUnit = 100f;
 
-        Image cockpit = canvasObject.GetComponent<Image>();
+        GameObject viewport = NewChild(
+            "Viewport",
+            canvasObject.transform,
+            typeof(RectTransform),
+            typeof(AspectRatioFitter),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+        FillParent(viewportRect);
+        AspectRatioFitter aspectRatio = viewport.GetComponent<AspectRatioFitter>();
+        aspectRatio.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        aspectRatio.aspectRatio = 16f / 9f;
+
+        Image cockpit = viewport.GetComponent<Image>();
         cockpit.sprite = LoadSprite("application/main-menu/ui/ui_mainmenu_background");
         cockpit.raycastTarget = false;
 
-        BuildControls(canvasObject.transform);
+        BuildControls(viewport.transform);
     }
 
     /// <summary>
@@ -1788,7 +1801,7 @@ public static class MainMenuPrefabBuilder
         // CHILD image; the planet can then sit as an EARLIER sibling (behind the cockpit) in the
         // same canvas -- deterministic hierarchy order, no cross-canvas sorting.
         Image rootImage = FindBackgroundImage(root);
-        Transform canvasT = rootImage.canvas.transform;
+        Transform canvasT = rootImage.transform;
         // The current root image is the alpha-windowed cockpit; reuse its sprite as-is.
         Sprite cockpit = rootImage.sprite;
         rootImage.enabled = false;
@@ -2101,7 +2114,6 @@ public static class MainMenuPrefabBuilder
     /// <returns>The background image.</returns>
     private static Image FindBackgroundImage(GameObject root)
     {
-        // The cockpit background is the image on the root Canvas GameObject itself.
         Canvas rootCanvas = root.GetComponentInChildren<Canvas>(true);
         Image onCanvas = rootCanvas != null ? rootCanvas.GetComponent<Image>() : null;
         if (onCanvas != null)
