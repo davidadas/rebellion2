@@ -3,6 +3,7 @@ using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.SaveMenu
 {
