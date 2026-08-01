@@ -3,14 +3,13 @@ using System.IO;
 using System.Linq;
 
 /// <summary>
-/// Builds standalone player artifacts and packages their external content.
+/// Builds standalone player artifacts without packaging external content.
 /// </summary>
 public static class StandalonePlayerBuild
 {
     private const string _developmentContentAssetPrefix = "Assets/Content/";
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
-    private const string _contentDirectoryName = "Content";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
 
     /// <summary>
@@ -29,7 +28,6 @@ public static class StandalonePlayerBuild
         {
             Directory.CreateDirectory(outputDirectory);
         }
-
         string[] scenes = UnityEditor
             .EditorBuildSettings.scenes.Where(scene => scene.enabled)
             .Select(scene => scene.path)
@@ -64,7 +62,6 @@ public static class StandalonePlayerBuild
             throw new InvalidOperationException($"Player build output not found at {outputPath}.");
         }
 
-        CopyExternalContent(outputPath);
     }
 
     /// <summary>
@@ -93,60 +90,6 @@ public static class StandalonePlayerBuild
     }
 
     /// <summary>
-    /// Replaces a destination directory with external content from a source directory.
-    /// </summary>
-    /// <param name="sourcePath">The external content source directory.</param>
-    /// <param name="destinationPath">The destination directory to replace.</param>
-    private static void CopyContentDirectory(string sourcePath, string destinationPath)
-    {
-        if (Directory.Exists(destinationPath))
-            Directory.Delete(destinationPath, true);
-
-        Directory.CreateDirectory(destinationPath);
-        foreach (
-            string directoryPath in Directory.EnumerateDirectories(
-                sourcePath,
-                "*",
-                SearchOption.AllDirectories
-            )
-        )
-        {
-            string relativePath = Path.GetRelativePath(sourcePath, directoryPath);
-            Directory.CreateDirectory(Path.Combine(destinationPath, relativePath));
-        }
-
-        foreach (
-            string filePath in Directory.EnumerateFiles(
-                sourcePath,
-                "*",
-                SearchOption.AllDirectories
-            )
-        )
-        {
-            if (ShouldSkipContentFile(filePath))
-                continue;
-
-            string relativePath = Path.GetRelativePath(sourcePath, filePath);
-            string destinationFilePath = Path.Combine(destinationPath, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(destinationFilePath));
-            File.Copy(filePath, destinationFilePath, true);
-        }
-    }
-
-    /// <summary>
-    /// Copies the project's external content beside a completed player artifact.
-    /// </summary>
-    /// <param name="playerPath">The completed player artifact path.</param>
-    private static void CopyExternalContent(string playerPath)
-    {
-        string sourcePath = Path.Combine(UnityEngine.Application.dataPath, _contentDirectoryName);
-        if (!Directory.Exists(sourcePath))
-            throw new DirectoryNotFoundException($"Content directory not found: {sourcePath}");
-
-        CopyContentDirectory(sourcePath, GetContentDestinationPath(playerPath));
-    }
-
-    /// <summary>
     /// Reads the requested Unity build target from the command line.
     /// </summary>
     /// <returns>The parsed build target.</returns>
@@ -164,26 +107,6 @@ public static class StandalonePlayerBuild
         }
 
         throw new InvalidOperationException($"Unsupported build target '{value}'.");
-    }
-
-    /// <summary>
-    /// Resolves the external content destination beside a player artifact.
-    /// </summary>
-    /// <param name="playerPath">The player artifact path.</param>
-    /// <returns>The external content destination path.</returns>
-    private static string GetContentDestinationPath(string playerPath)
-    {
-        if (string.IsNullOrWhiteSpace(playerPath))
-            throw new ArgumentException("A player output path is required.", nameof(playerPath));
-
-        string absolutePlayerPath = Path.GetFullPath(playerPath);
-        string outputDirectory = Path.GetDirectoryName(absolutePlayerPath);
-        if (string.IsNullOrWhiteSpace(outputDirectory))
-            throw new InvalidOperationException(
-                "The player output directory could not be resolved."
-            );
-
-        return Path.Combine(outputDirectory, _contentDirectoryName);
     }
 
     /// <summary>
@@ -234,20 +157,5 @@ public static class StandalonePlayerBuild
         }
 
         return Path.Combine(assetsDirectory.FullName, path);
-    }
-
-    /// <summary>
-    /// Determines whether a source file contains editor-only metadata.
-    /// </summary>
-    /// <param name="filePath">The source file path.</param>
-    /// <returns>True when the file should be excluded from the external content package.</returns>
-    private static bool ShouldSkipContentFile(string filePath)
-    {
-        return filePath.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(
-                Path.GetFileName(filePath),
-                ".DS_Store",
-                StringComparison.OrdinalIgnoreCase
-            );
     }
 }

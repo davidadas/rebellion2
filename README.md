@@ -47,7 +47,7 @@ external `Content/` directory.
 
 ### Packaged Content and Mods
 
-Standalone builds place a raw `Content` directory beside the game executable or `.app` bundle. Art, audio, video, configuration, and game-data files are loaded from that directory at runtime rather than from a Unity asset bundle.
+Standalone builds intentionally do not contain or copy the private game assets. An authorized installer must place a raw `Content` directory beside the game executable or `.app` bundle before the game can run. Art, audio, video, configuration, and game-data files are loaded from that directory at runtime rather than from a Unity asset bundle.
 
 To modify a packaged build, replace files under `Content/` while preserving their relative paths and file names, then restart the game. Numbered main-menu animation frames are loaded from their existing file-name sequence while retaining the timings authored by the game.
 

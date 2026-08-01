@@ -37,13 +37,7 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          # Keep GitHub credentials available while LFS resolves pointer blobs from
-          # this sparse checkout. The LFS payload itself still comes from R2.
-          persist-credentials: true
           lfs: false
-          sparse-checkout: |
-            Content
-            Models/MainMenu
           path: .ci/rebellion2-media
 
       - name: Pull media LFS from R2
@@ -56,11 +50,16 @@ jobs:
         run: |
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git lfs pull
+          git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""
+          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
+            echo "Media checkout still contains Git LFS pointers."
+            exit 1
+          fi
 
       - name: Install media
         run: |
           mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rm -rf .ci
@@ -202,13 +201,7 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          # Keep GitHub credentials available while LFS resolves pointer blobs from
-          # this sparse checkout. The LFS payload itself still comes from R2.
-          persist-credentials: true
           lfs: false
-          sparse-checkout: |
-            Content
-            Models/MainMenu
           path: .ci/rebellion2-media
 
       - name: Pull media LFS from R2
@@ -221,11 +214,16 @@ jobs:
         run: |
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git lfs pull
+          git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""
+          if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
+            echo "Media checkout still contains Git LFS pointers."
+            exit 1
+          fi
 
       - name: Install media
         run: |
           mkdir -p Assets/Content Assets/Art/Models/MainMenu
+          test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Content/ Assets/Content/
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rm -rf .ci
