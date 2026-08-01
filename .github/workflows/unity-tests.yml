@@ -37,7 +37,9 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          persist-credentials: false
+          # Keep GitHub credentials available while LFS resolves pointer blobs from
+          # this sparse checkout. The LFS payload itself still comes from R2.
+          persist-credentials: true
           lfs: false
           sparse-checkout: |
             Content
@@ -200,7 +202,9 @@ jobs:
           repository: davidadas/rebellion2-media
           ref: ${{ env.REBELLION2_MEDIA_REVISION }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
-          persist-credentials: false
+          # Keep GitHub credentials available while LFS resolves pointer blobs from
+          # this sparse checkout. The LFS payload itself still comes from R2.
+          persist-credentials: true
           lfs: false
           sparse-checkout: |
             Content
