@@ -8,9 +8,9 @@ include tests where practical, and describe how the change was validated.
 Follow the [development guide](Docs/Development.md) for project setup, UI generation, tests, and
 other local checks.
 
-Do not commit generated UI prefabs or generated scenes. Contributors must own a copy of the
-original game and **must never share, upload, commit, or redistribute copyrighted game assets**.
-Keep content path and structure changes synchronized with `rebellion2-media`.
+Do not commit generated UI prefabs, generated scenes, or copyrighted game assets. Contributors
+must own a copy of the original game and **must never share, upload, or redistribute copyrighted
+game assets**.
 
 ## AI assistance
 
