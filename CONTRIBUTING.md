@@ -16,8 +16,8 @@ and structure changes synchronized with `rebellion2-media`.
 Using AI as a development tool is fine. Vibe coding is not.
 
 Contributors must understand every submitted change, review generated code carefully, test it, and
-be able to explain and maintain it. Large, unreviewed, or unverified AI-generated changes will not
-be accepted.
+be able to explain and maintain it. Unreviewed or unverified AI-generated changes will not be
+accepted.
 
 Never provide secrets, private repository content, or copyrighted game assets to an external AI
 service.
