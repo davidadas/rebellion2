@@ -8,7 +8,6 @@
 
 ## Checklist
 
-- [ ] The change is focused and contains no unrelated files.
 - [ ] Relevant automated tests pass, or the reason they were not run is stated above.
 - [ ] UI builder changes were verified by rebuilding the affected UI.
 - [ ] Content path or structure changes were also made in `rebellion2-media`.
