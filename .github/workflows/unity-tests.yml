@@ -55,6 +55,7 @@ jobs:
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
+          git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
             if git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""; then
               break
@@ -231,6 +232,7 @@ jobs:
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
+          git config lfs.transfer.batchSize 20
           for attempt in 1 2 3 4; do
             if git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""; then
               break
