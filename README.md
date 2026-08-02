@@ -28,8 +28,8 @@ Game assets and generated UI artifacts are intentionally kept outside this sourc
 
 ## Contributing
 
-Focused fixes and improvements are welcome. Include tests where practical and preserve behavior
-from the original game when source parity is the goal.
+Focused fixes and improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a
+pull request.
 
 ## Legal
 

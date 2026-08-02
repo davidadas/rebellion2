@@ -93,6 +93,7 @@ Assets/TextMesh Pro/
 # Misc
 *.md
 !README.md
+!/CONTRIBUTING.md
 !/Docs/
 !/Docs/*.md
 !/.github/pull_request_template.md
