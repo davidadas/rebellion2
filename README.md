@@ -12,22 +12,23 @@ files or issues.
 
 | Area | Estimate |
 | --- | ---: |
-| Foundation and data | 60% |
-| Strategy simulation | 60% |
+| Foundation and Data | 60% |
+| Strategy Simulation | 60% |
+| Tactical Simulation | 0% |
 | Missions | 80% |
 | Events | 0% |
-| Strategy interface | 80% |
-| Computer opponent | 50% |
-| Save games* | 100% |
+| Strategy Interface | 80% |
+| Computer Opponent | 50% |
+| Save Games* | 100% |
 | Settings | 10% |
 | Moddability | 65% |
-| Modding tools | 0% |
+| Modding Tools | 0% |
 
 \* Save compatibility is not guaranteed between versions during development.
 
 Campaign generation, core strategy systems, missions, save games, and most of the Strategy
 interface are functional. Major remaining work includes story events, AI depth, settings, modding
-tools, balance, and release polish.
+tools, tactical simulation, balance, and release polish.
 
 The project has more than **3,700 automated tests**, but it is still an early-access build rather
 than a finished replacement for the original game.
