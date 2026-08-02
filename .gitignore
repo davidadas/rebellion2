@@ -95,6 +95,7 @@ Assets/TextMesh Pro/
 !README.md
 !/Docs/
 !/Docs/*.md
+!/.github/pull_request_template.md
 *.tmp.driveupload*
 **/*.scratch
 **/dump
