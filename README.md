@@ -15,6 +15,7 @@ files or issues.
 | Foundation and Data | 60% |
 | Strategy Simulation | 60% |
 | Tactical Simulation | 0% |
+| Multiplayer | 0% |
 | Missions | 80% |
 | Events | 0% |
 | Strategy Interface | 80% |
@@ -28,7 +29,7 @@ files or issues.
 
 Campaign generation, core strategy systems, missions, save games, and most of the Strategy
 interface are functional. Major remaining work includes story events, AI depth, settings, modding
-tools, tactical simulation, balance, and release polish.
+tools, tactical simulation, multiplayer, balance, and release polish.
 
 The project has more than **3,700 automated tests**, but it is still an early-access build rather
 than a finished replacement for the original game.
