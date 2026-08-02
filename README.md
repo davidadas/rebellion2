@@ -7,8 +7,6 @@ An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built wi
 ## Current Status
 
 Rebellion 2 is approximately **55% complete toward a feature-complete single-player campaign**.
-This is an engineering estimate based on implemented gameplay and remaining work, not a count of
-files or issues.
 
 | Area | Estimate |
 | --- | ---: |
@@ -33,9 +31,6 @@ Campaign generation, core strategy systems, missions, save games, and most of th
 interface are functional. Major remaining work includes story events, strategic AI depth, tactical
 AI, UI upscaling, settings, modding tools, tactical simulation, multiplayer, balance, and release
 polish.
-
-The project has more than **3,700 automated tests**, but it is still an early-access build rather
-than a finished replacement for the original game.
 
 ## Playing the game
 
