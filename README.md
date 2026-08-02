@@ -10,20 +10,24 @@ Rebellion 2 is approximately **55% complete toward a feature-complete single-pla
 This is an engineering estimate based on implemented gameplay and remaining work, not a count of
 files or issues.
 
-| Area | Estimate | Current state |
-| --- | ---: | --- |
-| Foundation and data | 60% | Typed game data, campaign generation, serialization, fog of war, messages, research, and encyclopedia data are operational. Significant integration, validation, and completeness work remains. |
-| Strategy simulation | 60% | Movement, fleets, blockades, production, maintenance, personnel, uprisings, bombardment, planetary assault, victory conditions, and strategic combat resolution exist but still need substantial depth, balance, and campaign validation. |
-| Missions | 80% | Diplomacy, espionage, sabotage, recruitment, rescue, research, Jedi training, abduction, assassination, reconnaissance, and uprising missions are implemented. Duel resolution and additional refinement remain. |
-| Events | 0% | Supporting code and data structures exist, but story-driven in-game events are not implemented yet. |
-| Strategy interface | 80% | Galaxy map, HUD, advisors, messages, construction, facilities, fleets, missions, defense, encyclopedia, status, planet systems, targeting, and contextual commands are functional. Runtime-content integration and presentation polish remain in progress. |
-| Computer opponent | 50% | The AI can plan fleet actions, missions, production, manufacturing, and unit transfers, but its strategy, balance, and handling of campaign situations need major work. |
-| Save games* | 100% | A current game can be saved and loaded. |
-| Settings | 10% | Basic audio settings exist. The settings interface and other player-facing options remain to be built. |
-| Moddability | 65% | External content packs, scenarios, loose media, preload manifests, validation, and alternate content roots are supported. More game behavior still needs to become data-driven. |
-| Modding tools | 0% | There are no player-facing tools for creating, validating, or packaging mods yet. |
+| Area | Estimate |
+| --- | ---: |
+| Foundation and data | 60% |
+| Strategy simulation | 60% |
+| Missions | 80% |
+| Events | 0% |
+| Strategy interface | 80% |
+| Computer opponent | 50% |
+| Save games* | 100% |
+| Settings | 10% |
+| Moddability | 65% |
+| Modding tools | 0% |
 
 \* Save compatibility is not guaranteed between versions during development.
+
+Campaign generation, core strategy systems, missions, save games, and most of the Strategy
+interface are functional. Major remaining work includes story events, AI depth, settings, modding
+tools, balance, and release polish.
 
 The project has more than **3,700 automated tests**, but it is still an early-access build rather
 than a finished replacement for the original game.
