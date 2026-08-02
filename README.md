@@ -6,20 +6,24 @@ An open-source remake of the 1998 strategy game *Star Wars: Rebellion*, built wi
 
 ## Current Status
 
-Rebellion 2 is approximately **75% complete toward a feature-complete single-player campaign**.
+Rebellion 2 is approximately **55% complete toward a feature-complete single-player campaign**.
 This is an engineering estimate based on implemented gameplay and remaining work, not a count of
 files or issues.
 
 | Area | Estimate | Current state |
 | --- | ---: | --- |
-| Game foundation and data | 90% | Typed game data, campaign generation, serialization, fog of war, events, messages, research, and encyclopedia data are operational. |
-| Strategy simulation | 85% | Movement, fleets, blockades, production, maintenance, personnel, uprisings, bombardment, planetary assault, victory conditions, and strategic combat resolution are implemented. |
-| Missions and campaign events | 80% | Diplomacy, espionage, sabotage, recruitment, rescue, research, Jedi training, abduction, assassination, reconnaissance, and uprising missions are implemented. Duel resolution and broader event coverage remain. |
+| Foundation and data | 60% | Typed game data, campaign generation, serialization, fog of war, messages, research, and encyclopedia data are operational. Significant integration, validation, and completeness work remains. |
+| Strategy simulation | 60% | Movement, fleets, blockades, production, maintenance, personnel, uprisings, bombardment, planetary assault, victory conditions, and strategic combat resolution exist but still need substantial depth, balance, and campaign validation. |
+| Missions | 80% | Diplomacy, espionage, sabotage, recruitment, rescue, research, Jedi training, abduction, assassination, reconnaissance, and uprising missions are implemented. Duel resolution and additional refinement remain. |
+| Events | 0% | Supporting code and data structures exist, but story-driven in-game events are not implemented yet. |
 | Strategy interface | 80% | Galaxy map, HUD, advisors, messages, construction, facilities, fleets, missions, defense, encyclopedia, status, planet systems, targeting, and contextual commands are functional. Runtime-content integration and presentation polish remain in progress. |
-| Computer opponent | 70% | The AI plans and scores fleet actions, missions, production, manufacturing, and unit transfers. Strategy quality, balance, and edge cases still need iteration. |
-| Save games and settings | 90% | Save/load flows, metadata, compatibility checks, audio settings, input settings, and video settings are implemented. Release hardening remains. |
-| External content and modding | 80% | Structured content packs, scenarios, external media, preload manifests, validation, and alternate content roots are supported. Tooling and documentation will continue to expand. |
-| Presentation and release polish | 60% | Main Menu, Save Game, Strategy presentation, audio, music, video, and cutscenes are integrated. Tactical presentation, accessibility, performance, packaging, and final polish remain. |
+| Computer opponent | 50% | The AI can plan fleet actions, missions, production, manufacturing, and unit transfers, but its strategy, balance, and handling of campaign situations need major work. |
+| Save games* | 100% | A current game can be saved and loaded. |
+| Settings | 10% | Basic audio settings exist. The settings interface and other player-facing options remain to be built. |
+| Moddability | 65% | External content packs, scenarios, loose media, preload manifests, validation, and alternate content roots are supported. More game behavior still needs to become data-driven. |
+| Modding tools | 0% | There are no player-facing tools for creating, validating, or packaging mods yet. |
+
+\* Save compatibility is not guaranteed between versions during development.
 
 The project has more than **3,700 automated tests**, but it is still an early-access build rather
 than a finished replacement for the original game.
