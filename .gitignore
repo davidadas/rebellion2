@@ -93,7 +93,8 @@ Assets/TextMesh Pro/
 # Misc
 *.md
 !README.md
-/[Dd]ocs/
+!/Docs/
+!/Docs/*.md
 *.tmp.driveupload*
 **/*.scratch
 **/dump
