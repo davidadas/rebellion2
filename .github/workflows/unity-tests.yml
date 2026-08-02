@@ -8,6 +8,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
@@ -50,7 +54,19 @@ jobs:
         run: |
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""
+          git config lfs.concurrenttransfers 3
+          for attempt in 1 2 3 4; do
+            if git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""; then
+              break
+            fi
+            if [ "$attempt" = "4" ]; then
+              echo "Media LFS download failed after $attempt attempts."
+              exit 1
+            fi
+            delay=$((attempt * 20))
+            echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
+            sleep "$delay"
+          done
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
@@ -214,7 +230,19 @@ jobs:
         run: |
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
-          git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""
+          git config lfs.concurrenttransfers 3
+          for attempt in 1 2 3 4; do
+            if git lfs pull --include="Content/**,Models/MainMenu/**" --exclude=""; then
+              break
+            fi
+            if [ "$attempt" = "4" ]; then
+              echo "Media LFS download failed after $attempt attempts."
+              exit 1
+            fi
+            delay=$((attempt * 20))
+            echo "Media LFS download attempt $attempt failed; retrying in ${delay}s..."
+            sleep "$delay"
+          done
           if grep -RIl '^version https://git-lfs.github.com/spec/v1$' Content Models/MainMenu; then
             echo "Media checkout still contains Git LFS pointers."
             exit 1
