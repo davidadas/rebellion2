@@ -26,6 +26,12 @@ The installer verifies ownership automatically. A copy of *Star Wars: Rebellion*
 
 Game assets and generated UI artifacts are intentionally kept outside this source repository.
 
+## Reporting bugs
+
+Search [existing issues](https://github.com/davidadas/rebellion2/issues) before filing a new bug.
+Include your platform, game version, reproduction steps, expected and actual behavior, and relevant
+logs or screenshots. Do not attach copyrighted game assets or secrets.
+
 ## Contributing
 
 Focused fixes and improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a
