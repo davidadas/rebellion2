@@ -14,18 +14,18 @@ files or issues.
 | --- | ---: |
 | Foundation and Data | 60% |
 | Strategy Simulation | 60% |
-| Tactical Simulation | 0% |
-| Multiplayer | 0% |
+| Strategic AI | 50% |
 | Missions | 80% |
 | Events | 0% |
+| Tactical Simulation | 0% |
+| Tactical AI | 0% |
 | Strategy Interface | 80% |
 | UI Upscaling | 40% |
-| Strategic AI | 50% |
-| Tactical AI | 0% |
 | Save Games* | 100% |
 | Settings | 10% |
 | Moddability | 65% |
 | Modding Tools | 0% |
+| Multiplayer | 0% |
 
 \* Save compatibility is not guaranteed between versions during development.
 
