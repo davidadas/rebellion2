@@ -20,7 +20,7 @@ files or issues.
 | Events | 0% |
 | Strategy Interface | 80% |
 | UI Upscaling | 40% |
-| Computer Opponent | 50% |
+| AI | 50% |
 | Save Games* | 100% |
 | Settings | 10% |
 | Moddability | 65% |
