@@ -41,11 +41,8 @@ access.
 The installer verifies ownership automatically. A copy of *Star Wars: Rebellion* from either
 **GOG** or **Steam** is required.
 
-### Content Rules
-
-Players and developers must own a copy of the original game. Game content is provided only through
-the ownership-verifying installer or approved development access. **NEVER redistribute, upload, or
-share the installed `Content` directory or any copyrighted assets from it.**
+**NOTE: Installed game data and copyrighted assets must NEVER be redistributed, uploaded, or
+shared under any circumstances.**
 
 ## Documentation
 
