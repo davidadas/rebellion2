@@ -3,6 +3,16 @@
 Rebellion 2 loads its art, audio, video, configuration, and game data from an external `Content`
 directory. Most content can therefore be changed without rebuilding the game.
 
+## Redistribution
+
+**NEVER redistribute the installed `Content` directory, the original content pack, or copyrighted
+assets taken from them.** Every player and mod developer must own a copy of the original game and
+obtain the base content through the ownership-verifying installer.
+
+A distributed mod may contain original work, patch files, or instructions that modify a user's own
+installed copy. It must not include the original pack or unchanged copyrighted assets. When in
+doubt, distribute the changes required to reproduce the mod rather than a copied content tree.
+
 ## Protect the installed pack
 
 Do not edit the installed pack in place. Copy the existing pack before making a mod because future

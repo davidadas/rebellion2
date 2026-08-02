@@ -5,7 +5,11 @@
 - Unity 6000.4.0f1
 - .NET SDK
 - A Bash-compatible shell
+- A copy of *Star Wars: Rebellion* owned through GOG or Steam
 - Access to the separate `rebellion2-media` repository
+
+Access to development content does not grant redistribution rights. **NEVER share, upload, commit,
+or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyrighted game asset.**
 
 ## Setup
 

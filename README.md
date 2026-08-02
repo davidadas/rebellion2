@@ -46,6 +46,12 @@ access.
 The installer verifies ownership automatically. A copy of *Star Wars: Rebellion* from either
 **GOG** or **Steam** is required.
 
+### Content Rules
+
+Players and developers must own a copy of the original game. Game content is provided only through
+the ownership-verifying installer or approved development access. **NEVER redistribute, upload, or
+share the installed `Content` directory or any copyrighted assets from it.**
+
 ## Documentation
 
 - [Development setup and commands](Docs/Development.md)
@@ -67,4 +73,5 @@ pull request.
 ## Legal
 
 This unofficial fan project is not affiliated with or endorsed by Disney, Lucasfilm, or the owners
-of *Star Wars*. Copyrighted game assets are not distributed in this repository.
+of *Star Wars*. Copyrighted game assets are not distributed in this repository and must not be
+redistributed by players, modders, or contributors.
