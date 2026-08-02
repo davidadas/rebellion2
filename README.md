@@ -30,7 +30,7 @@ Game assets and generated UI artifacts are intentionally kept outside this sourc
 
 Search [existing issues](https://github.com/davidadas/rebellion2/issues) before filing a new bug.
 Include your platform, game version, reproduction steps, expected and actual behavior, and relevant
-logs or screenshots. Do not attach copyrighted game assets or secrets.
+logs or screenshots. **DO NOT** attach copyrighted game assets or secrets.
 
 ## Contributing
 
