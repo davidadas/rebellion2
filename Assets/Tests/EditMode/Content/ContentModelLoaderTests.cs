@@ -9,8 +9,7 @@ using UnityEngine;
 /// </summary>
 public sealed class ContentModelLoaderTests
 {
-    private const string _planetModelPath =
-        "Assets/Content/Application/MainMenu/Models/planet.glb";
+    private const string _planetModelPath = "Assets/Content/Application/MainMenu/Models/planet.glb";
 
     /// <summary>
     /// Loads a real content-pack GLB, instantiates it, and releases its owned hierarchy.
