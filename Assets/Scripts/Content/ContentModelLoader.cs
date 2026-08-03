@@ -27,7 +27,10 @@ public static class ContentModelLoader
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
 
-        GLTFast.GltfImport gltf = new GLTFast.GltfImport();
+        GLTFast.IDeferAgent deferAgent = Application.isPlaying
+            ? null
+            : new GLTFast.UninterruptedDeferAgent();
+        GLTFast.GltfImport gltf = new GLTFast.GltfImport(deferAgent: deferAgent);
         GLTFast.GameObjectInstantiator instantiator = null;
         Transform sceneRoot = null;
         bool ownershipTransferred = false;

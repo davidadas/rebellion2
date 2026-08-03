@@ -2890,6 +2890,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_constructionInfoButtonPreviewPath),
                 LoadTexture(_constructionInfoButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(infoButton, _constructionInfoButtonDownPreviewPath);
         RawImage okButton = CreateRawImage(
             "OkButtonImage",
             window.transform,
@@ -2906,6 +2907,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_constructionOkButtonPreviewPath),
                 LoadTexture(_constructionOkButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(okButton, _constructionOkButtonDownPreviewPath);
         RawImage cancelButton = CreateRawImage(
             "CancelButtonImage",
             window.transform,
@@ -2922,6 +2924,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_constructionCancelButtonPreviewPath),
                 LoadTexture(_constructionCancelButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(cancelButton, _constructionCancelButtonDownPreviewPath);
 
         RectTransform missionSelection = CreateChildLayer("MissionSelection", window.transform);
         SetSourceRect(missionSelection, 0, 0, 259, 355);
@@ -2941,6 +2944,7 @@ public static class StrategyViewPrefabBuilder
             LoadTexture(_constructionOpenButtonPreviewPath),
             LoadTexture(_constructionOpenButtonDownPreviewPath)
         );
+        SetPressedBindingAddress(dropdownButton, _constructionOpenButtonDownPreviewPath);
         TextMeshProUGUI targetLabel = CreateTextLabel("TargetLabelTextField", missionSelection);
         targetLabel.text = "Target";
         targetLabel.color = Color.white;
@@ -3071,6 +3075,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_missionCreateMoveRightButtonPreviewPath),
                 LoadTexture(_missionCreateMoveRightButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(moveRight, _missionCreateMoveRightButtonDownPreviewPath);
         RawImage moveLeft = CreateRawImage(
             "MoveLeftButtonImage",
             personnel,
@@ -3087,6 +3092,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_missionCreateMoveLeftButtonPreviewPath),
                 LoadTexture(_missionCreateMoveLeftButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(moveLeft, _missionCreateMoveLeftButtonDownPreviewPath);
 
         ScrollAreaView agentsScrollArea = CreateScrollAreaView(
             personnel,
