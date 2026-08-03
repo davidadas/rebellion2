@@ -36,10 +36,12 @@ namespace Rebellion.Tests.Content
             string[] applicationAddresses = applicationManifest
                 .Textures.Concat(applicationManifest.TextureDirectories)
                 .Concat(applicationManifest.Audio)
+                .Concat(applicationManifest.Models)
                 .ToArray();
             string[] packAddresses = packManifest
                 .Textures.Concat(packManifest.TextureDirectories)
                 .Concat(packManifest.Audio)
+                .Concat(packManifest.Models)
                 .ToArray();
 
             Assert.IsNotEmpty(applicationAddresses);

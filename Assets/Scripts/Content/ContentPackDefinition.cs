@@ -159,4 +159,8 @@ public sealed class ContentPreloadManifest
     [XmlArray]
     [XmlArrayItem("Path")]
     public List<string> Audio { get; set; } = new List<string>();
+
+    [XmlArray]
+    [XmlArrayItem("Path")]
+    public List<string> Models { get; set; } = new List<string>();
 }

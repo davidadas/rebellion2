@@ -447,13 +447,17 @@ public static class ContentPackLoader
             manifest.Textures == null
             || manifest.TextureDirectories == null
             || manifest.Audio == null
+            || manifest.Models == null
         )
-            throw new InvalidDataException($"{manifestName} requires texture and audio lists.");
+            throw new InvalidDataException(
+                $"{manifestName} requires texture, audio, and model lists."
+            );
 
         foreach (
             string address in manifest
                 .Textures.Concat(manifest.TextureDirectories)
                 .Concat(manifest.Audio)
+                .Concat(manifest.Models)
         )
         {
             if (

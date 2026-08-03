@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the selected Encyclopedia topic and emits entry-navigation requests.
 /// </summary>
-public sealed class EncyclopediaDetailPanelView : MonoBehaviour
+public sealed class EncyclopediaDetailPanelView : MonoBehaviour, IContentInitializable
 {
     [SerializeField]
     private RawImage cardImage;
@@ -108,6 +108,30 @@ public sealed class EncyclopediaDetailPanelView : MonoBehaviour
     private void RequestNext()
     {
         NextRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        nextButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_next_button_up"
+        );
+        nextButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_next_button_disabled"
+        );
+        previousButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_previous_button_up"
+        );
+        previousButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_encyclopedia_window_previous_button_disabled"
+        );
     }
 
     /// <summary>

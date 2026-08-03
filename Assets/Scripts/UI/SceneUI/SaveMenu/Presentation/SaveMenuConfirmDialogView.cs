@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored modal confirmation dialog and emits the selected response.
 /// </summary>
-public sealed class SaveMenuConfirmDialogView : MonoBehaviour
+public sealed class SaveMenuConfirmDialogView : MonoBehaviour, IContentInitializable
 {
     private const string _backgroundAddress = "Application/Common/UI/ui_common_confirmation_dialog";
     private const string _confirmUpAddress =
@@ -77,11 +77,14 @@ public sealed class SaveMenuConfirmDialogView : MonoBehaviour
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
 
-        backgroundImage.texture = GetRequiredTexture(contentAssets, _backgroundAddress);
-        confirmButtonUpTexture = GetRequiredTexture(contentAssets, _confirmUpAddress);
-        confirmButtonDownTexture = GetRequiredTexture(contentAssets, _confirmDownAddress);
-        cancelButtonUpTexture = GetRequiredTexture(contentAssets, _cancelUpAddress);
-        cancelButtonDownTexture = GetRequiredTexture(contentAssets, _cancelDownAddress);
+        backgroundImage.texture = ContentBindings.RequireTexture(contentAssets, _backgroundAddress);
+        confirmButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _confirmUpAddress);
+        confirmButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _confirmDownAddress
+        );
+        cancelButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _cancelUpAddress);
+        cancelButtonDownTexture = ContentBindings.RequireTexture(contentAssets, _cancelDownAddress);
     }
 
     /// <summary>
@@ -197,17 +200,5 @@ public sealed class SaveMenuConfirmDialogView : MonoBehaviour
             && cancelButtonUpTexture != null
             && cancelButtonDownTexture != null
             && messageTextField != null;
-    }
-
-    /// <summary>
-    /// Loads required confirmation artwork.
-    /// </summary>
-    /// <param name="contentAssets">The active content asset source.</param>
-    /// <param name="address">The confirmation artwork address.</param>
-    /// <returns>The required texture.</returns>
-    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
-    {
-        return contentAssets.GetTexture(address)
-            ?? throw new InvalidOperationException($"Confirmation artwork is missing: {address}");
     }
 }

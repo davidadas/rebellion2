@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored strategy confirmation dialog and emits semantic choices.
 /// </summary>
-public sealed class ConfirmDialogWindowView : MonoBehaviour
+public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializable
 {
     [Header("Frame")]
     [SerializeField]
@@ -73,7 +73,7 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         confirmButton.onClick.AddListener(Confirm);
         cancelButton.onClick.AddListener(Cancel);
     }
@@ -89,6 +89,30 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour
             cancelButton.onClick.RemoveListener(Cancel);
 
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        confirmButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_ok_button"
+        );
+        confirmButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_ok_button_pressed"
+        );
+        cancelButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_cancel_button"
+        );
+        cancelButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_cancel_button_pressed"
+        );
     }
 
     /// <summary>
@@ -203,7 +227,7 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour
     /// <summary>
     /// Verifies every authored visual, control, and template reference.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -213,9 +237,9 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/ConfirmButton is incomplete.");
         if (cancelButtonImage == null || cancelButton == null || cancelButtonPressVisual == null)
             throw new MissingReferenceException($"{name}/CancelButton is incomplete.");
-        if (confirmButtonUpTexture == null || confirmButtonDownTexture == null)
+        if (verifyContent && (confirmButtonUpTexture == null || confirmButtonDownTexture == null))
             throw new MissingReferenceException($"{name}/ConfirmButton textures are missing.");
-        if (cancelButtonUpTexture == null || cancelButtonDownTexture == null)
+        if (verifyContent && (cancelButtonUpTexture == null || cancelButtonDownTexture == null))
             throw new MissingReferenceException($"{name}/CancelButton textures are missing.");
         if (linesScrollArea == null)
             throw new MissingReferenceException($"{name}/LinesScrollArea is missing.");

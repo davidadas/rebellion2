@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders immutable advisor-report presentations into authored controls and reusable rows.
 /// </summary>
-public sealed class AdvisorReportWindowView : MonoBehaviour
+public sealed class AdvisorReportWindowView : MonoBehaviour, IContentInitializable
 {
     [Header("Frame")]
     [SerializeField]
@@ -74,7 +74,7 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         closeButton.onClick.AddListener(RequestClose);
     }
 
@@ -86,6 +86,26 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.RemoveListener(RequestClose);
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        infoButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_disabled"
+        );
+        closeButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button"
+        );
+        closeButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed"
+        );
     }
 
     /// <summary>
@@ -230,7 +250,7 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
     /// <summary>
     /// Verifies the complete authored hierarchy and row templates.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -250,9 +270,9 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/InfoButtonImage is missing.");
         if (closeButtonImage == null || closeButtonPressVisual == null || closeButton == null)
             throw new MissingReferenceException($"{name}/CloseButton is missing.");
-        if (infoButtonDisabledTexture == null)
+        if (verifyContent && infoButtonDisabledTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonDisabledTexture is missing.");
-        if (closeButtonUpTexture == null || closeButtonDownTexture == null)
+        if (verifyContent && (closeButtonUpTexture == null || closeButtonDownTexture == null))
             throw new MissingReferenceException($"{name}/CloseButton textures are missing.");
 
         overviewRowTemplate.gameObject.SetActive(false);

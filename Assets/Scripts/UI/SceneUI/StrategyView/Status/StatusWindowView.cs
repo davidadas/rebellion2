@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored status window and emits semantic window commands.
 /// </summary>
-public sealed class StatusWindowView : MonoBehaviour
+public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 {
     private readonly List<TextMeshProUGUI> labelTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> leftRowTextFields = new List<TextMeshProUGUI>();
@@ -107,7 +107,7 @@ public sealed class StatusWindowView : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         infoButtonPressVisual.Pressed += RequestControlPress;
         closeButtonPressVisual.Pressed += RequestControlPress;
         infoButton.onClick.AddListener(RequestInfo);
@@ -128,6 +128,34 @@ public sealed class StatusWindowView : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.RemoveListener(RequestClose);
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        infoButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button"
+        );
+        infoButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_pressed"
+        );
+        infoButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_disabled"
+        );
+        closeButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button"
+        );
+        closeButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed"
+        );
     }
 
     /// <summary>
@@ -458,7 +486,7 @@ public sealed class StatusWindowView : MonoBehaviour
     /// <summary>
     /// Verifies every authored reference required by the status presentation.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -490,15 +518,15 @@ public sealed class StatusWindowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/InfoButton is missing.");
         if (closeButton == null)
             throw new MissingReferenceException($"{name}/CloseButton is missing.");
-        if (infoButtonUpTexture == null)
+        if (verifyContent && infoButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonUpTexture is missing.");
-        if (infoButtonDownTexture == null)
+        if (verifyContent && infoButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonDownTexture is missing.");
-        if (infoButtonDisabledTexture == null)
+        if (verifyContent && infoButtonDisabledTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonDisabledTexture is missing.");
-        if (closeButtonUpTexture == null)
+        if (verifyContent && closeButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonUpTexture is missing.");
-        if (closeButtonDownTexture == null)
+        if (verifyContent && closeButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonDownTexture is missing.");
 
         statusImageTemplate.gameObject.SetActive(false);

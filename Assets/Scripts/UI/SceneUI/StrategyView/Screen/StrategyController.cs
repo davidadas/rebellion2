@@ -156,6 +156,9 @@ public sealed class StrategyController
         InitializeInteractionControllers();
         BindWindowControllerActions();
         SubscribeViewEvents();
+        IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
+        ContentBindings.Apply(transform.root.gameObject, contentAssets);
+        strategyWindowManager.SetContentSource(contentAssets);
         initialized = true;
         RegisterCancelHandlers();
         OnGameReady();

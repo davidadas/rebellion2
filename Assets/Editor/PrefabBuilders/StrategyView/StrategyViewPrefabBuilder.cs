@@ -2890,6 +2890,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_constructionInfoButtonPreviewPath),
                 LoadTexture(_constructionInfoButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(infoButton, _constructionInfoButtonDownPreviewPath);
         RawImage okButton = CreateRawImage(
             "OkButtonImage",
             window.transform,
@@ -2906,6 +2907,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_constructionOkButtonPreviewPath),
                 LoadTexture(_constructionOkButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(okButton, _constructionOkButtonDownPreviewPath);
         RawImage cancelButton = CreateRawImage(
             "CancelButtonImage",
             window.transform,
@@ -2922,6 +2924,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_constructionCancelButtonPreviewPath),
                 LoadTexture(_constructionCancelButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(cancelButton, _constructionCancelButtonDownPreviewPath);
 
         RectTransform missionSelection = CreateChildLayer("MissionSelection", window.transform);
         SetSourceRect(missionSelection, 0, 0, 259, 355);
@@ -2941,6 +2944,7 @@ public static class StrategyViewPrefabBuilder
             LoadTexture(_constructionOpenButtonPreviewPath),
             LoadTexture(_constructionOpenButtonDownPreviewPath)
         );
+        SetPressedBindingAddress(dropdownButton, _constructionOpenButtonDownPreviewPath);
         TextMeshProUGUI targetLabel = CreateTextLabel("TargetLabelTextField", missionSelection);
         targetLabel.text = "Target";
         targetLabel.color = Color.white;
@@ -3071,6 +3075,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_missionCreateMoveRightButtonPreviewPath),
                 LoadTexture(_missionCreateMoveRightButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(moveRight, _missionCreateMoveRightButtonDownPreviewPath);
         RawImage moveLeft = CreateRawImage(
             "MoveLeftButtonImage",
             personnel,
@@ -3087,6 +3092,7 @@ public static class StrategyViewPrefabBuilder
                 LoadTexture(_missionCreateMoveLeftButtonPreviewPath),
                 LoadTexture(_missionCreateMoveLeftButtonDownPreviewPath)
             );
+        SetPressedBindingAddress(moveLeft, _missionCreateMoveLeftButtonDownPreviewPath);
 
         ScrollAreaView agentsScrollArea = CreateScrollAreaView(
             personnel,
@@ -6430,6 +6436,7 @@ public static class StrategyViewPrefabBuilder
             "ScrollUpButtonImage"
         );
         scrollUpImage.texture = scrollUpTexture;
+        AttachTextureBinding(scrollUpImage, _scrollUpArrowPreviewPath);
         SetSourceRect(scrollUpImage.rectTransform, 0, 0, scrollbarWidth, upArrowHeight);
         scrollUpImage.raycastTarget = true;
         Button scrollUpButton = scrollUpImage.GetComponent<Button>();
@@ -6441,6 +6448,7 @@ public static class StrategyViewPrefabBuilder
             "ScrollDownButtonImage"
         );
         scrollDownImage.texture = scrollDownTexture;
+        AttachTextureBinding(scrollDownImage, _scrollDownArrowPreviewPath);
         SetSourceRect(
             scrollDownImage.rectTransform,
             0,
@@ -6460,6 +6468,7 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(slidingArea, 0, upArrowHeight, scrollbarWidth, trackHeight);
         RawImage handleImage = FindRequiredChild<RawImage>(slidingArea, "Handle");
         handleImage.texture = LoadTexture(_scrollBarMiddlePreviewPath);
+        AttachTextureBinding(handleImage, _scrollBarMiddlePreviewPath);
         FillParent(handleImage.rectTransform);
         handleImage.raycastTarget = true;
         scrollbar.handleRect = handleImage.rectTransform;
@@ -7480,6 +7489,8 @@ public static class StrategyViewPrefabBuilder
         RawImage image = button.GetComponent<RawImage>();
         image.texture = string.IsNullOrEmpty(texturePath) ? null : LoadTexture(texturePath);
         image.raycastTarget = false;
+        if (!string.IsNullOrEmpty(texturePath) && texturePath.StartsWith("Application/"))
+            AttachTextureBinding(image, texturePath);
         if (image.texture != null)
         {
             Vector2Int size = UILayout.GetTextureSourceSize(image.texture);
@@ -7585,7 +7596,48 @@ public static class StrategyViewPrefabBuilder
         AssignReference(pressVisual, "image", image);
         AssignReference(pressVisual, "button", button);
         pressVisual.SetTextures(image.texture, null);
+        ConvertToPressVisualBinding(image.gameObject);
         return button;
+    }
+
+    /// <summary>
+    /// Converts an authored texture asset path to its stable runtime content address.
+    /// </summary>
+    /// <param name="texturePath">The authored texture asset path.</param>
+    /// <returns>The extension-free content address.</returns>
+    private static string ToContentAddress(string texturePath)
+    {
+        int separatorIndex = texturePath.LastIndexOf('/');
+        int extensionIndex = texturePath.LastIndexOf('.');
+        return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
+    }
+
+    /// <summary>
+    /// Attaches a runtime binding that restores a raw image texture from installation content.
+    /// </summary>
+    /// <param name="image">The raw image restored at runtime.</param>
+    /// <param name="texturePath">The authored content texture asset path.</param>
+    private static void AttachTextureBinding(RawImage image, string texturePath)
+    {
+        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
+        binding.SetAddress(ToContentAddress(texturePath));
+    }
+
+    /// <summary>
+    /// Replaces an image's static texture binding with a press-visual binding when the image
+    /// becomes a button, so the press visual (which owns the image's texture at runtime) is
+    /// restored instead of being clobbered by the stripped static binding.
+    /// </summary>
+    /// <param name="target">The button object carrying the image, press visual, and binding.</param>
+    private static void ConvertToPressVisualBinding(GameObject target)
+    {
+        ContentTextureBinding textureBinding = target.GetComponent<ContentTextureBinding>();
+        if (textureBinding == null)
+            return;
+
+        ContentPressVisualBinding pressBinding = target.AddComponent<ContentPressVisualBinding>();
+        pressBinding.SetAddresses(textureBinding.Address, null);
+        UnityEngine.Object.DestroyImmediate(textureBinding);
     }
 
     /// <summary>
@@ -7708,29 +7760,48 @@ public static class StrategyViewPrefabBuilder
             return null;
 
         Button button = CreateButton(image);
+        string pressedTexturePath = GetWindowButtonPressedTexturePath(action);
         image
             .GetComponent<RawImagePressVisual>()
-            .SetTextures(image.texture, GetWindowButtonPressedTexture(action));
+            .SetTextures(
+                image.texture,
+                string.IsNullOrEmpty(pressedTexturePath) ? null : LoadTexture(pressedTexturePath)
+            );
+        SetPressedBindingAddress(image, pressedTexturePath);
         return button;
     }
 
     /// <summary>
-    /// Resolves the authored pressed texture for one shared window-shell action.
+    /// Stores a shared window button's pressed-state address in its runtime binding.
+    /// </summary>
+    /// <param name="image">The button image carrying the press-visual binding.</param>
+    /// <param name="pressedTexturePath">The authored pressed-state texture path.</param>
+    private static void SetPressedBindingAddress(RawImage image, string pressedTexturePath)
+    {
+        if (string.IsNullOrEmpty(pressedTexturePath))
+            return;
+
+        ContentPressVisualBinding binding = image.GetComponent<ContentPressVisualBinding>();
+        if (binding == null)
+            throw new MissingReferenceException($"{image.name} press-visual binding is missing.");
+
+        binding.SetAddresses(binding.UpAddress, ToContentAddress(pressedTexturePath));
+    }
+
+    /// <summary>
+    /// Resolves the authored pressed texture path for one shared window-shell action.
     /// </summary>
     /// <param name="action">The semantic window-shell action.</param>
-    /// <returns>The pressed texture, or null when the action has no authored pressed state.</returns>
-    private static Texture2D GetWindowButtonPressedTexture(int action)
+    /// <returns>The pressed texture path, or null when the action has no authored pressed state.</returns>
+    private static string GetWindowButtonPressedTexturePath(int action)
     {
         return action switch
         {
-            StrategyWindowButtonActions.OpenSector => LoadTexture(_windowOpenSectorDownPreviewPath),
-            StrategyWindowButtonActions.MinimizeWindow => LoadTexture(
-                _windowMinimizeDownPreviewPath
-            ),
-            StrategyWindowButtonActions.CloseWindow => LoadTexture(_windowCloseDownPreviewPath),
-            StrategyWindowButtonActions.SwapWindow => LoadStrategyViewTexture(
-                "ui_strategyview_planetsystem_window_swap_button_pressed"
-            ),
+            StrategyWindowButtonActions.OpenSector => _windowOpenSectorDownPreviewPath,
+            StrategyWindowButtonActions.MinimizeWindow => _windowMinimizeDownPreviewPath,
+            StrategyWindowButtonActions.CloseWindow => _windowCloseDownPreviewPath,
+            StrategyWindowButtonActions.SwapWindow =>
+                "Application/Strategy/UI/Windows/ui_strategyview_planetsystem_window_swap_button_pressed.png",
             _ => null,
         };
     }

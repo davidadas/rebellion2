@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -8,21 +9,100 @@ using System.Linq;
 public static class StandalonePlayerBuild
 {
     private const string _developmentContentAssetPrefix = "Assets/Content/";
+    private const string _developmentModelAssetPrefix = "Assets/Art/Models/MainMenu/";
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
+
+    /// <summary>
+    /// Builds an external-content player for the active desktop target from the Unity editor.
+    /// </summary>
+    [UnityEditor.MenuItem("Rebellion/Build and Run Player", false, 100)]
+    public static void BuildFromEditor()
+    {
+        UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
+        (string fileName, string extension) = GetDefaultArtifact(target);
+        string projectRoot = GetProjectRoot();
+        string contentPath = Path.Combine(UnityEngine.Application.dataPath, "Content");
+        string catalogPath = Path.Combine(contentPath, "catalog.xml");
+        if (!File.Exists(catalogPath))
+            throw new FileNotFoundException("Development content catalog not found.", catalogPath);
+
+        string outputPath = UnityEditor.EditorUtility.SaveFilePanel(
+            "Build Rebellion",
+            Path.Combine(projectRoot, "build"),
+            fileName,
+            extension
+        );
+        if (string.IsNullOrWhiteSpace(outputPath))
+            return;
+
+        try
+        {
+            BuildPlayer(target, outputPath);
+            LaunchPlayer(target, outputPath, contentPath);
+        }
+        finally
+        {
+            UIBuilderMenu.BuildAll();
+        }
+    }
+
+    /// <summary>
+    /// Launches a successfully built desktop player.
+    /// </summary>
+    /// <param name="target">The desktop platform that was built.</param>
+    /// <param name="outputPath">The player artifact path.</param>
+    /// <param name="contentPath">The external development content root.</param>
+    private static void LaunchPlayer(
+        UnityEditor.BuildTarget target,
+        string outputPath,
+        string contentPath
+    )
+    {
+        ProcessStartInfo startInfo;
+        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        {
+            startInfo = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+            startInfo.ArgumentList.Add(outputPath);
+            startInfo.ArgumentList.Add("--args");
+        }
+        else
+        {
+            startInfo = new ProcessStartInfo(outputPath)
+            {
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(outputPath) ?? string.Empty,
+            };
+        }
+
+        startInfo.ArgumentList.Add("-contentPath");
+        startInfo.ArgumentList.Add(contentPath);
+        Process.Start(startInfo);
+    }
 
     /// <summary>
     /// Runs the standalone player build requested by the Unity command line.
     /// </summary>
     public static void Build()
     {
-        UIBuilderMenu.BuildAllForPlayer();
-
         UnityEditor.BuildTarget target = GetBuildTarget();
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
+        BuildPlayer(target, outputPath);
+    }
+
+    /// <summary>
+    /// Builds and verifies an external-content player at the requested path.
+    /// </summary>
+    /// <param name="target">The desktop platform to build.</param>
+    /// <param name="outputPath">The player artifact path.</param>
+    private static void BuildPlayer(UnityEditor.BuildTarget target, string outputPath)
+    {
+        _ = GetDefaultArtifact(target);
+        UIBuilderMenu.BuildAllForPlayer();
+
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
@@ -64,6 +144,31 @@ public static class StandalonePlayerBuild
     }
 
     /// <summary>
+    /// Returns the conventional artifact name for a supported desktop target.
+    /// </summary>
+    /// <param name="target">The active Unity build target.</param>
+    /// <returns>The default file name and extension.</returns>
+    private static (string FileName, string Extension) GetDefaultArtifact(
+        UnityEditor.BuildTarget target
+    )
+    {
+        switch (target)
+        {
+            case UnityEditor.BuildTarget.StandaloneOSX:
+                return ("rebellion2", "app");
+            case UnityEditor.BuildTarget.StandaloneWindows:
+            case UnityEditor.BuildTarget.StandaloneWindows64:
+                return ("rebellion2", "exe");
+            case UnityEditor.BuildTarget.StandaloneLinux64:
+                return ("rebellion2", "x86_64");
+            default:
+                throw new InvalidOperationException(
+                    $"Rebellion player builds do not support target '{target}'."
+                );
+        }
+    }
+
+    /// <summary>
     /// Fails the build if editor-only preview content leaked into Unity's player data.
     /// </summary>
     private static void VerifyDevelopmentContentWasNotPacked(
@@ -73,9 +178,7 @@ public static class StandalonePlayerBuild
         string[] packedDevelopmentAssets = report
             .packedAssets.SelectMany(packed => packed.contents)
             .Select(info => info.sourceAssetPath)
-            .Where(path =>
-                path.StartsWith(_developmentContentAssetPrefix, StringComparison.Ordinal)
-            )
+            .Where(IsStrippedDevelopmentAsset)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
@@ -86,6 +189,22 @@ public static class StandalonePlayerBuild
             "Development content was packed into the player:\n"
                 + string.Join("\n", packedDevelopmentAssets.Take(20))
         );
+    }
+
+    /// <summary>
+    /// Determines whether a packed asset is development content that must never ship in the player.
+    /// </summary>
+    /// <param name="path">The packed source asset path.</param>
+    /// <returns>True when the asset is stripped development content.</returns>
+    private static bool IsStrippedDevelopmentAsset(string path)
+    {
+        if (path.StartsWith(_developmentContentAssetPrefix, StringComparison.Ordinal))
+            return true;
+
+        // Main-menu 3D models ship as GLB in the content pack; only their runtime-rendered
+        // RenderTextures may remain baked in the player.
+        return path.StartsWith(_developmentModelAssetPrefix, StringComparison.Ordinal)
+            && !path.EndsWith(".renderTexture", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -149,12 +268,17 @@ public static class StandalonePlayerBuild
             return path;
         }
 
-        DirectoryInfo assetsDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
-        if (assetsDirectory == null)
-        {
-            throw new InvalidOperationException("Could not resolve project directory.");
-        }
+        return Path.Combine(GetProjectRoot(), path);
+    }
 
-        return Path.Combine(assetsDirectory.FullName, path);
+    /// <summary>
+    /// Resolves the Unity project directory that owns the Assets folder.
+    /// </summary>
+    /// <returns>The absolute project directory.</returns>
+    private static string GetProjectRoot()
+    {
+        DirectoryInfo projectDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
+        return projectDirectory?.FullName
+            ?? throw new InvalidOperationException("Could not resolve project directory.");
     }
 }

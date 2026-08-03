@@ -8,6 +8,10 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class SaveMenuWindowView : MonoBehaviour
 {
+    private const string _musicButtonUpAddress = "Application/SaveMenu/UI/ui_savemenu_music_button";
+    private const string _musicButtonDownAddress =
+        "Application/SaveMenu/UI/ui_savemenu_music_button_pressed";
+
     [SerializeField]
     private Color enabledTextColor;
 
@@ -142,11 +146,20 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     }
 
     /// <summary>
-    /// Replaces editor-only confirmation previews with installation content.
+    /// Restores every content-sourced texture beneath the window from installation content.
     /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
     public void InitializeContent(IContentAssetSource contentAssets)
     {
-        confirmDialog.InitializeContent(contentAssets);
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        ContentBindings.Apply(gameObject, contentAssets);
+        musicButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _musicButtonUpAddress);
+        musicButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _musicButtonDownAddress
+        );
     }
 
     /// <summary>

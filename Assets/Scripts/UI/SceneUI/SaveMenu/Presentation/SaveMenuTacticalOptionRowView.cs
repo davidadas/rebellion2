@@ -6,8 +6,12 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders one tactical option and emits a typed toggle request.
 /// </summary>
-public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
+public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour, IContentInitializable
 {
+    private const string _disabledAddress = "Application/SaveMenu/UI/ui_savemenu_option_button";
+    private const string _enabledAddress =
+        "Application/SaveMenu/UI/ui_savemenu_option_button_pressed";
+
     [SerializeField]
     private UserTacticalOption option;
 
@@ -57,6 +61,19 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
         labelTextField.color = enabled ? enabledTextColor : disabledTextColor;
         stateTextField.text = enabled ? "ON" : "OFF";
         stateTextField.color = enabled ? enabledTextColor : disabledTextColor;
+    }
+
+    /// <summary>
+    /// Restores the row's state textures from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        disabledTexture = ContentBindings.RequireTexture(contentAssets, _disabledAddress);
+        enabledTexture = ContentBindings.RequireTexture(contentAssets, _enabledAddress);
     }
 
     /// <summary>

@@ -211,6 +211,19 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     }
 
     /// <summary>
+    /// Resolves an addressed content file with the given extension to a safe absolute path,
+    /// without loading it. Used by the model loader, which owns asynchronous glTF instantiation.
+    /// </summary>
+    /// <param name="address">The application- or pack-relative content address.</param>
+    /// <param name="extension">The required file extension, including the leading dot.</param>
+    /// <returns>The resolved absolute path, or null when the file cannot be found.</returns>
+    public string ResolveFile(string address, string extension)
+    {
+        ThrowIfDisposed();
+        return ResolveOptionalAssetFile(address, extension);
+    }
+
+    /// <summary>
     /// Asynchronously resolves and caches audio from an explicitly scoped content address.
     /// </summary>
     /// <param name="path">The application or pack content address.</param>

@@ -1,6 +1,7 @@
 using System;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// The only Unity menu surface for rebuilding generated UI.
@@ -25,6 +26,7 @@ public static class UIBuilderMenu
     /// the generated prefabs. Generated prefab payloads are ignored by Git, so no restoration is
     /// required after the build.
     /// </summary>
+    [MenuItem("Rebellion/UI/Build All (Production)", false, 1)]
     public static void BuildAllForPlayer()
     {
         BuildAll();
@@ -97,6 +99,7 @@ public static class UIBuilderMenu
         bool changed = false;
         try
         {
+            VerifyRuntimeContentBindings(root, prefabPath);
             foreach (Component component in root.GetComponentsInChildren<Component>(true))
                 changed |= RemoveDevelopmentContentReferences(component);
 
@@ -107,6 +110,59 @@ public static class UIBuilderMenu
         {
             PrefabUtility.UnloadPrefabContents(root);
         }
+    }
+
+    /// <summary>
+    /// Rejects authored content references whose runtime restoration address is incomplete.
+    /// </summary>
+    /// <param name="root">The generated prefab hierarchy.</param>
+    /// <param name="prefabPath">The prefab path reported when validation fails.</param>
+    private static void VerifyRuntimeContentBindings(GameObject root, string prefabPath)
+    {
+        foreach (
+            ContentPressVisualBinding binding in root.GetComponentsInChildren<ContentPressVisualBinding>(
+                true
+            )
+        )
+        {
+            RawImagePressVisual pressVisual = binding.GetComponent<RawImagePressVisual>();
+            SerializedProperty downTexture = new SerializedObject(pressVisual).FindProperty(
+                "downTexture"
+            );
+            if (
+                IsDevelopmentContentReference(downTexture?.objectReferenceValue)
+                && string.IsNullOrEmpty(binding.DownAddress)
+            )
+                throw new InvalidOperationException(
+                    $"{prefabPath}/{binding.name} has a stripped pressed texture without a runtime address."
+                );
+        }
+
+        foreach (Scrollbar scrollbar in root.GetComponentsInChildren<Scrollbar>(true))
+        {
+            RawImage handle = scrollbar.handleRect?.GetComponent<RawImage>();
+            if (
+                handle != null
+                && IsDevelopmentContentReference(handle.texture)
+                && handle.GetComponent<ContentTextureBinding>() == null
+            )
+                throw new InvalidOperationException(
+                    $"{prefabPath}/{handle.name} has a stripped scrollbar texture without a runtime binding."
+                );
+        }
+    }
+
+    /// <summary>
+    /// Determines whether an object reference points into development-only installation content.
+    /// </summary>
+    /// <param name="value">The serialized object reference.</param>
+    /// <returns>True when the object is imported from Assets/Content.</returns>
+    private static bool IsDevelopmentContentReference(UnityEngine.Object value)
+    {
+        return value != null
+            && AssetDatabase
+                .GetAssetPath(value)
+                .StartsWith("Assets/Content/", StringComparison.Ordinal);
     }
 
     /// <summary>

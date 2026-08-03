@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns the authored message-detail panel, text wrapping, repeated lines, and detail navigation.
 /// </summary>
-public sealed class MessagesDetailPanelView : MonoBehaviour
+public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializable
 {
     private readonly List<TextMeshProUGUI> detailLineTextFields = new List<TextMeshProUGUI>();
     private readonly List<string> renderedDetailLines = new List<string>();
@@ -98,12 +98,54 @@ public sealed class MessagesDetailPanelView : MonoBehaviour
     public event Action PreviousRequested;
 
     /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        bodyTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_detail_body"
+        );
+        stripTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_detail_strip"
+        );
+        nextButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_next_button_up"
+        );
+        nextButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_next_button_pressed"
+        );
+        nextButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_next_button_disabled"
+        );
+        previousButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_up"
+        );
+        previousButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_pressed"
+        );
+        previousButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_disabled"
+        );
+        VerifyReferences();
+    }
+
+    /// <summary>
     /// Applies a complete message-detail presentation snapshot.
     /// </summary>
     /// <param name="data">The projected detail presentation.</param>
     public void Render(MessagesDetailPanelRenderData data)
     {
         EnsureInitialized();
+        VerifyReferences();
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
@@ -217,7 +259,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour
         if (initialized)
             return;
 
-        VerifyReferences();
+        VerifyReferences(false);
         cardTemplateRect = UILayout.GetSourceRect(cardImage.rectTransform);
         overlayTemplateRect = UILayout.GetSourceRect(overlayImage.rectTransform);
         nextButton.onClick.AddListener(RequestNext);
@@ -384,13 +426,13 @@ public sealed class MessagesDetailPanelView : MonoBehaviour
     /// <summary>
     /// Verifies every authored detail-panel reference before use.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
-        if (stripImage == null || stripTexture == null)
+        if (stripImage == null || (verifyContent && stripTexture == null))
             throw new MissingReferenceException($"{name}/StripImage is missing.");
         if (cardImage == null || overlayImage == null)
             throw new MissingReferenceException($"{name}/DetailArtwork is missing.");
-        if (bodyImage == null || bodyTexture == null)
+        if (bodyImage == null || (verifyContent && bodyTexture == null))
             throw new MissingReferenceException($"{name}/BodyImage is missing.");
         if (iconImage == null || headerTextField == null)
             throw new MissingReferenceException($"{name}/DetailHeader is missing.");

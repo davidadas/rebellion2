@@ -80,7 +80,7 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         BindControls();
     }
 
@@ -344,11 +344,11 @@ public sealed class EncyclopediaIndexPanelView : MonoBehaviour
     /// <summary>
     /// Verifies every authored child reference required to render the index panel.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
-        if (backgroundImage.texture == null)
+        if (verifyContent && backgroundImage.texture == null)
             throw new MissingReferenceException($"{name}/BackgroundImage texture is missing.");
         if (entryNameInputField == null || entryNameInputField.textComponent == null)
             throw new MissingReferenceException($"{name}/EntryNameInputField is missing.");

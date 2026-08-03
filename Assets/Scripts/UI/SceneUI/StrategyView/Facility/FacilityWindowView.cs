@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders the authored facility window and reports semantic pointer interaction.
 /// </summary>
-public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
+public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IContentInitializable
 {
     [SerializeField]
     private RawImage titleImage;
@@ -139,6 +139,74 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
     public int InventoryColumnCount => inventoryColumnCount;
 
     /// <summary>
+    /// Restores every content-sourced tab-state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        shipyardTabActiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_shipyard_tab_active"
+        );
+        shipyardTabInactiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_shipyard_tab_inactive"
+        );
+        shipyardTabDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_shipyard_tab_disabled"
+        );
+        troopTabActiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_troop_tab_active"
+        );
+        troopTabInactiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_troop_tab_inactive"
+        );
+        troopTabDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_troop_tab_disabled"
+        );
+        constructionTabActiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_construction_tab_active"
+        );
+        constructionTabInactiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_construction_tab_inactive"
+        );
+        constructionTabDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_construction_tab_disabled"
+        );
+        refineryTabActiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_refinery_tab_active"
+        );
+        refineryTabInactiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_refinery_tab_inactive"
+        );
+        refineryTabDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_refinery_tab_disabled"
+        );
+        mineTabActiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_mine_tab_active"
+        );
+        mineTabInactiveTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_mine_tab_inactive"
+        );
+        mineTabDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_facility_window_tab_mine_tab_disabled"
+        );
+    }
+
+    /// <summary>
     /// Applies one complete facility-window presentation snapshot.
     /// </summary>
     /// <param name="data">The facility presentation data.</param>
@@ -223,7 +291,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         CaptureInventoryLayout();
         BindEvents();
     }
@@ -604,7 +672,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
     /// <summary>
     /// Validates the facility view's authored child references.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (titleImage == null)
             throw new MissingReferenceException($"{name}/TitleImage is missing.");
@@ -626,7 +694,8 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler
                 throw new MissingReferenceException($"{name}/Tab{index} is incomplete.");
         }
 
-        VerifyTabTextures();
+        if (verifyContent)
+            VerifyTabTextures();
         if (manufacturingStripImage == null)
             throw new MissingReferenceException($"{name}/ManufacturingStripImage is missing.");
         if (manufacturingCardViews == null || manufacturingCardViews.Length == 0)

@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns the authored messages index, its repeated rows, and index-local input controls.
 /// </summary>
-public sealed class MessagesIndexPanelView : MonoBehaviour
+public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializable
 {
     private readonly List<string> renderedMessageIds = new List<string>();
     private readonly List<UnityAction> tabListeners = new List<UnityAction>();
@@ -121,12 +121,42 @@ public sealed class MessagesIndexPanelView : MonoBehaviour
     }
 
     /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        backgroundTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_background"
+        );
+        selectAllButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_up"
+        );
+        selectAllButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_pressed"
+        );
+        removeSelectedButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_remove_selected_button_up"
+        );
+        removeSelectedButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_remove_selected_button_pressed"
+        );
+        VerifyReferences();
+    }
+
+    /// <summary>
     /// Applies a complete messages-index presentation snapshot.
     /// </summary>
     /// <param name="data">The projected messages-index presentation.</param>
     public void Render(MessagesIndexPanelRenderData data)
     {
         EnsureInitialized();
+        VerifyReferences();
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
@@ -213,7 +243,7 @@ public sealed class MessagesIndexPanelView : MonoBehaviour
         if (initialized)
             return;
 
-        VerifyReferences();
+        VerifyReferences(false);
         for (int index = 0; index < tabButtons.Length; index++)
         {
             MessagesTab tab = MessagesTabCatalog.GetAt(index);
@@ -395,9 +425,9 @@ public sealed class MessagesIndexPanelView : MonoBehaviour
     /// <summary>
     /// Verifies every authored index-panel reference before use.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
-        if (backgroundImage == null || backgroundTexture == null)
+        if (backgroundImage == null || (verifyContent && backgroundTexture == null))
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (tabImages == null || tabImages.Length != MessagesTabCatalog.Count)
             throw new MissingReferenceException(

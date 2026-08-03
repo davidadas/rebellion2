@@ -8,7 +8,10 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored construction window and emits semantic construction interactions.
 /// </summary>
-public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
+public sealed class ConstructionWindowView
+    : MonoBehaviour,
+        IPointerClickHandler,
+        IContentInitializable
 {
     private readonly List<StrategyDropdownItemView> dropdownItemRows =
         new List<StrategyDropdownItemView>();
@@ -254,7 +257,7 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         incrementButton.onClick.AddListener(RequestIncrement);
         decrementButton.onClick.AddListener(RequestDecrement);
         dropdownButton.onClick.AddListener(RequestToggleDropdown);
@@ -285,6 +288,70 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
             buildCountInputField.onEndEdit.RemoveListener(RequestBuildCount);
         UnbindDropdownRows();
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        closeButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Shell/ui_strategyview_window_close_button"
+        );
+        incrementButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_increment_button"
+        );
+        incrementButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_increment_button_pressed"
+        );
+        decrementButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_decrement_button"
+        );
+        decrementButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_decrement_button_pressed"
+        );
+        dropdownButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button"
+        );
+        dropdownButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button_pressed"
+        );
+        infoButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_info_button"
+        );
+        infoButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_info_button_pressed"
+        );
+        okButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button"
+        );
+        okButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button_pressed"
+        );
+        okButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_ok_button_disabled"
+        );
+        cancelButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_cancel_button"
+        );
+        cancelButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_cancel_button_pressed"
+        );
     }
 
     /// <summary>
@@ -671,7 +738,7 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
     /// <summary>
     /// Verifies every authored reference required by the construction presentation.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -770,6 +837,8 @@ public sealed class ConstructionWindowView : MonoBehaviour, IPointerClickHandler
             throw new MissingReferenceException($"{name}/DropdownScrollArea is missing.");
         if (dropdownItemRowTemplate == null)
             throw new MissingReferenceException($"{name}/DropdownItemRowTemplate is missing.");
+        if (!verifyContent)
+            return;
         if (closeButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonUpTexture is missing.");
         if (incrementButtonUpTexture == null)

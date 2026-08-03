@@ -135,6 +135,9 @@ public static class CommonUIPrefabBuilder
             slidingArea.transform,
             _scrollHandleTexturePath
         );
+        ContentTextureBinding handleBinding =
+            handleImage.gameObject.AddComponent<ContentTextureBinding>();
+        handleBinding.SetAddress(ToContentAddress(_scrollHandleTexturePath));
         FillParent(handleImage.rectTransform);
         handleImage.raycastTarget = true;
         scrollbar.handleRect = handleImage.rectTransform;
@@ -219,6 +222,18 @@ public static class CommonUIPrefabBuilder
         image.texture = LoadRequiredTexture(texturePath);
         image.raycastTarget = false;
         return image;
+    }
+
+    /// <summary>
+    /// Converts an authored texture path to the extension-free address used by runtime content.
+    /// </summary>
+    /// <param name="texturePath">The authored content texture path.</param>
+    /// <returns>The corresponding runtime content address.</returns>
+    private static string ToContentAddress(string texturePath)
+    {
+        int separatorIndex = texturePath.LastIndexOf('/');
+        int extensionIndex = texturePath.LastIndexOf('.');
+        return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
     }
 
     /// <summary>

@@ -19,6 +19,8 @@ public sealed class MainMenuView : MonoBehaviour
         "Application/MainMenu/UI/ui_mainmenu_hq_icon";
     private const string _exitAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_exit_";
     private const string _loadAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_load_";
+    private const string _creditsPressedSpriteAddress =
+        "Application/MainMenu/UI/ui_mainmenu_credits_icon_pressed";
     private const int _commandAnimationFrameCount = 30;
     private const float _exitAnimationFrameIntervalSeconds = 1f / 60f;
     private const float _loadAnimationFrameIntervalSeconds = 1.7666667f / 30f;
@@ -320,16 +322,21 @@ public sealed class MainMenuView : MonoBehaviour
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
 
-        standardVictoryConditionSprite =
-            contentAssets.GetSprite(_standardVictorySpriteAddress)
-            ?? throw new InvalidOperationException(
-                $"Main-menu sprite is missing: {_standardVictorySpriteAddress}"
-            );
-        headquartersVictoryConditionSprite =
-            contentAssets.GetSprite(_headquartersVictorySpriteAddress)
-            ?? throw new InvalidOperationException(
-                $"Main-menu sprite is missing: {_headquartersVictorySpriteAddress}"
-            );
+        ContentBindings.Apply(transform.root.gameObject, contentAssets);
+        standardVictoryConditionSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _standardVictorySpriteAddress
+        );
+        headquartersVictoryConditionSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _headquartersVictorySpriteAddress
+        );
+        SpriteState creditsSpriteState = creditsButton.spriteState;
+        creditsSpriteState.pressedSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _creditsPressedSpriteAddress
+        );
+        creditsButton.spriteState = creditsSpriteState;
         exitConfirmationDialog.InitializeContent(contentAssets);
         exitAnimationFrames = LoadAnimationFrames(contentAssets, _exitAnimationRoot);
         loadAnimationFrames = LoadAnimationFrames(contentAssets, _loadAnimationRoot);

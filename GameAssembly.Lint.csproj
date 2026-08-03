@@ -134,6 +134,10 @@
       <HintPath>$(InputSystemHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="glTFast" Condition="Exists('Library/ScriptAssemblies/glTFast.dll')">
+      <HintPath>Library/ScriptAssemblies/glTFast.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets/Scripts/**/*.cs" />
