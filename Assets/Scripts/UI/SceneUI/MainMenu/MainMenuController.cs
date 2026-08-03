@@ -2,7 +2,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using UnityEngine;
-using UnityEngine.UI;
 
 /// <summary>
 /// Owns main-menu launch state, audio, cutscenes, and scene navigation.
