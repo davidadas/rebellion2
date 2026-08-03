@@ -16,6 +16,7 @@ public sealed class ContentModelCache : IDisposable
         string,
         Task<ContentModelResource>
     >(StringComparer.Ordinal);
+    private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private bool disposed;
 
     /// <summary>
@@ -61,6 +62,8 @@ public sealed class ContentModelCache : IDisposable
         if (disposed)
             return;
 
+        disposed = true;
+        shutdown.Cancel();
         foreach (Task<ContentModelResource> load in loads.Values)
         {
             if (load.Status == TaskStatus.RanToCompletion)
@@ -68,7 +71,7 @@ public sealed class ContentModelCache : IDisposable
         }
 
         loads.Clear();
-        disposed = true;
+        shutdown.Dispose();
     }
 
     /// <summary>
@@ -84,9 +87,25 @@ public sealed class ContentModelCache : IDisposable
         string filePath =
             contentAssets.ResolveFile(address, ".glb")
             ?? throw new InvalidOperationException($"Content model is missing: {address}");
-        load = ContentModelLoader.LoadResourceAsync(filePath, CancellationToken.None);
+        load = LoadOwnedResourceAsync(filePath);
         loads.Add(address, load);
         return load;
+    }
+
+    /// <summary>
+    /// Loads a resource owned by this cache and releases it if shutdown wins the load race.
+    /// </summary>
+    private async Task<ContentModelResource> LoadOwnedResourceAsync(string filePath)
+    {
+        ContentModelResource resource = await ContentModelLoader.LoadResourceAsync(
+            filePath,
+            shutdown.Token
+        );
+        if (!disposed)
+            return resource;
+
+        resource.Dispose();
+        throw new ObjectDisposedException(nameof(ContentModelCache));
     }
 
     /// <summary>
