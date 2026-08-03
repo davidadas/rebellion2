@@ -67,6 +67,12 @@ public sealed class ContentModelBinding : MonoBehaviour
         int layer
     )
     {
+        if (string.IsNullOrWhiteSpace(contentAddress))
+            throw new ArgumentException(
+                "A content model address is required.",
+                nameof(contentAddress)
+            );
+
         address = contentAddress;
         modelScale = scale;
         rotationEuler = rotation;
@@ -110,7 +116,7 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// <param name="cancellationToken">Token that cancels the load when the binding is destroyed.</param>
     private async Task LoadModelAsync(CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(address))
+        if (string.IsNullOrWhiteSpace(address))
             throw new MissingReferenceException($"{name} content model address is missing.");
 
         try

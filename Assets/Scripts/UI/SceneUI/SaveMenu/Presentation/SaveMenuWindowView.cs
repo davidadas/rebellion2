@@ -155,26 +155,11 @@ public sealed class SaveMenuWindowView : MonoBehaviour
             throw new ArgumentNullException(nameof(contentAssets));
 
         ContentBindings.Apply(gameObject, contentAssets);
-        musicButtonUpTexture = GetRequiredTexture(contentAssets, _musicButtonUpAddress);
-        musicButtonDownTexture = GetRequiredTexture(contentAssets, _musicButtonDownAddress);
-
-        for (int index = 0; index < saveSlotRows.Length; index++)
-            saveSlotRows[index].InitializeContent(contentAssets);
-        for (int index = 0; index < tacticalOptionRows.Length; index++)
-            tacticalOptionRows[index].InitializeContent(contentAssets);
-        confirmDialog.InitializeContent(contentAssets);
-    }
-
-    /// <summary>
-    /// Resolves a required texture from the supplied content source.
-    /// </summary>
-    /// <param name="contentAssets">The active content asset source.</param>
-    /// <param name="address">The content address to resolve.</param>
-    /// <returns>The resolved texture.</returns>
-    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
-    {
-        return contentAssets.GetTexture(address)
-            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
+        musicButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _musicButtonUpAddress);
+        musicButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _musicButtonDownAddress
+        );
     }
 
     /// <summary>

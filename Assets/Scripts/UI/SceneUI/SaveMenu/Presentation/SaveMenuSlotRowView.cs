@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders one save slot and emits save or load requests for that slot.
 /// </summary>
-public sealed class SaveMenuSlotRowView : MonoBehaviour
+public sealed class SaveMenuSlotRowView : MonoBehaviour, IContentInitializable
 {
     private const string _saveButtonUpAddress = "Application/SaveMenu/UI/ui_savemenu_save_button";
     private const string _saveButtonDownAddress =
@@ -98,24 +98,24 @@ public sealed class SaveMenuSlotRowView : MonoBehaviour
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
 
-        saveButtonUpTexture = GetRequiredTexture(contentAssets, _saveButtonUpAddress);
-        saveButtonDownTexture = GetRequiredTexture(contentAssets, _saveButtonDownAddress);
-        saveButtonDisabledTexture = GetRequiredTexture(contentAssets, _saveButtonDisabledAddress);
-        loadButtonUpTexture = GetRequiredTexture(contentAssets, _loadButtonUpAddress);
-        loadButtonDownTexture = GetRequiredTexture(contentAssets, _loadButtonDownAddress);
-        loadButtonDisabledTexture = GetRequiredTexture(contentAssets, _loadButtonDisabledAddress);
-    }
-
-    /// <summary>
-    /// Resolves a required texture from the supplied content source.
-    /// </summary>
-    /// <param name="contentAssets">The active content asset source.</param>
-    /// <param name="address">The content address to resolve.</param>
-    /// <returns>The resolved texture.</returns>
-    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
-    {
-        return contentAssets.GetTexture(address)
-            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
+        saveButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _saveButtonUpAddress);
+        saveButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _saveButtonDownAddress
+        );
+        saveButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _saveButtonDisabledAddress
+        );
+        loadButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _loadButtonUpAddress);
+        loadButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _loadButtonDownAddress
+        );
+        loadButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            _loadButtonDisabledAddress
+        );
     }
 
     /// <summary>

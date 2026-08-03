@@ -7,7 +7,7 @@ using UnityEngine;
 
 /// <summary>
 /// Owns parsed GLB resources for the application lifetime and creates lightweight scene instances
-/// from them. Concurrent requests for one address share the same load task.
+/// from them. Repeated requests for one address share the same load task.
 /// </summary>
 public sealed class ContentModelCache : IDisposable
 {
@@ -84,11 +84,7 @@ public sealed class ContentModelCache : IDisposable
         string filePath =
             contentAssets.ResolveFile(address, ".glb")
             ?? throw new InvalidOperationException($"Content model is missing: {address}");
-        load = ContentModelScheduledLoader.LoadResourceAsync(
-            filePath,
-            CancellationToken.None,
-            null
-        );
+        load = ContentModelLoader.LoadResourceAsync(filePath, CancellationToken.None);
         loads.Add(address, load);
         return load;
     }

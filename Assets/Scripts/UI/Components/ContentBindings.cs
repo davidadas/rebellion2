@@ -52,8 +52,27 @@ public static class ContentBindings
     {
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
+        if (string.IsNullOrWhiteSpace(address))
+            throw new ArgumentException("A content texture address is required.", nameof(address));
 
         return contentAssets.GetTexture(address)
             ?? throw new InvalidOperationException($"Content texture is missing: {address}");
+    }
+
+    /// <summary>
+    /// Resolves a required sprite from the content source, failing loudly with the address.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The content address to resolve.</param>
+    /// <returns>The resolved sprite.</returns>
+    public static Sprite RequireSprite(IContentAssetSource contentAssets, string address)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+        if (string.IsNullOrWhiteSpace(address))
+            throw new ArgumentException("A content sprite address is required.", nameof(address));
+
+        return contentAssets.GetSprite(address)
+            ?? throw new InvalidOperationException($"Content sprite is missing: {address}");
     }
 }

@@ -22,11 +22,10 @@ public static class ContentModelLoader
         CancellationToken cancellationToken
     )
     {
-        ContentModelResource resource = await ContentModelScheduledLoader.LoadResourceAsync(
-            filePath,
-            cancellationToken,
-            null
-        );
+        if (parent == null)
+            throw new ArgumentNullException(nameof(parent));
+
+        ContentModelResource resource = await LoadResourceAsync(filePath, cancellationToken);
         try
         {
             ContentModelInstance instance = await resource.InstantiateAsync(
@@ -42,23 +41,21 @@ public static class ContentModelLoader
             resource?.Dispose();
         }
     }
-}
 
-/// <summary>
-/// Keeps glTFast scheduling types behind the game assembly's internal model-loading boundary.
-/// </summary>
-internal static class ContentModelScheduledLoader
-{
+    /// <summary>
+    /// Parses a GLB into a reusable model resource without instantiating its scene.
+    /// </summary>
     internal static async Task<ContentModelResource> LoadResourceAsync(
         string filePath,
-        CancellationToken cancellationToken,
-        GLTFast.IDeferAgent deferAgent
+        CancellationToken cancellationToken
     )
     {
-        if (string.IsNullOrEmpty(filePath))
+        if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("A GLB file path is required.", nameof(filePath));
 
-        deferAgent ??= Application.isPlaying ? null : new GLTFast.UninterruptedDeferAgent();
+        GLTFast.IDeferAgent deferAgent = Application.isPlaying
+            ? null
+            : new GLTFast.UninterruptedDeferAgent();
         GLTFast.GltfImport gltf = new GLTFast.GltfImport(deferAgent: deferAgent);
         try
         {

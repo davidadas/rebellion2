@@ -26,6 +26,12 @@ public sealed class ContentTextureBinding : MonoBehaviour
     /// <param name="contentAddress">The application- or pack-relative content address.</param>
     public void SetAddress(string contentAddress)
     {
+        if (string.IsNullOrWhiteSpace(contentAddress))
+            throw new ArgumentException(
+                "A content texture address is required.",
+                nameof(contentAddress)
+            );
+
         address = contentAddress;
     }
 
@@ -37,13 +43,11 @@ public sealed class ContentTextureBinding : MonoBehaviour
     {
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
-        if (string.IsNullOrEmpty(address))
+        if (string.IsNullOrWhiteSpace(address))
             throw new MissingReferenceException($"{name} content texture address is missing.");
 
         RawImage image = ResolveImage();
-        image.texture =
-            contentAssets.GetTexture(address)
-            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
+        image.texture = ContentBindings.RequireTexture(contentAssets, address);
     }
 
     /// <summary>

@@ -22,14 +22,15 @@ public static class StandalonePlayerBuild
     {
         UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
         (string fileName, string extension) = GetDefaultArtifact(target);
-        string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath)?.FullName;
+        string projectRoot = GetProjectRoot();
         string contentPath = Path.Combine(UnityEngine.Application.dataPath, "Content");
-        if (!File.Exists(Path.Combine(contentPath, "catalog.xml")))
-            throw new FileNotFoundException("Development content catalog not found.", contentPath);
+        string catalogPath = Path.Combine(contentPath, "catalog.xml");
+        if (!File.Exists(catalogPath))
+            throw new FileNotFoundException("Development content catalog not found.", catalogPath);
 
         string outputPath = UnityEditor.EditorUtility.SaveFilePanel(
             "Build Rebellion",
-            Path.Combine(projectRoot ?? string.Empty, "build"),
+            Path.Combine(projectRoot, "build"),
             fileName,
             extension
         );
@@ -38,8 +39,8 @@ public static class StandalonePlayerBuild
 
         try
         {
-            Build(target, outputPath);
-            Launch(target, outputPath, contentPath);
+            BuildPlayer(target, outputPath);
+            LaunchPlayer(target, outputPath, contentPath);
         }
         finally
         {
@@ -53,7 +54,7 @@ public static class StandalonePlayerBuild
     /// <param name="target">The desktop platform that was built.</param>
     /// <param name="outputPath">The player artifact path.</param>
     /// <param name="contentPath">The external development content root.</param>
-    private static void Launch(
+    private static void LaunchPlayer(
         UnityEditor.BuildTarget target,
         string outputPath,
         string contentPath
@@ -89,7 +90,7 @@ public static class StandalonePlayerBuild
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
-        Build(target, outputPath);
+        BuildPlayer(target, outputPath);
     }
 
     /// <summary>
@@ -97,9 +98,9 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The player artifact path.</param>
-    private static void Build(UnityEditor.BuildTarget target, string outputPath)
+    private static void BuildPlayer(UnityEditor.BuildTarget target, string outputPath)
     {
-        GetDefaultArtifact(target);
+        _ = GetDefaultArtifact(target);
         UIBuilderMenu.BuildAllForPlayer();
 
         string outputDirectory = Path.GetDirectoryName(outputPath);
@@ -267,12 +268,17 @@ public static class StandalonePlayerBuild
             return path;
         }
 
-        DirectoryInfo assetsDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
-        if (assetsDirectory == null)
-        {
-            throw new InvalidOperationException("Could not resolve project directory.");
-        }
+        return Path.Combine(GetProjectRoot(), path);
+    }
 
-        return Path.Combine(assetsDirectory.FullName, path);
+    /// <summary>
+    /// Resolves the Unity project directory that owns the Assets folder.
+    /// </summary>
+    /// <returns>The absolute project directory.</returns>
+    private static string GetProjectRoot()
+    {
+        DirectoryInfo projectDirectory = Directory.GetParent(UnityEngine.Application.dataPath);
+        return projectDirectory?.FullName
+            ?? throw new InvalidOperationException("Could not resolve project directory.");
     }
 }

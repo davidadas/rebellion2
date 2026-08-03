@@ -26,6 +26,12 @@ public sealed class ContentSpriteBinding : MonoBehaviour
     /// <param name="contentAddress">The application- or pack-relative content address.</param>
     public void SetAddress(string contentAddress)
     {
+        if (string.IsNullOrWhiteSpace(contentAddress))
+            throw new ArgumentException(
+                "A content sprite address is required.",
+                nameof(contentAddress)
+            );
+
         address = contentAddress;
     }
 
@@ -37,13 +43,11 @@ public sealed class ContentSpriteBinding : MonoBehaviour
     {
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
-        if (string.IsNullOrEmpty(address))
+        if (string.IsNullOrWhiteSpace(address))
             throw new MissingReferenceException($"{name} content sprite address is missing.");
 
         Image image = ResolveImage();
-        image.sprite =
-            contentAssets.GetSprite(address)
-            ?? throw new InvalidOperationException($"Content sprite is missing: {address}");
+        image.sprite = ContentBindings.RequireSprite(contentAssets, address);
     }
 
     /// <summary>

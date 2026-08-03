@@ -13,13 +13,14 @@ public sealed class ContentBindingsTests
     private const string _upAddress = "Application/Test/UI/ui_test_button";
     private const string _downAddress = "Application/Test/UI/ui_test_button_pressed";
 
-    private readonly List<GameObject> createdObjects = new List<GameObject>();
+    private readonly List<UnityEngine.Object> createdObjects = new List<UnityEngine.Object>();
 
     [TearDown]
     public void TearDown()
     {
-        foreach (GameObject createdObject in createdObjects)
+        for (int index = createdObjects.Count - 1; index >= 0; index--)
         {
+            UnityEngine.Object createdObject = createdObjects[index];
             if (createdObject != null)
                 UnityEngine.Object.DestroyImmediate(createdObject);
         }
@@ -129,6 +130,20 @@ public sealed class ContentBindingsTests
     }
 
     [Test]
+    public void Apply_InactiveInitializable_InitializesFromContent()
+    {
+        FakeContentAssetSource contentAssets = new FakeContentAssetSource();
+        ContentInitializableStub initializable = CreateComponent<ContentInitializableStub>(
+            "InactiveInitializable"
+        );
+        initializable.gameObject.SetActive(false);
+
+        ContentBindings.Apply(initializable.gameObject, contentAssets);
+
+        Assert.AreSame(contentAssets, initializable.ContentAssets);
+    }
+
+    [Test]
     public void Apply_UnresolvableAddress_ThrowsWithAddressInMessage()
     {
         FakeContentAssetSource contentAssets = new FakeContentAssetSource();
@@ -154,19 +169,23 @@ public sealed class ContentBindingsTests
         return CreateGameObject(name).AddComponent<T>();
     }
 
-    private static Texture2D CreateTexture()
+    private Texture2D CreateTexture()
     {
-        return new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        createdObjects.Add(texture);
+        return texture;
     }
 
-    private static Sprite CreateSprite()
+    private Sprite CreateSprite()
     {
         Texture2D texture = CreateTexture();
-        return Sprite.Create(
+        Sprite sprite = Sprite.Create(
             texture,
             new Rect(0f, 0f, texture.width, texture.height),
             new Vector2(0.5f, 0.5f)
         );
+        createdObjects.Add(sprite);
+        return sprite;
     }
 
     private sealed class FakeContentAssetSource : IContentAssetSource
@@ -196,6 +215,16 @@ public sealed class ContentBindingsTests
         public Sprite GetSprite(string address)
         {
             return sprites.TryGetValue(address, out Sprite sprite) ? sprite : null;
+        }
+    }
+
+    private sealed class ContentInitializableStub : MonoBehaviour, IContentInitializable
+    {
+        public IContentAssetSource ContentAssets { get; private set; }
+
+        public void InitializeContent(IContentAssetSource contentAssets)
+        {
+            ContentAssets = contentAssets;
         }
     }
 }

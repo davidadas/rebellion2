@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders one tactical option and emits a typed toggle request.
 /// </summary>
-public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
+public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour, IContentInitializable
 {
     private const string _disabledAddress = "Application/SaveMenu/UI/ui_savemenu_option_button";
     private const string _enabledAddress =
@@ -72,20 +72,8 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
 
-        disabledTexture = GetRequiredTexture(contentAssets, _disabledAddress);
-        enabledTexture = GetRequiredTexture(contentAssets, _enabledAddress);
-    }
-
-    /// <summary>
-    /// Resolves a required texture from the supplied content source.
-    /// </summary>
-    /// <param name="contentAssets">The active content asset source.</param>
-    /// <param name="address">The content address to resolve.</param>
-    /// <returns>The resolved texture.</returns>
-    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
-    {
-        return contentAssets.GetTexture(address)
-            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
+        disabledTexture = ContentBindings.RequireTexture(contentAssets, _disabledAddress);
+        enabledTexture = ContentBindings.RequireTexture(contentAssets, _enabledAddress);
     }
 
     /// <summary>

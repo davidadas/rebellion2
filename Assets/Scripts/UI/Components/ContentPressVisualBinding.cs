@@ -34,6 +34,12 @@ public sealed class ContentPressVisualBinding : MonoBehaviour
     /// <param name="pressedAddress">The pressed-state content address, or null when it matches the released state.</param>
     public void SetAddresses(string releasedAddress, string pressedAddress)
     {
+        if (string.IsNullOrWhiteSpace(releasedAddress))
+            throw new ArgumentException(
+                "A released-state content address is required.",
+                nameof(releasedAddress)
+            );
+
         upAddress = releasedAddress;
         downAddress = pressedAddress;
     }
@@ -46,27 +52,15 @@ public sealed class ContentPressVisualBinding : MonoBehaviour
     {
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
-        if (string.IsNullOrEmpty(upAddress))
+        if (string.IsNullOrWhiteSpace(upAddress))
             throw new MissingReferenceException($"{name} press-visual address is missing.");
 
         RawImagePressVisual pressVisual = ResolvePressVisual();
-        Texture upTexture = GetRequiredTexture(contentAssets, upAddress);
-        Texture downTexture = string.IsNullOrEmpty(downAddress)
+        Texture upTexture = ContentBindings.RequireTexture(contentAssets, upAddress);
+        Texture downTexture = string.IsNullOrWhiteSpace(downAddress)
             ? upTexture
-            : GetRequiredTexture(contentAssets, downAddress);
+            : ContentBindings.RequireTexture(contentAssets, downAddress);
         pressVisual.SetInteractiveTextures(upTexture, downTexture);
-    }
-
-    /// <summary>
-    /// Resolves a required texture from the supplied content source.
-    /// </summary>
-    /// <param name="contentAssets">The active content asset source.</param>
-    /// <param name="address">The content address to resolve.</param>
-    /// <returns>The resolved texture.</returns>
-    private static Texture GetRequiredTexture(IContentAssetSource contentAssets, string address)
-    {
-        return contentAssets.GetTexture(address)
-            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
     }
 
     /// <summary>
