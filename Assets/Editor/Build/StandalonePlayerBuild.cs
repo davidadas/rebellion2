@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -16,7 +17,7 @@ public static class StandalonePlayerBuild
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
     /// </summary>
-    [UnityEditor.MenuItem("Rebellion/Build Player", false, 100)]
+    [UnityEditor.MenuItem("Rebellion/Build and Run Player", false, 100)]
     public static void BuildFromEditor()
     {
         UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
@@ -34,11 +35,37 @@ public static class StandalonePlayerBuild
         try
         {
             Build(target, outputPath);
+            Launch(target, outputPath);
         }
         finally
         {
             UIBuilderMenu.BuildAll();
         }
+    }
+
+    /// <summary>
+    /// Launches a successfully built desktop player.
+    /// </summary>
+    /// <param name="target">The desktop platform that was built.</param>
+    /// <param name="outputPath">The player artifact path.</param>
+    private static void Launch(UnityEditor.BuildTarget target, string outputPath)
+    {
+        ProcessStartInfo startInfo;
+        if (target == UnityEditor.BuildTarget.StandaloneOSX)
+        {
+            startInfo = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
+            startInfo.ArgumentList.Add(outputPath);
+        }
+        else
+        {
+            startInfo = new ProcessStartInfo(outputPath)
+            {
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(outputPath) ?? string.Empty,
+            };
+        }
+
+        Process.Start(startInfo);
     }
 
     /// <summary>
