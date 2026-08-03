@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns the authored messages index, its repeated rows, and index-local input controls.
 /// </summary>
-public sealed class MessagesIndexPanelView : MonoBehaviour
+public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializable
 {
     private readonly List<string> renderedMessageIds = new List<string>();
     private readonly List<UnityAction> tabListeners = new List<UnityAction>();
@@ -118,6 +118,34 @@ public sealed class MessagesIndexPanelView : MonoBehaviour
         canNavigateRows = canNavigate ?? throw new ArgumentNullException(nameof(canNavigate));
         navigationScope = selectionScope ?? throw new ArgumentNullException(nameof(selectionScope));
         EnsureInitialized();
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        backgroundTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_background"
+        );
+        selectAllButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_up"
+        );
+        selectAllButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_pressed"
+        );
+        removeSelectedButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_remove_selected_button_up"
+        );
+        removeSelectedButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_remove_selected_button_pressed"
+        );
     }
 
     /// <summary>

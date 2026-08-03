@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns the authored message-detail panel, text wrapping, repeated lines, and detail navigation.
 /// </summary>
-public sealed class MessagesDetailPanelView : MonoBehaviour
+public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializable
 {
     private readonly List<TextMeshProUGUI> detailLineTextFields = new List<TextMeshProUGUI>();
     private readonly List<string> renderedDetailLines = new List<string>();
@@ -96,6 +96,46 @@ public sealed class MessagesDetailPanelView : MonoBehaviour
     /// Raised when the previous message is requested.
     /// </summary>
     public event Action PreviousRequested;
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        bodyTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_detail_body"
+        );
+        stripTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_detail_strip"
+        );
+        nextButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_next_button_up"
+        );
+        nextButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_next_button_pressed"
+        );
+        nextButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_next_button_disabled"
+        );
+        previousButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_up"
+        );
+        previousButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_pressed"
+        );
+        previousButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_disabled"
+        );
+    }
 
     /// <summary>
     /// Applies a complete message-detail presentation snapshot.

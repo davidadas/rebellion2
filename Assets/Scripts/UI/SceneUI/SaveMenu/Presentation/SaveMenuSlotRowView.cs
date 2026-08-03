@@ -8,6 +8,17 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class SaveMenuSlotRowView : MonoBehaviour
 {
+    private const string _saveButtonUpAddress = "Application/SaveMenu/UI/ui_savemenu_save_button";
+    private const string _saveButtonDownAddress =
+        "Application/SaveMenu/UI/ui_savemenu_save_button_pressed";
+    private const string _saveButtonDisabledAddress =
+        "Application/SaveMenu/UI/ui_savemenu_save_button_disabled";
+    private const string _loadButtonUpAddress = "Application/SaveMenu/UI/ui_savemenu_load_button";
+    private const string _loadButtonDownAddress =
+        "Application/SaveMenu/UI/ui_savemenu_load_button_pressed";
+    private const string _loadButtonDisabledAddress =
+        "Application/SaveMenu/UI/ui_savemenu_load_button_disabled";
+
     [SerializeField]
     private RawImage factionImage;
 
@@ -76,6 +87,35 @@ public sealed class SaveMenuSlotRowView : MonoBehaviour
         RenderFaction(data.FactionIconTexture);
         RenderButtons(data.CanSave, data.CanLoad);
         RenderName(data.Label, data.CanSave, slotChanged);
+    }
+
+    /// <summary>
+    /// Restores the row's state textures from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        saveButtonUpTexture = GetRequiredTexture(contentAssets, _saveButtonUpAddress);
+        saveButtonDownTexture = GetRequiredTexture(contentAssets, _saveButtonDownAddress);
+        saveButtonDisabledTexture = GetRequiredTexture(contentAssets, _saveButtonDisabledAddress);
+        loadButtonUpTexture = GetRequiredTexture(contentAssets, _loadButtonUpAddress);
+        loadButtonDownTexture = GetRequiredTexture(contentAssets, _loadButtonDownAddress);
+        loadButtonDisabledTexture = GetRequiredTexture(contentAssets, _loadButtonDisabledAddress);
+    }
+
+    /// <summary>
+    /// Resolves a required texture from the supplied content source.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The content address to resolve.</param>
+    /// <returns>The resolved texture.</returns>
+    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
+    {
+        return contentAssets.GetTexture(address)
+            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
     }
 
     /// <summary>

@@ -8,6 +8,10 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class SaveMenuWindowView : MonoBehaviour
 {
+    private const string _musicButtonUpAddress = "Application/SaveMenu/UI/ui_savemenu_music_button";
+    private const string _musicButtonDownAddress =
+        "Application/SaveMenu/UI/ui_savemenu_music_button_pressed";
+
     [SerializeField]
     private Color enabledTextColor;
 
@@ -142,11 +146,35 @@ public sealed class SaveMenuWindowView : MonoBehaviour
     }
 
     /// <summary>
-    /// Replaces editor-only confirmation previews with installation content.
+    /// Restores every content-sourced texture beneath the window from installation content.
     /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
     public void InitializeContent(IContentAssetSource contentAssets)
     {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        ContentBindings.Apply(gameObject, contentAssets);
+        musicButtonUpTexture = GetRequiredTexture(contentAssets, _musicButtonUpAddress);
+        musicButtonDownTexture = GetRequiredTexture(contentAssets, _musicButtonDownAddress);
+
+        for (int index = 0; index < saveSlotRows.Length; index++)
+            saveSlotRows[index].InitializeContent(contentAssets);
+        for (int index = 0; index < tacticalOptionRows.Length; index++)
+            tacticalOptionRows[index].InitializeContent(contentAssets);
         confirmDialog.InitializeContent(contentAssets);
+    }
+
+    /// <summary>
+    /// Resolves a required texture from the supplied content source.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The content address to resolve.</param>
+    /// <returns>The resolved texture.</returns>
+    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
+    {
+        return contentAssets.GetTexture(address)
+            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
     }
 
     /// <summary>

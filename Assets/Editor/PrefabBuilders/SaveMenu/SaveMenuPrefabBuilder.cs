@@ -322,6 +322,7 @@ public static class SaveMenuPrefabBuilder
         view.enabled = true;
         AssignReference(view, "slider", slider);
         AssignReference(view, "thumbImage", thumbImage);
+        AttachTextureBinding(thumbImage, _sliderThumbTexturePath);
 
         return SavePrefab(root, _sliderPrefabPath);
     }
@@ -360,6 +361,7 @@ public static class SaveMenuPrefabBuilder
             _windowHeight
         );
         background.raycastTarget = true;
+        AttachTextureBinding(background, _backgroundTexturePath);
 
         Button cockpitButton = CreateWindowCommandButton(
             "CockpitButtonImage",
@@ -815,7 +817,9 @@ public static class SaveMenuPrefabBuilder
         Texture2D upTexture = LoadRequiredTexture(upTexturePath);
         Texture2D downTexture = LoadRequiredTexture(downTexturePath);
         image = CreateRawImage(name, parent, upTexturePath, x, y);
-        return CreatePressableButton(image, upTexture, downTexture, out pressVisual);
+        Button button = CreatePressableButton(image, upTexture, downTexture, out pressVisual);
+        AttachPressVisualBinding(pressVisual, upTexturePath, downTexturePath);
+        return button;
     }
 
     /// <summary>
@@ -844,6 +848,46 @@ public static class SaveMenuPrefabBuilder
         AssignReference(pressVisual, "button", button);
         pressVisual.SetTextures(upTexture, downTexture);
         return button;
+    }
+
+    /// <summary>
+    /// Converts an authored texture asset path to its stable runtime content address.
+    /// </summary>
+    /// <param name="texturePath">The authored texture asset path.</param>
+    /// <returns>The extension-free content address.</returns>
+    private static string ToContentAddress(string texturePath)
+    {
+        int separatorIndex = texturePath.LastIndexOf('/');
+        int extensionIndex = texturePath.LastIndexOf('.');
+        return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
+    }
+
+    /// <summary>
+    /// Attaches a runtime binding that restores a raw image texture from installation content.
+    /// </summary>
+    /// <param name="image">The raw image restored at runtime.</param>
+    /// <param name="texturePath">The authored texture asset path.</param>
+    private static void AttachTextureBinding(RawImage image, string texturePath)
+    {
+        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
+        binding.SetAddress(ToContentAddress(texturePath));
+    }
+
+    /// <summary>
+    /// Attaches a runtime binding that restores a press visual's textures from installation content.
+    /// </summary>
+    /// <param name="pressVisual">The press visual restored at runtime.</param>
+    /// <param name="upTexturePath">The authored released-state texture asset path.</param>
+    /// <param name="downTexturePath">The authored pressed-state texture asset path.</param>
+    private static void AttachPressVisualBinding(
+        RawImagePressVisual pressVisual,
+        string upTexturePath,
+        string downTexturePath
+    )
+    {
+        ContentPressVisualBinding binding =
+            pressVisual.gameObject.AddComponent<ContentPressVisualBinding>();
+        binding.SetAddresses(ToContentAddress(upTexturePath), ToContentAddress(downTexturePath));
     }
 
     /// <summary>

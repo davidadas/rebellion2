@@ -9,7 +9,10 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored Mission Create window and emits semantic mission-creation gestures.
 /// </summary>
-public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandler
+public sealed class MissionCreateWindowView
+    : MonoBehaviour,
+        IPointerClickHandler,
+        IContentInitializable
 {
     private const int _titleImageCount = 2;
 
@@ -250,6 +253,30 @@ public sealed class MissionCreateWindowView : MonoBehaviour, IPointerClickHandle
             && !IsDropdownInteraction(eventData)
         )
             DropdownDismissRequested?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        missionBackgroundTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_mission_background"
+        );
+        personnelBackgroundTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_missioncreate_personnel_background"
+        );
+        dropdownButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button"
+        );
+        dropdownButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button_pressed"
+        );
     }
 
     /// <summary>

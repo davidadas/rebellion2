@@ -8,6 +8,7 @@ using System.Linq;
 public static class StandalonePlayerBuild
 {
     private const string _developmentContentAssetPrefix = "Assets/Content/";
+    private const string _developmentModelAssetPrefix = "Assets/Art/Models/MainMenu/";
     private const string _buildTargetArgument = "-buildTarget";
     private const string _buildPlayerPathArgument = "-buildPlayerPath";
     private const string _gameCIBuildPathArgument = "-customBuildPath";
@@ -73,9 +74,7 @@ public static class StandalonePlayerBuild
         string[] packedDevelopmentAssets = report
             .packedAssets.SelectMany(packed => packed.contents)
             .Select(info => info.sourceAssetPath)
-            .Where(path =>
-                path.StartsWith(_developmentContentAssetPrefix, StringComparison.Ordinal)
-            )
+            .Where(IsStrippedDevelopmentAsset)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
@@ -86,6 +85,22 @@ public static class StandalonePlayerBuild
             "Development content was packed into the player:\n"
                 + string.Join("\n", packedDevelopmentAssets.Take(20))
         );
+    }
+
+    /// <summary>
+    /// Determines whether a packed asset is development content that must never ship in the player.
+    /// </summary>
+    /// <param name="path">The packed source asset path.</param>
+    /// <returns>True when the asset is stripped development content.</returns>
+    private static bool IsStrippedDevelopmentAsset(string path)
+    {
+        if (path.StartsWith(_developmentContentAssetPrefix, StringComparison.Ordinal))
+            return true;
+
+        // Main-menu 3D models ship as GLB in the content pack; only their runtime-rendered
+        // RenderTextures may remain baked in the player.
+        return path.StartsWith(_developmentModelAssetPrefix, StringComparison.Ordinal)
+            && !path.EndsWith(".renderTexture", StringComparison.Ordinal);
     }
 
     /// <summary>

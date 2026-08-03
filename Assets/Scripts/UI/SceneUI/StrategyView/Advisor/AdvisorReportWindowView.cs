@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders immutable advisor-report presentations into authored controls and reusable rows.
 /// </summary>
-public sealed class AdvisorReportWindowView : MonoBehaviour
+public sealed class AdvisorReportWindowView : MonoBehaviour, IContentInitializable
 {
     [Header("Frame")]
     [SerializeField]
@@ -86,6 +86,26 @@ public sealed class AdvisorReportWindowView : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.RemoveListener(RequestClose);
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        infoButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_disabled"
+        );
+        closeButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button"
+        );
+        closeButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed"
+        );
     }
 
     /// <summary>

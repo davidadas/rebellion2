@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored strategy confirmation dialog and emits semantic choices.
 /// </summary>
-public sealed class ConfirmDialogWindowView : MonoBehaviour
+public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializable
 {
     [Header("Frame")]
     [SerializeField]
@@ -89,6 +89,30 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour
             cancelButton.onClick.RemoveListener(Cancel);
 
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        confirmButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_ok_button"
+        );
+        confirmButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_ok_button_pressed"
+        );
+        cancelButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_cancel_button"
+        );
+        cancelButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_confirm_cancel_button_pressed"
+        );
     }
 
     /// <summary>

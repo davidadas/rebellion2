@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Renders an authored status window and emits semantic window commands.
 /// </summary>
-public sealed class StatusWindowView : MonoBehaviour
+public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
 {
     private readonly List<TextMeshProUGUI> labelTextFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> leftRowTextFields = new List<TextMeshProUGUI>();
@@ -128,6 +128,34 @@ public sealed class StatusWindowView : MonoBehaviour
         if (closeButton != null)
             closeButton.onClick.RemoveListener(RequestClose);
         Destroyed?.Invoke(this);
+    }
+
+    /// <summary>
+    /// Restores every content-sourced state texture from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        infoButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button"
+        );
+        infoButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_pressed"
+        );
+        infoButtonDisabledTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_info_button_disabled"
+        );
+        closeButtonUpTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button"
+        );
+        closeButtonDownTexture = ContentBindings.RequireTexture(
+            contentAssets,
+            "Application/Strategy/UI/Windows/ui_strategyview_status_close_button_pressed"
+        );
     }
 
     /// <summary>

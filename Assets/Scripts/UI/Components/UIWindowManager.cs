@@ -13,6 +13,7 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     private RectTransform rectTransform;
     private RectInt? movementBounds;
     private int nextWindowId = 1;
+    private IContentAssetSource contentAssets;
 
     /// <summary>
     /// Raised when a registered window emits an authored button action.
@@ -73,6 +74,15 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Sets the content source used to restore each created window's stripped textures at runtime.
+    /// </summary>
+    /// <param name="source">The active content asset source.</param>
+    public void SetContentSource(IContentAssetSource source)
+    {
+        contentAssets = source;
+    }
+
+    /// <summary>
     /// Instantiates, configures, and registers one authored window view.
     /// </summary>
     /// <typeparam name="TView">The authored feature-view type.</typeparam>
@@ -114,6 +124,8 @@ public sealed class UIWindowManager : MonoBehaviour, ICancelable
         view = Instantiate(prefab, parent);
         view.name = GetUniqueHierarchyName(parent, hierarchyName, prefab.name, id);
         view.gameObject.SetActive(false);
+        if (contentAssets != null)
+            ContentBindings.Apply(view.gameObject, contentAssets);
 
         UIWindow window = GetRequiredWindowShell(view);
         window.SetContent(view);

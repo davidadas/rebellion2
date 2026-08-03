@@ -6430,6 +6430,7 @@ public static class StrategyViewPrefabBuilder
             "ScrollUpButtonImage"
         );
         scrollUpImage.texture = scrollUpTexture;
+        AttachTextureBinding(scrollUpImage, _scrollUpArrowPreviewPath);
         SetSourceRect(scrollUpImage.rectTransform, 0, 0, scrollbarWidth, upArrowHeight);
         scrollUpImage.raycastTarget = true;
         Button scrollUpButton = scrollUpImage.GetComponent<Button>();
@@ -6441,6 +6442,7 @@ public static class StrategyViewPrefabBuilder
             "ScrollDownButtonImage"
         );
         scrollDownImage.texture = scrollDownTexture;
+        AttachTextureBinding(scrollDownImage, _scrollDownArrowPreviewPath);
         SetSourceRect(
             scrollDownImage.rectTransform,
             0,
@@ -7480,6 +7482,8 @@ public static class StrategyViewPrefabBuilder
         RawImage image = button.GetComponent<RawImage>();
         image.texture = string.IsNullOrEmpty(texturePath) ? null : LoadTexture(texturePath);
         image.raycastTarget = false;
+        if (!string.IsNullOrEmpty(texturePath) && texturePath.StartsWith("Application/"))
+            AttachTextureBinding(image, texturePath);
         if (image.texture != null)
         {
             Vector2Int size = UILayout.GetTextureSourceSize(image.texture);
@@ -7585,7 +7589,48 @@ public static class StrategyViewPrefabBuilder
         AssignReference(pressVisual, "image", image);
         AssignReference(pressVisual, "button", button);
         pressVisual.SetTextures(image.texture, null);
+        ConvertToPressVisualBinding(image.gameObject);
         return button;
+    }
+
+    /// <summary>
+    /// Converts an authored texture asset path to its stable runtime content address.
+    /// </summary>
+    /// <param name="texturePath">The authored texture asset path.</param>
+    /// <returns>The extension-free content address.</returns>
+    private static string ToContentAddress(string texturePath)
+    {
+        int separatorIndex = texturePath.LastIndexOf('/');
+        int extensionIndex = texturePath.LastIndexOf('.');
+        return extensionIndex > separatorIndex ? texturePath[..extensionIndex] : texturePath;
+    }
+
+    /// <summary>
+    /// Attaches a runtime binding that restores a raw image texture from installation content.
+    /// </summary>
+    /// <param name="image">The raw image restored at runtime.</param>
+    /// <param name="texturePath">The authored content texture asset path.</param>
+    private static void AttachTextureBinding(RawImage image, string texturePath)
+    {
+        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
+        binding.SetAddress(ToContentAddress(texturePath));
+    }
+
+    /// <summary>
+    /// Replaces an image's static texture binding with a press-visual binding when the image
+    /// becomes a button, so the press visual (which owns the image's texture at runtime) is
+    /// restored instead of being clobbered by the stripped static binding.
+    /// </summary>
+    /// <param name="target">The button object carrying the image, press visual, and binding.</param>
+    private static void ConvertToPressVisualBinding(GameObject target)
+    {
+        ContentTextureBinding textureBinding = target.GetComponent<ContentTextureBinding>();
+        if (textureBinding == null)
+            return;
+
+        ContentPressVisualBinding pressBinding = target.AddComponent<ContentPressVisualBinding>();
+        pressBinding.SetAddresses(textureBinding.Address, null);
+        UnityEngine.Object.DestroyImmediate(textureBinding);
     }
 
     /// <summary>

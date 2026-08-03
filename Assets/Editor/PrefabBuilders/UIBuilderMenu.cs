@@ -10,7 +10,7 @@ public static class UIBuilderMenu
     /// <summary>
     /// Rebuilds every generated UI prefab and scene.
     /// </summary>
-    [MenuItem("Rebellion/UI/Build All", false, 0)]
+    [MenuItem("Rebellion/UI/Build All (Editor + Prefabs)", false, 0)]
     public static void BuildAll()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -25,6 +25,7 @@ public static class UIBuilderMenu
     /// the generated prefabs. Generated prefab payloads are ignored by Git, so no restoration is
     /// required after the build.
     /// </summary>
+    [MenuItem("Rebellion/UI/Build Prefabs Only", false, 1)]
     public static void BuildAllForPlayer()
     {
         BuildAll();

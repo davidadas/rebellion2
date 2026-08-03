@@ -44,12 +44,10 @@ public static class MainMenuPrefabBuilder
     private const float _iconTurnDegreesPerSecond = 360f;
 
     // Spinning-planet backdrop.
-    private const string _planetModelPath = "Assets/Art/Models/MainMenu/planet.fbx";
     private const string _planetAlbedoPath = "Assets/Art/Models/MainMenu/planet_albedo.png";
-    private const string _starfieldPath = "Assets/Art/Models/MainMenu/starfield.png";
+    private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _materialPath = "Assets/Art/Models/MainMenu/Planet.mat";
-    private const string _asteroidRingModelPath = "Assets/Art/Models/MainMenu/asteroid_ring.fbx";
     private const string _rockMaterialPath = "Assets/Art/Models/MainMenu/AsteroidRock.mat";
     private const float _ringTiltDegrees = 18f; // tilt so the ring reads as a shallow ellipse
     private const float _ringOrbitDegreesPerSecond = 0.75f; // co-rotates, ~2x the planet's spin
@@ -417,7 +415,7 @@ public static class MainMenuPrefabBuilder
         aspectRatio.aspectRatio = 16f / 9f;
 
         Image cockpit = viewport.GetComponent<Image>();
-        cockpit.sprite = LoadSprite("Application/MainMenu/UI/ui_mainmenu_background");
+        SetBoundSprite(cockpit, "Application/MainMenu/UI/ui_mainmenu_background");
         cockpit.raycastTarget = false;
 
         BuildControls(viewport.transform);
@@ -566,7 +564,7 @@ public static class MainMenuPrefabBuilder
             overlayAnchorMax
         );
         Image overlay = overlayObject.GetComponent<Image>();
-        overlay.sprite = LoadSprite(overlayAddress);
+        SetBoundSprite(overlay, overlayAddress);
 
         Toggle toggle = toggleObject.GetComponent<Toggle>();
         toggle.transition = Selectable.Transition.None;
@@ -690,7 +688,7 @@ public static class MainMenuPrefabBuilder
             overlayAnchorMax
         );
         Image overlay = overlayObject.GetComponent<Image>();
-        overlay.sprite = LoadSprite(overlayAddress);
+        SetBoundSprite(overlay, overlayAddress);
 
         Toggle toggle = toggleObject.GetComponent<Toggle>();
         toggle.transition = Selectable.Transition.None;
@@ -770,7 +768,7 @@ public static class MainMenuPrefabBuilder
         rect.pivot = new Vector2(1f, 1f);
 
         Image image = buttonObject.GetComponent<Image>();
-        image.sprite = LoadSprite("Application/MainMenu/UI/ui_mainmenu_credits_icon");
+        SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_credits_icon");
 
         Button button = buttonObject.GetComponent<Button>();
         button.transition = Selectable.Transition.SpriteSwap;
@@ -840,8 +838,68 @@ public static class MainMenuPrefabBuilder
         pressed.layer = 5;
         pressed.SetActive(false);
         FillParent(pressed.GetComponent<RectTransform>());
-        pressed.GetComponent<Image>().sprite = LoadSprite(spriteAddress);
+        SetBoundSprite(pressed.GetComponent<Image>(), spriteAddress);
         return pressed;
+    }
+
+    /// <summary>
+    /// Assigns an image's authored sprite and attaches a runtime binding that restores it from
+    /// installation content.
+    /// </summary>
+    /// <param name="image">The image whose sprite is authored and bound.</param>
+    /// <param name="address">The content address resolved at author time and runtime.</param>
+    private static void SetBoundSprite(Image image, string address)
+    {
+        image.sprite = LoadSprite(address);
+        ContentSpriteBinding binding = image.gameObject.AddComponent<ContentSpriteBinding>();
+        binding.SetAddress(address);
+    }
+
+    /// <summary>
+    /// Assigns a raw image its content texture for editor display and attaches the runtime binding
+    /// that restores it from installation content after the player build strips the reference.
+    /// </summary>
+    /// <param name="image">The raw image to bind.</param>
+    /// <param name="address">The stable content address of the texture.</param>
+    private static void SetBoundTexture(RawImage image, string address)
+    {
+        image.texture = LoadTexture(address);
+        ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
+        binding.SetAddress(address);
+    }
+
+    /// <summary>
+    /// Moves a sprite content binding from one image to another when a control is redrawn, so the
+    /// runtime restore targets the image that actually renders.
+    /// </summary>
+    /// <param name="source">The image whose binding is moved.</param>
+    /// <param name="destination">The image that receives the binding.</param>
+    private static void MoveSpriteBinding(Image source, Image destination)
+    {
+        ContentSpriteBinding sourceBinding = source.GetComponent<ContentSpriteBinding>();
+        if (sourceBinding == null)
+            return;
+
+        ContentSpriteBinding destinationBinding =
+            destination.gameObject.AddComponent<ContentSpriteBinding>();
+        destinationBinding.SetAddress(sourceBinding.Address);
+        Object.DestroyImmediate(sourceBinding);
+    }
+
+    /// <summary>
+    /// Converts a model asset path to its stable runtime content address under the models directory.
+    /// </summary>
+    /// <param name="modelPath">The authored model asset path.</param>
+    /// <returns>The extension-free content address for the model.</returns>
+    private static string ToModelAddress(string modelPath)
+    {
+        int separatorIndex = modelPath.LastIndexOf('/');
+        int extensionIndex = modelPath.LastIndexOf('.');
+        string modelName = modelPath.Substring(
+            separatorIndex + 1,
+            extensionIndex - separatorIndex - 1
+        );
+        return "Application/MainMenu/Models/" + modelName;
     }
 
     /// <summary>
@@ -1079,6 +1137,16 @@ public static class MainMenuPrefabBuilder
     private static Sprite LoadSprite(string address)
     {
         return ContentPackEditor.Assets.GetSprite(address);
+    }
+
+    /// <summary>
+    /// Loads a content texture for editor authoring by its stable content address.
+    /// </summary>
+    /// <param name="address">The stable content address of the texture.</param>
+    /// <returns>The resolved texture from editor content.</returns>
+    private static Texture2D LoadTexture(string address)
+    {
+        return ContentPackEditor.Assets.GetTexture(address);
     }
 
     /// <summary>
@@ -1812,8 +1880,6 @@ public static class MainMenuPrefabBuilder
     /// <param name="root">The prefab root.</param>
     private static void InstallPlanet(GameObject root)
     {
-        ConfigureTextureImport(_starfieldPath, TextureImporterType.Default);
-        Texture starfield = AssetDatabase.LoadAssetAtPath<Texture>(_starfieldPath);
         RenderTexture rt = LoadOrCreateRenderTexture();
 
         BuildPlanetRig(root, rt);
@@ -1841,6 +1907,9 @@ public static class MainMenuPrefabBuilder
         Image fgImage = foreground.GetComponent<Image>();
         fgImage.sprite = cockpit;
         fgImage.raycastTarget = false;
+        // The runtime content binding was authored on the now-disabled root image; move it to the
+        // foreground cockpit that actually renders so the background is restored at runtime.
+        MoveSpriteBinding(rootImage, fgImage);
 
         GameObject backdrop = new GameObject(
             _backdropName,
@@ -1855,7 +1924,8 @@ public static class MainMenuPrefabBuilder
         backdrop.transform.SetSiblingIndex(0);
         foreground.transform.SetSiblingIndex(1);
 
-        RawImage stars = NewRawImage(backdrop.transform, "Starfield", starfield);
+        RawImage stars = NewRawImage(backdrop.transform, "Starfield", null);
+        SetBoundTexture(stars, _starfieldAddress);
         FillParent(stars.rectTransform);
 
         RawImage planet = NewRawImage(backdrop.transform, "Planet", rt);
@@ -1888,31 +1958,25 @@ public static class MainMenuPrefabBuilder
         // Spin around vertical, which is the planet's pole once the model is stood upright below.
         pivot.AddComponent<AutoRotate>().Configure(-_spinDegreesPerSecond, Vector3.up);
 
-        GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(_planetModelPath);
-        if (model == null)
-            throw new InvalidOperationException($"Planet model not found at {_planetModelPath}.");
-
-        GameObject instance = Object.Instantiate(model, pivot.transform);
-        instance.name = "Model";
-        instance.transform.localPosition = Vector3.zero;
-        // Pole imports pointing up (pole-to-pole spin needs no tilt); 180 deg about it presents the
-        // far side of the surface first.
-        instance.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-        NormalizeToUnitDiameter(instance);
-        CenterOnPivot(pivot.transform, instance);
-
-        Material planetMaterial = LoadOrCreatePlanetMaterial();
-        foreach (MeshRenderer meshRenderer in instance.GetComponentsInChildren<MeshRenderer>(true))
-        {
-            Material[] mats = new Material[Mathf.Max(1, meshRenderer.sharedMaterials.Length)];
-            for (int m = 0; m < mats.Length; m++)
-                mats[m] = planetMaterial;
-            meshRenderer.sharedMaterials = mats;
-        }
-
-        // Put the planet on its own layer so its camera renders only it (spacing also isolates it).
+        // The planet ships as a pre-skinned GLB in the content pack. Keep its authored material
+        // current for the exporter, then load the model at runtime and apply the same pole-forward
+        // rotation, unit normalization, centering, and render layer the baked model used. Posing
+        // stays here in code; only the skin travels inside the GLB.
+        _ = LoadOrCreatePlanetMaterial();
         const int planetLayer = 31;
-        SetLayerRecursively(instance, planetLayer);
+        GameObject planetModelNode = new GameObject("Model");
+        planetModelNode.transform.SetParent(pivot.transform, false);
+        planetModelNode
+            .AddComponent<ContentModelBinding>()
+            .SetModel(
+                "Application/MainMenu/Models/planet",
+                1f,
+                new Vector3(0f, 180f, 0f),
+                overwrite: true,
+                normalize: true,
+                center: true,
+                layer: planetLayer
+            );
 
         // Asteroid debris ring: a band of rocks in the equatorial plane, tilted so it reads as an
         // orbiting ring passing in front of and behind the planet. AutoRotate spins in local space,
@@ -1922,24 +1986,22 @@ public static class MainMenuPrefabBuilder
         ringOrbit.transform.localRotation = Quaternion.Euler(_ringTiltDegrees, 0f, 0f);
         ringOrbit.AddComponent<AutoRotate>().Configure(-_ringOrbitDegreesPerSecond, Vector3.up);
 
-        GameObject ringModel = AssetDatabase.LoadAssetAtPath<GameObject>(_asteroidRingModelPath);
-        if (ringModel == null)
-            throw new InvalidOperationException(
-                $"Asteroid ring model not found at {_asteroidRingModelPath}."
+        // The asteroid ring also ships as a pre-skinned GLB, loaded into the tilted orbit at runtime.
+        _ = LoadOrCreateRockMaterial();
+        GameObject ringModelNode = new GameObject("AsteroidRing");
+        ringModelNode.transform.SetParent(ringOrbit.transform, false);
+        ringModelNode
+            .AddComponent<ContentModelBinding>()
+            .SetModel(
+                "Application/MainMenu/Models/asteroid_ring",
+                1f,
+                // Disc mesh lies in XY (normal Z); -90 X lays it flat (normal up) before RingOrbit tilts it.
+                new Vector3(-90f, 0f, 0f),
+                overwrite: true,
+                normalize: false,
+                center: false,
+                layer: planetLayer
             );
-        GameObject ringInstance = Object.Instantiate(ringModel, ringOrbit.transform);
-        ringInstance.name = "AsteroidRing";
-        ringInstance.transform.localPosition = Vector3.zero;
-        Material rockMaterial = LoadOrCreateRockMaterial();
-        foreach (
-            MeshRenderer ringRenderer in ringInstance.GetComponentsInChildren<MeshRenderer>(true)
-        )
-        {
-            ringRenderer.sharedMaterial = rockMaterial;
-            // Debris shouldn't cast the shared lights' shadows onto the planet -- reads as odd blobs.
-            ringRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        }
-        SetLayerRecursively(ringInstance, planetLayer);
 
         // Dedicated sun for the planet + ring, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
@@ -1965,40 +2027,6 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
         camera.targetTexture = renderTexture;
-    }
-
-    /// <summary>
-    /// Sets the layer on a GameObject and every descendant.
-    /// </summary>
-    /// <param name="go">The root GameObject.</param>
-    /// <param name="layer">The layer index to apply.</param>
-    private static void SetLayerRecursively(GameObject go, int layer)
-    {
-        go.layer = layer;
-        foreach (Transform child in go.transform)
-            SetLayerRecursively(child.gameObject, layer);
-    }
-
-    /// <summary>
-    /// Scales the instance so its largest render-bounds extent maps to a diameter of ~2 (radius
-    /// ~1), so the arbitrarily-scaled Meshy import frames consistently regardless of its native size.
-    /// </summary>
-    /// <param name="instance">The instantiated model to normalize in place.</param>
-    private static void NormalizeToUnitDiameter(GameObject instance)
-    {
-        Renderer[] renderers = instance.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0)
-            return;
-
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-            bounds.Encapsulate(renderers[i].bounds);
-
-        float maxExtent = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-        if (maxExtent <= 0f)
-            return;
-
-        instance.transform.localScale *= 2f / maxExtent;
     }
 
     /// <summary>
@@ -2294,10 +2322,6 @@ public static class MainMenuPrefabBuilder
         {
             Face face = _faces[i];
 
-            GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(face.ModelPath);
-            if (model == null)
-                throw new InvalidOperationException($"Model not imported at {face.ModelPath}.");
-
             RenderTexture renderTexture = LoadOrCreateRenderTexture(
                 face.RenderTexturePath,
                 face.FactionId,
@@ -2305,7 +2329,7 @@ public static class MainMenuPrefabBuilder
                 face.RtHeight
             );
 
-            BuildRig(iconRigs, model, renderTexture, face, i);
+            BuildRig(iconRigs, renderTexture, face, i);
 
             Transform button = FindDeep(root.transform, face.ButtonName);
             if (button == null)
@@ -2407,13 +2431,11 @@ public static class MainMenuPrefabBuilder
     /// provided by the shared three-point set built in <see cref="BuildSharedLighting"/>.
     /// </summary>
     /// <param name="parent">The container to parent the rig under.</param>
-    /// <param name="model">The model prefab to instance.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
     /// <param name="face">The face describing spin, scale, tilt, and optional ship material.</param>
     /// <param name="index">The slot index, used to offset the rig so cameras stay isolated.</param>
     private static void BuildRig(
         GameObject parent,
-        GameObject model,
         RenderTexture renderTexture,
         Face face,
         int index
@@ -2435,29 +2457,24 @@ public static class MainMenuPrefabBuilder
             .AddComponent<AutoRotate>()
             .Configure(_iconTurnDegreesPerSecond * face.SpinDirection, face.SpinAxis);
 
-        GameObject instance = UnityEngine.Object.Instantiate(model, pivot.transform);
-        instance.name = "Model";
-        instance.transform.localPosition = Vector3.zero;
-        instance.transform.localScale *= face.ModelScale;
-        // Explicit presentation pose (the FBX import orientation is not dependable): a coin is
-        // rotated to face the camera; a ship is banked to its angle.
-        instance.transform.localRotation = Quaternion.Euler(face.Tilt);
-        CenterOnPivot(pivot.transform, instance);
-
-        // Textured ship: build/apply a Standard PBR material from the maps.
+        // The icon ships as a pre-skinned GLB. Keep any authored ship material current for the
+        // exporter, then load the model at runtime with its authored scale, tilt, and centering.
+        // Rig spacing isolates each camera, so no dedicated render layer is needed.
         if (!string.IsNullOrEmpty(face.MaterialPath))
-        {
-            Material shipMaterial = LoadOrCreateShipMaterial(face);
-            foreach (
-                MeshRenderer meshRenderer in instance.GetComponentsInChildren<MeshRenderer>(true)
-            )
-            {
-                Material[] mats = new Material[Mathf.Max(1, meshRenderer.sharedMaterials.Length)];
-                for (int m = 0; m < mats.Length; m++)
-                    mats[m] = shipMaterial;
-                meshRenderer.sharedMaterials = mats;
-            }
-        }
+            _ = LoadOrCreateShipMaterial(face);
+        GameObject modelNode = new GameObject("Model");
+        modelNode.transform.SetParent(pivot.transform, false);
+        modelNode
+            .AddComponent<ContentModelBinding>()
+            .SetModel(
+                ToModelAddress(face.ModelPath),
+                face.ModelScale,
+                face.Tilt,
+                overwrite: true,
+                normalize: false,
+                center: true,
+                layer: -1
+            );
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -2557,25 +2574,6 @@ public static class MainMenuPrefabBuilder
         // Skip the planet's isolated layer -- it has its own warm sun, and this set's cool fill
         // light would tint the red planet magenta/purple. (Layer 31 = _planetLayer in BuildPlanetRig.)
         light.cullingMask = ~(1 << 31);
-    }
-
-    /// <summary>
-    /// Offsets the model so its combined render bounds sit on the pivot origin, so it spins in
-    /// place rather than orbiting the pivot.
-    /// </summary>
-    /// <param name="pivot">The transform the model rotates around.</param>
-    /// <param name="model">The instantiated model to recenter.</param>
-    private static void CenterOnPivot(Transform pivot, GameObject model)
-    {
-        Renderer[] renderers = model.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0)
-            return;
-
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-            bounds.Encapsulate(renderers[i].bounds);
-
-        model.transform.position += pivot.position - bounds.center;
     }
 
     /// <summary>

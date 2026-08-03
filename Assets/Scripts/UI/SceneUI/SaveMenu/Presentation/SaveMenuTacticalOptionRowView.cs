@@ -8,6 +8,10 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
 {
+    private const string _disabledAddress = "Application/SaveMenu/UI/ui_savemenu_option_button";
+    private const string _enabledAddress =
+        "Application/SaveMenu/UI/ui_savemenu_option_button_pressed";
+
     [SerializeField]
     private UserTacticalOption option;
 
@@ -57,6 +61,31 @@ public sealed class SaveMenuTacticalOptionRowView : MonoBehaviour
         labelTextField.color = enabled ? enabledTextColor : disabledTextColor;
         stateTextField.text = enabled ? "ON" : "OFF";
         stateTextField.color = enabled ? enabledTextColor : disabledTextColor;
+    }
+
+    /// <summary>
+    /// Restores the row's state textures from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        if (contentAssets == null)
+            throw new ArgumentNullException(nameof(contentAssets));
+
+        disabledTexture = GetRequiredTexture(contentAssets, _disabledAddress);
+        enabledTexture = GetRequiredTexture(contentAssets, _enabledAddress);
+    }
+
+    /// <summary>
+    /// Resolves a required texture from the supplied content source.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <param name="address">The content address to resolve.</param>
+    /// <returns>The resolved texture.</returns>
+    private static Texture2D GetRequiredTexture(IContentAssetSource contentAssets, string address)
+    {
+        return contentAssets.GetTexture(address)
+            ?? throw new InvalidOperationException($"Content texture is missing: {address}");
     }
 
     /// <summary>
