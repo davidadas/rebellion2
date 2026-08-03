@@ -155,9 +155,7 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     internal Task InitializeMainMenuModelsAsync()
     {
-        _mainMenuModelsTask ??= _contentModelCache.PreloadAsync(
-            _mainMenuApplicationPreload.Models
-        );
+        _mainMenuModelsTask ??= _contentModelCache.PreloadAsync(_mainMenuApplicationPreload.Models);
         return _mainMenuModelsTask;
     }
 

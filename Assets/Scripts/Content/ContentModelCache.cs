@@ -12,8 +12,10 @@ using UnityEngine;
 public sealed class ContentModelCache : IDisposable
 {
     private readonly ContentAssets contentAssets;
-    private readonly Dictionary<string, Task<ContentModelResource>> loads =
-        new Dictionary<string, Task<ContentModelResource>>(StringComparer.Ordinal);
+    private readonly Dictionary<string, Task<ContentModelResource>> loads = new Dictionary<
+        string,
+        Task<ContentModelResource>
+    >(StringComparer.Ordinal);
     private bool disposed;
 
     /// <summary>

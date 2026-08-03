@@ -115,8 +115,8 @@ public sealed class ContentModelBinding : MonoBehaviour
 
         try
         {
-            ContentModelInstance loadedModel = await AppBootstrap.Instance
-                .GetContentModelCache()
+            ContentModelInstance loadedModel = await AppBootstrap
+                .Instance.GetContentModelCache()
                 .InstantiateAsync(address, transform, cancellationToken);
             modelInstance = loadedModel;
             cancellationToken.ThrowIfCancellationRequested();

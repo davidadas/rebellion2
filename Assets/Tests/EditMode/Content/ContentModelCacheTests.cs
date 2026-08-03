@@ -17,10 +17,7 @@ public sealed class ContentModelCacheTests
     public async Task InstantiateAsync_PreloadedModel_CreatesIndependentInstances()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
-        using ContentAssets assets = new ContentAssets(
-            pack.ContentRootPath,
-            pack.PackRootPath
-        );
+        using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
         using ContentModelCache cache = new ContentModelCache(assets);
         GameObject firstParent = new GameObject("FirstModelParent");
         GameObject secondParent = new GameObject("SecondModelParent");

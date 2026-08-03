@@ -29,7 +29,10 @@ public static class ContentModelLoader
         );
         try
         {
-            ContentModelInstance instance = await resource.InstantiateAsync(parent, cancellationToken);
+            ContentModelInstance instance = await resource.InstantiateAsync(
+                parent,
+                cancellationToken
+            );
             instance.TakeOwnership(resource);
             resource = null;
             return instance;
