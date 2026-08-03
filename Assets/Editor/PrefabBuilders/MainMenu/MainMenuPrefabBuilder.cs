@@ -44,8 +44,14 @@ public static class MainMenuPrefabBuilder
     private const float _iconTurnDegreesPerSecond = 360f;
 
     // Spinning-planet backdrop.
+    private const string _planetAlbedoPath = "Assets/Art/Models/MainMenu/planet_albedo.png";
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
+    private const string _materialPath = "Assets/Art/Models/MainMenu/Planet.mat";
+    private const string _rockMaterialPath = "Assets/Art/Models/MainMenu/AsteroidRock.mat";
+    private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
+    private const string _citadelRenderTexturePath =
+        "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
     private const float _ringTiltDegrees = 18f; // tilt so the ring reads as a shallow ellipse
     private const float _ringOrbitDegreesPerSecond = 0.75f; // co-rotates, ~2x the planet's spin
     private const string _rigName = "PlanetRig";
@@ -107,7 +113,12 @@ public static class MainMenuPrefabBuilder
             new Vector3(-18f, 0f, 0f), // negative pitch looks down on it (birds-eye), not up
             512,
             360,
-            true
+            true,
+            "Assets/Art/Models/MainMenu/xwing.mat",
+            "Assets/Art/Models/MainMenu/xwing_albedo.png",
+            "Assets/Art/Models/MainMenu/xwing_normal.png",
+            "Assets/Art/Models/MainMenu/xwing_metalsmooth.png",
+            "Assets/Art/Models/MainMenu/xwing_emission.png"
         ),
         // Medium difficulty toggle -> 3D Star Destroyer (upright side profile, vertical turntable).
         new Face(
@@ -125,7 +136,13 @@ public static class MainMenuPrefabBuilder
             new Vector3(-18f, 0f, 0f),
             512,
             360,
-            true
+            true,
+            "Assets/Art/Models/MainMenu/stardestroyer.mat",
+            "Assets/Art/Models/MainMenu/stardestroyer_albedo.png",
+            "Assets/Art/Models/MainMenu/stardestroyer_normal.png",
+            "Assets/Art/Models/MainMenu/stardestroyer_metalsmooth.png",
+            "Assets/Art/Models/MainMenu/stardestroyer_emission.png",
+            0.6f // darker albedo than the other ships -> lift its emission floor to match brightness
         ),
         // Hard difficulty toggle -> 3D Death Star (sphere, vertical turntable).
         new Face(
@@ -144,6 +161,11 @@ public static class MainMenuPrefabBuilder
             512,
             360,
             true,
+            "Assets/Art/Models/MainMenu/deathstar.mat",
+            "Assets/Art/Models/MainMenu/deathstar_albedo.png",
+            "Assets/Art/Models/MainMenu/deathstar_normal.png",
+            "Assets/Art/Models/MainMenu/deathstar_metalsmooth.png",
+            "Assets/Art/Models/MainMenu/deathstar_emission.png",
             underLightIntensity: 2.5f
         ),
     };
@@ -162,6 +184,7 @@ public static class MainMenuPrefabBuilder
             RebuildViewBindings(root);
             InstallPlanet(root);
             InstallSpinning3DIcons(root);
+            InstallHqCitadel(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
         }
         finally
@@ -1923,7 +1946,7 @@ public static class MainMenuPrefabBuilder
 
     /// <summary>
     /// Builds the off-screen Planet model + sun + camera rig that renders the planet to its
-    /// texture. The exported model has an arbitrary scale and offset, so the instance
+    /// texture. The Meshy-imported FBX comes in at an arbitrary scale and offset, so the instance
     /// is normalized to a radius-1 globe and recentered on the pivot before spinning.
     /// </summary>
     /// <param name="root">The prefab root to parent the rig under.</param>
@@ -1939,9 +1962,11 @@ public static class MainMenuPrefabBuilder
         // Spin around vertical, which is the planet's pole once the model is stood upright below.
         pivot.AddComponent<AutoRotate>().Configure(-_spinDegreesPerSecond, Vector3.up);
 
-        // The planet ships as a pre-skinned GLB in the content pack. Load it at runtime and apply
-        // the same pole-forward rotation, unit normalization, centering, and render layer the baked
-        // model used. Posing stays here in code; only the model travels inside the GLB.
+        // The planet ships as a pre-skinned GLB in the content pack. Keep its authored material
+        // current for the exporter, then load the model at runtime and apply the same pole-forward
+        // rotation, unit normalization, centering, and render layer the baked model used. Posing
+        // stays here in code; only the skin travels inside the GLB.
+        _ = LoadOrCreatePlanetMaterial();
         const int planetLayer = 31;
         GameObject planetModelNode = new GameObject("Model");
         planetModelNode.transform.SetParent(pivot.transform, false);
@@ -1966,6 +1991,7 @@ public static class MainMenuPrefabBuilder
         ringOrbit.AddComponent<AutoRotate>().Configure(-_ringOrbitDegreesPerSecond, Vector3.up);
 
         // The asteroid ring also ships as a pre-skinned GLB, loaded into the tilted orbit at runtime.
+        _ = LoadOrCreateRockMaterial();
         GameObject ringModelNode = new GameObject("AsteroidRing");
         ringModelNode.transform.SetParent(ringOrbit.transform, false);
         ringModelNode
@@ -2005,6 +2031,106 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
         camera.targetTexture = renderTexture;
+    }
+
+    /// <summary>
+    /// Loads or creates the asteroid rock material as a persisted asset: a dark, rough rock lit by
+    /// the shared lights with a faint red cast so it catches the molten planet's glow.
+    /// </summary>
+    /// <returns>The rock material asset.</returns>
+    private static Material LoadOrCreateRockMaterial()
+    {
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(_rockMaterialPath);
+        if (material == null)
+        {
+            material = new Material(Shader.Find("Standard")) { name = "AsteroidRock" };
+            AssetDatabase.CreateAsset(material, _rockMaterialPath);
+        }
+        material.color = new Color(0.16f, 0.13f, 0.12f);
+        material.SetFloat("_Metallic", 0f);
+        material.SetFloat("_Glossiness", 0.1f);
+        // No sun in the rig, so the rocks self-light; a dim warm glow keeps them reading as debris
+        // (darker than the planet) rather than going black.
+        material.EnableKeyword("_EMISSION");
+        material.SetColor("_EmissionColor", new Color(0.264f, 0.168f, 0.132f));
+        material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        EditorUtility.SetDirty(material);
+        AssetDatabase.SaveAssets();
+        return material;
+    }
+
+    /// <summary>
+    /// Loads or creates the Planet material as a persisted asset (a runtime <c>new Material</c>
+    /// would be lost when the prefab reloads, rendering magenta). Built-in Standard shader driven by
+    /// the equirectangular Earth albedo with a subtle self-glow.
+    /// </summary>
+    /// <returns>The Planet material asset.</returns>
+    private static Material LoadOrCreatePlanetMaterial()
+    {
+        // The albedo imported as a Sprite before, so LoadAssetAtPath<Texture> returned null and the
+        // material showed the Standard shader's white default. Force it to Default (fresh import) so
+        // it binds.
+        ConfigureTextureImport(_planetAlbedoPath, TextureImporterType.Default);
+        // Force a re-import so external edits to the albedo PNG are always picked up on a rebuild
+        // (Unity otherwise keeps the cached import and the planet appears unchanged).
+        AssetDatabase.ImportAsset(_planetAlbedoPath, ImportAssetOptions.ForceUpdate);
+
+        Shader standard = Shader.Find("Standard");
+        Material mat = AssetDatabase.LoadAssetAtPath<Material>(_materialPath);
+        if (mat == null)
+        {
+            mat = new Material(standard);
+            AssetDatabase.CreateAsset(mat, _materialPath);
+        }
+        mat.shader = standard;
+        Texture albedo = AssetDatabase.LoadAssetAtPath<Texture>(_planetAlbedoPath);
+        mat.mainTexture = albedo;
+        // Equirectangular Earth is a plain surface map with no matching normals; clear any old bump.
+        mat.SetTexture("_BumpMap", null);
+        mat.DisableKeyword("_NORMALMAP");
+        mat.SetFloat("_Metallic", 0f);
+        mat.SetFloat("_Glossiness", 0.15f); // dry matte rock
+        // Self-lit from the albedo (no directional sun in the rig), so it reads as a luminous red
+        // world with no hotspot.
+        mat.SetTexture("_EmissionMap", albedo);
+        mat.EnableKeyword("_EMISSION");
+        mat.SetColor("_EmissionColor", new Color(0.57f, 0.09f, 0.036f));
+        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        EditorUtility.SetDirty(mat);
+        AssetDatabase.SaveAssets();
+        return mat;
+    }
+
+    /// <summary>
+    /// Ensures a texture asset imports as the given type (re-importing when it differs) so it is a
+    /// valid texture to bind to a material.
+    /// </summary>
+    /// <param name="path">The texture asset path.</param>
+    /// <param name="type">The importer texture type to enforce.</param>
+    private static void ConfigureTextureImport(string path, TextureImporterType type)
+    {
+        if (AssetImporter.GetAtPath(path) is not TextureImporter importer)
+            throw new InvalidOperationException($"Texture importer not found at {path}.");
+
+        bool changed = false;
+        if (importer.textureType != type)
+        {
+            importer.textureType = type;
+            changed = true;
+        }
+        if (importer.maxTextureSize != 4096)
+        {
+            importer.maxTextureSize = 4096;
+            changed = true;
+        }
+        if (importer.mipmapEnabled)
+        {
+            importer.mipmapEnabled = false;
+            changed = true;
+        }
+
+        if (changed)
+            importer.SaveAndReimport();
     }
 
     /// <summary>
@@ -2124,6 +2250,18 @@ public static class MainMenuPrefabBuilder
         // replaced, leaving the selection overlay and toggle behaviour intact.
         public readonly bool IsToggle;
 
+        // If MaterialPath is set, a Standard PBR material is built from the maps and applied to the
+        // model (for textured ships); if null, the model keeps its own (FBX/coin) material.
+        public readonly string MaterialPath;
+        public readonly string AlbedoPath;
+        public readonly string NormalPath;
+        public readonly string MetalSmoothPath;
+        public readonly string EmissionPath;
+
+        // Grey level of the albedo-driven self-emission floor. Raise for models whose albedo is
+        // dark (e.g. the Star Destroyer) so they do not read dimmer than the others.
+        public readonly float EmissionLevel;
+
         // When > 0, adds a short-range point light beneath this icon for an up-glow (e.g. the Death
         // Star). The rigs sit _rigSpacing apart, so its range keeps it from reaching the others.
         public readonly float UnderLightIntensity;
@@ -2141,6 +2279,12 @@ public static class MainMenuPrefabBuilder
             int rtWidth = 512,
             int rtHeight = 512,
             bool isToggle = false,
+            string materialPath = null,
+            string albedoPath = null,
+            string normalPath = null,
+            string metalSmoothPath = null,
+            string emissionPath = null,
+            float emissionLevel = 0.2f,
             float underLightIntensity = 0f
         )
         {
@@ -2156,6 +2300,12 @@ public static class MainMenuPrefabBuilder
             RtWidth = rtWidth;
             RtHeight = rtHeight;
             IsToggle = isToggle;
+            MaterialPath = materialPath;
+            AlbedoPath = albedoPath;
+            NormalPath = normalPath;
+            MetalSmoothPath = metalSmoothPath;
+            EmissionPath = emissionPath;
+            EmissionLevel = emissionLevel;
             UnderLightIntensity = underLightIntensity;
         }
     }
@@ -2195,6 +2345,160 @@ public static class MainMenuPrefabBuilder
             else
                 AttachButtonIcon(button.gameObject, renderTexture);
         }
+
+        // Left faction icon nudged right to align (tuned in Play): Left 9, Right -9. Top/bottom kept.
+        Transform leftButton = FindDeep(root.transform, "LeftFactionLaunchButton");
+        Transform leftIcon = leftButton != null ? FindDeep(leftButton, "Icon3D") : null;
+        if (leftIcon is RectTransform leftIconRect)
+        {
+            leftIconRect.offsetMin = new Vector2(9f, leftIconRect.offsetMin.y);
+            leftIconRect.offsetMax = new Vector2(9f, leftIconRect.offsetMax.y);
+        }
+    }
+
+    /// <summary>
+    /// Replaces the victory-condition HQ sprite with the spinning citadel model, rendered on a solid
+    /// black background. The camera frames the dome and lets the tall stem fall below the crop, so the
+    /// stem reads small without editing the model. Framing values are eyeball starting points -- tune
+    /// scale/offset/orthographic size in the editor.
+    /// </summary>
+    /// <param name="root">The prefab root.</param>
+    private static void InstallHqCitadel(GameObject root)
+    {
+        Transform iconRigs = FindDeep(root.transform, _iconRigsName);
+        if (iconRigs == null)
+            throw new InvalidOperationException(
+                "Icon rigs container not found; run InstallHqCitadel after InstallSpinning3DIcons."
+            );
+
+        RenderTexture renderTexture = LoadOrCreateRenderTexture(
+            _citadelRenderTexturePath,
+            "HqCitadel",
+            256,
+            256
+        );
+        AutoRotate citadelSpinner = BuildCitadelRig(
+            iconRigs.gameObject,
+            renderTexture,
+            _faces.Length
+        );
+
+        Transform icon = FindDeep(root.transform, "VictoryConditionIcon");
+        if (icon == null)
+            throw new InvalidOperationException("VictoryConditionIcon not found in prefab.");
+
+        // The Image is the view's target but renders nothing (transparent) so the citadel RawImage
+        // shows through. It overlays a separate VictoryConditionButton sibling that owns the click, so
+        // every graphic here stays raycast-off or it swallows the button's clicks.
+        Image iconImage = icon.GetComponent<Image>();
+        if (iconImage != null)
+        {
+            iconImage.sprite = null;
+            iconImage.color = new Color(1f, 1f, 1f, 0f);
+            iconImage.raycastTarget = false;
+        }
+        RawImage citadelIcon = AddIconOverlay(icon, renderTexture, behindSiblings: false);
+        // The 3D icon is decorative; it must not intercept clicks meant for the button underneath.
+        citadelIcon.raycastTarget = false;
+        // Placement tuned in Play and baked here: Left/Top/Right/Bottom offsets on the stretched rect.
+        RectTransform citadelRect = citadelIcon.rectTransform;
+        citadelRect.offsetMin = new Vector2(12.39164f, 12.1074f);
+        citadelRect.offsetMax = new Vector2(-10.42626f, 2.519201f);
+
+        // HQ-only crosshair, on top of the citadel and hidden by default. RenderVictoryCondition shows
+        // it when Headquarters victory is selected.
+        GameObject selectionOverlay = NewChild(
+            "SelectionOverlay",
+            icon,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        // Match the citadel's inset rect so the crosshair sits over the model, not the whole panel.
+        RectTransform selectionRect = selectionOverlay.GetComponent<RectTransform>();
+        selectionRect.anchorMin = Vector2.zero;
+        selectionRect.anchorMax = Vector2.one;
+        selectionRect.offsetMin = citadelRect.offsetMin;
+        selectionRect.offsetMax = citadelRect.offsetMax;
+        Image selectionImage = selectionOverlay.GetComponent<Image>();
+        SetBoundSprite(selectionImage, "Application/MainMenu/UI/ui_mainmenu_hqonly_icon");
+        selectionImage.preserveAspect = true;
+        selectionImage.raycastTarget = false;
+        selectionOverlay.SetActive(false);
+
+        // Give the view the citadel spinner so it can pause the spin while the HQ-only crosshair shows.
+        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("victoryConditionSpinner").objectReferenceValue = citadelSpinner;
+        serializedView.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Builds the off-screen citadel model + camera rig that renders the spinning HQ symbol to its
+    /// texture on a solid black background.
+    /// </summary>
+    /// <param name="parent">The rig container.</param>
+    /// <param name="renderTexture">The texture the rig camera renders into.</param>
+    /// <param name="index">The rig slot index, offsetting it clear of the faction icon rigs.</param>
+    /// <returns>The rig's spin component so the view can pause it for the HQ-only state.</returns>
+    private static AutoRotate BuildCitadelRig(
+        GameObject parent,
+        RenderTexture renderTexture,
+        int index
+    )
+    {
+        GameObject rig = new GameObject("IconRig_HqCitadel");
+        rig.transform.SetParent(parent.transform, false);
+        rig.transform.position = _rigOrigin + new Vector3(0f, 0f, index * _rigSpacing);
+
+        GameObject pivot = new GameObject("Pivot");
+        pivot.transform.SetParent(rig.transform, false);
+        AutoRotate spinner = pivot.AddComponent<AutoRotate>();
+        spinner.Configure(-_iconTurnDegreesPerSecond * 0.5f, Vector3.up);
+
+        // Normalize to a consistent size and center on the pivot, then offset down so the dome sits in
+        // frame and the tall stem drops below the camera crop. Offset/scale/size are eyeball -- tune.
+        GameObject modelNode = new GameObject("Model");
+        modelNode.transform.SetParent(pivot.transform, false);
+        modelNode.transform.localPosition = new Vector3(0f, -0.4f, 0f);
+        // The model's up axis is Z (bounding box: X~Y~1.6, Z~1.9); +90 X maps that to Unity's +Y,
+        // dome up, matching the original HQ icon.
+        modelNode
+            .AddComponent<ContentModelBinding>()
+            .SetModel(
+                _citadelModelAddress,
+                1f,
+                new Vector3(90f, 0f, 0f),
+                overwrite: true,
+                normalize: true,
+                center: true,
+                layer: -1
+            );
+
+        GameObject cameraObject = new GameObject("Camera", typeof(Camera));
+        cameraObject.transform.SetParent(rig.transform, false);
+        cameraObject.transform.localPosition = new Vector3(0f, 0f, -4f);
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        // Transparent clear so the citadel blends into the menu like the faction icons (no black box).
+        camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        camera.orthographic = true;
+        // Smaller size = bigger on-screen icon. Tune this to grow/shrink the citadel.
+        camera.orthographicSize = 0.7f;
+        camera.nearClipPlane = 0.1f;
+        camera.farClipPlane = 20f;
+        camera.targetTexture = renderTexture;
+
+        // Point light beneath so the stem is lit; the shared 3-point set leaves the underside dark.
+        GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
+        underLightObject.transform.SetParent(rig.transform, false);
+        underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
+        Light underLight = underLightObject.GetComponent<Light>();
+        underLight.type = LightType.Point;
+        underLight.range = 8f;
+        underLight.intensity = 2f;
+        underLight.color = Color.white;
+        return spinner;
     }
 
     /// <summary>
@@ -2236,12 +2540,57 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
+    /// Loads or creates a Standard PBR material for a textured ship from its maps (albedo, normal,
+    /// packed metallic+smoothness, emission). Persisted so the prefab keeps a valid reference.
+    /// </summary>
+    /// <param name="face">The face describing the material and its texture maps.</param>
+    /// <returns>The ship material asset.</returns>
+    private static Material LoadOrCreateShipMaterial(Face face)
+    {
+        ConfigureTextureImport(face.AlbedoPath, TextureImporterType.Default);
+        ConfigureTextureImport(face.NormalPath, TextureImporterType.NormalMap);
+        ConfigureTextureImport(face.MetalSmoothPath, TextureImporterType.Default);
+        ConfigureTextureImport(face.EmissionPath, TextureImporterType.Default);
+
+        Shader standard = Shader.Find("Standard");
+        Material mat = AssetDatabase.LoadAssetAtPath<Material>(face.MaterialPath);
+        if (mat == null)
+        {
+            mat = new Material(standard);
+            AssetDatabase.CreateAsset(mat, face.MaterialPath);
+        }
+        mat.shader = standard;
+        mat.mainTexture = AssetDatabase.LoadAssetAtPath<Texture>(face.AlbedoPath);
+        mat.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture>(face.NormalPath));
+        mat.EnableKeyword("_NORMALMAP");
+        // The rig has no skybox/reflection probe, so a fully metallic hull has nothing to reflect and
+        // renders near-black. Drop the metalness right down (ignore the metallic map) and let the
+        // three-point lights diffuse-light the albedo instead — the real brightness fix.
+        mat.SetTexture("_MetallicGlossMap", null);
+        mat.DisableKeyword("_METALLICGLOSSMAP");
+        mat.SetFloat("_Metallic", 0.15f);
+        mat.SetFloat("_Glossiness", 0.35f);
+        // A low albedo-driven emission floor so the shadowed side stays readable; the lit look now
+        // comes mainly from the reduced metalness above, not from self-emission.
+        mat.SetTexture("_EmissionMap", AssetDatabase.LoadAssetAtPath<Texture>(face.AlbedoPath));
+        mat.EnableKeyword("_EMISSION");
+        mat.SetColor(
+            "_EmissionColor",
+            new Color(face.EmissionLevel, face.EmissionLevel, face.EmissionLevel)
+        );
+        mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+        EditorUtility.SetDirty(mat);
+        AssetDatabase.SaveAssets();
+        return mat;
+    }
+
+    /// <summary>
     /// Builds one off-screen model + camera rig that renders an icon to its texture. Lighting is
     /// provided by the shared three-point set built in <see cref="BuildSharedLighting"/>.
     /// </summary>
     /// <param name="parent">The container to parent the rig under.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
-    /// <param name="face">The face describing spin, scale, and tilt.</param>
+    /// <param name="face">The face describing spin, scale, tilt, and optional ship material.</param>
     /// <param name="index">The slot index, used to offset the rig so cameras stay isolated.</param>
     private static void BuildRig(
         GameObject parent,
@@ -2255,8 +2604,8 @@ public static class MainMenuPrefabBuilder
         rig.transform.SetParent(parent.transform, false);
         rig.transform.position = _rigOrigin + new Vector3(0f, 0f, index * _rigSpacing);
 
-        // AutoRotate goes on a clean, identity-rotation pivot so the spin is a true vertical
-        // rotation, not a crooked wobble inherited from the model root.
+        // AutoRotate goes on a clean, identity-rotation pivot (not the FBX root, which imports
+        // with a baked tilt) so the spin is a true vertical rotation, not a crooked wobble.
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
         // Static presentation tilt on the pivot (e.g. nose-down); the incremental local-space spin
@@ -2266,8 +2615,11 @@ public static class MainMenuPrefabBuilder
             .AddComponent<AutoRotate>()
             .Configure(_iconTurnDegreesPerSecond * face.SpinDirection, face.SpinAxis);
 
-        // The icon ships as a pre-skinned GLB. Load it at runtime with its authored scale, tilt, and
-        // centering. Rig spacing isolates each camera, so no dedicated render layer is needed.
+        // The icon ships as a pre-skinned GLB. Keep any authored ship material current for the
+        // exporter, then load the model at runtime with its authored scale, tilt, and centering.
+        // Rig spacing isolates each camera, so no dedicated render layer is needed.
+        if (!string.IsNullOrEmpty(face.MaterialPath))
+            _ = LoadOrCreateShipMaterial(face);
         GameObject modelNode = new GameObject("Model");
         modelNode.transform.SetParent(pivot.transform, false);
         modelNode
