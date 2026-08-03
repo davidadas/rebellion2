@@ -146,6 +146,7 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
             contentAssets,
             "Application/Strategy/UI/Windows/ui_strategyview_messages_window_remove_selected_button_pressed"
         );
+        VerifyReferences();
     }
 
     /// <summary>
@@ -155,6 +156,7 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
     public void Render(MessagesIndexPanelRenderData data)
     {
         EnsureInitialized();
+        VerifyReferences();
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
@@ -241,7 +243,7 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
         if (initialized)
             return;
 
-        VerifyReferences();
+        VerifyReferences(false);
         for (int index = 0; index < tabButtons.Length; index++)
         {
             MessagesTab tab = MessagesTabCatalog.GetAt(index);
@@ -423,9 +425,9 @@ public sealed class MessagesIndexPanelView : MonoBehaviour, IContentInitializabl
     /// <summary>
     /// Verifies every authored index-panel reference before use.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
-        if (backgroundImage == null || backgroundTexture == null)
+        if (backgroundImage == null || (verifyContent && backgroundTexture == null))
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (tabImages == null || tabImages.Length != MessagesTabCatalog.Count)
             throw new MissingReferenceException(

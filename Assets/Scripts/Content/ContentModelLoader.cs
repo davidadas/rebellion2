@@ -22,62 +22,131 @@ public static class ContentModelLoader
         CancellationToken cancellationToken
     )
     {
+        ContentModelResource resource = await ContentModelScheduledLoader.LoadResourceAsync(
+            filePath,
+            cancellationToken,
+            null
+        );
+        try
+        {
+            ContentModelInstance instance = await resource.InstantiateAsync(parent, cancellationToken);
+            instance.TakeOwnership(resource);
+            resource = null;
+            return instance;
+        }
+        finally
+        {
+            resource?.Dispose();
+        }
+    }
+}
+
+/// <summary>
+/// Keeps glTFast scheduling types behind the game assembly's internal model-loading boundary.
+/// </summary>
+internal static class ContentModelScheduledLoader
+{
+    internal static async Task<ContentModelResource> LoadResourceAsync(
+        string filePath,
+        CancellationToken cancellationToken,
+        GLTFast.IDeferAgent deferAgent
+    )
+    {
         if (string.IsNullOrEmpty(filePath))
             throw new ArgumentException("A GLB file path is required.", nameof(filePath));
+
+        deferAgent ??= Application.isPlaying ? null : new GLTFast.UninterruptedDeferAgent();
+        GLTFast.GltfImport gltf = new GLTFast.GltfImport(deferAgent: deferAgent);
+        try
+        {
+            bool loaded = await gltf.LoadFile(filePath, null, null, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!loaded)
+                throw new InvalidOperationException($"glTFast rejected the GLB file: {filePath}");
+
+            return new ContentModelResource(gltf, filePath);
+        }
+        catch (Exception exception)
+        {
+            gltf.Dispose();
+            if (exception is OperationCanceledException)
+                throw;
+            throw new InvalidOperationException($"Failed to load GLB model: {filePath}", exception);
+        }
+    }
+
+}
+
+/// <summary>
+/// Owns one parsed GLB and can instantiate its main scene repeatedly.
+/// </summary>
+internal sealed class ContentModelResource : IDisposable
+{
+    private GLTFast.GltfImport importer;
+    private readonly string filePath;
+
+    /// <summary>
+    /// Takes ownership of one successfully parsed glTFast resource.
+    /// </summary>
+    internal ContentModelResource(GLTFast.GltfImport gltfImporter, string loadedFilePath)
+    {
+        importer = gltfImporter ?? throw new ArgumentNullException(nameof(gltfImporter));
+        filePath = loadedFilePath;
+    }
+
+    /// <summary>
+    /// Creates one scene hierarchy backed by this parsed model resource.
+    /// </summary>
+    public async Task<ContentModelInstance> InstantiateAsync(
+        Transform parent,
+        CancellationToken cancellationToken
+    )
+    {
+        if (importer == null)
+            throw new ObjectDisposedException(nameof(ContentModelResource));
         if (parent == null)
             throw new ArgumentNullException(nameof(parent));
 
-        GLTFast.IDeferAgent deferAgent = Application.isPlaying
-            ? null
-            : new GLTFast.UninterruptedDeferAgent();
-        GLTFast.GltfImport gltf = new GLTFast.GltfImport(deferAgent: deferAgent);
-        GLTFast.GameObjectInstantiator instantiator = null;
+        GLTFast.GameObjectInstantiator instantiator = new GLTFast.GameObjectInstantiator(
+            importer,
+            parent
+        );
         Transform sceneRoot = null;
         bool ownershipTransferred = false;
         try
         {
-            bool loaded = await gltf.LoadFile(filePath, null, null, cancellationToken);
-
-            cancellationToken.ThrowIfCancellationRequested();
-            if (parent == null)
-                throw new OperationCanceledException(cancellationToken);
-            if (!loaded)
-                throw new InvalidOperationException($"glTFast rejected the GLB file: {filePath}");
-
-            instantiator = new GLTFast.GameObjectInstantiator(gltf, parent);
-            bool instantiated = await gltf.InstantiateMainSceneAsync(
+            bool instantiated = await importer.InstantiateMainSceneAsync(
                 instantiator,
                 cancellationToken
             );
+            cancellationToken.ThrowIfCancellationRequested();
             if (!instantiated)
                 throw new InvalidOperationException($"glTFast could not instantiate: {filePath}");
 
-            cancellationToken.ThrowIfCancellationRequested();
             sceneRoot = instantiator.SceneTransform;
             if (sceneRoot == null)
                 throw new InvalidOperationException($"GLB scene root is missing: {filePath}");
 
-            // glTFast wraps the model in a "Scene" node. Pose the actual model node while retaining
-            // ownership of the wrapper and importer for deterministic cleanup.
             Transform modelRoot = sceneRoot.childCount == 1 ? sceneRoot.GetChild(0) : sceneRoot;
-            ContentModelInstance result = new ContentModelInstance(gltf, sceneRoot, modelRoot);
+            ContentModelInstance result = new ContentModelInstance(sceneRoot, modelRoot);
             ownershipTransferred = true;
             return result;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            throw new InvalidOperationException($"Failed to load GLB model: {filePath}", exception);
-        }
         finally
         {
-            if (!ownershipTransferred)
-            {
-                Transform failedSceneRoot = sceneRoot ?? instantiator?.SceneTransform;
-                if (failedSceneRoot != null)
-                    ContentModelInstance.DestroyHierarchy(failedSceneRoot);
-                gltf.Dispose();
-            }
+            Transform failedSceneRoot = sceneRoot ?? instantiator.SceneTransform;
+            if (!ownershipTransferred && failedSceneRoot != null)
+                ContentModelInstance.DestroyHierarchy(failedSceneRoot);
         }
+    }
+
+    /// <summary>
+    /// Releases all meshes, materials, and textures owned by the parsed GLB.
+    /// </summary>
+    public void Dispose()
+    {
+        importer?.Dispose();
+        importer = null;
     }
 }
 
@@ -86,22 +155,19 @@ public static class ContentModelLoader
 /// </summary>
 public sealed class ContentModelInstance : IDisposable
 {
-    private GLTFast.GltfImport importer;
+    private ContentModelResource ownedResource;
     private Transform sceneRoot;
 
     /// <summary>
     /// Initializes ownership of one instantiated GLB scene.
     /// </summary>
-    /// <param name="gltfImporter">The importer owning generated meshes, materials, and textures.</param>
     /// <param name="loadedSceneRoot">The complete instantiated scene hierarchy.</param>
     /// <param name="modelRoot">The model transform that receives authored posing.</param>
     internal ContentModelInstance(
-        GLTFast.GltfImport gltfImporter,
         Transform loadedSceneRoot,
         Transform modelRoot
     )
     {
-        importer = gltfImporter ?? throw new ArgumentNullException(nameof(gltfImporter));
         sceneRoot = loadedSceneRoot
             ? loadedSceneRoot
             : throw new ArgumentNullException(nameof(loadedSceneRoot));
@@ -114,6 +180,14 @@ public sealed class ContentModelInstance : IDisposable
     public Transform ModelRoot { get; private set; }
 
     /// <summary>
+    /// Transfers ownership of a one-off parsed resource to this model instance.
+    /// </summary>
+    internal void TakeOwnership(ContentModelResource resource)
+    {
+        ownedResource = resource ?? throw new ArgumentNullException(nameof(resource));
+    }
+
+    /// <summary>
     /// Destroys the instantiated hierarchy and releases all imported resources.
     /// </summary>
     public void Dispose()
@@ -123,8 +197,8 @@ public sealed class ContentModelInstance : IDisposable
         sceneRoot = null;
         ModelRoot = null;
 
-        importer?.Dispose();
-        importer = null;
+        ownedResource?.Dispose();
+        ownedResource = null;
     }
 
     /// <summary>

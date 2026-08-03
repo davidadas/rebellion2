@@ -291,7 +291,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         CaptureInventoryLayout();
         BindEvents();
     }
@@ -672,7 +672,7 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
     /// <summary>
     /// Validates the facility view's authored child references.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (titleImage == null)
             throw new MissingReferenceException($"{name}/TitleImage is missing.");
@@ -694,7 +694,8 @@ public sealed class FacilityWindowView : MonoBehaviour, IPointerClickHandler, IC
                 throw new MissingReferenceException($"{name}/Tab{index} is incomplete.");
         }
 
-        VerifyTabTextures();
+        if (verifyContent)
+            VerifyTabTextures();
         if (manufacturingStripImage == null)
             throw new MissingReferenceException($"{name}/ManufacturingStripImage is missing.");
         if (manufacturingCardViews == null || manufacturingCardViews.Length == 0)

@@ -73,7 +73,7 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializab
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         confirmButton.onClick.AddListener(Confirm);
         cancelButton.onClick.AddListener(Cancel);
     }
@@ -227,7 +227,7 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializab
     /// <summary>
     /// Verifies every authored visual, control, and template reference.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -237,9 +237,9 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializab
             throw new MissingReferenceException($"{name}/ConfirmButton is incomplete.");
         if (cancelButtonImage == null || cancelButton == null || cancelButtonPressVisual == null)
             throw new MissingReferenceException($"{name}/CancelButton is incomplete.");
-        if (confirmButtonUpTexture == null || confirmButtonDownTexture == null)
+        if (verifyContent && (confirmButtonUpTexture == null || confirmButtonDownTexture == null))
             throw new MissingReferenceException($"{name}/ConfirmButton textures are missing.");
-        if (cancelButtonUpTexture == null || cancelButtonDownTexture == null)
+        if (verifyContent && (cancelButtonUpTexture == null || cancelButtonDownTexture == null))
             throw new MissingReferenceException($"{name}/CancelButton textures are missing.");
         if (linesScrollArea == null)
             throw new MissingReferenceException($"{name}/LinesScrollArea is missing.");

@@ -107,7 +107,7 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         infoButtonPressVisual.Pressed += RequestControlPress;
         closeButtonPressVisual.Pressed += RequestControlPress;
         infoButton.onClick.AddListener(RequestInfo);
@@ -486,7 +486,7 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     /// <summary>
     /// Verifies every authored reference required by the status presentation.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -518,15 +518,15 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
             throw new MissingReferenceException($"{name}/InfoButton is missing.");
         if (closeButton == null)
             throw new MissingReferenceException($"{name}/CloseButton is missing.");
-        if (infoButtonUpTexture == null)
+        if (verifyContent && infoButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonUpTexture is missing.");
-        if (infoButtonDownTexture == null)
+        if (verifyContent && infoButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonDownTexture is missing.");
-        if (infoButtonDisabledTexture == null)
+        if (verifyContent && infoButtonDisabledTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonDisabledTexture is missing.");
-        if (closeButtonUpTexture == null)
+        if (verifyContent && closeButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonUpTexture is missing.");
-        if (closeButtonDownTexture == null)
+        if (verifyContent && closeButtonDownTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonDownTexture is missing.");
 
         statusImageTemplate.gameObject.SetActive(false);

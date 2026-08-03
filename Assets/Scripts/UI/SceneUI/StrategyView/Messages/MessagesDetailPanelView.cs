@@ -135,6 +135,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
             contentAssets,
             "Application/Strategy/UI/Windows/ui_strategyview_messages_window_previous_button_disabled"
         );
+        VerifyReferences();
     }
 
     /// <summary>
@@ -144,6 +145,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     public void Render(MessagesDetailPanelRenderData data)
     {
         EnsureInitialized();
+        VerifyReferences();
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
@@ -257,7 +259,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
         if (initialized)
             return;
 
-        VerifyReferences();
+        VerifyReferences(false);
         cardTemplateRect = UILayout.GetSourceRect(cardImage.rectTransform);
         overlayTemplateRect = UILayout.GetSourceRect(overlayImage.rectTransform);
         nextButton.onClick.AddListener(RequestNext);
@@ -424,13 +426,13 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     /// <summary>
     /// Verifies every authored detail-panel reference before use.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
-        if (stripImage == null || stripTexture == null)
+        if (stripImage == null || (verifyContent && stripTexture == null))
             throw new MissingReferenceException($"{name}/StripImage is missing.");
         if (cardImage == null || overlayImage == null)
             throw new MissingReferenceException($"{name}/DetailArtwork is missing.");
-        if (bodyImage == null || bodyTexture == null)
+        if (bodyImage == null || (verifyContent && bodyTexture == null))
             throw new MissingReferenceException($"{name}/BodyImage is missing.");
         if (iconImage == null || headerTextField == null)
             throw new MissingReferenceException($"{name}/DetailHeader is missing.");

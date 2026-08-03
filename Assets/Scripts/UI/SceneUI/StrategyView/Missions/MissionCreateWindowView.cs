@@ -277,6 +277,7 @@ public sealed class MissionCreateWindowView
             contentAssets,
             "Application/Strategy/UI/Windows/ui_strategyview_construction_open_button_pressed"
         );
+        VerifyContentReferences();
     }
 
     /// <summary>
@@ -289,6 +290,7 @@ public sealed class MissionCreateWindowView
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        VerifyContentReferences();
         dropdownOpen = data.DropdownOpen;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
         UILayout.SetInteractiveImageTexture(
@@ -950,14 +952,6 @@ public sealed class MissionCreateWindowView
             throw new MissingReferenceException($"{name}/DecoysScrollArea is missing.");
         if (decoyRowTemplate == null)
             throw new MissingReferenceException($"{name}/DecoyRowTemplate is missing.");
-        if (missionBackgroundTexture == null)
-            throw new MissingReferenceException($"{name}/MissionBackgroundTexture is missing.");
-        if (personnelBackgroundTexture == null)
-            throw new MissingReferenceException($"{name}/PersonnelBackgroundTexture is missing.");
-        if (dropdownButtonUpTexture == null)
-            throw new MissingReferenceException($"{name}/DropdownButtonUpTexture is missing.");
-        if (dropdownButtonDownTexture == null)
-            throw new MissingReferenceException($"{name}/DropdownButtonDownTexture is missing.");
         dropdownItemRowTemplate.gameObject.SetActive(false);
         dropdownContentPaddingTemplate.gameObject.SetActive(false);
         agentRowTemplate.gameObject.SetActive(false);
@@ -968,6 +962,21 @@ public sealed class MissionCreateWindowView
 
         targetPreviewSlotRect = UILayout.GetSourceRect(targetPreviewImage.rectTransform);
         hasTargetPreviewSlotRect = true;
+    }
+
+    /// <summary>
+    /// Verifies textures that are restored after instantiation from external content.
+    /// </summary>
+    private void VerifyContentReferences()
+    {
+        if (missionBackgroundTexture == null)
+            throw new MissingReferenceException($"{name}/MissionBackgroundTexture is missing.");
+        if (personnelBackgroundTexture == null)
+            throw new MissingReferenceException($"{name}/PersonnelBackgroundTexture is missing.");
+        if (dropdownButtonUpTexture == null)
+            throw new MissingReferenceException($"{name}/DropdownButtonUpTexture is missing.");
+        if (dropdownButtonDownTexture == null)
+            throw new MissingReferenceException($"{name}/DropdownButtonDownTexture is missing.");
     }
 
     /// <summary>

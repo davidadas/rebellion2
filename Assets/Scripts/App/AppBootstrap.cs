@@ -37,9 +37,11 @@ public sealed class AppBootstrap : MonoBehaviour
     private CancelStack _cancelStack;
     private ContentPreloadManifest _mainMenuApplicationPreload;
     private ContentAssets _contentAssets;
+    private ContentModelCache _contentModelCache;
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
     private Task _mainMenuContentTask;
+    private Task _mainMenuModelsTask;
     private Task _saveMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
@@ -106,6 +108,7 @@ public sealed class AppBootstrap : MonoBehaviour
             _strategyPreloadID
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
+        _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
         _runtime = new GameRuntime(_sceneLoader.Load, _contentPack);
 
@@ -145,6 +148,25 @@ public sealed class AppBootstrap : MonoBehaviour
     {
         _mainMenuContentTask ??= PreloadMainMenuContentAsync();
         return _mainMenuContentTask;
+    }
+
+    /// <summary>
+    /// Starts or joins parsing of every main-menu model declared by application content.
+    /// </summary>
+    internal Task InitializeMainMenuModelsAsync()
+    {
+        _mainMenuModelsTask ??= _contentModelCache.PreloadAsync(
+            _mainMenuApplicationPreload.Models
+        );
+        return _mainMenuModelsTask;
+    }
+
+    /// <summary>
+    /// Loads all content required before the main-menu scene becomes visible.
+    /// </summary>
+    internal Task InitializeMainMenuSceneAsync()
+    {
+        return Task.WhenAll(InitializeMainMenuContentAsync(), InitializeMainMenuModelsAsync());
     }
 
     /// <summary>
@@ -198,6 +220,14 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the application-owned cache used by runtime model bindings.
+    /// </summary>
+    internal ContentModelCache GetContentModelCache()
+    {
+        return _contentModelCache;
+    }
+
+    /// <summary>
     /// Loads main-menu content, then starts the strategy preload without delaying the menu.
     /// </summary>
     /// <returns>A task that completes when main-menu content is resident.</returns>
@@ -229,6 +259,7 @@ public sealed class AppBootstrap : MonoBehaviour
         if (Instance != this)
             return;
 
+        _contentModelCache?.Dispose();
         _contentAssets?.Dispose();
         Instance = null;
     }

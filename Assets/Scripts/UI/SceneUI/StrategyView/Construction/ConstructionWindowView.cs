@@ -257,7 +257,7 @@ public sealed class ConstructionWindowView
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         incrementButton.onClick.AddListener(RequestIncrement);
         decrementButton.onClick.AddListener(RequestDecrement);
         dropdownButton.onClick.AddListener(RequestToggleDropdown);
@@ -738,7 +738,7 @@ public sealed class ConstructionWindowView
     /// <summary>
     /// Verifies every authored reference required by the construction presentation.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -837,6 +837,8 @@ public sealed class ConstructionWindowView
             throw new MissingReferenceException($"{name}/DropdownScrollArea is missing.");
         if (dropdownItemRowTemplate == null)
             throw new MissingReferenceException($"{name}/DropdownItemRowTemplate is missing.");
+        if (!verifyContent)
+            return;
         if (closeButtonUpTexture == null)
             throw new MissingReferenceException($"{name}/CloseButtonUpTexture is missing.");
         if (incrementButtonUpTexture == null)

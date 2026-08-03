@@ -1,5 +1,8 @@
+using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Owns main-menu launch state, audio, cutscenes, and scene navigation.
@@ -17,6 +20,7 @@ public sealed class MainMenuController : MonoBehaviour
     private float creditsMusicFadeDuration = 0.5f;
 
     private GameVictoryCondition currentVictoryCondition;
+    private Canvas mainMenuCanvas;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -36,6 +40,11 @@ public sealed class MainMenuController : MonoBehaviour
 
         if (view == null)
             return;
+
+        mainMenuCanvas = view.transform.root.GetComponentInChildren<Canvas>(true);
+        if (mainMenuCanvas == null)
+            throw new MissingReferenceException($"{name} has no main-menu canvas.");
+        mainMenuCanvas.enabled = false;
 
         if (view.TryGetSelectedDifficulty(out GameDifficulty difficulty))
             SelectGameDifficulty(difficulty);
@@ -66,7 +75,11 @@ public sealed class MainMenuController : MonoBehaviour
     {
         try
         {
-            await AppBootstrap.EnsureExists().InitializeMainMenuContentAsync();
+            await AppBootstrap.EnsureExists().InitializeMainMenuSceneAsync();
+            await Task.WhenAll(
+                view.transform.root.GetComponentsInChildren<ContentModelBinding>(true)
+                    .Select(binding => binding.Ready)
+            );
             AppBootstrap bootstrap = AppBootstrap.Instance;
             ContentPack contentPack = bootstrap.GetContentPack();
             view?.InitializeContent(bootstrap.GetContentAssets());
@@ -82,6 +95,7 @@ public sealed class MainMenuController : MonoBehaviour
             AudioManager audioManager = AudioManager.EnsureExists();
             audioManager.PreloadSfx(view?.GetAudioCuePaths());
             audioManager.PlayTrack(_menuMusicPath, true);
+            mainMenuCanvas.enabled = true;
         }
         catch (System.Exception exception)
         {

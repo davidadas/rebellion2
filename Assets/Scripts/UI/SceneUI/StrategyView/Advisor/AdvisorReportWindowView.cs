@@ -74,7 +74,7 @@ public sealed class AdvisorReportWindowView : MonoBehaviour, IContentInitializab
     /// </summary>
     private void Awake()
     {
-        VerifyReferences();
+        VerifyReferences(false);
         closeButton.onClick.AddListener(RequestClose);
     }
 
@@ -250,7 +250,7 @@ public sealed class AdvisorReportWindowView : MonoBehaviour, IContentInitializab
     /// <summary>
     /// Verifies the complete authored hierarchy and row templates.
     /// </summary>
-    private void VerifyReferences()
+    private void VerifyReferences(bool verifyContent = true)
     {
         if (backgroundImage == null)
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
@@ -270,9 +270,9 @@ public sealed class AdvisorReportWindowView : MonoBehaviour, IContentInitializab
             throw new MissingReferenceException($"{name}/InfoButtonImage is missing.");
         if (closeButtonImage == null || closeButtonPressVisual == null || closeButton == null)
             throw new MissingReferenceException($"{name}/CloseButton is missing.");
-        if (infoButtonDisabledTexture == null)
+        if (verifyContent && infoButtonDisabledTexture == null)
             throw new MissingReferenceException($"{name}/InfoButtonDisabledTexture is missing.");
-        if (closeButtonUpTexture == null || closeButtonDownTexture == null)
+        if (verifyContent && (closeButtonUpTexture == null || closeButtonDownTexture == null))
             throw new MissingReferenceException($"{name}/CloseButton textures are missing.");
 
         overviewRowTemplate.gameObject.SetActive(false);

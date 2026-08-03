@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
@@ -33,12 +34,18 @@ public sealed class ContentModelBinding : MonoBehaviour
     private bool overwriteRotation = true;
 
     private CancellationTokenSource cancellation;
+    private Task loadTask;
     private ContentModelInstance modelInstance;
 
     /// <summary>
     /// Gets the stable content address of the model this binding loads.
     /// </summary>
     public string Address => address;
+
+    /// <summary>
+    /// Gets the shared task that completes after this model is instantiated and posed.
+    /// </summary>
+    public Task Ready => loadTask ??= LoadModelAsync(cancellation.Token);
 
     /// <summary>
     /// Assigns the model address and the posing applied to it after it loads.
@@ -72,10 +79,17 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// <summary>
     /// Begins the asynchronous model load when the binding becomes active.
     /// </summary>
-    private void Start()
+    private void Awake()
     {
         cancellation = new CancellationTokenSource();
-        LoadModelAsync(cancellation.Token);
+    }
+
+    /// <summary>
+    /// Starts loading even when no presentation owner explicitly awaits readiness.
+    /// </summary>
+    private void Start()
+    {
+        _ = Ready;
     }
 
     /// <summary>
@@ -94,22 +108,16 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// Resolves the model file from installation content, instantiates it, and applies posing.
     /// </summary>
     /// <param name="cancellationToken">Token that cancels the load when the binding is destroyed.</param>
-    private async void LoadModelAsync(CancellationToken cancellationToken)
+    private async Task LoadModelAsync(CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(address))
             throw new MissingReferenceException($"{name} content model address is missing.");
 
-        string filePath =
-            AppBootstrap.Instance.GetContentAssets().ResolveFile(address, ".glb")
-            ?? throw new InvalidOperationException($"Content model is missing: {address}");
-
         try
         {
-            ContentModelInstance loadedModel = await ContentModelLoader.LoadAsync(
-                filePath,
-                transform,
-                cancellationToken
-            );
+            ContentModelInstance loadedModel = await AppBootstrap.Instance
+                .GetContentModelCache()
+                .InstantiateAsync(address, transform, cancellationToken);
             modelInstance = loadedModel;
             cancellationToken.ThrowIfCancellationRequested();
             ApplyPosing(loadedModel.ModelRoot);
