@@ -1,4 +1,3 @@
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -6,13 +5,15 @@ using UnityEngine;
 
 public sealed class ContentModelLoaderTests
 {
-    private const string _planetModelPath = "Assets/Content/Application/MainMenu/Models/planet.glb";
+    private const string _planetAddress = "Application/MainMenu/Models/planet";
 
     [Test]
     public async Task LoadAsync_ValidGlb_ReturnsDisposableModel()
     {
-        string filePath = Path.GetFullPath(_planetModelPath);
-        Assert.That(File.Exists(filePath), Is.True, $"Test GLB is missing: {filePath}");
+        ContentPack pack = ContentPackLoader.OpenActive();
+        using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
+        string filePath = assets.ResolveFile(_planetAddress, ".glb");
+        Assert.That(filePath, Is.Not.Null, $"Test GLB is missing: {_planetAddress}");
 
         GameObject parent = new GameObject("ContentModelLoaderTest");
         ContentModelInstance instance = null;

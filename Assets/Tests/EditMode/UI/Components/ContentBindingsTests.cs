@@ -129,7 +129,7 @@ public sealed class ContentBindingsTests
     }
 
     [Test]
-    public void Apply_UnresolvableAddress_ThrowsNamingAddress()
+    public void Apply_UnresolvableAddress_ThrowsWithAddressInMessage()
     {
         FakeContentAssetSource contentAssets = new FakeContentAssetSource();
         RawImage rawImage = CreateComponent<RawImage>("MissingBinding");
