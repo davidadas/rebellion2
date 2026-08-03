@@ -6462,6 +6462,7 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(slidingArea, 0, upArrowHeight, scrollbarWidth, trackHeight);
         RawImage handleImage = FindRequiredChild<RawImage>(slidingArea, "Handle");
         handleImage.texture = LoadTexture(_scrollBarMiddlePreviewPath);
+        AttachTextureBinding(handleImage, _scrollBarMiddlePreviewPath);
         FillParent(handleImage.rectTransform);
         handleImage.raycastTarget = true;
         scrollbar.handleRect = handleImage.rectTransform;
@@ -7753,29 +7754,48 @@ public static class StrategyViewPrefabBuilder
             return null;
 
         Button button = CreateButton(image);
+        string pressedTexturePath = GetWindowButtonPressedTexturePath(action);
         image
             .GetComponent<RawImagePressVisual>()
-            .SetTextures(image.texture, GetWindowButtonPressedTexture(action));
+            .SetTextures(
+                image.texture,
+                string.IsNullOrEmpty(pressedTexturePath) ? null : LoadTexture(pressedTexturePath)
+            );
+        SetPressedBindingAddress(image, pressedTexturePath);
         return button;
     }
 
     /// <summary>
-    /// Resolves the authored pressed texture for one shared window-shell action.
+    /// Stores a shared window button's pressed-state address in its runtime binding.
+    /// </summary>
+    /// <param name="image">The button image carrying the press-visual binding.</param>
+    /// <param name="pressedTexturePath">The authored pressed-state texture path.</param>
+    private static void SetPressedBindingAddress(RawImage image, string pressedTexturePath)
+    {
+        if (string.IsNullOrEmpty(pressedTexturePath))
+            return;
+
+        ContentPressVisualBinding binding = image.GetComponent<ContentPressVisualBinding>();
+        if (binding == null)
+            throw new MissingReferenceException($"{image.name} press-visual binding is missing.");
+
+        binding.SetAddresses(binding.UpAddress, ToContentAddress(pressedTexturePath));
+    }
+
+    /// <summary>
+    /// Resolves the authored pressed texture path for one shared window-shell action.
     /// </summary>
     /// <param name="action">The semantic window-shell action.</param>
-    /// <returns>The pressed texture, or null when the action has no authored pressed state.</returns>
-    private static Texture2D GetWindowButtonPressedTexture(int action)
+    /// <returns>The pressed texture path, or null when the action has no authored pressed state.</returns>
+    private static string GetWindowButtonPressedTexturePath(int action)
     {
         return action switch
         {
-            StrategyWindowButtonActions.OpenSector => LoadTexture(_windowOpenSectorDownPreviewPath),
-            StrategyWindowButtonActions.MinimizeWindow => LoadTexture(
-                _windowMinimizeDownPreviewPath
-            ),
-            StrategyWindowButtonActions.CloseWindow => LoadTexture(_windowCloseDownPreviewPath),
-            StrategyWindowButtonActions.SwapWindow => LoadStrategyViewTexture(
-                "ui_strategyview_planetsystem_window_swap_button_pressed"
-            ),
+            StrategyWindowButtonActions.OpenSector => _windowOpenSectorDownPreviewPath,
+            StrategyWindowButtonActions.MinimizeWindow => _windowMinimizeDownPreviewPath,
+            StrategyWindowButtonActions.CloseWindow => _windowCloseDownPreviewPath,
+            StrategyWindowButtonActions.SwapWindow =>
+                "Application/Strategy/UI/Windows/ui_strategyview_planetsystem_window_swap_button_pressed.png",
             _ => null,
         };
     }

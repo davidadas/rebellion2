@@ -1958,11 +1958,9 @@ public static class MainMenuPrefabBuilder
         // Spin around vertical, which is the planet's pole once the model is stood upright below.
         pivot.AddComponent<AutoRotate>().Configure(-_spinDegreesPerSecond, Vector3.up);
 
-        // The planet ships as a pre-skinned GLB in the content pack. Keep its authored material
-        // current for the exporter, then load the model at runtime and apply the same pole-forward
-        // rotation, unit normalization, centering, and render layer the baked model used. Posing
-        // stays here in code; only the skin travels inside the GLB.
-        _ = LoadOrCreatePlanetMaterial();
+        // The planet ships as a pre-skinned GLB in the content pack. Load it at runtime and apply
+        // the same pole-forward rotation, unit normalization, centering, and render layer the baked
+        // model used. Posing stays here in code; only the model travels inside the GLB.
         const int planetLayer = 31;
         GameObject planetModelNode = new GameObject("Model");
         planetModelNode.transform.SetParent(pivot.transform, false);
@@ -1987,7 +1985,6 @@ public static class MainMenuPrefabBuilder
         ringOrbit.AddComponent<AutoRotate>().Configure(-_ringOrbitDegreesPerSecond, Vector3.up);
 
         // The asteroid ring also ships as a pre-skinned GLB, loaded into the tilted orbit at runtime.
-        _ = LoadOrCreateRockMaterial();
         GameObject ringModelNode = new GameObject("AsteroidRing");
         ringModelNode.transform.SetParent(ringOrbit.transform, false);
         ringModelNode
@@ -2457,11 +2454,8 @@ public static class MainMenuPrefabBuilder
             .AddComponent<AutoRotate>()
             .Configure(_iconTurnDegreesPerSecond * face.SpinDirection, face.SpinAxis);
 
-        // The icon ships as a pre-skinned GLB. Keep any authored ship material current for the
-        // exporter, then load the model at runtime with its authored scale, tilt, and centering.
-        // Rig spacing isolates each camera, so no dedicated render layer is needed.
-        if (!string.IsNullOrEmpty(face.MaterialPath))
-            _ = LoadOrCreateShipMaterial(face);
+        // The icon ships as a pre-skinned GLB. Load it at runtime with its authored scale, tilt, and
+        // centering. Rig spacing isolates each camera, so no dedicated render layer is needed.
         GameObject modelNode = new GameObject("Model");
         modelNode.transform.SetParent(pivot.transform, false);
         modelNode

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -95,6 +96,35 @@ public sealed class ContentBindingsTests
         ContentBindings.Apply(rawImage.gameObject, contentAssets);
 
         Assert.AreEqual(releasedTexture, rawImage.texture);
+    }
+
+    /// <summary>
+    /// Resolves and displays a stripped press visual's distinct pressed texture.
+    /// </summary>
+    [Test]
+    public void Apply_StrippedPressVisual_RestoresPressedTexture()
+    {
+        Texture2D releasedTexture = CreateTexture();
+        Texture2D pressedTexture = CreateTexture();
+        FakeContentAssetSource contentAssets = new FakeContentAssetSource();
+        contentAssets.AddTexture(_upAddress, releasedTexture);
+        contentAssets.AddTexture(_downAddress, pressedTexture);
+
+        RawImage rawImage = CreateComponent<RawImage>("PressVisualBinding");
+        RawImagePressVisual pressVisual = rawImage.gameObject.AddComponent<RawImagePressVisual>();
+        typeof(RawImagePressVisual)
+            .GetField("image", BindingFlags.Instance | BindingFlags.NonPublic)
+            .SetValue(pressVisual, rawImage);
+        rawImage
+            .gameObject.AddComponent<ContentPressVisualBinding>()
+            .SetAddresses(_upAddress, _downAddress);
+
+        ContentBindings.Apply(rawImage.gameObject, contentAssets);
+        pressVisual.OnPointerDown(
+            new PointerEventData(null) { button = PointerEventData.InputButton.Left }
+        );
+
+        Assert.AreEqual(pressedTexture, rawImage.texture);
     }
 
     /// <summary>

@@ -33,6 +33,7 @@ public sealed class ContentModelBinding : MonoBehaviour
     private bool overwriteRotation = true;
 
     private CancellationTokenSource cancellation;
+    private ContentModelInstance modelInstance;
 
     /// <summary>
     /// Gets the stable content address of the model this binding loads.
@@ -85,6 +86,8 @@ public sealed class ContentModelBinding : MonoBehaviour
         cancellation?.Cancel();
         cancellation?.Dispose();
         cancellation = null;
+        modelInstance?.Dispose();
+        modelInstance = null;
     }
 
     /// <summary>
@@ -102,17 +105,19 @@ public sealed class ContentModelBinding : MonoBehaviour
 
         try
         {
-            Transform model = await ContentModelLoader.LoadAsync(
+            ContentModelInstance loadedModel = await ContentModelLoader.LoadAsync(
                 filePath,
                 transform,
                 cancellationToken
             );
-            if (model != null)
-                ApplyPosing(model);
+            modelInstance = loadedModel;
+            cancellationToken.ThrowIfCancellationRequested();
+            ApplyPosing(loadedModel.ModelRoot);
         }
         catch (OperationCanceledException)
         {
-            // The binding was destroyed mid-load; there is nothing to instantiate.
+            modelInstance?.Dispose();
+            modelInstance = null;
         }
     }
 
