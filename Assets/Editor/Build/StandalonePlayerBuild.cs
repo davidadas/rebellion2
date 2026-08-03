@@ -14,16 +14,55 @@ public static class StandalonePlayerBuild
     private const string _gameCIBuildPathArgument = "-customBuildPath";
 
     /// <summary>
+    /// Builds an external-content player for the active desktop target from the Unity editor.
+    /// </summary>
+    [UnityEditor.MenuItem("Rebellion/Build Player", false, 100)]
+    public static void BuildFromEditor()
+    {
+        UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
+        (string fileName, string extension) = GetDefaultArtifact(target);
+        string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath)?.FullName;
+        string outputPath = UnityEditor.EditorUtility.SaveFilePanel(
+            "Build Rebellion",
+            Path.Combine(projectRoot ?? string.Empty, "build"),
+            fileName,
+            extension
+        );
+        if (string.IsNullOrWhiteSpace(outputPath))
+            return;
+
+        try
+        {
+            Build(target, outputPath);
+        }
+        finally
+        {
+            UIBuilderMenu.BuildAll();
+        }
+    }
+
+    /// <summary>
     /// Runs the standalone player build requested by the Unity command line.
     /// </summary>
     public static void Build()
     {
-        UIBuilderMenu.BuildAllForPlayer();
-
         UnityEditor.BuildTarget target = GetBuildTarget();
         string outputPath = ResolveProjectPath(
             GetRequiredArgument(_buildPlayerPathArgument, _gameCIBuildPathArgument)
         );
+        Build(target, outputPath);
+    }
+
+    /// <summary>
+    /// Builds and verifies an external-content player at the requested path.
+    /// </summary>
+    /// <param name="target">The desktop platform to build.</param>
+    /// <param name="outputPath">The player artifact path.</param>
+    private static void Build(UnityEditor.BuildTarget target, string outputPath)
+    {
+        GetDefaultArtifact(target);
+        UIBuilderMenu.BuildAllForPlayer();
+
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))
         {
@@ -61,6 +100,31 @@ public static class StandalonePlayerBuild
         if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
         {
             throw new InvalidOperationException($"Player build output not found at {outputPath}.");
+        }
+    }
+
+    /// <summary>
+    /// Returns the conventional artifact name for a supported desktop target.
+    /// </summary>
+    /// <param name="target">The active Unity build target.</param>
+    /// <returns>The default file name and extension.</returns>
+    private static (string FileName, string Extension) GetDefaultArtifact(
+        UnityEditor.BuildTarget target
+    )
+    {
+        switch (target)
+        {
+            case UnityEditor.BuildTarget.StandaloneOSX:
+                return ("rebellion2", "app");
+            case UnityEditor.BuildTarget.StandaloneWindows:
+            case UnityEditor.BuildTarget.StandaloneWindows64:
+                return ("rebellion2", "exe");
+            case UnityEditor.BuildTarget.StandaloneLinux64:
+                return ("rebellion2", "x86_64");
+            default:
+                throw new InvalidOperationException(
+                    $"Rebellion player builds do not support target '{target}'."
+                );
         }
     }
 
