@@ -23,6 +23,10 @@ public static class StandalonePlayerBuild
         UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
         (string fileName, string extension) = GetDefaultArtifact(target);
         string projectRoot = Directory.GetParent(UnityEngine.Application.dataPath)?.FullName;
+        string contentPath = Path.Combine(UnityEngine.Application.dataPath, "Content");
+        if (!File.Exists(Path.Combine(contentPath, "catalog.xml")))
+            throw new FileNotFoundException("Development content catalog not found.", contentPath);
+
         string outputPath = UnityEditor.EditorUtility.SaveFilePanel(
             "Build Rebellion",
             Path.Combine(projectRoot ?? string.Empty, "build"),
@@ -35,7 +39,7 @@ public static class StandalonePlayerBuild
         try
         {
             Build(target, outputPath);
-            Launch(target, outputPath);
+            Launch(target, outputPath, contentPath);
         }
         finally
         {
@@ -48,13 +52,19 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The desktop platform that was built.</param>
     /// <param name="outputPath">The player artifact path.</param>
-    private static void Launch(UnityEditor.BuildTarget target, string outputPath)
+    /// <param name="contentPath">The external development content root.</param>
+    private static void Launch(
+        UnityEditor.BuildTarget target,
+        string outputPath,
+        string contentPath
+    )
     {
         ProcessStartInfo startInfo;
         if (target == UnityEditor.BuildTarget.StandaloneOSX)
         {
             startInfo = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
             startInfo.ArgumentList.Add(outputPath);
+            startInfo.ArgumentList.Add("--args");
         }
         else
         {
@@ -65,6 +75,8 @@ public static class StandalonePlayerBuild
             };
         }
 
+        startInfo.ArgumentList.Add("-contentPath");
+        startInfo.ArgumentList.Add(contentPath);
         Process.Start(startInfo);
     }
 
