@@ -84,7 +84,11 @@ public sealed class ContentModelCache : IDisposable
         string filePath =
             contentAssets.ResolveFile(address, ".glb")
             ?? throw new InvalidOperationException($"Content model is missing: {address}");
-        load = ContentModelScheduledLoader.LoadResourceAsync(filePath, CancellationToken.None, null);
+        load = ContentModelScheduledLoader.LoadResourceAsync(
+            filePath,
+            CancellationToken.None,
+            null
+        );
         loads.Add(address, load);
         return load;
     }

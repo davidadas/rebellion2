@@ -165,10 +165,7 @@ public sealed class ContentModelInstance : IDisposable
     /// </summary>
     /// <param name="loadedSceneRoot">The complete instantiated scene hierarchy.</param>
     /// <param name="modelRoot">The model transform that receives authored posing.</param>
-    internal ContentModelInstance(
-        Transform loadedSceneRoot,
-        Transform modelRoot
-    )
+    internal ContentModelInstance(Transform loadedSceneRoot, Transform modelRoot)
     {
         sceneRoot = loadedSceneRoot
             ? loadedSceneRoot
