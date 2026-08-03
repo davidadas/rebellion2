@@ -133,6 +133,16 @@ public sealed class ContentModelBinding : MonoBehaviour
             modelInstance?.Dispose();
             modelInstance = null;
         }
+        catch (System.Exception exception)
+        {
+            // A decorative model missing or failing to load (e.g. an older content pack)
+            // must not abort the menu scene — skip it and let the rest of the UI load.
+            modelInstance?.Dispose();
+            modelInstance = null;
+            Debug.LogWarning(
+                $"{name}: content model '{address}' unavailable, skipping. {exception.Message}"
+            );
+        }
     }
 
     /// <summary>
