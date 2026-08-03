@@ -4,16 +4,10 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 
-/// <summary>
-/// Verifies runtime GLB loading and deterministic ownership of imported resources.
-/// </summary>
 public sealed class ContentModelLoaderTests
 {
     private const string _planetModelPath = "Assets/Content/Application/MainMenu/Models/planet.glb";
 
-    /// <summary>
-    /// Loads a real content-pack GLB, instantiates it, and releases its owned hierarchy.
-    /// </summary>
     [Test]
     public async Task LoadAsync_ValidGlb_ReturnsDisposableModel()
     {

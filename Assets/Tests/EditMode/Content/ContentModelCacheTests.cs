@@ -3,16 +3,10 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 
-/// <summary>
-/// Verifies that parsed external models remain reusable across scene instances.
-/// </summary>
 public sealed class ContentModelCacheTests
 {
     private const string _planetAddress = "Application/MainMenu/Models/planet";
 
-    /// <summary>
-    /// Preloads one model and creates independent hierarchies from the shared parsed resource.
-    /// </summary>
     [Test]
     public async Task InstantiateAsync_PreloadedModel_CreatesIndependentInstances()
     {
