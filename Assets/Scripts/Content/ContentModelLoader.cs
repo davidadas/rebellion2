@@ -77,7 +77,6 @@ internal static class ContentModelScheduledLoader
             throw new InvalidOperationException($"Failed to load GLB model: {filePath}", exception);
         }
     }
-
 }
 
 /// <summary>

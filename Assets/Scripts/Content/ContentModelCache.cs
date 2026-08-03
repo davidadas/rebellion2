@@ -35,9 +35,7 @@ public sealed class ContentModelCache : IDisposable
         if (addresses == null)
             throw new ArgumentNullException(nameof(addresses));
 
-        return Task.WhenAll(
-            addresses.Distinct(StringComparer.Ordinal).Select(GetOrLoadAsync)
-        );
+        return Task.WhenAll(addresses.Distinct(StringComparer.Ordinal).Select(GetOrLoadAsync));
     }
 
     /// <summary>
