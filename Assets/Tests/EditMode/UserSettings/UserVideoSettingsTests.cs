@@ -47,6 +47,40 @@ namespace Rebellion.Tests.UserSettings
         }
 
         [Test]
+        public void Normalize_InvalidDisplayValues_RestoresNativeExclusiveDefaults()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                ResolutionWidth = -1,
+                ResolutionHeight = -1,
+                FullScreenMode = 99,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(0, settings.ResolutionWidth);
+            Assert.AreEqual(0, settings.ResolutionHeight);
+            Assert.AreEqual((int)FullScreenMode.ExclusiveFullScreen, settings.FullScreenMode);
+        }
+
+        [Test]
+        public void Normalize_ValidDisplayValues_PreservesSelection()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                ResolutionWidth = 1920,
+                ResolutionHeight = 1080,
+                FullScreenMode = (int)FullScreenMode.Windowed,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(1920, settings.ResolutionWidth);
+            Assert.AreEqual(1080, settings.ResolutionHeight);
+            Assert.AreEqual((int)FullScreenMode.Windowed, settings.FullScreenMode);
+        }
+
+        [Test]
         public void JsonUtility_ExplicitTacticalOptions_RoundTripsState()
         {
             global::UserSettings settings = new global::UserSettings();
