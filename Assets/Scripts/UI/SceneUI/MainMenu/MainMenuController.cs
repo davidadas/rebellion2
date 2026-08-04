@@ -77,9 +77,8 @@ public sealed class MainMenuController : MonoBehaviour
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             Task contentTask = bootstrap.InitializeMainMenuSceneAsync();
             Task modelTask = Task.WhenAll(
-                view.transform.root.GetComponentsInChildren<ContentModelBinding>(true).Select(
-                    binding => binding.Ready
-                )
+                view.transform.root.GetComponentsInChildren<ContentModelBinding>(true)
+                    .Select(binding => binding.Ready)
             );
             await Task.WhenAll(contentTask, modelTask);
             ContentPack contentPack = bootstrap.GetContentPack();
