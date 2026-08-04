@@ -1,4 +1,5 @@
 using System;
+using UnityFullScreenMode = UnityEngine.FullScreenMode;
 
 /// <summary>
 /// Identifies a persisted tactical presentation option.
@@ -30,12 +31,26 @@ public sealed class UserVideoSettings
 {
     public int ResolutionWidth;
     public int ResolutionHeight;
-    public int FullScreenMode;
+    public int FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
     public bool ShowStarfield = true;
     public bool ShowPlanet = true;
     public bool ShowPyro = true;
     public bool HighDetail = true;
     public bool ShowHolocube = true;
+
+    /// <summary>
+    /// Normalizes persisted display values without replacing the native-resolution sentinel.
+    /// </summary>
+    public void Normalize()
+    {
+        if (ResolutionWidth <= 0 || ResolutionHeight <= 0)
+        {
+            ResolutionWidth = 0;
+            ResolutionHeight = 0;
+        }
+        if (!Enum.IsDefined(typeof(UnityFullScreenMode), FullScreenMode))
+            FullScreenMode = (int)UnityFullScreenMode.ExclusiveFullScreen;
+    }
 
     /// <summary>
     /// Gets whether a tactical presentation option is enabled.

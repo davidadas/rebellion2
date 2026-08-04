@@ -29,5 +29,6 @@ public sealed class UserSettings
         }
 
         Audio.Normalize();
+        Video.Normalize();
     }
 }

@@ -58,6 +58,7 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
+        ApplyVideoSettings(Settings.Video);
     }
 
     /// <summary>
@@ -122,6 +123,22 @@ public sealed class UserSettingsManager
             Settings.Input.BindingOverridesJson = _inputManager.SaveBindingOverrides();
 
         Settings.Normalize();
+    }
+
+    /// <summary>
+    /// Applies the saved display mode once during startup. Zero dimensions select the
+    /// current display's native resolution.
+    /// </summary>
+    /// <param name="video">The normalized video settings.</param>
+    private static void ApplyVideoSettings(UserVideoSettings video)
+    {
+        if (Application.isEditor)
+            return;
+
+        int width = video.ResolutionWidth > 0 ? video.ResolutionWidth : Display.main.systemWidth;
+        int height =
+            video.ResolutionHeight > 0 ? video.ResolutionHeight : Display.main.systemHeight;
+        Screen.SetResolution(width, height, (FullScreenMode)video.FullScreenMode);
     }
 
     /// <summary>
