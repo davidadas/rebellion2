@@ -74,12 +74,14 @@ public sealed class MainMenuController : MonoBehaviour
     {
         try
         {
-            await AppBootstrap.EnsureExists().InitializeMainMenuSceneAsync();
-            await Task.WhenAll(
-                view.transform.root.GetComponentsInChildren<ContentModelBinding>(true)
-                    .Select(binding => binding.Ready)
+            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+            Task contentTask = bootstrap.InitializeMainMenuSceneAsync();
+            Task modelTask = Task.WhenAll(
+                view.transform.root.GetComponentsInChildren<ContentModelBinding>(true).Select(
+                    binding => binding.Ready
+                )
             );
-            AppBootstrap bootstrap = AppBootstrap.Instance;
+            await Task.WhenAll(contentTask, modelTask);
             ContentPack contentPack = bootstrap.GetContentPack();
             view?.InitializeContent(bootstrap.GetContentAssets());
             view?.RenderVictoryCondition(currentVictoryCondition);

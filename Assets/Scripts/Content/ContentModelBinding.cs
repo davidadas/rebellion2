@@ -140,7 +140,7 @@ public sealed class ContentModelBinding : MonoBehaviour
             modelInstance?.Dispose();
             modelInstance = null;
             Debug.LogWarning(
-                $"{name}: content model '{address}' unavailable, skipping. {exception.Message}"
+                $"{name}: content model '{address}' unavailable; skipping.\n{exception}"
             );
         }
     }
