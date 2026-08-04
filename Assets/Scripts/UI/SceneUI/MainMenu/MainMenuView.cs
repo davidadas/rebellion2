@@ -184,6 +184,9 @@ public sealed class MainMenuView : MonoBehaviour
     [SerializeField]
     private AutoRotate victoryConditionSpinner;
 
+    [SerializeField]
+    private GameObject victoryConditionSelectionOverlay;
+
     [Header("Pointer Presentation")]
     [SerializeField]
     private AudioCueBinding[] audioCueBindings = Array.Empty<AudioCueBinding>();
@@ -317,11 +320,8 @@ public sealed class MainMenuView : MonoBehaviour
 
         // HQ-only state shows a crosshair over the citadel and pauses its spin so it reads as a still
         // HQ symbol.
-        Transform selectionOverlay = victoryConditionIcon.transform.Find("SelectionOverlay");
-        if (selectionOverlay != null)
-            selectionOverlay.gameObject.SetActive(headquarters);
-        if (victoryConditionSpinner != null)
-            victoryConditionSpinner.enabled = !headquarters;
+        victoryConditionSelectionOverlay.SetActive(headquarters);
+        victoryConditionSpinner.enabled = !headquarters;
     }
 
     /// <summary>
@@ -334,22 +334,19 @@ public sealed class MainMenuView : MonoBehaviour
             throw new ArgumentNullException(nameof(contentAssets));
 
         ContentBindings.Apply(transform.root.gameObject, contentAssets);
-        standardVictoryConditionSprite =
-            contentAssets.GetSprite(_standardVictorySpriteAddress)
-            ?? throw new InvalidOperationException(
-                $"Main-menu sprite is missing: {_standardVictorySpriteAddress}"
-            );
-        headquartersVictoryConditionSprite =
-            contentAssets.GetSprite(_headquartersVictorySpriteAddress)
-            ?? throw new InvalidOperationException(
-                $"Main-menu sprite is missing: {_headquartersVictorySpriteAddress}"
-            );
+        standardVictoryConditionSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _standardVictorySpriteAddress
+        );
+        headquartersVictoryConditionSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _headquartersVictorySpriteAddress
+        );
         SpriteState creditsSpriteState = creditsButton.spriteState;
-        creditsSpriteState.pressedSprite =
-            contentAssets.GetSprite(_creditsPressedSpriteAddress)
-            ?? throw new InvalidOperationException(
-                $"Main-menu sprite is missing: {_creditsPressedSpriteAddress}"
-            );
+        creditsSpriteState.pressedSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _creditsPressedSpriteAddress
+        );
         creditsButton.spriteState = creditsSpriteState;
         exitConfirmationDialog.InitializeContent(contentAssets);
         exitAnimationFrames = LoadAnimationFrames(contentAssets, _exitAnimationRoot);
@@ -454,6 +451,8 @@ public sealed class MainMenuView : MonoBehaviour
             || victoryConditionButton == null
             || victoryConditionIcon == null
             || victoryConditionText == null
+            || victoryConditionSpinner == null
+            || victoryConditionSelectionOverlay == null
         )
         {
             throw new MissingReferenceException($"{name} has incomplete main-menu references.");

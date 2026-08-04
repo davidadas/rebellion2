@@ -55,6 +55,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreSame(expectedSprite, icon.sprite);
             Assert.IsTrue(icon.gameObject.activeSelf);
             Assert.AreEqual(expectedText, GetField<TMP_Text>("victoryConditionText").text);
+            Assert.AreEqual(
+                condition == GameVictoryCondition.Headquarters,
+                GetField<GameObject>("victoryConditionSelectionOverlay").activeSelf
+            );
+            Assert.AreEqual(
+                condition != GameVictoryCondition.Headquarters,
+                GetField<AutoRotate>("victoryConditionSpinner").enabled
+            );
         }
 
         [Test]
