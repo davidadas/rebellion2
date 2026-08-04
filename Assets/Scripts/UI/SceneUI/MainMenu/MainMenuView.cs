@@ -181,6 +181,12 @@ public sealed class MainMenuView : MonoBehaviour
     [SerializeField]
     private TMP_Text victoryConditionText;
 
+    [SerializeField]
+    private AutoRotate victoryConditionSpinner;
+
+    [SerializeField]
+    private GameObject victoryConditionSelectionOverlay;
+
     [Header("Pointer Presentation")]
     [SerializeField]
     private AudioCueBinding[] audioCueBindings = Array.Empty<AudioCueBinding>();
@@ -311,6 +317,11 @@ public sealed class MainMenuView : MonoBehaviour
             : standardVictoryConditionSprite;
         victoryConditionIcon.gameObject.SetActive(true);
         victoryConditionText.text = headquarters ? "Headquarters Victory" : "Standard Game";
+
+        // HQ-only state shows a crosshair over the citadel and pauses its spin so it reads as a still
+        // HQ symbol.
+        victoryConditionSelectionOverlay.SetActive(headquarters);
+        victoryConditionSpinner.enabled = !headquarters;
     }
 
     /// <summary>
@@ -440,6 +451,8 @@ public sealed class MainMenuView : MonoBehaviour
             || victoryConditionButton == null
             || victoryConditionIcon == null
             || victoryConditionText == null
+            || victoryConditionSpinner == null
+            || victoryConditionSelectionOverlay == null
         )
         {
             throw new MissingReferenceException($"{name} has incomplete main-menu references.");

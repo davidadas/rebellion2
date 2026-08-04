@@ -46,6 +46,9 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
+    private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
+    private const string _citadelRenderTexturePath =
+        "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
     private const float _ringTiltDegrees = 18f; // tilt so the ring reads as a shallow ellipse
     private const float _ringOrbitDegreesPerSecond = 0.75f; // co-rotates, ~2x the planet's spin
     private const string _rigName = "PlanetRig";
@@ -162,6 +165,7 @@ public static class MainMenuPrefabBuilder
             RebuildViewBindings(root);
             InstallPlanet(root);
             InstallSpinning3DIcons(root);
+            InstallHqCitadel(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
         }
         finally
@@ -1922,9 +1926,8 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Builds the off-screen Planet model + sun + camera rig that renders the planet to its
-    /// texture. The exported model has an arbitrary scale and offset, so the instance
-    /// is normalized to a radius-1 globe and recentered on the pivot before spinning.
+    /// Builds the off-screen planet model, lighting, and camera rig. The model is normalized and
+    /// recentered before spinning because its exported scale and origin are arbitrary.
     /// </summary>
     /// <param name="root">The prefab root to parent the rig under.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
@@ -2195,6 +2198,161 @@ public static class MainMenuPrefabBuilder
             else
                 AttachButtonIcon(button.gameObject, renderTexture);
         }
+
+        // Left faction icon nudged right to align (tuned in Play): Left 9, Right -9. Top/bottom kept.
+        Transform leftButton = FindDeep(root.transform, "LeftFactionLaunchButton");
+        Transform leftIcon = leftButton != null ? FindDeep(leftButton, "Icon3D") : null;
+        if (leftIcon is RectTransform leftIconRect)
+        {
+            leftIconRect.offsetMin = new Vector2(9f, leftIconRect.offsetMin.y);
+            leftIconRect.offsetMax = new Vector2(9f, leftIconRect.offsetMax.y);
+        }
+    }
+
+    /// <summary>
+    /// Replaces the victory-condition icon with a spinning citadel model and adds the HQ selection
+    /// overlay.
+    /// </summary>
+    /// <param name="root">The prefab root.</param>
+    private static void InstallHqCitadel(GameObject root)
+    {
+        Transform iconRigs = FindDeep(root.transform, _iconRigsName);
+        if (iconRigs == null)
+            throw new InvalidOperationException(
+                "Icon rigs container not found; run InstallHqCitadel after InstallSpinning3DIcons."
+            );
+
+        RenderTexture renderTexture = LoadOrCreateRenderTexture(
+            _citadelRenderTexturePath,
+            "HqCitadel",
+            256,
+            256
+        );
+        AutoRotate citadelSpinner = BuildCitadelRig(
+            iconRigs.gameObject,
+            renderTexture,
+            _faces.Length
+        );
+
+        Transform icon = FindDeep(root.transform, "VictoryConditionIcon");
+        if (icon == null)
+            throw new InvalidOperationException("VictoryConditionIcon not found in prefab.");
+
+        // The Image is the view's target but renders nothing (transparent) so the citadel RawImage
+        // shows through. It overlays a separate VictoryConditionButton sibling that owns the click, so
+        // every graphic here stays raycast-off or it swallows the button's clicks.
+        Image iconImage = icon.GetComponent<Image>();
+        if (iconImage != null)
+        {
+            iconImage.sprite = null;
+            iconImage.color = new Color(1f, 1f, 1f, 0f);
+            iconImage.raycastTarget = false;
+        }
+        RawImage citadelIcon = AddIconOverlay(icon, renderTexture, behindSiblings: false);
+        // The 3D icon is decorative; it must not intercept clicks meant for the button underneath.
+        citadelIcon.raycastTarget = false;
+        // Placement tuned in Play and baked here: Left/Top/Right/Bottom offsets on the stretched rect.
+        RectTransform citadelRect = citadelIcon.rectTransform;
+        citadelRect.offsetMin = new Vector2(12.39164f, 12.1074f);
+        citadelRect.offsetMax = new Vector2(-10.42626f, 2.519201f);
+
+        // HQ-only crosshair, on top of the citadel and hidden by default. RenderVictoryCondition shows
+        // it when Headquarters victory is selected.
+        GameObject selectionOverlay = NewChild(
+            "SelectionOverlay",
+            icon,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        // Match the citadel's inset rect so the crosshair sits over the model, not the whole panel.
+        RectTransform selectionRect = selectionOverlay.GetComponent<RectTransform>();
+        selectionRect.anchorMin = Vector2.zero;
+        selectionRect.anchorMax = Vector2.one;
+        selectionRect.offsetMin = citadelRect.offsetMin;
+        selectionRect.offsetMax = citadelRect.offsetMax;
+        Image selectionImage = selectionOverlay.GetComponent<Image>();
+        SetBoundSprite(selectionImage, "Application/MainMenu/UI/ui_mainmenu_hqonly_icon");
+        selectionImage.preserveAspect = true;
+        selectionImage.raycastTarget = false;
+        selectionOverlay.SetActive(false);
+
+        // Give the view the citadel spinner so it can pause the spin while the HQ-only crosshair shows.
+        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        SerializedObject serializedView = new SerializedObject(view);
+        serializedView.FindProperty("victoryConditionSpinner").objectReferenceValue =
+            citadelSpinner;
+        serializedView.FindProperty("victoryConditionSelectionOverlay").objectReferenceValue =
+            selectionOverlay;
+        serializedView.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Builds the off-screen citadel model + camera rig that renders the spinning HQ symbol to its
+    /// texture on a solid black background.
+    /// </summary>
+    /// <param name="parent">The rig container.</param>
+    /// <param name="renderTexture">The texture the rig camera renders into.</param>
+    /// <param name="index">The rig slot index, offsetting it clear of the faction icon rigs.</param>
+    /// <returns>The rig's spin component so the view can pause it for the HQ-only state.</returns>
+    private static AutoRotate BuildCitadelRig(
+        GameObject parent,
+        RenderTexture renderTexture,
+        int index
+    )
+    {
+        GameObject rig = new GameObject("IconRig_HqCitadel");
+        rig.transform.SetParent(parent.transform, false);
+        rig.transform.position = _rigOrigin + new Vector3(0f, 0f, index * _rigSpacing);
+
+        GameObject pivot = new GameObject("Pivot");
+        pivot.transform.SetParent(rig.transform, false);
+        AutoRotate spinner = pivot.AddComponent<AutoRotate>();
+        spinner.Configure(-_iconTurnDegreesPerSecond * 0.5f, Vector3.up);
+
+        // Normalize to a consistent size and center on the pivot, then offset down so the dome sits in
+        // frame and the tall stem drops below the camera crop. Offset/scale/size are eyeball -- tune.
+        GameObject modelNode = new GameObject("Model");
+        modelNode.transform.SetParent(pivot.transform, false);
+        modelNode.transform.localPosition = new Vector3(0f, -0.4f, 0f);
+        // The model's up axis is Z (bounding box: X~Y~1.6, Z~1.9); +90 X maps that to Unity's +Y,
+        // dome up, matching the original HQ icon.
+        modelNode
+            .AddComponent<ContentModelBinding>()
+            .SetModel(
+                _citadelModelAddress,
+                1f,
+                new Vector3(90f, 0f, 0f),
+                overwrite: true,
+                normalize: true,
+                center: true,
+                layer: -1
+            );
+
+        GameObject cameraObject = new GameObject("Camera", typeof(Camera));
+        cameraObject.transform.SetParent(rig.transform, false);
+        cameraObject.transform.localPosition = new Vector3(0f, 0f, -4f);
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        // Transparent clear so the citadel blends into the menu like the faction icons (no black box).
+        camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        camera.orthographic = true;
+        // Smaller size = bigger on-screen icon. Tune this to grow/shrink the citadel.
+        camera.orthographicSize = 0.7f;
+        camera.nearClipPlane = 0.1f;
+        camera.farClipPlane = 20f;
+        camera.targetTexture = renderTexture;
+
+        // Point light beneath so the stem is lit; the shared 3-point set leaves the underside dark.
+        GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
+        underLightObject.transform.SetParent(rig.transform, false);
+        underLightObject.transform.localPosition = new Vector3(0f, -2.5f, -1.5f);
+        Light underLight = underLightObject.GetComponent<Light>();
+        underLight.type = LightType.Point;
+        underLight.range = 8f;
+        underLight.intensity = 2f;
+        underLight.color = Color.white;
+        return spinner;
     }
 
     /// <summary>
@@ -2255,8 +2413,8 @@ public static class MainMenuPrefabBuilder
         rig.transform.SetParent(parent.transform, false);
         rig.transform.position = _rigOrigin + new Vector3(0f, 0f, index * _rigSpacing);
 
-        // AutoRotate goes on a clean, identity-rotation pivot so the spin is a true vertical
-        // rotation, not a crooked wobble inherited from the model root.
+        // AutoRotate goes on a clean, identity-rotation pivot so imported model transforms cannot
+        // turn the vertical spin into a wobble.
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
         // Static presentation tilt on the pivot (e.g. nose-down); the incremental local-space spin

@@ -55,6 +55,14 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.AreSame(expectedSprite, icon.sprite);
             Assert.IsTrue(icon.gameObject.activeSelf);
             Assert.AreEqual(expectedText, GetField<TMP_Text>("victoryConditionText").text);
+            Assert.AreEqual(
+                condition == GameVictoryCondition.Headquarters,
+                GetField<GameObject>("victoryConditionSelectionOverlay").activeSelf
+            );
+            Assert.AreEqual(
+                condition != GameVictoryCondition.Headquarters,
+                GetField<AutoRotate>("victoryConditionSpinner").enabled
+            );
         }
 
         [Test]
@@ -79,7 +87,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Assert.IsNotNull(viewport.Find("SpaceBackdrop/Planet"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
-            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+            Assert.AreEqual(8, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]

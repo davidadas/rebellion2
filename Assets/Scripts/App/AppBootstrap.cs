@@ -41,7 +41,6 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
     private Task _mainMenuContentTask;
-    private Task _mainMenuModelsTask;
     private Task _saveMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
@@ -151,20 +150,12 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts or joins parsing of every main-menu model declared by application content.
-    /// </summary>
-    internal Task InitializeMainMenuModelsAsync()
-    {
-        _mainMenuModelsTask ??= _contentModelCache.PreloadAsync(_mainMenuApplicationPreload.Models);
-        return _mainMenuModelsTask;
-    }
-
-    /// <summary>
-    /// Loads all content required before the main-menu scene becomes visible.
+    /// Loads required main-menu textures and audio. Decorative models are loaded by their scene
+    /// bindings so a missing model cannot prevent scene navigation.
     /// </summary>
     internal Task InitializeMainMenuSceneAsync()
     {
-        return Task.WhenAll(InitializeMainMenuContentAsync(), InitializeMainMenuModelsAsync());
+        return InitializeMainMenuContentAsync();
     }
 
     /// <summary>
