@@ -11,6 +11,7 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
+    private const string _defaultCursorAddress = "Application/Common/UI/ui_common_cursor_default";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _saveMenuPreloadID = "save-menu";
     private const string _strategyPreloadID = "strategy";
@@ -107,6 +108,12 @@ public sealed class AppBootstrap : MonoBehaviour
             _strategyPreloadID
         );
         _contentAssets = new ContentAssets(_contentPack.ContentRootPath, _contentPack.PackRootPath);
+        Texture2D cursorTexture =
+            _contentAssets.GetReadableTexture(_defaultCursorAddress)
+            ?? throw new System.InvalidOperationException(
+                $"Application cursor is missing: {_defaultCursorAddress}"
+            );
+        Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
         _runtime = new GameRuntime(_sceneLoader.Load, _contentPack);
@@ -248,6 +255,7 @@ public sealed class AppBootstrap : MonoBehaviour
         if (Instance != this)
             return;
 
+        Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
         _contentModelCache?.Dispose();
         _contentAssets?.Dispose();
         Instance = null;
