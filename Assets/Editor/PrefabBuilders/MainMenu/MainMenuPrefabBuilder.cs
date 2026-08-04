@@ -2429,7 +2429,8 @@ public static class MainMenuPrefabBuilder
         // Give the view the citadel spinner so it can pause the spin while the HQ-only crosshair shows.
         MainMenuView view = FindRequiredComponent<MainMenuView>(root);
         SerializedObject serializedView = new SerializedObject(view);
-        serializedView.FindProperty("victoryConditionSpinner").objectReferenceValue = citadelSpinner;
+        serializedView.FindProperty("victoryConditionSpinner").objectReferenceValue =
+            citadelSpinner;
         serializedView.ApplyModifiedPropertiesWithoutUndo();
     }
 
