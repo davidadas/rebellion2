@@ -93,7 +93,10 @@ Assets/TextMesh Pro/
 # Misc
 *.md
 !README.md
-/[Dd]ocs/
+!/CONTRIBUTING.md
+!/Docs/
+!/Docs/*.md
+!/.github/pull_request_template.md
 *.tmp.driveupload*
 **/*.scratch
 **/dump
