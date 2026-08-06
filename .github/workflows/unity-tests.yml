@@ -20,20 +20,30 @@ jobs:
   resolve-media:
     name: Resolve media revision
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
     outputs:
       revision: ${{ steps.resolve.outputs.revision }}
 
     steps:
+      - name: Checkout media metadata
+        uses: actions/checkout@v4
+        with:
+          repository: davidadas/rebellion2-media
+          ref: main
+          ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
+          lfs: false
+          path: .ci/rebellion2-media
+
       - name: Resolve matching media branch
         id: resolve
         env:
           PULL_REQUEST_BRANCH: ${{ github.head_ref }}
         run: |
           revision="main"
-          if [ -n "$PULL_REQUEST_BRANCH" ] && git ls-remote --exit-code --heads \
-            https://github.com/davidadas/rebellion2-media.git \
+          if [ -n "$PULL_REQUEST_BRANCH" ] && git -C .ci/rebellion2-media \
+            ls-remote --exit-code --heads origin \
             "refs/heads/$PULL_REQUEST_BRANCH" >/dev/null; then
             revision="$PULL_REQUEST_BRANCH"
           fi
