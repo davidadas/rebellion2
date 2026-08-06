@@ -15,13 +15,35 @@ concurrency:
 env:
   UNITY_VERSION: 6000.4.0f1
   UNITY_IMAGE_VERSION: 3
-  REBELLION2_MEDIA_REVISION: main
 
 jobs:
+  resolve-media:
+    name: Resolve media revision
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      revision: ${{ steps.resolve.outputs.revision }}
+
+    steps:
+      - name: Resolve matching media branch
+        id: resolve
+        env:
+          PULL_REQUEST_BRANCH: ${{ github.head_ref }}
+        run: |
+          revision="main"
+          if [ -n "$PULL_REQUEST_BRANCH" ] && git ls-remote --exit-code --heads \
+            https://github.com/davidadas/rebellion2-media.git \
+            "refs/heads/$PULL_REQUEST_BRANCH" >/dev/null; then
+            revision="$PULL_REQUEST_BRANCH"
+          fi
+          echo "Using rebellion2-media revision: $revision"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.targetPlatform }})
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, resolve-media]
     environment: production
     permissions:
       contents: read
@@ -39,7 +61,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: davidadas/rebellion2-media
-          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ref: ${{ needs.resolve-media.outputs.revision }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           lfs: false
           path: .ci/rebellion2-media
@@ -201,7 +223,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, resolve-media]
     environment: production
     permissions:
       checks: write
@@ -216,7 +238,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: davidadas/rebellion2-media
-          ref: ${{ env.REBELLION2_MEDIA_REVISION }}
+          ref: ${{ needs.resolve-media.outputs.revision }}
           ssh-key: ${{ secrets.REBELLION2_MEDIA_SSH_KEY }}
           lfs: false
           path: .ci/rebellion2-media
