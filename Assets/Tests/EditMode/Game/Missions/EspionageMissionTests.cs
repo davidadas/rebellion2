@@ -233,7 +233,6 @@ namespace Rebellion.Tests.Game.Missions
             Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
             rebels.HQInstanceID = enemyPlanet.InstanceID;
             rebels.Settings.Headquarters.IsMobile = true;
-            game.Config.Espionage.MobileHeadquartersFactionInstanceID = rebels.InstanceID;
             game.Config.Espionage.MobileHeadquartersBonus = new GameConfig.RandomCountConfig
             {
                 Base = 10,

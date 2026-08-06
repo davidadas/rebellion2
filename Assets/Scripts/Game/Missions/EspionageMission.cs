@@ -214,7 +214,7 @@ namespace Rebellion.Game.Missions
                 countConfig = config.CapitalBonus;
                 includeOuterRim = true;
             }
-            else if (IsMobileHeadquartersTarget(game, config, targetPlanet))
+            else if (IsMobileHeadquartersTarget(game, targetPlanet))
             {
                 countConfig = config.MobileHeadquartersBonus;
                 includeOuterRim = true;
@@ -244,21 +244,15 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Returns whether the target currently hosts the configured opposing mobile headquarters.
+        /// Returns whether the target currently hosts its owner's opposing mobile headquarters.
         /// </summary>
-        private bool IsMobileHeadquartersTarget(
-            GameRoot game,
-            GameConfig.EspionageConfig config,
-            Planet targetPlanet
-        )
+        private bool IsMobileHeadquartersTarget(GameRoot game, Planet targetPlanet)
         {
-            Faction headquartersFaction = game.Factions.FirstOrDefault(candidate =>
-                candidate.InstanceID == config.MobileHeadquartersFactionInstanceID
-            );
-            return headquartersFaction != null
-                && headquartersFaction.InstanceID != OwnerInstanceID
-                && headquartersFaction.Settings.Headquarters.IsMobile
-                && headquartersFaction.HQInstanceID == targetPlanet.InstanceID;
+            Faction owner = game.GetFactionByOwnerInstanceID(targetPlanet.OwnerInstanceID);
+            return owner != null
+                && owner.InstanceID != OwnerInstanceID
+                && owner.Settings.Headquarters.IsMobile
+                && owner.HQInstanceID == targetPlanet.InstanceID;
         }
 
         /// <summary>

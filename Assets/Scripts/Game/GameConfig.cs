@@ -644,8 +644,6 @@ namespace Rebellion.Game
 
             public string CapitalObserverFactionInstanceID { get; set; }
 
-            public string MobileHeadquartersFactionInstanceID { get; set; }
-
             public RandomCountConfig CoreSystemBonus { get; set; } = new RandomCountConfig();
 
             public RandomCountConfig CapitalBonus { get; set; } = new RandomCountConfig();
