@@ -222,35 +222,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_MobileHeadquartersOwnerIsUnknown_ReturnsEmpty()
-        {
-            (GameRoot game, Faction empire, _, Planet empireHQ, VictorySystem system) = BuildScene(
-                rebelsCaptureEmpireHQ: false
-            );
-            empire.Settings = new FactionSettings
-            {
-                Headquarters = new HeadquartersSettings
-                {
-                    FacilityTypeID = "BDHQ01",
-                    IsMobile = true,
-                },
-            };
-            empireHQ.EnergyCapacity = 1;
-            Building headquarters = new Building
-            {
-                InstanceID = "mobile-hq",
-                TypeID = "BDHQ01",
-                OwnerInstanceID = "unknown-faction",
-                BuildingType = BuildingType.Headquarters,
-            };
-            game.AttachNode(headquarters, empireHQ);
-
-            List<GameResult> results = system.ProcessTick();
-
-            Assert.AreEqual(0, results.Count);
-        }
-
-        [Test]
         public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
         {
             (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =

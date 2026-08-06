@@ -226,7 +226,7 @@ namespace Rebellion.Tests.Systems
         public void Execute_CollateralDamage_CanDestroyCivilianFacilityAndExcludesHeadquarters()
         {
             GameRoot game = CreateGame();
-            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
+            (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 2);
             planet.IsHeadquarters = true;
             Building mine = AddCollateralBuilding(game, planet, "mine");
             Building headquarters = new Building
@@ -252,7 +252,7 @@ namespace Rebellion.Tests.Systems
                 game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID)
             );
             CollectionAssert.Contains(result.CollateralDestroyedBuildings, mine);
-            Assert.AreEqual(1, planet.EnergyCapacity);
+            Assert.AreEqual(2, planet.EnergyCapacity);
             Assert.IsFalse(result.Success);
         }
 
