@@ -45,16 +45,15 @@ public static class MainMenuPrefabBuilder
 
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
+    private const string _atmosphereAddress = "Application/MainMenu/UI/atmosphere";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
-    private const float _ringTiltDegrees = 18f; // tilt so the ring reads as a shallow ellipse
-    private const float _ringOrbitDegreesPerSecond = 0.75f; // co-rotates, ~2x the planet's spin
     private const string _rigName = "PlanetRig";
     private const string _backdropName = "SpaceBackdrop";
     private const string _foregroundName = "Cockpit";
-    private const float _spinDegreesPerSecond = 0.5f; // slow spin, kept under the ring's orbit (0.75)
+    private const float _spinDegreesPerSecond = 0.2222f; // slow ambient spin
     private static readonly Vector3 _planetRigOrigin = new Vector3(12000f, 12000f, 12000f);
 
     // Spinning 3D icon rigs.
@@ -1913,16 +1912,30 @@ public static class MainMenuPrefabBuilder
         SetBoundTexture(stars, _starfieldAddress);
         FillParent(stars.rectTransform);
 
+        // Atmosphere glow sits behind the globe on the same rect so it lines up with the limb.
+        RawImage atmosphere = NewRawImage(backdrop.transform, "Atmosphere", null);
+        SetBoundTexture(atmosphere, _atmosphereAddress);
+        atmosphere.color = new Color(1f, 1f, 1f, 0.6f); // dimmed so the glow stays subtle
+        ApplyPlanetBackdropRect(atmosphere.rectTransform);
+
         RawImage planet = NewRawImage(backdrop.transform, "Planet", rt);
-        // Square rect so the globe stays round (a stretched rect makes an ellipse), positioned
-        // in the upper windshield. These are eyeball values -- tune the anchor / size in the editor.
-        RectTransform planetRect = planet.rectTransform;
-        planetRect.anchorMin = new Vector2(0.5f, 0.63f);
-        planetRect.anchorMax = new Vector2(0.5f, 0.63f);
-        planetRect.pivot = new Vector2(0.5f, 0.5f);
-        planetRect.sizeDelta = new Vector2(1046.565f, 1046.565f);
-        planetRect.anchoredPosition = new Vector2(685f, -86f);
-        planetRect.localRotation = Quaternion.Euler(0f, 0f, -40.227f);
+        // Tilted and positioned in the windshield canopy; values tuned in the editor.
+        ApplyPlanetBackdropRect(planet.rectTransform);
+    }
+
+    /// <summary>
+    /// Applies the shared placement of the planet backdrop layer (globe and its atmosphere) so both
+    /// overlay the same region and stay aligned.
+    /// </summary>
+    /// <param name="rect">The RectTransform to place.</param>
+    private static void ApplyPlanetBackdropRect(RectTransform rect)
+    {
+        rect.anchorMin = new Vector2(0.5f, 0.63f);
+        rect.anchorMax = new Vector2(0.5f, 0.63f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
+        rect.anchoredPosition = new Vector2(74f, -734f);
+        rect.localRotation = Quaternion.Euler(0f, 0f, -20.228f);
     }
 
     /// <summary>
@@ -1960,35 +1973,11 @@ public static class MainMenuPrefabBuilder
                 layer: planetLayer
             );
 
-        // Asteroid debris ring: a band of rocks in the equatorial plane, tilted so it reads as an
-        // orbiting ring passing in front of and behind the planet. AutoRotate spins in local space,
-        // so rotating the tilted RingOrbit orbits the ring cleanly in its own plane (no wobble).
-        GameObject ringOrbit = new GameObject("RingOrbit");
-        ringOrbit.transform.SetParent(rig.transform, false);
-        ringOrbit.transform.localRotation = Quaternion.Euler(_ringTiltDegrees, 0f, 0f);
-        ringOrbit.AddComponent<AutoRotate>().Configure(-_ringOrbitDegreesPerSecond, Vector3.up);
-
-        // The asteroid ring also ships as a pre-skinned GLB, loaded into the tilted orbit at runtime.
-        GameObject ringModelNode = new GameObject("AsteroidRing");
-        ringModelNode.transform.SetParent(ringOrbit.transform, false);
-        ringModelNode
-            .AddComponent<ContentModelBinding>()
-            .SetModel(
-                "Application/MainMenu/Models/asteroid_ring",
-                1f,
-                // Disc mesh lies in XY (normal Z); -90 X lays it flat (normal up) before RingOrbit tilts it.
-                new Vector3(-90f, 0f, 0f),
-                overwrite: true,
-                normalize: false,
-                center: false,
-                layer: planetLayer
-            );
-
-        // Dedicated sun for the planet + ring, masked to their layer so it never touches the icons.
+        // Dedicated sun for the planet, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
         GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
         sunObject.transform.SetParent(rig.transform, false);
-        sunObject.transform.localRotation = Quaternion.Euler(28f, 115f, 0f);
+        sunObject.transform.localRotation = Quaternion.Euler(45.63f, 122.25f, 0f);
         Light sun = sunObject.GetComponent<Light>();
         sun.type = LightType.Directional;
         sun.intensity = 0.9f;
@@ -2003,7 +1992,7 @@ public static class MainMenuPrefabBuilder
         camera.clearFlags = CameraClearFlags.SolidColor;
         camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
         camera.orthographic = true;
-        camera.orthographicSize = 1.75f; // frame the globe (radius 1) plus the asteroid ring
+        camera.orthographicSize = 1.75f; // frame the globe (radius 1) with margin
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 50f;
         camera.cullingMask = 1 << planetLayer;
