@@ -192,7 +192,7 @@ namespace Rebellion.Game.Encyclopedia
             EncyclopediaEntryCategory category
         )
         {
-            if (entity == null || !entity.HasEncyclopediaData)
+            if (entity?.HasEncyclopediaData != true)
                 return null;
 
             return new EncyclopediaEntry
