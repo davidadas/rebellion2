@@ -229,6 +229,14 @@ namespace Rebellion.Tests.Systems
             (Planet planet, _) = CreatePlanet(game, "p1", "alliance", energy: 1);
             planet.IsHeadquarters = true;
             Building mine = AddCollateralBuilding(game, planet, "mine");
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters",
+                OwnerInstanceID = "alliance",
+                BuildingType = BuildingType.Headquarters,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(headquarters, planet);
             AddDefender(game, planet, "defender");
             Fleet fleet = AddAssaultFleet(game, planet, "empire", regimentCount: 1);
 
@@ -239,6 +247,10 @@ namespace Rebellion.Tests.Systems
                 .Execute(new List<Fleet> { fleet }, planet);
 
             Assert.IsTrue(planet.IsHeadquarters);
+            Assert.AreSame(
+                headquarters,
+                game.GetSceneNodeByInstanceID<Building>(headquarters.InstanceID)
+            );
             CollectionAssert.Contains(result.CollateralDestroyedBuildings, mine);
             Assert.AreEqual(1, planet.EnergyCapacity);
             Assert.IsFalse(result.Success);

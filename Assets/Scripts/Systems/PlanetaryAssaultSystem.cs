@@ -410,7 +410,10 @@ namespace Rebellion.Systems
         {
             List<CollateralTarget> targets = planet
                 .GetAllBuildings()
-                .Where(IsActiveAssaultUnit)
+                .Where(building =>
+                    building.BuildingType != BuildingType.Headquarters
+                    && IsActiveAssaultUnit(building)
+                )
                 .Select(building =>
                 {
                     return new CollateralTarget

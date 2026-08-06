@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -469,14 +470,17 @@ public sealed class PlanetSystemWindowController
     /// <summary>
     /// Resolves the player's stationary mobile-HQ building for an HQ-planet hit.
     /// </summary>
+    /// <param name="hit">The planet-system hit being inspected.</param>
+    /// <returns>The player's stationary mobile headquarters, or null when unavailable.</returns>
     private Building GetMobileHeadquarters(PlanetSystemWindowHit hit)
     {
         if (hit?.PlanetImage != true || hit.Planet?.IsHeadquarters != true)
             return null;
 
-        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
+        UIContext context = GetUIContext();
+        string playerFactionId = context.GetPlayerFactionInstanceID();
         if (
-            GetUIContext()
+            context
                 .Game.GetFactionByOwnerInstanceID(playerFactionId)
                 ?.Settings?.Headquarters?.IsMobile != true
         )
@@ -486,7 +490,8 @@ public sealed class PlanetSystemWindowController
             .Planet.GetChildren<Building>(
                 building =>
                     building.BuildingType == BuildingType.Headquarters
-                    && building.OwnerInstanceID == playerFactionId,
+                    && building.OwnerInstanceID == playerFactionId
+                    && building.Movement == null,
                 recurse: false
             )
             .SingleOrDefault();

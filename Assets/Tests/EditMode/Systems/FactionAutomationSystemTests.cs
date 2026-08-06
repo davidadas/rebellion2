@@ -9,13 +9,13 @@ using Rebellion.Systems;
 namespace Rebellion.Tests.Systems
 {
     [TestFixture]
-    public class PlayerAutomationSystemTests
+    public class FactionAutomationSystemTests
     {
         private GameRoot _game;
         private Faction _faction;
         private Planet _producer;
         private Planet _destination;
-        private PlayerAutomationSystem _automation;
+        private FactionAutomationSystem _automation;
 
         [SetUp]
         public void SetUp()
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Systems
                 _game,
                 new FleetSystem(_game)
             );
-            _automation = new PlayerAutomationSystem(_game, TestContent.Data, manufacturing);
+            _automation = new FactionAutomationSystem(_game, TestContent.Data, manufacturing);
         }
 
         [Test]
@@ -67,6 +67,22 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_ManageGarrisons_PrioritizesUprising()
+        {
+            _faction.ManageProduction = false;
+            AddCompletedRegiment(_producer, "GARRISON_1");
+            AddCompletedRegiment(_producer, "GARRISON_2");
+            Planet uprising = CreatePlanet("UPRISING", 10, 0);
+            uprising.IsInUprising = true;
+            _game.AttachNode(uprising, _destination.GetParent());
+
+            _automation.ProcessTick();
+
+            Assert.AreEqual(1, uprising.GetAllRegiments().Count);
+            Assert.IsEmpty(_destination.GetAllRegiments());
+        }
+
+        [Test]
         public void ProcessTick_ManageProduction_FillsCapacityWithMatchedPair()
         {
             _faction.ManageGarrisons = false;
@@ -75,18 +91,6 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(11, CountResourceFacilities(BuildingType.Mine));
             Assert.AreEqual(11, CountResourceFacilities(BuildingType.Refinery));
-        }
-
-        [Test]
-        public void ProcessTick_ManageProductionWithoutMineCapacity_DoesNotAddRefinery()
-        {
-            _faction.ManageGarrisons = false;
-            _destination.NumRawResourceNodes = 0;
-            int refineryCount = CountResourceFacilities(BuildingType.Refinery);
-
-            _automation.ProcessTick();
-
-            Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
 
         [Test]
@@ -105,19 +109,15 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_ManageGarrisons_PrioritizesUprising()
+        public void ProcessTick_ManageProductionWithoutMineCapacity_DoesNotAddRefinery()
         {
-            _faction.ManageProduction = false;
-            AddCompletedRegiment(_producer, "GARRISON_1");
-            AddCompletedRegiment(_producer, "GARRISON_2");
-            Planet uprising = CreatePlanet("UPRISING", 10, 0);
-            uprising.IsInUprising = true;
-            _game.AttachNode(uprising, _destination.GetParent());
+            _faction.ManageGarrisons = false;
+            _destination.NumRawResourceNodes = 0;
+            int refineryCount = CountResourceFacilities(BuildingType.Refinery);
 
             _automation.ProcessTick();
 
-            Assert.AreEqual(1, uprising.GetAllRegiments().Count);
-            Assert.IsEmpty(_destination.GetAllRegiments());
+            Assert.AreEqual(refineryCount, CountResourceFacilities(BuildingType.Refinery));
         }
 
         [Test]

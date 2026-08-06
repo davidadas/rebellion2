@@ -37,7 +37,7 @@ public sealed class GameManager
     private ManufacturingSystem _manufacturingSystem;
     private MaintenanceSystem _maintenanceSystem;
     private ResourceProductionSystem _resourceProductionSystem;
-    private PlayerAutomationSystem _playerAutomationSystem;
+    private FactionAutomationSystem _factionAutomationSystem;
 
     // Planetary Systems.
     private PlanetaryControlSystem _planetaryControlSystem;
@@ -207,7 +207,7 @@ public sealed class GameManager
         _messageSystem.ProcessTick();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
-        _playerAutomationSystem.ProcessTick();
+        _factionAutomationSystem.ProcessTick();
         ProcessResults(_resourceProductionSystem.ProcessTick());
         ProcessResults(_manufacturingSystem.ProcessTick());
         ProcessResults(_maintenanceSystem.ProcessTick());
@@ -308,7 +308,7 @@ public sealed class GameManager
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
-        _playerAutomationSystem = new PlayerAutomationSystem(
+        _factionAutomationSystem = new FactionAutomationSystem(
             _game,
             _gameData,
             _manufacturingSystem
@@ -365,6 +365,8 @@ public sealed class GameManager
         _resultProcessor = new GameResultProcessor();
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
+        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
+        _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);

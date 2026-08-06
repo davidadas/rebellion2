@@ -1587,7 +1587,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "recruited:{officer}:{system}",
                             "body:{officer}:{system}",
-                            DefaultImage("fallback-card")
+                            DefaultImage("fallback-card"),
+                            showOfficerOverlay: true
                         ),
                     },
                     new OfficerRecruitedResult
@@ -1737,7 +1738,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "recovered:{officer}:{system}",
                             "body:{officer}:{system}",
-                            DefaultImage("fallback-card")
+                            DefaultImage("fallback-card"),
+                            showOfficerOverlay: true
                         ),
                     },
                     new OfficerInjuredResult { Officer = officer, Severity = 0 }
@@ -2754,7 +2756,8 @@ namespace Rebellion.Tests.Game.Messages
             string imageKey = null,
             string voicePath = null,
             Dictionary<string, string> imagePaths = null,
-            Dictionary<string, string> voicePaths = null
+            Dictionary<string, string> voicePaths = null,
+            bool showOfficerOverlay = false
         )
         {
             MessageDefinition definition = new MessageDefinition
@@ -2769,6 +2772,7 @@ namespace Rebellion.Tests.Game.Messages
                 ManufacturingType = manufacturingType,
                 TitleTemplate = titleTemplate,
                 BodyTemplate = bodyTemplate,
+                ShowOfficerOverlay = showOfficerOverlay,
                 ImageKey = imageKey,
                 ImagePath = imagePath,
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),

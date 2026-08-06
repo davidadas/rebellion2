@@ -1116,7 +1116,7 @@ public static class StrategyViewPrefabBuilder
         FacilityWindowView view = EnableRuntimeComponent(window.GetComponent<FacilityWindowView>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, windowWidth, windowHeight);
 
-        CreateWindowSurfaceBacking(window.transform, windowWidth, windowHeight);
+        CreateBlackWindowUnderlay(window.transform, windowWidth, windowHeight);
         RawImage background = CreateRawImage(
             "BackgroundImage",
             window.transform,
@@ -1827,7 +1827,7 @@ public static class StrategyViewPrefabBuilder
         DefenseWindowView view = EnableRuntimeComponent(window.AddComponent<DefenseWindowView>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, windowWidth, windowHeight);
 
-        CreateWindowSurfaceBacking(window.transform, windowWidth, windowHeight);
+        CreateBlackWindowUnderlay(window.transform, windowWidth, windowHeight);
         RawImage background = CreateRawImage(
             "BackgroundImage",
             window.transform,
@@ -7473,10 +7473,10 @@ public static class StrategyViewPrefabBuilder
     /// <param name="parent">The window transform.</param>
     /// <param name="width">The window width.</param>
     /// <param name="height">The window height.</param>
-    private static void CreateWindowSurfaceBacking(Transform parent, int width, int height)
+    private static void CreateBlackWindowUnderlay(Transform parent, int width, int height)
     {
-        RawImage backing = CreatePanelImage("WindowSurfaceBackingImage", parent, Color.black);
-        SetSourceRect(backing.rectTransform, 0, 0, width, height);
+        RawImage underlay = CreatePanelImage("BlackWindowUnderlayImage", parent, Color.black);
+        SetSourceRect(underlay.rectTransform, 0, 0, width, height);
     }
 
     /// <summary>

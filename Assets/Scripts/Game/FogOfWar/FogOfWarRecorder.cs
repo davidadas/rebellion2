@@ -153,7 +153,7 @@ namespace Rebellion.Game.FogOfWar
             {
                 planetSnapshot.HasEspionageIntelligence =
                     previousSnapshot?.HasEspionageIntelligence == true;
-                PreserveMissionIntelligence(previousSnapshot, planetSnapshot);
+                CarryForwardRevealedMissions(previousSnapshot, planetSnapshot);
                 PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
             }
@@ -186,7 +186,7 @@ namespace Rebellion.Game.FogOfWar
         /// </summary>
         /// <param name="previousSnapshot">The prior intelligence snapshot.</param>
         /// <param name="snapshot">The replacement snapshot.</param>
-        private static void PreserveMissionIntelligence(
+        private static void CarryForwardRevealedMissions(
             PlanetSnapshot previousSnapshot,
             PlanetSnapshot snapshot
         )

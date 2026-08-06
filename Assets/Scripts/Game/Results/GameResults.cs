@@ -226,6 +226,17 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A mobile headquarters was destroyed when its planet fell to an enemy faction.
+    /// </summary>
+    public class HeadquartersDestroyedResult : GameResult
+    {
+        public Building Headquarters { get; set; }
+        public Planet Planet { get; set; }
+        public Faction Defender { get; set; }
+        public Faction Attacker { get; set; }
+    }
+
+    /// <summary>
     /// The active regiment garrison at a planet changed.
     /// </summary>
     public class PlanetGarrisonChangedResult : GameResult

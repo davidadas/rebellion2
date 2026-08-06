@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -10,9 +11,11 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Validates mobile-headquarters orders and updates the faction headquarters on arrival.
+    /// Owns mobile-headquarters relocation, arrival, and destruction policy.
     /// </summary>
-    public sealed class HeadquartersSystem : IGameResultHandler<UnitArrivedResult>
+    public sealed class HeadquartersSystem
+        : IGameResultHandler<UnitArrivedResult>,
+            IGameResultHandler<PlanetOwnershipChangedResult>
     {
         private readonly GameRoot _game;
         private readonly MovementSystem _movement;
@@ -21,6 +24,24 @@ namespace Rebellion.Systems
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
+            _movement.SetCompletedBuildingMovementPolicy(CanMove);
+        }
+
+        /// <summary>
+        /// Determines whether a completed building is the owning faction's active mobile headquarters.
+        /// </summary>
+        /// <param name="building">The completed building requesting movement.</param>
+        /// <returns>True when headquarters policy permits the building to move.</returns>
+        private bool CanMove(Building building)
+        {
+            if (building?.BuildingType != BuildingType.Headquarters || building.Movement != null)
+                return false;
+
+            Faction faction = _game.GetFactionByOwnerInstanceID(building.OwnerInstanceID);
+            Planet origin = building.GetParentOfType<Planet>();
+            return faction?.Settings?.Headquarters?.IsMobile == true
+                && origin != null
+                && faction.HQInstanceID == origin.InstanceID;
         }
 
         /// <summary>
@@ -32,8 +53,7 @@ namespace Rebellion.Systems
         public bool CanRelocate(Building headquarters, Planet destination)
         {
             if (
-                headquarters?.BuildingType != BuildingType.Headquarters
-                || headquarters.Movement != null
+                !CanMove(headquarters)
                 || destination?.IsDestroyed != false
                 || destination?.IsColonized != true
             )
@@ -41,11 +61,7 @@ namespace Rebellion.Systems
 
             Faction faction = _game.GetFactionByOwnerInstanceID(headquarters.OwnerInstanceID);
             Planet origin = headquarters.GetParentOfType<Planet>();
-            return faction?.Settings?.Headquarters?.IsMobile == true
-                && headquarters.TypeID == faction.Settings.Headquarters.FacilityTypeID
-                && origin != null
-                && faction.HQInstanceID == origin.InstanceID
-                && destination != origin
+            return destination != origin
                 && destination.OwnerInstanceID == faction.InstanceID
                 && destination.CanAcceptChild(headquarters);
         }
@@ -90,7 +106,7 @@ namespace Rebellion.Systems
 
                 Faction faction = _game.GetFactionByOwnerInstanceID(hq.OwnerInstanceID);
                 Planet destination = result.Destination;
-                if (faction == null || destination == null)
+                if (faction?.Settings?.Headquarters?.IsMobile != true || destination == null)
                     continue;
 
                 Planet previous = _game.GetSceneNodeByInstanceID<Planet>(faction.HQInstanceID);
@@ -102,6 +118,83 @@ namespace Rebellion.Systems
             }
 
             return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Destroys a mobile headquarters when an enemy takes control of its planet.
+        /// </summary>
+        /// <param name="results">The completed planetary ownership changes.</param>
+        /// <returns>Headquarters destruction results caused by hostile captures.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetOwnershipChangedResult> results)
+        {
+            List<GameResult> reactions = new List<GameResult>();
+            foreach (
+                PlanetOwnershipChangedResult result in results
+                    ?? Array.Empty<PlanetOwnershipChangedResult>()
+            )
+            {
+                UpdateFixedHeadquartersMarker(result);
+
+                Faction defender = result?.PreviousOwner;
+                Faction attacker = result?.NewOwner;
+                Planet planet = result?.Planet;
+                HeadquartersSettings settings = defender?.Settings?.Headquarters;
+                if (
+                    settings?.IsMobile != true
+                    || attacker == null
+                    || attacker == defender
+                    || planet == null
+                )
+                    continue;
+
+                Building headquarters = planet
+                    .GetChildren<Building>(_ => true, recurse: false)
+                    .SingleOrDefault(building =>
+                        building.BuildingType == BuildingType.Headquarters
+                    );
+                if (headquarters == null)
+                    continue;
+
+                _game.DetachNode(headquarters);
+
+                planet.IsHeadquarters = false;
+                defender.HQInstanceID = null;
+                reactions.Add(
+                    new HeadquartersDestroyedResult
+                    {
+                        Headquarters = headquarters,
+                        Planet = planet,
+                        Defender = defender,
+                        Attacker = attacker,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+
+            return reactions;
+        }
+
+        /// <summary>
+        /// Clears or restores a fixed headquarters marker when its configured planet changes hands.
+        /// The faction's headquarters location remains configured so recapture can restore it.
+        /// </summary>
+        /// <param name="result">The planetary ownership change to apply.</param>
+        private void UpdateFixedHeadquartersMarker(PlanetOwnershipChangedResult result)
+        {
+            Planet planet = result?.Planet;
+            if (planet == null)
+                return;
+
+            Faction fixedHeadquartersFaction = _game
+                .GetFactions()
+                .SingleOrDefault(faction =>
+                    faction.Settings?.Headquarters?.IsMobile != true
+                    && faction.HQInstanceID == planet.InstanceID
+                );
+            if (fixedHeadquartersFaction == null)
+                return;
+
+            planet.IsHeadquarters = result.NewOwner == fixedHeadquartersFaction;
         }
     }
 }

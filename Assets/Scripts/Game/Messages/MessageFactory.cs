@@ -486,9 +486,10 @@ namespace Rebellion.Game.Messages
             if (officer == null)
                 return null;
 
+            MessageDefinition definition = GetDefinition(resultType);
             Message message = WithEventLocation(
                 CreateMessage(
-                    GetDefinition(resultType),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
@@ -500,7 +501,7 @@ namespace Rebellion.Game.Messages
                         },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: UsesOfficerOverlay(resultType)
+                    overlayImagePath: definition?.ShowOfficerOverlay == true
                         ? GetMessageImagePath(officer)
                         : null,
                     officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
@@ -520,24 +521,6 @@ namespace Rebellion.Game.Messages
                 _ => AdvisorSubjectNotification.None,
             };
             return WithAdvisorSubject(message, notification, officer);
-        }
-
-        /// <summary>
-        /// Returns whether the original event record supplies an officer portrait overlay.
-        /// </summary>
-        /// <param name="resultType">The officer event type.</param>
-        /// <returns>True when the event composites the officer portrait over its card.</returns>
-        private static bool UsesOfficerOverlay(MessageResultType resultType)
-        {
-            return resultType switch
-            {
-                MessageResultType.OfficerCaptured
-                or MessageResultType.EnemyOfficerCaptured
-                or MessageResultType.OfficerReleased
-                or MessageResultType.OfficerInjured
-                or MessageResultType.OfficerKilled => false,
-                _ => true,
-            };
         }
 
         /// <summary>

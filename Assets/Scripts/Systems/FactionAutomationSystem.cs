@@ -12,19 +12,19 @@ namespace Rebellion.Systems
     /// <summary>
     /// Performs the optional strategic chores delegated to the protocol advisor.
     /// </summary>
-    public sealed class PlayerAutomationSystem
+    public sealed class FactionAutomationSystem
     {
         private readonly GameRoot _game;
         private readonly GameDataCatalog _gameData;
         private readonly ManufacturingSystem _manufacturing;
 
         /// <summary>
-        /// Creates the player automation system.
+        /// Creates the faction automation system.
         /// </summary>
         /// <param name="game">The active game.</param>
         /// <param name="gameData">Templates available to the selected content pack.</param>
         /// <param name="manufacturing">The manufacturing system used to place orders.</param>
-        public PlayerAutomationSystem(
+        public FactionAutomationSystem(
             GameRoot game,
             GameDataCatalog gameData,
             ManufacturingSystem manufacturing
@@ -320,9 +320,7 @@ namespace Rebellion.Systems
         /// <returns>The total facility count.</returns>
         private static int CountBuildings(IEnumerable<Planet> planets, BuildingType buildingType)
         {
-            return planets.Sum(planet =>
-                planet.Buildings.Count(building => building.BuildingType == buildingType)
-            );
+            return planets.Sum(planet => planet.GetTotalBuildingTypeCount(buildingType));
         }
     }
 }

@@ -13,8 +13,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class VictorySystemTests
     {
-        // Builds a two-faction scene where rebels own empire's HQ by default.
-        // Call site controls VictoryCondition and whether to flip the HQ.
         private (
             GameRoot game,
             Faction empire,
@@ -103,7 +101,6 @@ namespace Rebellion.Tests.Systems
                 GameVictoryCondition.Conquest
             );
 
-            // Leader must live on an empire-owned planet, not the captured HQ.
             Planet empirePlanet = new Planet
             {
                 InstanceID = "p_empire",
@@ -161,7 +158,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
         {
-            // If a faction has no main characters at all, treat as all captured (prevents softlock).
             (_, _, Faction rebels, _, VictorySystem system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
@@ -206,6 +202,55 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_MobileHeadquartersMissing_ReturnsEmpty()
+        {
+            (_, Faction empire, _, _, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ProcessTick_MobileHeadquartersOwnerIsUnknown_ReturnsEmpty()
+        {
+            (GameRoot game, Faction empire, _, Planet empireHQ, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = "unknown-faction",
+                BuildingType = BuildingType.Headquarters,
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
         public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
         {
             (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
@@ -236,6 +281,30 @@ namespace Rebellion.Tests.Systems
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
             Assert.AreEqual(empire, victory.Loser);
+        }
+
+        [Test]
+        public void HandleResults_MobileHeadquartersDestroyed_ReturnsVictory()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+
+            List<GameResult> results = system.HandleResults(
+                new List<HeadquartersDestroyedResult>
+                {
+                    new HeadquartersDestroyedResult
+                    {
+                        Planet = empireHQ,
+                        Defender = empire,
+                        Attacker = rebels,
+                    },
+                }
+            );
+
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
         }
     }
 }

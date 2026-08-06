@@ -55,6 +55,87 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(destination.InstanceID, faction.HQInstanceID);
         }
 
+        [Test]
+        public void HandleResults_FixedHeadquartersCaptured_ClearsMarkerAndPreservesLocation()
+        {
+            (GameRoot game, Faction faction, Planet origin, _, _) = CreateGame(isMobile: false);
+            Faction attacker = new Faction { InstanceID = "empire" };
+            game.Factions.Add(attacker);
+
+            CreateSystem(game)
+                .HandleResults(
+                    new List<PlanetOwnershipChangedResult>
+                    {
+                        new PlanetOwnershipChangedResult
+                        {
+                            Planet = origin,
+                            PreviousOwner = faction,
+                            NewOwner = attacker,
+                        },
+                    }
+                );
+
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
+        }
+
+        [Test]
+        public void HandleResults_FixedHeadquartersRecaptured_RestoresMarker()
+        {
+            (GameRoot game, Faction faction, Planet origin, _, _) = CreateGame(isMobile: false);
+            Faction attacker = new Faction { InstanceID = "empire" };
+            game.Factions.Add(attacker);
+            origin.IsHeadquarters = false;
+
+            CreateSystem(game)
+                .HandleResults(
+                    new List<PlanetOwnershipChangedResult>
+                    {
+                        new PlanetOwnershipChangedResult
+                        {
+                            Planet = origin,
+                            PreviousOwner = attacker,
+                            NewOwner = faction,
+                        },
+                    }
+                );
+
+            Assert.IsTrue(origin.IsHeadquarters);
+            Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
+        }
+
+        [Test]
+        public void HandleResults_HostilePlanetCapture_DestroysMobileHeadquarters()
+        {
+            (GameRoot game, Faction faction, Planet origin, _, Building hq) = CreateGame(
+                isMobile: true
+            );
+            Faction attacker = new Faction { InstanceID = "empire" };
+            game.Factions.Add(attacker);
+
+            List<GameResult> results = CreateSystem(game)
+                .HandleResults(
+                    new List<PlanetOwnershipChangedResult>
+                    {
+                        new PlanetOwnershipChangedResult
+                        {
+                            Planet = origin,
+                            PreviousOwner = faction,
+                            NewOwner = attacker,
+                        },
+                    }
+                );
+
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(hq.InstanceID));
+            Assert.IsFalse(origin.IsHeadquarters);
+            Assert.IsNull(faction.HQInstanceID);
+            HeadquartersDestroyedResult destroyed = results[0] as HeadquartersDestroyedResult;
+            Assert.IsNotNull(destroyed);
+            Assert.AreSame(hq, destroyed.Headquarters);
+            Assert.AreSame(faction, destroyed.Defender);
+            Assert.AreSame(attacker, destroyed.Attacker);
+        }
+
         private static HeadquartersSystem CreateSystem(GameRoot game)
         {
             MovementSystem movement = new MovementSystem(

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -12,7 +13,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Manages victory condition checking during each game tick.
     /// </summary>
-    public class VictorySystem
+    public class VictorySystem : IGameResultHandler<HeadquartersDestroyedResult>
     {
         private readonly GameRoot _game;
 
@@ -44,6 +45,21 @@ namespace Rebellion.Systems
             }
 
             return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Applies the configured victory condition after a mobile headquarters is destroyed.
+        /// </summary>
+        /// <param name="results">The headquarters destruction results.</param>
+        /// <returns>Any victories caused by the headquarters losses.</returns>
+        public List<GameResult> HandleResults(IReadOnlyList<HeadquartersDestroyedResult> results)
+        {
+            return (results ?? Array.Empty<HeadquartersDestroyedResult>())
+                .Where(result => result?.Attacker != null && result.Defender != null)
+                .Select(result => BuildHQVictory(result.Attacker, result.Defender))
+                .Where(result => result != null)
+                .Cast<GameResult>()
+                .ToList();
         }
 
         /// <summary>
@@ -79,29 +95,37 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Checks ownership or destruction of a faction's mobile headquarters building.
+        /// Checks ownership of a faction's mobile headquarters building.
         /// </summary>
+        /// <param name="defender">The faction whose mobile headquarters is checked.</param>
+        /// <returns>A victory when an opposing faction owns the headquarters; otherwise null.</returns>
         private VictoryResult CheckMobileHQCapture(Faction defender)
         {
             Building headquarters = _game
                 .GetSceneNodesByType<Building>()
-                .FirstOrDefault(building =>
-                    building.TypeID == defender.Settings.Headquarters.FacilityTypeID
+                .SingleOrDefault(building =>
+                    building.BuildingType == BuildingType.Headquarters
+                    && building.TypeID == defender.Settings.Headquarters.FacilityTypeID
                 );
-            if (headquarters?.OwnerInstanceID == defender.InstanceID)
+            if (
+                headquarters == null
+                || string.IsNullOrEmpty(headquarters.OwnerInstanceID)
+                || headquarters.OwnerInstanceID == defender.InstanceID
+            )
                 return null;
 
-            string attackerId = headquarters?.OwnerInstanceID;
             Faction attacker = _game.Factions.FirstOrDefault(faction =>
-                faction.InstanceID == attackerId
+                faction.InstanceID == headquarters.OwnerInstanceID
             );
-            attacker ??= _game.Factions.FirstOrDefault(faction => faction != defender);
             return attacker == null ? null : BuildHQVictory(attacker, defender);
         }
 
         /// <summary>
         /// Builds an HQ victory after applying the selected victory-mode requirements.
         /// </summary>
+        /// <param name="attacker">The faction that defeated the headquarters owner.</param>
+        /// <param name="defender">The faction that lost its headquarters.</param>
+        /// <returns>A victory when all mode requirements are met; otherwise null.</returns>
         private VictoryResult BuildHQVictory(Faction attacker, Faction defender)
         {
             GameVictoryCondition victoryMode = _game.Summary.VictoryCondition;
