@@ -28,6 +28,15 @@ public sealed class CutscenePlayer : MonoBehaviour
     private Color authoredScreenColor;
 
     /// <summary>
+    /// Applies the effective volume for video playback.
+    /// </summary>
+    /// <param name="volume">The master-scaled video volume.</param>
+    internal void SetVolume(float volume)
+    {
+        audioSource.volume = Mathf.Clamp01(volume);
+    }
+
+    /// <summary>
     /// Configures video playback defaults.
     /// </summary>
     private void Awake()

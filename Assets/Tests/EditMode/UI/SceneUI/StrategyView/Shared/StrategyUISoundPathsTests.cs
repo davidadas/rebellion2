@@ -61,5 +61,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 StrategyUISoundPaths.GetPreloadPaths(theme).ToArray()
             );
         }
+
+        [Test]
+        public void GetPreloadPaths_ConfiguredBriefing_ReturnsSegmentAndSkipAudio()
+        {
+            FactionTheme theme = new FactionTheme
+            {
+                StrategyBriefing = new StrategyBriefingTheme
+                {
+                    AudioRoot = "Pack/Factions/Example/Strategy/Audio/Briefing",
+                    AudioFilePrefix = "briefing",
+                    Skip = new StrategyAdvisorAnimationTheme { WaveID = 42 },
+                },
+            };
+            theme.StrategyBriefing.Segments.Add(new StrategyAdvisorAnimationTheme { WaveID = 41 });
+
+            string[] paths = StrategyUISoundPaths.GetBriefingPreloadPaths(theme).ToArray();
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0041",
+                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0042",
+                },
+                paths
+            );
+        }
     }
 }

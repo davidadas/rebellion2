@@ -38,6 +38,10 @@ public sealed class AudioManager : MonoBehaviour
     [SerializeField]
     private float ambienceVolume = 1f;
 
+    [Range(0f, 1f)]
+    [SerializeField]
+    private float videoVolume = 1f;
+
     private readonly Dictionary<string, AudioClip> _preloadedSfx = new Dictionary<
         string,
         AudioClip
@@ -98,6 +102,16 @@ public sealed class AudioManager : MonoBehaviour
     /// Gets the sound effect channel volume.
     /// </summary>
     public float SfxVolume => sfxVolume;
+
+    /// <summary>
+    /// Gets the unscaled video volume.
+    /// </summary>
+    public float VideoVolume => videoVolume;
+
+    /// <summary>
+    /// Gets the video volume after applying the master channel.
+    /// </summary>
+    public float EffectiveVideoVolume => videoVolume * masterVolume;
 
     /// <summary>
     /// Gets the ambience channel volume.
@@ -431,6 +445,15 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Stops sound-effect playback immediately.
+    /// </summary>
+    public void StopSfx()
+    {
+        EnsureAudioSources();
+        sfxSource.Stop();
+    }
+
+    /// <summary>
     /// Plays ambience from an already loaded clip.
     /// </summary>
     /// <param name="clip">The ambience clip to play.</param>
@@ -460,6 +483,7 @@ public sealed class AudioManager : MonoBehaviour
         musicVolume = settings.MusicVolume;
         sfxVolume = settings.SfxVolume;
         ambienceVolume = settings.AmbienceVolume;
+        videoVolume = settings.VideoVolume;
 
         ApplyVolumes();
     }
@@ -476,6 +500,7 @@ public sealed class AudioManager : MonoBehaviour
             MusicVolume = musicVolume,
             SfxVolume = sfxVolume,
             AmbienceVolume = ambienceVolume,
+            VideoVolume = videoVolume,
         };
     }
 
@@ -517,6 +542,15 @@ public sealed class AudioManager : MonoBehaviour
     {
         ambienceVolume = Mathf.Clamp01(volume);
         ApplyVolumes();
+    }
+
+    /// <summary>
+    /// Sets the video channel volume.
+    /// </summary>
+    /// <param name="volume">The requested volume.</param>
+    public void SetVideoVolume(float volume)
+    {
+        videoVolume = Mathf.Clamp01(volume);
     }
 
     /// <summary>

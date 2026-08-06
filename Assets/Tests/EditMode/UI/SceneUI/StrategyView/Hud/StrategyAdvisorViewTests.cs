@@ -212,6 +212,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void EnqueuePlaybacks_DelayedAnimation_WaitsBeforeStarting()
+        {
+            _view.Render(CreatePresentation(true));
+            StrategyAdvisorAnimationViewData animation = new StrategyAdvisorAnimationViewData(
+                new[] { _protocolFirstTexture },
+                false,
+                "briefing",
+                2f
+            );
+            int startedCount = 0;
+            _view.PlaybackStarted += _ => startedCount++;
+
+            _view.EnqueuePlaybacks(new[] { animation });
+            _view.AdvanceAnimation(1.9f);
+
+            Assert.AreEqual(0, startedCount);
+            Assert.AreSame(_protocolIdleTexture, GetField<RawImage>("protocolImage").texture);
+
+            _view.AdvanceAnimation(0.1f);
+
+            Assert.AreEqual(1, startedCount);
+            Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
+        }
+
+        [Test]
         public void EnqueuePlaybacks_NullAndEmptyAnimations_DoesNotStartPlayback()
         {
             _view.Render(CreatePresentation(true));

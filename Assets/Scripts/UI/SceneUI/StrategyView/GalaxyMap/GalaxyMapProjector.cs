@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
+using Rebellion.Util.Extensions;
 using UnityEngine;
 
 /// <summary>
@@ -28,15 +31,18 @@ public sealed class GalaxyMapProjector
     /// <param name="playerFactionId">The viewing player's faction identifier.</param>
     /// <param name="filterMode">The active galactic-information filter.</param>
     /// <param name="hoveredSystemInstanceId">The planet-system identifier whose label is revealed.</param>
+    /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <returns>The complete immutable map presentation.</returns>
     public GalaxyMapRenderData Project(
         IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         GalacticInformationFilterMode filterMode,
-        string hoveredSystemInstanceId
+        string hoveredSystemInstanceId,
+        StrategyBriefingMapPresentation briefing = null
     )
     {
         UIContext context = GetRequiredContext();
+        hoveredSystemInstanceId = briefing?.TargetSystemInstanceID ?? hoveredSystemInstanceId;
         FactionTheme playerTheme = context.GetPlayerFactionTheme();
         GalacticInformationFilterTheme filter = ResolveFilter(playerTheme, filterMode);
         List<GalaxyMapClusterRenderData> clusters = ProjectClusters(
@@ -44,14 +50,19 @@ public sealed class GalaxyMapProjector
             playerFactionId,
             filter,
             hoveredSystemInstanceId,
-            context
+            context,
+            briefing
         );
 
         Texture2D backgroundTexture = context.GetTexture(playerTheme?.GalaxyBackground?.ImagePath);
         return new GalaxyMapRenderData(
             backgroundTexture,
             GetBackgroundBounds(backgroundTexture, playerTheme?.GalaxyBackground?.SourcePosition),
-            ProjectActiveFilterLabel(playerTheme?.GalacticInformationDisplay, filter),
+            ProjectActiveFilterLabel(
+                playerTheme?.GalacticInformationDisplay,
+                filter,
+                briefing?.Label
+            ),
             clusters
         );
     }
@@ -85,18 +96,21 @@ public sealed class GalaxyMapProjector
     /// </summary>
     /// <param name="theme">The active faction's galactic-information theme.</param>
     /// <param name="filter">The active filter, or null when display is off.</param>
+    /// <param name="labelOverride">The transient briefing label, or null.</param>
     /// <returns>The active filter label presentation.</returns>
     private static GalaxyMapActiveFilterLabelRenderData ProjectActiveFilterLabel(
         GalacticInformationDisplayTheme theme,
-        GalacticInformationFilterTheme filter
+        GalacticInformationFilterTheme filter,
+        string labelOverride
     )
     {
         SourceRectLayout layout = theme?.ActiveFilterLabelSourceLayout;
-        if (filter == null || layout == null)
+        string label = labelOverride ?? filter?.Label;
+        if (string.IsNullOrEmpty(label) || layout == null)
             return default;
 
         return new GalaxyMapActiveFilterLabelRenderData(
-            filter.Label,
+            label,
             theme.GetActiveFilterLabelColor(),
             new RectInt(layout.X, layout.Y, layout.Width, layout.Height),
             theme.ActiveFilterLabelFontSize
@@ -149,13 +163,15 @@ public sealed class GalaxyMapProjector
     /// <param name="filter">The active filter configuration, or null when display is off.</param>
     /// <param name="hoveredSystemInstanceId">The planet-system identifier whose label is revealed.</param>
     /// <param name="context">The current strategy UI context.</param>
+    /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <returns>The projected cluster presentations.</returns>
     private static List<GalaxyMapClusterRenderData> ProjectClusters(
         IReadOnlyList<GalaxyMapSector> sectors,
         string playerFactionId,
         GalacticInformationFilterTheme filter,
         string hoveredSystemInstanceId,
-        UIContext context
+        UIContext context,
+        StrategyBriefingMapPresentation briefing
     )
     {
         List<GalaxyMapClusterRenderData> clusters = new List<GalaxyMapClusterRenderData>();
@@ -179,7 +195,7 @@ public sealed class GalaxyMapProjector
                         hoveredSystemInstanceId,
                         StringComparison.Ordinal
                     ),
-                    ProjectStars(sector, playerFactionId, filter, context, systemPosition)
+                    ProjectStars(sector, playerFactionId, filter, context, systemPosition, briefing)
                 )
             );
         }
@@ -195,13 +211,15 @@ public sealed class GalaxyMapProjector
     /// <param name="filter">The active filter configuration, or null when display is off.</param>
     /// <param name="context">The current strategy UI context.</param>
     /// <param name="systemPosition">The sector's source-space map position.</param>
+    /// <param name="briefing">The transient briefing presentation, or null.</param>
     /// <returns>The projected marker presentations.</returns>
     private static List<GalaxyMapStarRenderData> ProjectStars(
         GalaxyMapSector sector,
         string playerFactionId,
         GalacticInformationFilterTheme filter,
         UIContext context,
-        System.Drawing.Point systemPosition
+        System.Drawing.Point systemPosition,
+        StrategyBriefingMapPresentation briefing
     )
     {
         List<GalaxyMapStarRenderData> stars = new List<GalaxyMapStarRenderData>();
@@ -211,18 +229,20 @@ public sealed class GalaxyMapProjector
                 continue;
 
             GalacticInformationMarker marker =
-                filter == null
+                briefing != null && briefing.Mode != StrategyBriefingMapMode.Default
+                    ? EvaluateBriefingMarker(planet.Planet, briefing, context)
+                : filter == null
                     ? new GalacticInformationMarker(
                         _defaultMarkerIndex,
                         planet.Planet.OwnerInstanceID,
                         false
                     )
-                    : GalacticInformationFilterEvaluator.Evaluate(
-                        context.Game,
-                        planet.Planet,
-                        playerFactionId,
-                        filter
-                    );
+                : GalacticInformationFilterEvaluator.Evaluate(
+                    context.Game,
+                    planet.Planet,
+                    playerFactionId,
+                    filter
+                );
             System.Drawing.Point planetPosition = planet.Planet.GetPosition();
             stars.Add(
                 new GalaxyMapStarRenderData(
@@ -236,6 +256,131 @@ public sealed class GalaxyMapProjector
         }
 
         return stars;
+    }
+
+    /// <summary>
+    /// Evaluates the original briefing-only map modes without exposing them in the player menu.
+    /// </summary>
+    /// <param name="planet">The visible planet snapshot.</param>
+    /// <param name="briefing">The active briefing map cue.</param>
+    /// <param name="context">The current strategy UI context.</param>
+    /// <returns>The briefing-specific marker presentation.</returns>
+    private static GalacticInformationMarker EvaluateBriefingMarker(
+        Planet planet,
+        StrategyBriefingMapPresentation briefing,
+        UIContext context
+    )
+    {
+        if (briefing.Mode == StrategyBriefingMapMode.Spotlight)
+        {
+            bool highlighted = string.Equals(
+                planet.InstanceID,
+                briefing.TargetPlanetInstanceID,
+                StringComparison.Ordinal
+            );
+            return new GalacticInformationMarker(
+                highlighted ? 3 : 0,
+                highlighted ? planet.OwnerInstanceID : null,
+                false
+            );
+        }
+
+        if (briefing.Mode == StrategyBriefingMapMode.PopularSupport)
+        {
+            GalacticInformationFilterTheme filter = context
+                .GetPlayerFactionTheme()
+                ?.GalacticInformationDisplay?.GetFilter(
+                    GalacticInformationFilterMode.PopularSupport
+                );
+            return GalacticInformationFilterEvaluator.Evaluate(
+                context.Game,
+                planet,
+                briefing.PlayerFactionInstanceID,
+                filter
+            );
+        }
+
+        if (briefing.Mode == StrategyBriefingMapMode.IdleFleets)
+        {
+            GalacticInformationFilterTheme filter = context
+                .GetPlayerFactionTheme()
+                ?.GalacticInformationDisplay?.GetFilter(GalacticInformationFilterMode.IdleFleets);
+            return GalacticInformationFilterEvaluator.Evaluate(
+                context.Game,
+                planet,
+                briefing.PlayerFactionInstanceID,
+                filter
+            );
+        }
+
+        string highlightedFaction = briefing.Mode switch
+        {
+            StrategyBriefingMapMode.PlayerLoyalty => briefing.PlayerFactionInstanceID,
+            StrategyBriefingMapMode.OpponentLoyalty => briefing.OpponentFactionInstanceID,
+            _ => null,
+        };
+        if (highlightedFaction != null)
+        {
+            string otherFaction = string.Equals(
+                highlightedFaction,
+                briefing.PlayerFactionInstanceID,
+                StringComparison.Ordinal
+            )
+                ? briefing.OpponentFactionInstanceID
+                : briefing.PlayerFactionInstanceID;
+            bool highlighted =
+                planet.GetPopularSupport(highlightedFaction)
+                > planet.GetPopularSupport(otherFaction);
+            return new GalacticInformationMarker(
+                highlighted ? 3 : 0,
+                highlighted ? highlightedFaction : planet.OwnerInstanceID,
+                false
+            );
+        }
+
+        if (briefing.Mode == StrategyBriefingMapMode.UnexploredSystems)
+        {
+            return new GalacticInformationMarker(
+                planet.IsUnexploredView ? 3 : 0,
+                planet.IsUnexploredView ? briefing.PlayerFactionInstanceID : planet.OwnerInstanceID,
+                false
+            );
+        }
+
+        if (briefing.Mode == StrategyBriefingMapMode.MilitaryControl)
+        {
+            bool controlled = !string.IsNullOrEmpty(planet.OwnerInstanceID);
+            return new GalacticInformationMarker(
+                controlled ? 3 : 0,
+                controlled ? planet.OwnerInstanceID : null,
+                false
+            );
+        }
+
+        int defenseCount =
+            planet.Regiments.Count(IsActive)
+            + planet.Starfighters.Count(IsActive)
+            + planet.Buildings.Count(building =>
+                building.ManufacturingStatus == ManufacturingStatus.Complete
+                && building.DefenseFacilityClass != DefenseFacilityClass.None
+            );
+        return new GalacticInformationMarker(
+            Math.Min(3, defenseCount),
+            planet.OwnerInstanceID,
+            false
+        );
+    }
+
+    /// <summary>
+    /// Determines whether a manufacturable unit is complete and stationary.
+    /// </summary>
+    /// <param name="entity">The unit or facility to inspect.</param>
+    /// <returns>True when the entity contributes to an active-defense count.</returns>
+    private static bool IsActive(IManufacturable entity)
+    {
+        return entity != null
+            && entity.GetManufacturingStatus() == ManufacturingStatus.Complete
+            && entity.GetTransitMovement() == null;
     }
 
     /// <summary>

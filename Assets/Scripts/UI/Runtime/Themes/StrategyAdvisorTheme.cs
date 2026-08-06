@@ -14,7 +14,127 @@ public class StrategyAdvisorAnimationTheme
 
     public int WaveID { get; set; }
 
+    public float DelayBeforeSeconds { get; set; }
+
     public bool RequiresAnnouncementsEnabled { get; set; }
+
+    public StrategyBriefingFocus BriefingFocus { get; set; }
+
+    public StrategyBriefingMapMode BriefingMapMode { get; set; }
+
+    public string BriefingTargetInstanceID { get; set; }
+
+    public string BriefingLabel { get; set; }
+}
+
+public enum StrategyBriefingFocus
+{
+    None,
+    Galaxy,
+    Target,
+    PlayerHeadquarters,
+    OpponentHeadquarters,
+}
+
+/// <summary>
+/// Identifies the galaxy-map presentation shown while one briefing segment plays.
+/// </summary>
+public enum StrategyBriefingMapMode
+{
+    Default,
+    PopularSupport,
+    PlayerLoyalty,
+    OpponentLoyalty,
+    MilitaryControl,
+    UnexploredSystems,
+    IdleFleets,
+    AllDefenses,
+    Spotlight,
+}
+
+/// <summary>
+/// Defines a faction's ordered new-game briefing using externally supplied advisor media.
+/// </summary>
+[PersistableObject]
+public class StrategyBriefingTheme
+{
+    private const int _texturesPerFrame = 64;
+
+    public string AnimationImageRoot { get; set; }
+
+    public string AnimationFilePrefix { get; set; }
+
+    public string AudioRoot { get; set; }
+
+    public string AudioFilePrefix { get; set; }
+
+    public List<StrategyAdvisorAnimationTheme> Segments { get; set; } =
+        new List<StrategyAdvisorAnimationTheme>();
+
+    public StrategyAdvisorAnimationTheme Skip { get; set; }
+
+    /// <summary>
+    /// Builds the active faction's briefing preload manifest so playback never performs disk
+    /// decoding between spoken segments.
+    /// </summary>
+    /// <returns>The textures and audio required by the complete briefing.</returns>
+    public ContentPreloadManifest CreatePreloadManifest()
+    {
+        ContentPreloadManifest manifest = new ContentPreloadManifest
+        {
+            TexturesPerFrame = _texturesPerFrame,
+        };
+        HashSet<int> bitmapIDs = new HashSet<int>();
+        HashSet<int> waveIDs = new HashSet<int>();
+        for (int i = 0; i < Segments.Count; i++)
+            AddPreloadAssets(Segments[i], bitmapIDs, waveIDs, manifest);
+        AddPreloadAssets(Skip, bitmapIDs, waveIDs, manifest);
+        return manifest;
+    }
+
+    /// <summary>
+    /// Builds the content address for one briefing animation frame.
+    /// </summary>
+    /// <param name="bitmapID">The source animation bitmap identifier.</param>
+    /// <param name="frameIndex">The zero-based frame index.</param>
+    /// <returns>The external content address for the frame.</returns>
+    public string GetFramePath(int bitmapID, int frameIndex)
+    {
+        return $"{AnimationImageRoot}/{bitmapID}/{AnimationFilePrefix}-protocol-{bitmapID}-frame-{frameIndex:D3}";
+    }
+
+    /// <summary>
+    /// Builds the content address for one briefing voice clip.
+    /// </summary>
+    /// <param name="waveID">The source wave resource identifier.</param>
+    /// <returns>The external content address for the voice clip.</returns>
+    public string GetAudioPath(int waveID)
+    {
+        return $"{AudioRoot}/{AudioFilePrefix}-{waveID:D4}";
+    }
+
+    /// <summary>
+    /// Adds one segment's distinct animation directory and voice clip to a preload manifest.
+    /// </summary>
+    /// <param name="segment">The configured briefing segment.</param>
+    /// <param name="bitmapIDs">The bitmap identifiers already added.</param>
+    /// <param name="waveIDs">The wave identifiers already added.</param>
+    /// <param name="manifest">The manifest receiving distinct content addresses.</param>
+    private void AddPreloadAssets(
+        StrategyAdvisorAnimationTheme segment,
+        ISet<int> bitmapIDs,
+        ISet<int> waveIDs,
+        ContentPreloadManifest manifest
+    )
+    {
+        if (segment == null)
+            return;
+
+        if (segment.BitmapID > 0 && bitmapIDs.Add(segment.BitmapID))
+            manifest.TextureDirectories.Add($"{AnimationImageRoot}/{segment.BitmapID}");
+        if (segment.WaveID > 0 && waveIDs.Add(segment.WaveID))
+            manifest.Audio.Add(GetAudioPath(segment.WaveID));
+    }
 }
 
 /// <summary>

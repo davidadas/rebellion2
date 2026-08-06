@@ -23,6 +23,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
+    private Action briefingCompleted;
+    private StrategyBriefingTheme activeBriefing;
+    private int briefingSegmentIndex;
+    private Action<StrategyAdvisorAnimationTheme> briefingSegmentStarted;
 
     /// <summary>
     /// Creates an advisor controller with faction, texture, and audio dependencies.
@@ -70,6 +74,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         view.DroidClicked += HandleDroidClicked;
         view.DroidContextRequested += HandleDroidContextRequested;
         view.PlaybackStarted += HandlePlaybackStarted;
+        view.PlaybackCompleted += HandlePlaybackCompleted;
         view.ProtocolContextRequested += HandleProtocolContextRequested;
         view.Render(CreateViewData(theme));
     }
@@ -200,6 +205,113 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             targetView.EnqueuePlaybacks(playbackBatch);
             break;
         }
+    }
+
+    /// <summary>
+    /// Plays an ordered faction briefing through the protocol advisor.
+    /// </summary>
+    /// <param name="briefing">The faction-configured briefing.</param>
+    /// <param name="segmentStarted">Invoked when each delayed segment actually begins.</param>
+    /// <param name="completed">Invoked after the complete briefing or skip response finishes.</param>
+    public void PlayBriefing(
+        StrategyBriefingTheme briefing,
+        Action<StrategyAdvisorAnimationTheme> segmentStarted,
+        Action completed
+    )
+    {
+        if (briefing == null || briefing.Segments.Count == 0)
+        {
+            completed?.Invoke();
+            return;
+        }
+
+        activeBriefing = briefing;
+        briefingSegmentIndex = 0;
+        briefingSegmentStarted = segmentStarted;
+        briefingCompleted = completed;
+        PlayCurrentBriefingSegment();
+    }
+
+    /// <summary>
+    /// Skips the active briefing and optionally plays its configured acknowledgement.
+    /// </summary>
+    /// <param name="briefing">The faction briefing containing the skip response.</param>
+    public void SkipBriefing(StrategyBriefingTheme briefing)
+    {
+        StrategyBriefingTheme currentBriefing = activeBriefing;
+        activeBriefing = null;
+        GetRequiredView().CancelPlayback();
+        activeBriefing = currentBriefing;
+        briefingSegmentIndex = currentBriefing?.Segments.Count ?? 0;
+        if (briefing?.Skip == null)
+        {
+            CompleteBriefing();
+            return;
+        }
+
+        GetRequiredView()
+            .EnqueuePlaybacks(new[] { CreateBriefingPlayback(briefing, briefing.Skip) });
+    }
+
+    /// <summary>
+    /// Resolves one configured briefing segment into resident animation playback data.
+    /// </summary>
+    /// <param name="briefing">The briefing content-address configuration.</param>
+    /// <param name="segment">The animation segment to resolve.</param>
+    /// <returns>The resolved playback frames, voice address, and initial delay.</returns>
+    private StrategyAdvisorAnimationViewData CreateBriefingPlayback(
+        StrategyBriefingTheme briefing,
+        StrategyAdvisorAnimationTheme segment
+    )
+    {
+        if (segment == null || segment.FrameCount <= 0)
+            throw new InvalidOperationException("Briefing contains an empty animation segment.");
+
+        Texture2D[] frames = new Texture2D[segment.FrameCount];
+        for (int frameIndex = 0; frameIndex < segment.FrameCount; frameIndex++)
+        {
+            string path = briefing.GetFramePath(segment.BitmapID, frameIndex);
+            frames[frameIndex] = getTexture(path);
+            if (frames[frameIndex] == null)
+                throw new InvalidOperationException($"Briefing frame is missing: {path}");
+        }
+
+        string audioPath = segment.WaveID == 0 ? null : briefing.GetAudioPath(segment.WaveID);
+        return new StrategyAdvisorAnimationViewData(
+            frames,
+            false,
+            audioPath,
+            segment.DelayBeforeSeconds
+        );
+    }
+
+    private void HandlePlaybackCompleted()
+    {
+        if (activeBriefing == null)
+            return;
+
+        briefingSegmentIndex++;
+        if (briefingSegmentIndex < activeBriefing.Segments.Count)
+            PlayCurrentBriefingSegment();
+        else
+            CompleteBriefing();
+    }
+
+    private void PlayCurrentBriefingSegment()
+    {
+        StrategyAdvisorAnimationTheme segment = activeBriefing.Segments[briefingSegmentIndex];
+        GetRequiredView()
+            .EnqueuePlaybacks(new[] { CreateBriefingPlayback(activeBriefing, segment) });
+    }
+
+    private void CompleteBriefing()
+    {
+        activeBriefing = null;
+        briefingSegmentIndex = 0;
+        briefingSegmentStarted = null;
+        Action completed = briefingCompleted;
+        briefingCompleted = null;
+        completed?.Invoke();
     }
 
     /// <summary>
@@ -548,6 +660,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="animation">The animation that began playback.</param>
     private void HandlePlaybackStarted(StrategyAdvisorAnimationViewData animation)
     {
+        if (activeBriefing != null && briefingSegmentIndex < activeBriefing.Segments.Count)
+            briefingSegmentStarted?.Invoke(activeBriefing.Segments[briefingSegmentIndex]);
+
         if (!string.IsNullOrEmpty(animation?.AudioPath))
             playSfx(animation.AudioPath);
     }
@@ -731,6 +846,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         view.Destroyed -= HandleViewDestroyed;
         view.DroidClicked -= HandleDroidClicked;
         view.DroidContextRequested -= HandleDroidContextRequested;
+        view.PlaybackCompleted -= HandlePlaybackCompleted;
         view.PlaybackStarted -= HandlePlaybackStarted;
         view.ProtocolContextRequested -= HandleProtocolContextRequested;
         view = null;

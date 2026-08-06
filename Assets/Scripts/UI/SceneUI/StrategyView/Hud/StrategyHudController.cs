@@ -113,6 +113,30 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Plays the active faction's configured new-game briefing.
+    /// </summary>
+    /// <param name="briefing">The active faction briefing.</param>
+    /// <param name="segmentStarted">Invoked when each segment starts.</param>
+    /// <param name="completed">Invoked after playback or the skip response completes.</param>
+    public void PlayBriefing(
+        StrategyBriefingTheme briefing,
+        Action<StrategyAdvisorAnimationTheme> segmentStarted,
+        Action completed
+    )
+    {
+        advisorController.PlayBriefing(briefing, segmentStarted, completed);
+    }
+
+    /// <summary>
+    /// Skips the active faction briefing using its configured acknowledgement.
+    /// </summary>
+    /// <param name="briefing">The active faction briefing.</param>
+    public void SkipBriefing(StrategyBriefingTheme briefing)
+    {
+        advisorController.SkipBriefing(briefing);
+    }
+
+    /// <summary>
     /// Applies one selected command from a HUD-owned context-menu request.
     /// </summary>
     /// <param name="request">The completed HUD request.</param>

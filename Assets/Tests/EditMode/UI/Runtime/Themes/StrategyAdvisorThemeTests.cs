@@ -35,5 +35,39 @@ namespace Rebellion.Tests.UI.Runtime.Themes
 
             Assert.AreEqual("Pack/Factions/Example/Strategy/Audio/Advisor/advisor-0042", path);
         }
+
+        [Test]
+        public void CreatePreloadManifest_RepeatedAssets_ReturnsDistinctBriefingMedia()
+        {
+            StrategyBriefingTheme theme = new StrategyBriefingTheme
+            {
+                AnimationImageRoot = "Pack/Factions/Example/Strategy/UI/Briefing/Protocol",
+                AudioRoot = "Pack/Factions/Example/Strategy/Audio/Briefing",
+                AudioFilePrefix = "briefing",
+                Skip = new StrategyAdvisorAnimationTheme { BitmapID = 20, WaveID = 40 },
+            };
+            theme.Segments.Add(new StrategyAdvisorAnimationTheme { BitmapID = 10, WaveID = 30 });
+            theme.Segments.Add(new StrategyAdvisorAnimationTheme { BitmapID = 10, WaveID = 30 });
+
+            ContentPreloadManifest manifest = theme.CreatePreloadManifest();
+
+            Assert.AreEqual(64, manifest.TexturesPerFrame);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Pack/Factions/Example/Strategy/UI/Briefing/Protocol/10",
+                    "Pack/Factions/Example/Strategy/UI/Briefing/Protocol/20",
+                },
+                manifest.TextureDirectories
+            );
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0030",
+                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0040",
+                },
+                manifest.Audio
+            );
+        }
     }
 }

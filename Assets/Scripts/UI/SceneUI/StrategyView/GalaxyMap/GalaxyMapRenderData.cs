@@ -4,6 +4,50 @@ using System.Collections.ObjectModel;
 using UnityEngine;
 
 /// <summary>
+/// Describes the transient map mode and label presented during a faction briefing.
+/// </summary>
+public sealed class StrategyBriefingMapPresentation
+{
+    /// <summary>
+    /// Creates one immutable briefing map cue.
+    /// </summary>
+    /// <param name="mode">The semantic map presentation mode.</param>
+    /// <param name="label">The label shown above the galaxy map.</param>
+    /// <param name="targetSystemInstanceID">The focused system identifier, or null.</param>
+    /// <param name="targetPlanetInstanceID">The spotlighted planet identifier, or null.</param>
+    /// <param name="playerFactionInstanceID">The player faction identifier.</param>
+    /// <param name="opponentFactionInstanceID">The opposing faction identifier.</param>
+    public StrategyBriefingMapPresentation(
+        StrategyBriefingMapMode mode,
+        string label,
+        string targetSystemInstanceID,
+        string targetPlanetInstanceID,
+        string playerFactionInstanceID,
+        string opponentFactionInstanceID
+    )
+    {
+        Mode = mode;
+        Label = label;
+        TargetSystemInstanceID = targetSystemInstanceID;
+        TargetPlanetInstanceID = targetPlanetInstanceID;
+        PlayerFactionInstanceID = playerFactionInstanceID;
+        OpponentFactionInstanceID = opponentFactionInstanceID;
+    }
+
+    public StrategyBriefingMapMode Mode { get; }
+
+    public string Label { get; }
+
+    public string TargetSystemInstanceID { get; }
+
+    public string TargetPlanetInstanceID { get; }
+
+    public string PlayerFactionInstanceID { get; }
+
+    public string OpponentFactionInstanceID { get; }
+}
+
+/// <summary>
 /// Contains a complete immutable galaxy-map presentation snapshot.
 /// </summary>
 public sealed class GalaxyMapRenderData

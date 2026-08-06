@@ -46,6 +46,7 @@ public sealed class GalaxyMapController
     private IGalaxyMapActions actions;
     private GalaxyMapView view;
     private GalaxyMap visibleGalaxyMap;
+    private StrategyBriefingMapPresentation briefingPresentation;
     private string hoveredSystemInstanceId;
     private string playerFactionId = string.Empty;
 
@@ -143,8 +144,25 @@ public sealed class GalaxyMapController
         RebuildDomainLookups(sectors);
         GetRequiredView()
             .Render(
-                projector.Project(sectors, playerFactionId, filterMode, hoveredSystemInstanceId)
+                projector.Project(
+                    sectors,
+                    playerFactionId,
+                    filterMode,
+                    hoveredSystemInstanceId,
+                    briefingPresentation
+                )
             );
+    }
+
+    /// <summary>
+    /// Applies the transient galaxy presentation configured for one briefing segment.
+    /// </summary>
+    /// <param name="presentation">The segment presentation, or null to restore normal display.</param>
+    public void SetBriefingPresentation(StrategyBriefingMapPresentation presentation)
+    {
+        briefingPresentation = presentation;
+        hoveredSystemInstanceId = presentation?.TargetSystemInstanceID;
+        actions.RequestGalaxyMapRender();
     }
 
     /// <summary>

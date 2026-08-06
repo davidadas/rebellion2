@@ -127,6 +127,7 @@ public sealed class AppBootstrap : MonoBehaviour
         if (_cutsceneManager == null)
             _cutsceneManager = gameObject.AddComponent<CutsceneManager>();
         _cutsceneManager.InitializeContent(_contentAssets);
+        _cutsceneManager.InitializeAudio(audioManager);
 
 #if UNITY_EDITOR
         GameObject cutscenePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(

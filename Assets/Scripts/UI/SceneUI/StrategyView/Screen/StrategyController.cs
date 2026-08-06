@@ -78,6 +78,8 @@ public sealed class StrategyController
     private CancelStack cancelStack;
     private GameManager gameManager;
     private MessageSystem messageSystem;
+    private StrategyBriefingTheme activeBriefing;
+    private bool briefingActive;
     private UIContext uiContext;
 
     private bool dirty = true;
@@ -655,6 +657,17 @@ public sealed class StrategyController
         if (gameManager == null || !contentReady)
             return;
 
+        if (briefingActive)
+        {
+            if (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            {
+                briefingActive = false;
+                AudioManager.EnsureExists().StopSfx();
+                strategyHudController.SkipBriefing(activeBriefing);
+            }
+            return;
+        }
+
         if (battleAlertWindowController.SyncPendingCombatWindow())
             dirty = true;
 
@@ -666,6 +679,77 @@ public sealed class StrategyController
         );
         if (dirty)
             Render();
+    }
+
+    /// <summary>
+    /// Plays the faction-configured new-game briefing over the initialized strategy screen.
+    /// </summary>
+    /// <param name="completed">Invoked after playback completes or is skipped.</param>
+    public void PlayBriefing(Action completed)
+    {
+        activeBriefing = uiContext?.GetPlayerFactionTheme()?.StrategyBriefing;
+        if (activeBriefing == null || activeBriefing.Segments.Count == 0)
+        {
+            completed?.Invoke();
+            return;
+        }
+
+        briefingActive = true;
+        StopMusic();
+        strategyHudController.PlayBriefing(
+            activeBriefing,
+            FocusBriefingSegment,
+            () =>
+            {
+                briefingActive = false;
+                activeBriefing = null;
+                galaxyMapController.SetBriefingPresentation(null);
+                strategyMusicController.Resume();
+                completed?.Invoke();
+                dirty = true;
+            }
+        );
+    }
+
+    /// <summary>
+    /// Applies one semantic briefing focus without encoding faction-specific behavior in code.
+    /// </summary>
+    /// <param name="segment">The briefing segment whose focus is starting.</param>
+    private void FocusBriefingSegment(StrategyAdvisorAnimationTheme segment)
+    {
+        string targetID = segment.BriefingTargetInstanceID;
+        Faction playerFaction = gameManager.GetPlayerFaction();
+        Faction opponentFaction = gameManager
+            .GetGame()
+            .GetFactions()
+            .FirstOrDefault(faction => faction != playerFaction);
+        if (segment.BriefingFocus == StrategyBriefingFocus.PlayerHeadquarters)
+            targetID = playerFaction?.HQInstanceID;
+        else if (segment.BriefingFocus == StrategyBriefingFocus.OpponentHeadquarters)
+            targetID = opponentFaction?.HQInstanceID;
+
+        ISceneNode target = gameManager.GetGame().GetSceneNodeByInstanceID<ISceneNode>(targetID);
+        Planet targetPlanet = target as Planet ?? target?.GetParentOfType<Planet>();
+        PlanetSystem targetSystem =
+            target as PlanetSystem ?? target?.GetParentOfType<PlanetSystem>();
+        string label = segment.BriefingLabel;
+        if (string.IsNullOrEmpty(label) && segment.BriefingFocus != StrategyBriefingFocus.None)
+            label = target?.DisplayName;
+        StrategyBriefingMapMode mapMode = segment.BriefingMapMode;
+        if (mapMode == StrategyBriefingMapMode.Default && targetPlanet != null)
+            mapMode = StrategyBriefingMapMode.Spotlight;
+
+        galaxyMapController.SetBriefingPresentation(
+            new StrategyBriefingMapPresentation(
+                mapMode,
+                label,
+                targetSystem?.InstanceID,
+                targetPlanet?.InstanceID,
+                playerFaction?.InstanceID,
+                opponentFaction?.InstanceID
+            )
+        );
+        dirty = true;
     }
 
     /// <summary>
@@ -1292,9 +1376,14 @@ public sealed class StrategyController
     /// </summary>
     private void PreloadStrategySfx()
     {
+        FactionTheme playerTheme = uiContext?.GetPlayerFactionTheme();
         AudioManager
             .EnsureExists()
-            .PreloadSfx(StrategyUISoundPaths.GetPreloadPaths(uiContext?.GetPlayerFactionTheme()));
+            .PreloadSfx(
+                StrategyUISoundPaths
+                    .GetPreloadPaths(playerTheme)
+                    .Concat(StrategyUISoundPaths.GetBriefingPreloadPaths(playerTheme))
+            );
     }
 
     /// <summary>

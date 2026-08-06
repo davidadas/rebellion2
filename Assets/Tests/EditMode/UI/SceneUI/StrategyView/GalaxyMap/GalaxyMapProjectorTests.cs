@@ -236,6 +236,78 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Project_BriefingLoyalty_HighlightsOnlyConfiguredFactionAndUsesCueLabel()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
+            Planet playerPlanet = CreatePlanet("player", _playerFactionId, 1, 2);
+            Planet opposingPlanet = CreatePlanet("opposing", _opposingFactionId, 3, 4);
+            playerPlanet.SetFullPopularSupport(_playerFactionId);
+            opposingPlanet.SetFullPopularSupport(_opposingFactionId);
+            GalaxyMapSector sector = CreateSector(system, playerPlanet, opposingPlanet);
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+            FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.OpponentLoyalty,
+                "Systems Loyal to the Empire",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreEqual("Systems Loyal to the Empire", data.ActiveFilterLabel.Text);
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(opposingTheme.GalaxyBackground.PlanetIcons.XL),
+                data.Clusters[0].Stars[1].StarTexture
+            );
+        }
+
+        [Test]
+        public void Project_BriefingTarget_RevealsTargetSystemAndOverridesLabel()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
+            Planet targetPlanet = CreatePlanet("planet", _playerFactionId, 1, 2);
+            GalaxyMapSector sector = CreateSector(system, targetPlanet);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.Spotlight,
+                "Mon Mothma",
+                system.InstanceID,
+                targetPlanet.InstanceID,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreEqual("Mon Mothma", data.ActiveFilterLabel.Text);
+            Assert.IsTrue(data.Clusters[0].ShowLabel);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetPlayerFactionTheme().GalaxyBackground.PlanetIcons.XL
+                ),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+        }
+
+        [Test]
         public void Project_MixedFactionFleets_ReturnsMixedMarker()
         {
             GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
@@ -375,11 +447,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
-        private static GalaxyMapSector CreateSector(GamePlanetSystem system, Planet planet)
+        private static GalaxyMapSector CreateSector(
+            GamePlanetSystem system,
+            params Planet[] planets
+        )
         {
             return new GalaxyMapSector(
                 system,
-                new[] { new GalaxyMapPlanet(system, planet, string.Empty) }
+                planets
+                    .Select(planet => new GalaxyMapPlanet(system, planet, string.Empty))
+                    .ToArray()
             );
         }
 

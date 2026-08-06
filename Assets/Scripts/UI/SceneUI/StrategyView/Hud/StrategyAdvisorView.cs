@@ -9,6 +9,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class StrategyAdvisorView : MonoBehaviour
 {
+    private const float _delayToleranceSeconds = 0.0001f;
+
     [SerializeField]
     private RawImage protocolImage;
 
@@ -42,6 +44,11 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     public event Action<StrategyAdvisorAnimationViewData> PlaybackStarted;
 
     /// <summary>
+    /// Occurs after the active playback queue finishes.
+    /// </summary>
+    public event Action PlaybackCompleted;
+
+    /// <summary>
     /// Occurs when a protocol context request is raised.
     /// </summary>
     public event Action<int, int> ProtocolContextRequested;
@@ -52,7 +59,9 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     private StrategyAdvisorViewData presentation;
     private StrategyAdvisorAnimationViewData activeAnimation;
     private int activeFrameIndex;
+    private float delayRemainingSeconds;
     private float frameElapsedSeconds;
+    private bool animationStarted;
     private bool eventsBound;
 
     /// <summary>
@@ -157,17 +166,38 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     }
 
     /// <summary>
+    /// Cancels active and queued advisor animation and restores the idle presentation.
+    /// </summary>
+    public void CancelPlayback()
+    {
+        bool hadPlayback = activeAnimation != null || playbackQueue.Count > 0;
+        ClearPlayback();
+        SetIdleFrame(false);
+        SetIdleFrame(true);
+        if (hadPlayback)
+            PlaybackCompleted?.Invoke();
+    }
+
+    /// <summary>
     /// Advances playback by an explicit unscaled duration for runtime and deterministic tests.
     /// </summary>
     /// <param name="elapsedSeconds">The unscaled elapsed duration.</param>
     internal void AdvanceAnimation(float elapsedSeconds)
     {
-        if (
-            activeAnimation == null
-            || presentation == null
-            || presentation.FrameIntervalSeconds <= 0f
-            || elapsedSeconds <= 0f
-        )
+        if (activeAnimation == null || presentation == null || elapsedSeconds <= 0f)
+            return;
+
+        if (!animationStarted)
+        {
+            delayRemainingSeconds -= elapsedSeconds;
+            if (delayRemainingSeconds > _delayToleranceSeconds)
+                return;
+
+            elapsedSeconds = Mathf.Max(0f, -delayRemainingSeconds);
+            BeginAnimation();
+        }
+
+        if (presentation.FrameIntervalSeconds <= 0f)
             return;
 
         frameElapsedSeconds += elapsedSeconds;
@@ -223,7 +253,20 @@ public sealed class StrategyAdvisorView : MonoBehaviour
 
         activeAnimation = playbackQueue.Dequeue();
         activeFrameIndex = 0;
+        delayRemainingSeconds = activeAnimation.DelayBeforeSeconds;
         frameElapsedSeconds = 0f;
+        animationStarted = false;
+        if (delayRemainingSeconds <= 0f)
+            BeginAnimation();
+    }
+
+    /// <summary>
+    /// Presents the first frame and emits playback only after the configured delay elapses.
+    /// </summary>
+    private void BeginAnimation()
+    {
+        animationStarted = true;
+        delayRemainingSeconds = 0f;
         if (activeAnimation.UsesDroid)
             SetIdleFrame(false);
         SetActiveFrame();
@@ -244,11 +287,16 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     /// </summary>
     private void FinishAnimation()
     {
-        SetIdleFrame(activeAnimation.UsesDroid);
+        bool usedDroid = activeAnimation.UsesDroid;
+        SetIdleFrame(usedDroid);
         activeAnimation = null;
         activeFrameIndex = 0;
+        delayRemainingSeconds = 0f;
         frameElapsedSeconds = 0f;
+        animationStarted = false;
         StartNextAnimation();
+        if (activeAnimation == null && playbackQueue.Count == 0)
+            PlaybackCompleted?.Invoke();
     }
 
     /// <summary>
@@ -274,7 +322,9 @@ public sealed class StrategyAdvisorView : MonoBehaviour
         playbackQueue.Clear();
         activeAnimation = null;
         activeFrameIndex = 0;
+        delayRemainingSeconds = 0f;
         frameElapsedSeconds = 0f;
+        animationStarted = false;
     }
 
     /// <summary>
