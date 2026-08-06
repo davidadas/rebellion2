@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Content
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             using ContentAssets assets = CreateAssets(pack);
-            const string address = "Application/Common/UI/ui_common_cursor_default";
+            const string address = "Application/Common/UI/ui_common_cursor_default_outlined";
 
             Texture2D first = assets.GetReadableTexture(address);
             Texture2D second = assets.GetReadableTexture(address);

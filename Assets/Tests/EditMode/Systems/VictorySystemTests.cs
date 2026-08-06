@@ -284,6 +284,77 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_MultipleMobileHeadquarters_UsesDefenderHeadquarters()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.OwnerInstanceID = rebels.InstanceID;
+            empireHQ.EnergyCapacity = 1;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "empire-mobile-hq",
+                    TypeID = "BDHQ01",
+                    OwnerInstanceID = rebels.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                },
+                empireHQ
+            );
+
+            Faction thirdFaction = new Faction
+            {
+                InstanceID = "third-faction",
+                HQInstanceID = "third-hq-planet",
+                Settings = new FactionSettings
+                {
+                    Headquarters = new HeadquartersSettings
+                    {
+                        FacilityTypeID = "BDHQ01",
+                        IsMobile = true,
+                    },
+                },
+            };
+            game.Factions.Add(thirdFaction);
+            Planet thirdHeadquartersPlanet = new Planet
+            {
+                InstanceID = thirdFaction.HQInstanceID,
+                OwnerInstanceID = thirdFaction.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 1,
+            };
+            game.AttachNode(
+                thirdHeadquartersPlanet,
+                game.GetSceneNodeByInstanceID<PlanetSystem>("sys1")
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "third-mobile-hq",
+                    TypeID = "BDHQ01",
+                    OwnerInstanceID = thirdFaction.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                },
+                thirdHeadquartersPlanet
+            );
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
+        }
+
+        [Test]
         public void HandleResults_MobileHeadquartersDestroyed_ReturnsVictory()
         {
             (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =

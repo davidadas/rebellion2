@@ -101,11 +101,13 @@ namespace Rebellion.Systems
         /// <returns>A victory when an opposing faction owns the headquarters; otherwise null.</returns>
         private VictoryResult CheckMobileHQCapture(Faction defender)
         {
-            Building headquarters = _game
-                .GetSceneNodesByType<Building>()
-                .SingleOrDefault(building =>
-                    building.BuildingType == BuildingType.Headquarters
-                    && building.TypeID == defender.Settings.Headquarters.FacilityTypeID
+            Planet headquartersPlanet = _game.GetSceneNodeByInstanceID<Planet>(
+                defender.HQInstanceID
+            );
+            Building headquarters = headquartersPlanet
+                ?.GetChildren<Building>(_ => true, recurse: false)
+                .FirstOrDefault(building =>
+                    building.BuildingType == BuildingType.Headquarters && building.Movement == null
                 );
             if (
                 headquarters == null
