@@ -218,7 +218,7 @@ public sealed class MessagesDetailPanelView : MonoBehaviour, IContentInitializab
     }
 
     /// <summary>
-    /// Calculates the displayed detail-art rectangle within an authored width.
+    /// Calculates the displayed detail-art rectangle within its authored width.
     /// </summary>
     /// <param name="texture">The displayed artwork.</param>
     /// <param name="template">The authored artwork rectangle.</param>

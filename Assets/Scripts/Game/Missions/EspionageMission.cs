@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -156,10 +157,10 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Captures a fog-of-war snapshot of the target planet for the owning faction.
+        /// Captures full intelligence for the target planet and any bonus planets.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <param name="provider">RNG provider (unused for espionage).</param>
+        /// <param name="provider">RNG provider used to select bonus planets.</param>
         /// <returns>An empty list; the snapshot is applied directly to faction fog state.</returns>
         protected override List<GameResult> OnSuccess(GameRoot game, IRandomNumberProvider provider)
         {
@@ -167,15 +168,97 @@ namespace Rebellion.Game.Missions
             Faction faction = game?.GetFactionByOwnerInstanceID(OwnerInstanceID);
             PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
 
+            if (game == null || faction == null || planet == null || system == null)
+                return new List<GameResult>();
+
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetManufacturingSnapshot(
-                faction,
-                planet,
-                system,
-                game?.CurrentTick ?? 0
-            );
+            recorder.RecordEspionageSnapshot(faction, planet, system, game.CurrentTick);
+
+            foreach (Planet bonusPlanet in SelectBonusPlanets(game, provider, planet, system))
+            {
+                PlanetSystem bonusSystem = bonusPlanet.GetParentOfType<PlanetSystem>();
+                recorder.RecordEspionageSnapshot(
+                    faction,
+                    bonusPlanet,
+                    bonusSystem,
+                    game.CurrentTick
+                );
+            }
 
             return new List<GameResult>();
+        }
+
+        /// <summary>
+        /// Selects distinct bonus planets using the original mission's target-specific pools.
+        /// </summary>
+        private IEnumerable<Planet> SelectBonusPlanets(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            Planet targetPlanet,
+            PlanetSystem targetSystem
+        )
+        {
+            if (targetSystem.SystemType != PlanetSystemType.CoreSystem)
+                return Enumerable.Empty<Planet>();
+
+            GameConfig.EspionageConfig config =
+                game.Config?.Espionage ?? new GameConfig.EspionageConfig();
+            GameConfig.RandomCountConfig countConfig = config.CoreSystemBonus;
+            bool includeOuterRim = false;
+
+            if (
+                OwnerInstanceID == config.CapitalObserverFactionInstanceID
+                && targetPlanet.InstanceID == config.CapitalPlanetInstanceID
+            )
+            {
+                countConfig = config.CapitalBonus;
+                includeOuterRim = true;
+            }
+            else if (IsMobileHeadquartersTarget(game, config, targetPlanet))
+            {
+                countConfig = config.MobileHeadquartersBonus;
+                includeOuterRim = true;
+            }
+
+            List<Planet> candidates = game
+                .Galaxy.PlanetSystems.Where(system =>
+                    includeOuterRim || system.SystemType == PlanetSystemType.CoreSystem
+                )
+                .SelectMany(system => system.Planets)
+                .Where(candidate => candidate != targetPlanet)
+                .Where(candidate => candidate.OwnerInstanceID == targetPlanet.OwnerInstanceID)
+                .ToList();
+            int count = countConfig.Base;
+            if (countConfig.Spread > 0)
+                count += provider.NextInt(0, countConfig.Spread);
+
+            List<Planet> selected = new List<Planet>();
+            while (selected.Count < count && candidates.Count > 0)
+            {
+                int index = provider.NextInt(0, candidates.Count);
+                selected.Add(candidates[index]);
+                candidates.RemoveAt(index);
+            }
+
+            return selected;
+        }
+
+        /// <summary>
+        /// Returns whether the target currently hosts the configured opposing mobile headquarters.
+        /// </summary>
+        private bool IsMobileHeadquartersTarget(
+            GameRoot game,
+            GameConfig.EspionageConfig config,
+            Planet targetPlanet
+        )
+        {
+            Faction headquartersFaction = game.Factions.FirstOrDefault(candidate =>
+                candidate.InstanceID == config.MobileHeadquartersFactionInstanceID
+            );
+            return headquartersFaction != null
+                && headquartersFaction.InstanceID != OwnerInstanceID
+                && headquartersFaction.Settings.Headquarters.IsMobile
+                && headquartersFaction.HQInstanceID == targetPlanet.InstanceID;
         }
 
         /// <summary>

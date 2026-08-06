@@ -53,6 +53,9 @@ namespace Rebellion.Systems
         /// <returns>A victory result if the HQ was captured, or null.</returns>
         private VictoryResult CheckHQCapture(Faction defender)
         {
+            if (defender.Settings?.Headquarters?.IsMobile == true)
+                return CheckMobileHQCapture(defender);
+
             string hqInstanceId = defender.GetHQInstanceID();
             if (string.IsNullOrEmpty(hqInstanceId))
                 return null;
@@ -72,15 +75,41 @@ namespace Rebellion.Systems
             if (attacker == null)
                 return null;
 
-            GameVictoryCondition victoryMode = _game.Summary.VictoryCondition;
+            return BuildHQVictory(attacker, defender);
+        }
 
-            if (victoryMode == GameVictoryCondition.Conquest)
-            {
-                if (!CheckAllMainCharactersCaptured(defender))
-                {
-                    return null;
-                }
-            }
+        /// <summary>
+        /// Checks ownership or destruction of a faction's mobile headquarters building.
+        /// </summary>
+        private VictoryResult CheckMobileHQCapture(Faction defender)
+        {
+            Building headquarters = _game
+                .GetSceneNodesByType<Building>()
+                .FirstOrDefault(building =>
+                    building.TypeID == defender.Settings.Headquarters.FacilityTypeID
+                );
+            if (headquarters?.OwnerInstanceID == defender.InstanceID)
+                return null;
+
+            string attackerId = headquarters?.OwnerInstanceID;
+            Faction attacker = _game.Factions.FirstOrDefault(faction =>
+                faction.InstanceID == attackerId
+            );
+            attacker ??= _game.Factions.FirstOrDefault(faction => faction != defender);
+            return attacker == null ? null : BuildHQVictory(attacker, defender);
+        }
+
+        /// <summary>
+        /// Builds an HQ victory after applying the selected victory-mode requirements.
+        /// </summary>
+        private VictoryResult BuildHQVictory(Faction attacker, Faction defender)
+        {
+            GameVictoryCondition victoryMode = _game.Summary.VictoryCondition;
+            if (
+                victoryMode == GameVictoryCondition.Conquest
+                && !CheckAllMainCharactersCaptured(defender)
+            )
+                return null;
 
             return new VictoryResult
             {

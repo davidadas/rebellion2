@@ -38,13 +38,13 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
-        /// Records a planet snapshot that includes unfinished units and manufacturing queues.
+        /// Records the complete planet intelligence revealed by successful espionage.
         /// </summary>
-        /// <param name="faction">The faction receiving the manufacturing observation.</param>
+        /// <param name="faction">The faction receiving the intelligence.</param>
         /// <param name="planet">The observed planet.</param>
         /// <param name="system">The system containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
-        public void RecordPlanetManufacturingSnapshot(
+        public void RecordEspionageSnapshot(
             Faction faction,
             Planet planet,
             PlanetSystem system,
@@ -94,13 +94,13 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="planet">The observed planet.</param>
         /// <param name="system">The system containing the planet.</param>
         /// <param name="currentTick">The tick when the observation is recorded.</param>
-        /// <param name="includeManufacturing">Whether unfinished units and queue contents are observable.</param>
+        /// <param name="includeEspionageIntelligence">Whether complete espionage intelligence is observable.</param>
         private void RecordPlanetSnapshot(
             Faction faction,
             Planet planet,
             PlanetSystem system,
             int currentTick,
-            bool includeManufacturing
+            bool includeEspionageIntelligence
         )
         {
             if (faction == null || planet == null || system == null)
@@ -116,40 +116,111 @@ namespace Rebellion.Game.FogOfWar
             );
 
             PlanetSnapshot planetSnapshot = CreatePlanetSnapshot(planet, currentTick);
-            AddOfficersToSnapshot(faction, planet, planetSnapshot);
-            AddFleetsToSnapshot(faction, planet, planetSnapshot, includeManufacturing);
+            AddOfficersToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
+            AddFleetsToSnapshot(faction, planet, planetSnapshot, includeEspionageIntelligence);
             AddEntityCopiesToSnapshot(
                 planet.Regiments,
                 planetSnapshot.Regiments,
                 faction,
-                includeManufacturing
+                includeEspionageIntelligence
             );
             AddEntityCopiesToSnapshot(
                 planet.SpecialForces,
                 planetSnapshot.SpecialForces,
                 faction,
-                includeManufacturing
+                includeEspionageIntelligence
             );
             AddEntityCopiesToSnapshot(
                 planet.Buildings,
                 planetSnapshot.Buildings,
                 faction,
-                includeManufacturing
+                includeEspionageIntelligence
             );
             AddEntityCopiesToSnapshot(
                 planet.Starfighters,
                 planetSnapshot.Starfighters,
                 faction,
-                includeManufacturing
+                includeEspionageIntelligence
             );
 
-            if (includeManufacturing)
+            if (includeEspionageIntelligence)
+            {
+                planetSnapshot.HasEspionageIntelligence = true;
+                AddEnemyMissionsToSnapshot(faction, planet, planetSnapshot);
                 AddManufacturingQueueToSnapshot(planet, planetSnapshot);
+            }
             else
+            {
+                planetSnapshot.HasEspionageIntelligence =
+                    previousSnapshot?.HasEspionageIntelligence == true;
+                PreserveMissionIntelligence(previousSnapshot, planetSnapshot);
+                PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
+            }
 
             ReconcileEntityLocations(faction, planet.InstanceID, planetSnapshot);
             systemSnapshot.Planets[planet.InstanceID] = planetSnapshot;
+        }
+
+        /// <summary>
+        /// Records enemy missions exposed by a successful espionage observation.
+        /// </summary>
+        /// <param name="faction">The faction receiving the intelligence.</param>
+        /// <param name="planet">The planet whose missions were observed.</param>
+        /// <param name="snapshot">The snapshot receiving mission copies.</param>
+        private static void AddEnemyMissionsToSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot
+        )
+        {
+            snapshot.Missions.AddRange(
+                planet
+                    .Missions.Where(mission => mission.GetOwnerInstanceID() != faction.InstanceID)
+                    .Select(mission => CopyEntityForSnapshot(mission))
+            );
+        }
+
+        /// <summary>
+        /// Retains previously gathered mission intelligence during an ordinary observation.
+        /// </summary>
+        /// <param name="previousSnapshot">The prior intelligence snapshot.</param>
+        /// <param name="snapshot">The replacement snapshot.</param>
+        private static void PreserveMissionIntelligence(
+            PlanetSnapshot previousSnapshot,
+            PlanetSnapshot snapshot
+        )
+        {
+            if (previousSnapshot?.HasEspionageIntelligence != true)
+                return;
+
+            snapshot.Missions.AddRange(
+                previousSnapshot.Missions.Select(mission => CopyEntityForSnapshot(mission))
+            );
+        }
+
+        /// <summary>
+        /// Retains incoming fleets learned through espionage during an ordinary observation.
+        /// </summary>
+        /// <param name="previousSnapshot">The prior intelligence snapshot.</param>
+        /// <param name="snapshot">The replacement snapshot.</param>
+        private static void PreserveIncomingFleetIntelligence(
+            PlanetSnapshot previousSnapshot,
+            PlanetSnapshot snapshot
+        )
+        {
+            if (previousSnapshot?.HasEspionageIntelligence != true)
+                return;
+
+            foreach (
+                Fleet fleet in previousSnapshot.Fleets.Where(fleet =>
+                    fleet.Movement != null
+                    && snapshot.Fleets.All(current => current.InstanceID != fleet.InstanceID)
+                )
+            )
+            {
+                snapshot.Fleets.Add(CopyFleetForSnapshot(fleet));
+            }
         }
 
         /// <summary>
@@ -267,7 +338,13 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="faction">The faction receiving the snapshot.</param>
         /// <param name="planet">The observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
-        private void AddOfficersToSnapshot(Faction faction, Planet planet, PlanetSnapshot snapshot)
+        /// <param name="includeInTransit">Whether moving officers should be included.</param>
+        private void AddOfficersToSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSnapshot snapshot,
+            bool includeInTransit
+        )
         {
             foreach (Officer officer in planet.Officers)
             {
@@ -277,7 +354,7 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
-                if (!IsObservableAtPlanet(officer, faction.InstanceID))
+                if (!includeInTransit && !IsObservableAtPlanet(officer, faction.InstanceID))
                     continue;
 
                 snapshot.Officers.Add(CopyOfficerForSnapshot(officer));
@@ -290,12 +367,12 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="faction">The faction receiving the snapshot.</param>
         /// <param name="planet">The observed planet.</param>
         /// <param name="snapshot">The snapshot being populated.</param>
-        /// <param name="includeManufacturing">Whether unfinished units should be included.</param>
+        /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
         private void AddFleetsToSnapshot(
             Faction faction,
             Planet planet,
             PlanetSnapshot snapshot,
-            bool includeManufacturing
+            bool includeEspionageIntelligence
         )
         {
             foreach (Fleet fleet in planet.Fleets)
@@ -308,13 +385,17 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
-                if (!IsObservableAtPlanet(fleet, faction.InstanceID))
+                if (
+                    !includeEspionageIntelligence
+                    && !IsObservableAtPlanet(fleet, faction.InstanceID)
+                )
                     continue;
 
                 Fleet fleetCopy = CopyObservedFleetForSnapshot(
                     fleet,
                     faction.InstanceID,
-                    includeManufacturing
+                    includeEspionageIntelligence,
+                    includeEspionageIntelligence
                 );
                 if (fleetCopy == null)
                     continue;
@@ -330,12 +411,12 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="source">The live entities to copy.</param>
         /// <param name="destination">The snapshot list to populate.</param>
         /// <param name="faction">The faction receiving the snapshot.</param>
-        /// <param name="includeManufacturing">Whether unfinished units should be included.</param>
+        /// <param name="includeEspionageIntelligence">Whether hidden intelligence should be included.</param>
         private void AddEntityCopiesToSnapshot<T>(
             IEnumerable<T> source,
             List<T> destination,
             Faction faction,
-            bool includeManufacturing
+            bool includeEspionageIntelligence
         )
             where T : class, ISceneNode
         {
@@ -347,11 +428,14 @@ namespace Rebellion.Game.FogOfWar
                     continue;
                 }
 
-                if (!IsObservableAtPlanet(entity, faction.InstanceID))
+                if (
+                    !includeEspionageIntelligence
+                    && !IsObservableAtPlanet(entity, faction.InstanceID)
+                )
                     continue;
 
                 if (
-                    !includeManufacturing
+                    !includeEspionageIntelligence
                     && entity is IManufacturable manufacturable
                     && IsManufacturingInProgress(manufacturable)
                 )
@@ -670,14 +754,16 @@ namespace Rebellion.Game.FogOfWar
         /// <param name="fleet">The observed fleet to copy.</param>
         /// <param name="observerFactionInstanceID">The faction receiving the observation.</param>
         /// <param name="includeManufacturing">Whether unfinished units should be retained.</param>
+        /// <param name="includeInTransit">Whether moving fleets and their contents should be retained.</param>
         /// <returns>The detached fleet copy, or null when no completed ships remain.</returns>
         internal static Fleet CopyObservedFleetForSnapshot(
             Fleet fleet,
             string observerFactionInstanceID,
-            bool includeManufacturing = false
+            bool includeManufacturing = false,
+            bool includeInTransit = false
         )
         {
-            if (!IsObservableAtPlanet(fleet, observerFactionInstanceID))
+            if (!includeInTransit && !IsObservableAtPlanet(fleet, observerFactionInstanceID))
                 return null;
 
             Fleet copy = CopyFleetForSnapshot(fleet);
@@ -685,25 +771,31 @@ namespace Rebellion.Game.FogOfWar
                 return null;
 
             copy.CapitalShips.RemoveAll(ship =>
-                !IsObservableAtPlanet(ship, observerFactionInstanceID)
-                || !includeManufacturing && IsManufacturingInProgress(ship)
+                (!includeInTransit && !IsObservableAtPlanet(ship, observerFactionInstanceID))
+                || (!includeManufacturing && IsManufacturingInProgress(ship))
             );
             foreach (CapitalShip ship in copy.CapitalShips)
             {
                 ship.Officers.RemoveAll(officer =>
-                    !IsObservableAtPlanet(officer, observerFactionInstanceID)
+                    !includeInTransit && !IsObservableAtPlanet(officer, observerFactionInstanceID)
                 );
                 ship.Regiments.RemoveAll(regiment =>
-                    !IsObservableAtPlanet(regiment, observerFactionInstanceID)
-                    || !includeManufacturing && IsManufacturingInProgress(regiment)
+                    (
+                        !includeInTransit
+                        && !IsObservableAtPlanet(regiment, observerFactionInstanceID)
+                    ) || (!includeManufacturing && IsManufacturingInProgress(regiment))
                 );
                 ship.SpecialForces.RemoveAll(specialForces =>
-                    !IsObservableAtPlanet(specialForces, observerFactionInstanceID)
-                    || !includeManufacturing && IsManufacturingInProgress(specialForces)
+                    (
+                        !includeInTransit
+                        && !IsObservableAtPlanet(specialForces, observerFactionInstanceID)
+                    ) || (!includeManufacturing && IsManufacturingInProgress(specialForces))
                 );
                 ship.Starfighters.RemoveAll(starfighter =>
-                    !IsObservableAtPlanet(starfighter, observerFactionInstanceID)
-                    || !includeManufacturing && IsManufacturingInProgress(starfighter)
+                    (
+                        !includeInTransit
+                        && !IsObservableAtPlanet(starfighter, observerFactionInstanceID)
+                    ) || (!includeManufacturing && IsManufacturingInProgress(starfighter))
                 );
             }
 
@@ -929,6 +1021,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.SpecialForces.RemoveAll(s => s.InstanceID == entityId);
             snapshot.Buildings.RemoveAll(b => b.InstanceID == entityId);
             snapshot.Starfighters.RemoveAll(s => s.InstanceID == entityId);
+            snapshot.Missions.RemoveAll(m => m.InstanceID == entityId);
             snapshot.ManufacturingQueueItems.RemoveAll(item => item.InstanceID == entityId);
 
             foreach (Fleet fleet in snapshot.Fleets)

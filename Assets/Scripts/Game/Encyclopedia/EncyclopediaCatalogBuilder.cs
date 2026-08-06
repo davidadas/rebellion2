@@ -192,7 +192,7 @@ namespace Rebellion.Game.Encyclopedia
             EncyclopediaEntryCategory category
         )
         {
-            if (entity == null)
+            if (entity == null || !HasEncyclopediaData(entity))
                 return null;
 
             return new EncyclopediaEntry
@@ -205,6 +205,18 @@ namespace Rebellion.Game.Encyclopedia
                 Stats = CloneStats(entity.EncyclopediaStats),
                 Description = GetEncyclopediaDescription(entity),
             };
+        }
+
+        /// <summary>
+        /// Returns whether an entity explicitly defines encyclopedia presentation data.
+        /// </summary>
+        /// <param name="entity">The entity to inspect.</param>
+        /// <returns>True when the entity should appear in the generated encyclopedia.</returns>
+        private static bool HasEncyclopediaData(BaseGameEntity entity)
+        {
+            return !string.IsNullOrEmpty(entity.EncyclopediaImagePath)
+                || !string.IsNullOrEmpty(entity.EncyclopediaDescription)
+                || entity.EncyclopediaStats?.Count > 0;
         }
 
         /// <summary>

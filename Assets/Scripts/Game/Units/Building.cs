@@ -17,6 +17,7 @@ namespace Rebellion.Game.Units
         ConstructionFacility,
         Defense,
         Weapon,
+        Headquarters,
     }
 
     /// <summary>
@@ -52,6 +53,7 @@ namespace Rebellion.Game.Units
         public int WeaponPower { get; set; }
         public DefenseFacilityClass DefenseFacilityClass { get; set; }
         public int ProductionModifier { get; set; }
+        public bool CanBeManufactured { get; set; } = true;
 
         // Manufacturing Info.
         public string ProducerOwnerID { get; set; }

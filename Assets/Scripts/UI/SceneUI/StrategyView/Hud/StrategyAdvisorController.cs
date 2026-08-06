@@ -259,6 +259,18 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
                 faction != null
             ),
             CreateToggleCommand(
+                StrategyMenuAction.AdvisorManageGarrisons,
+                "Manage Garrisons",
+                faction != null,
+                faction?.ManageGarrisons == true
+            ),
+            CreateToggleCommand(
+                StrategyMenuAction.AdvisorManageProduction,
+                "Manage Production",
+                faction != null,
+                faction?.ManageProduction == true
+            ),
+            CreateToggleCommand(
                 StrategyMenuAction.AdvisorTranslateCounterpart,
                 "Translate Counterpart",
                 faction != null,
@@ -403,6 +415,12 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         switch (menuCommand.Action)
         {
+            case StrategyMenuAction.AdvisorManageGarrisons:
+                faction.ManageGarrisons = !faction.ManageGarrisons;
+                break;
+            case StrategyMenuAction.AdvisorManageProduction:
+                faction.ManageProduction = !faction.ManageProduction;
+                break;
             case StrategyMenuAction.AdvisorTranslateCounterpart:
                 faction.TranslateCounterpart = !faction.TranslateCounterpart;
                 break;

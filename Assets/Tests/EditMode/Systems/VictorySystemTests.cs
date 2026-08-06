@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -171,6 +172,70 @@ namespace Rebellion.Tests.Systems
             VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
+        }
+
+        [Test]
+        public void ProcessTick_MobileHeadquartersInTransit_ReturnsEmpty()
+        {
+            (GameRoot game, Faction empire, _, Planet empireHQ, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empire.HQInstanceID = null;
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.OwnerInstanceID = rebels.InstanceID;
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = rebels.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreEqual(rebels, victory.Winner);
+            Assert.AreEqual(empire, victory.Loser);
         }
     }
 }

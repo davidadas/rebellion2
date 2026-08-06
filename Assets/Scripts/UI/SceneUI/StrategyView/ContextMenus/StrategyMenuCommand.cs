@@ -106,6 +106,8 @@ public enum StrategyMenuAction
     AdvisorBuildFacilities,
     AdvisorGalaxyOverview,
     AdvisorObjectives,
+    AdvisorManageGarrisons,
+    AdvisorManageProduction,
     AdvisorTranslateCounterpart,
     AdvisorAgentAdvice,
     AdvisorMessages,

@@ -882,7 +882,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit to check.</param>
         /// <returns>True if the unit can receive the order.</returns>
-        private static bool CanReceiveMoveOrder(IMovable unit)
+        private bool CanReceiveMoveOrder(IMovable unit)
         {
             if (!IsUnderConstruction(unit) && unit.GetTransitMovement() != null)
             {
@@ -892,7 +892,10 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (IsCompletedBuilding(unit))
+            if (
+                IsCompletedBuilding(unit)
+                && (unit is not Building building || !IsMobileHeadquarters(building))
+            )
             {
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is a completed building."
@@ -901,6 +904,17 @@ namespace Rebellion.Systems
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Returns whether a completed building is the owning faction's configured mobile HQ.
+        /// </summary>
+        private bool IsMobileHeadquarters(Building building)
+        {
+            Faction faction = _game.GetFactionByOwnerInstanceID(building?.OwnerInstanceID);
+            return building?.BuildingType == BuildingType.Headquarters
+                && faction?.Settings?.Headquarters?.IsMobile == true
+                && building.TypeID == faction.Settings.Headquarters.FacilityTypeID;
         }
 
         /// <summary>

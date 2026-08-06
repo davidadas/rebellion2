@@ -474,15 +474,13 @@ namespace Rebellion.Game.Messages
         /// <param name="officer">The officer described by the message.</param>
         /// <param name="planet">The planet associated with the officer state.</param>
         /// <param name="game">The game state used for voice selection randomness.</param>
-        /// <param name="includeOfficerOverlay">Whether to include the officer portrait overlay.</param>
         /// <returns>The officer status message, or null when no matching definition exists.</returns>
         private Message CreateOfficerMessage(
             MessageResultType resultType,
             Faction faction,
             Officer officer,
             Planet planet,
-            GameRoot game,
-            bool includeOfficerOverlay = true
+            GameRoot game
         )
         {
             if (officer == null)
@@ -502,7 +500,9 @@ namespace Rebellion.Game.Messages
                         },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: includeOfficerOverlay ? GetMessageImagePath(officer) : null,
+                    overlayImagePath: UsesOfficerOverlay(resultType)
+                        ? GetMessageImagePath(officer)
+                        : null,
                     officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
                 ),
                 planet,
@@ -520,6 +520,24 @@ namespace Rebellion.Game.Messages
                 _ => AdvisorSubjectNotification.None,
             };
             return WithAdvisorSubject(message, notification, officer);
+        }
+
+        /// <summary>
+        /// Returns whether the original event record supplies an officer portrait overlay.
+        /// </summary>
+        /// <param name="resultType">The officer event type.</param>
+        /// <returns>True when the event composites the officer portrait over its card.</returns>
+        private static bool UsesOfficerOverlay(MessageResultType resultType)
+        {
+            return resultType switch
+            {
+                MessageResultType.OfficerCaptured
+                or MessageResultType.EnemyOfficerCaptured
+                or MessageResultType.OfficerReleased
+                or MessageResultType.OfficerInjured
+                or MessageResultType.OfficerKilled => false,
+                _ => true,
+            };
         }
 
         /// <summary>
@@ -1571,8 +1589,7 @@ namespace Rebellion.Game.Messages
                         faction,
                         result.TargetOfficer,
                         planet,
-                        game,
-                        false
+                        game
                     )
                 );
             }

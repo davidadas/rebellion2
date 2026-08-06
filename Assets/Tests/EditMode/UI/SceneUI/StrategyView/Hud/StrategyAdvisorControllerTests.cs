@@ -31,6 +31,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                     "Build Facilities",
                     "Galaxy Overview",
                     "Objectives",
+                    "Manage Garrisons",
+                    "Manage Production",
                     "Translate Counterpart",
                     "Agent Advice",
                 },
@@ -43,6 +45,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Assert.AreEqual(
                 StrategyContextMenuIconKeys.CheckMark,
                 commands.Single(command => command.Text == "Agent Advice").IconKey
+            );
+            Assert.AreEqual(
+                StrategyContextMenuIconKeys.None,
+                commands.Single(command => command.Text == "Manage Garrisons").IconKey
             );
         }
 

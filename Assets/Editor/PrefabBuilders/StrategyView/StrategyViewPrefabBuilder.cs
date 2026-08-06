@@ -1116,6 +1116,7 @@ public static class StrategyViewPrefabBuilder
         FacilityWindowView view = EnableRuntimeComponent(window.GetComponent<FacilityWindowView>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, windowWidth, windowHeight);
 
+        CreateWindowSurfaceBacking(window.transform, windowWidth, windowHeight);
         RawImage background = CreateRawImage(
             "BackgroundImage",
             window.transform,
@@ -1124,6 +1125,10 @@ public static class StrategyViewPrefabBuilder
             0,
             windowWidth,
             windowHeight
+        );
+        background.rectTransform.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            windowHeight * background.texture.width / (float)background.texture.height
         );
         background.raycastTarget = true;
 
@@ -1185,7 +1190,6 @@ public static class StrategyViewPrefabBuilder
             windowWidth,
             windowHeight
         );
-        tabs.gameObject.AddComponent<RectMask2D>();
         List<RawImage> tabImages = new List<RawImage>();
         for (int i = 0; i < 6; i++)
         {
@@ -1194,7 +1198,11 @@ public static class StrategyViewPrefabBuilder
                 tabs,
                 null
             );
-            SetSourceRect(tabImage.rectTransform, i * 38, 20, 38, 33);
+            SetSourceRect(tabImage.rectTransform, i * 38, 20, 36, 33);
+            tabImage.rectTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                36f * 149f / 162f
+            );
             tabImages.Add(tabImage);
         }
         List<Button> tabButtons = CreateButtons(tabImages);
@@ -1819,6 +1827,7 @@ public static class StrategyViewPrefabBuilder
         DefenseWindowView view = EnableRuntimeComponent(window.AddComponent<DefenseWindowView>());
         SetSourceRect(window.GetComponent<RectTransform>(), 0, 0, windowWidth, windowHeight);
 
+        CreateWindowSurfaceBacking(window.transform, windowWidth, windowHeight);
         RawImage background = CreateRawImage(
             "BackgroundImage",
             window.transform,
@@ -1827,6 +1836,10 @@ public static class StrategyViewPrefabBuilder
             0,
             windowWidth,
             windowHeight
+        );
+        background.rectTransform.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            windowHeight * background.texture.width / (float)background.texture.height
         );
         background.raycastTarget = true;
 
@@ -1896,7 +1909,11 @@ public static class StrategyViewPrefabBuilder
                 tabs,
                 null
             );
-            SetSourceRect(tabImage.rectTransform, 27 + i * 36, 20, 36, 33);
+            SetSourceRect(tabImage.rectTransform, 28 + i * 36, 20, 36, 33);
+            tabImage.rectTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                36f * 149f / 162f
+            );
             tabImages.Add(tabImage);
         }
         List<Button> tabButtons = CreateButtons(tabImages);
@@ -4662,15 +4679,22 @@ public static class StrategyViewPrefabBuilder
         MessagesDetailPanelView detailPanel = EnableRuntimeComponent(
             detailPanelTransform.gameObject.AddComponent<MessagesDetailPanelView>()
         );
+        detailPanelTransform.gameObject.AddComponent<RectMask2D>();
+        RawImage detailBacking = CreatePanelImage(
+            "DetailSurfaceBackingImage",
+            detailPanelTransform,
+            Color.black
+        );
+        SetSourceRect(detailBacking.rectTransform, 12, 13, 400, 306);
         RawImage detailStrip = CreateRawButton("DetailStripImage", detailPanelTransform);
-        SetSourceRect(detailStrip.rectTransform, 12, 14, 400, 18);
+        SetSourceRect(detailStrip.rectTransform, 12, 13, 400, 18);
         RawImage detailCard = CreateRawButton("DetailCardImage", detailPanelTransform);
         SetSourceRect(detailCard.rectTransform, 12, 33, 400, 200);
         RawImage detailOverlay = CreateRawButton("DetailOverlayImage", detailPanelTransform);
         SetSourceRect(detailOverlay.rectTransform, 12, 33, 400, 200);
         detailOverlay.raycastTarget = false;
         RawImage detailBody = CreateRawButton("DetailBodyImage", detailPanelTransform);
-        SetSourceRect(detailBody.rectTransform, 12, 232, 400, 87);
+        SetSourceRect(detailBody.rectTransform, 12, 230, 400, 87);
         RawImage detailIcon = CreateRawButton("DetailIconImage", detailPanelTransform);
         SetSourceRect(detailIcon.rectTransform, 19, 15, 15, 16);
         TextMeshProUGUI detailHeader = CreateTextLabel(
@@ -4722,6 +4746,7 @@ public static class StrategyViewPrefabBuilder
 
         Transform[] detailLayerOrder =
         {
+            detailBacking.transform,
             detailCard.transform,
             detailOverlay.transform,
             detailStrip.transform,
@@ -7107,7 +7132,7 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(
             iconImage.rectTransform,
             4,
-            1,
+            7,
             _contextMenuIconPreviewSize,
             _contextMenuIconPreviewSize
         );
@@ -7440,6 +7465,18 @@ public static class StrategyViewPrefabBuilder
         AssignFloat(view, "galaxyProjectionHeight", _galaxyProjectionHeight);
         AssignInt(view, "planetPositionOffsetY", -1);
         return window;
+    }
+
+    /// <summary>
+    /// Authors the opaque surface used by the original window renderer beneath its bitmap.
+    /// </summary>
+    /// <param name="parent">The window transform.</param>
+    /// <param name="width">The window width.</param>
+    /// <param name="height">The window height.</param>
+    private static void CreateWindowSurfaceBacking(Transform parent, int width, int height)
+    {
+        RawImage backing = CreatePanelImage("WindowSurfaceBackingImage", parent, Color.black);
+        SetSourceRect(backing.rectTransform, 0, 0, width, height);
     }
 
     /// <summary>

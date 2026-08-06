@@ -8,7 +8,7 @@ public sealed class ContentModelLoaderTests
     private const string _planetAddress = "Application/MainMenu/Models/planet";
 
     [Test]
-    public async Task LoadAsync_ValidGlb_ReturnsDisposableModel()
+    public async Task LoadAsync_ValidGlb_ReturnsDisposableModelAsync()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
         using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);

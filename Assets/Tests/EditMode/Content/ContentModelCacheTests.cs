@@ -8,7 +8,7 @@ public sealed class ContentModelCacheTests
     private const string _planetAddress = "Application/MainMenu/Models/planet";
 
     [Test]
-    public async Task InstantiateAsync_PreloadedModel_CreatesIndependentInstances()
+    public async Task InstantiateAsync_PreloadedModel_CreatesIndependentInstancesAsync()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
         using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);

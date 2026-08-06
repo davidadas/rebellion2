@@ -1608,7 +1608,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_OfficerCapture_UsesTargetOfficerImage()
+        public void CreateMessages_OfficerCapture_DoesNotOverlayTargetOfficerImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer target = new Officer
@@ -1652,7 +1652,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("captured:Target:Coruscant", message.Title);
             Assert.AreEqual("fallback-card", message.DisplayImagePath);
-            Assert.AreEqual("target-card", message.OverlayImagePath);
+            Assert.IsNull(message.OverlayImagePath);
         }
 
         [Test]
@@ -1705,8 +1705,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
             Assert.AreEqual("alliance-image", ownerMessage.DisplayImagePath);
             Assert.AreEqual("empire-image", captorMessage.DisplayImagePath);
-            Assert.AreEqual("target-card", ownerMessage.OverlayImagePath);
-            Assert.AreEqual("target-card", captorMessage.OverlayImagePath);
+            Assert.IsNull(ownerMessage.OverlayImagePath);
+            Assert.IsNull(captorMessage.OverlayImagePath);
             Assert.AreEqual(
                 AdvisorSubjectNotification.Captured,
                 captorMessage.AdvisorSubjectNotification

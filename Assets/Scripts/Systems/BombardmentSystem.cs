@@ -739,7 +739,7 @@ namespace Rebellion.Systems
                 && !string.IsNullOrEmpty(defenderId)
                 && _game
                     .GetFactionByOwnerInstanceID(defenderId)
-                    .Settings.HeadquartersCanBeBombarded;
+                    .Settings.Headquarters?.IsBombardable == true;
         }
 
         /// <summary>

@@ -11,7 +11,8 @@ using UnityEditor;
 /// </summary>
 public sealed class AppBootstrap : MonoBehaviour
 {
-    private const string _defaultCursorAddress = "Application/Common/UI/ui_common_cursor_default";
+    private const string _defaultCursorAddress =
+        "Application/Common/UI/ui_common_cursor_default_outlined";
     private const string _mainMenuPreloadID = "main-menu";
     private const string _saveMenuPreloadID = "save-menu";
     private const string _strategyPreloadID = "strategy";

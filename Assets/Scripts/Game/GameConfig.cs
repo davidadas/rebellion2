@@ -41,6 +41,8 @@ namespace Rebellion.Game
 
         public MessageConfig Messages { get; set; } = new MessageConfig();
 
+        public EspionageConfig Espionage { get; set; } = new EspionageConfig();
+
         public ProbabilityTablesConfig ProbabilityTables { get; set; } =
             new ProbabilityTablesConfig();
 
@@ -630,6 +632,37 @@ namespace Rebellion.Game
         public class MessageConfig
         {
             public int RetentionTicks { get; set; }
+        }
+
+        /// <summary>
+        /// Controls the additional system intelligence granted by successful espionage.
+        /// </summary>
+        [PersistableObject]
+        public class EspionageConfig
+        {
+            public string CapitalPlanetInstanceID { get; set; }
+
+            public string CapitalObserverFactionInstanceID { get; set; }
+
+            public string MobileHeadquartersFactionInstanceID { get; set; }
+
+            public RandomCountConfig CoreSystemBonus { get; set; } = new RandomCountConfig();
+
+            public RandomCountConfig CapitalBonus { get; set; } = new RandomCountConfig();
+
+            public RandomCountConfig MobileHeadquartersBonus { get; set; } =
+                new RandomCountConfig();
+        }
+
+        /// <summary>
+        /// Defines a count as a fixed minimum plus a random value below the spread.
+        /// </summary>
+        [PersistableObject]
+        public class RandomCountConfig
+        {
+            public int Base { get; set; }
+
+            public int Spread { get; set; }
         }
 
         /// <summary>

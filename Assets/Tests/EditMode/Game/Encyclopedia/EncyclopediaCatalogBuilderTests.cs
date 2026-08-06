@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
-        public void Build_WithEntityWithoutEncyclopediaImage_DoesNotUseDisplayImage()
+        public void Build_WithEntityWithoutEncyclopediaData_OmitsEntry()
         {
             Building building = new Building
             {
@@ -67,11 +67,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
 
             EncyclopediaEntry entry = catalog.FindEntry("BUILDING1", null);
 
-            Assert.IsNotNull(entry);
-            Assert.AreEqual("Construction Yard", entry.DisplayName);
-            Assert.AreEqual(EncyclopediaEntryCategory.Facility, entry.Category);
-            Assert.IsNull(entry.ImagePath);
-            Assert.AreEqual("Static building description.", entry.Description);
+            Assert.IsNull(entry);
         }
 
         [Test]
@@ -100,8 +96,8 @@ namespace Rebellion.Tests.Game.Encyclopedia
             EncyclopediaEntry entry = catalog.FindEntry("BUILDING1", null);
 
             Assert.IsNotNull(entry);
-            Assert.AreEqual("Construction Yard", entry.DisplayName);
-            Assert.AreEqual(EncyclopediaEntryCategory.Facility, entry.Category);
+            Assert.AreEqual("Authored Facility", entry.DisplayName);
+            Assert.AreEqual(EncyclopediaEntryCategory.Concept, entry.Category);
         }
 
         [Test]
@@ -194,6 +190,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
                 TypeID = "FIGHTER1",
                 DisplayName = "A-Wing Squadron",
                 AllowedOwnerInstanceIDs = new List<string> { "FNALL1" },
+                EncyclopediaImagePath = "Pack/Starfighters/a-wing/encyclopedia",
             };
 
             EncyclopediaCatalog catalog = BuildCatalog(
@@ -215,13 +212,19 @@ namespace Rebellion.Tests.Game.Encyclopedia
                 Planets = new List<Planet>
                 {
                     null,
-                    new Planet { TypeID = "PLANET1", DisplayName = "Balmorra" },
+                    new Planet
+                    {
+                        TypeID = "PLANET1",
+                        DisplayName = "Balmorra",
+                        EncyclopediaImagePath = "Pack/Systems/Balmorra/encyclopedia",
+                    },
                 },
             };
             Building building = new Building
             {
                 TypeID = "BUILDING1",
                 DisplayName = "Construction Yard",
+                EncyclopediaImagePath = "Pack/Facilities/construction-yard/encyclopedia",
             };
 
             EncyclopediaCatalog catalog = BuildCatalog(

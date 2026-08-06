@@ -419,11 +419,16 @@ public sealed class PlanetSystemWindowController
         PlanetSystemWindowSession session = GetSession(view);
         CaptureContextTarget(view, session, context.EventData);
         PlanetSystemWindowHit hit = session.GetContextHit();
-        List<ISceneNode> items = GetPlayerFleetItems(hit?.Planet);
+        Building mobileHeadquarters = GetMobileHeadquarters(hit);
+        List<ISceneNode> items =
+            mobileHeadquarters != null
+                ? new List<ISceneNode> { mobileHeadquarters }
+                : GetPlayerFleetItems(hit?.Planet);
         List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
             hit,
             items,
             GetUIContext().GetPlayerFactionInstanceID(),
+            mobileHeadquarters,
             fleetCommandController.CanExecutePlanetaryCombat(
                 items,
                 hit?.Planet,
@@ -448,7 +453,9 @@ public sealed class PlanetSystemWindowController
             context.X,
             context.Y,
             items,
-            GetStatusTarget(view)
+            mobileHeadquarters == null
+                ? GetStatusTarget(view)
+                : new StrategyStatusTarget(hit.GalaxyMapPlanet, mobileHeadquarters)
         );
         request = new ContextMenuRequest(
             source,
@@ -457,6 +464,32 @@ public sealed class PlanetSystemWindowController
         );
         width = context.Layout.PlanetSystemMenuWidth;
         return true;
+    }
+
+    /// <summary>
+    /// Resolves the player's stationary mobile-HQ building for an HQ-planet hit.
+    /// </summary>
+    private Building GetMobileHeadquarters(PlanetSystemWindowHit hit)
+    {
+        if (hit?.PlanetImage != true || hit.Planet?.IsHeadquarters != true)
+            return null;
+
+        string playerFactionId = GetUIContext().GetPlayerFactionInstanceID();
+        if (
+            GetUIContext()
+                .Game.GetFactionByOwnerInstanceID(playerFactionId)
+                ?.Settings?.Headquarters?.IsMobile != true
+        )
+            return null;
+
+        return hit
+            .Planet.GetChildren<Building>(
+                building =>
+                    building.BuildingType == BuildingType.Headquarters
+                    && building.OwnerInstanceID == playerFactionId,
+                recurse: false
+            )
+            .SingleOrDefault();
     }
 
     /// <summary>
