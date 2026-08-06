@@ -45,6 +45,14 @@ namespace Rebellion.SceneGraph
         public string EncyclopediaDescription { get; set; }
 
         /// <summary>
+        /// Gets whether this entity defines any encyclopedia presentation data.
+        /// </summary>
+        public bool HasEncyclopediaData =>
+            !string.IsNullOrEmpty(EncyclopediaImagePath)
+            || !string.IsNullOrEmpty(EncyclopediaDescription)
+            || EncyclopediaStats?.Count > 0;
+
+        /// <summary>
         /// Returns the instance ID of the entity.
         /// </summary>
         /// <returns>The instance ID of the entity.</returns>

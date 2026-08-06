@@ -474,23 +474,22 @@ namespace Rebellion.Game.Messages
         /// <param name="officer">The officer described by the message.</param>
         /// <param name="planet">The planet associated with the officer state.</param>
         /// <param name="game">The game state used for voice selection randomness.</param>
-        /// <param name="includeOfficerOverlay">Whether to include the officer portrait overlay.</param>
         /// <returns>The officer status message, or null when no matching definition exists.</returns>
         private Message CreateOfficerMessage(
             MessageResultType resultType,
             Faction faction,
             Officer officer,
             Planet planet,
-            GameRoot game,
-            bool includeOfficerOverlay = true
+            GameRoot game
         )
         {
             if (officer == null)
                 return null;
 
+            MessageDefinition definition = GetDefinition(resultType);
             Message message = WithEventLocation(
                 CreateMessage(
-                    GetDefinition(resultType),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
@@ -502,7 +501,9 @@ namespace Rebellion.Game.Messages
                         },
                         { "system", planet?.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: includeOfficerOverlay ? GetMessageImagePath(officer) : null,
+                    overlayImagePath: definition?.ShowOfficerOverlay == true
+                        ? GetMessageImagePath(officer)
+                        : null,
                     officerVoicePath: GetOfficerMessageVoicePath(resultType, officer, game)
                 ),
                 planet,
@@ -1571,8 +1572,7 @@ namespace Rebellion.Game.Messages
                         faction,
                         result.TargetOfficer,
                         planet,
-                        game,
-                        false
+                        game
                     )
                 );
             }

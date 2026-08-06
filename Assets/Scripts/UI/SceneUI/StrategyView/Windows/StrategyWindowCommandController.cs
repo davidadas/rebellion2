@@ -17,6 +17,7 @@ public sealed class StrategyWindowCommandController
     private readonly ConfirmDialogWindowController confirmDialogWindowController;
     private readonly Func<GameRoot> getGame;
     private readonly Func<MovementSystem> getMovementSystem;
+    private readonly Func<HeadquartersSystem> getHeadquartersSystem;
     private readonly Func<MaintenanceSystem> getMaintenanceSystem;
     private readonly Func<ManufacturingSystem> getManufacturingSystem;
     private readonly Func<PersonnelSystem> getPersonnelSystem;
@@ -39,6 +40,7 @@ public sealed class StrategyWindowCommandController
     /// <param name="clearWindowSelection">Clears selection owned by a source window.</param>
     /// <param name="rebuildSnapshot">Rebuilds the visible strategy snapshot.</param>
     /// <param name="markDirty">Invalidates the strategy presentation.</param>
+    /// <param name="getHeadquartersSystem">Returns the mobile-headquarters system.</param>
     public StrategyWindowCommandController(
         MissionCreateWindowController missionCreateWindowController,
         ConfirmDialogWindowController confirmDialogWindowController,
@@ -50,7 +52,8 @@ public sealed class StrategyWindowCommandController
         Action<string> playSfx,
         Action<UIWindow> clearWindowSelection,
         Action rebuildSnapshot,
-        Action markDirty
+        Action markDirty,
+        Func<HeadquartersSystem> getHeadquartersSystem = null
     )
     {
         this.missionCreateWindowController =
@@ -62,6 +65,7 @@ public sealed class StrategyWindowCommandController
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
         this.getMovementSystem =
             getMovementSystem ?? throw new ArgumentNullException(nameof(getMovementSystem));
+        this.getHeadquartersSystem = getHeadquartersSystem;
         this.getMaintenanceSystem =
             getMaintenanceSystem ?? throw new ArgumentNullException(nameof(getMaintenanceSystem));
         this.getManufacturingSystem =
@@ -274,13 +278,17 @@ public sealed class StrategyWindowCommandController
     /// <returns>True when the movement order was accepted.</returns>
     private bool TryMove(StrategyMissionTarget target, IReadOnlyList<ISceneNode> items)
     {
+        Building headquarters = items?.Count == 1 ? items[0] as Building : null;
         bool moved =
-            getMovementSystem()
-                ?.TryRequestMove(
-                    items,
-                    target?.GetMoveDestination() as ContainerNode,
-                    GetPlayerFactionID()
-                ) == true;
+            headquarters?.BuildingType == BuildingType.Headquarters
+                ? getHeadquartersSystem?.Invoke()?.TryRelocate(headquarters, target?.Planet?.Planet)
+                    == true
+                : getMovementSystem()
+                    ?.TryRequestMove(
+                        items,
+                        target?.GetMoveDestination() as ContainerNode,
+                        GetPlayerFactionID()
+                    ) == true;
         if (moved)
             PlayMoveVoice(items);
 

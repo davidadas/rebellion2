@@ -24,6 +24,7 @@ namespace Rebellion.Tests.Game
             Assert.IsNotNull(config.Victory, "VictoryConfig should not be null");
             Assert.IsNotNull(config.GameSpeed, "GameSpeedConfig should not be null");
             Assert.IsNotNull(config.Messages, "MessageConfig should not be null");
+            Assert.IsNotNull(config.Espionage, "EspionageConfig should not be null");
             Assert.IsNotNull(
                 config.ProbabilityTables,
                 "ProbabilityTablesConfig should not be null"
@@ -71,6 +72,14 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(60f, config.GameSpeed.SlowTickIntervalSeconds);
             Assert.AreEqual(120f, config.GameSpeed.VerySlowTickIntervalSeconds);
             Assert.AreEqual(300, config.Messages.RetentionTicks);
+            Assert.AreEqual("CORUSCANT", config.Espionage.CapitalPlanetInstanceID);
+            Assert.AreEqual("FNALL1", config.Espionage.CapitalObserverFactionInstanceID);
+            Assert.AreEqual(1, config.Espionage.CoreSystemBonus.Base);
+            Assert.AreEqual(0, config.Espionage.CoreSystemBonus.Spread);
+            Assert.AreEqual(1, config.Espionage.CapitalBonus.Base);
+            Assert.AreEqual(5, config.Espionage.CapitalBonus.Spread);
+            Assert.AreEqual(1, config.Espionage.MobileHeadquartersBonus.Base);
+            Assert.AreEqual(5, config.Espionage.MobileHeadquartersBonus.Spread);
             Assert.AreEqual(50, config.ProbabilityTables.Mission.DefaultKillOrCaptureProbability);
             Assert.AreEqual(1, config.SupportShift.DiplomacyCompletionSupportBonus);
             Assert.AreEqual(1, config.SupportShift.DiplomacyOwnedPlanetSupportBase);

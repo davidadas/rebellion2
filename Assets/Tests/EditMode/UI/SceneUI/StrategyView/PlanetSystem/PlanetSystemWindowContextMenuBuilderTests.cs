@@ -81,6 +81,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSystem
         }
 
         [Test]
+        public void Create_MobileHeadquarters_ReturnsMoveCommands()
+        {
+            PlanetSystemWindowHit hit = CreateHit(PlanetIcon.None, true);
+            Building headquarters = new Building
+            {
+                BuildingType = BuildingType.Headquarters,
+                OwnerInstanceID = _playerFactionId,
+            };
+
+            List<StrategyMenuCommand> commands = PlanetSystemWindowContextMenuBuilder.Create(
+                hit,
+                new List<ISceneNode> { headquarters },
+                _playerFactionId,
+                headquarters
+            );
+
+            Assert.AreEqual(4, commands.Count);
+            Assert.AreEqual(StrategyMenuAction.Move, commands[0].Action);
+            Assert.IsTrue(commands[0].Enabled);
+            Assert.AreEqual(StrategyMenuAction.MoveConfirm, commands[1].Action);
+            Assert.IsTrue(commands[1].Enabled);
+        }
+
+        [Test]
         public void Create_EmptyFleetHit_ReturnsDisabledFleetCommands()
         {
             PlanetSystemWindowHit hit = CreateHit(PlanetIcon.Fleet, false);

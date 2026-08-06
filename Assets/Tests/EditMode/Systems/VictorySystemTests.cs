@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -12,8 +13,6 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class VictorySystemTests
     {
-        // Builds a two-faction scene where rebels own empire's HQ by default.
-        // Call site controls VictoryCondition and whether to flip the HQ.
         private (
             GameRoot game,
             Faction empire,
@@ -102,7 +101,6 @@ namespace Rebellion.Tests.Systems
                 GameVictoryCondition.Conquest
             );
 
-            // Leader must live on an empire-owned planet, not the captured HQ.
             Planet empirePlanet = new Planet
             {
                 InstanceID = "p_empire",
@@ -160,7 +158,6 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ProcessTick_HQCapturedConquestMode_NoMainCharacters_ReturnsVictoryResult()
         {
-            // If a faction has no main characters at all, treat as all captured (prevents softlock).
             (_, _, Faction rebels, _, VictorySystem system) = BuildScene(
                 GameVictoryCondition.Conquest
             );
@@ -171,6 +168,185 @@ namespace Rebellion.Tests.Systems
             VictoryResult victory = results[0] as VictoryResult;
             Assert.IsNotNull(victory);
             Assert.AreEqual(rebels, victory.Winner);
+        }
+
+        [Test]
+        public void ProcessTick_MobileHeadquartersInTransit_ReturnsEmpty()
+        {
+            (GameRoot game, Faction empire, _, Planet empireHQ, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empire.HQInstanceID = null;
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+                Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 },
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ProcessTick_MobileHeadquartersMissing_ReturnsEmpty()
+        {
+            (_, Faction empire, _, _, VictorySystem system) = BuildScene(
+                rebelsCaptureEmpireHQ: false
+            );
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(0, results.Count);
+        }
+
+        [Test]
+        public void ProcessTick_MobileHeadquartersCaptured_ReturnsVictoryResult()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.OwnerInstanceID = rebels.InstanceID;
+            empireHQ.EnergyCapacity = 1;
+            Building headquarters = new Building
+            {
+                InstanceID = "mobile-hq",
+                TypeID = "BDHQ01",
+                OwnerInstanceID = rebels.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+            game.AttachNode(headquarters, empireHQ);
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreEqual(rebels, victory.Winner);
+            Assert.AreEqual(empire, victory.Loser);
+        }
+
+        [Test]
+        public void ProcessTick_MultipleMobileHeadquarters_UsesDefenderHeadquarters()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+            empire.Settings = new FactionSettings
+            {
+                Headquarters = new HeadquartersSettings
+                {
+                    FacilityTypeID = "BDHQ01",
+                    IsMobile = true,
+                },
+            };
+            empireHQ.OwnerInstanceID = rebels.InstanceID;
+            empireHQ.EnergyCapacity = 1;
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "empire-mobile-hq",
+                    TypeID = "BDHQ01",
+                    OwnerInstanceID = rebels.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                },
+                empireHQ
+            );
+
+            Faction thirdFaction = new Faction
+            {
+                InstanceID = "third-faction",
+                HQInstanceID = "third-hq-planet",
+                Settings = new FactionSettings
+                {
+                    Headquarters = new HeadquartersSettings
+                    {
+                        FacilityTypeID = "BDHQ01",
+                        IsMobile = true,
+                    },
+                },
+            };
+            game.Factions.Add(thirdFaction);
+            Planet thirdHeadquartersPlanet = new Planet
+            {
+                InstanceID = thirdFaction.HQInstanceID,
+                OwnerInstanceID = thirdFaction.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 1,
+            };
+            game.AttachNode(
+                thirdHeadquartersPlanet,
+                game.GetSceneNodeByInstanceID<PlanetSystem>("sys1")
+            );
+            game.AttachNode(
+                new Building
+                {
+                    InstanceID = "third-mobile-hq",
+                    TypeID = "BDHQ01",
+                    OwnerInstanceID = thirdFaction.InstanceID,
+                    BuildingType = BuildingType.Headquarters,
+                },
+                thirdHeadquartersPlanet
+            );
+
+            List<GameResult> results = system.ProcessTick();
+
+            Assert.AreEqual(1, results.Count);
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
+        }
+
+        [Test]
+        public void HandleResults_MobileHeadquartersDestroyed_ReturnsVictory()
+        {
+            (GameRoot game, Faction empire, Faction rebels, Planet empireHQ, VictorySystem system) =
+                BuildScene(rebelsCaptureEmpireHQ: false);
+
+            List<GameResult> results = system.HandleResults(
+                new List<HeadquartersDestroyedResult>
+                {
+                    new HeadquartersDestroyedResult
+                    {
+                        Planet = empireHQ,
+                        Defender = empire,
+                        Attacker = rebels,
+                    },
+                }
+            );
+
+            VictoryResult victory = results[0] as VictoryResult;
+            Assert.IsNotNull(victory);
+            Assert.AreSame(rebels, victory.Winner);
+            Assert.AreSame(empire, victory.Loser);
         }
     }
 }

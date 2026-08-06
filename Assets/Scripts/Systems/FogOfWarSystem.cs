@@ -162,6 +162,8 @@ namespace Rebellion.Systems
 
                     MergeOwnLiveUnits(viewPlanet, masterPlanet, faction);
 
+                    AddObservedMissions(viewPlanet, planetSnapshot);
+
                     foreach (
                         Mission mission in masterPlanet.Missions.Where(mission =>
                             mission.GetOwnerInstanceID() == faction.InstanceID
@@ -183,6 +185,24 @@ namespace Rebellion.Systems
             }
 
             return factionView;
+        }
+
+        /// <summary>
+        /// Adds enemy missions revealed by the latest espionage snapshot.
+        /// </summary>
+        /// <param name="viewPlanet">The faction-view planet receiving mission copies.</param>
+        /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
+        private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
+        {
+            if (snapshot?.HasEspionageIntelligence != true)
+                return;
+
+            foreach (Mission mission in snapshot.Missions)
+            {
+                Mission viewMission = FogOfWarRecorder.CopyEntityForSnapshot(mission);
+                viewMission.SetParent(viewPlanet);
+                viewPlanet.Missions.Add(viewMission);
+            }
         }
 
         /// <summary>
@@ -414,6 +434,8 @@ namespace Rebellion.Systems
                 viewPlanet.ManufacturingQueue = CopyLiveManufacturingQueue(masterPlanet);
             else
                 ApplyManufacturingIntelligence(viewPlanet, planetSnapshot);
+
+            ApplyIncomingFleetIntelligence(viewPlanet, planetSnapshot, faction);
         }
 
         /// <summary>
@@ -446,7 +468,8 @@ namespace Rebellion.Systems
             viewPlanet.Officers.AddRange(
                 planetSnapshot
                     .Officers.Where(officer =>
-                        FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
+                        planetSnapshot.HasEspionageIntelligence
+                        || FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
             );
@@ -461,7 +484,8 @@ namespace Rebellion.Systems
                         FogOfWarRecorder.CopyObservedFleetForSnapshot(
                             fleet,
                             faction.InstanceID,
-                            includeManufacturing: true
+                            includeManufacturing: true,
+                            includeInTransit: planetSnapshot.HasEspionageIntelligence
                         )
                     )
                     .Where(fleet => fleet != null)
@@ -469,32 +493,69 @@ namespace Rebellion.Systems
             viewPlanet.Regiments.AddRange(
                 planetSnapshot
                     .Regiments.Where(regiment =>
-                        FogOfWarRecorder.IsObservableAtPlanet(regiment, faction.InstanceID)
+                        planetSnapshot.HasEspionageIntelligence
+                        || FogOfWarRecorder.IsObservableAtPlanet(regiment, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.SpecialForces.AddRange(
                 planetSnapshot
                     .SpecialForces.Where(specialForces =>
-                        FogOfWarRecorder.IsObservableAtPlanet(specialForces, faction.InstanceID)
+                        planetSnapshot.HasEspionageIntelligence
+                        || FogOfWarRecorder.IsObservableAtPlanet(specialForces, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.Starfighters.AddRange(
                 planetSnapshot
                     .Starfighters.Where(starfighter =>
-                        FogOfWarRecorder.IsObservableAtPlanet(starfighter, faction.InstanceID)
+                        planetSnapshot.HasEspionageIntelligence
+                        || FogOfWarRecorder.IsObservableAtPlanet(starfighter, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             viewPlanet.Buildings.AddRange(
                 planetSnapshot
                     .Buildings.Where(building =>
-                        FogOfWarRecorder.IsObservableAtPlanet(building, faction.InstanceID)
+                        planetSnapshot.HasEspionageIntelligence
+                        || FogOfWarRecorder.IsObservableAtPlanet(building, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
+        }
+
+        /// <summary>
+        /// Adds incoming enemy fleets revealed by espionage to an otherwise live planet view.
+        /// </summary>
+        /// <param name="viewPlanet">The faction-view planet receiving known incoming fleets.</param>
+        /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
+        /// <param name="faction">The faction whose view is being built.</param>
+        private static void ApplyIncomingFleetIntelligence(
+            Planet viewPlanet,
+            PlanetSnapshot snapshot,
+            Faction faction
+        )
+        {
+            if (snapshot?.HasEspionageIntelligence != true)
+                return;
+
+            foreach (
+                Fleet fleet in snapshot.Fleets.Where(fleet =>
+                    fleet.Movement != null
+                    && viewPlanet.Fleets.All(current => current.InstanceID != fleet.InstanceID)
+                )
+            )
+            {
+                Fleet fleetCopy = FogOfWarRecorder.CopyObservedFleetForSnapshot(
+                    fleet,
+                    faction.InstanceID,
+                    includeManufacturing: true,
+                    includeInTransit: true
+                );
+                if (fleetCopy != null)
+                    viewPlanet.Fleets.Add(fleetCopy);
+            }
         }
 
         /// <summary>

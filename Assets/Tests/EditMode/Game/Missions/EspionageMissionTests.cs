@@ -45,6 +45,7 @@ namespace Rebellion.Tests.Game.Missions
                 FogOfWarSystem fog
             ) = MissionSceneBuilder.Build();
 
+            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig();
             enemyPlanet.VisitingFactionIDs.Add("empire");
 
             Mission mission = CreateMission(
@@ -63,6 +64,10 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(
                 empire.Fog.Snapshots.ContainsKey("sys1"),
                 "Espionage success should capture a FOW snapshot for the faction"
+            );
+            CollectionAssert.AreEquivalent(
+                new[] { enemyPlanet.InstanceID },
+                RevealedPlanetIDs(empire)
             );
         }
 
@@ -100,6 +105,190 @@ namespace Rebellion.Tests.Game.Missions
             Faction empire = game.GetFactionByOwnerInstanceID("empire");
             PlanetSnapshot snapshot = empire.Fog.Snapshots["sys1"].Planets["enemy_planet"];
             Assert.IsTrue(snapshot.Buildings.Any(item => item.InstanceID == "enemy_building"));
+        }
+
+        [Test]
+        public void Execute_EnemyPlanetTarget_RevealsEnemyMissions()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+            Mission enemyMission = EntityFactory.CreateMission(
+                "enemy_mission",
+                "rebels",
+                enemyPlanet.InstanceID
+            );
+            game.AttachNode(enemyMission, enemyPlanet);
+
+            Mission espionageMission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(espionageMission, enemyPlanet);
+            espionageMission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(espionageMission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            PlanetSnapshot snapshot = empire.Fog.Snapshots["sys1"].Planets["enemy_planet"];
+            Assert.AreEqual(1, snapshot.Missions.Count);
+            Assert.AreEqual(enemyMission.InstanceID, snapshot.Missions[0].InstanceID);
+        }
+
+        [Test]
+        public void Execute_CoreTarget_RevealsSameAllegianceCorePlanets()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            PlanetSystem targetSystem = enemyPlanet.GetParentOfType<PlanetSystem>();
+            targetSystem.SystemType = PlanetSystemType.CoreSystem;
+            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
+            AddSystem(game, "core3", "core_planet3", PlanetSystemType.CoreSystem);
+            AddSystem(game, "rim1", "rim_planet1", PlanetSystemType.OuterRim);
+            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig
+            {
+                Base = 2,
+                Spread = 0,
+            };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.AreEquivalent(
+                new[] { "enemy_planet", "core_planet2", "core_planet3" },
+                RevealedPlanetIDs(empire)
+            );
+        }
+
+        [Test]
+        public void Execute_OuterRimTarget_DoesNotRevealBonusPlanets()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
+            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
+            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.AreEquivalent(new[] { "enemy_planet" }, RevealedPlanetIDs(empire));
+        }
+
+        [Test]
+        public void Execute_MobileHeadquartersTarget_CanRevealCoreAndOuterRimPlanets()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
+            AddSystem(game, "core2", "core_planet2", PlanetSystemType.CoreSystem);
+            AddSystem(game, "rim1", "rim_planet1", PlanetSystemType.OuterRim);
+            AddSystem(game, "neutral1", "neutral_planet1", PlanetSystemType.OuterRim, null);
+            Faction rebels = game.GetFactionByOwnerInstanceID("rebels");
+            rebels.HQInstanceID = enemyPlanet.InstanceID;
+            rebels.Settings.Headquarters.IsMobile = true;
+            game.Config.Espionage.MobileHeadquartersBonus = new GameConfig.RandomCountConfig
+            {
+                Base = 10,
+            };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.AreEquivalent(
+                new[] { "enemy_planet", "core_planet2", "rim_planet1" },
+                RevealedPlanetIDs(empire)
+            );
+        }
+
+        [Test]
+        public void Execute_CapitalTarget_CanRevealCoreAndOuterRimPlanets()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
+            AddSystem(game, "rim1", "rim_planet1", PlanetSystemType.OuterRim);
+            game.Config.Espionage.CapitalPlanetInstanceID = enemyPlanet.InstanceID;
+            game.Config.Espionage.CapitalObserverFactionInstanceID = "empire";
+            game.Config.Espionage.CapitalBonus = new GameConfig.RandomCountConfig { Base = 10 };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+
+            MissionSceneBuilder.RunToSuccess(mission, game);
+
+            Faction empire = game.GetFactionByOwnerInstanceID("empire");
+            CollectionAssert.Contains(RevealedPlanetIDs(empire), "rim_planet1");
         }
 
         [Test]
@@ -356,6 +545,39 @@ namespace Rebellion.Tests.Game.Missions
                 mission,
                 "TryCreate should succeed for a visited planet regardless of ownership"
             );
+        }
+
+        private static PlanetSystem AddSystem(
+            GameRoot game,
+            string systemInstanceID,
+            string planetInstanceID,
+            PlanetSystemType systemType,
+            string ownerInstanceID = "rebels"
+        )
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = systemInstanceID,
+                SystemType = systemType,
+            };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(
+                new Planet
+                {
+                    InstanceID = planetInstanceID,
+                    OwnerInstanceID = ownerInstanceID,
+                    IsColonized = true,
+                },
+                system
+            );
+            return system;
+        }
+
+        private static List<string> RevealedPlanetIDs(Faction faction)
+        {
+            return faction
+                .Fog.Snapshots.Values.SelectMany(snapshot => snapshot.Planets.Keys)
+                .ToList();
         }
 
         [Test]

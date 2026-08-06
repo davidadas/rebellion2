@@ -253,6 +253,15 @@ public static class AdvisorReportBuilder
             .FirstOrDefault(item =>
                 string.Equals(item.InstanceID, factionInstanceId, StringComparison.Ordinal)
             );
+        if (faction?.Settings?.Headquarters?.IsMobile == true)
+        {
+            return game.GetSceneNodesByType<Building>()
+                .Any(building =>
+                    building.TypeID == faction.Settings.Headquarters.FacilityTypeID
+                    && building.OwnerInstanceID == faction.InstanceID
+                );
+        }
+
         return faction != null
             && IsPlanetOwnedByFaction(game, faction.HQInstanceID, faction.InstanceID);
     }

@@ -610,6 +610,8 @@ namespace Rebellion.Tests.Game.Factions
             _faction.ToggleAdvisorMessageNotification(MessageType.Fleet);
             _faction.TranslateCounterpart = false;
             _faction.AgentAdvice = false;
+            _faction.ManageGarrisons = true;
+            _faction.ManageProduction = true;
             _faction.RawMaterialStockpile = 17;
             _faction.RefinedMaterialStockpile = 23;
             _faction.PendingRawMaterialFacilityIDs.AddRange(new[] { "REFINERY1", "REFINERY2" });
@@ -645,6 +647,8 @@ namespace Rebellion.Tests.Game.Factions
             Assert.IsTrue(deserialized.IsAdvisorMessageNotificationEnabled(MessageType.Mission));
             Assert.IsFalse(deserialized.TranslateCounterpart);
             Assert.IsFalse(deserialized.AgentAdvice);
+            Assert.IsTrue(deserialized.ManageGarrisons);
+            Assert.IsTrue(deserialized.ManageProduction);
             Assert.AreEqual(_faction.RawMaterialStockpile, deserialized.RawMaterialStockpile);
             Assert.AreEqual(
                 _faction.RefinedMaterialStockpile,

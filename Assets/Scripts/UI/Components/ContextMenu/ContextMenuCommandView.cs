@@ -256,7 +256,7 @@ public sealed class ContextMenuCommandView
     private RectInt GetIconRect(Texture texture, bool centerNativeIcon)
     {
         if (!centerNativeIcon || texture == null)
-            return iconTemplateRect;
+            return CenterVertically(iconTemplateRect.width, iconTemplateRect.height, 4);
 
         Vector2Int size = UILayout.GetTextureSourceSize(texture);
         if (size.x <= 0 || size.y <= 0)
@@ -265,11 +265,23 @@ public sealed class ContextMenuCommandView
         if (size.y >= rootTemplateRect.height)
             return new RectInt(textTemplateRect.x, 0, size.x, size.y);
 
+        return CenterVertically(size.x, size.y, 0);
+    }
+
+    /// <summary>
+    /// Centers an authored icon size within the command row.
+    /// </summary>
+    /// <param name="width">The icon width.</param>
+    /// <param name="height">The icon height.</param>
+    /// <param name="verticalOffset">The authored vertical adjustment.</param>
+    /// <returns>The centered icon rectangle.</returns>
+    private RectInt CenterVertically(int width, int height, int verticalOffset)
+    {
         return new RectInt(
             iconTemplateRect.x,
-            iconTemplateRect.y + Mathf.Max(0, (rootTemplateRect.height - size.y) / 2),
-            size.x,
-            size.y
+            Mathf.Max(0, (rootTemplateRect.height - height) / 2 + verticalOffset),
+            width,
+            height
         );
     }
 }

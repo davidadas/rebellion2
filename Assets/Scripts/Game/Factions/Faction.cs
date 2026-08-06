@@ -67,6 +67,8 @@ namespace Rebellion.Game.Factions
             new Dictionary<MessageType, bool>();
         public bool TranslateCounterpart { get; set; } = true;
         public bool AgentAdvice { get; set; } = true;
+        public bool ManageGarrisons { get; set; }
+        public bool ManageProduction { get; set; }
 
         // Research Status.
         public FactionResearchState ResearchState { get; set; } = new FactionResearchState();
@@ -759,6 +761,9 @@ namespace Rebellion.Game.Factions
 
             foreach (IManufacturable template in templates)
             {
+                if (template is Building { CanBeManufactured: false })
+                    continue;
+
                 if (
                     template.AllowedOwnerInstanceIDs?.Count > 0
                     && !template.AllowedOwnerInstanceIDs.Contains(InstanceID)

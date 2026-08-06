@@ -34,6 +34,9 @@ namespace Rebellion.Game.FogOfWar
         public List<Starfighter> Starfighters;
         public List<Mission> Missions;
 
+        // Complete Espionage Intelligence.
+        public bool HasEspionageIntelligence;
+
         // Manufacturing Intelligence.
         public bool HasManufacturingIntelligence;
         public List<IManufacturable> ManufacturingQueueItems;

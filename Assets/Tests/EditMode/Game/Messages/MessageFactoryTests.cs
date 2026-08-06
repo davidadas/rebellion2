@@ -1587,7 +1587,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "recruited:{officer}:{system}",
                             "body:{officer}:{system}",
-                            DefaultImage("fallback-card")
+                            DefaultImage("fallback-card"),
+                            showOfficerOverlay: true
                         ),
                     },
                     new OfficerRecruitedResult
@@ -1608,7 +1609,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_OfficerCapture_UsesTargetOfficerImage()
+        public void CreateMessages_OfficerCapture_DoesNotOverlayTargetOfficerImage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer target = new Officer
@@ -1652,7 +1653,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("captured:Target:Coruscant", message.Title);
             Assert.AreEqual("fallback-card", message.DisplayImagePath);
-            Assert.AreEqual("target-card", message.OverlayImagePath);
+            Assert.IsNull(message.OverlayImagePath);
         }
 
         [Test]
@@ -1705,8 +1706,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("captor:Target:Coruscant", captorMessage.Body);
             Assert.AreEqual("alliance-image", ownerMessage.DisplayImagePath);
             Assert.AreEqual("empire-image", captorMessage.DisplayImagePath);
-            Assert.AreEqual("target-card", ownerMessage.OverlayImagePath);
-            Assert.AreEqual("target-card", captorMessage.OverlayImagePath);
+            Assert.IsNull(ownerMessage.OverlayImagePath);
+            Assert.IsNull(captorMessage.OverlayImagePath);
             Assert.AreEqual(
                 AdvisorSubjectNotification.Captured,
                 captorMessage.AdvisorSubjectNotification
@@ -1737,7 +1738,8 @@ namespace Rebellion.Tests.Game.Messages
                             MessageType.Mission,
                             "recovered:{officer}:{system}",
                             "body:{officer}:{system}",
-                            DefaultImage("fallback-card")
+                            DefaultImage("fallback-card"),
+                            showOfficerOverlay: true
                         ),
                     },
                     new OfficerInjuredResult { Officer = officer, Severity = 0 }
@@ -2754,7 +2756,8 @@ namespace Rebellion.Tests.Game.Messages
             string imageKey = null,
             string voicePath = null,
             Dictionary<string, string> imagePaths = null,
-            Dictionary<string, string> voicePaths = null
+            Dictionary<string, string> voicePaths = null,
+            bool showOfficerOverlay = false
         )
         {
             MessageDefinition definition = new MessageDefinition
@@ -2769,6 +2772,7 @@ namespace Rebellion.Tests.Game.Messages
                 ManufacturingType = manufacturingType,
                 TitleTemplate = titleTemplate,
                 BodyTemplate = bodyTemplate,
+                ShowOfficerOverlay = showOfficerOverlay,
                 ImageKey = imageKey,
                 ImagePath = imagePath,
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),

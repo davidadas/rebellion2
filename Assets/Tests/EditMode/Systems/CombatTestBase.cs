@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Systems
                     {
                         InvertSupportShift = true,
                         WeakSupportPenaltyTrigger = SupportShiftCondition.Negative,
-                        HeadquartersCanBeBombarded = false,
+                        Headquarters = new HeadquartersSettings { IsBombardable = false },
                     },
                 }
             );
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Systems
                     {
                         InvertSupportShift = false,
                         WeakSupportPenaltyTrigger = SupportShiftCondition.Positive,
-                        HeadquartersCanBeBombarded = true,
+                        Headquarters = new HeadquartersSettings { IsBombardable = true },
                     },
                 }
             );

@@ -418,7 +418,8 @@ public sealed class StrategyController
             PlaySfx,
             ClearWindowSelection,
             RebuildSnapshot,
-            MarkDirty
+            MarkDirty,
+            () => gameManager.HeadquartersSystem
         );
     }
 

@@ -104,6 +104,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
                 .GetComponentsInChildren<RawImage>(true)
                 .Single(image => image.name == "IconImage");
             RectInt parentIconRect = UILayout.GetSourceRect(parentIcon.rectTransform);
+            RawImage checkIcon = rootRows[2]
+                .GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "IconImage");
+            RectInt checkIconRect = UILayout.GetSourceRect(checkIcon.rectTransform);
 
             Assert.IsTrue(_presenter.Open);
             Assert.AreSame(_window, _presenter.Window);
@@ -113,6 +117,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Checked", FindCommandText(rootRows[2]).text);
             Assert.AreEqual("Child", FindCommandText(childRow).text);
             Assert.AreEqual(new RectInt(6, 0, 17, 20), parentIconRect);
+            Assert.AreEqual(new RectInt(4, 7, 14, 14), checkIconRect);
         }
 
         [Test]

@@ -184,7 +184,7 @@ public sealed class FinderWindowRowBuilder
     }
 
     /// <summary>
-    /// Projects officers and special forces across missions, fleets, and planets.
+    /// Projects officers across missions, fleets, and planets.
     /// </summary>
     /// <param name="tab">The active faction tab.</param>
     /// <returns>Alphabetically ordered personnel rows.</returns>
@@ -205,7 +205,7 @@ public sealed class FinderWindowRowBuilder
                     seen,
                     planet,
                     PlanetIcon.Mission,
-                    mission.MainParticipants.OfType<ISceneNode>(),
+                    mission.MainParticipants.OfType<Officer>(),
                     mission: mission
                 );
                 AddPersonnelRows(
@@ -213,7 +213,7 @@ public sealed class FinderWindowRowBuilder
                     seen,
                     planet,
                     PlanetIcon.Mission,
-                    mission.DecoyParticipants.OfType<ISceneNode>(),
+                    mission.DecoyParticipants.OfType<Officer>(),
                     mission: mission
                 );
             }
@@ -228,18 +228,9 @@ public sealed class FinderWindowRowBuilder
                     fleet.GetOfficers(),
                     fleet: fleet
                 );
-                AddPersonnelRows(
-                    rows,
-                    seen,
-                    planet,
-                    PlanetIcon.Fleet,
-                    fleet.GetSpecialForces(),
-                    fleet: fleet
-                );
             }
 
             AddPersonnelRows(rows, seen, planet, PlanetIcon.Defense, planet.Planet.Officers);
-            AddPersonnelRows(rows, seen, planet, PlanetIcon.Defense, planet.Planet.SpecialForces);
         }
 
         return rows.Where(row =>

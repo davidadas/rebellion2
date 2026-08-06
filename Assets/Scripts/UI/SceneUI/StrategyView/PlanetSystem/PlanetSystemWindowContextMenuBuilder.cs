@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 /// <summary>
@@ -12,6 +13,7 @@ internal static class PlanetSystemWindowContextMenuBuilder
     /// <param name="hit">The active semantic planet hit.</param>
     /// <param name="fleetItems">The player-controlled fleet items at the hit planet.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="mobileHeadquarters">The mobile headquarters selected at the hit planet.</param>
     /// <param name="canBombard">Whether the fleets can bombard the hit planet.</param>
     /// <param name="canDestroySystem">Whether the fleets can destroy the hit planet.</param>
     /// <param name="canAssault">Whether the fleets can assault the hit planet.</param>
@@ -20,6 +22,7 @@ internal static class PlanetSystemWindowContextMenuBuilder
         PlanetSystemWindowHit hit,
         List<ISceneNode> fleetItems,
         string playerFactionId,
+        Building mobileHeadquarters = null,
         bool canBombard = false,
         bool canDestroySystem = false,
         bool canAssault = false
@@ -27,6 +30,16 @@ internal static class PlanetSystemWindowContextMenuBuilder
     {
         if (hit?.GalaxyMapPlanet == null)
             return CreatePlanetInformationCommands(false);
+        if (mobileHeadquarters != null)
+        {
+            return new List<StrategyMenuCommand>
+            {
+                new StrategyMenuCommand(StrategyMenuAction.Move, "Move", true),
+                new StrategyMenuCommand(StrategyMenuAction.MoveConfirm, "Confirmed Move", true),
+                new StrategyMenuCommand(StrategyMenuAction.Encyclopedia, "Encyclopedia", true),
+                new StrategyMenuCommand(StrategyMenuAction.Status, "Status", true),
+            };
+        }
         if (hit.PlanetImage || hit.Icon == PlanetIcon.None)
             return CreatePlanetInformationCommands(true);
 

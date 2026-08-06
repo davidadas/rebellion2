@@ -27,11 +27,23 @@ namespace Rebellion.Systems
         private readonly BlockadeSystem _blockade;
         private readonly FleetSystem _fleetSystem;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
+        private Func<Building, bool> _completedBuildingMovementPolicy;
 
         /// <summary>
         /// Raised after an immediate movement command produces results.
         /// </summary>
         public event Action<IReadOnlyList<GameResult>> ResultsProduced;
+
+        /// <summary>
+        /// Registers the domain policy that may authorize movement for a completed building.
+        /// Completed buildings remain immobile when no policy is registered.
+        /// </summary>
+        /// <param name="policy">The completed-building movement policy.</param>
+        internal void SetCompletedBuildingMovementPolicy(Func<Building, bool> policy)
+        {
+            _completedBuildingMovementPolicy =
+                policy ?? throw new ArgumentNullException(nameof(policy));
+        }
 
         /// <summary>
         /// Initializes a new instance of the MovementSystem class.
@@ -882,7 +894,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="unit">The unit to check.</param>
         /// <returns>True if the unit can receive the order.</returns>
-        private static bool CanReceiveMoveOrder(IMovable unit)
+        private bool CanReceiveMoveOrder(IMovable unit)
         {
             if (!IsUnderConstruction(unit) && unit.GetTransitMovement() != null)
             {
@@ -892,7 +904,13 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (IsCompletedBuilding(unit))
+            if (
+                IsCompletedBuilding(unit)
+                && (
+                    unit is not Building building
+                    || _completedBuildingMovementPolicy?.Invoke(building) != true
+                )
+            )
             {
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} is a completed building."

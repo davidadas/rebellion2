@@ -99,6 +99,7 @@ namespace Rebellion.Game.Messages
         public ResearchDiscipline ResearchDiscipline { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public bool ShowOfficerOverlay { get; set; }
         public string ImageKey { get; set; }
         public string ImagePath { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =

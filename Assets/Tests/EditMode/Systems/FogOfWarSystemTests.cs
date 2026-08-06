@@ -1250,12 +1250,12 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RecordPlanetManufacturingSnapshot_EspionageIntel_RevealsManufacturing()
+        public void RecordEspionageSnapshot_RevealsManufacturing()
         {
             AddQueuedBuilding(_coruscant, _empire, "REVEALED_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
 
-            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
             Planet viewCoruscant = view
@@ -1272,11 +1272,89 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void RecordEspionageSnapshot_RevealsEnemyMissions()
+        {
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.AreEqual(1, viewCoruscant.Missions.Count);
+            Assert.AreEqual(empireMission.InstanceID, viewCoruscant.Missions[0].InstanceID);
+        }
+
+        [Test]
+        public void RecordEspionageSnapshot_RevealsIncomingEnemyFleet()
+        {
+            Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
+            _game.AttachNode(empireFleet, _coruscant);
+            AddCapitalShip(empireFleet, _empire, "INCOMING_SHIP");
+            empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            Assert.AreEqual(1, viewCoruscant.Fleets.Count);
+            Assert.AreEqual(empireFleet.InstanceID, viewCoruscant.Fleets[0].InstanceID);
+            Assert.IsNotNull(viewCoruscant.Fleets[0].Movement);
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_PreservesIncomingEnemyFleet()
+        {
+            Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
+            _game.AttachNode(empireFleet, _coruscant);
+            AddCapitalShip(empireFleet, _empire, "INCOMING_SHIP");
+            empireFleet.Movement = new MovementState { TransitTicks = 10, TicksElapsed = 5 };
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            GalaxyMap view = _fogSystem.BuildFactionView(_alliance);
+            Planet viewCoruscant = view
+                .PlanetSystems.First(system => system.InstanceID == _coreSystem.InstanceID)
+                .Planets.First(planet => planet.InstanceID == _coruscant.InstanceID);
+            Fleet viewFleet = viewCoruscant.Fleets.Single(fleet =>
+                fleet.InstanceID == empireFleet.InstanceID
+            );
+            Assert.IsNotNull(viewFleet.Movement);
+        }
+
+        [Test]
+        public void CaptureSnapshot_AfterEspionage_PreservesMissionIntelligence()
+        {
+            Mission empireMission = CreateMission("M1", _empire, _coruscant);
+            _game.AttachNode(empireMission, _coruscant);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
+
+            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots[_coreSystem.InstanceID].Planets[
+                _coruscant.InstanceID
+            ];
+            Assert.AreEqual(1, snapshot.Missions.Count);
+            Assert.AreEqual(empireMission.InstanceID, snapshot.Missions[0].InstanceID);
+        }
+
+        [Test]
         public void CaptureSnapshot_AfterEspionage_PreservesStaleManufacturingIntel()
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             knownBuilding.ManufacturingProgress = 75;
             AddQueuedBuilding(_coruscant, _empire, "UNKNOWN_BUILDING", 10);
@@ -1300,7 +1378,7 @@ namespace Rebellion.Tests.Systems
         {
             Building knownBuilding = AddQueuedBuilding(_coruscant, _empire, "KNOWN_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             _coruscant.ManufacturingQueue[ManufacturingType.Building].Remove(knownBuilding);
             _game.DetachNode(knownBuilding);
@@ -1336,7 +1414,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(knownShip, fleet);
             _game.AttachNode(departedRegiment, knownShip);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             _game.DetachNode(departedRegiment);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
@@ -1364,7 +1442,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(knownShip, fleet);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             knownShip.ManufacturingProgress = 75;
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
@@ -1401,7 +1479,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(fleet, _coruscant);
             _game.AttachNode(knownShip, fleet);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
-            recorder.RecordPlanetManufacturingSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             _game.DetachNode(knownShip);
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 20);
@@ -1526,17 +1604,16 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_LivePlanet_EnemyMissionsNeverVisible()
+        public void BuildFactionView_LivePlanet_EspionageMissionIntelligenceRemainsVisible()
         {
-            // Alliance takes a snapshot of coruscant (e.g. via espionage) then gets live intel.
-            // Enemy missions must never be visible — not from snapshot, not from live sight.
             Officer vader = CreateOfficer("VADER", _empire);
             _game.AttachNode(vader, _coruscant);
 
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
@@ -1554,9 +1631,9 @@ namespace Rebellion.Tests.Systems
                 "Live officer (Vader) should be visible"
             );
             Assert.AreEqual(
-                0,
+                1,
                 viewCoruscant.Missions.Count,
-                "Enemy missions must never be visible"
+                "A mission revealed by espionage should remain visible with live planet intel"
             );
         }
 
@@ -1816,7 +1893,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(
                 0,
                 viewCoruscant.Missions.Count,
-                "Enemy missions must never be visible"
+                "An ordinary observation should not reveal enemy missions"
             );
         }
 
@@ -2158,14 +2235,13 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void BuildFactionView_LivePlanet_SnapshotEnemyMission_NeverSurfaced()
+        public void BuildFactionView_LivePlanet_EspionageSnapshotEnemyMission_IsSurfaced()
         {
-            // Even if a snapshot captured an enemy mission, and the planet is later live,
-            // enemy missions must never appear in the faction view.
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
 
-            _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
+            FogOfWarRecorder recorder = new FogOfWarRecorder();
+            recorder.RecordEspionageSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             Fleet allianceFleet = CreateFleet("FLEET1", _alliance);
             _game.AttachNode(allianceFleet, _coruscant);
@@ -2178,9 +2254,9 @@ namespace Rebellion.Tests.Systems
                 .Planets.First(p => p.InstanceID == "CORUSCANT");
 
             Assert.AreEqual(
-                0,
+                1,
                 viewCoruscant.Missions.Count,
-                "Enemy missions must never be surfaced"
+                "Enemy missions captured by espionage should be surfaced"
             );
         }
 

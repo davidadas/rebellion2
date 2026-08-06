@@ -321,6 +321,46 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void GetRows_Personnel_ExcludesSpecialForcesShownByDedicatedPanel()
+        {
+            SpecialForces missionUnit = CreateSpecialForces(
+                "mission-spy",
+                "Mission Spy",
+                _playerFactionId
+            );
+            _alpha.Missions.Add(
+                new DiplomacyMission
+                {
+                    InstanceID = "mission",
+                    MainParticipants = new List<IMissionParticipant> { missionUnit },
+                }
+            );
+            CapitalShip ship = CreateCapitalShip("ship", "Ship", _playerFactionId);
+            ship.SpecialForces.Add(
+                CreateSpecialForces("fleet-commando", "Fleet Commando", _playerFactionId)
+            );
+            _alpha.Fleets.Add(CreateFleet("fleet", "Fleet", _playerFactionId, ship));
+            _alpha.SpecialForces.Add(
+                CreateSpecialForces("planet-commando", "Planet Commando", _playerFactionId)
+            );
+
+            List<FinderWindowRow> personnelRows = _builder.GetRows(
+                FinderMode.Personnel,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+            List<FinderWindowRow> specialForcesRows = _builder.GetRows(
+                FinderMode.Personnel,
+                true,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.IsEmpty(personnelRows);
+            Assert.AreEqual(1, specialForcesRows.Count);
+            CollectionAssert.AreEqual(new[] { 1, 1, 1 }, specialForcesRows[0].Counts);
+        }
+
+        [Test]
         public void GetRows_SpecialForces_AggregatesPlanetMissionAndFleetUnits()
         {
             _alpha.SpecialForces.Add(

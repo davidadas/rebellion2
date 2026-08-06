@@ -16,6 +16,7 @@ namespace Rebellion.Game.Factions
         private int _garrisonEfficiency = 1;
         private int _troopEffectiveness = 1;
         private int _uprisingResistance = 1;
+        private HeadquartersSettings _headquarters = new HeadquartersSettings();
 
         /// <summary>
         /// Multiplier applied when converting raw/refined production into material supply.
@@ -82,7 +83,22 @@ namespace Rebellion.Game.Factions
         public SupportShiftCondition WeakSupportPenaltyTrigger { get; set; } =
             SupportShiftCondition.Positive;
 
-        public bool HeadquartersCanBeBombarded { get; set; }
+        public HeadquartersSettings Headquarters
+        {
+            get => _headquarters ??= new HeadquartersSettings();
+            set => _headquarters = value ?? new HeadquartersSettings();
+        }
+    }
+
+    /// <summary>
+    /// Defines permanent headquarters behavior for a faction.
+    /// </summary>
+    [PersistableObject]
+    public class HeadquartersSettings
+    {
+        public string FacilityTypeID { get; set; }
+        public bool IsMobile { get; set; }
+        public bool IsBombardable { get; set; }
     }
 
     /// <summary>

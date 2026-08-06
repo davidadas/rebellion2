@@ -31,11 +31,13 @@ public sealed class GameManager
     private FleetSystem _fleetSystem;
     private PersonnelSystem _personnelSystem;
     private MovementSystem _movementSystem;
+    private HeadquartersSystem _headquartersSystem;
 
     // Economy Systems.
     private ManufacturingSystem _manufacturingSystem;
     private MaintenanceSystem _maintenanceSystem;
     private ResourceProductionSystem _resourceProductionSystem;
+    private FactionAutomationSystem _factionAutomationSystem;
 
     // Planetary Systems.
     private PlanetaryControlSystem _planetaryControlSystem;
@@ -77,6 +79,7 @@ public sealed class GameManager
     internal PersonnelSystem PersonnelSystem => _personnelSystem;
 
     internal MovementSystem MovementSystem => _movementSystem;
+    internal HeadquartersSystem HeadquartersSystem => _headquartersSystem;
 
     internal ManufacturingSystem ManufacturingSystem => _manufacturingSystem;
 
@@ -204,6 +207,7 @@ public sealed class GameManager
         _messageSystem.ProcessTick();
         GameLogger.Debug("Tick: " + _game.CurrentTick);
 
+        _factionAutomationSystem.ProcessTick();
         ProcessResults(_resourceProductionSystem.ProcessTick());
         ProcessResults(_manufacturingSystem.ProcessTick());
         ProcessResults(_maintenanceSystem.ProcessTick());
@@ -302,7 +306,13 @@ public sealed class GameManager
         _fleetSystem = new FleetSystem(_game);
         _personnelSystem = new PersonnelSystem(_game);
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
+        _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
+        _factionAutomationSystem = new FactionAutomationSystem(
+            _game,
+            _gameData,
+            _manufacturingSystem
+        );
         _maintenanceSystem = new MaintenanceSystem(_game, _randomProvider, _fleetSystem);
         _resourceProductionSystem = new ResourceProductionSystem(_game);
         _planetaryControlSystem = new PlanetaryControlSystem(
@@ -354,6 +364,9 @@ public sealed class GameManager
     {
         _resultProcessor = new GameResultProcessor();
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
+        _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
+        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
+        _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);
