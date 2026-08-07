@@ -69,7 +69,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             {
                 StrategyBriefing = new StrategyBriefingTheme
                 {
-                    AudioRoot = "Pack/Factions/Example/Strategy/Audio/Briefing",
+                    AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings",
                     AudioFilePrefix = "briefing",
                     Skip = new StrategyAdvisorAnimationTheme { WaveID = 42 },
                 },
@@ -81,8 +81,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0041",
-                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0042",
+                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/briefing-0041",
+                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/briefing-0042",
                 },
                 paths
             );

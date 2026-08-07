@@ -6,18 +6,34 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     public class StrategyAdvisorThemeTests
     {
         [Test]
-        public void GetFramePath_ReturnsNormalizedRoleAndFramePath()
+        public void GetFramePath_ReturnsRoleResourceAndFramePath()
         {
             StrategyAdvisorTheme theme = new StrategyAdvisorTheme
             {
-                AnimationImageRoot = "Pack/Factions/Example/Strategy/UI/Advisor",
-                AnimationFilePrefix = "advisor",
+                AnimationImageRoot =
+                    "Pack/Factions/Example/Strategy/Advisor/Animations/Notifications",
             };
 
             string path = theme.GetFramePath(3331, 4, true);
 
             Assert.AreEqual(
-                "Pack/Factions/Example/Strategy/UI/Advisor/Droid/3331/advisor-droid-3331-frame-004",
+                "Pack/Factions/Example/Strategy/Advisor/Animations/Notifications/Alert/3331/frame-004",
+                path
+            );
+        }
+
+        [Test]
+        public void BriefingGetFramePath_ReturnsResourceAndFramePath()
+        {
+            StrategyBriefingTheme theme = new StrategyBriefingTheme
+            {
+                AnimationImageRoot = "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings",
+            };
+
+            string path = theme.GetFramePath(2100, 12);
+
+            Assert.AreEqual(
+                "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/2100/frame-012",
                 path
             );
         }
@@ -27,13 +43,16 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         {
             StrategyAdvisorTheme theme = new StrategyAdvisorTheme
             {
-                AudioRoot = "Pack/Factions/Example/Strategy/Audio/Advisor",
+                AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Notifications",
                 AudioFilePrefix = "advisor",
             };
 
             string path = theme.GetAudioPath(42);
 
-            Assert.AreEqual("Pack/Factions/Example/Strategy/Audio/Advisor/advisor-0042", path);
+            Assert.AreEqual(
+                "Pack/Factions/Example/Strategy/Advisor/Audio/Notifications/advisor-0042",
+                path
+            );
         }
 
         [Test]
@@ -41,8 +60,8 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         {
             StrategyBriefingTheme theme = new StrategyBriefingTheme
             {
-                AnimationImageRoot = "Pack/Factions/Example/Strategy/UI/Briefing/Protocol",
-                AudioRoot = "Pack/Factions/Example/Strategy/Audio/Briefing",
+                AnimationImageRoot = "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings",
+                AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings",
                 AudioFilePrefix = "briefing",
                 Skip = new StrategyAdvisorAnimationTheme { BitmapID = 20, WaveID = 40 },
             };
@@ -55,16 +74,16 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Pack/Factions/Example/Strategy/UI/Briefing/Protocol/10",
-                    "Pack/Factions/Example/Strategy/UI/Briefing/Protocol/20",
+                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/10",
+                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/20",
                 },
                 manifest.TextureDirectories
             );
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0030",
-                    "Pack/Factions/Example/Strategy/Audio/Briefing/briefing-0040",
+                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/briefing-0030",
+                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/briefing-0040",
                 },
                 manifest.Audio
             );

@@ -62,8 +62,6 @@ public class StrategyBriefingTheme
 
     public string AnimationImageRoot { get; set; }
 
-    public string AnimationFilePrefix { get; set; }
-
     public string AudioRoot { get; set; }
 
     public string AudioFilePrefix { get; set; }
@@ -100,7 +98,7 @@ public class StrategyBriefingTheme
     /// <returns>The external content address for the frame.</returns>
     public string GetFramePath(int bitmapID, int frameIndex)
     {
-        return $"{AnimationImageRoot}/{bitmapID}/{AnimationFilePrefix}-protocol-{bitmapID}-frame-{frameIndex:D3}";
+        return $"{AnimationImageRoot}/{bitmapID}/frame-{frameIndex:D3}";
     }
 
     /// <summary>
@@ -206,8 +204,6 @@ public class StrategyAdvisorTheme
 
     public string AnimationImageRoot { get; set; }
 
-    public string AnimationFilePrefix { get; set; }
-
     public string AudioRoot { get; set; }
 
     public string AudioFilePrefix { get; set; }
@@ -296,9 +292,8 @@ public class StrategyAdvisorTheme
     /// <returns>The animation frame resource path.</returns>
     public string GetFramePath(int bitmapID, int frameIndex, bool droid)
     {
-        string roleDirectory = droid ? "Droid" : "Protocol";
-        string roleName = droid ? "droid" : "protocol";
-        return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/{AnimationFilePrefix}-{roleName}-{bitmapID}-frame-{frameIndex:D3}";
+        string roleDirectory = droid ? "Alert" : "Report";
+        return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/frame-{frameIndex:D3}";
     }
 
     /// <summary>

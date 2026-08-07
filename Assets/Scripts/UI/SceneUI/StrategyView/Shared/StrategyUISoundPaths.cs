@@ -19,7 +19,7 @@ internal static class StrategyUISoundPaths
     public const string GalacticInformationControl = "Application/Strategy/Audio/Controls/open";
 
     public const string PlanetaryAssault =
-        "Application/Strategy/Audio/Messages/message-planetary-assault";
+        "Application/Strategy/Messages/Audio/message-planetary-assault";
 
     /// <summary>
     /// Enumerates shared and themed sound-effect paths used by the strategy interface.

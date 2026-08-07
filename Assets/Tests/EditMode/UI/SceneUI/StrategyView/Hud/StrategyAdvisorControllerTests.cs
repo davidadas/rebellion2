@@ -231,7 +231,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyBriefingTheme briefing = new StrategyBriefingTheme
             {
                 AnimationImageRoot = "Pack/Test/Briefing/Protocol",
-                AnimationFilePrefix = "briefing",
                 AudioRoot = "Pack/Test/Briefing/Audio",
                 AudioFilePrefix = "briefing",
             };
@@ -303,7 +302,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyBriefingTheme briefing = new StrategyBriefingTheme
             {
                 AnimationImageRoot = "Pack/Test/Briefing/Protocol",
-                AnimationFilePrefix = "briefing",
             };
             briefing.Segments.Add(
                 new StrategyAdvisorAnimationTheme { BitmapID = 10, FrameCount = 1 }
@@ -356,7 +354,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             return new StrategyAdvisorTheme
             {
                 AnimationImageRoot = "Art/Test/Advisors",
-                AnimationFilePrefix = "test",
                 ProtocolIdleBitmapID = 2001,
                 DroidIdleBitmapID = 3331,
                 FrameIntervalSeconds = 0.5f,
