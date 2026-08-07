@@ -239,11 +239,7 @@ public class SaveGameManager
     /// Serializes a save beside its destination and atomically publishes it only after the full
     /// payload has reached durable storage.
     /// </summary>
-    private static void WriteSave(
-        string saveFilePath,
-        GameSerializer serializer,
-        GameRoot game
-    )
+    private static void WriteSave(string saveFilePath, GameSerializer serializer, GameRoot game)
     {
         string temporaryPath = saveFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
