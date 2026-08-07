@@ -65,13 +65,11 @@ public sealed class GameManager
     // Tick State.
     private float? _tickInterval;
     private float _tickTimer;
-    private bool _gameReplacementPending;
 
     // Game Events.
     public event Action GameSpeedChanged;
     public event Action TickCompleted;
     public event Action<GameRoot> GameReplaced;
-    public event Action<GameReplacementRequest> GameReplacementRequested;
 
     // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
@@ -114,33 +112,6 @@ public sealed class GameManager
     {
         InitializeGame(game);
         GameReplaced?.Invoke(_game);
-    }
-
-    /// <summary>
-    /// Requests replacement of the current game, allowing presentation to defer the swap for a
-    /// visual transition. Replaces immediately when no presentation handles the request.
-    /// </summary>
-    /// <param name="game">The replacement game instance.</param>
-    /// <returns>False when another replacement is already in progress.</returns>
-    public bool RequestGameReplacement(GameRoot game)
-    {
-        if (_gameReplacementPending)
-            return false;
-
-        _gameReplacementPending = true;
-        GameReplacementRequest request = new GameReplacementRequest(
-            game,
-            replacement =>
-            {
-                _gameReplacementPending = false;
-                ReplaceGame(replacement);
-            }
-        );
-        GameReplacementRequested?.Invoke(request);
-        if (!request.IsDeferred)
-            request.Complete();
-
-        return true;
     }
 
     /// <summary>

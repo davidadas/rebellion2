@@ -825,15 +825,6 @@ public static class StrategyViewPrefabBuilder
 
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
 
-        RawImage quickLoadFadeImage = CreatePanelImage(
-            "QuickLoadFade",
-            root.transform,
-            Color.black
-        );
-        FillParent(quickLoadFadeImage.rectTransform);
-        quickLoadFadeImage.raycastTarget = false;
-        quickLoadFadeImage.gameObject.SetActive(false);
-
         AssignReference(controller, "contentGroup", rootContentGroup);
         AssignReference(controller, "strategySurface", surfaceRect);
         AssignReference(controller, "strategySurfaceImage", surfaceImage);
@@ -842,7 +833,6 @@ public static class StrategyViewPrefabBuilder
         AssignReference(controller, "strategyOverlay", overlayView);
         AssignReference(controller, "strategyWindowLayerView", windowsView);
         AssignReference(controller, "strategyWindowManager", windowManager);
-        AssignReference(controller, "quickLoadFadeImage", quickLoadFadeImage);
         AssignReference(controller, "galacticInformationDisplay", galacticInformationDisplay);
         AssignReference(controller, "galacticInformationLegend", galacticInformationLegend);
         AssignReference(windowsView, "modelessWindowLayer", modelessWindowLayer);

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -63,15 +62,6 @@ public sealed class StrategyController
 
     [SerializeField]
     private UIWindowManager strategyWindowManager;
-
-    [SerializeField]
-    private RawImage quickLoadFadeImage;
-
-    [SerializeField]
-    private float quickLoadFadeOutDuration = 0.2f;
-
-    [SerializeField]
-    private float quickLoadFadeInDuration = 0.25f;
 
     [SerializeField]
     private GalaxyMapView galaxyMap;
@@ -157,7 +147,6 @@ public sealed class StrategyController
         cancelStack = AppBootstrap.Instance?.GetCancelStack();
         strategyContextMenu.Initialize(uiContext);
         gameManager.GameSpeedChanged += MarkDirty;
-        gameManager.GameReplacementRequested += HandleGameReplacementRequested;
         gameManager.GameReplaced += HandleGameReplaced;
         gameManager.TickCompleted += RefreshStrategyState;
         BindMessageSystem(gameManager.MessageSystem);
@@ -653,7 +642,6 @@ public sealed class StrategyController
         if (gameManager != null)
         {
             gameManager.GameSpeedChanged -= MarkDirty;
-            gameManager.GameReplacementRequested -= HandleGameReplacementRequested;
             gameManager.GameReplaced -= HandleGameReplaced;
             gameManager.TickCompleted -= RefreshStrategyState;
         }
@@ -756,9 +744,6 @@ public sealed class StrategyController
 
         if (contentGroup == null)
             throw new MissingReferenceException("Strategy content CanvasGroup is missing.");
-
-        if (quickLoadFadeImage == null)
-            throw new MissingReferenceException("Quick-load fade is missing RawImage.");
 
         ValidateWindowLayer();
         ValidateOverlayLayer();
@@ -1303,61 +1288,6 @@ public sealed class StrategyController
         BindMessageSystem(gameManager.MessageSystem);
         strategyMusicController.Resume();
         RefreshStrategyState();
-    }
-
-    /// <summary>
-    /// Defers a hot-loaded game replacement until the current strategy presentation is black.
-    /// </summary>
-    /// <param name="request">The pending replacement request.</param>
-    private void HandleGameReplacementRequested(GameReplacementRequest request)
-    {
-        request.Defer();
-        StartCoroutine(FadeThroughGameReplacement(request));
-    }
-
-    /// <summary>
-    /// Fades out, atomically replaces the game, renders it while concealed, and fades back in.
-    /// </summary>
-    /// <param name="request">The deferred replacement request.</param>
-    private IEnumerator FadeThroughGameReplacement(GameReplacementRequest request)
-    {
-        quickLoadFadeImage.gameObject.SetActive(true);
-        quickLoadFadeImage.raycastTarget = true;
-        yield return FadeQuickLoadImage(0f, 1f, quickLoadFadeOutDuration);
-
-        request.Complete();
-        Render();
-        yield return null;
-
-        yield return FadeQuickLoadImage(1f, 0f, quickLoadFadeInDuration);
-        quickLoadFadeImage.raycastTarget = false;
-        quickLoadFadeImage.gameObject.SetActive(false);
-    }
-
-    /// <summary>
-    /// Animates the full-screen quick-load cover using unscaled time.
-    /// </summary>
-    private IEnumerator FadeQuickLoadImage(float startAlpha, float endAlpha, float duration)
-    {
-        Color color = quickLoadFadeImage.color;
-        if (duration <= 0f)
-        {
-            color.a = endAlpha;
-            quickLoadFadeImage.color = color;
-            yield break;
-        }
-
-        float elapsed = 0f;
-        while (elapsed < duration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            color.a = Mathf.Lerp(startAlpha, endAlpha, Mathf.Clamp01(elapsed / duration));
-            quickLoadFadeImage.color = color;
-            yield return null;
-        }
-
-        color.a = endAlpha;
-        quickLoadFadeImage.color = color;
     }
 
     /// <summary>

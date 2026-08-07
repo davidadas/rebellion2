@@ -155,7 +155,7 @@ public sealed class GameRuntime
     {
         GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
-        _activeGameSession.RequestGameReplacement(loadedGame);
+        _activeGameSession.ReplaceGame(loadedGame);
     }
 
     /// <summary>
