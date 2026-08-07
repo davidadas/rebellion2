@@ -595,6 +595,7 @@ public sealed class StrategyController
     {
         RequestInitialTextures();
         SetContentReady(true);
+        PlayStrategyReadySound();
     }
 
     /// <summary>
@@ -1288,6 +1289,15 @@ public sealed class StrategyController
         BindMessageSystem(gameManager.MessageSystem);
         strategyMusicController.Resume();
         RefreshStrategyState();
+        PlayStrategyReadySound();
+    }
+
+    /// <summary>
+    /// Plays the established galaxy-presentation change cue when strategy becomes ready.
+    /// </summary>
+    private static void PlayStrategyReadySound()
+    {
+        PlayStrategySfx(StrategyUISoundPaths.GalacticInformationControl);
     }
 
     /// <summary>
