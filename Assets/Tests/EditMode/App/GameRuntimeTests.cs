@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
 
@@ -9,12 +10,48 @@ namespace Rebellion.Tests.App
     {
         private ContentPack contentPack;
         private GameRuntime runtime;
+        private string saveDirectoryPath;
 
         [SetUp]
         public void SetUp()
         {
             contentPack = TestContent.Pack;
-            runtime = new GameRuntime(_ => { }, contentPack);
+            saveDirectoryPath = Path.Combine(
+                Path.GetTempPath(),
+                nameof(GameRuntimeTests),
+                Guid.NewGuid().ToString("N")
+            );
+            runtime = new GameRuntime(
+                _ => { },
+                contentPack,
+                new SaveGameManager(saveDirectoryPath)
+            );
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(saveDirectoryPath))
+                Directory.Delete(saveDirectoryPath, true);
+        }
+
+        [Test]
+        public void QuickSaveThenQuickLoad_ReplacesMutatedGameWithSavedState()
+        {
+            GameRoot game = CreateGame();
+            game.CurrentTick = 123;
+            GameManager manager = runtime.StartGame(game);
+            GameRoot replacement = null;
+            manager.GameReplaced += loadedGame => replacement = loadedGame;
+
+            runtime.QuickSave();
+            game.CurrentTick = 999;
+            runtime.QuickLoad();
+
+            Assert.IsNotNull(replacement);
+            Assert.AreNotSame(game, replacement);
+            Assert.AreSame(replacement, runtime.GetActiveGame());
+            Assert.AreEqual(123, replacement.CurrentTick);
         }
 
         [Test]

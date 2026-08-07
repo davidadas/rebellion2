@@ -12,6 +12,7 @@ public sealed class GameRuntime
 {
     private readonly Action<string> _loadScene;
     private readonly ContentPack _contentPack;
+    private readonly SaveGameManager _saveGameManager;
     private GameManager _activeGameSession;
 
     /// <summary>
@@ -29,10 +30,15 @@ public sealed class GameRuntime
     /// </summary>
     /// <param name="loadScene">The application scene transition delegate.</param>
     /// <param name="contentPack">The active content pack.</param>
-    internal GameRuntime(Action<string> loadScene, ContentPack contentPack)
+    internal GameRuntime(
+        Action<string> loadScene,
+        ContentPack contentPack,
+        SaveGameManager saveGameManager = null
+    )
     {
         _loadScene = loadScene ?? throw new ArgumentNullException(nameof(loadScene));
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
+        _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
     }
 
     /// <summary>
@@ -97,9 +103,9 @@ public sealed class GameRuntime
         if (game == null)
             return;
 
-        SaveGameManager.Instance.SaveQuickGameData(game);
+        _saveGameManager.SaveQuickGameData(game);
         Debug.Log(
-            $"Quick save completed: {SaveGameManager.Instance.GetSaveFilePath(SaveGameManager.QuickSaveFileName)}"
+            $"Quick save completed: {_saveGameManager.GetSaveFilePath(SaveGameManager.QuickSaveFileName)}"
         );
     }
 
@@ -126,7 +132,7 @@ public sealed class GameRuntime
         if (string.IsNullOrEmpty(fileName))
             return false;
 
-        string savePath = SaveGameManager.Instance.GetSaveFilePath(fileName);
+        string savePath = _saveGameManager.GetSaveFilePath(fileName);
         if (!File.Exists(savePath))
             return false;
 
@@ -153,7 +159,7 @@ public sealed class GameRuntime
     /// <param name="fileName">The save file name to load.</param>
     private void HotReloadGame(string fileName)
     {
-        GameRoot loadedGame = SaveGameManager.Instance.LoadGameData(fileName);
+        GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
     }
