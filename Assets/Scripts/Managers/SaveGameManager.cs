@@ -230,7 +230,7 @@ public class SaveGameManager
 
         string saveFilePath = GetSaveFilePath(fileName);
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
-        WriteSaveAtomically(saveFilePath, serializer, game);
+        WriteSave(saveFilePath, serializer, game);
 
         TryWriteSaveMetadata(fileName, game.Metadata);
     }
@@ -239,7 +239,7 @@ public class SaveGameManager
     /// Serializes a save beside its destination and atomically publishes it only after the full
     /// payload has reached durable storage.
     /// </summary>
-    private static void WriteSaveAtomically(
+    private static void WriteSave(
         string saveFilePath,
         GameSerializer serializer,
         GameRoot game
