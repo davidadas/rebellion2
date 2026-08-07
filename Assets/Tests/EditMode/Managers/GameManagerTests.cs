@@ -19,6 +19,43 @@ namespace Rebellion.Tests.Managers
     public class GameManagerTests
     {
         [Test]
+        public void RequestGameReplacement_WithoutTransition_ReplacesImmediately()
+        {
+            GameRoot original = new GameRoot();
+            GameRoot replacement = new GameRoot();
+            GameManager manager = TestContent.CreateGameManager(original);
+
+            bool requested = manager.RequestGameReplacement(replacement);
+
+            Assert.IsTrue(requested);
+            Assert.AreSame(replacement, manager.GetGame());
+        }
+
+        [Test]
+        public void RequestGameReplacement_DeferredTransition_WaitsForCompletion()
+        {
+            GameRoot original = new GameRoot();
+            GameRoot replacement = new GameRoot();
+            GameManager manager = TestContent.CreateGameManager(original);
+            GameReplacementRequest pendingRequest = null;
+            manager.GameReplacementRequested += request =>
+            {
+                request.Defer();
+                pendingRequest = request;
+            };
+
+            bool requested = manager.RequestGameReplacement(replacement);
+
+            Assert.IsTrue(requested);
+            Assert.AreSame(original, manager.GetGame());
+            Assert.IsNotNull(pendingRequest);
+
+            pendingRequest.Complete();
+
+            Assert.AreSame(replacement, manager.GetGame());
+        }
+
+        [Test]
         public void Constructor_WithFactions_RebuildsResearchCatalogs()
         {
             GameRoot game = new GameRoot();
