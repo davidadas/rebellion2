@@ -366,6 +366,7 @@ public sealed class StrategyAdvisorView : MonoBehaviour
         playbackElapsedSeconds = 0f;
         animationStarted = false;
         framesCompleted = false;
+        playbackPaused = false;
     }
 
     /// <summary>

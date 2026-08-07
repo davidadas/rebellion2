@@ -238,6 +238,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void CancelPlayback_PausedAnimation_AllowsSubsequentPlaybackToComplete()
+        {
+            _view.Render(CreatePresentation(true));
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _protocolFirstTexture, _protocolSecondTexture },
+                        false,
+                        "briefing"
+                    ),
+                }
+            );
+            _view.PausePlayback();
+
+            _view.CancelPlayback();
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _droidPlaybackTexture },
+                        true,
+                        "notification"
+                    ),
+                }
+            );
+            _view.AdvanceAnimation(0.5f);
+
+            Assert.AreSame(_droidIdleTexture, GetField<RawImage>("droidImage").texture);
+        }
+
+        [Test]
         public void EnqueuePlaybacks_DelayedAnimation_WaitsBeforeStarting()
         {
             _view.Render(CreatePresentation(true));
