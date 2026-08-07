@@ -843,7 +843,19 @@ public static class MainMenuPrefabBuilder
     /// <param name="address">The stable content address of the texture.</param>
     private static void SetBoundTexture(RawImage image, string address)
     {
-        image.texture = LoadTexture(address);
+        // The editor-display texture is best-effort: content is stripped from player builds and can be
+        // absent where the full media set is not present (e.g. CI). The runtime binding below restores
+        // it from installed content regardless, so a missing asset must not fail prefab generation.
+        try
+        {
+            image.texture = LoadTexture(address);
+        }
+        catch (System.IO.FileNotFoundException)
+        {
+            Debug.LogWarning(
+                $"Content texture '{address}' unavailable for editor display; runtime binding will restore it."
+            );
+        }
         ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
         binding.SetAddress(address);
     }
