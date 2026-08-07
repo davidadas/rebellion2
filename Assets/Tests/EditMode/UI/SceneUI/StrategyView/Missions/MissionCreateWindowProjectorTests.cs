@@ -50,7 +50,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _window.Configure(1, 15, 25, 300, 200, false, true, true);
             _planet = new GalaxyMapPlanet(
                 new GamePlanetSystem(),
-                new Planet { InstanceID = "planet", DisplayName = "Corellia" },
+                new Planet
+                {
+                    InstanceID = "planet",
+                    DisplayName = "Corellia",
+                    PlanetIconPath = _entityImagePath,
+                },
                 string.Empty
             );
             _missionChoices = new List<StrategyMissionChoice>
@@ -123,8 +128,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 data.SelectedMissionTexture
             );
             Assert.AreEqual("Corellia", data.TargetName);
-            Assert.IsNull(data.TargetTexture);
-            Assert.IsTrue(data.UsePlanetTargetPreview);
+            Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
+            Assert.IsFalse(data.UsePlanetTargetPreview);
             Assert.AreSame(
                 _uiContext.GetTexture(theme.AgentsHeaderImagePath),
                 data.AgentsHeaderTexture

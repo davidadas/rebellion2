@@ -56,7 +56,7 @@ internal sealed class MissionCreateWindowProjector
             GetMissionChoiceTexture(uiContext, selectedChoice),
             target?.GetDisplayName(),
             GetTargetTexture(uiContext, target),
-            target is Planet,
+            false,
             uiContext.GetTexture(theme?.AgentsHeaderImagePath),
             uiContext.GetTexture(theme?.DecoysHeaderImagePath),
             BuildTabs(uiContext, theme, session.ActiveTab),
@@ -217,7 +217,9 @@ internal sealed class MissionCreateWindowProjector
         if (target == null)
             return null;
 
-        return target is Planet ? null : uiContext.GetEntityTexture(target, true);
+        return target is Planet planet
+            ? uiContext.GetPlanetTexture(planet)
+            : uiContext.GetEntityTexture(target, true);
     }
 
     /// <summary>

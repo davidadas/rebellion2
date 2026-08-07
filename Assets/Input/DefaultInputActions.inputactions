@@ -65,70 +65,26 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "Ctrl+S",
+                    "name": "",
                     "id": "00000000-0000-0000-0000-000000000006",
-                    "path": "ButtonWithOneModifier",
+                    "path": "<Keyboard>/f4",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "QuickSave",
-                    "isComposite": true,
+                    "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "Modifier",
-                    "id": "00000000-0000-0000-0000-000000000007",
-                    "path": "<Keyboard>/ctrl",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "QuickSave",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Button",
-                    "id": "00000000-0000-0000-0000-000000000008",
-                    "path": "<Keyboard>/s",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "QuickSave",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Ctrl+L",
+                    "name": "",
                     "id": "00000000-0000-0000-0000-000000000009",
-                    "path": "ButtonWithOneModifier",
+                    "path": "<Keyboard>/f9",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "QuickLoad",
-                    "isComposite": true,
+                    "isComposite": false,
                     "isPartOfComposite": false
-                },
-                {
-                    "name": "Modifier",
-                    "id": "00000000-0000-0000-0000-000000000010",
-                    "path": "<Keyboard>/ctrl",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "QuickLoad",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Button",
-                    "id": "00000000-0000-0000-0000-000000000011",
-                    "path": "<Keyboard>/l",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Keyboard&Mouse",
-                    "action": "QuickLoad",
-                    "isComposite": false,
-                    "isPartOfComposite": true
                 },
                 {
                     "name": "Ctrl+-",

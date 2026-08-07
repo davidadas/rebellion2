@@ -185,6 +185,9 @@ public class SaveGameManager
         foreach (FileInfo file in files)
         {
             string fileName = Path.GetFileNameWithoutExtension(file.Name);
+            if (string.Equals(fileName, QuickSaveFileName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             SaveGameEntry save = TryReadSaveEntry(fileName);
             if (save != null)
                 saves.Add(save);

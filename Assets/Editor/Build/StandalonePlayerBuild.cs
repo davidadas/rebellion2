@@ -17,7 +17,7 @@ public static class StandalonePlayerBuild
     /// <summary>
     /// Builds an external-content player for the active desktop target from the Unity editor.
     /// </summary>
-    [UnityEditor.MenuItem("Rebellion/Build and Run Player", false, 100)]
+    [UnityEditor.MenuItem("Rebellion/Build/Build and Run Player", false, 100)]
     public static void BuildFromEditor()
     {
         UnityEditor.BuildTarget target = UnityEditor.EditorUserBuildSettings.activeBuildTarget;
@@ -101,7 +101,7 @@ public static class StandalonePlayerBuild
     private static void BuildPlayer(UnityEditor.BuildTarget target, string outputPath)
     {
         _ = GetDefaultArtifact(target);
-        UIBuilderMenu.BuildAllForPlayer();
+        UIBuilderMenu.BuildRuntimeUI();
 
         string outputDirectory = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDirectory))

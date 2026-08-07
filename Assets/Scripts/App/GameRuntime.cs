@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using Rebellion.Game;
+using UnityEngine;
 
 /// <summary>
 /// Application-level runtime controller.
@@ -97,6 +98,9 @@ public sealed class GameRuntime
             return;
 
         SaveGameManager.Instance.SaveQuickGameData(game);
+        Debug.Log(
+            $"Quick save completed: {SaveGameManager.Instance.GetSaveFilePath(SaveGameManager.QuickSaveFileName)}"
+        );
     }
 
     /// <summary>
@@ -106,7 +110,10 @@ public sealed class GameRuntime
     /// </summary>
     public void QuickLoad()
     {
-        LoadGame(SaveGameManager.QuickSaveFileName);
+        if (LoadGame(SaveGameManager.QuickSaveFileName))
+            Debug.Log("Quick load completed.");
+        else
+            Debug.LogWarning("Quick load skipped because no quick save exists.");
     }
 
     /// <summary>
