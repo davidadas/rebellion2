@@ -129,7 +129,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             );
             Assert.AreEqual("Corellia", data.TargetName);
             Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
-            Assert.IsFalse(data.UsePlanetTargetPreview);
+            Assert.IsTrue(data.UsePlanetTargetPreview);
             Assert.AreSame(
                 _uiContext.GetTexture(theme.AgentsHeaderImagePath),
                 data.AgentsHeaderTexture
@@ -160,6 +160,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual((Color32)Color.gray, data.DropdownItems[1].LabelColor);
             Assert.IsEmpty(data.AgentRows);
             Assert.IsEmpty(data.DecoyRows);
+        }
+
+        [Test]
+        public void Build_PlanetTargetWithoutArtwork_UsesPlanetPreviewFallback()
+        {
+            _planet.Planet.PlanetIconPath = null;
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, null),
+                Array.Empty<IMissionParticipant>()
+            );
+
+            MissionCreateWindowRenderData data = _projector.Build(session, _window);
+
+            Assert.IsNull(data.TargetTexture);
+            Assert.IsTrue(data.UsePlanetTargetPreview);
         }
 
         [Test]

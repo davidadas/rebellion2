@@ -56,7 +56,7 @@ internal sealed class MissionCreateWindowProjector
             GetMissionChoiceTexture(uiContext, selectedChoice),
             target?.GetDisplayName(),
             GetTargetTexture(uiContext, target),
-            false,
+            target is Planet,
             uiContext.GetTexture(theme?.AgentsHeaderImagePath),
             uiContext.GetTexture(theme?.DecoysHeaderImagePath),
             BuildTabs(uiContext, theme, session.ActiveTab),
