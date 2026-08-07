@@ -30,6 +30,7 @@ public sealed class GameRuntime
     /// </summary>
     /// <param name="loadScene">The application scene transition delegate.</param>
     /// <param name="contentPack">The active content pack.</param>
+    /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
     internal GameRuntime(
         Action<string> loadScene,
         ContentPack contentPack,
