@@ -157,18 +157,19 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     /// <summary>
     /// Renders the modal input blocker and background dimmer for the current registry state.
     /// </summary>
-    /// <param name="active">Whether a modal window currently owns interaction.</param>
-    internal void RenderModalState(bool active)
+    /// <param name="blockInput">Whether the modal layer owns interaction.</param>
+    /// <param name="dimBackground">Whether the underlying strategy screen is dimmed.</param>
+    internal void RenderModalState(bool blockInput, bool dimBackground)
     {
         if (modalInputBlockerImage == null)
             return;
 
-        SetModalImageActive(modalInputBlockerImage, active);
-        SetModalImageActive(modalBackgroundDimImage, active);
+        SetModalImageActive(modalInputBlockerImage, blockInput);
+        SetModalImageActive(modalBackgroundDimImage, dimBackground);
 
-        if (active)
+        if (blockInput)
             modalInputBlockerImage.transform.SetAsFirstSibling();
-        if (active && modalBackgroundDimImage != null)
+        if (dimBackground && modalBackgroundDimImage != null)
             modalBackgroundDimImage.transform.SetSiblingIndex(1);
     }
 

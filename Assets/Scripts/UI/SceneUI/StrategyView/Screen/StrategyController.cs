@@ -75,11 +75,16 @@ public sealed class StrategyController
     [SerializeField]
     private BookmarkBarView bookmarkBar;
 
+    [SerializeField]
+    private SaveMenuConfirmDialogView briefingSkipConfirmation;
+
     private CancelStack cancelStack;
     private GameManager gameManager;
     private MessageSystem messageSystem;
     private StrategyBriefingTheme activeBriefing;
     private bool briefingActive;
+    private EventSystem briefingEventSystem;
+    private bool briefingSkipConfirmationOpen;
     private UIContext uiContext;
 
     private bool dirty = true;
@@ -193,7 +198,8 @@ public sealed class StrategyController
             () => gameManager?.GetPlayerFaction(),
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
-            PlaySfx
+            PlaySfx,
+            path => AppBootstrap.Instance.GetContentAssets().GetPreloadedAudio(path).length
         );
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
@@ -241,7 +247,8 @@ public sealed class StrategyController
             strategyWindowLayerView,
             strategyWindowManager
         );
-        strategyWindowLayerView.RenderModalState(strategyWindowManager.HasModalWindow());
+        bool hasModalWindow = strategyWindowManager.HasModalWindow();
+        strategyWindowLayerView.RenderModalState(hasModalWindow, hasModalWindow);
     }
 
     /// <summary>
@@ -479,6 +486,8 @@ public sealed class StrategyController
         strategyContextMenu.DismissRequested += HandleContextMenuDismissRequested;
         strategyOverlay.TargetingCancelRequested += HandleTargetingCancelRequested;
         bookmarkBar.BookmarkRequested += HandleBookmarkRequested;
+        briefingSkipConfirmation.Confirmed += ConfirmBriefingSkip;
+        briefingSkipConfirmation.Canceled += CancelBriefingSkip;
     }
 
     /// <summary>
@@ -509,6 +518,11 @@ public sealed class StrategyController
             strategyOverlay.TargetingCancelRequested -= HandleTargetingCancelRequested;
         if (bookmarkBar != null)
             bookmarkBar.BookmarkRequested -= HandleBookmarkRequested;
+        if (briefingSkipConfirmation != null)
+        {
+            briefingSkipConfirmation.Confirmed -= ConfirmBriefingSkip;
+            briefingSkipConfirmation.Canceled -= CancelBriefingSkip;
+        }
     }
 
     /// <summary>
@@ -638,6 +652,7 @@ public sealed class StrategyController
     /// </summary>
     private void OnDestroy()
     {
+        SetBriefingInteractionEnabled(true);
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
         if (gameManager != null)
@@ -659,12 +674,21 @@ public sealed class StrategyController
 
         if (briefingActive)
         {
-            if (Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
-                briefingActive = false;
-                AudioManager.EnsureExists().StopSfx();
-                strategyHudController.SkipBriefing(activeBriefing);
+                if (briefingSkipConfirmationOpen)
+                {
+                    briefingSkipConfirmation.Hide();
+                    CancelBriefingSkip();
+                }
+                else
+                {
+                    OpenBriefingSkipConfirmation();
+                }
             }
+
+            if (dirty)
+                Render();
             return;
         }
 
@@ -694,7 +718,16 @@ public sealed class StrategyController
             return;
         }
 
+        AudioManager
+            .EnsureExists()
+            .PreloadSfx(
+                StrategyUISoundPaths.GetBriefingPreloadPaths(uiContext.GetPlayerFactionTheme())
+            );
         briefingActive = true;
+        briefingSkipConfirmationOpen = false;
+        briefingEventSystem = EventSystem.current;
+        SetBriefingInteractionEnabled(false);
+        dirty = true;
         StopMusic();
         strategyHudController.PlayBriefing(
             activeBriefing,
@@ -702,9 +735,13 @@ public sealed class StrategyController
             () =>
             {
                 briefingActive = false;
+                briefingSkipConfirmationOpen = false;
+                SetBriefingInteractionEnabled(true);
+                briefingEventSystem = null;
                 activeBriefing = null;
                 galaxyMapController.SetBriefingPresentation(null);
                 strategyMusicController.Resume();
+                messagesWindowController.Open(MessagesTab.Advice);
                 completed?.Invoke();
                 dirty = true;
             }
@@ -728,16 +765,42 @@ public sealed class StrategyController
         else if (segment.BriefingFocus == StrategyBriefingFocus.OpponentHeadquarters)
             targetID = opponentFaction?.HQInstanceID;
 
+        bool requiresTarget =
+            segment.BriefingFocus == StrategyBriefingFocus.Target
+            || segment.BriefingFocus == StrategyBriefingFocus.PlayerHeadquarters
+            || segment.BriefingFocus == StrategyBriefingFocus.OpponentHeadquarters;
+        if (requiresTarget && string.IsNullOrEmpty(targetID))
+        {
+            throw new InvalidOperationException(
+                $"Briefing focus {segment.BriefingFocus} requires a target instance ID."
+            );
+        }
+
         ISceneNode target = gameManager.GetGame().GetSceneNodeByInstanceID<ISceneNode>(targetID);
+        if (requiresTarget && target == null)
+            throw new InvalidOperationException($"Briefing target '{targetID}' was not found.");
+
         Planet targetPlanet = target as Planet ?? target?.GetParentOfType<Planet>();
         PlanetSystem targetSystem =
             target as PlanetSystem ?? target?.GetParentOfType<PlanetSystem>();
+        if (requiresTarget && targetSystem == null)
+        {
+            throw new InvalidOperationException(
+                $"Briefing target '{targetID}' cannot be presented on the galaxy map."
+            );
+        }
         string label = segment.BriefingLabel;
         if (string.IsNullOrEmpty(label) && segment.BriefingFocus != StrategyBriefingFocus.None)
             label = target?.DisplayName;
         StrategyBriefingMapMode mapMode = segment.BriefingMapMode;
         if (mapMode == StrategyBriefingMapMode.Default && targetPlanet != null)
             mapMode = StrategyBriefingMapMode.Spotlight;
+
+        if (
+            mapMode != StrategyBriefingMapMode.Default
+            || segment.BriefingFocus != StrategyBriefingFocus.None
+        )
+            PlaySfx(StrategyUISoundPaths.GalacticInformationControl);
 
         galaxyMapController.SetBriefingPresentation(
             new StrategyBriefingMapPresentation(
@@ -746,10 +809,59 @@ public sealed class StrategyController
                 targetSystem?.InstanceID,
                 targetPlanet?.InstanceID,
                 playerFaction?.InstanceID,
-                opponentFaction?.InstanceID
+                opponentFaction?.InstanceID,
+                mapMode != StrategyBriefingMapMode.Default
+                    || segment.BriefingFocus != StrategyBriefingFocus.None
             )
         );
         dirty = true;
+    }
+
+    /// <summary>
+    /// Pauses briefing playback and asks whether the player wants to skip it.
+    /// </summary>
+    private void OpenBriefingSkipConfirmation()
+    {
+        briefingSkipConfirmationOpen = true;
+        strategyHudController.PauseBriefing();
+        AudioManager.EnsureExists().PauseSfx();
+        SetBriefingInteractionEnabled(true);
+        briefingSkipConfirmation.Show("Do you wish to skip the tutorial?");
+    }
+
+    /// <summary>
+    /// Cancels active narration and begins the configured skip response.
+    /// </summary>
+    private void ConfirmBriefingSkip()
+    {
+        briefingSkipConfirmationOpen = false;
+        SetBriefingInteractionEnabled(false);
+        AudioManager.EnsureExists().StopSfx();
+        strategyHudController.ResumeBriefing();
+        strategyHudController.SkipBriefing(activeBriefing);
+        dirty = true;
+    }
+
+    /// <summary>
+    /// Resumes tutorial narration after the player rejects the skip request.
+    /// </summary>
+    private void CancelBriefingSkip()
+    {
+        briefingSkipConfirmationOpen = false;
+        SetBriefingInteractionEnabled(false);
+        strategyHudController.ResumeBriefing();
+        AudioManager.EnsureExists().ResumeSfx();
+        dirty = true;
+    }
+
+    /// <summary>
+    /// Enables UI event routing only while the briefing skip confirmation needs it.
+    /// </summary>
+    /// <param name="enabled">Whether Unity UI controls may receive input.</param>
+    private void SetBriefingInteractionEnabled(bool enabled)
+    {
+        if (briefingEventSystem != null)
+            briefingEventSystem.enabled = enabled;
     }
 
     /// <summary>
@@ -834,6 +946,9 @@ public sealed class StrategyController
         ValidateGalacticInformationLayer();
         ValidateBookmarkLayer();
         ValidateContextMenuLayer();
+
+        if (briefingSkipConfirmation == null)
+            throw new MissingReferenceException("Briefing skip confirmation dialog is missing.");
     }
 
     /// <summary>
@@ -1044,7 +1159,8 @@ public sealed class StrategyController
     /// </summary>
     private void RenderWindowContent()
     {
-        strategyWindowLayerView.RenderModalState(strategyWindowManager.HasModalWindow());
+        bool hasModalWindow = strategyWindowManager.HasModalWindow();
+        strategyWindowLayerView.RenderModalState(briefingActive || hasModalWindow, hasModalWindow);
         advisorReportWindowController.RenderWindows();
         statusWindowController.RenderWindows();
         encyclopediaWindowController.RenderWindows();
@@ -1317,7 +1433,8 @@ public sealed class StrategyController
         if (window == null)
             return;
 
-        strategyWindowLayerView.RenderModalState(strategyWindowManager.HasModalWindow());
+        bool hasModalWindow = strategyWindowManager.HasModalWindow();
+        strategyWindowLayerView.RenderModalState(hasModalWindow, hasModalWindow);
         galacticInformationDisplayController?.Hide();
         targetingController?.Cancel();
         contextMenuController?.Cancel();
@@ -1334,7 +1451,8 @@ public sealed class StrategyController
         if (window == null)
             return;
 
-        strategyWindowLayerView.RenderModalState(strategyWindowManager.HasModalWindow());
+        bool hasModalWindow = strategyWindowManager.HasModalWindow();
+        strategyWindowLayerView.RenderModalState(hasModalWindow, hasModalWindow);
         targetingController?.Cancel();
         ClearWindowMovePreview();
         dirty = true;
@@ -1377,13 +1495,7 @@ public sealed class StrategyController
     private void PreloadStrategySfx()
     {
         FactionTheme playerTheme = uiContext?.GetPlayerFactionTheme();
-        AudioManager
-            .EnsureExists()
-            .PreloadSfx(
-                StrategyUISoundPaths
-                    .GetPreloadPaths(playerTheme)
-                    .Concat(StrategyUISoundPaths.GetBriefingPreloadPaths(playerTheme))
-            );
+        AudioManager.EnsureExists().PreloadSfx(StrategyUISoundPaths.GetPreloadPaths(playerTheme));
     }
 
     /// <summary>

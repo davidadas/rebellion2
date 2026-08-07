@@ -212,6 +212,32 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void PausePlayback_ActiveAnimation_FreezesAndResumesAtCurrentFrame()
+        {
+            _view.Render(CreatePresentation(true));
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _protocolFirstTexture, _protocolSecondTexture },
+                        false,
+                        "briefing"
+                    ),
+                }
+            );
+
+            _view.PausePlayback();
+            _view.AdvanceAnimation(1f);
+
+            Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
+
+            _view.ResumePlayback();
+            _view.AdvanceAnimation(0.5f);
+
+            Assert.AreSame(_protocolSecondTexture, GetField<RawImage>("protocolImage").texture);
+        }
+
+        [Test]
         public void EnqueuePlaybacks_DelayedAnimation_WaitsBeforeStarting()
         {
             _view.Render(CreatePresentation(true));
@@ -234,6 +260,36 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
 
             Assert.AreEqual(1, startedCount);
             Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
+        }
+
+        [Test]
+        public void EnqueuePlaybacks_AudioOutlastsFrames_HoldsFinalFrameUntilAudioDuration()
+        {
+            _view.Render(CreatePresentation(true));
+            bool completed = false;
+            _view.PlaybackCompleted += () => completed = true;
+            _view.EnqueuePlaybacks(
+                new[]
+                {
+                    new StrategyAdvisorAnimationViewData(
+                        new[] { _protocolFirstTexture },
+                        false,
+                        "briefing",
+                        0f,
+                        2f
+                    ),
+                }
+            );
+
+            _view.AdvanceAnimation(0.5f);
+
+            Assert.IsFalse(completed);
+            Assert.AreSame(_protocolFirstTexture, GetField<RawImage>("protocolImage").texture);
+
+            _view.AdvanceAnimation(1.5f);
+
+            Assert.IsTrue(completed);
+            Assert.AreSame(_protocolIdleTexture, GetField<RawImage>("protocolImage").texture);
         }
 
         [Test]

@@ -24,7 +24,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 () => new Faction(),
                 () => new FactionTheme(),
                 _ => null,
-                _ => { }
+                _ => { },
+                _ => 0f
             );
             _controller.Initialize(_actions);
         }
@@ -33,16 +34,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         public void Constructor_NullDependencies_ThrowArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(null, () => null, _ => null, _ => { })
+                new StrategyHudController(null, () => null, _ => null, _ => { }, _ => 0f)
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(() => null, null, _ => null, _ => { })
+                new StrategyHudController(() => null, null, _ => null, _ => { }, _ => 0f)
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(() => null, () => null, null, _ => { })
+                new StrategyHudController(() => null, () => null, null, _ => { }, _ => 0f)
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new StrategyHudController(() => null, () => null, _ => null, null)
+                new StrategyHudController(() => null, () => null, _ => null, null, _ => 0f)
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new StrategyHudController(() => null, () => null, _ => null, _ => { }, null)
             );
         }
 

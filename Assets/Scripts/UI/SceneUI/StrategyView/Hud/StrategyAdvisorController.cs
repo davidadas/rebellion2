@@ -12,6 +12,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<string, Texture2D> getTexture;
+    private readonly Func<string, float> getAudioDuration;
     private readonly Action<string> playSfx;
     private readonly Dictionary<int, StrategyAdvisorNotificationTheme> pendingNotifications =
         new Dictionary<int, StrategyAdvisorNotificationTheme>();
@@ -34,16 +35,20 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="getPlayerFaction">Resolves the current player faction.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
+    /// <param name="getAudioDuration">Resolves the duration of a preloaded audio cue.</param>
     public StrategyAdvisorController(
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
-        Action<string> playSfx
+        Action<string> playSfx,
+        Func<string, float> getAudioDuration
     )
     {
         this.getPlayerFaction =
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
+        this.getAudioDuration =
+            getAudioDuration ?? throw new ArgumentNullException(nameof(getAudioDuration));
     }
 
     /// <summary>
@@ -254,6 +259,22 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Pauses the active briefing animation without discarding its position.
+    /// </summary>
+    public void PauseBriefing()
+    {
+        GetRequiredView().PausePlayback();
+    }
+
+    /// <summary>
+    /// Resumes the active briefing animation from its paused position.
+    /// </summary>
+    public void ResumeBriefing()
+    {
+        GetRequiredView().ResumePlayback();
+    }
+
+    /// <summary>
     /// Resolves one configured briefing segment into resident animation playback data.
     /// </summary>
     /// <param name="briefing">The briefing content-address configuration.</param>
@@ -281,7 +302,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             frames,
             false,
             audioPath,
-            segment.DelayBeforeSeconds
+            segment.DelayBeforeSeconds,
+            string.IsNullOrEmpty(audioPath) ? 0f : getAudioDuration(audioPath)
         );
     }
 

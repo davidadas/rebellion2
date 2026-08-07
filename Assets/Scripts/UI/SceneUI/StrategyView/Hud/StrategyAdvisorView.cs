@@ -61,8 +61,11 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     private int activeFrameIndex;
     private float delayRemainingSeconds;
     private float frameElapsedSeconds;
+    private float playbackElapsedSeconds;
     private bool animationStarted;
+    private bool framesCompleted;
     private bool eventsBound;
+    private bool playbackPaused;
 
     /// <summary>
     /// Validates authored references and subscribes advisor inputs when Unity creates the view.
@@ -179,12 +182,33 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     }
 
     /// <summary>
+    /// Pauses animation and delay advancement without discarding playback state.
+    /// </summary>
+    public void PausePlayback()
+    {
+        playbackPaused = true;
+    }
+
+    /// <summary>
+    /// Resumes animation and delay advancement from the paused position.
+    /// </summary>
+    public void ResumePlayback()
+    {
+        playbackPaused = false;
+    }
+
+    /// <summary>
     /// Advances playback by an explicit unscaled duration for runtime and deterministic tests.
     /// </summary>
     /// <param name="elapsedSeconds">The unscaled elapsed duration.</param>
     internal void AdvanceAnimation(float elapsedSeconds)
     {
-        if (activeAnimation == null || presentation == null || elapsedSeconds <= 0f)
+        if (
+            playbackPaused
+            || activeAnimation == null
+            || presentation == null
+            || elapsedSeconds <= 0f
+        )
             return;
 
         if (!animationStarted)
@@ -200,6 +224,14 @@ public sealed class StrategyAdvisorView : MonoBehaviour
         if (presentation.FrameIntervalSeconds <= 0f)
             return;
 
+        playbackElapsedSeconds += elapsedSeconds;
+        if (framesCompleted)
+        {
+            if (playbackElapsedSeconds >= activeAnimation.MinimumPlaybackSeconds)
+                FinishAnimation();
+            return;
+        }
+
         frameElapsedSeconds += elapsedSeconds;
         while (activeAnimation != null && frameElapsedSeconds >= presentation.FrameIntervalSeconds)
         {
@@ -207,8 +239,11 @@ public sealed class StrategyAdvisorView : MonoBehaviour
             activeFrameIndex++;
             if (activeFrameIndex >= activeAnimation.Frames.Count)
             {
-                FinishAnimation();
-                continue;
+                framesCompleted = true;
+                activeFrameIndex = activeAnimation.Frames.Count - 1;
+                if (playbackElapsedSeconds >= activeAnimation.MinimumPlaybackSeconds)
+                    FinishAnimation();
+                return;
             }
 
             SetActiveFrame();
@@ -255,7 +290,9 @@ public sealed class StrategyAdvisorView : MonoBehaviour
         activeFrameIndex = 0;
         delayRemainingSeconds = activeAnimation.DelayBeforeSeconds;
         frameElapsedSeconds = 0f;
+        playbackElapsedSeconds = 0f;
         animationStarted = false;
+        framesCompleted = false;
         if (delayRemainingSeconds <= 0f)
             BeginAnimation();
     }
@@ -293,7 +330,9 @@ public sealed class StrategyAdvisorView : MonoBehaviour
         activeFrameIndex = 0;
         delayRemainingSeconds = 0f;
         frameElapsedSeconds = 0f;
+        playbackElapsedSeconds = 0f;
         animationStarted = false;
+        framesCompleted = false;
         StartNextAnimation();
         if (activeAnimation == null && playbackQueue.Count == 0)
             PlaybackCompleted?.Invoke();
@@ -324,7 +363,9 @@ public sealed class StrategyAdvisorView : MonoBehaviour
         activeFrameIndex = 0;
         delayRemainingSeconds = 0f;
         frameElapsedSeconds = 0f;
+        playbackElapsedSeconds = 0f;
         animationStarted = false;
+        framesCompleted = false;
     }
 
     /// <summary>

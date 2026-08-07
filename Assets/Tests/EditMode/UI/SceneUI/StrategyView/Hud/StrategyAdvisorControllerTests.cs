@@ -294,6 +294,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             }
         }
 
+        [Test]
+        public void SkipBriefing_WithoutSkipResponse_CompletesImmediately()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            StrategyBriefingTheme briefing = new StrategyBriefingTheme
+            {
+                AnimationImageRoot = "Pack/Test/Briefing/Protocol",
+                AnimationFilePrefix = "briefing",
+            };
+            briefing.Segments.Add(
+                new StrategyAdvisorAnimationTheme { BitmapID = 10, FrameCount = 1 }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D frame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleBitmapID, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleBitmapID, 0, true)] = idle,
+                [briefing.GetFramePath(10, 0)] = frame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                bool completed = false;
+                controller.PlayBriefing(briefing, _ => { }, () => completed = true);
+
+                controller.SkipBriefing(briefing);
+
+                Assert.IsTrue(completed);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
         private static StrategyAdvisorController CreateController(
             IReadOnlyDictionary<string, Texture2D> textures
         )
@@ -301,7 +344,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => new Faction(),
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
-                _ => { }
+                _ => { },
+                _ => 0f
             );
             controller.Initialize(new TestActions());
             return controller;

@@ -65,6 +65,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreSame(_backgroundTexture, background.texture);
             Assert.IsTrue(background.enabled);
             Assert.IsFalse(background.raycastTarget);
+            Assert.AreEqual(Color.white, background.color);
             Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), background.uvRect);
             Assert.AreEqual(
                 new RectInt(49, 26, 777, 392),
@@ -140,6 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
                 new GalaxyMapRenderData(
                     null,
                     null,
+                    Color.white,
                     new GalaxyMapActiveFilterLabelRenderData(string.Empty, Color.white, default, 0),
                     null
                 )
@@ -299,6 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             return new GalaxyMapRenderData(
                 _backgroundTexture,
                 new RectInt(49, 26, 777, 392),
+                Color.white,
                 new GalaxyMapActiveFilterLabelRenderData(
                     activeFilter,
                     Color.yellow,

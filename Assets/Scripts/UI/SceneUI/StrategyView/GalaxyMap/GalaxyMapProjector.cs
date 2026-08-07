@@ -12,6 +12,7 @@ using UnityEngine;
 public sealed class GalaxyMapProjector
 {
     private const int _defaultMarkerIndex = 0;
+    private static readonly Color _dimmedBackgroundColor = new Color(0.5f, 0.5f, 0.5f, 1f);
 
     private readonly Func<UIContext> getUIContext;
 
@@ -58,6 +59,7 @@ public sealed class GalaxyMapProjector
         return new GalaxyMapRenderData(
             backgroundTexture,
             GetBackgroundBounds(backgroundTexture, playerTheme?.GalaxyBackground?.SourcePosition),
+            briefing?.DimBackground == true ? _dimmedBackgroundColor : Color.white,
             ProjectActiveFilterLabel(
                 playerTheme?.GalacticInformationDisplay,
                 filter,
@@ -249,7 +251,12 @@ public sealed class GalaxyMapProjector
                     planet.Planet.InstanceID,
                     planetPosition.X - systemPosition.X,
                     planetPosition.Y - systemPosition.Y,
-                    ResolveStarTexture(context, planet.Planet, marker),
+                    ResolveStarTexture(
+                        context,
+                        planet.Planet,
+                        marker,
+                        briefing?.Mode == StrategyBriefingMapMode.UnexploredSystems
+                    ),
                     ResolveHeadquartersTexture(context, planet.Planet)
                 )
             );
@@ -342,7 +349,7 @@ public sealed class GalaxyMapProjector
         {
             return new GalacticInformationMarker(
                 planet.IsUnexploredView ? 3 : 0,
-                planet.IsUnexploredView ? briefing.PlayerFactionInstanceID : planet.OwnerInstanceID,
+                planet.IsUnexploredView ? null : planet.OwnerInstanceID,
                 false
             );
         }
@@ -357,17 +364,26 @@ public sealed class GalaxyMapProjector
             );
         }
 
-        int defenseCount =
-            planet.Regiments.Count(IsActive)
-            + planet.Starfighters.Count(IsActive)
-            + planet.Buildings.Count(building =>
-                building.ManufacturingStatus == ManufacturingStatus.Complete
-                && building.DefenseFacilityClass != DefenseFacilityClass.None
+        if (briefing.Mode == StrategyBriefingMapMode.AllDefenses)
+        {
+            int defenseCount =
+                planet.Regiments.Count(IsActive)
+                + planet.Starfighters.Count(IsActive)
+                + planet.Buildings.Count(building =>
+                    building.ManufacturingStatus == ManufacturingStatus.Complete
+                    && building.DefenseFacilityClass != DefenseFacilityClass.None
+                );
+            return new GalacticInformationMarker(
+                Math.Min(3, defenseCount),
+                planet.OwnerInstanceID,
+                false
             );
-        return new GalacticInformationMarker(
-            Math.Min(3, defenseCount),
-            planet.OwnerInstanceID,
-            false
+        }
+
+        throw new ArgumentOutOfRangeException(
+            nameof(briefing),
+            briefing.Mode,
+            "Unsupported briefing map mode."
         );
     }
 
@@ -405,14 +421,16 @@ public sealed class GalaxyMapProjector
     /// <param name="context">The current strategy UI context.</param>
     /// <param name="planet">The visible planet.</param>
     /// <param name="marker">The evaluated marker result.</param>
+    /// <param name="highlightUnexplored">Whether unexplored planets use the briefing highlight.</param>
     /// <returns>The resolved marker texture.</returns>
     private static Texture2D ResolveStarTexture(
         UIContext context,
         Planet planet,
-        GalacticInformationMarker marker
+        GalacticInformationMarker marker,
+        bool highlightUnexplored
     )
     {
-        if (planet.IsUnexploredView)
+        if (planet.IsUnexploredView && !highlightUnexplored)
         {
             return context.GetTexture(
                 context.GetPlayerFactionTheme()?.GalaxyBackground?.UnexploredPlanetIconPath

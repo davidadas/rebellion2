@@ -454,6 +454,24 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Pauses active sound-effect playback without resetting its position.
+    /// </summary>
+    public void PauseSfx()
+    {
+        EnsureAudioSources();
+        sfxSource.Pause();
+    }
+
+    /// <summary>
+    /// Resumes sound-effect playback from its paused position.
+    /// </summary>
+    public void ResumeSfx()
+    {
+        EnsureAudioSources();
+        sfxSource.UnPause();
+    }
+
+    /// <summary>
     /// Plays ambience from an already loaded clip.
     /// </summary>
     /// <param name="clip">The ambience clip to play.</param>

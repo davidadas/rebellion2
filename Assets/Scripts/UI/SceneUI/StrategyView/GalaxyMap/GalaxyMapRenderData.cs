@@ -17,13 +17,15 @@ public sealed class StrategyBriefingMapPresentation
     /// <param name="targetPlanetInstanceID">The spotlighted planet identifier, or null.</param>
     /// <param name="playerFactionInstanceID">The player faction identifier.</param>
     /// <param name="opponentFactionInstanceID">The opposing faction identifier.</param>
+    /// <param name="dimBackground">Whether the galaxy artwork is dimmed behind full-brightness markers.</param>
     public StrategyBriefingMapPresentation(
         StrategyBriefingMapMode mode,
         string label,
         string targetSystemInstanceID,
         string targetPlanetInstanceID,
         string playerFactionInstanceID,
-        string opponentFactionInstanceID
+        string opponentFactionInstanceID,
+        bool dimBackground = false
     )
     {
         Mode = mode;
@@ -32,6 +34,7 @@ public sealed class StrategyBriefingMapPresentation
         TargetPlanetInstanceID = targetPlanetInstanceID;
         PlayerFactionInstanceID = playerFactionInstanceID;
         OpponentFactionInstanceID = opponentFactionInstanceID;
+        DimBackground = dimBackground;
     }
 
     public StrategyBriefingMapMode Mode { get; }
@@ -45,6 +48,8 @@ public sealed class StrategyBriefingMapPresentation
     public string PlayerFactionInstanceID { get; }
 
     public string OpponentFactionInstanceID { get; }
+
+    public bool DimBackground { get; }
 }
 
 /// <summary>
@@ -57,17 +62,20 @@ public sealed class GalaxyMapRenderData
     /// </summary>
     /// <param name="backgroundTexture">The resolved galaxy background texture.</param>
     /// <param name="backgroundBounds">The optional source-space background bounds.</param>
+    /// <param name="backgroundColor">The background-only color multiplier.</param>
     /// <param name="activeFilterLabel">The active galactic-information label.</param>
     /// <param name="clusters">The visible system clusters in render order.</param>
     public GalaxyMapRenderData(
         Texture2D backgroundTexture,
         RectInt? backgroundBounds,
+        Color backgroundColor,
         GalaxyMapActiveFilterLabelRenderData activeFilterLabel,
         IReadOnlyList<GalaxyMapClusterRenderData> clusters
     )
     {
         BackgroundTexture = backgroundTexture;
         BackgroundBounds = backgroundBounds;
+        BackgroundColor = backgroundColor;
         ActiveFilterLabel = activeFilterLabel;
         Clusters = Copy(clusters);
     }
@@ -75,6 +83,8 @@ public sealed class GalaxyMapRenderData
     public Texture2D BackgroundTexture { get; }
 
     public RectInt? BackgroundBounds { get; }
+
+    public Color BackgroundColor { get; }
 
     public GalaxyMapActiveFilterLabelRenderData ActiveFilterLabel { get; }
 
