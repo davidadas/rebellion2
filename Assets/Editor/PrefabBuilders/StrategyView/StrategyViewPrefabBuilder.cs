@@ -418,13 +418,13 @@ public static class StrategyViewPrefabBuilder
         RawImage protocolImage = CreateRawImage(
             "ProtocolImage",
             root.transform,
-            theme.GetFramePath(theme.ProtocolIdleBitmapID, 0, false),
+            theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false),
             theme.ProtocolSourceLayout
         );
         RawImage droidImage = CreateRawImage(
             "DroidImage",
             root.transform,
-            theme.GetFramePath(theme.DroidIdleBitmapID, 0, true),
+            theme.GetFramePath(theme.DroidIdleAnimation, 0, true),
             theme.DroidSourceLayout
         );
         UIRaycastArea protocolInput = CreateHudButtonView(

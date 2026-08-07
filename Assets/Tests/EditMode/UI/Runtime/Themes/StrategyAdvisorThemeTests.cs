@@ -14,10 +14,10 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                     "Pack/Factions/Example/Strategy/Advisor/Animations/Notifications",
             };
 
-            string path = theme.GetFramePath(3331, 4, true);
+            string path = theme.GetFramePath("Standard", 4, true);
 
             Assert.AreEqual(
-                "Pack/Factions/Example/Strategy/Advisor/Animations/Notifications/Alert/3331/frame-004",
+                "Pack/Factions/Example/Strategy/Advisor/Animations/Notifications/Alert/Standard/frame-004",
                 path
             );
         }
@@ -30,27 +30,26 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 AnimationImageRoot = "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings",
             };
 
-            string path = theme.GetFramePath(2100, 12);
+            string path = theme.GetFramePath("Introduction", 12);
 
             Assert.AreEqual(
-                "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/2100/frame-012",
+                "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/Introduction/frame-012",
                 path
             );
         }
 
         [Test]
-        public void GetAudioPath_ReturnsNormalizedWavePath()
+        public void GetAudioPath_ReturnsNamedAudioPath()
         {
             StrategyAdvisorTheme theme = new StrategyAdvisorTheme
             {
                 AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Notifications",
-                AudioFilePrefix = "advisor",
             };
 
-            string path = theme.GetAudioPath(42);
+            string path = theme.GetAudioPath("FleetArrived");
 
             Assert.AreEqual(
-                "Pack/Factions/Example/Strategy/Advisor/Audio/Notifications/advisor-0042",
+                "Pack/Factions/Example/Strategy/Advisor/Audio/Notifications/FleetArrived",
                 path
             );
         }
@@ -62,11 +61,22 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             {
                 AnimationImageRoot = "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings",
                 AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings",
-                AudioFilePrefix = "briefing",
-                Skip = new StrategyAdvisorAnimationTheme { BitmapID = 20, WaveID = 40 },
+                Skip = new StrategyAdvisorAnimationTheme { Animation = "Skip", Audio = "Skip" },
             };
-            theme.Segments.Add(new StrategyAdvisorAnimationTheme { BitmapID = 10, WaveID = 30 });
-            theme.Segments.Add(new StrategyAdvisorAnimationTheme { BitmapID = 10, WaveID = 30 });
+            theme.Segments.Add(
+                new StrategyAdvisorAnimationTheme
+                {
+                    Animation = "Introduction",
+                    Audio = "Introduction",
+                }
+            );
+            theme.Segments.Add(
+                new StrategyAdvisorAnimationTheme
+                {
+                    Animation = "Introduction",
+                    Audio = "Introduction",
+                }
+            );
 
             ContentPreloadManifest manifest = theme.CreatePreloadManifest();
 
@@ -74,16 +84,16 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/10",
-                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/20",
+                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/Introduction",
+                    "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings/Skip",
                 },
                 manifest.TextureDirectories
             );
             CollectionAssert.AreEqual(
                 new[]
                 {
-                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/briefing-0030",
-                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/briefing-0040",
+                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/Introduction",
+                    "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings/Skip",
                 },
                 manifest.Audio
             );

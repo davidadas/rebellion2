@@ -291,13 +291,15 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Texture2D[] frames = new Texture2D[segment.FrameCount];
         for (int frameIndex = 0; frameIndex < segment.FrameCount; frameIndex++)
         {
-            string path = briefing.GetFramePath(segment.BitmapID, frameIndex);
+            string path = briefing.GetFramePath(segment.Animation, frameIndex);
             frames[frameIndex] = getTexture(path);
             if (frames[frameIndex] == null)
                 throw new InvalidOperationException($"Briefing frame is missing: {path}");
         }
 
-        string audioPath = segment.WaveID == 0 ? null : briefing.GetAudioPath(segment.WaveID);
+        string audioPath = string.IsNullOrWhiteSpace(segment.Audio)
+            ? null
+            : briefing.GetAudioPath(segment.Audio);
         return new StrategyAdvisorAnimationViewData(
             frames,
             false,
@@ -582,8 +584,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         return new StrategyAdvisorViewData(
             true,
-            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.ProtocolIdleBitmapID, 0, false)),
-            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.DroidIdleBitmapID, 0, true)),
+            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)),
+            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)),
             ToRect(advisorTheme.ProtocolSourceLayout),
             ToRect(advisorTheme.DroidSourceLayout),
             advisorTheme.FrameIntervalSeconds
@@ -635,7 +637,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         for (int frameIndex = 0; frameIndex < animation.FrameCount; frameIndex++)
         {
             frames[frameIndex] = ResolveTexture(
-                theme.GetFramePath(animation.BitmapID, frameIndex, usesDroid)
+                theme.GetFramePath(animation.Animation, frameIndex, usesDroid)
             );
             ready &= frames[frameIndex] != null;
         }
@@ -647,7 +649,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             new StrategyAdvisorAnimationViewData(
                 frames,
                 usesDroid,
-                animation.WaveID == 0 ? null : theme.GetAudioPath(animation.WaveID)
+                string.IsNullOrWhiteSpace(animation.Audio)
+                    ? null
+                    : theme.GetAudioPath(animation.Audio)
             )
         );
         return true;

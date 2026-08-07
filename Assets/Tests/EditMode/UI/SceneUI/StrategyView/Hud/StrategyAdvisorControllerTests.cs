@@ -136,9 +136,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 Assert.IsFalse(GetImage(rootObject, "ProtocolImage").enabled);
                 Assert.IsFalse(GetImage(rootObject, "DroidImage").enabled);
 
-                textures[theme.GetFramePath(theme.ProtocolIdleBitmapID, 0, false)] =
+                textures[theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] =
                     protocolIdleTexture;
-                textures[theme.GetFramePath(theme.DroidIdleBitmapID, 0, true)] = droidIdleTexture;
+                textures[theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = droidIdleTexture;
                 controller.Render(theme);
 
                 Assert.AreSame(protocolIdleTexture, GetImage(rootObject, "ProtocolImage").texture);
@@ -170,7 +170,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 new StrategyAdvisorNotificationTheme
                 {
                     TableID = 10,
-                    Droid = new StrategyAdvisorAnimationTheme { BitmapID = 3000, FrameCount = 2 },
+                    Droid = new StrategyAdvisorAnimationTheme
+                    {
+                        Animation = "Alert",
+                        FrameCount = 2,
+                    },
                 }
             );
             Texture2D protocolIdleTexture = new Texture2D(20, 30);
@@ -179,8 +183,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Texture2D secondFrame = new Texture2D(20, 30);
             Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
             {
-                [theme.GetFramePath(theme.ProtocolIdleBitmapID, 0, false)] = protocolIdleTexture,
-                [theme.GetFramePath(theme.DroidIdleBitmapID, 0, true)] = droidIdleTexture,
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = protocolIdleTexture,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = droidIdleTexture,
             };
             try
             {
@@ -205,8 +209,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 Assert.AreEqual(0, playbackCount);
                 Assert.AreSame(droidIdleTexture, GetImage(rootObject, "DroidImage").texture);
 
-                textures[theme.GetFramePath(3000, 0, true)] = firstFrame;
-                textures[theme.GetFramePath(3000, 1, true)] = secondFrame;
+                textures[theme.GetFramePath("Alert", 0, true)] = firstFrame;
+                textures[theme.GetFramePath("Alert", 1, true)] = secondFrame;
                 controller.ProcessPending(1, true);
 
                 Assert.AreEqual(1, playbackCount);
@@ -232,22 +236,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             {
                 AnimationImageRoot = "Pack/Test/Briefing/Protocol",
                 AudioRoot = "Pack/Test/Briefing/Audio",
-                AudioFilePrefix = "briefing",
             };
             briefing.Segments.Add(
                 new StrategyAdvisorAnimationTheme
                 {
-                    BitmapID = 10,
+                    Animation = "First",
                     FrameCount = 1,
-                    WaveID = 20,
+                    Audio = "First",
                 }
             );
             briefing.Segments.Add(
                 new StrategyAdvisorAnimationTheme
                 {
-                    BitmapID = 11,
+                    Animation = "Second",
                     FrameCount = 1,
-                    WaveID = 21,
+                    Audio = "Second",
                 }
             );
             Texture2D idle = new Texture2D(1, 1);
@@ -255,10 +258,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             Texture2D second = new Texture2D(1, 1);
             Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
             {
-                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleBitmapID, 0, false)] = idle,
-                [advisorTheme.GetFramePath(advisorTheme.DroidIdleBitmapID, 0, true)] = idle,
-                [briefing.GetFramePath(10, 0)] = first,
-                [briefing.GetFramePath(11, 0)] = second,
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
+                [briefing.GetFramePath("First", 0)] = first,
+                [briefing.GetFramePath("Second", 0)] = second,
             };
             try
             {
@@ -266,12 +269,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 StrategyAdvisorController controller = CreateController(textures);
                 controller.BindView(view);
                 controller.Render(advisorTheme);
-                List<int> focused = new List<int>();
+                List<string> focused = new List<string>();
                 bool completed = false;
 
                 controller.PlayBriefing(
                     briefing,
-                    segment => focused.Add(segment.BitmapID),
+                    segment => focused.Add(segment.Animation),
                     () => completed = true
                 );
 
@@ -281,7 +284,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 Assert.IsFalse(completed);
                 view.AdvanceAnimation(0.5f);
 
-                CollectionAssert.AreEqual(new[] { 10, 11 }, focused);
+                CollectionAssert.AreEqual(new[] { "First", "Second" }, focused);
                 Assert.IsTrue(completed);
             }
             finally
@@ -304,15 +307,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 AnimationImageRoot = "Pack/Test/Briefing/Protocol",
             };
             briefing.Segments.Add(
-                new StrategyAdvisorAnimationTheme { BitmapID = 10, FrameCount = 1 }
+                new StrategyAdvisorAnimationTheme { Animation = "First", FrameCount = 1 }
             );
             Texture2D idle = new Texture2D(1, 1);
             Texture2D frame = new Texture2D(1, 1);
             Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
             {
-                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleBitmapID, 0, false)] = idle,
-                [advisorTheme.GetFramePath(advisorTheme.DroidIdleBitmapID, 0, true)] = idle,
-                [briefing.GetFramePath(10, 0)] = frame,
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
+                [briefing.GetFramePath("First", 0)] = frame,
             };
             try
             {
@@ -354,8 +357,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             return new StrategyAdvisorTheme
             {
                 AnimationImageRoot = "Art/Test/Advisors",
-                ProtocolIdleBitmapID = 2001,
-                DroidIdleBitmapID = 3331,
+                ProtocolIdleAnimation = "Idle",
+                DroidIdleAnimation = "Standard",
                 FrameIntervalSeconds = 0.5f,
                 RepeatCooldownTicks = 10,
             };

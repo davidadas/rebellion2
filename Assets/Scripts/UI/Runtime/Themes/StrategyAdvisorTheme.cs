@@ -8,11 +8,11 @@ using Rebellion.Util.Serialization;
 [PersistableObject]
 public class StrategyAdvisorAnimationTheme
 {
-    public int BitmapID { get; set; }
+    public string Animation { get; set; }
 
     public int FrameCount { get; set; }
 
-    public int WaveID { get; set; }
+    public string Audio { get; set; }
 
     public float DelayBeforeSeconds { get; set; }
 
@@ -64,8 +64,6 @@ public class StrategyBriefingTheme
 
     public string AudioRoot { get; set; }
 
-    public string AudioFilePrefix { get; set; }
-
     public List<StrategyAdvisorAnimationTheme> Segments { get; set; } =
         new List<StrategyAdvisorAnimationTheme>();
 
@@ -82,56 +80,56 @@ public class StrategyBriefingTheme
         {
             TexturesPerFrame = _texturesPerFrame,
         };
-        HashSet<int> bitmapIDs = new HashSet<int>();
-        HashSet<int> waveIDs = new HashSet<int>();
+        HashSet<string> animations = new HashSet<string>();
+        HashSet<string> audioNames = new HashSet<string>();
         for (int i = 0; i < Segments.Count; i++)
-            AddPreloadAssets(Segments[i], bitmapIDs, waveIDs, manifest);
-        AddPreloadAssets(Skip, bitmapIDs, waveIDs, manifest);
+            AddPreloadAssets(Segments[i], animations, audioNames, manifest);
+        AddPreloadAssets(Skip, animations, audioNames, manifest);
         return manifest;
     }
 
     /// <summary>
     /// Builds the content address for one briefing animation frame.
     /// </summary>
-    /// <param name="bitmapID">The source animation bitmap identifier.</param>
+    /// <param name="animation">The configured animation name.</param>
     /// <param name="frameIndex">The zero-based frame index.</param>
     /// <returns>The external content address for the frame.</returns>
-    public string GetFramePath(int bitmapID, int frameIndex)
+    public string GetFramePath(string animation, int frameIndex)
     {
-        return $"{AnimationImageRoot}/{bitmapID}/frame-{frameIndex:D3}";
+        return $"{AnimationImageRoot}/{animation}/frame-{frameIndex:D3}";
     }
 
     /// <summary>
     /// Builds the content address for one briefing voice clip.
     /// </summary>
-    /// <param name="waveID">The source wave resource identifier.</param>
+    /// <param name="audio">The configured audio name.</param>
     /// <returns>The external content address for the voice clip.</returns>
-    public string GetAudioPath(int waveID)
+    public string GetAudioPath(string audio)
     {
-        return $"{AudioRoot}/{AudioFilePrefix}-{waveID:D4}";
+        return $"{AudioRoot}/{audio}";
     }
 
     /// <summary>
     /// Adds one segment's distinct animation directory and voice clip to a preload manifest.
     /// </summary>
     /// <param name="segment">The configured briefing segment.</param>
-    /// <param name="bitmapIDs">The bitmap identifiers already added.</param>
-    /// <param name="waveIDs">The wave identifiers already added.</param>
+    /// <param name="animations">The animation names already added.</param>
+    /// <param name="audioNames">The audio names already added.</param>
     /// <param name="manifest">The manifest receiving distinct content addresses.</param>
     private void AddPreloadAssets(
         StrategyAdvisorAnimationTheme segment,
-        ISet<int> bitmapIDs,
-        ISet<int> waveIDs,
+        ISet<string> animations,
+        ISet<string> audioNames,
         ContentPreloadManifest manifest
     )
     {
         if (segment == null)
             return;
 
-        if (segment.BitmapID > 0 && bitmapIDs.Add(segment.BitmapID))
-            manifest.TextureDirectories.Add($"{AnimationImageRoot}/{segment.BitmapID}");
-        if (segment.WaveID > 0 && waveIDs.Add(segment.WaveID))
-            manifest.Audio.Add(GetAudioPath(segment.WaveID));
+        if (!string.IsNullOrWhiteSpace(segment.Animation) && animations.Add(segment.Animation))
+            manifest.TextureDirectories.Add($"{AnimationImageRoot}/{segment.Animation}");
+        if (!string.IsNullOrWhiteSpace(segment.Audio) && audioNames.Add(segment.Audio))
+            manifest.Audio.Add(GetAudioPath(segment.Audio));
     }
 }
 
@@ -206,11 +204,9 @@ public class StrategyAdvisorTheme
 
     public string AudioRoot { get; set; }
 
-    public string AudioFilePrefix { get; set; }
+    public string ProtocolIdleAnimation { get; set; }
 
-    public int ProtocolIdleBitmapID { get; set; }
-
-    public int DroidIdleBitmapID { get; set; }
+    public string DroidIdleAnimation { get; set; }
 
     public float FrameIntervalSeconds { get; set; }
 
@@ -286,23 +282,23 @@ public class StrategyAdvisorTheme
     /// <summary>
     /// Builds the resource path for an advisor animation frame.
     /// </summary>
-    /// <param name="bitmapID">The animation bitmap identifier.</param>
+    /// <param name="animation">The configured animation name.</param>
     /// <param name="frameIndex">The zero-based frame index.</param>
     /// <param name="droid">Whether the frame belongs to the droid advisor.</param>
     /// <returns>The animation frame resource path.</returns>
-    public string GetFramePath(int bitmapID, int frameIndex, bool droid)
+    public string GetFramePath(string animation, int frameIndex, bool droid)
     {
         string roleDirectory = droid ? "Alert" : "Report";
-        return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/frame-{frameIndex:D3}";
+        return $"{AnimationImageRoot}/{roleDirectory}/{animation}/frame-{frameIndex:D3}";
     }
 
     /// <summary>
     /// Builds the resource path for an advisor audio clip.
     /// </summary>
-    /// <param name="waveID">The audio wave identifier.</param>
+    /// <param name="audio">The configured audio name.</param>
     /// <returns>The advisor audio resource path.</returns>
-    public string GetAudioPath(int waveID)
+    public string GetAudioPath(string audio)
     {
-        return $"{AudioRoot}/{AudioFilePrefix}-{waveID:D4}";
+        return $"{AudioRoot}/{audio}";
     }
 }

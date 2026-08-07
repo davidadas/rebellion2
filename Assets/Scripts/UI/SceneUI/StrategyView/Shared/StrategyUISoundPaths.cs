@@ -66,12 +66,12 @@ internal static class StrategyUISoundPaths
 
         for (int i = 0; i < briefing.Segments.Count; i++)
         {
-            int waveID = briefing.Segments[i]?.WaveID ?? 0;
-            if (waveID > 0)
-                yield return briefing.GetAudioPath(waveID);
+            string audio = briefing.Segments[i]?.Audio;
+            if (!string.IsNullOrWhiteSpace(audio))
+                yield return briefing.GetAudioPath(audio);
         }
 
-        if (briefing.Skip?.WaveID > 0)
-            yield return briefing.GetAudioPath(briefing.Skip.WaveID);
+        if (!string.IsNullOrWhiteSpace(briefing.Skip?.Audio))
+            yield return briefing.GetAudioPath(briefing.Skip.Audio);
     }
 }
