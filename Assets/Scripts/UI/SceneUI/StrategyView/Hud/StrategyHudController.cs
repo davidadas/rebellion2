@@ -25,13 +25,11 @@ public sealed class StrategyHudController : IContextMenuReceiver
     /// <param name="getPlayerTheme">Returns the current player faction theme.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
-    /// <param name="getAudioDuration">Resolves the duration of a preloaded audio cue.</param>
     public StrategyHudController(
         Func<Faction> getPlayerFaction,
         Func<FactionTheme> getPlayerTheme,
         Func<string, Texture2D> getTexture,
-        Action<string> playSfx,
-        Func<string, float> getAudioDuration
+        Action<string> playSfx
     )
     {
         if (getPlayerFaction == null)
@@ -41,12 +39,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
             getPlayerTheme ?? throw new ArgumentNullException(nameof(getPlayerTheme));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
-        advisorController = new StrategyAdvisorController(
-            getPlayerFaction,
-            getTexture,
-            playSfx,
-            getAudioDuration
-        );
+        advisorController = new StrategyAdvisorController(getPlayerFaction, getTexture, playSfx);
     }
 
     /// <summary>
@@ -120,43 +113,42 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Plays the active faction's configured new-game briefing.
+    /// Plays one resolved protocol-advisor animation.
     /// </summary>
-    /// <param name="briefing">The active faction briefing.</param>
-    /// <param name="segmentStarted">Invoked when each segment starts.</param>
-    /// <param name="completed">Invoked after playback or the skip response completes.</param>
-    public void PlayBriefing(
-        StrategyBriefingTheme briefing,
-        Action<StrategyAdvisorAnimationTheme> segmentStarted,
+    /// <param name="animation">The resolved animation presentation.</param>
+    /// <param name="started">Invoked when playback starts after its configured delay.</param>
+    /// <param name="completed">Invoked after playback completes.</param>
+    public void ReplaceAdvisorAnimation(
+        StrategyAdvisorAnimationViewData animation,
+        Action started,
         Action completed
     )
     {
-        advisorController.PlayBriefing(briefing, segmentStarted, completed);
+        advisorController.ReplaceAnimation(animation, started, completed);
     }
 
     /// <summary>
-    /// Skips the active faction briefing using its configured acknowledgement.
+    /// Cancels active advisor animation without invoking its completion callback.
     /// </summary>
-    /// <param name="briefing">The active faction briefing.</param>
-    public void SkipBriefing(StrategyBriefingTheme briefing)
+    public void CancelAdvisorAnimation()
     {
-        advisorController.SkipBriefing(briefing);
+        advisorController.CancelAnimation();
     }
 
     /// <summary>
-    /// Pauses the active faction briefing animation.
+    /// Pauses the active advisor animation.
     /// </summary>
-    public void PauseBriefing()
+    public void PauseAdvisorAnimation()
     {
-        advisorController.PauseBriefing();
+        advisorController.PauseAnimation();
     }
 
     /// <summary>
-    /// Resumes the active faction briefing animation.
+    /// Resumes the active advisor animation.
     /// </summary>
-    public void ResumeBriefing()
+    public void ResumeAdvisorAnimation()
     {
-        advisorController.ResumeBriefing();
+        advisorController.ResumeAnimation();
     }
 
     /// <summary>

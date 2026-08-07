@@ -12,7 +12,6 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 {
     private readonly Func<Faction> getPlayerFaction;
     private readonly Func<string, Texture2D> getTexture;
-    private readonly Func<string, float> getAudioDuration;
     private readonly Action<string> playSfx;
     private readonly Dictionary<int, StrategyAdvisorNotificationTheme> pendingNotifications =
         new Dictionary<int, StrategyAdvisorNotificationTheme>();
@@ -24,10 +23,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
-    private Action briefingCompleted;
-    private StrategyBriefingTheme activeBriefing;
-    private int briefingSegmentIndex;
-    private Action<StrategyAdvisorAnimationTheme> briefingSegmentStarted;
+    private Action playbackCompleted;
+    private Action playbackStarted;
 
     /// <summary>
     /// Creates an advisor controller with faction, texture, and audio dependencies.
@@ -35,20 +32,16 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="getPlayerFaction">Resolves the current player faction.</param>
     /// <param name="getTexture">Resolves a texture from a configured resource path.</param>
     /// <param name="playSfx">Plays a strategy sound-effect path.</param>
-    /// <param name="getAudioDuration">Resolves the duration of a preloaded audio cue.</param>
     public StrategyAdvisorController(
         Func<Faction> getPlayerFaction,
         Func<string, Texture2D> getTexture,
-        Action<string> playSfx,
-        Func<string, float> getAudioDuration
+        Action<string> playSfx
     )
     {
         this.getPlayerFaction =
             getPlayerFaction ?? throw new ArgumentNullException(nameof(getPlayerFaction));
         this.getTexture = getTexture ?? throw new ArgumentNullException(nameof(getTexture));
         this.playSfx = playSfx ?? throw new ArgumentNullException(nameof(playSfx));
-        this.getAudioDuration =
-            getAudioDuration ?? throw new ArgumentNullException(nameof(getAudioDuration));
     }
 
     /// <summary>
@@ -213,128 +206,66 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Plays an ordered faction briefing through the protocol advisor.
+    /// Plays one resolved animation through the protocol advisor.
     /// </summary>
-    /// <param name="briefing">The faction-configured briefing.</param>
-    /// <param name="segmentStarted">Invoked when each delayed segment actually begins.</param>
-    /// <param name="completed">Invoked after the complete briefing or skip response finishes.</param>
-    public void PlayBriefing(
-        StrategyBriefingTheme briefing,
-        Action<StrategyAdvisorAnimationTheme> segmentStarted,
+    /// <param name="animation">The resolved animation presentation.</param>
+    /// <param name="started">Invoked when playback starts after its configured delay.</param>
+    /// <param name="completed">Invoked after playback completes.</param>
+    public void ReplaceAnimation(
+        StrategyAdvisorAnimationViewData animation,
+        Action started,
         Action completed
     )
     {
-        if (briefing == null || briefing.Segments.Count == 0)
+        if (animation?.Frames.Count <= 0)
         {
             completed?.Invoke();
             return;
         }
 
-        activeBriefing = briefing;
-        briefingSegmentIndex = 0;
-        briefingSegmentStarted = segmentStarted;
-        briefingCompleted = completed;
-        PlayCurrentBriefingSegment();
+        StrategyAdvisorView targetView = GetRequiredView();
+        playbackStarted = null;
+        playbackCompleted = null;
+        targetView.CancelPlayback();
+        playbackStarted = started;
+        playbackCompleted = completed;
+        targetView.EnqueuePlaybacks(new[] { animation });
     }
 
     /// <summary>
-    /// Skips the active briefing and optionally plays its configured acknowledgement.
+    /// Cancels the active advisor animation without invoking its completion callback.
     /// </summary>
-    /// <param name="briefing">The faction briefing containing the skip response.</param>
-    public void SkipBriefing(StrategyBriefingTheme briefing)
+    public void CancelAnimation()
     {
-        StrategyBriefingTheme currentBriefing = activeBriefing;
-        activeBriefing = null;
+        playbackStarted = null;
+        playbackCompleted = null;
         GetRequiredView().CancelPlayback();
-        activeBriefing = currentBriefing;
-        briefingSegmentIndex = currentBriefing?.Segments.Count ?? 0;
-        if (briefing?.Skip == null)
-        {
-            CompleteBriefing();
-            return;
-        }
-
-        GetRequiredView()
-            .EnqueuePlaybacks(new[] { CreateBriefingPlayback(briefing, briefing.Skip) });
     }
 
     /// <summary>
-    /// Pauses the active briefing animation without discarding its position.
+    /// Pauses the active advisor animation without discarding its position.
     /// </summary>
-    public void PauseBriefing()
+    public void PauseAnimation()
     {
         GetRequiredView().PausePlayback();
     }
 
     /// <summary>
-    /// Resumes the active briefing animation from its paused position.
+    /// Resumes the active advisor animation from its paused position.
     /// </summary>
-    public void ResumeBriefing()
+    public void ResumeAnimation()
     {
         GetRequiredView().ResumePlayback();
     }
 
     /// <summary>
-    /// Resolves one configured briefing segment into resident animation playback data.
+    /// Invokes and clears the callback associated with completed generic playback.
     /// </summary>
-    /// <param name="briefing">The briefing content-address configuration.</param>
-    /// <param name="segment">The animation segment to resolve.</param>
-    /// <returns>The resolved playback frames, voice address, and initial delay.</returns>
-    private StrategyAdvisorAnimationViewData CreateBriefingPlayback(
-        StrategyBriefingTheme briefing,
-        StrategyAdvisorAnimationTheme segment
-    )
-    {
-        if (segment == null || segment.FrameCount <= 0)
-            throw new InvalidOperationException("Briefing contains an empty animation segment.");
-
-        Texture2D[] frames = new Texture2D[segment.FrameCount];
-        for (int frameIndex = 0; frameIndex < segment.FrameCount; frameIndex++)
-        {
-            string path = briefing.GetFramePath(segment.Animation, frameIndex);
-            frames[frameIndex] = getTexture(path);
-            if (frames[frameIndex] == null)
-                throw new InvalidOperationException($"Briefing frame is missing: {path}");
-        }
-
-        string audioPath = string.IsNullOrWhiteSpace(segment.Audio)
-            ? null
-            : briefing.GetAudioPath(segment.Audio);
-        return new StrategyAdvisorAnimationViewData(
-            frames,
-            false,
-            audioPath,
-            segment.DelayBeforeSeconds,
-            string.IsNullOrEmpty(audioPath) ? 0f : getAudioDuration(audioPath)
-        );
-    }
-
     private void HandlePlaybackCompleted()
     {
-        if (activeBriefing == null)
-            return;
-
-        briefingSegmentIndex++;
-        if (briefingSegmentIndex < activeBriefing.Segments.Count)
-            PlayCurrentBriefingSegment();
-        else
-            CompleteBriefing();
-    }
-
-    private void PlayCurrentBriefingSegment()
-    {
-        StrategyAdvisorAnimationTheme segment = activeBriefing.Segments[briefingSegmentIndex];
-        GetRequiredView()
-            .EnqueuePlaybacks(new[] { CreateBriefingPlayback(activeBriefing, segment) });
-    }
-
-    private void CompleteBriefing()
-    {
-        activeBriefing = null;
-        briefingSegmentIndex = 0;
-        briefingSegmentStarted = null;
-        Action completed = briefingCompleted;
-        briefingCompleted = null;
+        playbackStarted = null;
+        Action completed = playbackCompleted;
+        playbackCompleted = null;
         completed?.Invoke();
     }
 
@@ -686,8 +617,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="animation">The animation that began playback.</param>
     private void HandlePlaybackStarted(StrategyAdvisorAnimationViewData animation)
     {
-        if (activeBriefing != null && briefingSegmentIndex < activeBriefing.Segments.Count)
-            briefingSegmentStarted?.Invoke(activeBriefing.Segments[briefingSegmentIndex]);
+        Action started = playbackStarted;
+        playbackStarted = null;
+        started?.Invoke();
 
         if (!string.IsNullOrEmpty(animation?.AudioPath))
             playSfx(animation.AudioPath);

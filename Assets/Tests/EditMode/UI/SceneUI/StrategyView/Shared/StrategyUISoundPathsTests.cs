@@ -70,11 +70,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 StrategyBriefing = new StrategyBriefingTheme
                 {
                     AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings",
-                    Skip = new StrategyAdvisorAnimationTheme { Audio = "Skip" },
+                    Skip = new StrategyBriefingSegmentTheme { Audio = "Skip" },
                 },
             };
             theme.StrategyBriefing.Segments.Add(
-                new StrategyAdvisorAnimationTheme { Audio = "Introduction" }
+                new StrategyBriefingSegmentTheme { Audio = "Introduction" }
             );
 
             string[] paths = StrategyUISoundPaths.GetBriefingPreloadPaths(theme).ToArray();

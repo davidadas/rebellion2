@@ -17,14 +17,29 @@ public class StrategyAdvisorAnimationTheme
     public float DelayBeforeSeconds { get; set; }
 
     public bool RequiresAnnouncementsEnabled { get; set; }
+}
 
-    public StrategyBriefingFocus BriefingFocus { get; set; }
+/// <summary>
+/// Defines one ordered briefing segment and its galaxy-map presentation.
+/// </summary>
+[PersistableObject(Name = "Segment")]
+public class StrategyBriefingSegmentTheme
+{
+    public string Animation { get; set; }
 
-    public StrategyBriefingMapMode BriefingMapMode { get; set; }
+    public int FrameCount { get; set; }
 
-    public string BriefingTargetInstanceID { get; set; }
+    public string Audio { get; set; }
 
-    public string BriefingLabel { get; set; }
+    public float DelayBeforeSeconds { get; set; }
+
+    public StrategyBriefingFocus Focus { get; set; }
+
+    public StrategyBriefingMapMode MapMode { get; set; }
+
+    public string TargetInstanceID { get; set; }
+
+    public string Label { get; set; }
 }
 
 public enum StrategyBriefingFocus
@@ -64,10 +79,10 @@ public class StrategyBriefingTheme
 
     public string AudioRoot { get; set; }
 
-    public List<StrategyAdvisorAnimationTheme> Segments { get; set; } =
-        new List<StrategyAdvisorAnimationTheme>();
+    public List<StrategyBriefingSegmentTheme> Segments { get; set; } =
+        new List<StrategyBriefingSegmentTheme>();
 
-    public StrategyAdvisorAnimationTheme Skip { get; set; }
+    public StrategyBriefingSegmentTheme Skip { get; set; }
 
     /// <summary>
     /// Builds the active faction's briefing preload manifest so playback never performs disk
@@ -117,7 +132,7 @@ public class StrategyBriefingTheme
     /// <param name="audioNames">The audio names already added.</param>
     /// <param name="manifest">The manifest receiving distinct content addresses.</param>
     private void AddPreloadAssets(
-        StrategyAdvisorAnimationTheme segment,
+        StrategyBriefingSegmentTheme segment,
         ISet<string> animations,
         ISet<string> audioNames,
         ContentPreloadManifest manifest

@@ -227,95 +227,59 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void PlayBriefing_AdvancesConfiguredSegmentsAndCompletesInOrder()
+        public void ReplaceAnimation_InvokesPlaybackCallbacks()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
             StrategyAdvisorTheme advisorTheme = CreateTheme();
-            StrategyBriefingTheme briefing = new StrategyBriefingTheme
-            {
-                AnimationImageRoot = "Pack/Test/Briefing/Protocol",
-                AudioRoot = "Pack/Test/Briefing/Audio",
-            };
-            briefing.Segments.Add(
-                new StrategyAdvisorAnimationTheme
-                {
-                    Animation = "First",
-                    FrameCount = 1,
-                    Audio = "First",
-                }
-            );
-            briefing.Segments.Add(
-                new StrategyAdvisorAnimationTheme
-                {
-                    Animation = "Second",
-                    FrameCount = 1,
-                    Audio = "Second",
-                }
-            );
-            Texture2D idle = new Texture2D(1, 1);
-            Texture2D first = new Texture2D(1, 1);
-            Texture2D second = new Texture2D(1, 1);
-            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
-            {
-                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
-                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
-                [briefing.GetFramePath("First", 0)] = first,
-                [briefing.GetFramePath("Second", 0)] = second,
-            };
-            try
-            {
-                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
-                StrategyAdvisorController controller = CreateController(textures);
-                controller.BindView(view);
-                controller.Render(advisorTheme);
-                List<string> focused = new List<string>();
-                bool completed = false;
-
-                controller.PlayBriefing(
-                    briefing,
-                    segment => focused.Add(segment.Animation),
-                    () => completed = true
-                );
-
-                Assert.AreSame(first, GetImage(rootObject, "ProtocolImage").texture);
-                view.AdvanceAnimation(0.5f);
-                Assert.AreSame(second, GetImage(rootObject, "ProtocolImage").texture);
-                Assert.IsFalse(completed);
-                view.AdvanceAnimation(0.5f);
-
-                CollectionAssert.AreEqual(new[] { "First", "Second" }, focused);
-                Assert.IsTrue(completed);
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(second);
-                UnityEngine.Object.DestroyImmediate(first);
-                UnityEngine.Object.DestroyImmediate(idle);
-                UnityEngine.Object.DestroyImmediate(rootObject);
-            }
-        }
-
-        [Test]
-        public void SkipBriefing_WithoutSkipResponse_CompletesImmediately()
-        {
-            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
-            StrategyAdvisorTheme advisorTheme = CreateTheme();
-            StrategyBriefingTheme briefing = new StrategyBriefingTheme
-            {
-                AnimationImageRoot = "Pack/Test/Briefing/Protocol",
-            };
-            briefing.Segments.Add(
-                new StrategyAdvisorAnimationTheme { Animation = "First", FrameCount = 1 }
-            );
             Texture2D idle = new Texture2D(1, 1);
             Texture2D frame = new Texture2D(1, 1);
             Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
             {
                 [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
                 [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
-                [briefing.GetFramePath("First", 0)] = frame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                bool started = false;
+                bool completed = false;
+
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(new[] { frame }, false, null),
+                    () => started = true,
+                    () => completed = true
+                );
+
+                Assert.AreSame(frame, GetImage(rootObject, "ProtocolImage").texture);
+                Assert.IsTrue(started);
+                view.AdvanceAnimation(0.5f);
+
+                Assert.IsTrue(completed);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void CancelAnimation_DoesNotInvokeCompletion()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D frame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
             };
             try
             {
@@ -324,11 +288,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.BindView(view);
                 controller.Render(advisorTheme);
                 bool completed = false;
-                controller.PlayBriefing(briefing, _ => { }, () => completed = true);
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(new[] { frame }, false, null),
+                    null,
+                    () => completed = true
+                );
 
-                controller.SkipBriefing(briefing);
+                controller.CancelAnimation();
 
-                Assert.IsTrue(completed);
+                Assert.IsFalse(completed);
             }
             finally
             {
@@ -345,8 +313,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyAdvisorController controller = new StrategyAdvisorController(
                 () => new Faction(),
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
-                _ => { },
-                _ => 0f
+                _ => { }
             );
             controller.Initialize(new TestActions());
             return controller;

@@ -61,17 +61,17 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             {
                 AnimationImageRoot = "Pack/Factions/Example/Strategy/Advisor/Animations/Briefings",
                 AudioRoot = "Pack/Factions/Example/Strategy/Advisor/Audio/Briefings",
-                Skip = new StrategyAdvisorAnimationTheme { Animation = "Skip", Audio = "Skip" },
+                Skip = new StrategyBriefingSegmentTheme { Animation = "Skip", Audio = "Skip" },
             };
             theme.Segments.Add(
-                new StrategyAdvisorAnimationTheme
+                new StrategyBriefingSegmentTheme
                 {
                     Animation = "Introduction",
                     Audio = "Introduction",
                 }
             );
             theme.Segments.Add(
-                new StrategyAdvisorAnimationTheme
+                new StrategyBriefingSegmentTheme
                 {
                     Animation = "Introduction",
                     Audio = "Introduction",

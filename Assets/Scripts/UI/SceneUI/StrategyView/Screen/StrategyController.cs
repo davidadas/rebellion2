@@ -81,7 +81,7 @@ public sealed class StrategyController
     private CancelStack cancelStack;
     private GameManager gameManager;
     private MessageSystem messageSystem;
-    private StrategyBriefingTheme activeBriefing;
+    private StrategyBriefingController briefingController;
     private bool briefingActive;
     private EventSystem briefingEventSystem;
     private bool briefingSkipConfirmationOpen;
@@ -198,8 +198,7 @@ public sealed class StrategyController
             () => gameManager?.GetPlayerFaction(),
             () => uiContext?.GetPlayerFactionTheme(),
             path => uiContext?.GetTexture(path),
-            PlaySfx,
-            path => AppBootstrap.Instance.GetContentAssets().GetPreloadedAudio(path).length
+            PlaySfx
         );
         strategyHudController.Initialize(this);
         strategyHudController.BindView(strategyHud);
@@ -207,6 +206,14 @@ public sealed class StrategyController
         galaxyMapController = new GalaxyMapController(() => uiContext);
         galaxyMapController.Initialize(this);
         galaxyMapController.BindView(galaxyMap);
+        briefingController = new StrategyBriefingController(
+            gameManager.GetGame(),
+            path => uiContext?.GetTexture(path),
+            path => AppBootstrap.Instance.GetContentAssets().GetPreloadedAudio(path).length,
+            strategyHudController,
+            galaxyMapController,
+            () => PlaySfx(StrategyUISoundPaths.GalacticInformationControl)
+        );
         galacticInformationDisplayController = new GalacticInformationDisplayController(
             () => uiContext,
             PlaySfx
@@ -711,8 +718,8 @@ public sealed class StrategyController
     /// <param name="completed">Invoked after playback completes or is skipped.</param>
     public void PlayBriefing(Action completed)
     {
-        activeBriefing = uiContext?.GetPlayerFactionTheme()?.StrategyBriefing;
-        if (activeBriefing == null || activeBriefing.Segments.Count == 0)
+        StrategyBriefingTheme briefing = uiContext?.GetPlayerFactionTheme()?.StrategyBriefing;
+        if (briefing == null || briefing.Segments.Count == 0)
         {
             completed?.Invoke();
             return;
@@ -729,17 +736,14 @@ public sealed class StrategyController
         SetBriefingInteractionEnabled(false);
         dirty = true;
         StopMusic();
-        strategyHudController.PlayBriefing(
-            activeBriefing,
-            FocusBriefingSegment,
+        briefingController.Play(
+            briefing,
             () =>
             {
                 briefingActive = false;
                 briefingSkipConfirmationOpen = false;
                 SetBriefingInteractionEnabled(true);
                 briefingEventSystem = null;
-                activeBriefing = null;
-                galaxyMapController.SetBriefingPresentation(null);
                 strategyMusicController.Resume();
                 messagesWindowController.Open(MessagesTab.Advice);
                 completed?.Invoke();
@@ -749,81 +753,12 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Applies one semantic briefing focus without encoding faction-specific behavior in code.
-    /// </summary>
-    /// <param name="segment">The briefing segment whose focus is starting.</param>
-    private void FocusBriefingSegment(StrategyAdvisorAnimationTheme segment)
-    {
-        string targetID = segment.BriefingTargetInstanceID;
-        Faction playerFaction = gameManager.GetPlayerFaction();
-        Faction opponentFaction = gameManager
-            .GetGame()
-            .GetFactions()
-            .FirstOrDefault(faction => faction != playerFaction);
-        if (segment.BriefingFocus == StrategyBriefingFocus.PlayerHeadquarters)
-            targetID = playerFaction?.HQInstanceID;
-        else if (segment.BriefingFocus == StrategyBriefingFocus.OpponentHeadquarters)
-            targetID = opponentFaction?.HQInstanceID;
-
-        bool requiresTarget =
-            segment.BriefingFocus == StrategyBriefingFocus.Target
-            || segment.BriefingFocus == StrategyBriefingFocus.PlayerHeadquarters
-            || segment.BriefingFocus == StrategyBriefingFocus.OpponentHeadquarters;
-        if (requiresTarget && string.IsNullOrEmpty(targetID))
-        {
-            throw new InvalidOperationException(
-                $"Briefing focus {segment.BriefingFocus} requires a target instance ID."
-            );
-        }
-
-        ISceneNode target = gameManager.GetGame().GetSceneNodeByInstanceID<ISceneNode>(targetID);
-        if (requiresTarget && target == null)
-            throw new InvalidOperationException($"Briefing target '{targetID}' was not found.");
-
-        Planet targetPlanet = target as Planet ?? target?.GetParentOfType<Planet>();
-        PlanetSystem targetSystem =
-            target as PlanetSystem ?? target?.GetParentOfType<PlanetSystem>();
-        if (requiresTarget && targetSystem == null)
-        {
-            throw new InvalidOperationException(
-                $"Briefing target '{targetID}' cannot be presented on the galaxy map."
-            );
-        }
-        string label = segment.BriefingLabel;
-        if (string.IsNullOrEmpty(label) && segment.BriefingFocus != StrategyBriefingFocus.None)
-            label = target?.DisplayName;
-        StrategyBriefingMapMode mapMode = segment.BriefingMapMode;
-        if (mapMode == StrategyBriefingMapMode.Default && targetPlanet != null)
-            mapMode = StrategyBriefingMapMode.Spotlight;
-
-        if (
-            mapMode != StrategyBriefingMapMode.Default
-            || segment.BriefingFocus != StrategyBriefingFocus.None
-        )
-            PlaySfx(StrategyUISoundPaths.GalacticInformationControl);
-
-        galaxyMapController.SetBriefingPresentation(
-            new StrategyBriefingMapPresentation(
-                mapMode,
-                label,
-                targetSystem?.InstanceID,
-                targetPlanet?.InstanceID,
-                playerFaction?.InstanceID,
-                opponentFaction?.InstanceID,
-                mapMode != StrategyBriefingMapMode.Default
-                    || segment.BriefingFocus != StrategyBriefingFocus.None
-            )
-        );
-        dirty = true;
-    }
-
-    /// <summary>
     /// Pauses briefing playback and asks whether the player wants to skip it.
     /// </summary>
     private void OpenBriefingSkipConfirmation()
     {
         briefingSkipConfirmationOpen = true;
-        strategyHudController.PauseBriefing();
+        briefingController.Pause();
         AudioManager.EnsureExists().PauseSfx();
         SetBriefingInteractionEnabled(true);
         briefingSkipConfirmation.Show("Do you wish to skip the tutorial?");
@@ -837,8 +772,8 @@ public sealed class StrategyController
         briefingSkipConfirmationOpen = false;
         SetBriefingInteractionEnabled(false);
         AudioManager.EnsureExists().StopSfx();
-        strategyHudController.ResumeBriefing();
-        strategyHudController.SkipBriefing(activeBriefing);
+        briefingController.Resume();
+        briefingController.Skip();
         dirty = true;
     }
 
@@ -849,7 +784,7 @@ public sealed class StrategyController
     {
         briefingSkipConfirmationOpen = false;
         SetBriefingInteractionEnabled(false);
-        strategyHudController.ResumeBriefing();
+        briefingController.Resume();
         AudioManager.EnsureExists().ResumeSfx();
         dirty = true;
     }
