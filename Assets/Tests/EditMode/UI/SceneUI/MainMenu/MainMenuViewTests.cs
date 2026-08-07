@@ -74,7 +74,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
-        public void AuthoredPrefab_CockpitPlanetAndControlsShareFullCanvas()
+        public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
         {
             Transform canvas = _prefabRoot.transform.Find("UI/Canvas");
             Transform viewport = canvas.Find("Viewport");
@@ -84,10 +84,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 AspectRatioFitter.AspectMode.FitInParent,
                 viewport.GetComponent<AspectRatioFitter>().aspectMode
             );
-            Assert.IsNotNull(viewport.Find("SpaceBackdrop/Planet"));
+            Assert.IsNotNull(viewport.Find("SpaceBackdrop/Starfield"));
+            Assert.IsNull(viewport.Find("SpaceBackdrop/Planet"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
-            Assert.AreEqual(7, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
+            Assert.AreEqual(6, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
         }
 
         [Test]
