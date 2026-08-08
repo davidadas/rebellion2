@@ -2520,6 +2520,78 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SelectedStrategicPlanetCapture_ReportsToBothFactions()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet coruscant, _) =
+                BuildTwoFactionMessageScene();
+            MessageDefinition definition = Definition(
+                MessageResultType.PlanetCaptured,
+                MessageType.Mission,
+                "captured:{system}",
+                "{newFaction} seized {system} from {previousFaction}",
+                imagePaths: FactionImages()
+            );
+            definition.PlanetInstanceID = coruscant.InstanceID;
+            definition.PreviousOwnerInstanceID = empire.InstanceID;
+            definition.NewOwnerInstanceID = alliance.InstanceID;
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[] { definition },
+                new PlanetOwnershipChangedResult
+                {
+                    Planet = coruscant,
+                    PreviousOwner = empire,
+                    NewOwner = alliance,
+                }
+            );
+
+            Assert.AreEqual("captured:Coruscant", FirstMessageFor(deliveries, alliance).Title);
+            Assert.AreEqual(
+                "Alliance seized Coruscant from Empire",
+                FirstMessageFor(deliveries, empire).Body
+            );
+        }
+
+        [Test]
+        public void CreateMessages_SelectedHeadquartersLoss_ReportsToBothFactions()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Building headquarters = new Building
+            {
+                InstanceID = "ALLIANCE_HQ",
+                DisplayName = "Alliance Headquarters",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            MessageDefinition definition = Definition(
+                MessageResultType.HeadquartersDestroyed,
+                MessageType.Mission,
+                "headquarters destroyed",
+                "{attacker} destroyed the {defender} headquarters at {system}"
+            );
+            definition.FactionInstanceID = alliance.InstanceID;
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[] { definition },
+                new HeadquartersDestroyedResult
+                {
+                    Headquarters = headquarters,
+                    Planet = target,
+                    Defender = alliance,
+                    Attacker = empire,
+                }
+            );
+
+            Assert.AreEqual(
+                "Empire destroyed the Alliance headquarters at Yavin",
+                FirstMessageFor(deliveries, alliance).Body
+            );
+            Assert.AreEqual("headquarters destroyed", FirstMessageFor(deliveries, empire).Title);
+        }
+
+        [Test]
         public void CreateMessages_BlockadeStarted_UsesTargetImageForBlockaderReport()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =

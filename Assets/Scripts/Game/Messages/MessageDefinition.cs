@@ -46,6 +46,8 @@ namespace Rebellion.Game.Messages
         PlanetJoinedBySupport,
         PlanetJoinedEnemyBySupport,
         PlanetDeclaredNeutralityBySupport,
+        PlanetCaptured,
+        HeadquartersDestroyed,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
@@ -97,6 +99,10 @@ namespace Rebellion.Game.Messages
         public BuildingType BuildingType { get; set; }
         public ManufacturingType ManufacturingType { get; set; }
         public ResearchDiscipline ResearchDiscipline { get; set; }
+        public string PlanetInstanceID { get; set; }
+        public string PreviousOwnerInstanceID { get; set; }
+        public string NewOwnerInstanceID { get; set; }
+        public string FactionInstanceID { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
         public bool ShowOfficerOverlay { get; set; }

@@ -98,6 +98,12 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddStrategicObjectiveMessages(
+                resultArray.OfType<PlanetOwnershipChangedResult>(),
+                resultArray.OfType<HeadquartersDestroyedResult>(),
+                game,
+                deliveries
+            );
             AddBlockadeMessages(
                 resultArray.OfType<BlockadeChangedResult>(),
                 resultArray.OfType<EvacuationLossesResult>(),
@@ -1851,6 +1857,129 @@ namespace Rebellion.Game.Messages
 
             return game.GetFactions().Where(faction => recipientIds.Contains(faction.InstanceID));
         }
+
+        /// <summary>
+        /// Adds content-defined reports for strategically significant planet captures and
+        /// headquarters losses.
+        /// </summary>
+        private void AddStrategicObjectiveMessages(
+            IEnumerable<PlanetOwnershipChangedResult> ownershipResults,
+            IEnumerable<HeadquartersDestroyedResult> headquartersResults,
+            GameRoot game,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (PlanetOwnershipChangedResult result in ownershipResults)
+            {
+                MessageDefinition definition = FindStrategicEventDefinition(
+                    MessageResultType.PlanetCaptured,
+                    result.Planet?.InstanceID,
+                    result.PreviousOwner?.InstanceID,
+                    result.NewOwner?.InstanceID,
+                    null
+                );
+                if (definition == null)
+                    continue;
+
+                foreach (Faction recipient in GetOwnershipChangeRecipients(result, game))
+                {
+                    AddDelivery(
+                        deliveries,
+                        recipient,
+                        WithEventLocation(
+                            CreateMessage(
+                                definition,
+                                recipient,
+                                new Dictionary<string, string>
+                                {
+                                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                                    {
+                                        "previousFaction",
+                                        result.PreviousOwner?.GetDisplayName() ?? string.Empty
+                                    },
+                                    {
+                                        "newFaction",
+                                        result.NewOwner?.GetDisplayName() ?? string.Empty
+                                    },
+                                },
+                                result.NewOwner
+                            ),
+                            result.Planet
+                        )
+                    );
+                }
+            }
+
+            foreach (HeadquartersDestroyedResult result in headquartersResults)
+            {
+                MessageDefinition definition = FindStrategicEventDefinition(
+                    MessageResultType.HeadquartersDestroyed,
+                    result.Planet?.InstanceID,
+                    null,
+                    null,
+                    result.Defender?.InstanceID
+                );
+                if (definition == null)
+                    continue;
+
+                foreach (
+                    Faction recipient in new[] { result.Attacker, result.Defender }
+                        .Where(faction => faction != null)
+                        .Distinct()
+                )
+                {
+                    AddDelivery(
+                        deliveries,
+                        recipient,
+                        WithEventLocation(
+                            CreateMessage(
+                                definition,
+                                recipient,
+                                new Dictionary<string, string>
+                                {
+                                    { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                                    {
+                                        "attacker",
+                                        result.Attacker?.GetDisplayName() ?? string.Empty
+                                    },
+                                    {
+                                        "defender",
+                                        result.Defender?.GetDisplayName() ?? string.Empty
+                                    },
+                                },
+                                result.Attacker
+                            ),
+                            result.Planet,
+                            result.Headquarters
+                        )
+                    );
+                }
+            }
+        }
+
+        private MessageDefinition FindStrategicEventDefinition(
+            MessageResultType resultType,
+            string planetInstanceId,
+            string previousOwnerInstanceId,
+            string newOwnerInstanceId,
+            string factionInstanceId
+        )
+        {
+            return _definitions.FirstOrDefault(definition =>
+                definition.ResultType == resultType
+                && MatchesOptionalSelector(definition.PlanetInstanceID, planetInstanceId)
+                && MatchesOptionalSelector(
+                    definition.PreviousOwnerInstanceID,
+                    previousOwnerInstanceId
+                )
+                && MatchesOptionalSelector(definition.NewOwnerInstanceID, newOwnerInstanceId)
+                && MatchesOptionalSelector(definition.FactionInstanceID, factionInstanceId)
+            );
+        }
+
+        private static bool MatchesOptionalSelector(string selector, string value) =>
+            string.IsNullOrWhiteSpace(selector)
+            || string.Equals(selector, value, StringComparison.Ordinal);
 
         /// <summary>
         /// Adds messages for blockades and evacuation losses.
