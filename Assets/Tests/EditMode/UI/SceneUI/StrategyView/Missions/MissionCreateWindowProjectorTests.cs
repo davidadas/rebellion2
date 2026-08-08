@@ -50,7 +50,12 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             _window.Configure(1, 15, 25, 300, 200, false, true, true);
             _planet = new GalaxyMapPlanet(
                 new GamePlanetSystem(),
-                new Planet { InstanceID = "planet", DisplayName = "Corellia" },
+                new Planet
+                {
+                    InstanceID = "planet",
+                    DisplayName = "Corellia",
+                    PlanetIconPath = _entityImagePath,
+                },
                 string.Empty
             );
             _missionChoices = new List<StrategyMissionChoice>
@@ -123,7 +128,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 data.SelectedMissionTexture
             );
             Assert.AreEqual("Corellia", data.TargetName);
-            Assert.IsNull(data.TargetTexture);
+            Assert.AreSame(_uiContext.GetTexture(_entityImagePath), data.TargetTexture);
             Assert.IsTrue(data.UsePlanetTargetPreview);
             Assert.AreSame(
                 _uiContext.GetTexture(theme.AgentsHeaderImagePath),
@@ -155,6 +160,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual((Color32)Color.gray, data.DropdownItems[1].LabelColor);
             Assert.IsEmpty(data.AgentRows);
             Assert.IsEmpty(data.DecoyRows);
+        }
+
+        [Test]
+        public void Build_PlanetTargetWithoutArtwork_UsesPlanetPreviewFallback()
+        {
+            _planet.Planet.PlanetIconPath = null;
+            MissionCreateWindowSession session = CreateSession(
+                new StrategyMissionTarget(_planet, null),
+                Array.Empty<IMissionParticipant>()
+            );
+
+            MissionCreateWindowRenderData data = _projector.Build(session, _window);
+
+            Assert.IsNull(data.TargetTexture);
+            Assert.IsTrue(data.UsePlanetTargetPreview);
         }
 
         [Test]

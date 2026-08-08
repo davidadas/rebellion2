@@ -152,6 +152,14 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Clears advisor activity associated with a replaced game session.
+    /// </summary>
+    public void ResetSession()
+    {
+        advisorController.ResetSession();
+    }
+
+    /// <summary>
     /// Applies one selected command from a HUD-owned context-menu request.
     /// </summary>
     /// <param name="request">The completed HUD request.</param>

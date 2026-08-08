@@ -271,6 +271,19 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Clears pending and active advisor presentation from a replaced game session.
+    /// </summary>
+    public void ResetSession()
+    {
+        pendingNotifications.Clear();
+        pendingExpirationTicks.Clear();
+        nextAllowedTicks.Clear();
+        playbackStarted = null;
+        playbackCompleted = null;
+        view?.ResetPlayback();
+    }
+
+    /// <summary>
     /// Resolves the notification code for a message, honoring subject-specific mappings.
     /// </summary>
     /// <param name="advisorTheme">The active advisor theme.</param>

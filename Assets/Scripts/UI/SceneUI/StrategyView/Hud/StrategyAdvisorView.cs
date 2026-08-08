@@ -370,6 +370,16 @@ public sealed class StrategyAdvisorView : MonoBehaviour
     }
 
     /// <summary>
+    /// Cancels advisor playback and restores the configured idle presentation.
+    /// </summary>
+    internal void ResetPlayback()
+    {
+        ClearPlayback();
+        SetIdleFrame(false);
+        SetIdleFrame(true);
+    }
+
+    /// <summary>
     /// Emits the semantic request to open the messages window.
     /// </summary>
     /// <param name="area">The droid hit area.</param>

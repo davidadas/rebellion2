@@ -18,6 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private Func<string> _selectNextTrack;
         private StrategyMusicController _controller;
         private StrategyMusicTheme _theme;
+        private int _stopMusicCalls;
         private readonly Queue<int> _randomIndices = new Queue<int>();
 
         [SetUp]
@@ -45,11 +46,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             };
             _randomIndices.Clear();
             _selectNextTrack = null;
+            _stopMusicCalls = 0;
             _controller = new StrategyMusicController(
                 () => game,
                 () => _theme,
                 GetRandomIndex,
-                selector => _selectNextTrack = selector
+                selector => _selectNextTrack = selector,
+                () => _stopMusicCalls++
             );
         }
 
@@ -155,6 +158,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             _controller.Resume();
 
             Assert.AreEqual(_advantageTrack, _selectNextTrack());
+        }
+
+        [Test]
+        public void Reset_StopsMusicAndRestartsCadenceWithStrategicTrack()
+        {
+            AddColonizedPlanets(_playerFaction, 3);
+            AddColonizedPlanets(_opponentFaction, 1);
+            _controller.Resume();
+            Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
+            Assert.AreEqual("neutral-1", _selectNextTrack());
+
+            _controller.Reset();
+            _controller.Resume();
+
+            Assert.AreEqual(1, _stopMusicCalls);
+            Assert.AreEqual(_strongAdvantageTrack, _selectNextTrack());
         }
 
         private int GetRandomIndex(int minimum, int maximum)
