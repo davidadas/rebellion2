@@ -244,6 +244,32 @@ public static class GameEventCatalogValidator
 
             switch (action)
             {
+                case RandomPlanetIncidentAction incident:
+                    if (incident.MinimumRawMaterials > incident.MaximumRawMaterials)
+                        errors.Add(
+                            $"{actionPath}.MinimumRawMaterials cannot exceed MaximumRawMaterials."
+                        );
+                    if (incident.MinimumEnergy > incident.MaximumEnergy)
+                        errors.Add($"{actionPath}.MinimumEnergy cannot exceed MaximumEnergy.");
+                    if (
+                        incident.DisasterLossProbabilityPerResource < 0
+                        || incident.DisasterLossProbabilityPerResource > 1
+                    )
+                        errors.Add(
+                            $"{actionPath}.DisasterLossProbabilityPerResource must be between 0 and 1."
+                        );
+                    if (
+                        incident.FacilityDestructionProbability < 0
+                        || incident.FacilityDestructionProbability > 1
+                    )
+                        errors.Add(
+                            $"{actionPath}.FacilityDestructionProbability must be between 0 and 1."
+                        );
+                    if (incident.EnergyFacilityTypes == null)
+                        errors.Add($"{actionPath}.EnergyFacilityTypes is null.");
+                    if (incident.DisasterFacilityTypes == null)
+                        errors.Add($"{actionPath}.DisasterFacilityTypes is null.");
+                    break;
                 case ConditionalAction conditional:
                     ValidateComposite(conditional.Conditionals, actionPath, 1, errors);
                     ValidateActionList(conditional.Actions, $"{actionPath}.Actions", errors);

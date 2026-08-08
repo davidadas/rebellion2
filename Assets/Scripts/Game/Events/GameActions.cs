@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -11,12 +12,296 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    public enum PlanetIncidentActionType
+    {
+        ResourceChange,
+        NaturalDisaster,
+    }
+
     public enum EventVariableOperation
     {
         Set,
         Add,
         Minimum,
         Maximum,
+    }
+
+    /// <summary>
+    /// Applies one original-style random incident to a uniformly selected eligible planet.
+    /// All probabilities, limits, candidate-system rules, and affected facility types are content data.
+    /// </summary>
+    [PersistableObject(Name = "RandomPlanetIncident")]
+    public sealed class RandomPlanetIncidentAction : GameAction
+    {
+        public PlanetIncidentActionType ActionType { get; set; }
+        public PlanetSystemType SystemType { get; set; } = PlanetSystemType.CoreSystem;
+        public int MinimumRawMaterials { get; set; }
+        public int MaximumRawMaterials { get; set; } = 15;
+        public int MinimumEnergy { get; set; }
+        public int MaximumEnergy { get; set; } = 15;
+        public double DisasterLossProbabilityPerResource { get; set; } = 0.05;
+        public double FacilityDestructionProbability { get; set; } = 0.1;
+        public List<BuildingType> EnergyFacilityTypes { get; set; } = new List<BuildingType>();
+        public List<BuildingType> DisasterFacilityTypes { get; set; } = new List<BuildingType>();
+
+        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
+
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+
+            Planet[] candidates = game.GetGalaxyMap()
+                .PlanetSystems.Where(system => system.SystemType == SystemType)
+                .SelectMany(system => system.Planets)
+                .Where(planet => !planet.IsDestroyed)
+                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .ToArray();
+            if (candidates.Length == 0)
+                return new List<GameResult>();
+
+            Planet planet = candidates[provider.NextInt(0, candidates.Length)];
+            return ActionType switch
+            {
+                PlanetIncidentActionType.ResourceChange => ApplyResourceChange(
+                    game,
+                    planet,
+                    provider
+                ),
+                PlanetIncidentActionType.NaturalDisaster => ApplyNaturalDisaster(
+                    game,
+                    planet,
+                    provider
+                ),
+                _ => throw new InvalidOperationException(
+                    $"Unsupported planet incident type '{ActionType}'."
+                ),
+            };
+        }
+
+        private List<GameResult> ApplyResourceChange(
+            GameRoot game,
+            Planet planet,
+            IRandomNumberProvider provider
+        )
+        {
+            int oldRaw = planet.NumRawResourceNodes;
+            int oldEnergy = planet.EnergyCapacity;
+            PlanetStatType stat;
+            int oldValue;
+            int newValue;
+
+            switch (provider.NextInt(0, 4))
+            {
+                case 0
+                    when HasCompletedFacility(planet, BuildingType.Mine)
+                        && oldRaw > MinimumRawMaterials:
+                    stat = PlanetStatType.RawMaterial;
+                    oldValue = oldRaw;
+                    newValue = oldRaw - 1;
+                    planet.NumRawResourceNodes = newValue;
+                    break;
+                case 1
+                    when HasAnyCompletedFacility(planet, EnergyFacilityTypes)
+                        && oldEnergy > MinimumEnergy:
+                    stat = PlanetStatType.Energy;
+                    oldValue = oldEnergy;
+                    newValue = oldEnergy - 1;
+                    planet.EnergyCapacity = newValue;
+                    break;
+                case 2 when oldRaw < MaximumRawMaterials && oldRaw < oldEnergy:
+                    stat = PlanetStatType.RawMaterial;
+                    oldValue = oldRaw;
+                    newValue = oldRaw + 1;
+                    planet.NumRawResourceNodes = newValue;
+                    break;
+                case 3 when oldEnergy < MaximumEnergy:
+                    stat = PlanetStatType.Energy;
+                    oldValue = oldEnergy;
+                    newValue = oldEnergy + 1;
+                    planet.EnergyCapacity = newValue;
+                    break;
+                default:
+                    return new List<GameResult>();
+            }
+
+            Faction faction = FindOwner(game, planet);
+            return new List<GameResult>
+            {
+                new PlanetStatChangedResult
+                {
+                    Planet = planet,
+                    Faction = faction,
+                    Stat = stat,
+                    OldValue = oldValue,
+                    NewValue = newValue,
+                    Tick = game.CurrentTick,
+                },
+                new PlanetIncidentResult
+                {
+                    Planet = planet,
+                    IncidentType = IncidentType.Resource,
+                    ChangedStat = stat,
+                    OldValue = oldValue,
+                    NewValue = newValue,
+                    Severity = Math.Abs(newValue - oldValue),
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+
+        private List<GameResult> ApplyNaturalDisaster(
+            GameRoot game,
+            Planet planet,
+            IRandomNumberProvider provider
+        )
+        {
+            int oldRaw = planet.NumRawResourceNodes;
+            int oldEnergy = planet.EnergyCapacity;
+            if (oldRaw == 0 && oldEnergy == 0)
+                return new List<GameResult>();
+
+            int rawLoss = 0;
+            int energyLoss = 0;
+            int iterations = Math.Max(oldRaw, oldEnergy);
+            for (int iteration = 0; iteration < iterations; iteration++)
+            {
+                if (
+                    iteration < oldRaw
+                    && RollProbability(
+                        provider,
+                        ((oldEnergy - rawLoss - energyLoss) + oldRaw)
+                            * DisasterLossProbabilityPerResource
+                    )
+                )
+                    rawLoss++;
+                if (
+                    iteration < oldEnergy
+                    && RollProbability(
+                        provider,
+                        ((oldRaw - rawLoss - energyLoss) + oldEnergy)
+                            * DisasterLossProbabilityPerResource
+                    )
+                )
+                    energyLoss++;
+            }
+
+            if (rawLoss == 0 && energyLoss == 0)
+            {
+                if (oldRaw > 0)
+                    rawLoss = 1;
+                else
+                    energyLoss = 1;
+            }
+
+            planet.EnergyCapacity = oldEnergy - energyLoss;
+            planet.NumRawResourceNodes = Math.Min(oldRaw - rawLoss, planet.EnergyCapacity);
+
+            List<IGameEntity> destroyed = new List<IGameEntity>();
+            foreach (
+                Building building in planet
+                    .Buildings.Where(building =>
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && DisasterFacilityTypes.Contains(building.BuildingType)
+                    )
+                    .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
+                    .ToArray()
+            )
+            {
+                if (!RollProbability(provider, FacilityDestructionProbability))
+                    continue;
+                destroyed.Add(building);
+                game.DetachNode(building);
+            }
+
+            List<GameResult> results = new List<GameResult>();
+            AddStatChange(
+                results,
+                game,
+                planet,
+                PlanetStatType.RawMaterial,
+                oldRaw,
+                planet.NumRawResourceNodes
+            );
+            AddStatChange(
+                results,
+                game,
+                planet,
+                PlanetStatType.Energy,
+                oldEnergy,
+                planet.EnergyCapacity
+            );
+            results.AddRange(
+                destroyed.Select(entity =>
+                    (GameResult)
+                        new GameObjectDestroyedResult
+                        {
+                            DestroyedObject = entity,
+                            Context = planet,
+                            Tick = game.CurrentTick,
+                        }
+                )
+            );
+            results.Add(
+                new PlanetIncidentResult
+                {
+                    Planet = planet,
+                    IncidentType = IncidentType.Disaster,
+                    Severity = rawLoss + energyLoss + destroyed.Count,
+                    OldValue = oldRaw + oldEnergy,
+                    NewValue = planet.NumRawResourceNodes + planet.EnergyCapacity,
+                    DestroyedObjects = destroyed,
+                    Tick = game.CurrentTick,
+                }
+            );
+            return results;
+        }
+
+        private static bool HasCompletedFacility(Planet planet, BuildingType type) =>
+            planet.Buildings.Any(building =>
+                building.BuildingType == type
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+            );
+
+        private static bool HasAnyCompletedFacility(
+            Planet planet,
+            IReadOnlyCollection<BuildingType> types
+        ) =>
+            planet.Buildings.Any(building =>
+                types.Contains(building.BuildingType)
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+            );
+
+        private static bool RollProbability(IRandomNumberProvider provider, double probability) =>
+            provider.NextDouble() < Math.Min(1.0, Math.Max(0.0, probability));
+
+        private static void AddStatChange(
+            ICollection<GameResult> results,
+            GameRoot game,
+            Planet planet,
+            PlanetStatType stat,
+            int oldValue,
+            int newValue
+        )
+        {
+            if (oldValue == newValue)
+                return;
+            results.Add(
+                new PlanetStatChangedResult
+                {
+                    Planet = planet,
+                    Faction = FindOwner(game, planet),
+                    Stat = stat,
+                    OldValue = oldValue,
+                    NewValue = newValue,
+                    Tick = game.CurrentTick,
+                }
+            );
+        }
+
+        private static Faction FindOwner(GameRoot game, Planet planet) =>
+            game.GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
     }
 
     [PersistableObject(Name = "RandomOutcome")]

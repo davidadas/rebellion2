@@ -104,6 +104,7 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddPlanetIncidentMessages(resultArray.OfType<PlanetIncidentResult>(), game, deliveries);
             AddBlockadeMessages(
                 resultArray.OfType<BlockadeChangedResult>(),
                 resultArray.OfType<EvacuationLossesResult>(),
@@ -1980,6 +1981,69 @@ namespace Rebellion.Game.Messages
         private static bool MatchesOptionalSelector(string selector, string value) =>
             string.IsNullOrWhiteSpace(selector)
             || string.Equals(selector, value, StringComparison.Ordinal);
+
+        /// <summary>
+        /// Adds content-defined reports for natural disasters and resource discoveries or losses.
+        /// </summary>
+        private void AddPlanetIncidentMessages(
+            IEnumerable<PlanetIncidentResult> results,
+            GameRoot game,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (PlanetIncidentResult result in results)
+            {
+                Faction recipient = GetFaction(game, result.Planet?.OwnerInstanceID);
+                if (recipient == null)
+                    continue;
+
+                MessageResultType resultType = result.IncidentType switch
+                {
+                    IncidentType.Disaster => MessageResultType.NaturalDisaster,
+                    IncidentType.Resource when result.NewValue > result.OldValue =>
+                        MessageResultType.NewResources,
+                    IncidentType.Resource => MessageResultType.ResourcesDepleted,
+                    _ => MessageResultType.None,
+                };
+                if (resultType == MessageResultType.None)
+                    continue;
+
+                bool hasDestroyedObjects = result.DestroyedObjects.Count > 0;
+                MessageDefinition definition = _definitions.FirstOrDefault(definition =>
+                    definition.ResultType == resultType
+                    && (
+                        resultType == MessageResultType.NaturalDisaster
+                            ? definition.HasDestroyedObjects == hasDestroyedObjects
+                            : definition.PlanetStat == result.ChangedStat
+                    )
+                );
+                if (definition == null)
+                    continue;
+
+                string destroyedObjects = string.Join(
+                    Environment.NewLine,
+                    result.DestroyedObjects.Select(entity => entity.GetDisplayName())
+                );
+                AddDelivery(
+                    deliveries,
+                    recipient,
+                    WithEventLocation(
+                        CreateMessage(
+                            definition,
+                            recipient,
+                            new Dictionary<string, string>
+                            {
+                                { "system", result.Planet.GetDisplayName() },
+                                { "destroyedObjects", destroyedObjects },
+                            },
+                            recipient
+                        ),
+                        result.Planet,
+                        result.DestroyedObjects.OfType<ISceneNode>().FirstOrDefault()
+                    )
+                );
+            }
+        }
 
         /// <summary>
         /// Adds messages for blockades and evacuation losses.

@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.Messages
 {
@@ -2589,6 +2590,73 @@ namespace Rebellion.Tests.Game.Messages
                 FirstMessageFor(deliveries, alliance).Body
             );
             Assert.AreEqual("headquarters destroyed", FirstMessageFor(deliveries, empire).Title);
+        }
+
+        [Test]
+        public void CreateMessages_PlanetIncident_UsesStatAndLossSelectors()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = alliance.InstanceID;
+            MessageDefinition newRawMaterials = Definition(
+                MessageResultType.NewResources,
+                MessageType.Conflict,
+                "New Resources on {system}",
+                "New raw materials on {system}"
+            );
+            newRawMaterials.PlanetStat = PlanetStatType.RawMaterial;
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[] { newRawMaterials },
+                new PlanetIncidentResult
+                {
+                    Planet = target,
+                    IncidentType = IncidentType.Resource,
+                    ChangedStat = PlanetStatType.RawMaterial,
+                    OldValue = 4,
+                    NewValue = 5,
+                }
+            );
+
+            Message message = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual("New Resources on Yavin", message.Title);
+            Assert.AreEqual("New raw materials on Yavin", message.Body);
+            Assert.AreEqual(target.InstanceID, message.EventLocationInstanceID);
+        }
+
+        [Test]
+        public void CreateMessages_NaturalDisaster_ListsDestroyedFacilities()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = alliance.InstanceID;
+            Building shipyard = new Building
+            {
+                InstanceID = "shipyard",
+                DisplayName = "Orbital Shipyard",
+            };
+            MessageDefinition definition = Definition(
+                MessageResultType.NaturalDisaster,
+                MessageType.Conflict,
+                "Natural Disaster on {system}",
+                "Units lost:\n{destroyedObjects}"
+            );
+            definition.HasDestroyedObjects = true;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[] { definition },
+                    new PlanetIncidentResult
+                    {
+                        Planet = target,
+                        IncidentType = IncidentType.Disaster,
+                        DestroyedObjects = new List<IGameEntity> { shipyard },
+                    }
+                ),
+                alliance
+            );
+
+            StringAssert.Contains("Orbital Shipyard", message.Body);
         }
 
         [Test]

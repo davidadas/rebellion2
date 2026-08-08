@@ -413,5 +413,108 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(50, result.Severity);
             Assert.AreEqual(50, luke.InjuryPoints);
         }
+
+        [Test]
+        public void RandomPlanetIncident_ResourceIncrease_UsesAuthoredQuartileAndLimits()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 4;
+            planet.EnergyCapacity = 8;
+            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            {
+                ActionType = PlanetIncidentActionType.ResourceChange,
+                MaximumRawMaterials = 15,
+                MaximumEnergy = 15,
+            };
+
+            List<GameResult> results = action.Execute(game, new SequenceRNG(new[] { 0, 2 }));
+
+            Assert.AreEqual(5, planet.NumRawResourceNodes);
+            PlanetIncidentResult incident = results.OfType<PlanetIncidentResult>().Single();
+            Assert.AreEqual(IncidentType.Resource, incident.IncidentType);
+            Assert.AreEqual(PlanetStatType.RawMaterial, incident.ChangedStat);
+            Assert.AreEqual(4, incident.OldValue);
+            Assert.AreEqual(5, incident.NewValue);
+        }
+
+        [Test]
+        public void RandomPlanetIncident_NeutralPlanet_StillChangesResourcesWithoutFaction()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.OwnerInstanceID = null;
+            planet.NumRawResourceNodes = 4;
+            planet.EnergyCapacity = 8;
+            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            {
+                ActionType = PlanetIncidentActionType.ResourceChange,
+            };
+
+            PlanetStatChangedResult result = action
+                .Execute(game, new SequenceRNG(new[] { 0, 2 }))
+                .OfType<PlanetStatChangedResult>()
+                .Single();
+
+            Assert.IsNull(result.Faction);
+            Assert.AreEqual(5, planet.NumRawResourceNodes);
+        }
+
+        [Test]
+        public void RandomPlanetIncident_NaturalDisaster_GuaranteesOneResourceLoss()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 3;
+            planet.EnergyCapacity = 3;
+            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            {
+                ActionType = PlanetIncidentActionType.NaturalDisaster,
+                DisasterLossProbabilityPerResource = 0,
+                FacilityDestructionProbability = 0,
+            };
+
+            List<GameResult> results = action.Execute(game, new FixedRNG(0.99));
+
+            Assert.AreEqual(2, planet.NumRawResourceNodes);
+            Assert.AreEqual(3, planet.EnergyCapacity);
+            Assert.AreEqual(1, results.OfType<PlanetStatChangedResult>().Count());
+            Assert.AreEqual(
+                IncidentType.Disaster,
+                results.OfType<PlanetIncidentResult>().Single().IncidentType
+            );
+        }
+
+        [Test]
+        public void RandomPlanetIncident_NaturalDisaster_DestroysAuthoredFacilityTypes()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            planet.NumRawResourceNodes = 1;
+            planet.EnergyCapacity = 1;
+            Building shipyard = new Building
+            {
+                InstanceID = "shipyard",
+                OwnerInstanceID = planet.OwnerInstanceID,
+                BuildingType = BuildingType.Shipyard,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(shipyard, planet);
+            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            {
+                ActionType = PlanetIncidentActionType.NaturalDisaster,
+                DisasterLossProbabilityPerResource = 0,
+                FacilityDestructionProbability = 1,
+                DisasterFacilityTypes = new List<BuildingType> { BuildingType.Shipyard },
+            };
+
+            List<GameResult> results = action.Execute(game, new FixedRNG(0.99));
+
+            Assert.IsFalse(planet.Buildings.Contains(shipyard));
+            Assert.AreSame(
+                shipyard,
+                results.OfType<GameObjectDestroyedResult>().Single().DestroyedObject
+            );
+            Assert.AreSame(
+                shipyard,
+                results.OfType<PlanetIncidentResult>().Single().DestroyedObjects.Single()
+            );
+        }
     }
 }

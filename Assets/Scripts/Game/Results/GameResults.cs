@@ -253,6 +253,10 @@ namespace Rebellion.Game.Results
         public Planet Planet { get; set; }
         public IncidentType IncidentType { get; set; }
         public int Severity { get; set; }
+        public PlanetStatType ChangedStat { get; set; }
+        public int OldValue { get; set; }
+        public int NewValue { get; set; }
+        public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
     }
 
     #endregion

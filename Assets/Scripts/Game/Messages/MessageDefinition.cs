@@ -48,6 +48,9 @@ namespace Rebellion.Game.Messages
         PlanetDeclaredNeutralityBySupport,
         PlanetCaptured,
         HeadquartersDestroyed,
+        NaturalDisaster,
+        NewResources,
+        ResourcesDepleted,
         BlockadeInitiated,
         BlockadeDetected,
         EvacuationLosses,
@@ -103,6 +106,8 @@ namespace Rebellion.Game.Messages
         public string PreviousOwnerInstanceID { get; set; }
         public string NewOwnerInstanceID { get; set; }
         public string FactionInstanceID { get; set; }
+        public PlanetStatType PlanetStat { get; set; }
+        public bool HasDestroyedObjects { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
         public bool ShowOfficerOverlay { get; set; }
