@@ -153,6 +153,33 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("CompletionVariableKey is required", exception.Message);
         }
 
+        [Test]
+        public void Validate_OfficerEffectsWithInvalidConfiguration_ReportsAllProblems()
+        {
+            GameEvent gameEvent = CreateEvent("EFFECTS");
+            gameEvent.Actions.Add(
+                new IncreaseOfficerForceAction
+                {
+                    MinimumIncrease = -1,
+                    CurrentRankPercent = -1,
+                    PositiveRankGapPercent = 20,
+                }
+            );
+            gameEvent.Actions.Add(
+                new ApplyOfficerInjuryAction { MinimumInjury = 2, MaximumInjury = 1 }
+            );
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("OfficerInstanceID is required", exception.Message);
+            StringAssert.Contains("MinimumIncrease cannot be negative", exception.Message);
+            StringAssert.Contains("CurrentRankPercent cannot be negative", exception.Message);
+            StringAssert.Contains("ReferenceOfficerInstanceID is required", exception.Message);
+            StringAssert.Contains("MaximumInjury cannot be less", exception.Message);
+        }
+
         private static GameEvent CreateEvent(string instanceId)
         {
             return new GameEvent

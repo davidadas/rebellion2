@@ -327,4 +327,102 @@ namespace Rebellion.Game.Events
             };
         }
     }
+
+    /// <summary>
+    /// Increases one officer's Force value using the greatest configured reward component.
+    /// </summary>
+    [PersistableObject(Name = "IncreaseOfficerForce")]
+    public class IncreaseOfficerForceAction : GameAction
+    {
+        public string OfficerInstanceID { get; set; }
+        public string ReferenceOfficerInstanceID { get; set; }
+        public int MinimumIncrease { get; set; }
+        public int CurrentRankPercent { get; set; }
+        public int PositiveRankGapPercent { get; set; }
+        public bool SuppressRankChangeMessage { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer officer = ResolveOfficer(game, OfficerInstanceID, nameof(OfficerInstanceID));
+            Officer reference = string.IsNullOrWhiteSpace(ReferenceOfficerInstanceID)
+                ? null
+                : ResolveOfficer(
+                    game,
+                    ReferenceOfficerInstanceID,
+                    nameof(ReferenceOfficerInstanceID)
+                );
+            int previousRank = officer.ForceRank;
+            int increase = Math.Max(MinimumIncrease, previousRank * CurrentRankPercent / 100);
+            if (reference != null)
+            {
+                int positiveGap = Math.Max(0, reference.ForceRank - previousRank);
+                increase = Math.Max(increase, positiveGap * PositiveRankGapPercent / 100);
+            }
+
+            officer.ForceValue += increase;
+            return new List<GameResult>
+            {
+                new ForceExperienceResult
+                {
+                    Officer = officer,
+                    ExperienceGained = increase,
+                    PreviousForceRank = previousRank,
+                    CurrentForceRank = officer.ForceRank,
+                    SuppressRankChangeMessage = SuppressRankChangeMessage,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+
+        private static Officer ResolveOfficer(GameRoot game, string instanceId, string memberName)
+        {
+            return game.GetSceneNodeByInstanceID<Officer>(instanceId)
+                ?? throw new InvalidOperationException(
+                    $"IncreaseOfficerForce could not resolve {memberName} '{instanceId}'."
+                );
+        }
+    }
+
+    /// <summary>
+    /// Applies a data-authored inclusive random injury range to one officer.
+    /// </summary>
+    [PersistableObject(Name = "ApplyOfficerInjury")]
+    public class ApplyOfficerInjuryAction : GameAction
+    {
+        public string OfficerInstanceID { get; set; }
+        public int MinimumInjury { get; set; }
+        public int MaximumInjury { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            return Execute(game, game.Random);
+        }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"ApplyOfficerInjury could not resolve officer '{OfficerInstanceID}'."
+                );
+
+            int injury = provider.NextInt(MinimumInjury, checked(MaximumInjury + 1));
+            officer.ApplyInjury(injury, game.Config.Recovery.MaxInjuryPoints);
+            return new List<GameResult>
+            {
+                new OfficerInjuredResult
+                {
+                    Officer = officer,
+                    Severity = injury,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
 }

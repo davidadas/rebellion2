@@ -225,5 +225,56 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(60, result.CompletionBonusPercent);
             Assert.AreEqual("luke.dagobah.completed", result.CompletionVariableKey);
         }
+
+        [Test]
+        public void IncreaseOfficerForce_RankGapReward_UsesOriginalMaximumFormula()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.ForceValue = 40;
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            vader.ForceValue = 100;
+            game.AttachNode(luke, rebelPlanet);
+            game.AttachNode(vader, empirePlanet);
+            IncreaseOfficerForceAction action = new IncreaseOfficerForceAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                ReferenceOfficerInstanceID = vader.InstanceID,
+                MinimumIncrease = 1,
+                PositiveRankGapPercent = 25,
+                SuppressRankChangeMessage = true,
+            };
+
+            ForceExperienceResult result = action
+                .Execute(game)
+                .OfType<ForceExperienceResult>()
+                .Single();
+
+            Assert.AreEqual(15, result.ExperienceGained);
+            Assert.AreEqual(55, luke.ForceValue);
+            Assert.IsTrue(result.SuppressRankChangeMessage);
+        }
+
+        [Test]
+        public void ApplyOfficerInjury_InclusiveRange_AppliesRolledSeverity()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, rebelPlanet);
+            ApplyOfficerInjuryAction action = new ApplyOfficerInjuryAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                MinimumInjury = 1,
+                MaximumInjury = 100,
+            };
+
+            OfficerInjuredResult result = action
+                .Execute(game, new FixedRandomProvider(new[] { 0.49 }))
+                .OfType<OfficerInjuredResult>()
+                .Single();
+
+            Assert.AreEqual(50, result.Severity);
+            Assert.AreEqual(50, luke.InjuryPoints);
+        }
     }
 }

@@ -321,6 +321,20 @@ namespace Rebellion.Tests.Util.Serialization
                         CompletionVariableValue = 1,
                         DisplayName = "Journey to Dagobah",
                     },
+                    new IncreaseOfficerForceAction
+                    {
+                        OfficerInstanceID = "LUKE_SKYWALKER",
+                        ReferenceOfficerInstanceID = "DARTH_VADER",
+                        MinimumIncrease = 1,
+                        PositiveRankGapPercent = 25,
+                        SuppressRankChangeMessage = true,
+                    },
+                    new ApplyOfficerInjuryAction
+                    {
+                        OfficerInstanceID = "LUKE_SKYWALKER",
+                        MinimumInjury = 1,
+                        MaximumInjury = 100,
+                    },
                 },
             };
 
@@ -353,6 +367,15 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(100, training.DurationTicks);
             Assert.AreEqual(60, training.CompletionBonusPercent);
             Assert.AreEqual("luke.dagobah.completed", training.CompletionVariableKey);
+            IncreaseOfficerForceAction increase =
+                deserialized.Actions[3] as IncreaseOfficerForceAction;
+            Assert.IsNotNull(increase);
+            Assert.AreEqual("DARTH_VADER", increase.ReferenceOfficerInstanceID);
+            Assert.AreEqual(25, increase.PositiveRankGapPercent);
+            ApplyOfficerInjuryAction injury = deserialized.Actions[4] as ApplyOfficerInjuryAction;
+            Assert.IsNotNull(injury);
+            Assert.AreEqual(1, injury.MinimumInjury);
+            Assert.AreEqual(100, injury.MaximumInjury);
         }
 
         [Test]

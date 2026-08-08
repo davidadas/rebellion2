@@ -243,6 +243,43 @@ public static class GameEventCatalogValidator
                     if (string.IsNullOrWhiteSpace(training.CompletionVariableKey))
                         errors.Add($"{actionPath}.CompletionVariableKey is required.");
                     break;
+                case IncreaseOfficerForceAction force:
+                    if (string.IsNullOrWhiteSpace(force.OfficerInstanceID))
+                        errors.Add($"{actionPath}.OfficerInstanceID is required.");
+                    if (force.MinimumIncrease < 0)
+                        errors.Add($"{actionPath}.MinimumIncrease cannot be negative.");
+                    if (force.CurrentRankPercent < 0)
+                        errors.Add($"{actionPath}.CurrentRankPercent cannot be negative.");
+                    if (force.PositiveRankGapPercent < 0)
+                        errors.Add($"{actionPath}.PositiveRankGapPercent cannot be negative.");
+                    if (
+                        force.MinimumIncrease == 0
+                        && force.CurrentRankPercent == 0
+                        && force.PositiveRankGapPercent == 0
+                    )
+                        errors.Add(
+                            $"{actionPath} requires at least one positive reward component."
+                        );
+                    if (
+                        force.PositiveRankGapPercent > 0
+                        && string.IsNullOrWhiteSpace(force.ReferenceOfficerInstanceID)
+                    )
+                        errors.Add(
+                            $"{actionPath}.ReferenceOfficerInstanceID is required when PositiveRankGapPercent is configured."
+                        );
+                    break;
+                case ApplyOfficerInjuryAction injury:
+                    if (string.IsNullOrWhiteSpace(injury.OfficerInstanceID))
+                        errors.Add($"{actionPath}.OfficerInstanceID is required.");
+                    if (injury.MinimumInjury < 0)
+                        errors.Add($"{actionPath}.MinimumInjury cannot be negative.");
+                    if (injury.MaximumInjury < injury.MinimumInjury)
+                        errors.Add(
+                            $"{actionPath}.MaximumInjury cannot be less than MinimumInjury."
+                        );
+                    if (injury.MaximumInjury == int.MaxValue)
+                        errors.Add($"{actionPath}.MaximumInjury must be less than Int32.MaxValue.");
+                    break;
                 case TriggerEventAction trigger
                     when string.IsNullOrWhiteSpace(trigger.EventInstanceID):
                     errors.Add($"{actionPath}.EventInstanceID is required.");
