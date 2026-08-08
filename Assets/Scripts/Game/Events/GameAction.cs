@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Rebellion.Game.Results;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -12,23 +13,7 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public abstract class GameAction
     {
-        [PersistableAttribute(Name = "Type")]
-        protected string ActionType { get; set; }
-
-        [PersistableAttribute(Name = "Value")]
-        protected string ActionValue { get; set; }
-
         public GameAction() { }
-
-        public GameAction(string type, string value)
-        {
-            ActionType = type;
-            ActionValue = value;
-        }
-
-        protected string GetActionType() => ActionType;
-
-        protected string GetActionValue() => ActionValue;
 
         /// <summary>
         /// Executes the action, modifying the game state.
@@ -36,5 +21,15 @@ namespace Rebellion.Game.Events
         /// <param name="game">The current game state.</param>
         /// <returns>Results describing what changed.</returns>
         public abstract List<GameResult> Execute(GameRoot game);
+
+        /// <summary>
+        /// Executes the action with the event engine's deterministic random source.
+        /// Composite or stochastic actions override this method to pass the source onward.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random provider for this execution chain.</param>
+        /// <returns>Results describing what changed.</returns>
+        public virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
+            Execute(game);
     }
 }

@@ -62,6 +62,39 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("Event trigger cycle", exception.Message);
         }
 
+        [Test]
+        public void Validate_NarrativeMessageWithoutRecipientOrText_ReportsBothProblems()
+        {
+            GameEvent gameEvent = CreateEvent("STORY");
+            gameEvent.Actions.Add(new NarrativeMessageAction());
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("requires RecipientFactionInstanceID", exception.Message);
+            StringAssert.Contains("requires a title or body template", exception.Message);
+        }
+
+        [Test]
+        public void Validate_RandomOutcomeProbabilityOutsideUnitRange_ReportsProblem()
+        {
+            GameEvent gameEvent = CreateEvent("RANDOM");
+            gameEvent.Actions.Add(
+                new RandomOutcomeAction
+                {
+                    Probability = 1.1,
+                    Actions = new List<GameAction> { new TriggerDuelAction() },
+                }
+            );
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("Probability must be between 0 and 1", exception.Message);
+        }
+
         private static GameEvent CreateEvent(string instanceId)
         {
             return new GameEvent

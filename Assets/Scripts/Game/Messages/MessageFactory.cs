@@ -79,6 +79,7 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddNarrativeEventMessages(resultArray.OfType<NarrativeMessageResult>(), deliveries);
             AddSabotageMessages(sabotageResults, game, deliveries);
             AddResearchMessages(
                 resultArray.OfType<ResearchOrderedResult>(),
@@ -632,6 +633,49 @@ namespace Rebellion.Game.Messages
                 AdvisorSubjectNotification.Report,
                 officer
             );
+        }
+
+        private void AddNarrativeEventMessages(
+            IEnumerable<NarrativeMessageResult> results,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (NarrativeMessageResult result in results)
+            {
+                if (result?.Recipient == null)
+                    continue;
+
+                string subjectName = result.Subject?.GetDisplayName() ?? string.Empty;
+                string locationName = result.Location?.GetDisplayName() ?? string.Empty;
+                MessageDefinition definition = new MessageDefinition
+                {
+                    MessageType = result.MessageType,
+                    TitleTemplate = result.TitleTemplate,
+                    BodyTemplate = result.BodyTemplate,
+                    ImagePath = result.ImagePath,
+                    VoicePath = result.VoicePath,
+                };
+                Message message = _templateBuilder.Build(
+                    definition,
+                    result.Recipient,
+                    new Dictionary<string, string>
+                    {
+                        { "subject", subjectName },
+                        { "location", locationName },
+                        { "faction", result.Recipient.GetDisplayName() },
+                    },
+                    overlayImagePath: result.OverlayImagePath
+                );
+                if (message == null)
+                    continue;
+
+                message.AdvisorNotificationCode = (int)result.AdvisorNotification;
+                message.AdvisorSubjectNotification = result.AdvisorSubjectNotification;
+                message.AdvisorSubjectTypeID = result.Subject?.TypeID;
+                message.EventLocationInstanceID = result.Location?.InstanceID;
+                message.NavigationTargetInstanceID = result.Subject?.InstanceID;
+                AddDelivery(deliveries, result.Recipient, message);
+            }
         }
 
         /// <summary>

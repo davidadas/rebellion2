@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -502,6 +503,24 @@ namespace Rebellion.Game.Results
     public class HeritageRevealedResult : GameResult
     {
         public Officer Officer { get; set; }
+    }
+
+    /// <summary>
+    /// A data-defined narrative event requested a faction message.
+    /// </summary>
+    public class NarrativeMessageResult : GameResult
+    {
+        public Faction Recipient { get; set; }
+        public ISceneNode Subject { get; set; }
+        public Planet Location { get; set; }
+        public MessageType MessageType { get; set; }
+        public string TitleTemplate { get; set; }
+        public string BodyTemplate { get; set; }
+        public string ImagePath { get; set; }
+        public string OverlayImagePath { get; set; }
+        public string VoicePath { get; set; }
+        public AdvisorNotificationCode AdvisorNotification { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
     }
 
     /// <summary>

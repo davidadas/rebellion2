@@ -68,12 +68,12 @@ namespace Rebellion.Game.Events
 
             foreach (GameAction action in Actions)
             {
-                if (action is RandomOutcomeAction randomAction)
-                    randomAction.SetRandomProvider(provider);
-                else if (action is TriggerEventAction triggerAction)
-                    triggerAction.SetRandomProvider(provider);
-
-                results.AddRange(action.Execute(game));
+                foreach (GameResult result in action.Execute(game, provider))
+                {
+                    if (result != null && string.IsNullOrEmpty(result.SourceEventInstanceID))
+                        result.SourceEventInstanceID = InstanceID;
+                    results.Add(result);
+                }
             }
 
             return results;

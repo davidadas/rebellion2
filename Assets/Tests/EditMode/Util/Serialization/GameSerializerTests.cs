@@ -6,6 +6,7 @@ using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game.Events;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Movement;
 using Rebellion.Util.Serialization;
 
@@ -264,6 +265,48 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(conditional);
             Assert.AreEqual("30", conditional.ConditionalValue);
             Assert.AreEqual("GreaterThan", conditional.ConditionalType);
+        }
+
+        [Test]
+        public void Serialize_GameEventNarrativeActions_RoundTripsAliasesAndPresentation()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "EVENT_STORY",
+                Actions = new List<GameAction>
+                {
+                    new RandomOutcomeAction
+                    {
+                        Probability = 0.75,
+                        Actions = new List<GameAction>
+                        {
+                            new NarrativeMessageAction
+                            {
+                                SubjectInstanceID = "LUKE",
+                                MessageType = MessageType.Advice,
+                                TitleTemplate = "{subject}",
+                                BodyTemplate = "At {location}",
+                                VoicePath = "Story/dialogue",
+                            },
+                        },
+                    },
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, gameEvent);
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
+
+            StringAssert.Contains("<RandomOutcome Value=\"0.75\">", serializedXml);
+            StringAssert.Contains("<NarrativeMessage>", serializedXml);
+            RandomOutcomeAction random = deserialized.Actions[0] as RandomOutcomeAction;
+            Assert.IsNotNull(random);
+            Assert.AreEqual(0.75, random.Probability);
+            NarrativeMessageAction message = random.Actions[0] as NarrativeMessageAction;
+            Assert.IsNotNull(message);
+            Assert.AreEqual("LUKE", message.SubjectInstanceID);
+            Assert.AreEqual(MessageType.Advice, message.MessageType);
+            Assert.AreEqual("Story/dialogue", message.VoicePath);
         }
 
         [Test]

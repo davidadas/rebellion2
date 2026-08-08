@@ -5,8 +5,10 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Events
 {
@@ -60,6 +62,77 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("a1", duel.Attackers[0].InstanceID);
             Assert.AreEqual(1, duel.Defenders.Count);
             Assert.AreEqual("d1", duel.Defenders[0].InstanceID);
+        }
+
+        [Test]
+        public void NarrativeMessage_RecipientFromSubject_EmitsResolvedResult()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.DisplayName = "Luke Skywalker";
+            game.AttachNode(luke, rebelPlanet);
+            NarrativeMessageAction action = new NarrativeMessageAction
+            {
+                SubjectInstanceID = luke.InstanceID,
+                MessageType = MessageType.Advice,
+                TitleTemplate = "A message for {subject}",
+                BodyTemplate = "Report from {location}",
+                VoicePath = "Audio/Luke/dialogue",
+            };
+
+            NarrativeMessageResult result = action
+                .Execute(game)
+                .OfType<NarrativeMessageResult>()
+                .Single();
+
+            Assert.AreEqual("rebels", result.Recipient.InstanceID);
+            Assert.AreSame(luke, result.Subject);
+            Assert.AreSame(rebelPlanet, result.Location);
+            Assert.AreEqual("Audio/Luke/dialogue", result.VoicePath);
+        }
+
+        [Test]
+        public void GameEvent_NestedRandomTrigger_UsesOneProviderAndPreservesChildSource()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            GameEvent child = new GameEvent
+            {
+                InstanceID = "child",
+                Actions = new List<GameAction>
+                {
+                    new NarrativeMessageAction
+                    {
+                        RecipientFactionInstanceID = "rebels",
+                        TitleTemplate = "Child",
+                    },
+                },
+            };
+            GameEvent root = new GameEvent
+            {
+                InstanceID = "root",
+                Actions = new List<GameAction>
+                {
+                    new RandomOutcomeAction
+                    {
+                        Probability = 1,
+                        Actions = new List<GameAction>
+                        {
+                            new TriggerEventAction { EventInstanceID = child.InstanceID },
+                        },
+                    },
+                },
+            };
+            game.EventPool.Add(child);
+            game.EventPool.Add(root);
+
+            NarrativeMessageResult result = root.Execute(
+                    game,
+                    new FixedRandomProvider(new[] { 0d })
+                )
+                .OfType<NarrativeMessageResult>()
+                .Single();
+
+            Assert.AreEqual(child.InstanceID, result.SourceEventInstanceID);
         }
     }
 }

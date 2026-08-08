@@ -16,6 +16,45 @@ namespace Rebellion.Tests.Game.Messages
     public class MessageFactoryTests
     {
         [Test]
+        public void CreateMessages_NarrativeEvent_UsesDataDefinedPresentation()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Officer luke = EntityFactory.CreateOfficer("luke", alliance.InstanceID);
+            luke.DisplayName = "Luke Skywalker";
+            game.AttachNode(luke, destination);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new MessageDefinition[0],
+                    new NarrativeMessageResult
+                    {
+                        Recipient = alliance,
+                        Subject = luke,
+                        Location = destination,
+                        MessageType = MessageType.Advice,
+                        TitleTemplate = "{subject} at {location}",
+                        BodyTemplate = "For {faction}",
+                        ImagePath = "Story/image",
+                        OverlayImagePath = "Officers/luke",
+                        VoicePath = "Story/dialogue",
+                        AdvisorSubjectNotification = AdvisorSubjectNotification.Report,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
+            Assert.AreEqual("For Alliance", message.Body);
+            Assert.AreEqual("Story/image", message.DisplayImagePath);
+            Assert.AreEqual("Officers/luke", message.OverlayImagePath);
+            Assert.AreEqual("Story/dialogue", message.MessageVoicePath);
+            Assert.AreEqual(luke.InstanceID, message.NavigationTargetInstanceID);
+            Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+        }
+
+        [Test]
         public void CreateMessages_FleetArrival_InterpolatesFleetAndDestination()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();

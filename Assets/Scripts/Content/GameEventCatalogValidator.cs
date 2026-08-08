@@ -192,6 +192,8 @@ public static class GameEventCatalogValidator
             switch (action)
             {
                 case RandomOutcomeAction randomOutcome:
+                    if (randomOutcome.Probability < 0 || randomOutcome.Probability > 1)
+                        errors.Add($"{actionPath}.Probability must be between 0 and 1.");
                     if (randomOutcome.Actions == null || randomOutcome.Actions.Count == 0)
                         errors.Add($"{actionPath} requires at least one child action.");
                     else
@@ -201,12 +203,39 @@ public static class GameEventCatalogValidator
                     ValidateIds(duel.AttackerInstanceIDs, $"{actionPath}.Attackers", 1, errors);
                     ValidateIds(duel.DefenderInstanceIDs, $"{actionPath}.Defenders", 1, errors);
                     break;
+                case NarrativeMessageAction message:
+                    ValidateNarrativeMessage(message, actionPath, errors);
+                    break;
                 case TriggerEventAction trigger
                     when string.IsNullOrWhiteSpace(trigger.EventInstanceID):
                     errors.Add($"{actionPath}.EventInstanceID is required.");
                     break;
             }
         }
+    }
+
+    private static void ValidateNarrativeMessage(
+        NarrativeMessageAction message,
+        string path,
+        List<string> errors
+    )
+    {
+        if (
+            string.IsNullOrWhiteSpace(message.RecipientFactionInstanceID)
+            && string.IsNullOrWhiteSpace(message.RecipientUnitInstanceID)
+            && string.IsNullOrWhiteSpace(message.SubjectInstanceID)
+        )
+        {
+            errors.Add(
+                $"{path} requires RecipientFactionInstanceID, RecipientUnitInstanceID, or SubjectInstanceID."
+            );
+        }
+
+        if (
+            string.IsNullOrWhiteSpace(message.TitleTemplate)
+            && string.IsNullOrWhiteSpace(message.BodyTemplate)
+        )
+            errors.Add($"{path} requires a title or body template.");
     }
 
     private static void ValidateIds(
