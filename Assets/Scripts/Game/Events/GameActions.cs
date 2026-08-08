@@ -1217,6 +1217,65 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Reveals an officer's dormant Force potential and initializes its authored starting value.
+    /// </summary>
+    [PersistableObject(Name = "RevealOfficerForcePotential")]
+    public sealed class RevealOfficerForcePotentialAction : GameAction
+    {
+        public string OfficerInstanceID { get; set; }
+        public bool SuppressRankChangeMessage { get; set; } = true;
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            return Execute(game, game.Random);
+        }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            return Execute(game, provider);
+        }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"RevealOfficerForcePotential could not resolve {nameof(OfficerInstanceID)} '{OfficerInstanceID}'."
+                );
+            if (!officer.IsJedi || officer.IsForceEligible)
+                return new List<GameResult>();
+
+            int previousRank = officer.ForceRank;
+            officer.IsForceEligible = true;
+            int startingValue =
+                officer.JediLevel + provider.NextInt(0, officer.JediLevelVariance + 1);
+            officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
+            return new List<GameResult>
+            {
+                new ForceExperienceResult
+                {
+                    Officer = officer,
+                    ExperienceGained = Math.Max(0, officer.ForceRank - previousRank),
+                    PreviousForceRank = previousRank,
+                    CurrentForceRank = officer.ForceRank,
+                    SuppressRankChangeMessage = SuppressRankChangeMessage,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
     /// Increases one officer's Force value using the greatest configured reward component.
     /// </summary>
     [PersistableObject(Name = "IncreaseOfficerForce")]

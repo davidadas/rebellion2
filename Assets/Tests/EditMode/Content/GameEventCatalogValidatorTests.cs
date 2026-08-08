@@ -222,6 +222,19 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Validate_ForcePotentialRevealWithoutOfficer_ReportsProblem()
+        {
+            GameEvent gameEvent = CreateEvent("REVEAL");
+            gameEvent.Actions.Add(new RevealOfficerForcePotentialAction());
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("Actions[0].OfficerInstanceID is required", exception.Message);
+        }
+
+        [Test]
         public void Validate_OngoingAuraWithInvalidConfiguration_ReportsAllProblems()
         {
             GameEvent gameEvent = CreateEvent("AURA");

@@ -141,6 +141,49 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
+        {
+            Officer luke = new Officer { InstanceID = "luke" };
+            Officer vader = new Officer { InstanceID = "vader" };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "RECURRING_ENCOUNTER_EFFECTS",
+                IsRepeatable = true,
+                TriggerResultType = nameof(OfficerEncounterResult),
+                Conditionals = new List<GameConditional>
+                {
+                    new OfficerEncounterParticipantsConditional
+                    {
+                        EncounteredOfficerInstanceID = luke.InstanceID,
+                        OpposingOfficerInstanceID = vader.InstanceID,
+                    },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "encounter.count",
+                        Operation = EventVariableOperation.Add,
+                        Value = 1,
+                    },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            OfficerEncounterResult encounter = new OfficerEncounterResult
+            {
+                EncounteredOfficer = luke,
+                OpposingOfficer = vader,
+            };
+
+            _system.HandleResults(new[] { encounter });
+            _system.HandleResults(new[] { encounter });
+
+            Assert.Contains(gameEvent, _game.EventPool);
+            Assert.AreEqual(2, _game.GetEventVariable("encounter.count"));
+            Assert.AreEqual(2, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+        }
+
+        [Test]
         public void HandleResults_MatchingStoryCaptureOutcome_ExecutesAuthoredReaction()
         {
             Officer han = new Officer { InstanceID = "han" };

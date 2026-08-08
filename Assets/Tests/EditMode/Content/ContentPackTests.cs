@@ -93,8 +93,35 @@ namespace Rebellion.Tests.Content
                 )
                 .Actions.OfType<StartStoryCaptureAction>()
                 .Single();
+            string[] recurringEncounterEventIds =
+            {
+                "LUKE_ENCOUNTERS_VADER",
+                "LUKE_VADER_ENCOUNTER_EFFECTS",
+                "LUKE_ENCOUNTERS_PALPATINE",
+                "LUKE_PALPATINE_ENCOUNTER_EFFECTS",
+                "LEIA_ENCOUNTERS_VADER",
+                "LEIA_VADER_ENCOUNTER_EFFECTS",
+                "LEIA_ENCOUNTERS_PALPATINE",
+                "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+            };
+            GameEvent leiaVaderEffects = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "LEIA_VADER_ENCOUNTER_EFFECTS"
+            );
+            ConditionalAction leiaHeritageEffects = leiaVaderEffects
+                .Actions.OfType<ConditionalAction>()
+                .Single();
+            ConditionalAction leiaReveal = leiaHeritageEffects
+                .Actions.OfType<ConditionalAction>()
+                .Single();
 
             Assert.AreEqual(6, heritageMessage.BodySegments.Count);
+            Assert.IsTrue(
+                recurringEncounterEventIds.All(instanceId =>
+                    pack.GameData.GameEvents.Single(gameEvent =>
+                        gameEvent.InstanceID == instanceId
+                    ).IsRepeatable
+                )
+            );
             Assert.AreEqual(nameof(UnitArrivedResult), lukeVaderEncounter.TriggerResultType);
             Assert.IsInstanceOf<OfficerPairArrivalConditional>(lukeVaderEncounter.Conditionals[0]);
             Assert.AreEqual(5, confrontation.BodySegments.Count);
@@ -107,6 +134,17 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
             Assert.AreEqual(0, bountyCapture.AttackRating);
+            Assert.AreEqual(
+                "LEIA_ORGANA",
+                leiaReveal
+                    .Actions.OfType<RevealOfficerForcePotentialAction>()
+                    .Single()
+                    .OfficerInstanceID
+            );
+            Assert.AreEqual(
+                1,
+                leiaHeritageEffects.Actions.OfType<IncreaseOfficerForceAction>().Count()
+            );
             Assert.AreEqual(OfficerRating.Combat, bountyCapture.ResistanceRating);
             Assert.AreEqual(AbductionMission.MissionTypeID, bountyCapture.ProbabilityTableKey);
             Assert.AreEqual(

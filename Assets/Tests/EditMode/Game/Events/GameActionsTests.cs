@@ -767,6 +767,33 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void RevealOfficerForcePotential_DormantJedi_InitializesAuthoredForceOnce()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer leia = EntityFactory.CreateOfficer("leia", "rebels");
+            leia.IsJedi = true;
+            leia.IsForceEligible = false;
+            leia.JediLevel = 10;
+            leia.JediLevelVariance = 5;
+            game.AttachNode(leia, rebelPlanet);
+            RevealOfficerForcePotentialAction action = new RevealOfficerForcePotentialAction
+            {
+                OfficerInstanceID = leia.InstanceID,
+            };
+
+            ForceExperienceResult result = action
+                .Execute(game, new FixedRandomProvider(new[] { 0.5 }))
+                .OfType<ForceExperienceResult>()
+                .Single();
+
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.AreEqual(13, leia.ForceValue);
+            Assert.AreEqual(13, result.ExperienceGained);
+            Assert.IsTrue(result.SuppressRankChangeMessage);
+            Assert.IsEmpty(action.Execute(game, new FixedRandomProvider(new[] { 0.5 })));
+        }
+
+        [Test]
         public void ApplyOfficerInjury_InclusiveRange_AppliesRolledSeverity()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);

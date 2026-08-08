@@ -535,6 +535,10 @@ public static class GameEventCatalogValidator
                             $"{actionPath}.ReferenceOfficerInstanceID is required when PositiveRankGapPercent is configured."
                         );
                     break;
+                case RevealOfficerForcePotentialAction reveal
+                    when string.IsNullOrWhiteSpace(reveal.OfficerInstanceID):
+                    errors.Add($"{actionPath}.OfficerInstanceID is required.");
+                    break;
                 case ApplyOfficerInjuryAction injury:
                     if (string.IsNullOrWhiteSpace(injury.OfficerInstanceID))
                         errors.Add($"{actionPath}.OfficerInstanceID is required.");
