@@ -61,6 +61,7 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddSmugglingMessages(resultArray.OfType<SmugglingChangedResult>(), deliveries);
             AddMissionMessages(missionResults, killedResults, sabotageResults, game, deliveries);
             AddRecruitmentMessages(resultArray.OfType<RecruitmentExhaustedResult>(), deliveries);
             AddOfficerMessages(
@@ -403,6 +404,37 @@ namespace Rebellion.Game.Messages
                     }
                 ),
                 destination
+            );
+        }
+
+        /// <summary>
+        /// Creates one side of an original smuggling start or end report.
+        /// </summary>
+        private Message CreateSmugglingMessage(
+            Faction faction,
+            SmugglingChangedResult result,
+            bool receivesBenefits
+        )
+        {
+            bool isActive = result.NewPercent != 0;
+            MessageResultType resultType = (receivesBenefits, isActive) switch
+            {
+                (false, true) => MessageResultType.SmugglingLosses,
+                (false, false) => MessageResultType.SmugglingLossesEnded,
+                (true, true) => MessageResultType.SmugglingBenefits,
+                _ => MessageResultType.SmugglingBenefitsEnded,
+            };
+
+            return WithEventLocation(
+                CreateMessage(
+                    GetDefinition(resultType),
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+                    }
+                ),
+                result.Planet
             );
         }
 
@@ -1527,6 +1559,29 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateFacilityLost(faction, building, destination)
+                );
+            }
+        }
+
+        /// <summary>
+        /// Adds the controller's loss report and the opposing faction's benefit report.
+        /// </summary>
+        private void AddSmugglingMessages(
+            IEnumerable<SmugglingChangedResult> results,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (SmugglingChangedResult result in results)
+            {
+                AddDelivery(
+                    deliveries,
+                    result.Controller,
+                    CreateSmugglingMessage(result.Controller, result, receivesBenefits: false)
+                );
+                AddDelivery(
+                    deliveries,
+                    result.Beneficiary,
+                    CreateSmugglingMessage(result.Beneficiary, result, receivesBenefits: true)
                 );
             }
         }

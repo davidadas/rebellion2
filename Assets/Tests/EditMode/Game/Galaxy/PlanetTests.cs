@@ -337,6 +337,8 @@ namespace Rebellion.Tests.Game.Galaxy
         {
             _planet.SetPopularSupport("FNALL1", 100);
             _planet.IsDestroyed = true;
+            _planet.SmugglingPercent = 50;
+            _planet.SmugglingControllerInstanceID = "FNALL1";
             _planet.AddChild(new Fleet { OwnerInstanceID = "FNALL1" });
 
             string serialized = SerializationHelper.Serialize(_planet);
@@ -356,6 +358,11 @@ namespace Rebellion.Tests.Game.Galaxy
                 _planet.Fleets.Count,
                 deserialized.Fleets.Count,
                 "Deserialized planet should retain fleets."
+            );
+            Assert.AreEqual(_planet.SmugglingPercent, deserialized.SmugglingPercent);
+            Assert.AreEqual(
+                _planet.SmugglingControllerInstanceID,
+                deserialized.SmugglingControllerInstanceID
             );
         }
 

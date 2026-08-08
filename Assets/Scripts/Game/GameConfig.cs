@@ -15,6 +15,8 @@ namespace Rebellion.Game
 
         public ProductionConfig Production { get; set; } = new ProductionConfig();
 
+        public SmugglingConfig Smuggling { get; set; } = new SmugglingConfig();
+
         public PlanetConfig Planet { get; set; } = new PlanetConfig();
 
         public CombatConfig Combat { get; set; } = new CombatConfig();
@@ -408,6 +410,34 @@ namespace Rebellion.Game
             public int ResourceStartupBasePercent { get; set; }
 
             public int ResourceStartupRandomPercent { get; set; }
+        }
+
+        /// <summary>
+        /// Original system smuggling calculation and resource-redirection rules.
+        /// </summary>
+        [PersistableObject]
+        public class SmugglingConfig
+        {
+            public int MaximumSupport { get; set; } = 40;
+
+            public int SevereSupportMaximum { get; set; } = 20;
+
+            public int MajorSupportMaximum { get; set; } = 30;
+
+            public int SevereLossPercent { get; set; } = 75;
+
+            public int MajorLossPercent { get; set; } = 50;
+
+            public int MinorLossPercent { get; set; } = 25;
+
+            public int CapitalShipSuppression { get; set; } = 10;
+
+            public int StarfighterSuppression { get; set; } = 5;
+
+            public int RegimentSuppression { get; set; } = 2;
+
+            public List<string> FullySuppressingCapitalShipTypeIDs { get; set; } =
+                new List<string>();
         }
 
         /// <summary>

@@ -869,6 +869,81 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SmugglingStarted_ReturnsLossAndBenefitReports()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                SmugglingDefinitions(),
+                new SmugglingChangedResult
+                {
+                    Planet = target,
+                    Controller = empire,
+                    Beneficiary = alliance,
+                    OldPercent = 0,
+                    NewPercent = 50,
+                }
+            );
+
+            Message loss = FirstMessageFor(deliveries, empire);
+            Assert.AreEqual(MessageType.Resource, loss.Type);
+            Assert.AreEqual("Smuggling Losses", loss.Title);
+            Assert.AreEqual(
+                "Dissention among the population has allowed smugglers to begin operations on Yavin.  As a result, valuable resources are being lost.",
+                loss.Body
+            );
+            Assert.AreEqual("empire-smuggling-voice", loss.MessageVoicePath);
+            Assert.AreEqual(target.InstanceID, loss.NavigationTargetInstanceID);
+
+            Message benefit = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual("Smuggling Benefits", benefit.Title);
+            Assert.AreEqual(
+                "Smugglers from Yavin are providing us with additional resources.",
+                benefit.Body
+            );
+            Assert.AreEqual("alliance-smuggling-voice", benefit.MessageVoicePath);
+            Assert.AreEqual(target.InstanceID, benefit.EventLocationInstanceID);
+        }
+
+        [Test]
+        public void CreateMessages_SmugglingEnded_ReturnsLossAndBenefitEndReports()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                SmugglingDefinitions(),
+                new SmugglingChangedResult
+                {
+                    Planet = target,
+                    Controller = empire,
+                    Beneficiary = alliance,
+                    OldPercent = 50,
+                    NewPercent = 0,
+                }
+            );
+
+            Message lossEnd = FirstMessageFor(deliveries, empire);
+            Assert.AreEqual("Smuggling Losses End", lossEnd.Title);
+            Assert.AreEqual(
+                "Increasing support on Yavin has put an end to the smuggling losses there.",
+                lossEnd.Body
+            );
+            Assert.IsNull(lossEnd.MessageVoicePath);
+
+            Message benefitEnd = FirstMessageFor(deliveries, alliance);
+            Assert.AreEqual("Smuggling Benefits End", benefitEnd.Title);
+            Assert.AreEqual(
+                "Popular opinion on Yavin has caused smugglers from that system to withdraw their support.",
+                benefitEnd.Body
+            );
+            Assert.IsNull(benefitEnd.MessageVoicePath);
+        }
+
+        [Test]
         public void CreateMessages_ManufacturingIdle_UsesQueueTypeDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -3257,6 +3332,44 @@ namespace Rebellion.Tests.Game.Messages
                     "body:{faction}:{opponent}:{system}",
                     imagePaths: FactionImages(),
                     outcome: MessageResultOutcome.Stalemate
+                ),
+            };
+        }
+
+        private static MessageDefinition[] SmugglingDefinitions()
+        {
+            Dictionary<string, string> voices = new Dictionary<string, string>
+            {
+                { "FNALL1", "alliance-smuggling-voice" },
+                { "FNEMP1", "empire-smuggling-voice" },
+            };
+            return new[]
+            {
+                Definition(
+                    MessageResultType.SmugglingLosses,
+                    MessageType.Resource,
+                    "Smuggling Losses",
+                    "Dissention among the population has allowed smugglers to begin operations on {system}.  As a result, valuable resources are being lost.",
+                    voicePaths: voices
+                ),
+                Definition(
+                    MessageResultType.SmugglingLossesEnded,
+                    MessageType.Resource,
+                    "Smuggling Losses End",
+                    "Increasing support on {system} has put an end to the smuggling losses there."
+                ),
+                Definition(
+                    MessageResultType.SmugglingBenefits,
+                    MessageType.Resource,
+                    "Smuggling Benefits",
+                    "Smugglers from {system} are providing us with additional resources.",
+                    voicePaths: voices
+                ),
+                Definition(
+                    MessageResultType.SmugglingBenefitsEnded,
+                    MessageType.Resource,
+                    "Smuggling Benefits End",
+                    "Popular opinion on {system} has caused smugglers from that system to withdraw their support."
                 ),
             };
         }

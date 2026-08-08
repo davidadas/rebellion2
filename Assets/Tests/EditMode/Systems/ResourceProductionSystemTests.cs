@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 
@@ -54,6 +56,184 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, _faction.RawMaterialStockpile);
             Assert.IsTrue(mine.ProductionInputReserved);
             Assert.IsFalse(mine.ResourceStartupCyclePending);
+        }
+
+        [Test]
+        public void ProcessTick_LowSupport_StartsOriginalSmugglingLossPercentage()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+
+            List<GameResult> results = _system.ProcessTick();
+
+            Assert.AreEqual(75, _planet.SmugglingPercent);
+            PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
+            Assert.AreEqual(PlanetStatType.Smuggling, stat.Stat);
+            Assert.AreEqual(0, stat.OldValue);
+            Assert.AreEqual(75, stat.NewValue);
+            SmugglingChangedResult changed = results.OfType<SmugglingChangedResult>().Single();
+            Assert.AreSame(_planet, changed.Planet);
+            Assert.AreSame(_faction, changed.Controller);
+            Assert.AreEqual("FACTION2", changed.Beneficiary.InstanceID);
+        }
+
+        [Test]
+        public void ProcessTick_GarrisonAndFleetPresence_ReduceSmugglingPercentage()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "REGIMENT1",
+                    OwnerInstanceID = "FACTION1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+            _game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "FIGHTER1",
+                    OwnerInstanceID = "FACTION1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+            Fleet fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "SHIP1",
+                    OwnerInstanceID = "FACTION1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(58, _planet.SmugglingPercent);
+        }
+
+        [Test]
+        public void ProcessTick_DeathStarPresence_FullySuppressesSmuggling()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            Fleet fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "DEATH_STAR",
+                    TypeID = "CSEM015",
+                    OwnerInstanceID = "FACTION1",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                fleet
+            );
+
+            List<GameResult> results = _system.ProcessTick();
+
+            Assert.AreEqual(0, _planet.SmugglingPercent);
+            Assert.IsEmpty(results);
+        }
+
+        [Test]
+        public void ProcessTick_SmugglingRoll_RedirectsCompletedResourceToBeneficiary()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            Building mine = AddCompleteBuilding(_planet, BuildingType.Mine, processRate: 1);
+            mine.ProductionInputReserved = true;
+            mine.ProductionCycleDuration = 1;
+            mine.ResourceStartupCyclePending = false;
+            Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RawMaterialStockpile);
+            Assert.AreEqual(1, beneficiary.RawMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_SmugglingRoll_RedirectsCompletedRefinedResourceToBeneficiary()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            Building refinery = AddCompleteBuilding(_planet, BuildingType.Refinery, processRate: 1);
+            refinery.ProductionInputReserved = true;
+            refinery.ProductionCycleDuration = 1;
+            refinery.ResourceStartupCyclePending = false;
+            Faction beneficiary = _game.GetFactionByOwnerInstanceID("FACTION2");
+
+            _system.ProcessTick();
+
+            Assert.AreEqual(0, _faction.RefinedMaterialStockpile);
+            Assert.AreEqual(1, beneficiary.RefinedMaterialStockpile);
+        }
+
+        [Test]
+        public void ProcessTick_ControlChanged_EndsOldSmugglingAndStartsNewRelationship()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 20 },
+                { "FACTION2", 20 },
+            };
+            _planet.SmugglingPercent = 75;
+            _planet.SmugglingControllerInstanceID = "FACTION1";
+            _planet.OwnerInstanceID = "FACTION2";
+
+            SmugglingChangedResult[] changes = _system
+                .ProcessTick()
+                .OfType<SmugglingChangedResult>()
+                .ToArray();
+
+            Assert.AreEqual(2, changes.Length);
+            Assert.AreEqual("FACTION1", changes[0].Controller.InstanceID);
+            Assert.AreEqual(75, changes[0].OldPercent);
+            Assert.AreEqual(0, changes[0].NewPercent);
+            Assert.AreEqual("FACTION2", changes[1].Controller.InstanceID);
+            Assert.AreEqual(0, changes[1].OldPercent);
+            Assert.AreEqual(75, changes[1].NewPercent);
+            Assert.AreEqual("FACTION2", _planet.SmugglingControllerInstanceID);
+        }
+
+        [Test]
+        public void ProcessTick_SmugglingPercentageChangesWithoutCrossingZero_OnlyReportsStat()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 25 },
+                { "FACTION2", 75 },
+            };
+            _planet.SmugglingPercent = 75;
+            _planet.SmugglingControllerInstanceID = "FACTION1";
+
+            List<GameResult> results = _system.ProcessTick();
+
+            PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
+            Assert.AreEqual(75, stat.OldValue);
+            Assert.AreEqual(50, stat.NewValue);
+            Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
         [Test]

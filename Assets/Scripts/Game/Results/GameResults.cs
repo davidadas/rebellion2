@@ -127,6 +127,18 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A system began or ended diverting produced resources through smuggling.
+    /// </summary>
+    public class SmugglingChangedResult : GameResult
+    {
+        public Planet Planet { get; set; }
+        public Faction Controller { get; set; }
+        public Faction Beneficiary { get; set; }
+        public int OldPercent { get; set; }
+        public int NewPercent { get; set; }
+    }
+
+    /// <summary>
     /// Combat at a system started or ended (battle, bombardment, or assault).
     /// </summary>
     public class SystemCombatStateResult : GameResult
