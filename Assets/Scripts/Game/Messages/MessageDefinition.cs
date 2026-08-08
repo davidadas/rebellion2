@@ -29,6 +29,7 @@ namespace Rebellion.Game.Messages
         OfficerInjured,
         OfficerRecovered,
         OfficerKilled,
+        TraitorDiscovered,
         ForceGrowth,
         ForceUserDiscovered,
         ForceUserDiscoveredByStudent,

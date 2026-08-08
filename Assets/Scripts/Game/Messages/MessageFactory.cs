@@ -67,6 +67,11 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
+            AddTraitorDiscoveryMessages(
+                resultArray.OfType<TraitorDiscoveredResult>(),
+                game,
+                deliveries
+            );
             AddForceMessages(
                 resultArray.OfType<ForceExperienceResult>(),
                 forceDiscoveryResults,
@@ -138,6 +143,57 @@ namespace Rebellion.Game.Messages
             );
 
             return deliveries;
+        }
+
+        /// <summary>
+        /// Adds the original Force-assisted traitor discovery reports.
+        /// </summary>
+        /// <param name="results">The traitor discovery results to process.</param>
+        /// <param name="game">The game state used to resolve recipients and opposing factions.</param>
+        /// <param name="deliveries">The delivery list to append messages to.</param>
+        private void AddTraitorDiscoveryMessages(
+            IEnumerable<TraitorDiscoveredResult> results,
+            GameRoot game,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (TraitorDiscoveredResult result in results)
+            {
+                Faction faction = GetOwnerFaction(game, result.DiscoveredBy ?? result.Officer);
+                Faction opposingFaction = game
+                    ?.GetFactions()
+                    .FirstOrDefault(candidate => candidate.InstanceID != faction?.InstanceID);
+                Planet planet = GetOfficerPlanet(result.Officer, result.Context);
+                Officer discoverer = result.DiscoveredBy as Officer;
+                Message message = WithAdvisorSubject(
+                    WithEventLocation(
+                        CreateMessage(
+                            GetDefinition(MessageResultType.TraitorDiscovered),
+                            faction,
+                            new Dictionary<string, string>
+                            {
+                                {
+                                    "discoverer",
+                                    GetDisplayName(result.DiscoveredBy) ?? string.Empty
+                                },
+                                { "traitor", result.Officer?.GetDisplayName() ?? string.Empty },
+                                { "enemy", opposingFaction?.GetDisplayName() ?? string.Empty },
+                            },
+                            overlayImagePath: GetMessageImagePath(discoverer),
+                            officerVoicePath: discoverer?.GetVoicePath(
+                                OfficerVoiceLineType.TraitorDiscovered,
+                                game?.Random
+                            )
+                        ),
+                        planet,
+                        result.Officer,
+                        discoverer
+                    ),
+                    AdvisorSubjectNotification.Report,
+                    discoverer
+                );
+                AddDelivery(deliveries, faction, message);
+            }
         }
 
         /// <summary>

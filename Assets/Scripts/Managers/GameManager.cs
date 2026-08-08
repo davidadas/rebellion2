@@ -240,7 +240,6 @@ public sealed class GameManager
         ProcessResults(_blockadeSystem.ProcessTick());
         ProcessResults(_planetaryControlSystem.ProcessTick());
         ProcessResults(_uprisingSystem.ProcessTick());
-        ProcessResults(_betrayalSystem.ProcessTick());
 
         ProcessResults(_researchSystem.ProcessTick());
         ProcessResults(_jediSystem.ProcessTick());
@@ -325,11 +324,13 @@ public sealed class GameManager
         );
         _uprisingSystem = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
+        _betrayalSystem = new BetrayalSystem(_game, _randomProvider);
         _missionSystem = new MissionSystem(
             _game,
             _randomProvider,
             _movementSystem,
-            _uprisingSystem
+            _uprisingSystem,
+            _betrayalSystem
         );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
@@ -344,7 +345,6 @@ public sealed class GameManager
             _planetaryControlSystem
         );
         _researchSystem = new ResearchSystem(_game, _randomProvider);
-        _betrayalSystem = new BetrayalSystem(_game);
         _victorySystem = new VictorySystem(_game);
         _aiSystem = new AISystem(
             _game,
@@ -371,6 +371,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<OfficerEncounterRequestedResult>(_officerEncounterSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
+        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_betrayalSystem);
         _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);

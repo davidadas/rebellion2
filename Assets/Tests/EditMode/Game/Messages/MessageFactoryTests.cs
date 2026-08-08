@@ -2020,6 +2020,64 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_TraitorDiscovered_UsesOriginalReportAndDiscovererPresentation()
+        {
+            (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
+            Officer discoverer = new Officer
+            {
+                DisplayName = "Luke Skywalker",
+                InstanceID = "discoverer",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "luke-card",
+                TraitorDiscoveredVoicePaths = new List<string> { "luke-discovers-traitor" },
+            };
+            Officer traitor = new Officer
+            {
+                DisplayName = "Lando Calrissian",
+                InstanceID = "traitor",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(traitor, origin);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.TraitorDiscovered,
+                        MessageType.Mission,
+                        "{discoverer} Discovers Traitor",
+                        "Through the use of the Force, I have discovered that {traitor} has betrayed us to the {enemy}.",
+                        showOfficerOverlay: true
+                    ),
+                },
+                new TraitorDiscoveredResult
+                {
+                    Officer = traitor,
+                    DiscoveredBy = discoverer,
+                    Context = origin,
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreSame(alliance, deliveries[0].faction);
+            Message message = deliveries[0].message;
+            Assert.AreEqual("Luke Skywalker Discovers Traitor", message.Title);
+            Assert.AreEqual(
+                "Through the use of the Force, I have discovered that Lando Calrissian has betrayed us to the Empire.",
+                message.Body
+            );
+            Assert.AreEqual("luke-card", message.OverlayImagePath);
+            Assert.AreEqual("luke-discovers-traitor", message.OfficerVoicePath);
+            Assert.AreEqual(origin.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(traitor.InstanceID, message.NavigationTargetInstanceID);
+            Assert.AreEqual(discoverer.InstanceID, message.NavigationSecondaryTargetInstanceID);
+            Assert.AreEqual(discoverer.TypeID, message.AdvisorSubjectTypeID);
+            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+        }
+
+        [Test]
         public void CreateMessages_ForceUserDiscovered_DoesNotUseDialog()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();

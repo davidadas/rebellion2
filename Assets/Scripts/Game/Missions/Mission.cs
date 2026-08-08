@@ -670,6 +670,19 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Resolves a mission that an assigned officer deliberately betrayed.
+        /// Betrayal foils the objective without applying enemy-detection consequences.
+        /// </summary>
+        internal List<GameResult> ExecuteBetrayed(GameRoot game, IRandomNumberProvider provider)
+        {
+            List<GameResult> results = OnFailed(game, provider);
+            results.Add(
+                BuildCompletedResult(MissionOutcome.Foiled, MissionCompletionReason.Foiled, game)
+            );
+            return results;
+        }
+
+        /// <summary>
         /// Returns the completion reason for a failed mission success roll.
         /// </summary>
         /// <param name="game">The current game state.</param>

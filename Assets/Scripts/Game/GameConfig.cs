@@ -39,6 +39,8 @@ namespace Rebellion.Game
 
         public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
 
+        public BetrayalConfig Betrayal { get; set; } = new BetrayalConfig();
+
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
 
         public MessageConfig Messages { get; set; } = new MessageConfig();
@@ -630,6 +632,20 @@ namespace Rebellion.Game
             public Dictionary<int, int> EscapeTable { get; set; } = new Dictionary<int, int>();
 
             public int EscapeLoyaltyShift { get; set; }
+        }
+
+        /// <summary>
+        /// Loyalty and betrayal values reconstructed from the original parameter tables.
+        /// </summary>
+        [PersistableObject]
+        public class BetrayalConfig
+        {
+            public int IncomingControlLoyaltyRollMinimum { get; set; }
+
+            /// <summary>
+            /// Inclusive upper bound for the loyalty shift when a faction gains a planet.
+            /// </summary>
+            public int IncomingControlLoyaltyRollMaximum { get; set; } = 5;
         }
 
         /// <summary>

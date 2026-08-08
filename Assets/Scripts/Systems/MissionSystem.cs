@@ -30,6 +30,7 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementManager;
         private readonly UprisingSystem _uprisingSystem;
+        private readonly BetrayalSystem _betrayalSystem;
         private readonly MissionFactory _missionFactory;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
@@ -40,11 +41,13 @@ namespace Rebellion.Systems
         /// <param name="provider">The random number provider for mission resolution.</param>
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
+        /// <param name="betrayalSystem">The character betrayal resolver.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movementManager,
-            UprisingSystem uprisingSystem
+            UprisingSystem uprisingSystem,
+            BetrayalSystem betrayalSystem = null
         )
         {
             _game = game;
@@ -52,6 +55,7 @@ namespace Rebellion.Systems
             _movementManager = movementManager;
             _uprisingSystem =
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
+            _betrayalSystem = betrayalSystem ?? new BetrayalSystem(game);
             _missionFactory = new MissionFactory(game);
         }
 
@@ -721,6 +725,18 @@ namespace Rebellion.Systems
         /// <returns>The results produced by mission resolution.</returns>
         private List<GameResult> ExecuteMission(Mission mission)
         {
+            if (
+                _betrayalSystem.TryResolveMissionBetrayal(
+                    mission,
+                    _provider,
+                    out List<GameResult> betrayalResults
+                )
+            )
+            {
+                betrayalResults.AddRange(mission.ExecuteBetrayed(_game, _provider));
+                return betrayalResults;
+            }
+
             if (_uprisingSystem.TryExecuteMission(mission, out List<GameResult> results))
             {
                 results.AddRange(
