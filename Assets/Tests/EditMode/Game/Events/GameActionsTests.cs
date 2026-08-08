@@ -131,6 +131,39 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void ResolveOfficerEncounter_ForceRankChance_UsesOriginalSummedRankThreshold()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.ForceValue = 60;
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            vader.ForceValue = 60;
+            luke.IsCaptured = true;
+            game.AttachNode(luke, empirePlanet);
+            luke.IsCaptured = false;
+            game.AttachNode(vader, empirePlanet);
+            ResolveOfficerEncounterAction action = new ResolveOfficerEncounterAction
+            {
+                EncounteredOfficerInstanceID = luke.InstanceID,
+                OpposingOfficerInstanceID = vader.InstanceID,
+                UseForceRankDetectionChance = true,
+                ForceRankDetectionChanceModifier = -100,
+            };
+
+            Assert.IsEmpty(action.Execute(game, new SequenceRNG(new[] { 20 }), null));
+            Assert.AreEqual(
+                1,
+                action
+                    .Execute(game, new SequenceRNG(new[] { 19 }), null)
+                    .OfType<OfficerEncounterRequestedResult>()
+                    .Count()
+            );
+
+            luke.ForceValue = 0;
+            Assert.IsEmpty(action.Execute(game, new SequenceRNG(new[] { 0 }), null));
+        }
+
+        [Test]
         public void OfficerPairArrival_OfficerInsideArrivingFleet_MatchesPair()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
@@ -208,12 +241,14 @@ namespace Rebellion.Tests.Game.Events
             arriving.DisplayName = "Rebel Jedi";
             arriving.IsJedi = true;
             arriving.IsForceEligible = true;
+            arriving.ForceValue = 60;
             arriving.MessageImagePath = "rebel-message";
             arriving.EnemyDetectedVoicePaths.Add("rebel-detects");
             Officer present = EntityFactory.CreateOfficer("present-jedi", "empire");
             present.DisplayName = "Imperial Jedi";
             present.IsJedi = true;
             present.IsForceEligible = true;
+            present.ForceValue = 60;
             present.MessageImagePath = "empire-message";
             present.EnemyDetectedVoicePaths.Add("empire-detects");
             Fleet arrivingFleet = EntityFactory.CreateFleet("arriving-fleet", "rebels");
@@ -264,6 +299,52 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(present, empireMessage.Subject);
             Assert.AreSame(arriving, empireMessage.RelatedSubject);
             Assert.AreEqual("empire-detects", empireMessage.OfficerVoicePath);
+        }
+
+        [Test]
+        public void ReportForceDetection_ForceRankChance_RollsOnceForBothReports()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            Officer arriving = EntityFactory.CreateOfficer("arriving", "rebels");
+            arriving.IsJedi = true;
+            arriving.IsForceEligible = true;
+            arriving.ForceValue = 60;
+            Officer present = EntityFactory.CreateOfficer("present", "empire");
+            present.IsJedi = true;
+            present.IsForceEligible = true;
+            present.ForceValue = 60;
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "rebels");
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(fleet, empirePlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(arriving, ship);
+            game.AttachNode(present, empirePlanet);
+            ReportForceDetectionAction action = new ReportForceDetectionAction
+            {
+                UseForceRankDetectionChance = true,
+                ForceRankDetectionChanceModifier = -100,
+                TitleTemplate = "Detected",
+                BodyTemplate = "Detected",
+            };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null,
+                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
+            );
+
+            Assert.IsEmpty(action.Execute(game, new SequenceRNG(new[] { 20 }), context));
+            Assert.AreEqual(
+                2,
+                action
+                    .Execute(game, new SequenceRNG(new[] { 19 }), context)
+                    .OfType<NarrativeMessageResult>()
+                    .Count()
+            );
         }
 
         [Test]

@@ -28,6 +28,28 @@ namespace Rebellion.Game.Events
         Maximum,
     }
 
+    internal static class ForceEncounterDetection
+    {
+        public static bool Succeeds(
+            Officer first,
+            Officer second,
+            int chanceModifier,
+            IRandomNumberProvider provider
+        )
+        {
+            if (first == null || second == null || provider == null)
+                return false;
+
+            int firstRank = first.ForceRank;
+            int secondRank = second.ForceRank;
+            if (firstRank == 0 || secondRank == 0)
+                return false;
+
+            int chance = Math.Min(100, Math.Max(0, firstRank + secondRank + chanceModifier));
+            return chance > 0 && provider.NextInt(0, 100) < chance;
+        }
+    }
+
     [PersistableObject]
     public sealed class InformantFactionRoute
     {
@@ -474,6 +496,8 @@ namespace Rebellion.Game.Events
         public string EncounteredOfficerInstanceID { get; set; }
         public string OpposingOfficerInstanceID { get; set; }
         public bool EncounteredOfficerIsArrivingParticipant { get; set; }
+        public bool UseForceRankDetectionChance { get; set; }
+        public int ForceRankDetectionChanceModifier { get; set; }
         public string VoicePath { get; set; }
 
         public ResolveOfficerEncounterAction()
@@ -500,6 +524,18 @@ namespace Rebellion.Game.Events
             );
             Officer opposing = game.GetSceneNodeByInstanceID<Officer>(OpposingOfficerInstanceID);
             if (encountered == null || opposing == null)
+                return new List<GameResult>();
+
+            IRandomNumberProvider random = provider ?? game.Random;
+            if (
+                UseForceRankDetectionChance
+                && !ForceEncounterDetection.Succeeds(
+                    encountered,
+                    opposing,
+                    ForceRankDetectionChanceModifier,
+                    random
+                )
+            )
                 return new List<GameResult>();
 
             if (EncounteredOfficerIsArrivingParticipant)
@@ -536,6 +572,8 @@ namespace Rebellion.Game.Events
     public sealed class ReportForceDetectionAction : GameAction
     {
         public bool RequireForceEligible { get; set; } = true;
+        public bool UseForceRankDetectionChance { get; set; }
+        public int ForceRankDetectionChanceModifier { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Mission;
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
@@ -585,6 +623,17 @@ namespace Rebellion.Game.Events
                     if (
                         arriving.OwnerInstanceID == present.OwnerInstanceID
                         || ExcludedPairs.Any(pair => pair.Matches(arriving, present))
+                    )
+                        continue;
+
+                    if (
+                        UseForceRankDetectionChance
+                        && !ForceEncounterDetection.Succeeds(
+                            arriving,
+                            present,
+                            ForceRankDetectionChanceModifier,
+                            provider ?? game.Random
+                        )
                     )
                         continue;
 
