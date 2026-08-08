@@ -326,6 +326,41 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void StartStoryFinalBattle_ResolvesAuthoredParticipantsAndRules()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            Officer palpatine = EntityFactory.CreateOfficer("palpatine", "empire");
+            game.AttachNode(luke, rebelPlanet);
+            game.AttachNode(vader, empirePlanet);
+            game.AttachNode(palpatine, empirePlanet);
+
+            StoryFinalBattleRequestedResult request = new StartStoryFinalBattleAction
+            {
+                LukeOfficerInstanceID = luke.InstanceID,
+                VaderOfficerInstanceID = vader.InstanceID,
+                PalpatineOfficerInstanceID = palpatine.InstanceID,
+                CaptorFactionInstanceID = "empire",
+                DurationTicks = 1,
+                VictoryForceRank = 100,
+                MinimumFailureInjury = 1,
+                MaximumFailureInjury = 200,
+                CaptivesCanEscapeOnVictory = true,
+            }
+                .Execute(game)
+                .OfType<StoryFinalBattleRequestedResult>()
+                .Single();
+
+            Assert.AreSame(luke, request.Luke);
+            Assert.AreSame(vader, request.Vader);
+            Assert.AreSame(palpatine, request.Palpatine);
+            Assert.AreEqual(100, request.VictoryForceRank);
+            Assert.AreEqual(1, request.MinimumFailureInjury);
+            Assert.AreEqual(200, request.MaximumFailureInjury);
+        }
+
+        [Test]
         public void IncreaseOfficerForce_RankGapReward_UsesOriginalMaximumFormula()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);

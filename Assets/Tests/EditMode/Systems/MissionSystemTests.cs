@@ -323,6 +323,26 @@ namespace Rebellion.Tests.Systems
             };
         }
 
+        private static StoryFinalBattleRequestedResult CreateFinalBattleRequest(
+            Officer luke,
+            Officer vader,
+            Officer palpatine
+        ) =>
+            new StoryFinalBattleRequestedResult
+            {
+                Luke = luke,
+                Vader = vader,
+                Palpatine = palpatine,
+                CaptorFactionInstanceID = "empire",
+                DurationTicks = 1,
+                VictoryForceRank = 100,
+                MinimumFailureInjury = 1,
+                MaximumFailureInjury = 200,
+                CaptivesCanEscapeOnVictory = true,
+                DisplayName = "The Final Battle",
+                SourceEventInstanceID = "FINAL_BATTLE",
+            };
+
         [Test]
         public void HandleScriptedTrainingRequest_CompletesThroughMissionLifecycleAndReturnsTrainee()
         {
@@ -555,6 +575,203 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(origin, han.GetParent());
             Assert.AreSame(origin, luke.GetParent());
             Assert.AreEqual("VADER_PICKUP", completed.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void HandleStoryFinalBattleRequest_VictoriousLukeCapturesImperialLeaders()
+        {
+            (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
+                BuildScene(factionOwnsPlanet: true);
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            PlanetSystem system = imperialCapital.GetParentOfType<PlanetSystem>();
+            Planet prison = new Planet
+            {
+                InstanceID = "prison",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(prison, system);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.IsForceEligible = true;
+            luke.ForceValue = 100;
+            luke.IsCaptured = true;
+            luke.CaptorInstanceID = "empire";
+            luke.CanEscape = true;
+            game.AttachNode(luke, prison);
+            Officer palpatine = EntityFactory.CreateOfficer("palpatine", "empire");
+            game.AttachNode(palpatine, imperialCapital);
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(new[] { CreateFinalBattleRequest(luke, vader, palpatine) });
+            vader.Movement = null;
+            List<GameResult> gatherResults = missions.ProcessTick();
+            StoryFinalBattleEscortRequestedResult escort = gatherResults
+                .OfType<StoryFinalBattleEscortRequestedResult>()
+                .Single();
+            missions.HandleResults(new[] { escort });
+            vader.Movement = null;
+            luke.Movement = null;
+            List<GameResult> finalResults = missions.ProcessTick();
+
+            StoryFinalBattleCompletedResult completed = finalResults
+                .OfType<StoryFinalBattleCompletedResult>()
+                .Single();
+            Assert.IsTrue(completed.LukeVictorious);
+            Assert.IsFalse(luke.IsCaptured);
+            Assert.IsTrue(vader.IsCaptured);
+            Assert.IsTrue(palpatine.IsCaptured);
+            Assert.AreEqual("rebels", vader.CaptorInstanceID);
+            Assert.AreEqual("rebels", palpatine.CaptorInstanceID);
+            Assert.AreSame(imperialCapital, luke.GetParent());
+            Assert.AreSame(imperialCapital, vader.GetParent());
+            Assert.AreSame(imperialCapital, palpatine.GetParent());
+            Assert.AreEqual("FINAL_BATTLE", completed.SourceEventInstanceID);
+        }
+
+        [Test]
+        public void HandleStoryFinalBattleRequest_DefeatedLukeIsInjuredAndCannotEscape()
+        {
+            (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
+                BuildScene(factionOwnsPlanet: true);
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            PlanetSystem system = imperialCapital.GetParentOfType<PlanetSystem>();
+            Planet prison = new Planet
+            {
+                InstanceID = "prison",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(prison, system);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.IsForceEligible = true;
+            luke.ForceValue = 99;
+            luke.IsCaptured = true;
+            luke.CaptorInstanceID = "empire";
+            luke.CanEscape = true;
+            game.AttachNode(luke, prison);
+            Officer palpatine = EntityFactory.CreateOfficer("palpatine", "empire");
+            game.AttachNode(palpatine, imperialCapital);
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(new[] { CreateFinalBattleRequest(luke, vader, palpatine) });
+            vader.Movement = null;
+            StoryFinalBattleEscortRequestedResult escort = missions
+                .ProcessTick()
+                .OfType<StoryFinalBattleEscortRequestedResult>()
+                .Single();
+            missions.HandleResults(new[] { escort });
+            vader.Movement = null;
+            luke.Movement = null;
+            List<GameResult> finalResults = missions.ProcessTick();
+
+            StoryFinalBattleCompletedResult completed = finalResults
+                .OfType<StoryFinalBattleCompletedResult>()
+                .Single();
+            Assert.IsFalse(completed.LukeVictorious);
+            Assert.IsTrue(luke.IsCaptured);
+            Assert.IsFalse(luke.CanEscape);
+            Assert.AreEqual(1, finalResults.OfType<OfficerInjuredResult>().Single().Severity);
+            Assert.IsFalse(vader.IsCaptured);
+            Assert.IsFalse(palpatine.IsCaptured);
+            Assert.AreSame(imperialCapital, luke.GetParent());
+        }
+
+        [Test]
+        public void UpdateStoryFinalBattleMission_RetargetsVaderWhenCapturedLukeMoves()
+        {
+            (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
+                BuildScene(factionOwnsPlanet: true);
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            PlanetSystem system = imperialCapital.GetParentOfType<PlanetSystem>();
+            Planet firstPrison = new Planet
+            {
+                InstanceID = "first-prison",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            Planet secondPrison = new Planet
+            {
+                InstanceID = "second-prison",
+                OwnerInstanceID = "empire",
+                IsColonized = true,
+                PositionX = 200,
+                PositionY = 0,
+            };
+            game.AttachNode(firstPrison, system);
+            game.AttachNode(secondPrison, system);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.IsCaptured = true;
+            luke.CaptorInstanceID = "empire";
+            game.AttachNode(luke, firstPrison);
+            Officer palpatine = EntityFactory.CreateOfficer("palpatine", "empire");
+            game.AttachNode(palpatine, imperialCapital);
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(new[] { CreateFinalBattleRequest(luke, vader, palpatine) });
+            StoryFinalBattleMission mission = game
+                .GetSceneNodesByType<StoryFinalBattleMission>()
+                .Single();
+            game.MoveNode(luke, secondPrison);
+
+            missions.UpdateMission(mission);
+
+            Assert.AreSame(secondPrison, mission.GetParent());
+            Assert.AreEqual(secondPrison.InstanceID, mission.LocationInstanceID);
+            Assert.IsNotNull(vader.Movement);
+        }
+
+        [Test]
+        public void UpdateStoryFinalBattleMission_ReleasesVaderWhenPalpatineBecomesBusy()
+        {
+            (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
+                BuildScene(factionOwnsPlanet: true);
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.IsCaptured = true;
+            luke.CaptorInstanceID = "empire";
+            game.AttachNode(luke, imperialCapital);
+            Officer palpatine = EntityFactory.CreateOfficer("palpatine", "empire");
+            game.AttachNode(palpatine, imperialCapital);
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(new[] { CreateFinalBattleRequest(luke, vader, palpatine) });
+            StoryFinalBattleMission mission = game
+                .GetSceneNodesByType<StoryFinalBattleMission>()
+                .Single();
+            palpatine.Movement = new MovementState();
+
+            List<GameResult> results = missions.UpdateMission(mission);
+
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(
+                MissionCompletionReason.TargetUnavailable,
+                completed.CompletionReason
+            );
+            Assert.IsEmpty(game.GetSceneNodesByType<StoryFinalBattleMission>());
+            Assert.IsFalse(vader.IsOnMission());
         }
 
         [Test]

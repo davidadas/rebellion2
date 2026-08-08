@@ -379,6 +379,8 @@ public sealed class GameManager
         _resultProcessor.Subscribe<StoryCaptureRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<StoryRescueRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<StoryPickupRequestedResult>(_missionSystem);
+        _resultProcessor.Subscribe<StoryFinalBattleRequestedResult>(_missionSystem);
+        _resultProcessor.Subscribe<StoryFinalBattleEscortRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 

@@ -22,7 +22,9 @@ namespace Rebellion.Systems
             IGameResultHandler<ScriptedTrainingRequestedResult>,
             IGameResultHandler<StoryCaptureRequestedResult>,
             IGameResultHandler<StoryRescueRequestedResult>,
-            IGameResultHandler<StoryPickupRequestedResult>
+            IGameResultHandler<StoryPickupRequestedResult>,
+            IGameResultHandler<StoryFinalBattleRequestedResult>,
+            IGameResultHandler<StoryFinalBattleEscortRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -262,6 +264,78 @@ namespace Rebellion.Systems
                     result.CaptiveFactionInstanceID,
                     result.DurationTicks,
                     result.CaptivesCanEscapeAfterPickup,
+                    result.DisplayName,
+                    result.SourceEventInstanceID
+                );
+                _game.AttachNode(mission, location);
+                BeginMission(mission);
+            }
+
+            return missionResults;
+        }
+
+        /// <summary>
+        /// Starts Vader's journey to a captured Luke.
+        /// </summary>
+        public List<GameResult> HandleResults(
+            IReadOnlyList<StoryFinalBattleRequestedResult> results
+        ) => StartFinalBattleMissions(results, StoryFinalBattlePhase.GatherLuke);
+
+        /// <summary>
+        /// Starts Vader and Luke's escorted journey to Palpatine.
+        /// </summary>
+        public List<GameResult> HandleResults(
+            IReadOnlyList<StoryFinalBattleEscortRequestedResult> results
+        ) => StartFinalBattleMissions(results, StoryFinalBattlePhase.EscortToPalpatine);
+
+        private List<GameResult> StartFinalBattleMissions<T>(
+            IReadOnlyList<T> results,
+            StoryFinalBattlePhase phase
+        )
+            where T : GameResult, IStoryFinalBattleRequest
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            foreach (T result in results)
+            {
+                Officer luke = _game.GetSceneNodeByInstanceID<Officer>(result?.Luke?.InstanceID);
+                Officer vader = _game.GetSceneNodeByInstanceID<Officer>(result?.Vader?.InstanceID);
+                Officer palpatine = _game.GetSceneNodeByInstanceID<Officer>(
+                    result?.Palpatine?.InstanceID
+                );
+                Planet location =
+                    phase == StoryFinalBattlePhase.GatherLuke
+                        ? luke?.GetParentOfType<Planet>()
+                        : palpatine?.GetParentOfType<Planet>();
+                if (
+                    luke?.IsCaptured != true
+                    || luke.CaptorInstanceID != result.CaptorFactionInstanceID
+                    || vader?.IsKilled != false
+                    || vader?.IsCaptured != false
+                    || vader?.IsMovable() != true
+                    || vader?.IsOnMission() != false
+                    || palpatine?.IsKilled != false
+                    || palpatine?.IsCaptured != false
+                    || palpatine?.IsMovable() != true
+                    || palpatine?.IsOnMission() != false
+                    || location == null
+                )
+                    continue;
+
+                StoryFinalBattleMission mission = new StoryFinalBattleMission(
+                    phase,
+                    luke,
+                    vader,
+                    palpatine,
+                    location,
+                    result.CaptorFactionInstanceID,
+                    result.DurationTicks,
+                    result.VictoryForceRank,
+                    result.MinimumFailureInjury,
+                    result.MaximumFailureInjury,
+                    result.CaptivesCanEscapeOnVictory,
                     result.DisplayName,
                     result.SourceEventInstanceID
                 );
@@ -588,10 +662,30 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
+            if (mission is StoryFinalBattleMission finalBattle)
+            {
+                finalBattle.RefreshTravelTarget(_game);
+                MissionCompletionReason? storyAbortReason = finalBattle.GetAbortReason(_game);
+                if (storyAbortReason.HasValue)
+                {
+                    results.Add(
+                        BuildTerminatingMissionResult(
+                            mission,
+                            MissionOutcome.Failed,
+                            storyAbortReason.Value,
+                            mission.GetAllParticipants()
+                        )
+                    );
+                    TearDownMission(mission, null, results);
+                    return results;
+                }
+            }
+
             if (mission.IsWaitingForParticipants())
                 return results;
 
-            MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
+            MissionCompletionReason? abortReason =
+                mission is StoryFinalBattleMission ? null : mission.GetAbortReason(_game);
             if (abortReason.HasValue)
             {
                 results.Add(
@@ -741,7 +835,10 @@ namespace Rebellion.Systems
                 additionalPassengers.Count == 0
                     ? freeParticipants
                         .Where(participant =>
-                            CanRemainAtMissionLocation(participant, missionPlanet)
+                            (
+                                mission.SuccessfulParticipantsRemainAtLocation
+                                && completedResult?.Outcome == MissionOutcome.Success
+                            ) || CanRemainAtMissionLocation(participant, missionPlanet)
                         )
                         .ToList()
                     : new List<IMissionParticipant>();
@@ -1079,6 +1176,29 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission to begin.</param>
         private void BeginMission(Mission mission)
         {
+            if (
+                mission is StoryFinalBattleMission
+                {
+                    Phase: StoryFinalBattlePhase.EscortToPalpatine
+                } finalBattle
+            )
+            {
+                List<IMovable> escortGroup = finalBattle
+                    .GetAllParticipants()
+                    .Cast<IMovable>()
+                    .ToList();
+                foreach (IMissionParticipant participant in finalBattle.GetAllParticipants())
+                {
+                    participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
+                    participant.MissionReturnLocationInstanceID = participant
+                        .GetParentOfType<Planet>()
+                        ?.InstanceID;
+                }
+                _movementManager.RequestMove(escortGroup, finalBattle);
+                finalBattle.Initiate(RollMissionDuration(finalBattle));
+                return;
+            }
+
             foreach (IMissionParticipant participant in mission.GetAllParticipants())
             {
                 if (participant.GetParent() != mission)
@@ -1107,6 +1227,8 @@ namespace Rebellion.Systems
                 return rescue.DurationTicks;
             if (mission is StoryPickupMission pickup)
                 return pickup.DurationTicks;
+            if (mission is StoryFinalBattleMission finalBattle)
+                return finalBattle.DurationTicks;
 
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(

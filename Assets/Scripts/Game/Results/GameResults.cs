@@ -622,6 +622,65 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A data-defined event requested Vader's journey to a captured Luke.
+    /// </summary>
+    public interface IStoryFinalBattleRequest
+    {
+        Officer Luke { get; set; }
+        Officer Vader { get; set; }
+        Officer Palpatine { get; set; }
+        string CaptorFactionInstanceID { get; set; }
+        int DurationTicks { get; set; }
+        int VictoryForceRank { get; set; }
+        int MinimumFailureInjury { get; set; }
+        int MaximumFailureInjury { get; set; }
+        bool CaptivesCanEscapeOnVictory { get; set; }
+        string DisplayName { get; set; }
+    }
+
+    public class StoryFinalBattleRequestedResult : GameResult, IStoryFinalBattleRequest
+    {
+        public Officer Luke { get; set; }
+        public Officer Vader { get; set; }
+        public Officer Palpatine { get; set; }
+        public string CaptorFactionInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public int VictoryForceRank { get; set; }
+        public int MinimumFailureInjury { get; set; }
+        public int MaximumFailureInjury { get; set; }
+        public bool CaptivesCanEscapeOnVictory { get; set; }
+        public string DisplayName { get; set; }
+    }
+
+    /// <summary>
+    /// Vader reached Luke and requested their escorted journey to Palpatine.
+    /// </summary>
+    public class StoryFinalBattleEscortRequestedResult : GameResult, IStoryFinalBattleRequest
+    {
+        public Officer Luke { get; set; }
+        public Officer Vader { get; set; }
+        public Officer Palpatine { get; set; }
+        public string CaptorFactionInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public int VictoryForceRank { get; set; }
+        public int MinimumFailureInjury { get; set; }
+        public int MaximumFailureInjury { get; set; }
+        public bool CaptivesCanEscapeOnVictory { get; set; }
+        public string DisplayName { get; set; }
+    }
+
+    /// <summary>
+    /// The original Luke, Vader, and Palpatine confrontation resolved.
+    /// </summary>
+    public class StoryFinalBattleCompletedResult : GameResult
+    {
+        public Officer Luke { get; set; }
+        public Officer Vader { get; set; }
+        public Officer Palpatine { get; set; }
+        public bool LukeVictorious { get; set; }
+    }
+
+    /// <summary>
     /// Han Solo was attacked by a bounty hunter.
     /// </summary>
     public class BountyAttackResult : GameResult

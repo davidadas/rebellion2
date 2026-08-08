@@ -160,6 +160,12 @@ public static class GameEventCatalogValidator
                     when string.IsNullOrWhiteSpace(officerState.OfficerInstanceID):
                     errors.Add($"{conditionPath}.OfficerInstanceID is required.");
                     break;
+                case OfficerCaptorConditional captor:
+                    if (string.IsNullOrWhiteSpace(captor.OfficerInstanceID))
+                        errors.Add($"{conditionPath}.OfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(captor.FactionInstanceID))
+                        errors.Add($"{conditionPath}.FactionInstanceID is required.");
+                    break;
                 case OfficerForceRankConditional forceRank
                     when string.IsNullOrWhiteSpace(forceRank.OfficerInstanceID):
                     errors.Add($"{conditionPath}.OfficerInstanceID is required.");
@@ -317,6 +323,30 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.CaptiveFactionInstanceID is required.");
                     if (pickup.DurationTicks < 1)
                         errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    break;
+                case StartStoryFinalBattleAction finalBattle:
+                    if (string.IsNullOrWhiteSpace(finalBattle.LukeOfficerInstanceID))
+                        errors.Add($"{actionPath}.LukeOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(finalBattle.VaderOfficerInstanceID))
+                        errors.Add($"{actionPath}.VaderOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(finalBattle.PalpatineOfficerInstanceID))
+                        errors.Add($"{actionPath}.PalpatineOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(finalBattle.CaptorFactionInstanceID))
+                        errors.Add($"{actionPath}.CaptorFactionInstanceID is required.");
+                    if (finalBattle.DurationTicks < 1)
+                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (finalBattle.VictoryForceRank < 0)
+                        errors.Add($"{actionPath}.VictoryForceRank cannot be negative.");
+                    if (finalBattle.MinimumFailureInjury < 0)
+                        errors.Add($"{actionPath}.MinimumFailureInjury cannot be negative.");
+                    if (finalBattle.MaximumFailureInjury < finalBattle.MinimumFailureInjury)
+                        errors.Add(
+                            $"{actionPath}.MaximumFailureInjury cannot be less than MinimumFailureInjury."
+                        );
+                    if (finalBattle.MaximumFailureInjury == int.MaxValue)
+                        errors.Add(
+                            $"{actionPath}.MaximumFailureInjury must be less than Int32.MaxValue."
+                        );
                     break;
                 case IncreaseOfficerForceAction force:
                     if (string.IsNullOrWhiteSpace(force.OfficerInstanceID))

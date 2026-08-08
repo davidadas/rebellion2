@@ -498,6 +498,70 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Starts the persisted, two-leg journey that culminates in the original final battle.
+    /// </summary>
+    [PersistableObject(Name = "StartStoryFinalBattle")]
+    public sealed class StartStoryFinalBattleAction : GameAction
+    {
+        public string LukeOfficerInstanceID { get; set; }
+        public string VaderOfficerInstanceID { get; set; }
+        public string PalpatineOfficerInstanceID { get; set; }
+        public string CaptorFactionInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public int VictoryForceRank { get; set; }
+        public int MinimumFailureInjury { get; set; }
+        public int MaximumFailureInjury { get; set; }
+        public bool CaptivesCanEscapeOnVictory { get; set; }
+        public string DisplayName { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer luke = ResolveOfficer(
+                game,
+                LukeOfficerInstanceID,
+                nameof(LukeOfficerInstanceID)
+            );
+            Officer vader = ResolveOfficer(
+                game,
+                VaderOfficerInstanceID,
+                nameof(VaderOfficerInstanceID)
+            );
+            Officer palpatine = ResolveOfficer(
+                game,
+                PalpatineOfficerInstanceID,
+                nameof(PalpatineOfficerInstanceID)
+            );
+
+            return new List<GameResult>
+            {
+                new StoryFinalBattleRequestedResult
+                {
+                    Luke = luke,
+                    Vader = vader,
+                    Palpatine = palpatine,
+                    CaptorFactionInstanceID = CaptorFactionInstanceID,
+                    DurationTicks = DurationTicks,
+                    VictoryForceRank = VictoryForceRank,
+                    MinimumFailureInjury = MinimumFailureInjury,
+                    MaximumFailureInjury = MaximumFailureInjury,
+                    CaptivesCanEscapeOnVictory = CaptivesCanEscapeOnVictory,
+                    DisplayName = DisplayName,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+
+        private static Officer ResolveOfficer(GameRoot game, string instanceId, string memberName)
+        {
+            return game.GetSceneNodeByInstanceID<Officer>(instanceId)
+                ?? throw new InvalidOperationException(
+                    $"StartStoryFinalBattle could not resolve {memberName} '{instanceId}'."
+                );
+        }
+    }
+
+    /// <summary>
     /// Increases one officer's Force value using the greatest configured reward component.
     /// </summary>
     [PersistableObject(Name = "IncreaseOfficerForce")]

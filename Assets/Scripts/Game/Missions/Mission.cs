@@ -141,6 +141,11 @@ namespace Rebellion.Game.Missions
         internal virtual bool AppliesFoiledParticipantConsequences => true;
 
         /// <summary>
+        /// Returns whether successful participants stay at the mission location regardless of ownership.
+        /// </summary>
+        internal virtual bool SuccessfulParticipantsRemainAtLocation => false;
+
+        /// <summary>
         /// Returns why this mission must stop before advancing.
         /// </summary>
         /// <param name="game">The current game state.</param>

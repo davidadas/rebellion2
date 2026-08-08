@@ -7,6 +7,7 @@ using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game.Events;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Util.Serialization;
 
@@ -366,6 +367,18 @@ namespace Rebellion.Tests.Util.Serialization
                         DurationTicks = 1,
                         CaptivesCanEscapeAfterPickup = true,
                     },
+                    new StartStoryFinalBattleAction
+                    {
+                        LukeOfficerInstanceID = "LUKE_SKYWALKER",
+                        VaderOfficerInstanceID = "DARTH_VADER",
+                        PalpatineOfficerInstanceID = "EMPEROR_PALPATINE",
+                        CaptorFactionInstanceID = "FNEMP1",
+                        DurationTicks = 1,
+                        VictoryForceRank = 100,
+                        MinimumFailureInjury = 1,
+                        MaximumFailureInjury = 200,
+                        CaptivesCanEscapeOnVictory = true,
+                    },
                 },
             };
 
@@ -428,6 +441,14 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("DARTH_VADER", pickup.CollectorOfficerInstanceID);
             Assert.AreEqual("HAN_SOLO", pickup.LocationOfficerInstanceID);
             Assert.IsTrue(pickup.CaptivesCanEscapeAfterPickup);
+            StartStoryFinalBattleAction finalBattle =
+                deserialized.Actions[9] as StartStoryFinalBattleAction;
+            Assert.IsNotNull(finalBattle);
+            Assert.AreEqual("LUKE_SKYWALKER", finalBattle.LukeOfficerInstanceID);
+            Assert.AreEqual("DARTH_VADER", finalBattle.VaderOfficerInstanceID);
+            Assert.AreEqual("EMPEROR_PALPATINE", finalBattle.PalpatineOfficerInstanceID);
+            Assert.AreEqual(100, finalBattle.VictoryForceRank);
+            Assert.AreEqual(200, finalBattle.MaximumFailureInjury);
         }
 
         [Test]
@@ -454,6 +475,49 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("group-1", deserialized.MovementGroupID);
             Assert.AreEqual(new Point(12, 34), deserialized.OriginPosition);
             Assert.AreEqual(new Point(56, 78), deserialized.CurrentPosition);
+        }
+
+        [Test]
+        public void Serialize_RoundTripStoryFinalBattleMission_PreservesStoryState()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(StoryFinalBattleMission));
+            StoryFinalBattleMission mission = new StoryFinalBattleMission
+            {
+                InstanceID = "final-battle-mission",
+                Phase = StoryFinalBattlePhase.EscortToPalpatine,
+                LukeOfficerInstanceID = "luke",
+                VaderOfficerInstanceID = "vader",
+                PalpatineOfficerInstanceID = "palpatine",
+                CaptorFactionInstanceID = "empire",
+                DurationTicks = 3,
+                VictoryForceRank = 100,
+                MinimumFailureInjury = 1,
+                MaximumFailureInjury = 200,
+                CaptivesCanEscapeOnVictory = true,
+                SourceEventInstanceID = "FINAL_BATTLE",
+                MaxProgress = 3,
+                CurrentProgress = 2,
+                HasInitiated = true,
+            };
+
+            string serializedXml = SerializeToString(serializer, mission);
+            StoryFinalBattleMission deserialized = (StoryFinalBattleMission)
+                DeserializeFromString(serializer, serializedXml);
+
+            Assert.AreEqual(StoryFinalBattlePhase.EscortToPalpatine, deserialized.Phase);
+            Assert.AreEqual("luke", deserialized.LukeOfficerInstanceID);
+            Assert.AreEqual("vader", deserialized.VaderOfficerInstanceID);
+            Assert.AreEqual("palpatine", deserialized.PalpatineOfficerInstanceID);
+            Assert.AreEqual("empire", deserialized.CaptorFactionInstanceID);
+            Assert.AreEqual(3, deserialized.DurationTicks);
+            Assert.AreEqual(100, deserialized.VictoryForceRank);
+            Assert.AreEqual(1, deserialized.MinimumFailureInjury);
+            Assert.AreEqual(200, deserialized.MaximumFailureInjury);
+            Assert.IsTrue(deserialized.CaptivesCanEscapeOnVictory);
+            Assert.AreEqual("FINAL_BATTLE", deserialized.SourceEventInstanceID);
+            Assert.AreEqual(3, deserialized.MaxProgress);
+            Assert.AreEqual(2, deserialized.CurrentProgress);
+            Assert.IsTrue(deserialized.HasInitiated);
         }
 
         [Test]

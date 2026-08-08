@@ -483,6 +483,23 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches the authored outcome of the original final battle.
+    /// </summary>
+    [PersistableObject(Name = "StoryFinalBattleOutcome")]
+    public sealed class StoryFinalBattleOutcomeConditional : GameConditional
+    {
+        public bool LukeVictorious { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game) => false;
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult) =>
+            triggerResult is StoryFinalBattleCompletedResult finalBattle
+            && finalBattle.LukeVictorious == LukeVictorious;
+    }
+
+    /// <summary>
     /// Tests a data-selected runtime state on one officer.
     /// </summary>
     [PersistableObject(Name = "OfficerState")]
@@ -508,6 +525,23 @@ namespace Rebellion.Game.Events
                 _ => throw new InvalidOperationException($"Unsupported officer state '{State}'."),
             };
             return current == Expected;
+        }
+    }
+
+    /// <summary>
+    /// Tests which faction currently holds a captured officer.
+    /// </summary>
+    [PersistableObject(Name = "OfficerCaptor")]
+    public sealed class OfficerCaptorConditional : GameConditional
+    {
+        public string OfficerInstanceID { get; set; }
+        public string FactionInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            return officer?.IsCaptured == true && officer.CaptorInstanceID == FactionInstanceID;
         }
     }
 
