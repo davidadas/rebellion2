@@ -6,7 +6,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     public class StrategyAdvisorThemeTests
     {
         [Test]
-        public void GetFramePath_ReturnsRoleResourceAndFramePath()
+        public void GetFramePath_AdvisorTheme_ReturnsRoleResourceAndFramePath()
         {
             StrategyAdvisorTheme theme = new StrategyAdvisorTheme
             {
@@ -23,7 +23,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
-        public void BriefingGetFramePath_ReturnsResourceAndFramePath()
+        public void GetFramePath_BriefingTheme_ReturnsResourceAndFramePath()
         {
             StrategyBriefingTheme theme = new StrategyBriefingTheme
             {
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
-        public void GetAudioPath_ReturnsNamedAudioPath()
+        public void GetAudioPath_AdvisorTheme_ReturnsNamedAudioPath()
         {
             StrategyAdvisorTheme theme = new StrategyAdvisorTheme
             {

@@ -194,8 +194,7 @@ public sealed class StrategyBriefingController
 
         string targetID = segment.TargetInstanceID;
         Faction playerFaction = game.GetPlayerFaction();
-        Faction opponentFaction = game.GetFactions()
-            .FirstOrDefault(faction => faction != playerFaction);
+        Faction opponentFaction = game.GetFactions().Single(faction => faction != playerFaction);
         if (segment.Focus == StrategyBriefingFocus.PlayerHeadquarters)
             targetID = playerFaction?.HQInstanceID;
         else if (segment.Focus == StrategyBriefingFocus.OpponentHeadquarters)

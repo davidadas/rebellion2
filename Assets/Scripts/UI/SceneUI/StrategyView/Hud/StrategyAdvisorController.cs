@@ -206,7 +206,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Plays one resolved animation through the protocol advisor.
+    /// Cancels current protocol-advisor playback and replaces it with one resolved animation.
     /// </summary>
     /// <param name="animation">The resolved animation presentation.</param>
     /// <param name="started">Invoked when playback starts after its configured delay.</param>
@@ -217,16 +217,17 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         Action completed
     )
     {
-        if (animation?.Frames.Count <= 0)
+        StrategyAdvisorView targetView = GetRequiredView();
+        playbackStarted = null;
+        playbackCompleted = null;
+        targetView.CancelPlayback();
+
+        if (animation == null || animation.Frames.Count == 0)
         {
             completed?.Invoke();
             return;
         }
 
-        StrategyAdvisorView targetView = GetRequiredView();
-        playbackStarted = null;
-        playbackCompleted = null;
-        targetView.CancelPlayback();
         playbackStarted = started;
         playbackCompleted = completed;
         targetView.EnqueuePlaybacks(new[] { animation });

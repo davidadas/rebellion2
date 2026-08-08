@@ -227,7 +227,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void ReplaceAnimation_InvokesPlaybackCallbacks()
+        public void ReplaceAnimation_ValidPlayback_InvokesPlaybackCallbacks()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
@@ -269,7 +269,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
-        public void CancelAnimation_DoesNotInvokeCompletion()
+        public void CancelAnimation_ActivePlayback_DoesNotInvokeCompletion()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
@@ -297,6 +297,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 controller.CancelAnimation();
 
                 Assert.IsFalse(completed);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(frame);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void ReplaceAnimation_EmptyPlayback_CancelsActivePlaybackAndCompletesReplacement()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme advisorTheme = CreateTheme();
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D frame = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)] = idle,
+                [advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)] = idle,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(advisorTheme);
+                bool activeCompleted = false;
+                bool replacementCompleted = false;
+                controller.ReplaceAnimation(
+                    new StrategyAdvisorAnimationViewData(new[] { frame }, false, null),
+                    null,
+                    () => activeCompleted = true
+                );
+
+                controller.ReplaceAnimation(null, null, () => replacementCompleted = true);
+
+                Assert.AreSame(idle, GetImage(rootObject, "ProtocolImage").texture);
+                Assert.IsFalse(activeCompleted);
+                Assert.IsTrue(replacementCompleted);
             }
             finally
             {

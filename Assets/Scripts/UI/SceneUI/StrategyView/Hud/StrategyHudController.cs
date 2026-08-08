@@ -113,7 +113,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
-    /// Plays one resolved protocol-advisor animation.
+    /// Cancels current protocol-advisor playback and replaces it with one resolved animation.
     /// </summary>
     /// <param name="animation">The resolved animation presentation.</param>
     /// <param name="started">Invoked when playback starts after its configured delay.</param>

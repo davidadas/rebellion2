@@ -772,7 +772,6 @@ public sealed class StrategyController
         briefingSkipConfirmationOpen = false;
         SetBriefingInteractionEnabled(false);
         AudioManager.EnsureExists().StopSfx();
-        briefingController.Resume();
         briefingController.Skip();
         dirty = true;
     }

@@ -236,7 +236,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Project_BriefingLoyalty_HighlightsOnlyConfiguredFactionAndUsesCueLabel()
+        public void Project_OpponentLoyaltyBriefing_HighlightsOnlyOpponentAndUsesCueLabel()
         {
             GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
             Planet playerPlanet = CreatePlanet("player", _playerFactionId, 1, 2);
@@ -275,7 +275,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Project_BriefingUnexploredSystems_UsesBlueHighlightForUnexploredPlanets()
+        public void Project_UnexploredSystemsBriefing_UsesBlueHighlightForUnexploredPlanets()
         {
             GamePlanetSystem system = CreateSystem("system", "Outer Rim", 0, 0);
             Planet exploredPlanet = CreatePlanet("explored", _playerFactionId, 1, 2);
@@ -340,7 +340,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
-        public void Project_BriefingTarget_RevealsTargetSystemAndOverridesLabel()
+        public void Project_TargetBriefing_RevealsTargetSystemAndOverridesLabel()
         {
             GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
             Planet targetPlanet = CreatePlanet("planet", _playerFactionId, 1, 2);

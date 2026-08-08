@@ -42,6 +42,9 @@ public class StrategyBriefingSegmentTheme
     public string Label { get; set; }
 }
 
+/// <summary>
+/// Identifies the game object or galaxy region emphasized during a briefing segment.
+/// </summary>
 public enum StrategyBriefingFocus
 {
     None,
