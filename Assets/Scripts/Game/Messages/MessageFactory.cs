@@ -1297,7 +1297,8 @@ namespace Rebellion.Game.Messages
                 GetDefinition(
                     MessageResultType.Bombardment,
                     GetBombardmentOutcome(result),
-                    GetBombardmentPlanetOwnership(result)
+                    GetBombardmentPlanetOwnership(result),
+                    planetDestroyed: result.PlanetDestroyed
                 ),
                 faction,
                 new Dictionary<string, string>
@@ -2522,6 +2523,7 @@ namespace Rebellion.Game.Messages
         /// <param name="manufacturingType">The manufacturing type selector to match.</param>
         /// <param name="discipline">The research discipline selector to match.</param>
         /// <param name="gameObjectTypeId">The affected game object's type selector to match.</param>
+        /// <param name="planetDestroyed">Whether the result destroyed its target planet.</param>
         /// <returns>The matching message definition, or null when none exists.</returns>
         private MessageDefinition GetDefinition(
             MessageResultType resultType,
@@ -2530,7 +2532,8 @@ namespace Rebellion.Game.Messages
             BuildingType buildingType = BuildingType.None,
             ManufacturingType manufacturingType = ManufacturingType.None,
             ResearchDiscipline? discipline = null,
-            string gameObjectTypeId = null
+            string gameObjectTypeId = null,
+            bool planetDestroyed = false
         )
         {
             return _definitions
@@ -2544,6 +2547,7 @@ namespace Rebellion.Game.Messages
                     && definition.MissionCompletionReason == MissionCompletionReason.None
                     && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
                     && MatchesOptionalSelector(definition.GameObjectTypeID, gameObjectTypeId)
+                    && definition.PlanetDestroyed == planetDestroyed
                 )
                 .OrderByDescending(definition =>
                     !string.IsNullOrWhiteSpace(definition.GameObjectTypeID)

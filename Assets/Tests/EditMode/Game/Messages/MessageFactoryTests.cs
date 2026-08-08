@@ -2990,6 +2990,47 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DestroyedPlanet_UsesPlanetDestructionDefinition()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            MessageDefinition generic = Definition(
+                MessageResultType.Bombardment,
+                MessageType.Conflict,
+                "generic",
+                "generic",
+                outcome: MessageResultOutcome.TargetLosses,
+                planetOwnership: MessagePlanetOwnership.Owned
+            );
+            MessageDefinition planetDestroyed = Definition(
+                MessageResultType.Bombardment,
+                MessageType.Conflict,
+                "{system} Destroyed!",
+                "The Death Star has destroyed the {target} system {system}.",
+                outcome: MessageResultOutcome.TargetLosses,
+                planetOwnership: MessagePlanetOwnership.Owned,
+                planetDestroyed: true
+            );
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[] { generic, planetDestroyed },
+                    new BombardmentResult
+                    {
+                        AttackingFaction = alliance,
+                        Planet = target,
+                        PlanetDestroyed = true,
+                    }
+                ),
+                empire
+            );
+
+            Assert.AreEqual("Yavin Destroyed!", message.Title);
+            Assert.AreEqual("The Death Star has destroyed the Empire system Yavin.", message.Body);
+        }
+
+        [Test]
         public void CreateMessages_PlanetaryAssault_UsesOwnershipAndOutcomeSelectors()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
@@ -3071,7 +3112,8 @@ namespace Rebellion.Tests.Game.Messages
             string voicePath = null,
             Dictionary<string, string> imagePaths = null,
             Dictionary<string, string> voicePaths = null,
-            bool showOfficerOverlay = false
+            bool showOfficerOverlay = false,
+            bool planetDestroyed = false
         )
         {
             MessageDefinition definition = new MessageDefinition
@@ -3092,6 +3134,7 @@ namespace Rebellion.Tests.Game.Messages
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),
                 VoicePath = voicePath,
                 VoicePaths = voicePaths ?? new Dictionary<string, string>(),
+                PlanetDestroyed = planetDestroyed,
             };
 
             if (researchDiscipline.HasValue)

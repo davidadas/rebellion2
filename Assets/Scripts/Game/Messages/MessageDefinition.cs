@@ -110,6 +110,7 @@ namespace Rebellion.Game.Messages
         public string GameObjectTypeID { get; set; }
         public PlanetStatType PlanetStat { get; set; }
         public bool HasDestroyedObjects { get; set; }
+        public bool PlanetDestroyed { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
         public bool ShowOfficerOverlay { get; set; }
