@@ -988,33 +988,41 @@ namespace Rebellion.Game.Messages
         /// Creates a sabotage strike message for the owner of the destroyed object.
         /// </summary>
         /// <param name="faction">The faction that owned the sabotaged object.</param>
-        /// <param name="result">The sabotage result.</param>
+        /// <param name="results">The sabotage results grouped into this report.</param>
         /// <param name="target">The planet where sabotage occurred.</param>
+        /// <param name="definition">The content-defined presentation selected for the group.</param>
         /// <returns>The sabotage strike message, or null when no matching definition exists.</returns>
         private Message CreateSabotageStrike(
             Faction faction,
-            GameObjectSabotagedResult result,
-            Planet target
+            IEnumerable<GameObjectSabotagedResult> results,
+            Planet target,
+            MessageDefinition definition
         )
         {
-            if (result == null)
+            GameObjectSabotagedResult[] resultArray = results?.Where(result => result != null).ToArray();
+            if (resultArray == null || resultArray.Length == 0)
                 return null;
 
             return WithEventLocation(
                 CreateMessage(
-                    GetDefinition(
-                        MessageResultType.SabotageStrike,
-                        gameObjectTypeId: result.SabotagedObject?.GetTypeID()
-                    ),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
-                        { "item", GetDisplayName(result.SabotagedObject) },
+                        {
+                            "item",
+                            string.Join(
+                                "\n",
+                                resultArray.Select(result =>
+                                    GetDisplayName(result.SabotagedObject)
+                                )
+                            )
+                        },
                         { "system", target?.GetDisplayName() ?? string.Empty },
                     }
                 ),
                 target,
-                result.SabotagedObject as ISceneNode
+                resultArray[0].SabotagedObject as ISceneNode
             );
         }
 
@@ -2019,15 +2027,49 @@ namespace Rebellion.Game.Messages
             List<(Faction faction, Message message)> deliveries
         )
         {
-            foreach (GameObjectSabotagedResult result in results)
-            {
-                Planet target = GetSabotageTarget(result);
-                string ownerInstanceID = GetOwnerInstanceID(result.SabotagedObject);
-                if (string.IsNullOrEmpty(ownerInstanceID))
-                    ownerInstanceID = target?.OwnerInstanceID;
+            var reportItems = (results ?? Enumerable.Empty<GameObjectSabotagedResult>())
+                .Where(result => result != null)
+                .Select(result =>
+                {
+                    Planet target = GetSabotageTarget(result);
+                    string ownerInstanceID = GetOwnerInstanceID(result.SabotagedObject);
+                    if (string.IsNullOrEmpty(ownerInstanceID))
+                        ownerInstanceID = target?.OwnerInstanceID;
 
-                Faction faction = GetFaction(game, ownerInstanceID);
-                AddDelivery(deliveries, faction, CreateSabotageStrike(faction, result, target));
+                    return new
+                    {
+                        Result = result,
+                        Target = target,
+                        Faction = GetFaction(game, ownerInstanceID),
+                        Definition = GetDefinition(
+                            MessageResultType.SabotageStrike,
+                            gameObjectTypeId: result.SabotagedObject?.GetTypeID()
+                        ),
+                    };
+                })
+                .Where(item => item.Faction != null && item.Definition != null);
+
+            foreach (
+                var group in reportItems.GroupBy(item =>
+                    (
+                        item.Faction.InstanceID,
+                        TargetInstanceID: item.Target?.InstanceID,
+                        item.Definition
+                    )
+                )
+            )
+            {
+                var first = group.First();
+                AddDelivery(
+                    deliveries,
+                    first.Faction,
+                    CreateSabotageStrike(
+                        first.Faction,
+                        group.Select(item => item.Result),
+                        first.Target,
+                        first.Definition
+                    )
+                );
             }
         }
 

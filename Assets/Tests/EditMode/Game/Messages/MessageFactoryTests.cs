@@ -2713,6 +2713,87 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SabotageResultsAtSameSystem_UseOneOriginalStyleReport()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+            Building shield = new Building
+            {
+                DisplayName = "Shield Generator",
+                OwnerInstanceID = empire.InstanceID,
+            };
+            Regiment regiment = new Regiment
+            {
+                DisplayName = "Stormtrooper Regiment",
+                OwnerInstanceID = empire.InstanceID,
+            };
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.SabotageStrike,
+                        MessageType.Mission,
+                        "Saboteurs Strike at {system}",
+                        "Destroyed at {system}:\n{item}"
+                    ),
+                },
+                new GameObjectSabotagedResult { SabotagedObject = shield, Context = target },
+                new GameObjectSabotagedResult { SabotagedObject = regiment, Context = target }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("Saboteurs Strike at Yavin", deliveries[0].message.Title);
+            Assert.AreEqual(
+                "Destroyed at Yavin:\nShield Generator\nStormtrooper Regiment",
+                deliveries[0].message.Body
+            );
+        }
+
+        [Test]
+        public void CreateMessages_SabotageResultsWithSpecificPresentation_StayInSeparateReports()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+            CapitalShip deathStar = new CapitalShip
+            {
+                TypeID = "CSEM015",
+                DisplayName = "Death Star",
+                OwnerInstanceID = empire.InstanceID,
+            };
+            Building shield = new Building
+            {
+                DisplayName = "Shield Generator",
+                OwnerInstanceID = empire.InstanceID,
+            };
+            MessageDefinition generic = Definition(
+                MessageResultType.SabotageStrike,
+                MessageType.Mission,
+                "generic",
+                "generic:{item}"
+            );
+            MessageDefinition specific = Definition(
+                MessageResultType.SabotageStrike,
+                MessageType.Mission,
+                "Death Star Sabotaged",
+                "death-star"
+            );
+            specific.GameObjectTypeID = deathStar.TypeID;
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[] { generic, specific },
+                new GameObjectSabotagedResult { SabotagedObject = deathStar, Context = target },
+                new GameObjectSabotagedResult { SabotagedObject = shield, Context = target }
+            );
+
+            Assert.AreEqual(2, deliveries.Count);
+            Assert.IsTrue(deliveries.Any(delivery => delivery.message.Title == "Death Star Sabotaged"));
+            Assert.IsTrue(
+                deliveries.Any(delivery => delivery.message.Body == "generic:Shield Generator")
+            );
+        }
+
+        [Test]
         public void CreateMessages_SabotagedConfiguredUnitType_UsesSpecificDefinition()
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
