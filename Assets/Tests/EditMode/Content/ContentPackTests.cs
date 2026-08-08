@@ -479,6 +479,27 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_EspionageSuccessReport_PreservesOriginalAdditionalSystemText()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
+                candidate.ResultType == MessageResultType.MissionReport
+                && candidate.Outcome == MessageResultOutcome.Success
+                && candidate.MissionTypeID == MissionTypeIDs.Espionage
+            );
+
+            Assert.AreEqual(
+                "My espionage mission to {system} was successful.  {details}",
+                definition.BodyTemplate
+            );
+            Assert.AreEqual(
+                "In addition, information was provided on the following systems:",
+                definition.DetailListHeaderTemplate
+            );
+            Assert.AreEqual("\n     {system}", definition.DetailListItemTemplate);
+        }
+
+        [Test]
         public void OpenActive_SpaceBattleReports_PreserveOriginalModdableNarrativeCatalog()
         {
             ContentPack pack = ContentPackLoader.OpenActive();

@@ -149,6 +149,8 @@ namespace Rebellion.Game.Messages
         public bool PlanetDestroyed { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public string DetailListHeaderTemplate { get; set; }
+        public string DetailListItemTemplate { get; set; }
         public SpaceBattleNarrativeTemplates SpaceBattleNarrative { get; set; }
         public bool ShowOfficerOverlay { get; set; }
         public string ImageKey { get; set; }

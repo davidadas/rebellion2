@@ -54,6 +54,9 @@ namespace Rebellion.Game.Messages
             GameObjectSabotagedResult[] sabotageResults = resultArray
                 .OfType<GameObjectSabotagedResult>()
                 .ToArray();
+            MissionSystemIntelligenceResult[] systemIntelligenceResults = resultArray
+                .OfType<MissionSystemIntelligenceResult>()
+                .ToArray();
             List<(Faction faction, Message message)> deliveries =
                 new List<(Faction faction, Message message)>();
 
@@ -64,7 +67,14 @@ namespace Rebellion.Game.Messages
                 deliveries
             );
             AddSmugglingMessages(resultArray.OfType<SmugglingChangedResult>(), deliveries);
-            AddMissionMessages(missionResults, killedResults, sabotageResults, game, deliveries);
+            AddMissionMessages(
+                missionResults,
+                killedResults,
+                sabotageResults,
+                systemIntelligenceResults,
+                game,
+                deliveries
+            );
             AddRecruitmentMessages(resultArray.OfType<RecruitmentExhaustedResult>(), deliveries);
             AddOfficerMessages(
                 resultArray.OfType<OfficerRecruitedResult>(),
@@ -525,6 +535,7 @@ namespace Rebellion.Game.Messages
         /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
         /// <param name="killedResults">Officer death results in the current batch.</param>
         /// <param name="sabotageResults">Sabotage results in the current batch.</param>
+        /// <param name="systemIntelligence">Additional systems revealed by this mission.</param>
         /// <returns>The mission report message, or null when no matching definition exists.</returns>
         private Message CreateMissionReport(
             Faction faction,
@@ -533,7 +544,8 @@ namespace Rebellion.Game.Messages
             GameRoot game,
             HashSet<string> killedOfficerIDs,
             IEnumerable<OfficerKilledResult> killedResults,
-            IEnumerable<GameObjectSabotagedResult> sabotageResults
+            IEnumerable<GameObjectSabotagedResult> sabotageResults,
+            MissionSystemIntelligenceResult systemIntelligence
         )
         {
             if (result == null)
@@ -555,15 +567,20 @@ namespace Rebellion.Game.Messages
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
             OfficerVoiceLineType voiceLineType = GetMissionVoiceLineType(result);
             Officer reporter = jediTrainer ?? GetMissionParticipantOfficer(result, voiceLineType);
+            MessageDefinition definition = GetMissionDefinition(
+                MessageResultType.MissionReport,
+                outcome,
+                GetMissionTypeID(result),
+                completionReason
+            );
+            string missionDetails = BuildMissionDetailList(
+                definition,
+                systemIntelligence?.AdditionalSystems
+            );
 
             Message message = WithEventLocation(
                 CreateMessage(
-                    GetMissionDefinition(
-                        MessageResultType.MissionReport,
-                        outcome,
-                        GetMissionTypeID(result),
-                        completionReason
-                    ),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
@@ -576,6 +593,7 @@ namespace Rebellion.Game.Messages
                         { "officer", string.IsNullOrEmpty(officerName) ? "target" : officerName },
                         { "target", string.IsNullOrEmpty(targetName) ? "target" : targetName },
                         { "assassination_result", assassinationResult },
+                        { "details", missionDetails },
                     },
                     overlayImagePath: jediTrainer == null
                         ? GetMissionParticipantOverlayImagePath(result)
@@ -593,6 +611,32 @@ namespace Rebellion.Game.Messages
             return reporter == null
                 ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
+        }
+
+        /// <summary>
+        /// Builds a configured mission-detail list for systems revealed beyond the primary target.
+        /// </summary>
+        private static string BuildMissionDetailList(
+            MessageDefinition definition,
+            IEnumerable<PlanetSystem> systems
+        )
+        {
+            PlanetSystem[] systemArray = systems?.Where(system => system != null).ToArray();
+            if (definition == null || systemArray == null || systemArray.Length == 0)
+                return string.Empty;
+
+            string items = string.Concat(
+                systemArray.Select(system =>
+                    MessageTemplateBuilder.Interpolate(
+                        definition.DetailListItemTemplate,
+                        new Dictionary<string, string>
+                        {
+                            { "system", system.GetDisplayName() },
+                        }
+                    )
+                )
+            );
+            return (definition.DetailListHeaderTemplate ?? string.Empty) + items;
         }
 
         /// <summary>
@@ -1670,12 +1714,14 @@ namespace Rebellion.Game.Messages
         /// <param name="results">The completed mission results to process.</param>
         /// <param name="killedResults">The officer death results in the current batch.</param>
         /// <param name="sabotageResults">The sabotage results in the current batch.</param>
+        /// <param name="systemIntelligenceResults">Additional-system intelligence results.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddMissionMessages(
             IEnumerable<MissionCompletedResult> results,
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
+            IEnumerable<MissionSystemIntelligenceResult> systemIntelligenceResults,
             GameRoot game,
             List<(Faction faction, Message message)> deliveries
         )
@@ -1686,11 +1732,20 @@ namespace Rebellion.Game.Messages
                 .Select(result => result.TargetOfficer?.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
+            Dictionary<string, MissionSystemIntelligenceResult> systemIntelligenceByMission =
+                (systemIntelligenceResults ?? Array.Empty<MissionSystemIntelligenceResult>())
+                    .Where(result => !string.IsNullOrEmpty(result.MissionInstanceID))
+                    .GroupBy(result => result.MissionInstanceID)
+                    .ToDictionary(group => group.Key, group => group.Last());
 
             foreach (MissionCompletedResult result in results)
             {
                 Planet target = GetMissionTarget(result);
                 Faction actorFaction = GetFaction(game, result.Mission?.OwnerInstanceID);
+                systemIntelligenceByMission.TryGetValue(
+                    result.MissionInstanceID ?? string.Empty,
+                    out MissionSystemIntelligenceResult systemIntelligence
+                );
                 AddDelivery(
                     deliveries,
                     actorFaction,
@@ -1701,7 +1756,8 @@ namespace Rebellion.Game.Messages
                         game,
                         killedOfficerIDs,
                         killedArray,
-                        sabotageResults
+                        sabotageResults,
+                        systemIntelligence
                     )
                 );
 

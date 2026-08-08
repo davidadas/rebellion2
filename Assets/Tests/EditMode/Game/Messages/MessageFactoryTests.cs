@@ -1162,6 +1162,102 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_EspionageSuccess_AppendsConfiguredAdditionalSystems()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new EspionageMission
+            {
+                InstanceID = "espionage-mission",
+                DisplayName = "Espionage",
+                ConfigKey = MissionTypeIDs.Espionage,
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            PlanetSystem corellia = new PlanetSystem { DisplayName = "Corellia" };
+            PlanetSystem sullust = new PlanetSystem { DisplayName = "Sullust" };
+            game.AttachNode(corellia, game.Galaxy);
+            game.AttachNode(sullust, game.Galaxy);
+            MessageDefinition definition = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "title",
+                "Successful.  {details}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeID: MissionTypeIDs.Espionage
+            );
+            definition.DetailListHeaderTemplate = "Additional systems:";
+            definition.DetailListItemTemplate = "\n     {system}";
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[] { definition },
+                    new MissionSystemIntelligenceResult
+                    {
+                        MissionInstanceID = mission.InstanceID,
+                        AdditionalSystems = new List<PlanetSystem> { corellia, sullust },
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionInstanceID = mission.InstanceID,
+                        MissionName = "Espionage",
+                        MissionTypeID = MissionTypeIDs.Espionage,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(
+                "Successful.  Additional systems:\n     Corellia\n     Sullust",
+                message.Body
+            );
+        }
+
+        [Test]
+        public void CreateMessages_EspionageSuccessWithoutAdditionalSystems_OmitsDetails()
+        {
+            (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
+            Mission mission = new EspionageMission
+            {
+                InstanceID = "espionage-mission",
+                DisplayName = "Espionage",
+                ConfigKey = MissionTypeIDs.Espionage,
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title",
+                            "Successful.  {details}",
+                            outcome: MessageResultOutcome.Success,
+                            missionTypeID: MissionTypeIDs.Espionage
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionInstanceID = mission.InstanceID,
+                        MissionName = "Espionage",
+                        MissionTypeID = MissionTypeIDs.Espionage,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Successful.  ", message.Body);
+        }
+
+        [Test]
         public void CreateMessages_RecruitmentSuccess_UsesRecruiterVoiceAndAdvisorSubject()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();

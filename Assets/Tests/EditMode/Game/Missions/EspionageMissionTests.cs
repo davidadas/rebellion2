@@ -186,6 +186,58 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
+        public void Execute_CoreTarget_ReportsEveryAdditionalSystemRevealed()
+        {
+            (
+                GameRoot game,
+                Planet empPlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarSystem fog
+            ) = MissionSceneBuilder.Build();
+            enemyPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.CoreSystem;
+            PlanetSystem corellia = AddSystem(
+                game,
+                "core2",
+                "core_planet2",
+                PlanetSystemType.CoreSystem
+            );
+            corellia.DisplayName = "Corellia";
+            PlanetSystem sullust = AddSystem(
+                game,
+                "core3",
+                "core_planet3",
+                PlanetSystemType.CoreSystem
+            );
+            sullust.DisplayName = "Sullust";
+            game.Config.Espionage.CoreSystemBonus = new GameConfig.RandomCountConfig { Base = 2 };
+            enemyPlanet.VisitingFactionIDs.Add("empire");
+
+            Mission mission = CreateMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>()
+            );
+            game.AttachNode(mission, enemyPlanet);
+            mission.Initiate(0);
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
+
+            MissionSystemIntelligenceResult intelligence = results
+                .OfType<MissionSystemIntelligenceResult>()
+                .Single();
+            Assert.AreEqual(mission.InstanceID, intelligence.MissionInstanceID);
+            CollectionAssert.AreEquivalent(
+                new[] { "Corellia", "Sullust" },
+                intelligence.AdditionalSystems.Select(system => system.DisplayName)
+            );
+        }
+
+        [Test]
         public void Execute_OuterRimTarget_DoesNotRevealBonusPlanets()
         {
             (

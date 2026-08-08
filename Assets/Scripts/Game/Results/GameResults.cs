@@ -380,6 +380,14 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// An espionage mission revealed intelligence about systems beyond its primary target.
+    /// </summary>
+    public class MissionSystemIntelligenceResult : GameResult
+    {
+        public List<PlanetSystem> AdditionalSystems { get; set; } = new List<PlanetSystem>();
+    }
+
+    /// <summary>
     /// A mission participant's en-route-to-mission active state changed.
     /// </summary>
     public class RoleEnrouteActiveResult : GameResult
