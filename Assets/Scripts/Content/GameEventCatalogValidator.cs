@@ -121,6 +121,9 @@ public static class GameEventCatalogValidator
 
             switch (condition)
             {
+                case EventVariableConditional variable when string.IsNullOrWhiteSpace(variable.Key):
+                    errors.Add($"{conditionPath}.Key is required.");
+                    break;
                 case AndConditional and:
                     ValidateComposite(and.Conditionals, conditionPath, 1, errors);
                     break;
@@ -191,6 +194,15 @@ public static class GameEventCatalogValidator
 
             switch (action)
             {
+                case ConditionalAction conditional:
+                    ValidateComposite(conditional.Conditionals, actionPath, 1, errors);
+                    ValidateActionList(conditional.Actions, $"{actionPath}.Actions", errors);
+                    ValidateActionList(
+                        conditional.ElseActions,
+                        $"{actionPath}.ElseActions",
+                        errors
+                    );
+                    break;
                 case RandomOutcomeAction randomOutcome:
                     if (randomOutcome.Probability < 0 || randomOutcome.Probability > 1)
                         errors.Add($"{actionPath}.Probability must be between 0 and 1.");
@@ -205,6 +217,9 @@ public static class GameEventCatalogValidator
                     break;
                 case NarrativeMessageAction message:
                     ValidateNarrativeMessage(message, actionPath, errors);
+                    break;
+                case SetEventVariableAction variable when string.IsNullOrWhiteSpace(variable.Key):
+                    errors.Add($"{actionPath}.Key is required.");
                     break;
                 case TriggerEventAction trigger
                     when string.IsNullOrWhiteSpace(trigger.EventInstanceID):
@@ -330,6 +345,13 @@ public static class GameEventCatalogValidator
             if (action is RandomOutcomeAction random)
             {
                 foreach (TriggerEventAction nested in EnumerateTriggers(random.Actions))
+                    yield return nested;
+            }
+            if (action is ConditionalAction conditional)
+            {
+                foreach (TriggerEventAction nested in EnumerateTriggers(conditional.Actions))
+                    yield return nested;
+                foreach (TriggerEventAction nested in EnumerateTriggers(conditional.ElseActions))
                     yield return nested;
             }
         }

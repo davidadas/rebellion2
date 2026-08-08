@@ -11,6 +11,14 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    public enum EventVariableOperation
+    {
+        Set,
+        Add,
+        Minimum,
+        Maximum,
+    }
+
     [PersistableObject(Name = "RandomOutcome")]
     public class RandomOutcomeAction : GameAction
     {
@@ -168,6 +176,73 @@ namespace Rebellion.Game.Events
                     VoicePath = VoicePath,
                     AdvisorNotification = AdvisorNotification,
                     AdvisorSubjectNotification = AdvisorSubjectNotification,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
+    /// Executes one of two authored action lists based on data-defined conditions.
+    /// </summary>
+    [PersistableObject(Name = "Conditional")]
+    public class ConditionalAction : GameAction
+    {
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+        public List<GameAction> Actions { get; set; } = new List<GameAction>();
+        public List<GameAction> ElseActions { get; set; } = new List<GameAction>();
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            return Execute(game, game.Random);
+        }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        {
+            List<GameAction> selected = Conditionals.TrueForAll(condition => condition.IsMet(game))
+                ? Actions
+                : ElseActions;
+            List<GameResult> results = new List<GameResult>();
+            foreach (GameAction action in selected)
+                results.AddRange(action.Execute(game, provider));
+            return results;
+        }
+    }
+
+    /// <summary>
+    /// Mutates a persistent integer used to coordinate data-defined story stages.
+    /// </summary>
+    [PersistableObject(Name = "SetEventVariable")]
+    public class SetEventVariableAction : GameAction
+    {
+        public string Key { get; set; }
+        public EventVariableOperation Operation { get; set; }
+        public int Value { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            int previousValue = game.GetEventVariable(Key);
+            int currentValue = Operation switch
+            {
+                EventVariableOperation.Set => Value,
+                EventVariableOperation.Add => checked(previousValue + Value),
+                EventVariableOperation.Minimum => Math.Min(previousValue, Value),
+                EventVariableOperation.Maximum => Math.Max(previousValue, Value),
+                _ => throw new InvalidOperationException(
+                    $"Unsupported event variable operation '{Operation}'."
+                ),
+            };
+            game.SetEventVariable(Key, currentValue);
+            return new List<GameResult>
+            {
+                new EventVariableChangedResult
+                {
+                    Key = Key,
+                    PreviousValue = previousValue,
+                    CurrentValue = currentValue,
                     Tick = game.CurrentTick,
                 },
             };

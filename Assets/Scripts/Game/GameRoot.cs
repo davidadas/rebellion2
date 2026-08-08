@@ -75,6 +75,9 @@ namespace Rebellion.Game
         public HashSet<string> CompletedEventIDs = new HashSet<string>();
         public Dictionary<string, GameEventState> EventStates =
             new Dictionary<string, GameEventState>();
+        public Dictionary<string, int> EventVariables = new Dictionary<string, int>(
+            StringComparer.Ordinal
+        );
 
         // Scene nodes.
         [PersistableIgnore]
@@ -536,6 +539,28 @@ namespace Rebellion.Game
             }
 
             return state;
+        }
+
+        /// <summary>
+        /// Returns a persistent event variable, treating an unset variable as zero.
+        /// </summary>
+        public int GetEventVariable(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Event variable key is required.", nameof(key));
+
+            return EventVariables.TryGetValue(key, out int value) ? value : 0;
+        }
+
+        /// <summary>
+        /// Stores a persistent event variable.
+        /// </summary>
+        public void SetEventVariable(string key, int value)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Event variable key is required.", nameof(key));
+
+            EventVariables[key] = value;
         }
 
         /// <summary>

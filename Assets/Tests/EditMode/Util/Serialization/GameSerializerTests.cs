@@ -291,6 +291,27 @@ namespace Rebellion.Tests.Util.Serialization
                             },
                         },
                     },
+                    new ConditionalAction
+                    {
+                        Conditionals = new List<GameConditional>
+                        {
+                            new EventVariableConditional
+                            {
+                                Key = "luke.stage",
+                                Comparison = EventVariableComparison.Equal,
+                                Value = 1,
+                            },
+                        },
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction
+                            {
+                                Key = "luke.stage",
+                                Operation = EventVariableOperation.Add,
+                                Value = 1,
+                            },
+                        },
+                    },
                 },
             };
 
@@ -307,6 +328,16 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual(MessageType.Advice, message.MessageType);
             Assert.AreEqual("Story/dialogue", message.VoicePath);
+            ConditionalAction conditional = deserialized.Actions[1] as ConditionalAction;
+            Assert.IsNotNull(conditional);
+            EventVariableConditional condition =
+                conditional.Conditionals[0] as EventVariableConditional;
+            Assert.IsNotNull(condition);
+            Assert.AreEqual("luke.stage", condition.Key);
+            Assert.AreEqual(EventVariableComparison.Equal, condition.Comparison);
+            SetEventVariableAction setVariable = conditional.Actions[0] as SetEventVariableAction;
+            Assert.IsNotNull(setVariable);
+            Assert.AreEqual(EventVariableOperation.Add, setVariable.Operation);
         }
 
         [Test]

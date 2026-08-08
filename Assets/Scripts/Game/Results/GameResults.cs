@@ -524,6 +524,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A persistent data-defined event variable changed.
+    /// </summary>
+    public class EventVariableChangedResult : GameResult
+    {
+        public string Key { get; set; }
+        public int PreviousValue { get; set; }
+        public int CurrentValue { get; set; }
+    }
+
+    /// <summary>
     /// Han Solo was attacked by a bounty hunter.
     /// </summary>
     public class BountyAttackResult : GameResult

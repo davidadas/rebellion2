@@ -134,5 +134,47 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreEqual(child.InstanceID, result.SourceEventInstanceID);
         }
+
+        [Test]
+        public void ConditionalAction_EventVariable_SelectsBranchAndPersistsMutation()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            game.SetEventVariable("luke.stage", 2);
+            ConditionalAction action = new ConditionalAction
+            {
+                Conditionals = new List<GameConditional>
+                {
+                    new EventVariableConditional
+                    {
+                        Key = "luke.stage",
+                        Comparison = EventVariableComparison.GreaterThanOrEqual,
+                        Value = 2,
+                    },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction
+                    {
+                        Key = "luke.stage",
+                        Operation = EventVariableOperation.Add,
+                        Value = 1,
+                    },
+                },
+                ElseActions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "wrong", Value = 1 },
+                },
+            };
+
+            EventVariableChangedResult result = action
+                .Execute(game, new FixedRandomProvider(new[] { 0d }))
+                .OfType<EventVariableChangedResult>()
+                .Single();
+
+            Assert.AreEqual(2, result.PreviousValue);
+            Assert.AreEqual(3, result.CurrentValue);
+            Assert.AreEqual(3, game.GetEventVariable("luke.stage"));
+            Assert.AreEqual(0, game.GetEventVariable("wrong"));
+        }
     }
 }

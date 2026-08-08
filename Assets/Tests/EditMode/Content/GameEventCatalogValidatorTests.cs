@@ -95,6 +95,30 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("Probability must be between 0 and 1", exception.Message);
         }
 
+        [Test]
+        public void Validate_ConditionalBranch_ValidatesNestedConditionsActionsAndReferences()
+        {
+            GameEvent gameEvent = CreateEvent("BRANCH");
+            gameEvent.Actions.Add(
+                new ConditionalAction
+                {
+                    Conditionals = new List<GameConditional> { new EventVariableConditional() },
+                    Actions = new List<GameAction>
+                    {
+                        new TriggerEventAction { EventInstanceID = "MISSING" },
+                    },
+                    ElseActions = new List<GameAction> { new SetEventVariableAction() },
+                }
+            );
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("Key is required", exception.Message);
+            StringAssert.Contains("triggers unknown event 'MISSING'", exception.Message);
+        }
+
         private static GameEvent CreateEvent(string instanceId)
         {
             return new GameEvent

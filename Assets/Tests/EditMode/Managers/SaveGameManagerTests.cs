@@ -423,6 +423,29 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(400, state.LastExecutionTick);
         }
 
+        [Test]
+        public void SaveAndLoadGame_GameWithEventVariables_PreservesStoryState()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventVariables = new Dictionary<string, int>
+                {
+                    { "luke.dagobah.stage", 8 },
+                    { "luke.heritage.revealed", 1 },
+                },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            Assert.AreEqual(8, loadedGame.GetEventVariable("luke.dagobah.stage"));
+            Assert.AreEqual(1, loadedGame.GetEventVariable("luke.heritage.revealed"));
+            Assert.AreEqual(0, loadedGame.GetEventVariable("unset"));
+        }
+
         // TODO: Officer serialization needs investigation - officers have complex initialization requirements
         // [Test]
         // public void SaveAndLoadGame_PreservesUnrecruitedOfficers() { ... }

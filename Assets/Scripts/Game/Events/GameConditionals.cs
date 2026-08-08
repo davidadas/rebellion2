@@ -9,6 +9,16 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    public enum EventVariableComparison
+    {
+        Equal,
+        NotEqual,
+        GreaterThan,
+        GreaterThanOrEqual,
+        LessThan,
+        LessThanOrEqual,
+    }
+
     /// <summary>
     /// A <see cref="GameConditional"/> that is met when all child conditions are met.
     /// </summary>
@@ -316,6 +326,35 @@ namespace Rebellion.Game.Events
 
             // Check if the event is complete.
             return game.IsEventComplete(eventInstanceId);
+        }
+    }
+
+    /// <summary>
+    /// Compares a persistent, data-defined event variable with an authored value.
+    /// </summary>
+    [PersistableObject(Name = "EventVariable")]
+    public class EventVariableConditional : GameConditional
+    {
+        public string Key { get; set; }
+        public EventVariableComparison Comparison { get; set; }
+        public int Value { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            int current = game.GetEventVariable(Key);
+            return Comparison switch
+            {
+                EventVariableComparison.Equal => current == Value,
+                EventVariableComparison.NotEqual => current != Value,
+                EventVariableComparison.GreaterThan => current > Value,
+                EventVariableComparison.GreaterThanOrEqual => current >= Value,
+                EventVariableComparison.LessThan => current < Value,
+                EventVariableComparison.LessThanOrEqual => current <= Value,
+                _ => throw new InvalidOperationException(
+                    $"Unsupported event variable comparison '{Comparison}'."
+                ),
+            };
         }
     }
 }
