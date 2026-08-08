@@ -107,6 +107,7 @@ namespace Rebellion.Game.Messages
         public string PreviousOwnerInstanceID { get; set; }
         public string NewOwnerInstanceID { get; set; }
         public string FactionInstanceID { get; set; }
+        public string GameObjectTypeID { get; set; }
         public PlanetStatType PlanetStat { get; set; }
         public bool HasDestroyedObjects { get; set; }
         public string TitleTemplate { get; set; }

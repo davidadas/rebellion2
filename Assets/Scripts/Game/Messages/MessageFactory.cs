@@ -857,7 +857,10 @@ namespace Rebellion.Game.Messages
 
             return WithEventLocation(
                 CreateMessage(
-                    GetDefinition(MessageResultType.SabotageStrike),
+                    GetDefinition(
+                        MessageResultType.SabotageStrike,
+                        gameObjectTypeId: result.SabotagedObject?.GetTypeID()
+                    ),
                     faction,
                     new Dictionary<string, string>
                     {
@@ -2518,6 +2521,7 @@ namespace Rebellion.Game.Messages
         /// <param name="buildingType">The building type selector to match.</param>
         /// <param name="manufacturingType">The manufacturing type selector to match.</param>
         /// <param name="discipline">The research discipline selector to match.</param>
+        /// <param name="gameObjectTypeId">The affected game object's type selector to match.</param>
         /// <returns>The matching message definition, or null when none exists.</returns>
         private MessageDefinition GetDefinition(
             MessageResultType resultType,
@@ -2525,19 +2529,26 @@ namespace Rebellion.Game.Messages
             MessagePlanetOwnership planetOwnership = MessagePlanetOwnership.None,
             BuildingType buildingType = BuildingType.None,
             ManufacturingType manufacturingType = ManufacturingType.None,
-            ResearchDiscipline? discipline = null
+            ResearchDiscipline? discipline = null,
+            string gameObjectTypeId = null
         )
         {
-            return _definitions.FirstOrDefault(definition =>
-                definition.ResultType == resultType
-                && definition.Outcome == outcome
-                && definition.PlanetOwnership == planetOwnership
-                && definition.BuildingType == buildingType
-                && definition.ManufacturingType == manufacturingType
-                && string.IsNullOrEmpty(definition.MissionTypeID)
-                && definition.MissionCompletionReason == MissionCompletionReason.None
-                && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
-            );
+            return _definitions
+                .Where(definition =>
+                    definition.ResultType == resultType
+                    && definition.Outcome == outcome
+                    && definition.PlanetOwnership == planetOwnership
+                    && definition.BuildingType == buildingType
+                    && definition.ManufacturingType == manufacturingType
+                    && string.IsNullOrEmpty(definition.MissionTypeID)
+                    && definition.MissionCompletionReason == MissionCompletionReason.None
+                    && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
+                    && MatchesOptionalSelector(definition.GameObjectTypeID, gameObjectTypeId)
+                )
+                .OrderByDescending(definition =>
+                    !string.IsNullOrWhiteSpace(definition.GameObjectTypeID)
+                )
+                .FirstOrDefault();
         }
 
         /// <summary>

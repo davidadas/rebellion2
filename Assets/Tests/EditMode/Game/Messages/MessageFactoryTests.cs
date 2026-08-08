@@ -2221,6 +2221,46 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SabotagedConfiguredUnitType_UsesSpecificDefinition()
+        {
+            (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
+            CapitalShip deathStar = new CapitalShip
+            {
+                TypeID = "CSEM015",
+                DisplayName = "Death Star",
+                OwnerInstanceID = empire.InstanceID,
+            };
+            MessageDefinition generic = Definition(
+                MessageResultType.SabotageStrike,
+                MessageType.Mission,
+                "generic",
+                "generic"
+            );
+            MessageDefinition specific = Definition(
+                MessageResultType.SabotageStrike,
+                MessageType.Mission,
+                "Death Star Sabotaged",
+                "The Rebel Alliance has sabotaged the Death Star at {system}."
+            );
+            specific.GameObjectTypeID = deathStar.TypeID;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[] { generic, specific },
+                    new GameObjectSabotagedResult { SabotagedObject = deathStar, Context = target }
+                ),
+                empire
+            );
+
+            Assert.AreEqual("Death Star Sabotaged", message.Title);
+            Assert.AreEqual(
+                "The Rebel Alliance has sabotaged the Death Star at Yavin.",
+                message.Body
+            );
+        }
+
+        [Test]
         public void CreateMessages_ResearchCompleted_UsesDisciplineDefinition()
         {
             (GameRoot game, Faction alliance, _, _) = BuildMessageScene();
