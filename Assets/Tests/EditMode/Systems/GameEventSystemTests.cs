@@ -138,6 +138,40 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_MatchingStoryCaptureOutcome_ExecutesAuthoredReaction()
+        {
+            Officer han = new Officer { InstanceID = "han" };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "BOUNTY_FAILED",
+                TriggerResultType = nameof(StoryCaptureResolvedResult),
+                Conditionals = new List<GameConditional>
+                {
+                    new StoryCaptureOutcomeConditional
+                    {
+                        TargetOfficerInstanceID = han.InstanceID,
+                        WasCaptured = false,
+                    },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "han.evaded", Value = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.HandleResults(
+                new[]
+                {
+                    new StoryCaptureResolvedResult { Target = han, WasCaptured = false },
+                }
+            );
+
+            Assert.AreEqual(1, _game.GetEventVariable("han.evaded"));
+            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+        }
+
+        [Test]
         public void ProcessEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
         {
             GameEvent gameEvent = new GameEvent

@@ -464,6 +464,27 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches the target and outcome of a content-authored capture attempt.
+    /// </summary>
+    [PersistableObject(Name = "StoryCaptureOutcome")]
+    public sealed class StoryCaptureOutcomeConditional : GameConditional
+    {
+        public string TargetOfficerInstanceID { get; set; }
+        public bool WasCaptured { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game) => false;
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return triggerResult is StoryCaptureResolvedResult capture
+                && capture.Target?.InstanceID == TargetOfficerInstanceID
+                && capture.WasCaptured == WasCaptured;
+        }
+    }
+
+    /// <summary>
     /// Matches the collector that completed a story prisoner pickup.
     /// </summary>
     [PersistableObject(Name = "StoryPickupCollector")]

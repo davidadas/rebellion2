@@ -74,6 +74,14 @@ namespace Rebellion.Game.Missions
             {
                 return new List<GameResult>
                 {
+                    new StoryCaptureResolvedResult
+                    {
+                        Target = target,
+                        Location = location,
+                        WasCaptured = false,
+                        Tick = game.CurrentTick,
+                        SourceEventInstanceID = SourceEventInstanceID,
+                    },
                     BuildCompletedResult(
                         MissionOutcome.Failed,
                         MissionCompletionReason.TargetUnavailable,
@@ -96,7 +104,19 @@ namespace Rebellion.Game.Missions
             };
             MissionCompletedResult completed = BuildCompletedResult(MissionOutcome.Success, game);
             completed.SourceEventInstanceID = SourceEventInstanceID;
-            return new List<GameResult> { captureResult, completed };
+            return new List<GameResult>
+            {
+                captureResult,
+                new StoryCaptureResolvedResult
+                {
+                    Target = target,
+                    Location = location,
+                    WasCaptured = true,
+                    Tick = game.CurrentTick,
+                    SourceEventInstanceID = SourceEventInstanceID,
+                },
+                completed,
+            };
         }
     }
 }

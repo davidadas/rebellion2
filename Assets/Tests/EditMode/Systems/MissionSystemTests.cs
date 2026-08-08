@@ -435,15 +435,70 @@ namespace Rebellion.Tests.Systems
             officer.Movement = null;
 
             Assert.IsEmpty(missions.ProcessTick().OfType<OfficerCaptureStateResult>());
-            OfficerCaptureStateResult capture = missions
-                .ProcessTick()
+            List<GameResult> results = missions.ProcessTick();
+            OfficerCaptureStateResult capture = results
                 .OfType<OfficerCaptureStateResult>()
+                .Single();
+            StoryCaptureResolvedResult resolution = results
+                .OfType<StoryCaptureResolvedResult>()
                 .Single();
 
             Assert.IsTrue(officer.IsCaptured);
             Assert.IsFalse(officer.CanEscape);
             Assert.AreSame(planet, officer.GetParent());
             Assert.AreEqual("HAN_BOUNTY_HUNTERS", capture.SourceEventInstanceID);
+            Assert.AreSame(officer, resolution.Target);
+            Assert.AreSame(planet, resolution.Location);
+            Assert.IsTrue(resolution.WasCaptured);
+            Assert.AreEqual("HAN_BOUNTY_HUNTERS", resolution.SourceEventInstanceID);
+            Assert.IsEmpty(game.GetSceneNodesByType<StoryCaptureMission>());
+        }
+
+        [Test]
+        public void HandleStoryCaptureRequest_TargetUnavailable_EmitsFailedResolution()
+        {
+            (GameRoot game, Planet planet, Officer officer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(
+                new[]
+                {
+                    new StoryCaptureRequestedResult
+                    {
+                        Target = officer,
+                        DurationTicks = 0,
+                        CanEscape = false,
+                        DisplayName = "Bounty Hunters",
+                        SourceEventInstanceID = "HAN_BOUNTY_HUNTERS",
+                    },
+                }
+            );
+            officer.Movement = null;
+            officer.IsKilled = true;
+
+            List<GameResult> results = missions.ProcessTick();
+            StoryCaptureResolvedResult resolution = results
+                .OfType<StoryCaptureResolvedResult>()
+                .Single();
+            MissionCompletedResult completion = results.OfType<MissionCompletedResult>().Single();
+
+            Assert.AreSame(officer, resolution.Target);
+            Assert.AreSame(planet, resolution.Location);
+            Assert.IsFalse(resolution.WasCaptured);
+            Assert.AreEqual("HAN_BOUNTY_HUNTERS", resolution.SourceEventInstanceID);
+            Assert.AreEqual(MissionOutcome.Failed, completion.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completion.CompletionReason);
             Assert.IsEmpty(game.GetSceneNodesByType<StoryCaptureMission>());
         }
 

@@ -583,6 +583,16 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A content-authored capture attempt resolved against its target.
+    /// </summary>
+    public class StoryCaptureResolvedResult : GameResult
+    {
+        public Officer Target { get; set; }
+        public Planet Location { get; set; }
+        public bool WasCaptured { get; set; }
+    }
+
+    /// <summary>
     /// A data-defined event requested one or more timed rescue attempts.
     /// </summary>
     public class StoryRescueRequestedResult : GameResult
@@ -682,7 +692,8 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Han Solo was attacked by a bounty hunter.
+    /// Announces a bounty-hunter attack before its capture attempt resolves.
+    /// Retained as a general event action result for content packs that need an attack cue.
     /// </summary>
     public class BountyAttackResult : GameResult
     {

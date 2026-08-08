@@ -152,6 +152,10 @@ public static class GameEventCatalogValidator
                     when string.IsNullOrWhiteSpace(capture.OfficerInstanceID):
                     errors.Add($"{path}.OfficerInstanceID is required.");
                     break;
+                case StoryCaptureOutcomeConditional captureOutcome
+                    when string.IsNullOrWhiteSpace(captureOutcome.TargetOfficerInstanceID):
+                    errors.Add($"{conditionPath}.TargetOfficerInstanceID is required.");
+                    break;
                 case StoryPickupCollectorConditional pickup
                     when string.IsNullOrWhiteSpace(pickup.CollectorOfficerInstanceID):
                     errors.Add($"{path}.CollectorOfficerInstanceID is required.");
