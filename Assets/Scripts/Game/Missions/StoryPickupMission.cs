@@ -21,7 +21,6 @@ namespace Rebellion.Game.Missions
         public string CaptiveFactionInstanceID { get; set; }
         public int DurationTicks { get; set; }
         public bool CaptivesCanEscapeAfterPickup { get; set; }
-        public string SourceEventInstanceID { get; set; }
 
         [PersistableIgnore]
         private readonly List<string> _prisonerInstanceIDs = new List<string>();

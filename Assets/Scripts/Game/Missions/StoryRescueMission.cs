@@ -26,7 +26,6 @@ namespace Rebellion.Game.Missions
         public int SuccessEspionageBonus { get; set; }
         public bool CaptureRescuerOnFailure { get; set; }
         public bool FailedRescuerCanEscape { get; set; }
-        public string SourceEventInstanceID { get; set; }
 
         [PersistableIgnore]
         private readonly List<string> _releasedOfficerInstanceIDs = new List<string>();

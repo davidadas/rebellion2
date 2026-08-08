@@ -34,6 +34,13 @@ namespace Rebellion.Game.Missions
         public string LocationInstanceID { get; set; }
         public string OriginInstanceID { get; set; }
 
+        /// <summary>
+        /// Gets or sets the content event that authored this mission, when applicable.
+        /// Results inherit this identity so data-defined reactions can replace or extend
+        /// default presentation without coupling systems to particular event IDs.
+        /// </summary>
+        public string SourceEventInstanceID { get; set; }
+
         // Participants.
         public List<IMissionParticipant> MainParticipants { get; set; }
 
@@ -741,6 +748,7 @@ namespace Rebellion.Game.Missions
                 CompletionReason = GetDefaultCompletionReason(outcome),
                 CanContinue = ShouldRepeatAfterCompletion(game),
                 Tick = game.CurrentTick,
+                SourceEventInstanceID = SourceEventInstanceID,
             };
         }
 

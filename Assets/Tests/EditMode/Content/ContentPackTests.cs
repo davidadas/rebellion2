@@ -45,6 +45,31 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_DagobahCompletion_ReplacesHiddenMissionReports()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
+                candidate.InstanceID == "LUKE_LEAVES_DAGOBAH"
+            );
+
+            Assert.AreEqual(nameof(DagobahCompletedResult), gameEvent.TriggerResultType);
+            Assert.IsTrue(gameEvent.SuppressSourceMessages);
+            Assert.AreEqual(
+                "LUKE_VISITS_YODA",
+                gameEvent
+                    .Conditionals.OfType<ResultSourceEventConditional>()
+                    .Single()
+                    .SourceEventInstanceID
+            );
+            NarrativeMessageAction message = gameEvent
+                .Actions.OfType<NarrativeMessageAction>()
+                .Single();
+            Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
+            Assert.AreEqual("Luke Leaves Dagobah", message.TitleTemplate);
+            Assert.AreEqual("I have finished my training with Yoda.", message.BodyTemplate);
+        }
+
+        [Test]
         public void OpenActive_JabbaCaptureEvents_ReplaceEachPalaceRescueReport()
         {
             ContentPack pack = ContentPackLoader.OpenActive();

@@ -136,7 +136,8 @@ namespace Rebellion.Systems
                     result.InterruptionProgressDivisor,
                     result.CompletionVariableKey,
                     result.CompletionVariableValue,
-                    result.DisplayName
+                    result.DisplayName,
+                    result.SourceEventInstanceID
                 );
                 _game.AttachNode(mission, origin);
                 BeginMission(mission);
@@ -741,6 +742,8 @@ namespace Rebellion.Systems
             foreach (GameResult result in source.Where(result => result != null))
             {
                 result.MissionInstanceID = mission.InstanceID;
+                if (string.IsNullOrEmpty(result.SourceEventInstanceID))
+                    result.SourceEventInstanceID = mission.SourceEventInstanceID;
                 destination.Add(result);
             }
         }

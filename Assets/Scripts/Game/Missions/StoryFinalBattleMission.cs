@@ -32,7 +32,6 @@ namespace Rebellion.Game.Missions
         public int MinimumFailureInjury { get; set; }
         public int MaximumFailureInjury { get; set; }
         public bool CaptivesCanEscapeOnVictory { get; set; }
-        public string SourceEventInstanceID { get; set; }
 
         [PersistableIgnore]
         private bool _lukeVictorious;

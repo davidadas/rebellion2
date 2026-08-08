@@ -549,6 +549,7 @@ namespace Rebellion.Tests.Systems
                         CompletionVariableKey = "training.complete",
                         CompletionVariableValue = 1,
                         DisplayName = "Journey to Dagobah",
+                        SourceEventInstanceID = "LUKE_VISITS_YODA",
                     },
                 }
             );
@@ -566,7 +567,11 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(1, game.GetEventVariable("training.complete"));
             Assert.AreSame(planet, officer.GetParent());
             Assert.IsTrue(completionResults.OfType<ForceExperienceResult>().Any());
+            Assert.IsTrue(completionResults.OfType<DagobahCompletedResult>().Any());
             Assert.IsTrue(completionResults.OfType<MissionCompletedResult>().Any());
+            Assert.IsTrue(
+                completionResults.All(result => result.SourceEventInstanceID == "LUKE_VISITS_YODA")
+            );
             Assert.IsEmpty(game.GetSceneNodesByType<ScriptedTrainingMission>());
         }
 

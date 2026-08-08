@@ -37,7 +37,8 @@ namespace Rebellion.Game.Missions
             int interruptionProgressDivisor,
             string completionVariableKey,
             int completionVariableValue,
-            string displayName
+            string displayName,
+            string sourceEventInstanceID = null
         )
             : base(
                 MissionTypeID,
@@ -67,6 +68,7 @@ namespace Rebellion.Game.Missions
             InterruptionProgressDivisor = interruptionProgressDivisor;
             CompletionVariableKey = completionVariableKey;
             CompletionVariableValue = completionVariableValue;
+            SourceEventInstanceID = sourceEventInstanceID;
         }
 
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
@@ -77,7 +79,9 @@ namespace Rebellion.Game.Missions
         )
         {
             int elapsedTrainingPercent = CurrentProgress / InterruptionProgressDivisor;
-            return ResolveTraining(game, elapsedTrainingPercent);
+            List<GameResult> results = BuildTrainingResults(game, elapsedTrainingPercent);
+            StampSourceEvent(results);
+            return results;
         }
 
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
@@ -86,7 +90,8 @@ namespace Rebellion.Game.Missions
                 MainParticipants.Find(participant => participant.InstanceID == TraineeInstanceID)
                 as Officer;
             if (trainee == null)
-                return new List<GameResult>
+            {
+                List<GameResult> failureResults = new List<GameResult>
                 {
                     BuildCompletedResult(
                         MissionOutcome.Failed,
@@ -94,13 +99,17 @@ namespace Rebellion.Game.Missions
                         game
                     ),
                 };
+                StampSourceEvent(failureResults);
+                return failureResults;
+            }
 
-            List<GameResult> results = ResolveTraining(game, CompletionBonusPercent);
+            List<GameResult> results = BuildTrainingResults(game, CompletionBonusPercent);
             results.Add(BuildCompletedResult(MissionOutcome.Success, game));
+            StampSourceEvent(results);
             return results;
         }
 
-        private List<GameResult> ResolveTraining(GameRoot game, int bonusPercent)
+        private List<GameResult> BuildTrainingResults(GameRoot game, int bonusPercent)
         {
             Officer trainee = game.GetSceneNodeByInstanceID<Officer>(TraineeInstanceID);
             if (trainee == null)
@@ -130,7 +139,14 @@ namespace Rebellion.Game.Missions
                     CurrentValue = CompletionVariableValue,
                     Tick = game.CurrentTick,
                 },
+                new DagobahCompletedResult { Officer = trainee, Tick = game.CurrentTick },
             };
+        }
+
+        private void StampSourceEvent(IEnumerable<GameResult> results)
+        {
+            foreach (GameResult result in results)
+                result.SourceEventInstanceID = SourceEventInstanceID;
         }
     }
 }

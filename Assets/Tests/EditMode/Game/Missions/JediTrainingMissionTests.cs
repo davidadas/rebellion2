@@ -98,7 +98,8 @@ namespace Rebellion.Tests.Game.Missions
                 interruptionProgressDivisor: 2,
                 completionVariableKey: "luke.dagobah.completed",
                 completionVariableValue: 1,
-                displayName: "Journey to Dagobah"
+                displayName: "Journey to Dagobah",
+                sourceEventInstanceID: "LUKE_VISITS_YODA"
             );
 
             List<GameResult> results = mission.Execute(
@@ -112,6 +113,10 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(65, force.CurrentForceRank);
             Assert.AreEqual(24, force.ExperienceGained);
             Assert.AreEqual(1, _game.GetEventVariable("luke.dagobah.completed"));
+            Assert.AreSame(_student, results.OfType<DagobahCompletedResult>().Single().Officer);
+            Assert.IsTrue(
+                results.All(result => result.SourceEventInstanceID == "LUKE_VISITS_YODA")
+            );
             Assert.AreEqual(
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
@@ -129,7 +134,8 @@ namespace Rebellion.Tests.Game.Missions
                 interruptionProgressDivisor: 2,
                 completionVariableKey: "luke.dagobah.completed",
                 completionVariableValue: 1,
-                displayName: "Journey to Dagobah"
+                displayName: "Journey to Dagobah",
+                sourceEventInstanceID: "LUKE_VISITS_YODA"
             );
             mission.Initiate(100);
             mission.CurrentProgress = 25;
@@ -144,6 +150,10 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(45, force.CurrentForceRank);
             Assert.AreEqual(4, force.ExperienceGained);
             Assert.AreEqual(1, _game.GetEventVariable("luke.dagobah.completed"));
+            Assert.AreSame(_student, results.OfType<DagobahCompletedResult>().Single().Officer);
+            Assert.IsTrue(
+                results.All(result => result.SourceEventInstanceID == "LUKE_VISITS_YODA")
+            );
             Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
         }
 

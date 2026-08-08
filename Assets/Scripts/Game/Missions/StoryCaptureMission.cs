@@ -23,7 +23,6 @@ namespace Rebellion.Game.Missions
         public int AttackRating { get; set; }
         public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
         public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
-        public string SourceEventInstanceID { get; set; }
 
         public StoryCaptureMission()
         {
