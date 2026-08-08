@@ -73,6 +73,8 @@ namespace Rebellion.Game
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();
         public HashSet<string> CompletedEventIDs = new HashSet<string>();
+        public Dictionary<string, GameEventState> EventStates =
+            new Dictionary<string, GameEventState>();
 
         // Scene nodes.
         [PersistableIgnore]
@@ -512,6 +514,28 @@ namespace Rebellion.Game
         public bool IsEventComplete(string eventInstanceId)
         {
             return CompletedEventIDs.Contains(eventInstanceId);
+        }
+
+        /// <summary>
+        /// Returns the persistent runtime state for an event, creating it on first use.
+        /// </summary>
+        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
+        /// <returns>The save-game-owned event state.</returns>
+        public GameEventState GetEventState(string eventInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(eventInstanceId))
+                throw new ArgumentException(
+                    "Event instance ID is required.",
+                    nameof(eventInstanceId)
+                );
+
+            if (!EventStates.TryGetValue(eventInstanceId, out GameEventState state))
+            {
+                state = new GameEventState();
+                EventStates.Add(eventInstanceId, state);
+            }
+
+            return state;
         }
 
         /// <summary>

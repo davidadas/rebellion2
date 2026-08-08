@@ -240,6 +240,7 @@ public static class ContentPackLoader
             pack.GameEventsPath,
             "GameEvents"
         );
+        GameEventCatalogValidator.Validate(gameEvents);
         MessageDefinition[] messageDefinitions = DeserializeGameData<MessageDefinition[]>(
             packRoot,
             pack.MessageDefinitionsPath,

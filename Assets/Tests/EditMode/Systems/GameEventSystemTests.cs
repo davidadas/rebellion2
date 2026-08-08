@@ -59,6 +59,42 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(_game.IsEventComplete(gameEvent.InstanceID));
         }
 
+        [Test]
+        public void ProcessEvents_InitialRandomDelay_WaitsUntilRolledAbsoluteTick()
+        {
+            GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
+            gameEvent.InitialDelayTicks = 10;
+            gameEvent.InitialDelayRandomTicks = 4;
+            _game.EventPool.Add(gameEvent);
+
+            _game.CurrentTick = 11;
+            _system.ProcessEvents(_game.EventPool);
+            Assert.Contains(gameEvent, _game.EventPool);
+
+            _game.CurrentTick = 12;
+            _system.ProcessEvents(_game.EventPool);
+            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            Assert.AreEqual(12, _game.GetEventState(gameEvent.InstanceID).LastExecutionTick);
+        }
+
+        [Test]
+        public void ProcessEvents_RepeatDelay_PreventsExecutionUntilCooldownExpires()
+        {
+            GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
+            gameEvent.RepeatDelayTicks = 5;
+            _game.EventPool.Add(gameEvent);
+
+            _game.CurrentTick = 1;
+            _system.ProcessEvents(_game.EventPool);
+            _game.CurrentTick = 5;
+            _system.ProcessEvents(_game.EventPool);
+            Assert.AreEqual(1, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+
+            _game.CurrentTick = 6;
+            _system.ProcessEvents(_game.EventPool);
+            Assert.AreEqual(2, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+        }
+
         private static GameEvent CreateTickEvent(string instanceId, int targetTick, bool repeatable)
         {
             return new GameEvent

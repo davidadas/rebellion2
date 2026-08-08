@@ -2,9 +2,23 @@ using System.Collections.Generic;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    /// <summary>
+    /// Persists the runtime scheduling state for one data-defined game event.
+    /// Event definitions remain content; this state is the save-game-owned execution history.
+    /// </summary>
+    [PersistableObject]
+    public sealed class GameEventState
+    {
+        public bool IsInitialized { get; set; }
+        public int NextEligibleTick { get; set; }
+        public int ExecutionCount { get; set; }
+        public int LastExecutionTick { get; set; } = -1;
+    }
+
     /// <summary>
     /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
     /// Execute returns the results of those actions for notification and logging.
@@ -12,6 +26,10 @@ namespace Rebellion.Game.Events
     public class GameEvent : BaseGameEntity
     {
         public bool IsRepeatable { get; set; }
+        public int InitialDelayTicks { get; set; }
+        public int InitialDelayRandomTicks { get; set; }
+        public int RepeatDelayTicks { get; set; }
+        public int RepeatDelayRandomTicks { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 

@@ -150,7 +150,8 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "AreOnOpposingFactions")]
     public class AreOnOpposingFactionsConditional : GameConditional
     {
-        List<string> UnitInstanceIDs { get; set; } = new List<string>();
+        [PersistableMember(Name = "UnitInstanceIDs")]
+        public List<string> UnitInstanceIDs { get; set; } = new List<string>();
 
         public AreOnOpposingFactionsConditional()
             : base() { }

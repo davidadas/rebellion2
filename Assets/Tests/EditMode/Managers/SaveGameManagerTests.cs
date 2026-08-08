@@ -330,7 +330,15 @@ namespace Rebellion.Tests.Managers
                 PlayerFactionID = "FNALL1",
             };
 
-            GameEvent event1 = new GameEvent { InstanceID = "EVENT1", DisplayName = "Event1" };
+            GameEvent event1 = new GameEvent
+            {
+                InstanceID = "EVENT1",
+                DisplayName = "Event1",
+                InitialDelayTicks = 300,
+                InitialDelayRandomTicks = 100,
+                RepeatDelayTicks = 20,
+                RepeatDelayRandomTicks = 5,
+            };
             GameEvent event2 = new GameEvent { InstanceID = "EVENT2", DisplayName = "Event2" };
 
             GameRoot game = new GameRoot
@@ -347,6 +355,10 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.EventPool.Count);
             Assert.AreEqual("EVENT1", loadedGame.EventPool[0].InstanceID);
             Assert.AreEqual("EVENT2", loadedGame.EventPool[1].InstanceID);
+            Assert.AreEqual(300, loadedGame.EventPool[0].InitialDelayTicks);
+            Assert.AreEqual(100, loadedGame.EventPool[0].InitialDelayRandomTicks);
+            Assert.AreEqual(20, loadedGame.EventPool[0].RepeatDelayTicks);
+            Assert.AreEqual(5, loadedGame.EventPool[0].RepeatDelayRandomTicks);
         }
 
         [Test]
@@ -376,6 +388,39 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT1"));
             Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT2"));
             Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT3"));
+        }
+
+        [Test]
+        public void SaveAndLoadGame_GameWithEventState_PreservesScheduleAndHistory()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary { PlayerFactionID = "FNALL1" },
+                EventStates = new Dictionary<string, GameEventState>
+                {
+                    {
+                        "STORY_EVENT",
+                        new GameEventState
+                        {
+                            IsInitialized = true,
+                            NextEligibleTick = 412,
+                            ExecutionCount = 3,
+                            LastExecutionTick = 400,
+                        }
+                    },
+                },
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+
+            _saveGameManager.SaveGameData(game, _saveFileName);
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+
+            GameEventState state = loadedGame.EventStates["STORY_EVENT"];
+            Assert.IsTrue(state.IsInitialized);
+            Assert.AreEqual(412, state.NextEligibleTick);
+            Assert.AreEqual(3, state.ExecutionCount);
+            Assert.AreEqual(400, state.LastExecutionTick);
         }
 
         // TODO: Officer serialization needs investigation - officers have complex initialization requirements
