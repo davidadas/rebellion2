@@ -674,6 +674,58 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleStoryCaptureRequest_FailedAbductionRoll_EmitsEvasionResolution()
+        {
+            (GameRoot game, Planet planet, Officer officer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.SetBaseRating(OfficerRating.Combat, 100);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.05),
+                movement
+            );
+
+            missions.HandleResults(
+                new[]
+                {
+                    new StoryCaptureRequestedResult
+                    {
+                        Target = officer,
+                        DurationTicks = 0,
+                        AttackRating = 0,
+                        ResistanceRating = OfficerRating.Combat,
+                        ProbabilityTableKey = AbductionMission.MissionTypeID,
+                        DisplayName = "Bounty Hunters",
+                        SourceEventInstanceID = "HAN_BOUNTY_HUNTERS",
+                    },
+                }
+            );
+            officer.Movement = null;
+
+            List<GameResult> results = missions.ProcessTick();
+            StoryCaptureResolvedResult resolution = results
+                .OfType<StoryCaptureResolvedResult>()
+                .Single();
+            MissionCompletedResult completion = results.OfType<MissionCompletedResult>().Single();
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.AreSame(officer, resolution.Target);
+            Assert.AreSame(planet, resolution.Location);
+            Assert.IsFalse(resolution.WasCaptured);
+            Assert.AreEqual("HAN_BOUNTY_HUNTERS", resolution.SourceEventInstanceID);
+            Assert.AreEqual(MissionOutcome.Failed, completion.Outcome);
+            Assert.AreEqual(MissionCompletionReason.Failure, completion.CompletionReason);
+            Assert.AreEqual("HAN_BOUNTY_HUNTERS", completion.SourceEventInstanceID);
+            Assert.IsEmpty(game.GetSceneNodesByType<StoryCaptureMission>());
+        }
+
+        [Test]
         public void HandleStoryRescueRequest_SuccessUsesOriginalCombinedScoreAndFreesCaptive()
         {
             (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(

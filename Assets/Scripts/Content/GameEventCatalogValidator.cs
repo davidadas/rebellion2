@@ -185,6 +185,12 @@ public static class GameEventCatalogValidator
                     if (arrival.FirstOfficerInstanceID == arrival.SecondOfficerInstanceID)
                         errors.Add($"{conditionPath} requires two different officers.");
                     break;
+                case UnitArrivalConditional arrival:
+                    if (string.IsNullOrWhiteSpace(arrival.UnitInstanceID))
+                        errors.Add($"{conditionPath}.UnitInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(arrival.DestinationInstanceID))
+                        errors.Add($"{conditionPath}.DestinationInstanceID is required.");
+                    break;
                 case OfficerCaptureStateConditional capture
                     when string.IsNullOrWhiteSpace(capture.OfficerInstanceID):
                     errors.Add($"{path}.OfficerInstanceID is required.");
@@ -400,6 +406,8 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.TargetOfficerInstanceID is required.");
                     if (capture.DurationTicks < 0)
                         errors.Add($"{actionPath}.DurationTicks cannot be negative.");
+                    if (string.IsNullOrWhiteSpace(capture.ProbabilityTableKey))
+                        errors.Add($"{actionPath}.ProbabilityTableKey is required.");
                     break;
                 case BountyAttackAction bountyAttack
                     when string.IsNullOrWhiteSpace(bountyAttack.OfficerInstanceID):

@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
@@ -604,6 +605,9 @@ namespace Rebellion.Tests.Game.Events
                 TargetOfficerInstanceID = han.InstanceID,
                 DurationTicks = 1,
                 CanEscape = false,
+                AttackRating = 12,
+                ResistanceRating = OfficerRating.Combat,
+                ProbabilityTableKey = AbductionMission.MissionTypeID,
                 DisplayName = "Bounty Hunters",
             };
 
@@ -613,6 +617,9 @@ namespace Rebellion.Tests.Game.Events
                 .Single();
 
             Assert.AreSame(han, result.Target);
+            Assert.AreEqual(12, result.AttackRating);
+            Assert.AreEqual(OfficerRating.Combat, result.ResistanceRating);
+            Assert.AreEqual(AbductionMission.MissionTypeID, result.ProbabilityTableKey);
             Assert.AreEqual(1, result.DurationTicks);
             Assert.IsFalse(result.CanEscape);
             Assert.AreEqual("Bounty Hunters", result.DisplayName);

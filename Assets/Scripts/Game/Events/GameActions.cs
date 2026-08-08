@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -985,6 +986,9 @@ namespace Rebellion.Game.Events
         public int DurationTicks { get; set; }
         public string CaptorFactionInstanceID { get; set; }
         public bool CanEscape { get; set; }
+        public int AttackRating { get; set; }
+        public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
+        public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
         public string DisplayName { get; set; }
 
         /// <inheritdoc />
@@ -1004,6 +1008,9 @@ namespace Rebellion.Game.Events
                     DurationTicks = DurationTicks,
                     CaptorFactionInstanceID = CaptorFactionInstanceID,
                     CanEscape = CanEscape,
+                    AttackRating = AttackRating,
+                    ResistanceRating = ResistanceRating,
+                    ProbabilityTableKey = ProbabilityTableKey,
                     DisplayName = DisplayName,
                     Tick = game.CurrentTick,
                 },

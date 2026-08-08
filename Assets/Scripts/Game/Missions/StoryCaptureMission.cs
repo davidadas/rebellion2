@@ -20,6 +20,9 @@ namespace Rebellion.Game.Missions
         public int DurationTicks { get; set; }
         public string CaptorFactionInstanceID { get; set; }
         public bool TargetCanEscape { get; set; }
+        public int AttackRating { get; set; }
+        public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
+        public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
         public string SourceEventInstanceID { get; set; }
 
         public StoryCaptureMission()
@@ -34,6 +37,9 @@ namespace Rebellion.Game.Missions
             int durationTicks,
             string captorFactionInstanceId,
             bool targetCanEscape,
+            int attackRating,
+            OfficerRating resistanceRating,
+            string probabilityTableKey,
             string displayName,
             string sourceEventInstanceId
         )
@@ -49,11 +55,19 @@ namespace Rebellion.Game.Missions
         {
             if (durationTicks < 0)
                 throw new ArgumentOutOfRangeException(nameof(durationTicks));
+            if (string.IsNullOrWhiteSpace(probabilityTableKey))
+                throw new ArgumentException(
+                    "A probability-table key is required.",
+                    nameof(probabilityTableKey)
+                );
 
             TargetOfficerInstanceID = target.InstanceID;
             DurationTicks = durationTicks;
             CaptorFactionInstanceID = captorFactionInstanceId;
             TargetCanEscape = targetCanEscape;
+            AttackRating = attackRating;
+            ResistanceRating = resistanceRating;
+            ProbabilityTableKey = probabilityTableKey;
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
@@ -87,6 +101,30 @@ namespace Rebellion.Game.Missions
                         MissionCompletionReason.TargetUnavailable,
                         game
                     ),
+                };
+            }
+
+            int resistance = target.GetEffectiveRating(ResistanceRating);
+            double captureProbability = LookupSuccessProbability(
+                game,
+                AttackRating - resistance,
+                ProbabilityTableKey
+            );
+            if (!IsSuccessfulProbabilityRoll(provider.NextDouble() * 100, captureProbability))
+            {
+                MissionCompletedResult failed = BuildCompletedResult(MissionOutcome.Failed, game);
+                failed.SourceEventInstanceID = SourceEventInstanceID;
+                return new List<GameResult>
+                {
+                    new StoryCaptureResolvedResult
+                    {
+                        Target = target,
+                        Location = location,
+                        WasCaptured = false,
+                        Tick = game.CurrentTick,
+                        SourceEventInstanceID = SourceEventInstanceID,
+                    },
+                    failed,
                 };
             }
 

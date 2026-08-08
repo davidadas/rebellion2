@@ -174,6 +174,9 @@ namespace Rebellion.Systems
                     result.DurationTicks,
                     result.CaptorFactionInstanceID,
                     result.CanEscape,
+                    result.AttackRating,
+                    result.ResistanceRating,
+                    result.ProbabilityTableKey,
                     result.DisplayName,
                     result.SourceEventInstanceID
                 );

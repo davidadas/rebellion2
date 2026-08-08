@@ -609,6 +609,9 @@ namespace Rebellion.Game.Results
         public int DurationTicks { get; set; }
         public string CaptorFactionInstanceID { get; set; }
         public bool CanEscape { get; set; }
+        public int AttackRating { get; set; }
+        public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
+        public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
         public string DisplayName { get; set; }
     }
 

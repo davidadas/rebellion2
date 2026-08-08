@@ -143,6 +143,39 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Validate_UnitArrivalWithoutReferences_ReportsBothMissingIds()
+        {
+            GameEvent gameEvent = CreateEvent("ARRIVAL");
+            gameEvent.Conditionals.Add(new UnitArrivalConditional());
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("UnitInstanceID is required", exception.Message);
+            StringAssert.Contains("DestinationInstanceID is required", exception.Message);
+        }
+
+        [Test]
+        public void Validate_StoryCaptureWithoutProbabilityTable_ReportsMissingKey()
+        {
+            GameEvent gameEvent = CreateEvent("CAPTURE");
+            gameEvent.Actions.Add(
+                new StartStoryCaptureAction
+                {
+                    TargetOfficerInstanceID = "target",
+                    ProbabilityTableKey = null,
+                }
+            );
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("ProbabilityTableKey is required", exception.Message);
+        }
+
+        [Test]
         public void Validate_ScriptedTrainingWithInvalidConfiguration_ReportsAllProblems()
         {
             GameEvent gameEvent = CreateEvent("TRAINING");

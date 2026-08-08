@@ -3,7 +3,9 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Events;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -85,6 +87,12 @@ namespace Rebellion.Tests.Content
             ReportForceDetectionAction forceDetection = forceDetectionEvent
                 .Actions.OfType<ReportForceDetectionAction>()
                 .Single();
+            StartStoryCaptureAction bountyCapture = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "HAN_BOUNTY_HUNTERS"
+                )
+                .Actions.OfType<StartStoryCaptureAction>()
+                .Single();
 
             Assert.AreEqual(6, heritageMessage.BodySegments.Count);
             Assert.AreEqual(nameof(UnitArrivedResult), lukeVaderEncounter.TriggerResultType);
@@ -98,6 +106,9 @@ namespace Rebellion.Tests.Content
                 forceDetection.BodyTemplate
             );
             Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
+            Assert.AreEqual(0, bountyCapture.AttackRating);
+            Assert.AreEqual(OfficerRating.Combat, bountyCapture.ResistanceRating);
+            Assert.AreEqual(AbductionMission.MissionTypeID, bountyCapture.ProbabilityTableKey);
             Assert.AreEqual(
                 "Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report",
                 forceDetection.VoicePaths["FNALL1"]

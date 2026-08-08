@@ -355,9 +355,25 @@ namespace Rebellion.Game.Missions
         /// <returns>The configured success probability.</returns>
         protected double LookupSuccessProbability(GameRoot game, int score)
         {
+            return LookupSuccessProbability(game, score, ConfigKey);
+        }
+
+        /// <summary>
+        /// Returns the success probability from an explicitly selected mission table.
+        /// </summary>
+        /// <param name="game">The game state containing probability configuration.</param>
+        /// <param name="score">The mission score to look up.</param>
+        /// <param name="probabilityTableKey">The authored mission probability-table key.</param>
+        /// <returns>The configured success probability.</returns>
+        protected double LookupSuccessProbability(
+            GameRoot game,
+            int score,
+            string probabilityTableKey
+        )
+        {
             GameConfig.MissionProbabilityTablesConfig missionTables = GetMissionTables(game);
             return LookupProbability(
-                missionTables.GetSuccessTable(ConfigKey),
+                missionTables.GetSuccessTable(probabilityTableKey),
                 score,
                 missionTables.DefaultSuccessProbability
             );
