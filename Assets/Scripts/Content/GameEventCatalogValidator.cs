@@ -84,6 +84,11 @@ public static class GameEventCatalogValidator
                 )
         )
             errors.Add($"{context}.TriggerResultType '{gameEvent.TriggerResultType}' is unknown.");
+        if (
+            gameEvent.SuppressSourceMessages
+            && string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
+        )
+            errors.Add($"{context}.SuppressSourceMessages requires TriggerResultType.");
         ValidateDelay(
             gameEvent.InitialDelayTicks,
             context,
@@ -269,6 +274,10 @@ public static class GameEventCatalogValidator
                 case OfficerCaptureStateConditional capture
                     when string.IsNullOrWhiteSpace(capture.OfficerInstanceID):
                     errors.Add($"{path}.OfficerInstanceID is required.");
+                    break;
+                case ResultSourceEventConditional source
+                    when string.IsNullOrWhiteSpace(source.SourceEventInstanceID):
+                    errors.Add($"{conditionPath}.SourceEventInstanceID is required.");
                     break;
                 case StoryCaptureOutcomeConditional captureOutcome
                     when string.IsNullOrWhiteSpace(captureOutcome.TargetOfficerInstanceID):

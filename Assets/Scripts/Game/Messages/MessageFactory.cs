@@ -39,7 +39,9 @@ namespace Rebellion.Game.Messages
             GameRoot game
         )
         {
-            GameResult[] resultArray = results?.ToArray() ?? Array.Empty<GameResult>();
+            GameResult[] resultArray =
+                results?.Where(result => result?.SuppressDefaultMessage != true).ToArray()
+                ?? Array.Empty<GameResult>();
             MissionCompletedResult[] missionResults = resultArray
                 .OfType<MissionCompletedResult>()
                 .ToArray();

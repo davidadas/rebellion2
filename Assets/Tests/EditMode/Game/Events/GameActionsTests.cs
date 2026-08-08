@@ -314,11 +314,7 @@ namespace Rebellion.Tests.Game.Events
             present.IsForceEligible = true;
             present.ForceValue = 60;
             Fleet fleet = EntityFactory.CreateFleet("fleet", "rebels");
-            CapitalShip ship = new CapitalShip
-            {
-                InstanceID = "ship",
-                OwnerInstanceID = "rebels",
-            };
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "rebels" };
             game.AttachNode(fleet, empirePlanet);
             game.AttachNode(ship, fleet);
             game.AttachNode(arriving, ship);

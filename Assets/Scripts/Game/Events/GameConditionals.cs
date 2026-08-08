@@ -562,6 +562,24 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches the authored event that produced the result currently triggering an event.
+    /// </summary>
+    [PersistableObject(Name = "ResultSourceEvent")]
+    public sealed class ResultSourceEventConditional : GameConditional
+    {
+        public string SourceEventInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game) => false;
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return triggerResult?.SourceEventInstanceID == SourceEventInstanceID;
+        }
+    }
+
+    /// <summary>
     /// Matches the target and outcome of a content-authored capture attempt.
     /// </summary>
     [PersistableObject(Name = "StoryCaptureOutcome")]

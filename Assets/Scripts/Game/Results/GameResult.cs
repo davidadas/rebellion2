@@ -8,5 +8,10 @@ namespace Rebellion.Game.Results
         public int Tick { get; set; }
         public string SourceEventInstanceID { get; set; }
         public string MissionInstanceID { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether an authored reaction replaces this result's automatic message.
+        /// </summary>
+        public bool SuppressDefaultMessage { get; set; }
     }
 }

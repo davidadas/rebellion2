@@ -63,6 +63,50 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_AuthoredReplacement_SkipsTriggerButDeliversNarrative()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer luke = new Officer
+            {
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(luke, origin);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "Generic capture",
+                        "Generic capture"
+                    ),
+                },
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = luke,
+                    IsCaptured = true,
+                    Context = origin,
+                    SuppressDefaultMessage = true,
+                },
+                new NarrativeMessageResult
+                {
+                    Recipient = alliance,
+                    Subject = luke,
+                    MessageType = MessageType.Mission,
+                    TitleTemplate = "Jabba Captures {subject}",
+                    BodyTemplate =
+                        "{subject} was captured by Jabba while attempting to rescue Han Solo.",
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("Jabba Captures Luke Skywalker", deliveries[0].message.Title);
+        }
+
+        [Test]
         public void CreateMessages_FleetArrival_InterpolatesFleetAndDestination()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();

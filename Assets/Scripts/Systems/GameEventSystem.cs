@@ -146,6 +146,7 @@ namespace Rebellion.Systems
                         continue;
 
                     eventResults.AddRange(reactions);
+                    SuppressSourceMessages(gameEvent, triggerResult, results);
                     if (!gameEvent.IsRepeatable)
                         _game.RemoveEvent(gameEvent);
                 }
@@ -204,6 +205,30 @@ namespace Rebellion.Systems
             }
             _game.AddCompletedEvent(gameEvent);
             return true;
+        }
+
+        private static void SuppressSourceMessages(
+            GameEvent gameEvent,
+            GameResult triggerResult,
+            IReadOnlyList<GameResult> sourceResults
+        )
+        {
+            if (!gameEvent.SuppressSourceMessages || triggerResult == null)
+                return;
+
+            string sourceEventId = triggerResult.SourceEventInstanceID;
+            foreach (GameResult result in sourceResults)
+            {
+                if (
+                    result != null
+                    && (
+                        string.IsNullOrWhiteSpace(sourceEventId)
+                            ? ReferenceEquals(result, triggerResult)
+                            : result.SourceEventInstanceID == sourceEventId
+                    )
+                )
+                    result.SuppressDefaultMessage = true;
+            }
         }
 
         /// <summary>

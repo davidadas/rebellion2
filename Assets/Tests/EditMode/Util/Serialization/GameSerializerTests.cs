@@ -305,6 +305,39 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Serialize_ResultTriggeredReplacement_RoundTripsSourceAndSuppression()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "JABBA_CAPTURES_LUKE",
+                TriggerResultType = "OfficerCaptureStateResult",
+                SuppressSourceMessages = true,
+                Conditionals = new List<GameConditional>
+                {
+                    new ResultSourceEventConditional
+                    {
+                        SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
+                    },
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, gameEvent);
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
+
+            StringAssert.Contains(
+                "<SuppressSourceMessages>True</SuppressSourceMessages>",
+                serializedXml
+            );
+            StringAssert.Contains("<ResultSourceEvent>", serializedXml);
+            Assert.IsTrue(deserialized.SuppressSourceMessages);
+            ResultSourceEventConditional source =
+                deserialized.Conditionals[0] as ResultSourceEventConditional;
+            Assert.IsNotNull(source);
+            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.SourceEventInstanceID);
+        }
+
+        [Test]
         public void Serialize_GameEventNarrativeActions_RoundTripsAliasesAndPresentation()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));

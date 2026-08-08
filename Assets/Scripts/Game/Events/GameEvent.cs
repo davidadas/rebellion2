@@ -92,6 +92,11 @@ namespace Rebellion.Game.Events
         public PlanetSystemType PlanetScopeSystemType { get; set; }
         public bool FilterPlanetScopeSystemType { get; set; }
         public string TriggerResultType { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether this reaction replaces automatic messages from its source event.
+        /// </summary>
+        public bool SuppressSourceMessages { get; set; }
         public int InitialDelayTicks { get; set; }
         public int InitialDelayRandomTicks { get; set; }
         public int RepeatDelayTicks { get; set; }

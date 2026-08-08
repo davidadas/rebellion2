@@ -45,6 +45,58 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_JabbaCaptureEvents_ReplaceEachPalaceRescueReport()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            (string eventId, string sourceEventId, string officerId)[] expectedEvents =
+            {
+                ("JABBA_CAPTURES_LUKE_SKYWALKER", "LUKE_RESCUES_HAN_FROM_JABBA", "LUKE_SKYWALKER"),
+                ("JABBA_CAPTURES_LEIA_ORGANA", "LEIA_RESCUES_HAN_FROM_JABBA", "LEIA_ORGANA"),
+                ("JABBA_CAPTURES_CHEWBACCA", "CHEWBACCA_RESCUES_HAN_FROM_JABBA", "CHEWBACCA"),
+            };
+
+            foreach ((string eventId, string sourceEventId, string officerId) in expectedEvents)
+            {
+                GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
+                    candidate.InstanceID == eventId
+                );
+                ResultSourceEventConditional source = gameEvent
+                    .Conditionals.OfType<ResultSourceEventConditional>()
+                    .Single();
+                OfficerCaptureStateConditional capture = gameEvent
+                    .Conditionals.OfType<OfficerCaptureStateConditional>()
+                    .Single();
+                NarrativeMessageAction message = gameEvent
+                    .Actions.OfType<NarrativeMessageAction>()
+                    .Single();
+
+                Assert.AreEqual(nameof(OfficerCaptureStateResult), gameEvent.TriggerResultType);
+                Assert.IsTrue(gameEvent.SuppressSourceMessages);
+                Assert.AreEqual(sourceEventId, source.SourceEventInstanceID);
+                Assert.AreEqual(officerId, capture.OfficerInstanceID);
+                Assert.IsTrue(capture.IsCaptured);
+                Assert.AreEqual(officerId, message.SubjectInstanceID);
+                Assert.AreEqual("Jabba Captures {subject}", message.TitleTemplate);
+                Assert.AreEqual(
+                    "{subject} was captured by Jabba while attempting to rescue Han Solo.",
+                    message.BodyTemplate
+                );
+            }
+
+            GameEvent hanCapture = pack.GameData.GameEvents.Single(candidate =>
+                candidate.InstanceID == "HAN_CAPTURED_BY_BOUNTY_HUNTERS"
+            );
+            Assert.IsTrue(hanCapture.SuppressSourceMessages);
+            Assert.AreEqual(
+                "HAN_BOUNTY_HUNTERS",
+                hanCapture
+                    .Conditionals.OfType<ResultSourceEventConditional>()
+                    .Single()
+                    .SourceEventInstanceID
+            );
+        }
+
+        [Test]
         public void OpenActive_ClassicStoryEvents_PreserveHeritageAndFinalBattleOutcomes()
         {
             ContentPack pack = ContentPackLoader.OpenActive();

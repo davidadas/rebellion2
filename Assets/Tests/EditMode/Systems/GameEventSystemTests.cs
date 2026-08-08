@@ -158,6 +158,60 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_AuthoredReplacement_SuppressesMatchingSourceMessages()
+        {
+            Officer luke = new Officer { InstanceID = "luke" };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "JABBA_CAPTURES_LUKE",
+                TriggerResultType = nameof(OfficerCaptureStateResult),
+                SuppressSourceMessages = true,
+                Conditionals = new List<GameConditional>
+                {
+                    new ResultSourceEventConditional
+                    {
+                        SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
+                    },
+                    new OfficerCaptureStateConditional
+                    {
+                        OfficerInstanceID = luke.InstanceID,
+                        IsCaptured = true,
+                    },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "jabba.captured.luke", Value = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            OfficerCaptureStateResult unrelatedCapture = new OfficerCaptureStateResult
+            {
+                TargetOfficer = luke,
+                IsCaptured = true,
+                SourceEventInstanceID = "UNRELATED_MISSION",
+            };
+            OfficerCaptureStateResult palaceCapture = new OfficerCaptureStateResult
+            {
+                TargetOfficer = luke,
+                IsCaptured = true,
+                SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
+            };
+            MissionCompletedResult palaceMission = new MissionCompletedResult
+            {
+                SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
+            };
+
+            _system.HandleResults(new[] { unrelatedCapture });
+            _system.HandleResults(new GameResult[] { palaceCapture, palaceMission });
+
+            Assert.IsFalse(unrelatedCapture.SuppressDefaultMessage);
+            Assert.IsTrue(palaceCapture.SuppressDefaultMessage);
+            Assert.IsTrue(palaceMission.SuppressDefaultMessage);
+            Assert.AreEqual(1, _game.GetEventVariable("jabba.captured.luke"));
+            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+        }
+
+        [Test]
         public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
         {
             Officer luke = new Officer { InstanceID = "luke" };
