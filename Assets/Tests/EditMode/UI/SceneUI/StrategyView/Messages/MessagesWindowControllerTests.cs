@@ -206,6 +206,53 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        public void Open_AdviceTab_OpensMessageIndexOnAgentAdvice()
+        {
+            Faction faction = new Faction { InstanceID = "FNALL1" };
+            faction.Messages[MessageType.Advice] = new List<Message>
+            {
+                new Message(MessageType.Advice, "Agent Advice"),
+            };
+            GameRoot game = new GameRoot(TestConfig.Create());
+            game.Factions.Add(faction);
+            game.Summary.PlayerFactionID = faction.InstanceID;
+            UIContext uiContext = TestContent.CreateUIContext(
+                game,
+                TestContent.CreateThemeLibrary(),
+                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
+            );
+            GameObject root = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
+
+            try
+            {
+                StrategyWindowLayerView windowLayer =
+                    root.GetComponentInChildren<StrategyWindowLayerView>(true);
+                UIWindowManager windowManager = root.GetComponentInChildren<UIWindowManager>(true);
+                MessagesWindowController controller = new MessagesWindowController(
+                    _ => { },
+                    () => uiContext,
+                    windowLayer,
+                    windowManager,
+                    () => Vector2Int.zero,
+                    windowManager.DestroyWindow,
+                    () => { }
+                );
+                controller.Initialize(new TestActions());
+
+                controller.Open(MessagesTab.Advice);
+
+                UIWindow window = windowManager.Windows.Single();
+                Assert.IsTrue(windowManager.TryGetWindowView(window, out MessagesWindowView view));
+                Assert.AreEqual(MessagesTab.Advice, controller.GetActiveTab(view));
+                Assert.IsFalse(controller.IsDetailVisible(view));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
         public void NotificationOperations_NullFaction_ReturnDisabledWithoutThrowing()
         {
             Assert.IsFalse(

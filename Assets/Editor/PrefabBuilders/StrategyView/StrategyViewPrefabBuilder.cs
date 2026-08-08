@@ -418,13 +418,13 @@ public static class StrategyViewPrefabBuilder
         RawImage protocolImage = CreateRawImage(
             "ProtocolImage",
             root.transform,
-            theme.GetFramePath(theme.ProtocolIdleBitmapID, 0, false),
+            theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false),
             theme.ProtocolSourceLayout
         );
         RawImage droidImage = CreateRawImage(
             "DroidImage",
             root.transform,
-            theme.GetFramePath(theme.DroidIdleBitmapID, 0, true),
+            theme.GetFramePath(theme.DroidIdleAnimation, 0, true),
             theme.DroidSourceLayout
         );
         UIRaycastArea protocolInput = CreateHudButtonView(
@@ -824,6 +824,22 @@ public static class StrategyViewPrefabBuilder
             CreateGalacticInformationDisplayView(root.transform);
 
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
+        SaveMenuConfirmDialogView briefingSkipConfirmation =
+            SaveMenuPrefabBuilder.CreateConfirmDialog(root.transform);
+        RectTransform briefingConfirmationRect =
+            briefingSkipConfirmation.transform as RectTransform;
+        briefingConfirmationRect.anchorMin = new Vector2(0.5f, 0.5f);
+        briefingConfirmationRect.anchorMax = new Vector2(0.5f, 0.5f);
+        briefingConfirmationRect.pivot = new Vector2(0.5f, 0.5f);
+        briefingConfirmationRect.sizeDelta = new Vector2(_screenWidth, _screenHeight);
+        briefingConfirmationRect.anchoredPosition = Vector2.zero;
+        float briefingHorizontalOffset = (_screenWidth - 640f) / 2f;
+        foreach (RectTransform child in briefingConfirmationRect)
+        {
+            if (child.name != "InputBlocker")
+                child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
+        }
+        briefingSkipConfirmation.transform.SetAsLastSibling();
 
         AssignReference(controller, "contentGroup", rootContentGroup);
         AssignReference(controller, "strategySurface", surfaceRect);
@@ -841,6 +857,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(windowsView, "modalBackgroundDimImage", modalBackgroundDim);
         AssignReference(controller, "galaxyMap", galaxyMapView);
         AssignReference(controller, "bookmarkBar", bookmarkBarView);
+        AssignReference(controller, "briefingSkipConfirmation", briefingSkipConfirmation);
         AssignReference(bookmarkBarView, "slotTemplate", bookmarkSlotTemplate);
         AssignWindowPrefabs(
             windowsView,

@@ -106,7 +106,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
             RawImage blocker = GetField<RawImage>("modalInputBlockerImage");
             RawImage dimmer = GetField<RawImage>("modalBackgroundDimImage");
 
-            _view.RenderModalState(true);
+            _view.RenderModalState(true, true);
 
             Assert.IsTrue(blocker.gameObject.activeSelf);
             Assert.IsTrue(dimmer.gameObject.activeSelf);
@@ -119,11 +119,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
         {
             RawImage blocker = GetField<RawImage>("modalInputBlockerImage");
             RawImage dimmer = GetField<RawImage>("modalBackgroundDimImage");
-            _view.RenderModalState(true);
+            _view.RenderModalState(true, true);
 
-            _view.RenderModalState(false);
+            _view.RenderModalState(false, false);
 
             Assert.IsFalse(blocker.gameObject.activeSelf);
+            Assert.IsFalse(dimmer.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void RenderModalState_InputBlockedWithoutModal_HidesDimmer()
+        {
+            RawImage blocker = GetField<RawImage>("modalInputBlockerImage");
+            RawImage dimmer = GetField<RawImage>("modalBackgroundDimImage");
+
+            _view.RenderModalState(true, false);
+
+            Assert.IsTrue(blocker.gameObject.activeSelf);
             Assert.IsFalse(dimmer.gameObject.activeSelf);
         }
 

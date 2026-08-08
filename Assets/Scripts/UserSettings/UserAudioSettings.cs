@@ -10,6 +10,7 @@ public sealed class UserAudioSettings
     public float MusicVolume = 1f;
     public float SfxVolume = 1f;
     public float AmbienceVolume = 1f;
+    public float VideoVolume = 1f;
 
     /// <summary>
     /// Clamps volume settings to valid values.
@@ -20,6 +21,7 @@ public sealed class UserAudioSettings
         MusicVolume = Clamp01(MusicVolume);
         SfxVolume = Clamp01(SfxVolume);
         AmbienceVolume = Clamp01(AmbienceVolume);
+        VideoVolume = Clamp01(VideoVolume);
     }
 
     /// <summary>

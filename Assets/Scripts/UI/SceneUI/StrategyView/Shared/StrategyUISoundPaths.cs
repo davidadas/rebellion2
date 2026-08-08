@@ -19,7 +19,7 @@ internal static class StrategyUISoundPaths
     public const string GalacticInformationControl = "Application/Strategy/Audio/Controls/open";
 
     public const string PlanetaryAssault =
-        "Application/Strategy/Audio/Messages/message-planetary-assault";
+        "Application/Strategy/Messages/Audio/message-planetary-assault";
 
     /// <summary>
     /// Enumerates shared and themed sound-effect paths used by the strategy interface.
@@ -51,5 +51,27 @@ internal static class StrategyUISoundPaths
             if (!string.IsNullOrWhiteSpace(path))
                 yield return path.Trim();
         }
+    }
+
+    /// <summary>
+    /// Enumerates the active faction's dynamically preloaded briefing voice clips.
+    /// </summary>
+    /// <param name="theme">The active faction theme, or null.</param>
+    /// <returns>The configured briefing audio addresses.</returns>
+    internal static IEnumerable<string> GetBriefingPreloadPaths(FactionTheme theme)
+    {
+        StrategyBriefingTheme briefing = theme?.StrategyBriefing;
+        if (briefing == null)
+            yield break;
+
+        for (int i = 0; i < briefing.Segments.Count; i++)
+        {
+            string audio = briefing.Segments[i]?.Audio;
+            if (!string.IsNullOrWhiteSpace(audio))
+                yield return briefing.GetAudioPath(audio);
+        }
+
+        if (!string.IsNullOrWhiteSpace(briefing.Skip?.Audio))
+            yield return briefing.GetAudioPath(briefing.Skip.Audio);
     }
 }

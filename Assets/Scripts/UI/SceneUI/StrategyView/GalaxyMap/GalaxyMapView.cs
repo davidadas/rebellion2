@@ -88,7 +88,7 @@ public sealed class GalaxyMapView : MonoBehaviour
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
-        RenderBackground(data.BackgroundTexture, data.BackgroundBounds);
+        RenderBackground(data.BackgroundTexture, data.BackgroundBounds, data.BackgroundColor);
         RenderClusters(data.Clusters);
         RenderActiveFilterLabel(data.ActiveFilterLabel);
     }
@@ -185,9 +185,11 @@ public sealed class GalaxyMapView : MonoBehaviour
     /// </summary>
     /// <param name="texture">The resolved background texture.</param>
     /// <param name="bounds">The optional source-space background bounds.</param>
-    private void RenderBackground(Texture2D texture, RectInt? bounds)
+    /// <param name="color">The background-only color multiplier.</param>
+    private void RenderBackground(Texture2D texture, RectInt? bounds, Color color)
     {
         backgroundImage.texture = texture;
+        backgroundImage.color = color;
         backgroundImage.enabled = texture != null;
         backgroundImage.raycastTarget = false;
         backgroundImage.uvRect = new Rect(0f, 0f, 1f, 1f);

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -16,6 +17,7 @@ public sealed class GameFlowController : MonoBehaviour
     private StrategyController strategyController;
 
     private GameManager activeGameManager;
+    private Task briefingContentTask = Task.CompletedTask;
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
@@ -140,6 +142,7 @@ public sealed class GameFlowController : MonoBehaviour
         }
 
         FactionTheme theme = themeLibrary.GetTheme(faction.InstanceID);
+        briefingContentTask = PreloadBriefingContentAsync(theme.StrategyBriefing);
         if (string.IsNullOrEmpty(theme.IntroCutscenePath))
         {
             EnterGameplay();
@@ -166,10 +169,11 @@ public sealed class GameFlowController : MonoBehaviour
     /// Initializes strategy UI for an active game manager.
     /// </summary>
     /// <param name="gameManager">The active game manager.</param>
-    private void EnterGameplay(GameManager gameManager)
+    private async void EnterGameplay(GameManager gameManager)
     {
         try
         {
+            await briefingContentTask;
             AppBootstrap bootstrap = AppBootstrap.Instance;
             ContentPack contentPack = bootstrap.GetContentPack();
             EncyclopediaCatalog encyclopediaCatalog = new EncyclopediaCatalogBuilder().Build(
@@ -187,7 +191,10 @@ public sealed class GameFlowController : MonoBehaviour
 
             gameManager.VictoryDeclared += HandleVictoryDeclared;
             strategyController.Initialize(gameManager, uiContext);
-            activeGameManager = gameManager;
+            if (GameLaunchContext.PlayIntroCutscene)
+                strategyController.PlayBriefing(() => activeGameManager = gameManager);
+            else
+                activeGameManager = gameManager;
         }
         catch (Exception exception)
         {
@@ -249,5 +256,19 @@ public sealed class GameFlowController : MonoBehaviour
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         bootstrap.GetRuntime()?.EndGame();
         bootstrap.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
+    }
+
+    /// <summary>
+    /// Preloads only the active faction's briefing media while its introduction video plays.
+    /// </summary>
+    /// <param name="briefing">The active faction briefing, or null.</param>
+    /// <returns>A task that completes when the briefing media is resident.</returns>
+    private static Task PreloadBriefingContentAsync(StrategyBriefingTheme briefing)
+    {
+        return briefing == null
+            ? Task.CompletedTask
+            : AppBootstrap
+                .Instance.GetContentAssets()
+                .PreloadAsync(briefing.CreatePreloadManifest());
     }
 }

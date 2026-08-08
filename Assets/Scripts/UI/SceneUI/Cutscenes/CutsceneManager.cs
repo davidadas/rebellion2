@@ -18,6 +18,7 @@ public sealed class CutsceneManager : MonoBehaviour
 
     private GameObject cutscenePrefab;
     private ContentAssets contentAssets;
+    private AudioManager audioManager;
 
     private CutscenePlayer activePlayer;
     private bool ownsTimePause;
@@ -41,6 +42,15 @@ public sealed class CutsceneManager : MonoBehaviour
     internal void InitializeContent(ContentAssets assets)
     {
         contentAssets = assets ?? throw new ArgumentNullException(nameof(assets));
+    }
+
+    /// <summary>
+    /// Binds the application audio settings used by cutscene playback.
+    /// </summary>
+    /// <param name="manager">The active application audio manager.</param>
+    internal void InitializeAudio(AudioManager manager)
+    {
+        audioManager = manager ?? throw new ArgumentNullException(nameof(manager));
     }
 
     /// <summary>
@@ -117,6 +127,7 @@ public sealed class CutsceneManager : MonoBehaviour
         }
 
         activePlayer = player;
+        player.SetVolume(GetVideoVolume());
         PauseTimeScale();
         try
         {
@@ -151,6 +162,7 @@ public sealed class CutsceneManager : MonoBehaviour
         }
 
         activePlayer = player;
+        player.SetVolume(GetVideoVolume());
         PauseTimeScale();
         try
         {
@@ -162,6 +174,15 @@ public sealed class CutsceneManager : MonoBehaviour
             RestoreTimeScale();
             throw;
         }
+    }
+
+    /// <summary>
+    /// Gets the effective volume for a newly created cutscene player.
+    /// </summary>
+    /// <returns>The master-scaled video volume.</returns>
+    private float GetVideoVolume()
+    {
+        return audioManager?.EffectiveVideoVolume ?? 1f;
     }
 
     /// <summary>
