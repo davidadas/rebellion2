@@ -519,6 +519,21 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_MaintenanceShortfallReport_PreservesOriginalGroupedUnitList()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
+                candidate.ResultType == MessageResultType.MaintenanceAutoscrap
+            );
+
+            Assert.AreEqual("Maintenance Shortfall", definition.TitleTemplate);
+            Assert.AreEqual(
+                "The following units have been destroyed at {system} due to a maintenance shortfall:\n{items}",
+                definition.BodyTemplate
+            );
+        }
+
+        [Test]
         public void OpenActive_SpaceBattleReports_PreserveOriginalModdableNarrativeCatalog()
         {
             ContentPack pack = ContentPackLoader.OpenActive();

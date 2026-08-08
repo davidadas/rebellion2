@@ -1405,30 +1405,45 @@ namespace Rebellion.Game.Messages
         /// Creates an autoscrap message for maintenance losses.
         /// </summary>
         /// <param name="faction">The faction that owned the destroyed object.</param>
-        /// <param name="result">The autoscrap result.</param>
+        /// <param name="results">The autoscrap results grouped into this report.</param>
         /// <param name="location">The planet where the object was destroyed.</param>
+        /// <param name="definition">The content-defined presentation selected for the group.</param>
         /// <returns>The autoscrap message, or null when no matching definition exists.</returns>
         private Message CreateMaintenanceAutoscrap(
             Faction faction,
-            GameObjectAutoscrappedResult result,
-            Planet location
+            IEnumerable<GameObjectAutoscrappedResult> results,
+            Planet location,
+            MessageDefinition definition
         )
         {
-            if (result == null)
+            GameObjectAutoscrappedResult[] resultArray = results
+                ?.Where(result => result != null)
+                .ToArray();
+            if (resultArray == null || resultArray.Length == 0)
                 return null;
 
+            string firstItem = GetDisplayName(resultArray[0].DestroyedObject);
             return WithEventLocation(
                 CreateMessage(
-                    GetDefinition(MessageResultType.MaintenanceAutoscrap),
+                    definition,
                     faction,
                     new Dictionary<string, string>
                     {
-                        { "item", GetDisplayName(result.DestroyedObject) },
+                        { "item", firstItem },
+                        {
+                            "items",
+                            string.Join(
+                                "\n",
+                                resultArray.Select(result =>
+                                    GetDisplayName(result.DestroyedObject)
+                                )
+                            )
+                        },
                         { "system", location?.GetDisplayName() ?? string.Empty },
                     }
                 ),
                 location,
-                result.DestroyedObject as ISceneNode
+                resultArray[0].DestroyedObject as ISceneNode
             );
         }
 
@@ -2488,19 +2503,47 @@ namespace Rebellion.Game.Messages
             List<(Faction faction, Message message)> deliveries
         )
         {
-            foreach (GameObjectAutoscrappedResult result in autoscrapResults)
+            var reportItems = (autoscrapResults ?? Enumerable.Empty<GameObjectAutoscrappedResult>())
+                .Where(result => result != null)
+                .Select(result =>
+                {
+                    Planet location = GetResultPlanet(
+                        result.Context ?? result.Ref ?? result.DestroyedObject
+                    );
+                    Faction faction =
+                        GetOwnerFaction(game, result.DestroyedObject)
+                        ?? GetOwnerFaction(game, result.Ref)
+                        ?? GetFaction(game, location?.OwnerInstanceID);
+                    return new
+                    {
+                        Result = result,
+                        Location = location,
+                        Faction = faction,
+                        Definition = GetDefinition(MessageResultType.MaintenanceAutoscrap),
+                    };
+                })
+                .Where(item => item.Faction != null && item.Definition != null);
+
+            foreach (
+                var group in reportItems.GroupBy(item =>
+                    (
+                        item.Faction.InstanceID,
+                        LocationInstanceID: item.Location?.InstanceID,
+                        item.Definition
+                    )
+                )
+            )
             {
-                Planet location = GetResultPlanet(
-                    result.Context ?? result.Ref ?? result.DestroyedObject
-                );
-                Faction faction =
-                    GetOwnerFaction(game, result.DestroyedObject)
-                    ?? GetOwnerFaction(game, result.Ref)
-                    ?? GetFaction(game, location?.OwnerInstanceID);
+                var first = group.First();
                 AddDelivery(
                     deliveries,
-                    faction,
-                    CreateMaintenanceAutoscrap(faction, result, location)
+                    first.Faction,
+                    CreateMaintenanceAutoscrap(
+                        first.Faction,
+                        group.Select(item => item.Result),
+                        first.Location,
+                        first.Definition
+                    )
                 );
             }
         }

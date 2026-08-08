@@ -3435,34 +3435,99 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Shipyard",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            Regiment regiment = new Regiment
+            {
+                DisplayName = "Infantry Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+            };
             game.AttachNode(shipyard, origin);
+            game.AttachNode(regiment, origin);
 
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[]
-                    {
-                        Definition(
-                            MessageResultType.MaintenanceAutoscrap,
-                            MessageType.Resource,
-                            "maintenance:{item}:{system}",
-                            "body:{item}:{system}",
-                            imagePaths: FactionImages()
-                        ),
-                    },
-                    new GameObjectAutoscrappedResult
-                    {
-                        DestroyedObject = shipyard,
-                        Context = origin,
-                    }
-                ),
-                alliance
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.MaintenanceAutoscrap,
+                        MessageType.Resource,
+                        "maintenance:{item}:{system}",
+                        "body:{items}:{system}",
+                        imagePaths: FactionImages()
+                    ),
+                },
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = shipyard,
+                    Context = origin,
+                },
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = regiment,
+                    Context = origin,
+                }
             );
+            Message message = FirstMessageFor(deliveries, alliance);
 
+            Assert.AreEqual(1, deliveries.Count);
             Assert.AreEqual(MessageType.Resource, message.Type);
             Assert.AreEqual("maintenance:Shipyard:Coruscant", message.Title);
-            Assert.AreEqual("body:Shipyard:Coruscant", message.Body);
+            Assert.AreEqual("body:Shipyard\nInfantry Regiment:Coruscant", message.Body);
             Assert.AreEqual("alliance-image", message.DisplayImagePath);
+        }
+
+        [Test]
+        public void CreateMessages_MaintenanceAutoscrapAtDifferentSystems_UsesSeparateReports()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Planet second = new Planet
+            {
+                InstanceID = "second",
+                DisplayName = "Corellia",
+                OwnerInstanceID = alliance.InstanceID,
+                EnergyCapacity = 10,
+            };
+            game.AttachNode(second, origin.GetParent());
+            Building firstShipyard = new Building
+            {
+                DisplayName = "First Shipyard",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Building secondShipyard = new Building
+            {
+                DisplayName = "Second Shipyard",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(firstShipyard, origin);
+            game.AttachNode(secondShipyard, second);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.MaintenanceAutoscrap,
+                        MessageType.Resource,
+                        "maintenance:{system}",
+                        "body:{items}"
+                    ),
+                },
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = firstShipyard,
+                    Context = origin,
+                },
+                new GameObjectAutoscrappedResult
+                {
+                    DestroyedObject = secondShipyard,
+                    Context = second,
+                }
+            );
+
+            Assert.AreEqual(2, deliveries.Count);
+            CollectionAssert.AreEquivalent(
+                new[] { "maintenance:Coruscant", "maintenance:Corellia" },
+                deliveries.Select(delivery => delivery.message.Title)
+            );
         }
 
         [Test]
