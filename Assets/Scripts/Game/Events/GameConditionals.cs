@@ -481,6 +481,31 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches an authored unit contained by an arrival at an authored destination.
+    /// </summary>
+    [PersistableObject(Name = "UnitArrival")]
+    public sealed class UnitArrivalConditional : GameConditional
+    {
+        public string UnitInstanceID { get; set; }
+        public string DestinationInstanceID { get; set; }
+
+        public override bool IsMet(GameRoot game) => false;
+
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            if (
+                triggerResult is not UnitArrivedResult arrival
+                || arrival.Unit is not ISceneNode arrivingUnit
+                || arrival.Destination?.InstanceID != DestinationInstanceID
+            )
+                return false;
+
+            ISceneNode expectedUnit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            return GameEventHierarchy.Contains(arrivingUnit, expectedUnit);
+        }
+    }
+
+    /// <summary>
     /// Matches an authored officer and capture state on the result that triggered an event.
     /// </summary>
     [PersistableObject(Name = "OfficerCaptureState")]

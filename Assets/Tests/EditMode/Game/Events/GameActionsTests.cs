@@ -156,6 +156,50 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void UnitArrival_OfficerInsideArrivingFleetAtAuthoredDestination_Matches()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, empirePlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(emperor, ship);
+            UnitArrivalConditional conditional = new UnitArrivalConditional
+            {
+                UnitInstanceID = emperor.InstanceID,
+                DestinationInstanceID = empirePlanet.InstanceID,
+            };
+
+            bool matches = conditional.IsMet(
+                game,
+                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
+            );
+
+            Assert.IsTrue(matches);
+        }
+
+        [Test]
+        public void UnitArrival_WrongDestination_DoesNotMatch()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
+            game.AttachNode(emperor, empirePlanet);
+            UnitArrivalConditional conditional = new UnitArrivalConditional
+            {
+                UnitInstanceID = emperor.InstanceID,
+                DestinationInstanceID = empirePlanet.InstanceID,
+            };
+
+            bool matches = conditional.IsMet(
+                game,
+                new UnitArrivedResult { Unit = emperor, Destination = rebelPlanet }
+            );
+
+            Assert.IsFalse(matches);
+        }
+
+        [Test]
         public void ReportForceDetection_OpposingRevealedJediArrive_ReportsToBothFactions()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);

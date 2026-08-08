@@ -118,6 +118,35 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_EmperorReturnsToCoruscant_PreservesOriginalReport()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
+                candidate.InstanceID == "EMPEROR_RETURNS_TO_CORUSCANT"
+            );
+            UnitArrivalConditional arrival = gameEvent
+                .Conditionals.OfType<UnitArrivalConditional>()
+                .Single();
+            NarrativeMessageAction message = gameEvent
+                .Actions.OfType<NarrativeMessageAction>()
+                .Single();
+
+            Assert.IsTrue(gameEvent.IsRepeatable);
+            Assert.AreEqual(nameof(UnitArrivedResult), gameEvent.TriggerResultType);
+            Assert.AreEqual("EMPEROR_PALPATINE", arrival.UnitInstanceID);
+            Assert.AreEqual("CORUSCANT", arrival.DestinationInstanceID);
+            Assert.AreEqual("Emperor Arrives at Coruscant", message.TitleTemplate);
+            Assert.AreEqual(
+                "I have returned to the Seat of Power at Coruscant.",
+                message.BodyTemplate
+            );
+            Assert.AreEqual(
+                "Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01",
+                message.OfficerVoicePath
+            );
+        }
+
+        [Test]
         public void OpenActive_AssassinationDeathReport_PreservesOriginalVictimMessage()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
