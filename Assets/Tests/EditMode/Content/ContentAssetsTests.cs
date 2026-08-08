@@ -134,6 +134,27 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetVideoUrl_ConfiguredFactionEndings_ReturnExistingLocalFiles()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            using ContentAssets assets = CreateAssets(pack);
+
+            foreach (
+                FactionTheme theme in pack.GameData.FactionThemes.Where(theme =>
+                    pack.Scenario.PlayableFactionIDs.Contains(theme.FactionInstanceID)
+                )
+            )
+            {
+                Assert.IsTrue(
+                    File.Exists(new Uri(assets.GetVideoUrl(theme.VictoryCutscenePath)).LocalPath)
+                );
+                Assert.IsTrue(
+                    File.Exists(new Uri(assets.GetVideoUrl(theme.DefeatCutscenePath)).LocalPath)
+                );
+            }
+        }
+
+        [Test]
         public void GetVideoUrl_AbsoluteAddress_ThrowsArgumentException()
         {
             ContentPack pack = ContentPackLoader.OpenActive();

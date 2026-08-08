@@ -2,6 +2,7 @@ using System;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 using Rebellion.Generation;
 using UnityEngine;
 
@@ -18,6 +19,7 @@ public sealed class GameFlowController : MonoBehaviour
     private GameRoot game;
     private FactionThemeLibrary themeLibrary;
     private UIContext uiContext;
+    private bool campaignEnding;
 
     /// <summary>
     /// Resolves composed scene dependencies.
@@ -76,6 +78,15 @@ public sealed class GameFlowController : MonoBehaviour
     private void Update()
     {
         activeGameManager?.AdvanceTime(Time.deltaTime);
+    }
+
+    /// <summary>
+    /// Detaches session callbacks when the strategy scene is destroyed.
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (activeGameManager != null)
+            activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
     }
 
     /// <summary>
@@ -171,6 +182,10 @@ public sealed class GameFlowController : MonoBehaviour
                 bootstrap.GetContentAssets().GetTexture
             );
 
+            if (activeGameManager != null)
+                activeGameManager.VictoryDeclared -= HandleVictoryDeclared;
+
+            gameManager.VictoryDeclared += HandleVictoryDeclared;
             strategyController.Initialize(gameManager, uiContext);
             activeGameManager = gameManager;
         }
@@ -178,5 +193,61 @@ public sealed class GameFlowController : MonoBehaviour
         {
             Debug.LogException(exception);
         }
+    }
+
+    /// <summary>
+    /// Pauses the completed campaign and plays the configured ending for the player's outcome.
+    /// </summary>
+    /// <param name="result">The terminal victory result.</param>
+    private void HandleVictoryDeclared(VictoryResult result)
+    {
+        if (campaignEnding || result == null)
+            return;
+
+        Faction playerFaction = activeGameManager?.GetPlayerFaction();
+        if (playerFaction == null)
+            return;
+
+        campaignEnding = true;
+        activeGameManager.SetGameSpeed(TickSpeed.Paused);
+
+        try
+        {
+            FactionTheme theme = themeLibrary.GetTheme(playerFaction.InstanceID);
+            string cutscenePath = GetCampaignEndingCutscenePath(theme, playerFaction, result);
+            AppBootstrap.EnsureExists().GetCutsceneManager().Play(cutscenePath, FinishCampaign);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            FinishCampaign();
+        }
+    }
+
+    /// <summary>
+    /// Selects the configured victory or defeat movie from the player's perspective.
+    /// </summary>
+    internal static string GetCampaignEndingCutscenePath(
+        FactionTheme theme,
+        Faction playerFaction,
+        VictoryResult result
+    )
+    {
+        if (theme == null || playerFaction == null || result == null)
+            return null;
+
+        return result.Winner?.InstanceID == playerFaction.InstanceID
+            ? theme.VictoryCutscenePath
+            : theme.DefeatCutscenePath;
+    }
+
+    /// <summary>
+    /// Ends the completed session and returns to the main menu after the ending movie.
+    /// </summary>
+    private void FinishCampaign()
+    {
+        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+        bootstrap.GetRuntime()?.EndGame();
+        bootstrap.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
     }
 }

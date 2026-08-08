@@ -71,6 +71,7 @@ public sealed class GameManager
     public event Action GameSpeedChanged;
     public event Action TickCompleted;
     public event Action<GameRoot> GameReplaced;
+    public event Action<VictoryResult> VictoryDeclared;
 
     // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
@@ -444,6 +445,9 @@ public sealed class GameManager
         List<GameResult> resolvedResults = _resultProcessor.Process(results);
         if (processMessages)
             _messageSystem.ProcessResults(resolvedResults);
+
+        foreach (VictoryResult victory in resolvedResults.OfType<VictoryResult>())
+            VictoryDeclared?.Invoke(victory);
 
         return resolvedResults;
     }

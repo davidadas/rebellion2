@@ -77,6 +77,43 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void ProcessTick_VictoryConditionMet_RaisesVictoryDeclaredOnce()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create())
+            {
+                Summary = new GameSummary { VictoryCondition = GameVictoryCondition.Headquarters },
+            };
+            Faction empire = new Faction
+            {
+                InstanceID = "empire",
+                DisplayName = "Empire",
+                HQInstanceID = "coruscant",
+            };
+            Faction alliance = new Faction { InstanceID = "alliance", DisplayName = "Alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+            PlanetSystem system = new PlanetSystem { InstanceID = "core" };
+            Planet coruscant = new Planet
+            {
+                InstanceID = "coruscant",
+                OwnerInstanceID = alliance.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(coruscant, system);
+            GameManager manager = TestContent.CreateGameManager(game);
+            List<VictoryResult> declarations = new List<VictoryResult>();
+            manager.VictoryDeclared += declarations.Add;
+
+            manager.ProcessTick();
+            manager.ProcessTick();
+
+            Assert.AreEqual(1, declarations.Count);
+            Assert.AreSame(alliance, declarations[0].Winner);
+            Assert.AreSame(empire, declarations[0].Loser);
+        }
+
+        [Test]
         public void ProcessTick_ExpiredMessage_RemovesMessageAfterTickAdvances()
         {
             GameConfig config = TestConfig.Create();

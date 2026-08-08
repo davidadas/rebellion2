@@ -16,6 +16,7 @@ namespace Rebellion.Systems
     public class VictorySystem : IGameResultHandler<HeadquartersDestroyedResult>
     {
         private readonly GameRoot _game;
+        private bool _victoryDeclared;
 
         /// <summary>
         /// Creates a new VictoryManager.
@@ -32,6 +33,9 @@ namespace Rebellion.Systems
         /// <returns>Any victory results triggered this tick.</returns>
         public List<GameResult> ProcessTick()
         {
+            if (_victoryDeclared)
+                return new List<GameResult>();
+
             foreach (Faction faction in _game.Factions)
             {
                 VictoryResult outcome = CheckHQCapture(faction);
@@ -54,6 +58,9 @@ namespace Rebellion.Systems
         /// <returns>Any victories caused by the headquarters losses.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<HeadquartersDestroyedResult> results)
         {
+            if (_victoryDeclared)
+                return new List<GameResult>();
+
             return (results ?? Array.Empty<HeadquartersDestroyedResult>())
                 .Where(result => result?.Attacker != null && result.Defender != null)
                 .Select(result => BuildHQVictory(result.Attacker, result.Defender))
@@ -130,6 +137,9 @@ namespace Rebellion.Systems
         /// <returns>A victory when all mode requirements are met; otherwise null.</returns>
         private VictoryResult BuildHQVictory(Faction attacker, Faction defender)
         {
+            if (_victoryDeclared)
+                return null;
+
             GameVictoryCondition victoryMode = _game.Summary.VictoryCondition;
             if (
                 victoryMode == GameVictoryCondition.Conquest
@@ -137,6 +147,7 @@ namespace Rebellion.Systems
             )
                 return null;
 
+            _victoryDeclared = true;
             return new VictoryResult
             {
                 Winner = attacker,

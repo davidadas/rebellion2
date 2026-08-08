@@ -28,6 +28,21 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_PlayableFactionThemes_ConfigureOriginalCampaignEndings()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+
+            foreach (string factionId in pack.Scenario.PlayableFactionIDs)
+            {
+                FactionTheme theme = pack.GameData.FactionThemes.Single(candidate =>
+                    candidate.FactionInstanceID == factionId
+                );
+                StringAssert.EndsWith("/Cutscenes/victory", theme.VictoryCutscenePath);
+                StringAssert.EndsWith("/Cutscenes/defeat", theme.DefeatCutscenePath);
+            }
+        }
+
+        [Test]
         public void OpenActive_ClassicStoryEvents_PreserveHeritageAndFinalBattleOutcomes()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
