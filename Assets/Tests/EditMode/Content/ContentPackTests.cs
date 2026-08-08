@@ -137,6 +137,66 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_HiddenStoryMissions_OnlyExposeAuthoredReports()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            (string eventId, string triggerType, string sourceEventId)[] replacements =
+            {
+                (
+                    "HAN_EVADES_BOUNTY_HUNTERS",
+                    nameof(StoryCaptureResolvedResult),
+                    "HAN_BOUNTY_HUNTERS"
+                ),
+                (
+                    "JABBA_DELIVERS_PRISONERS",
+                    nameof(StoryPickupCompletedResult),
+                    "VADER_COLLECTS_JABBAS_PRISONERS"
+                ),
+                (
+                    "LUKE_WINS_FINAL_BATTLE",
+                    nameof(StoryFinalBattleCompletedResult),
+                    "VADER_TAKES_LUKE_TO_EMPEROR"
+                ),
+                (
+                    "LUKE_LOSES_FINAL_BATTLE",
+                    nameof(StoryFinalBattleCompletedResult),
+                    "VADER_TAKES_LUKE_TO_EMPEROR"
+                ),
+            };
+
+            foreach ((string eventId, string triggerType, string sourceEventId) in replacements)
+            {
+                GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
+                    candidate.InstanceID == eventId
+                );
+                Assert.AreEqual(triggerType, gameEvent.TriggerResultType, eventId);
+                Assert.IsTrue(gameEvent.SuppressSourceMessages, eventId);
+                Assert.AreEqual(
+                    sourceEventId,
+                    gameEvent
+                        .Conditionals.OfType<ResultSourceEventConditional>()
+                        .Single()
+                        .SourceEventInstanceID,
+                    eventId
+                );
+            }
+
+            GameEvent finalBattlePolicy = pack.GameData.GameEvents.Single(candidate =>
+                candidate.InstanceID == "FINAL_BATTLE_REPORT_POLICY"
+            );
+            Assert.IsTrue(finalBattlePolicy.IsRepeatable);
+            Assert.AreEqual(nameof(MissionCompletedResult), finalBattlePolicy.TriggerResultType);
+            Assert.IsTrue(finalBattlePolicy.SuppressTriggerMessage);
+            Assert.AreEqual(
+                "VADER_TAKES_LUKE_TO_EMPEROR",
+                finalBattlePolicy
+                    .Conditionals.OfType<ResultSourceEventConditional>()
+                    .Single()
+                    .SourceEventInstanceID
+            );
+        }
+
+        [Test]
         public void OpenActive_ClassicStoryEvents_PreserveHeritageAndFinalBattleOutcomes()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
