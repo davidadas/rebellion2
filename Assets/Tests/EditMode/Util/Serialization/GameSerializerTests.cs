@@ -312,6 +312,7 @@ namespace Rebellion.Tests.Util.Serialization
             {
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 TriggerResultType = "OfficerCaptureStateResult",
+                SuppressTriggerMessage = true,
                 SuppressSourceMessages = true,
                 Conditionals = new List<GameConditional>
                 {
@@ -326,10 +327,15 @@ namespace Rebellion.Tests.Util.Serialization
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
             StringAssert.Contains(
+                "<SuppressTriggerMessage>True</SuppressTriggerMessage>",
+                serializedXml
+            );
+            StringAssert.Contains(
                 "<SuppressSourceMessages>True</SuppressSourceMessages>",
                 serializedXml
             );
             StringAssert.Contains("<ResultSourceEvent>", serializedXml);
+            Assert.IsTrue(deserialized.SuppressTriggerMessage);
             Assert.IsTrue(deserialized.SuppressSourceMessages);
             ResultSourceEventConditional source =
                 deserialized.Conditionals[0] as ResultSourceEventConditional;

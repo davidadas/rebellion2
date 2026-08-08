@@ -212,6 +212,31 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_TriggerReplacement_PreservesSiblingSourceMessages()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "HIDDEN_MISSION_REPORT",
+                TriggerResultType = nameof(MissionCompletedResult),
+                SuppressTriggerMessage = true,
+            };
+            _game.EventPool.Add(gameEvent);
+            OfficerCaptureStateResult release = new OfficerCaptureStateResult
+            {
+                SourceEventInstanceID = "PALACE_RESCUE",
+            };
+            MissionCompletedResult completion = new MissionCompletedResult
+            {
+                SourceEventInstanceID = "PALACE_RESCUE",
+            };
+
+            _system.HandleResults(new GameResult[] { release, completion });
+
+            Assert.IsFalse(release.SuppressDefaultMessage);
+            Assert.IsTrue(completion.SuppressDefaultMessage);
+        }
+
+        [Test]
         public void HandleResults_RepeatableEncounterEffect_ExecutesForEveryEncounter()
         {
             Officer luke = new Officer { InstanceID = "luke" };

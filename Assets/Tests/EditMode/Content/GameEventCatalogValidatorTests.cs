@@ -88,6 +88,22 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Validate_TriggerReplacementWithoutTrigger_ReportsProblem()
+        {
+            GameEvent gameEvent = CreateEvent("REPLACEMENT");
+            gameEvent.SuppressTriggerMessage = true;
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains(
+                "SuppressTriggerMessage requires TriggerResultType",
+                exception.Message
+            );
+        }
+
+        [Test]
         public void Validate_ResultSourceWithoutEventId_ReportsProblem()
         {
             GameEvent gameEvent = CreateEvent("REACTION");

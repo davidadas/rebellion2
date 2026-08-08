@@ -146,6 +146,8 @@ namespace Rebellion.Systems
                         continue;
 
                     eventResults.AddRange(reactions);
+                    if (gameEvent.SuppressTriggerMessage)
+                        triggerResult.SuppressDefaultMessage = true;
                     SuppressSourceMessages(gameEvent, triggerResult, results);
                     if (!gameEvent.IsRepeatable)
                         _game.RemoveEvent(gameEvent);

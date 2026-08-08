@@ -85,6 +85,11 @@ public static class GameEventCatalogValidator
         )
             errors.Add($"{context}.TriggerResultType '{gameEvent.TriggerResultType}' is unknown.");
         if (
+            gameEvent.SuppressTriggerMessage
+            && string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
+        )
+            errors.Add($"{context}.SuppressTriggerMessage requires TriggerResultType.");
+        if (
             gameEvent.SuppressSourceMessages
             && string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
         )

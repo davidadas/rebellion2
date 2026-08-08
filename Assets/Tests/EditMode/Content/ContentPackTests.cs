@@ -94,6 +94,21 @@ namespace Rebellion.Tests.Content
                     .Single()
                     .SourceEventInstanceID
             );
+
+            GameEvent reportPolicy = pack.GameData.GameEvents.Single(candidate =>
+                candidate.InstanceID == "PALACE_RESCUE_REPORT_POLICY"
+            );
+            Assert.IsTrue(reportPolicy.IsRepeatable);
+            Assert.AreEqual(nameof(MissionCompletedResult), reportPolicy.TriggerResultType);
+            Assert.IsTrue(reportPolicy.SuppressTriggerMessage);
+            CollectionAssert.AreEquivalent(
+                expectedEvents.Select(expected => expected.sourceEventId),
+                reportPolicy
+                    .Conditionals.OfType<OrConditional>()
+                    .Single()
+                    .Conditionals.OfType<ResultSourceEventConditional>()
+                    .Select(source => source.SourceEventInstanceID)
+            );
         }
 
         [Test]
