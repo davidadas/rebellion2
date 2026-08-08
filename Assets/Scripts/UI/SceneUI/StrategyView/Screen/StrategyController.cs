@@ -185,7 +185,8 @@ public sealed class StrategyController
             () => gameManager.GetGame(),
             () => uiContext?.GetPlayerFactionTheme()?.StrategyMusic,
             musicRandom.Next,
-            audioManager.PlayDynamicPlaylist
+            audioManager.PlayDynamicPlaylist,
+            audioManager.StopMusic
         );
         strategyHudController = new StrategyHudController(
             () => gameManager?.GetPlayerFaction(),
@@ -594,6 +595,7 @@ public sealed class StrategyController
     {
         RequestInitialTextures();
         SetContentReady(true);
+        PlayStrategyReadySound();
     }
 
     /// <summary>
@@ -1281,10 +1283,44 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
+        ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         PreloadStrategySfx();
         BindMessageSystem(gameManager.MessageSystem);
+        strategyMusicController.Resume();
         RefreshStrategyState();
+        PlayStrategyReadySound();
+    }
+
+    /// <summary>
+    /// Plays the established galaxy-presentation change cue when strategy becomes ready.
+    /// </summary>
+    private static void PlayStrategyReadySound()
+    {
+        PlayStrategySfx(StrategyUISoundPaths.GalacticInformationControl);
+    }
+
+    /// <summary>
+    /// Tears down presentation state that belongs to the game instance being replaced.
+    /// </summary>
+    private void ResetStrategyPresentation()
+    {
+        strategyMusicController.Reset();
+        strategyHudController.ResetSession();
+        targetingController?.Cancel();
+        contextMenuController?.Cancel();
+        strategyContextMenu?.Reset();
+        galacticInformationDisplayController?.Hide();
+        strategyDragController?.ClearItemDrag();
+        ClearWindowMovePreview();
+
+        foreach (UIWindow window in strategyWindowManager.Windows.ToList())
+        {
+            ClearClosingWindowState(window);
+            strategyWindowManager.DestroyWindow(window);
+        }
+
+        strategyWindowLayerView.RenderModalState(false);
     }
 
     /// <summary>

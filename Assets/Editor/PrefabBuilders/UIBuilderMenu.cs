@@ -11,7 +11,7 @@ public static class UIBuilderMenu
     /// <summary>
     /// Rebuilds every generated UI prefab and scene.
     /// </summary>
-    [MenuItem("Rebellion/UI/Build All", false, 0)]
+    [MenuItem("Rebellion/Build/Build All UI %#u", false, 0)]
     public static void BuildAll()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -26,8 +26,8 @@ public static class UIBuilderMenu
     /// the generated prefabs. Generated prefab payloads are ignored by Git, so no restoration is
     /// required after the build.
     /// </summary>
-    [MenuItem("Rebellion/UI/Build All (Production)", false, 1)]
-    public static void BuildAllForPlayer()
+    [MenuItem("Rebellion/Build/Build Runtime UI", false, 1)]
+    public static void BuildRuntimeUI()
     {
         BuildAll();
 
@@ -50,7 +50,7 @@ public static class UIBuilderMenu
     /// <summary>
     /// Rebuilds the generated main-menu UI.
     /// </summary>
-    [MenuItem("Rebellion/UI/Build Main Menu", false, 20)]
+    [MenuItem("Rebellion/Build/Build Main Menu UI", false, 20)]
     public static void BuildMainMenu()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -61,7 +61,7 @@ public static class UIBuilderMenu
     /// <summary>
     /// Rebuilds the generated save-game UI.
     /// </summary>
-    [MenuItem("Rebellion/UI/Build Save Game", false, 21)]
+    [MenuItem("Rebellion/Build/Build Save Game UI", false, 21)]
     public static void BuildSaveGame()
     {
         UIAuthoringGuard.EnsureEditMode();
@@ -72,7 +72,7 @@ public static class UIBuilderMenu
     /// <summary>
     /// Rebuilds the generated strategy UI.
     /// </summary>
-    [MenuItem("Rebellion/UI/Build Strategy", false, 22)]
+    [MenuItem("Rebellion/Build/Build Strategy UI", false, 22)]
     public static void BuildStrategy()
     {
         UIAuthoringGuard.EnsureEditMode();

@@ -9,13 +9,15 @@ internal sealed class StrategyMusicController
     private readonly Func<int, int, int> getRandomIndex;
     private readonly Func<StrategyMusicTheme> getTheme;
     private readonly Action<Func<string>> playDynamicPlaylist;
+    private readonly Action stopMusic;
     private int neutralTracksRemaining;
 
     internal StrategyMusicController(
         Func<GameRoot> getGame,
         Func<StrategyMusicTheme> getTheme,
         Func<int, int, int> getRandomIndex,
-        Action<Func<string>> playDynamicPlaylist
+        Action<Func<string>> playDynamicPlaylist,
+        Action stopMusic
     )
     {
         this.getGame = getGame ?? throw new ArgumentNullException(nameof(getGame));
@@ -24,11 +26,18 @@ internal sealed class StrategyMusicController
             getRandomIndex ?? throw new ArgumentNullException(nameof(getRandomIndex));
         this.playDynamicPlaylist =
             playDynamicPlaylist ?? throw new ArgumentNullException(nameof(playDynamicPlaylist));
+        this.stopMusic = stopMusic ?? throw new ArgumentNullException(nameof(stopMusic));
     }
 
     internal void Resume()
     {
         playDynamicPlaylist(SelectNextTrack);
+    }
+
+    internal void Reset()
+    {
+        neutralTracksRemaining = 0;
+        stopMusic();
     }
 
     private string SelectNextTrack()

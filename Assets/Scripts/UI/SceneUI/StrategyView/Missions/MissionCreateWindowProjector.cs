@@ -217,7 +217,9 @@ internal sealed class MissionCreateWindowProjector
         if (target == null)
             return null;
 
-        return target is Planet ? null : uiContext.GetEntityTexture(target, true);
+        return target is Planet planet
+            ? uiContext.GetPlanetTexture(planet)
+            : uiContext.GetEntityTexture(target, true);
     }
 
     /// <summary>
