@@ -39,8 +39,8 @@ public static class StandalonePlayerBuild
 
         try
         {
-            BuildPlayer(target, outputPath);
-            LaunchPlayer(target, outputPath, contentPath);
+            string builtPlayerPath = BuildPlayer(target, outputPath);
+            LaunchPlayer(target, builtPlayerPath, contentPath);
         }
         finally
         {
@@ -98,9 +98,11 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The desktop platform to build.</param>
     /// <param name="outputPath">The player artifact path.</param>
-    private static void BuildPlayer(UnityEditor.BuildTarget target, string outputPath)
+    /// <returns>The platform-correct player artifact path.</returns>
+    private static string BuildPlayer(UnityEditor.BuildTarget target, string outputPath)
     {
         _ = GetDefaultArtifact(target);
+        outputPath = NormalizeOutputPath(target, outputPath);
         UIBuilderMenu.BuildRuntimeUI();
 
         string outputDirectory = Path.GetDirectoryName(outputPath);
@@ -141,6 +143,24 @@ public static class StandalonePlayerBuild
         {
             throw new InvalidOperationException($"Player build output not found at {outputPath}.");
         }
+
+        return outputPath;
+    }
+
+    /// <summary>
+    /// Adds the macOS application-bundle extension when a build caller supplies a directory-like
+    /// artifact path, so the post-build output check matches what Unity actually writes.
+    /// </summary>
+    /// <param name="target">The desktop platform being built.</param>
+    /// <param name="outputPath">The requested player artifact path.</param>
+    /// <returns>The output path Unity creates for the target platform.</returns>
+    private static string NormalizeOutputPath(UnityEditor.BuildTarget target, string outputPath)
+    {
+        return
+            target == UnityEditor.BuildTarget.StandaloneOSX
+            && !outputPath.EndsWith(".app", StringComparison.OrdinalIgnoreCase)
+            ? outputPath + ".app"
+            : outputPath;
     }
 
     /// <summary>

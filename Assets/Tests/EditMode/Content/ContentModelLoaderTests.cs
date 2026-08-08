@@ -5,15 +5,15 @@ using UnityEngine;
 
 public sealed class ContentModelLoaderTests
 {
-    private const string _planetAddress = "Application/MainMenu/Models/planet";
+    private const string _citadelAddress = "Application/MainMenu/Models/citadel";
 
     [Test]
     public async Task LoadAsync_ValidGlb_ReturnsDisposableModelAsync()
     {
         ContentPack pack = ContentPackLoader.OpenActive();
         using ContentAssets assets = new ContentAssets(pack.ContentRootPath, pack.PackRootPath);
-        string filePath = assets.ResolveFile(_planetAddress, ".glb");
-        Assert.That(filePath, Is.Not.Null, $"Test GLB is missing: {_planetAddress}");
+        string filePath = assets.ResolveFile(_citadelAddress, ".glb");
+        Assert.That(filePath, Is.Not.Null, $"Test GLB is missing: {_citadelAddress}");
 
         GameObject parent = new GameObject("ContentModelLoaderTest");
         ContentModelInstance instance = null;

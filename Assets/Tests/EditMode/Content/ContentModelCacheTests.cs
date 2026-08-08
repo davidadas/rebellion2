@@ -5,7 +5,7 @@ using UnityEngine;
 
 public sealed class ContentModelCacheTests
 {
-    private const string _planetAddress = "Application/MainMenu/Models/planet";
+    private const string _citadelAddress = "Application/MainMenu/Models/citadel";
 
     [Test]
     public async Task InstantiateAsync_PreloadedModel_CreatesIndependentInstancesAsync()
@@ -19,14 +19,14 @@ public sealed class ContentModelCacheTests
         ContentModelInstance second = null;
         try
         {
-            await cache.PreloadAsync(new[] { _planetAddress });
+            await cache.PreloadAsync(new[] { _citadelAddress });
             first = await cache.InstantiateAsync(
-                _planetAddress,
+                _citadelAddress,
                 firstParent.transform,
                 CancellationToken.None
             );
             second = await cache.InstantiateAsync(
-                _planetAddress,
+                _citadelAddress,
                 secondParent.transform,
                 CancellationToken.None
             );
