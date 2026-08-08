@@ -1456,7 +1456,7 @@ public sealed class StrategyController
             strategyWindowManager.DestroyWindow(window);
         }
 
-        strategyWindowLayerView.RenderModalState(false);
+        strategyWindowLayerView.RenderModalState(false, false);
     }
 
     /// <summary>
