@@ -459,6 +459,7 @@ namespace Rebellion.Game.Results
     {
         public Officer EncounteredOfficer { get; set; }
         public Officer OpposingOfficer { get; set; }
+        public string VoicePath { get; set; }
     }
 
     /// <summary>
@@ -472,6 +473,7 @@ namespace Rebellion.Game.Results
         public bool EncounteredOfficerCaptured { get; set; }
         public int EncounteredOfficerInjury { get; set; }
         public int OpposingOfficerInjury { get; set; }
+        public string VoicePath { get; set; }
     }
 
     /// <summary>
@@ -540,6 +542,7 @@ namespace Rebellion.Game.Results
     {
         public Faction Recipient { get; set; }
         public ISceneNode Subject { get; set; }
+        public ISceneNode RelatedSubject { get; set; }
         public Planet Location { get; set; }
         public MessageType MessageType { get; set; }
         public string TitleTemplate { get; set; }

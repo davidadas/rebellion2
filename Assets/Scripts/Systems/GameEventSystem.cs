@@ -152,7 +152,8 @@ namespace Rebellion.Systems
             GameEventExecutionContext context = new GameEventExecutionContext(
                 gameEvent,
                 state,
-                scopeTarget
+                scopeTarget,
+                triggerResult
             );
             results = gameEvent.Execute(_game, _provider, context);
             state.ExecutionCount++;

@@ -160,6 +160,19 @@ public static class GameEventCatalogValidator
                         errors.Add($"{conditionPath}.EncounteredOfficerInstanceID is required.");
                     if (string.IsNullOrWhiteSpace(encounter.OpposingOfficerInstanceID))
                         errors.Add($"{conditionPath}.OpposingOfficerInstanceID is required.");
+                    if (
+                        encounter.EncounteredOfficerInstanceID
+                        == encounter.OpposingOfficerInstanceID
+                    )
+                        errors.Add($"{conditionPath} requires two different officers.");
+                    break;
+                case OfficerPairArrivalConditional arrival:
+                    if (string.IsNullOrWhiteSpace(arrival.FirstOfficerInstanceID))
+                        errors.Add($"{conditionPath}.FirstOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(arrival.SecondOfficerInstanceID))
+                        errors.Add($"{conditionPath}.SecondOfficerInstanceID is required.");
+                    if (arrival.FirstOfficerInstanceID == arrival.SecondOfficerInstanceID)
+                        errors.Add($"{conditionPath} requires two different officers.");
                     break;
                 case OfficerCaptureStateConditional capture
                     when string.IsNullOrWhiteSpace(capture.OfficerInstanceID):
@@ -330,6 +343,11 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.EncounteredOfficerInstanceID is required.");
                     if (string.IsNullOrWhiteSpace(encounter.OpposingOfficerInstanceID))
                         errors.Add($"{actionPath}.OpposingOfficerInstanceID is required.");
+                    if (
+                        encounter.EncounteredOfficerInstanceID
+                        == encounter.OpposingOfficerInstanceID
+                    )
+                        errors.Add($"{actionPath} requires two different officers.");
                     break;
                 case NarrativeMessageAction message:
                     ValidateNarrativeMessage(message, actionPath, errors);
@@ -508,8 +526,33 @@ public static class GameEventCatalogValidator
         if (
             string.IsNullOrWhiteSpace(message.TitleTemplate)
             && string.IsNullOrWhiteSpace(message.BodyTemplate)
+            && (message.BodySegments == null || message.BodySegments.Count == 0)
         )
             errors.Add($"{path} requires a title or body template.");
+
+        if (message.BodySegments == null)
+        {
+            errors.Add($"{path}.BodySegments is null.");
+            return;
+        }
+
+        for (int index = 0; index < message.BodySegments.Count; index++)
+        {
+            NarrativeBodySegment segment = message.BodySegments[index];
+            string segmentPath = $"{path}.BodySegments[{index}]";
+            if (segment == null)
+            {
+                errors.Add($"{segmentPath} is null.");
+                continue;
+            }
+
+            ValidateComposite(segment.Conditionals, segmentPath, 0, errors);
+            if (
+                string.IsNullOrWhiteSpace(segment.BodyTemplate)
+                && string.IsNullOrWhiteSpace(segment.ElseBodyTemplate)
+            )
+                errors.Add($"{segmentPath} requires BodyTemplate or ElseBodyTemplate.");
+        }
     }
 
     private static void ValidateIds(

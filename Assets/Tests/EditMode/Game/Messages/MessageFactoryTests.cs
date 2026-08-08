@@ -22,6 +22,8 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Officer luke = EntityFactory.CreateOfficer("luke", alliance.InstanceID);
             luke.DisplayName = "Luke Skywalker";
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            vader.DisplayName = "Darth Vader";
             game.AttachNode(luke, destination);
 
             Message message = FirstMessageFor(
@@ -32,10 +34,11 @@ namespace Rebellion.Tests.Game.Messages
                     {
                         Recipient = alliance,
                         Subject = luke,
+                        RelatedSubject = vader,
                         Location = destination,
                         MessageType = MessageType.Advice,
                         TitleTemplate = "{subject} at {location}",
-                        BodyTemplate = "For {faction}",
+                        BodyTemplate = "{subject} confronts {relatedSubject} for {faction}",
                         ImageKey = "mission_report",
                         ImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
@@ -48,7 +51,7 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
-            Assert.AreEqual("For Alliance", message.Body);
+            Assert.AreEqual("Luke Skywalker confronts Darth Vader for Alliance", message.Body);
             Assert.AreEqual("Story/image", message.DisplayImagePath);
             Assert.AreEqual("mission_report", message.DisplayImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);

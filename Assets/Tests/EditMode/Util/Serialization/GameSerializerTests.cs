@@ -285,10 +285,28 @@ namespace Rebellion.Tests.Util.Serialization
                             new NarrativeMessageAction
                             {
                                 SubjectInstanceID = "LUKE",
+                                RelatedSubjectInstanceID = "VADER",
                                 MessageType = MessageType.Advice,
                                 TitleTemplate = "{subject}",
                                 BodyTemplate = "At {location}",
+                                BodySegments = new List<NarrativeBodySegment>
+                                {
+                                    new NarrativeBodySegment
+                                    {
+                                        Conditionals = new List<GameConditional>
+                                        {
+                                            new OfficerStateConditional
+                                            {
+                                                OfficerInstanceID = "LUKE",
+                                                State = OfficerStateKind.Injured,
+                                            },
+                                        },
+                                        BodyTemplate = "Injured",
+                                        ElseBodyTemplate = "Unharmed",
+                                    },
+                                },
                                 VoicePath = "Story/dialogue",
+                                VoicePathFromOfficerEncounter = true,
                             },
                         },
                     },
@@ -394,8 +412,16 @@ namespace Rebellion.Tests.Util.Serialization
             NarrativeMessageAction message = random.Actions[0] as NarrativeMessageAction;
             Assert.IsNotNull(message);
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
+            Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual(MessageType.Advice, message.MessageType);
             Assert.AreEqual("Story/dialogue", message.VoicePath);
+            Assert.IsTrue(message.VoicePathFromOfficerEncounter);
+            Assert.AreEqual(1, message.BodySegments.Count);
+            Assert.AreEqual("Injured", message.BodySegments[0].BodyTemplate);
+            OfficerStateConditional bodyCondition =
+                message.BodySegments[0].Conditionals[0] as OfficerStateConditional;
+            Assert.IsNotNull(bodyCondition);
+            Assert.AreEqual(OfficerStateKind.Injured, bodyCondition.State);
             ConditionalAction conditional = deserialized.Actions[1] as ConditionalAction;
             Assert.IsNotNull(conditional);
             EventVariableConditional condition =

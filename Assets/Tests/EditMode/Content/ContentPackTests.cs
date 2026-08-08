@@ -1,6 +1,8 @@
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Events;
+using Rebellion.Game.Results;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -22,6 +24,60 @@ namespace Rebellion.Tests.Content
             Assert.IsNotEmpty(pack.GameData.Factions);
             Assert.IsNotEmpty(pack.GameData.PlanetSystems);
             Assert.IsNotEmpty(pack.GameData.Officers);
+        }
+
+        [Test]
+        public void OpenActive_ClassicStoryEvents_PreserveHeritageAndFinalBattleOutcomes()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            GameEvent heritage = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "LUKE_DISCOVERS_HERITAGE"
+            );
+            NarrativeMessageAction heritageMessage = heritage
+                .Actions.OfType<NarrativeMessageAction>()
+                .Single();
+            GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "VADER_TAKES_LUKE_TO_EMPEROR"
+            );
+            StartStoryFinalBattleAction startFinalBattle = finalBattle
+                .Actions.OfType<StartStoryFinalBattleAction>()
+                .Single();
+            NarrativeMessageAction victoryMessage = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "LUKE_WINS_FINAL_BATTLE"
+                )
+                .Actions.OfType<NarrativeMessageAction>()
+                .Single();
+            NarrativeMessageAction defeatMessage = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "LUKE_LOSES_FINAL_BATTLE"
+                )
+                .Actions.OfType<NarrativeMessageAction>()
+                .Single();
+            GameEvent lukeVaderEncounter = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
+            );
+            GameEvent lukeVaderEffects = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "LUKE_VADER_ENCOUNTER_EFFECTS"
+            );
+            NarrativeMessageAction confrontation = lukeVaderEffects
+                .Actions.OfType<NarrativeMessageAction>()
+                .Single();
+
+            Assert.AreEqual(6, heritageMessage.BodySegments.Count);
+            Assert.AreEqual(nameof(UnitArrivedResult), lukeVaderEncounter.TriggerResultType);
+            Assert.IsInstanceOf<OfficerPairArrivalConditional>(lukeVaderEncounter.Conditionals[0]);
+            Assert.AreEqual(5, confrontation.BodySegments.Count);
+            Assert.IsTrue(confrontation.VoicePathFromOfficerEncounter);
+            Assert.IsFalse(startFinalBattle.CaptivesCanEscapeOnVictory);
+            Assert.AreEqual(
+                "Pack/Shared/Events/FinalBattle/Audio/luke-victorious",
+                victoryMessage.VoicePath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Events/FinalBattle/Audio/luke-defeated",
+                defeatMessage.VoicePath
+            );
         }
 
         [TestCase("main-menu")]

@@ -709,6 +709,7 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 string subjectName = result.Subject?.GetDisplayName() ?? string.Empty;
+                string relatedSubjectName = result.RelatedSubject?.GetDisplayName() ?? string.Empty;
                 string locationName = result.Location?.GetDisplayName() ?? string.Empty;
                 MessageDefinition definition = new MessageDefinition
                 {
@@ -725,6 +726,7 @@ namespace Rebellion.Game.Messages
                     new Dictionary<string, string>
                     {
                         { "subject", subjectName },
+                        { "relatedSubject", relatedSubjectName },
                         { "location", locationName },
                         { "faction", result.Recipient.GetDisplayName() },
                     },

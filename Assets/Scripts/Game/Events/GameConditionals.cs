@@ -25,6 +25,7 @@ namespace Rebellion.Game.Events
         Available,
         Captured,
         Killed,
+        Injured,
         ForceEligible,
     }
 
@@ -426,6 +427,7 @@ namespace Rebellion.Game.Events
     {
         public string EncounteredOfficerInstanceID { get; set; }
         public string OpposingOfficerInstanceID { get; set; }
+        public bool MatchEitherOrder { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameRoot game)
@@ -436,9 +438,45 @@ namespace Rebellion.Game.Events
         /// <inheritdoc />
         public override bool IsMet(GameRoot game, GameResult triggerResult)
         {
-            return triggerResult is OfficerEncounterResult encounter
-                && encounter.EncounteredOfficer?.InstanceID == EncounteredOfficerInstanceID
+            if (triggerResult is not OfficerEncounterResult encounter)
+                return false;
+
+            bool authoredOrder =
+                encounter.EncounteredOfficer?.InstanceID == EncounteredOfficerInstanceID
                 && encounter.OpposingOfficer?.InstanceID == OpposingOfficerInstanceID;
+            return authoredOrder
+                || (
+                    MatchEitherOrder
+                    && encounter.EncounteredOfficer?.InstanceID == OpposingOfficerInstanceID
+                    && encounter.OpposingOfficer?.InstanceID == EncounteredOfficerInstanceID
+                );
+        }
+    }
+
+    /// <summary>
+    /// Matches an arrival containing exactly one member of an authored officer pair.
+    /// </summary>
+    [PersistableObject(Name = "OfficerPairArrival")]
+    public sealed class OfficerPairArrivalConditional : GameConditional
+    {
+        public string FirstOfficerInstanceID { get; set; }
+        public string SecondOfficerInstanceID { get; set; }
+
+        public override bool IsMet(GameRoot game) => false;
+
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            if (
+                triggerResult is not UnitArrivedResult arrival
+                || arrival.Unit is not ISceneNode unit
+            )
+                return false;
+
+            Officer first = game.GetSceneNodeByInstanceID<Officer>(FirstOfficerInstanceID);
+            Officer second = game.GetSceneNodeByInstanceID<Officer>(SecondOfficerInstanceID);
+            bool firstArrived = GameEventHierarchy.Contains(unit, first);
+            bool secondArrived = GameEventHierarchy.Contains(unit, second);
+            return firstArrived != secondArrived;
         }
     }
 
@@ -542,6 +580,7 @@ namespace Rebellion.Game.Events
                 OfficerStateKind.Available => !officer.IsKilled && !officer.IsCaptured,
                 OfficerStateKind.Captured => officer.IsCaptured,
                 OfficerStateKind.Killed => officer.IsKilled,
+                OfficerStateKind.Injured => officer.InjuryPoints > 0,
                 OfficerStateKind.ForceEligible => officer.IsForceEligible,
                 _ => throw new InvalidOperationException($"Unsupported officer state '{State}'."),
             };

@@ -450,6 +450,8 @@ namespace Rebellion.Game.Events
     {
         public string EncounteredOfficerInstanceID { get; set; }
         public string OpposingOfficerInstanceID { get; set; }
+        public bool EncounteredOfficerIsArrivingParticipant { get; set; }
+        public string VoicePath { get; set; }
 
         public ResolveOfficerEncounterAction()
             : base() { }
@@ -461,6 +463,15 @@ namespace Rebellion.Game.Events
         /// <returns>The encounter request, or no result when either officer is unavailable.</returns>
         public override List<GameResult> Execute(GameRoot game)
         {
+            return Execute(game, null, null);
+        }
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
             Officer encountered = game.GetSceneNodeByInstanceID<Officer>(
                 EncounteredOfficerInstanceID
             );
@@ -468,12 +479,25 @@ namespace Rebellion.Game.Events
             if (encountered == null || opposing == null)
                 return new List<GameResult>();
 
+            if (EncounteredOfficerIsArrivingParticipant)
+            {
+                ISceneNode arrivingUnit =
+                    (context?.TriggerResult as UnitArrivedResult)?.Unit as ISceneNode;
+                bool encounteredArrived = GameEventHierarchy.Contains(arrivingUnit, encountered);
+                bool opposingArrived = GameEventHierarchy.Contains(arrivingUnit, opposing);
+                if (encounteredArrived == opposingArrived)
+                    return new List<GameResult>();
+                if (opposingArrived)
+                    (encountered, opposing) = (opposing, encountered);
+            }
+
             return new List<GameResult>
             {
                 new OfficerEncounterRequestedResult
                 {
                     EncounteredOfficer = encountered,
                     OpposingOfficer = opposing,
+                    VoicePath = VoicePath,
                     Tick = game.CurrentTick,
                 },
             };
@@ -516,8 +540,31 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext childContext =
                 context == null
                     ? null
-                    : new GameEventExecutionContext(gameEvent, context.State, context.ScopeTarget);
+                    : new GameEventExecutionContext(
+                        gameEvent,
+                        context.State,
+                        context.ScopeTarget,
+                        context.TriggerResult
+                    );
             return gameEvent.Execute(game, provider ?? game.Random, childContext);
+        }
+    }
+
+    /// <summary>
+    /// Selects one authored narrative fragment from current simulation state.
+    /// </summary>
+    [PersistableObject(Name = "BodySegment")]
+    public sealed class NarrativeBodySegment
+    {
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+        public string BodyTemplate { get; set; }
+        public string ElseBodyTemplate { get; set; }
+
+        public string Resolve(GameRoot game, GameResult triggerResult = null)
+        {
+            return Conditionals.TrueForAll(condition => condition.IsMet(game, triggerResult))
+                ? BodyTemplate
+                : ElseBodyTemplate;
         }
     }
 
@@ -530,14 +577,18 @@ namespace Rebellion.Game.Events
         public string RecipientFactionInstanceID { get; set; }
         public string RecipientUnitInstanceID { get; set; }
         public string SubjectInstanceID { get; set; }
+        public string RelatedSubjectInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public List<NarrativeBodySegment> BodySegments { get; set; } =
+            new List<NarrativeBodySegment>();
         public string ImageKey { get; set; }
         public string ImagePath { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
+        public bool VoicePathFromOfficerEncounter { get; set; }
         public string OfficerVoicePath { get; set; }
         public AdvisorNotificationCode AdvisorNotification { get; set; }
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
@@ -549,7 +600,24 @@ namespace Rebellion.Game.Events
         /// <returns>A single narrative message result.</returns>
         public override List<GameResult> Execute(GameRoot game)
         {
+            return ExecuteCore(game, null);
+        }
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            return ExecuteCore(game, context?.TriggerResult);
+        }
+
+        private List<GameResult> ExecuteCore(GameRoot game, GameResult triggerResult)
+        {
             ISceneNode subject = game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
+            ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
+                RelatedSubjectInstanceID
+            );
             ISceneNode recipientUnit = game.GetSceneNodeByInstanceID<ISceneNode>(
                 RecipientUnitInstanceID
             );
@@ -567,20 +635,29 @@ namespace Rebellion.Game.Events
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
+            string bodyTemplate = BodyTemplate ?? string.Empty;
+            foreach (NarrativeBodySegment segment in BodySegments)
+                bodyTemplate += segment.Resolve(game, triggerResult) ?? string.Empty;
+            string voicePath =
+                VoicePathFromOfficerEncounter && triggerResult is OfficerEncounterResult encounter
+                    ? encounter.VoicePath
+                    : VoicePath;
+
             return new List<GameResult>
             {
                 new NarrativeMessageResult
                 {
                     Recipient = recipient,
                     Subject = subject,
+                    RelatedSubject = relatedSubject,
                     Location = location,
                     MessageType = MessageType,
                     TitleTemplate = TitleTemplate,
-                    BodyTemplate = BodyTemplate,
+                    BodyTemplate = bodyTemplate,
                     ImageKey = ImageKey,
                     ImagePath = ImagePath,
                     OverlayImagePath = OverlayImagePath,
-                    VoicePath = VoicePath,
+                    VoicePath = voicePath,
                     OfficerVoicePath = OfficerVoicePath,
                     AdvisorNotification = AdvisorNotification,
                     AdvisorSubjectNotification = AdvisorSubjectNotification,

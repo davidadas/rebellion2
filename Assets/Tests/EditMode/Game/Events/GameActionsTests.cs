@@ -91,6 +91,71 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void ResolveOfficerEncounter_ArrivingSecondOfficer_ReversesAuthoredOrder()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            game.AttachNode(luke, rebelPlanet);
+            vader.IsCaptured = true;
+            game.AttachNode(vader, rebelPlanet);
+            vader.IsCaptured = false;
+            UnitArrivedResult arrival = new UnitArrivedResult
+            {
+                Unit = vader,
+                Destination = rebelPlanet,
+            };
+            ResolveOfficerEncounterAction action = new ResolveOfficerEncounterAction
+            {
+                EncounteredOfficerInstanceID = "luke",
+                OpposingOfficerInstanceID = "vader",
+                EncounteredOfficerIsArrivingParticipant = true,
+                VoicePath = "encounter-voice",
+            };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null,
+                arrival
+            );
+
+            OfficerEncounterRequestedResult request = action
+                .Execute(game, game.Random, context)
+                .OfType<OfficerEncounterRequestedResult>()
+                .Single();
+
+            Assert.AreSame(vader, request.EncounteredOfficer);
+            Assert.AreSame(luke, request.OpposingOfficer);
+            Assert.AreEqual("encounter-voice", request.VoicePath);
+        }
+
+        [Test]
+        public void OfficerPairArrival_OfficerInsideArrivingFleet_MatchesPair()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
+            game.AttachNode(luke, rebelPlanet);
+            game.AttachNode(fleet, empirePlanet);
+            game.AttachNode(ship, fleet);
+            game.AttachNode(vader, ship);
+            OfficerPairArrivalConditional conditional = new OfficerPairArrivalConditional
+            {
+                FirstOfficerInstanceID = "luke",
+                SecondOfficerInstanceID = "vader",
+            };
+
+            bool matches = conditional.IsMet(
+                game,
+                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
+            );
+
+            Assert.IsTrue(matches);
+        }
+
+        [Test]
         public void InformantIntelligence_OwnerSupportFails_EmitsOpposingFactionIntelligence()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
@@ -165,6 +230,75 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(luke, result.Subject);
             Assert.AreSame(rebelPlanet, result.Location);
             Assert.AreEqual("Audio/Luke/dialogue", result.VoicePath);
+        }
+
+        [Test]
+        public void NarrativeMessage_ConditionalBodySegments_ComposeFromOfficerState()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.InjuryPoints = 12;
+            game.AttachNode(luke, rebelPlanet);
+            NarrativeMessageAction action = new NarrativeMessageAction
+            {
+                SubjectInstanceID = luke.InstanceID,
+                BodyTemplate = "Luke learned the truth. ",
+                BodySegments = new List<NarrativeBodySegment>
+                {
+                    new NarrativeBodySegment
+                    {
+                        Conditionals = new List<GameConditional>
+                        {
+                            new OfficerStateConditional
+                            {
+                                OfficerInstanceID = luke.InstanceID,
+                                State = OfficerStateKind.Injured,
+                            },
+                        },
+                        BodyTemplate = "Luke was injured.",
+                        ElseBodyTemplate = "Luke escaped unharmed.",
+                    },
+                },
+            };
+
+            NarrativeMessageResult result = action
+                .Execute(game)
+                .OfType<NarrativeMessageResult>()
+                .Single();
+
+            Assert.AreEqual("Luke learned the truth. Luke was injured.", result.BodyTemplate);
+        }
+
+        [Test]
+        public void NarrativeMessage_EncounterVoice_UsesTriggerResultPath()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, rebelPlanet);
+            NarrativeMessageAction action = new NarrativeMessageAction
+            {
+                SubjectInstanceID = luke.InstanceID,
+                VoicePath = "fallback",
+                VoicePathFromOfficerEncounter = true,
+            };
+            OfficerEncounterResult encounter = new OfficerEncounterResult
+            {
+                EncounteredOfficer = luke,
+                VoicePath = "selected-encounter-voice",
+            };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null,
+                encounter
+            );
+
+            NarrativeMessageResult result = action
+                .Execute(game, game.Random, context)
+                .OfType<NarrativeMessageResult>()
+                .Single();
+
+            Assert.AreEqual("selected-encounter-voice", result.VoicePath);
         }
 
         [Test]

@@ -7,6 +7,23 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    internal static class GameEventHierarchy
+    {
+        public static bool Contains(ISceneNode container, ISceneNode node)
+        {
+            if (container == null || node == null)
+                return false;
+
+            for (ISceneNode current = node; current != null; current = current.GetParent())
+            {
+                if (current == container)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
     public enum GameEventScope
     {
         Global,
@@ -29,16 +46,19 @@ namespace Rebellion.Game.Events
         public GameEvent Event { get; }
         public GameEventState State { get; }
         public ISceneNode ScopeTarget { get; }
+        public GameResult TriggerResult { get; }
 
         public GameEventExecutionContext(
             GameEvent gameEvent,
             GameEventState state,
-            ISceneNode scopeTarget
+            ISceneNode scopeTarget,
+            GameResult triggerResult = null
         )
         {
             Event = gameEvent;
             State = state;
             ScopeTarget = scopeTarget;
+            TriggerResult = triggerResult;
         }
 
         public T GetScopeTarget<T>()
