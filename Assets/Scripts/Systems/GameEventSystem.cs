@@ -10,7 +10,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Processes game events each tick and returns results for notification/logging.
     /// </summary>
-    public class GameEventSystem
+    public class GameEventSystem : IGameResultHandler<GameResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -38,7 +38,10 @@ namespace Rebellion.Systems
 
             foreach (GameEvent gameEvent in gameEvents.ToArray())
             {
-                if (!TryProcessEvent(gameEvent, out List<GameResult> results))
+                if (
+                    !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
+                    || !TryProcessEvent(gameEvent, null, out List<GameResult> results)
+                )
                     continue;
 
                 allResults.AddRange(results);
@@ -53,12 +56,53 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Executes events whose authored trigger type matches a newly produced simulation result.
+        /// </summary>
+        public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
+        {
+            List<GameResult> eventResults = new List<GameResult>();
+            if (results == null)
+                return eventResults;
+
+            foreach (GameResult triggerResult in results)
+            {
+                foreach (GameEvent gameEvent in _game.GetEventPool().ToArray())
+                {
+                    if (
+                        !string.Equals(
+                            gameEvent.TriggerResultType,
+                            triggerResult.GetType().Name,
+                            StringComparison.Ordinal
+                        )
+                        || !TryProcessEvent(
+                            gameEvent,
+                            triggerResult,
+                            out List<GameResult> reactions
+                        )
+                    )
+                        continue;
+
+                    eventResults.AddRange(reactions);
+                    if (!gameEvent.IsRepeatable)
+                        _game.RemoveEvent(gameEvent);
+                }
+            }
+
+            return eventResults;
+        }
+
+        /// <summary>
         /// Executes a single game event if its conditions are met.
         /// </summary>
         /// <param name="gameEvent">The event to process.</param>
+        /// <param name="triggerResult">The simulation result that activated the event, if any.</param>
         /// <param name="results">Receives results produced by the event.</param>
         /// <returns>True when the event executed; otherwise false.</returns>
-        private bool TryProcessEvent(GameEvent gameEvent, out List<GameResult> results)
+        private bool TryProcessEvent(
+            GameEvent gameEvent,
+            GameResult triggerResult,
+            out List<GameResult> results
+        )
         {
             GameEventState state = _game.GetEventState(gameEvent.InstanceID);
             InitializeSchedule(gameEvent, state);
@@ -68,7 +112,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (!gameEvent.AreConditionsMet(_game))
+            if (!gameEvent.AreConditionsMet(_game, triggerResult))
             {
                 results = new List<GameResult>();
                 return false;

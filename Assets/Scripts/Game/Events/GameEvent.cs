@@ -26,6 +26,7 @@ namespace Rebellion.Game.Events
     public class GameEvent : BaseGameEntity
     {
         public bool IsRepeatable { get; set; }
+        public string TriggerResultType { get; set; }
         public int InitialDelayTicks { get; set; }
         public int InitialDelayRandomTicks { get; set; }
         public int RepeatDelayTicks { get; set; }
@@ -48,9 +49,17 @@ namespace Rebellion.Game.Events
         /// <returns>True if every conditional is satisfied.</returns>
         public bool AreConditionsMet(GameRoot game)
         {
+            return AreConditionsMet(game, null);
+        }
+
+        /// <summary>
+        /// Returns true if all conditions accept the current game and triggering result.
+        /// </summary>
+        public bool AreConditionsMet(GameRoot game, GameResult triggerResult)
+        {
             foreach (GameConditional conditional in Conditionals)
             {
-                if (!conditional.IsMet(game))
+                if (!conditional.IsMet(game, triggerResult))
                     return false;
             }
             return true;

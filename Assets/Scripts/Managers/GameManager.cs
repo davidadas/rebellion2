@@ -365,6 +365,7 @@ public sealed class GameManager
     private void InitializeResultProcessing()
     {
         _resultProcessor = new GameResultProcessor();
+        _resultProcessor.Subscribe<GameResult>(_eventSystem);
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
         _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
         _resultProcessor.Subscribe<OfficerEncounterRequestedResult>(_officerEncounterSystem);

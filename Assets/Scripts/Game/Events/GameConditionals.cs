@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -40,6 +41,12 @@ namespace Rebellion.Game.Events
         {
             return Conditionals.All(conditional => conditional.IsMet(game));
         }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return Conditionals.All(conditional => conditional.IsMet(game, triggerResult));
+        }
     }
 
     /// <summary>
@@ -62,6 +69,12 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameRoot game)
         {
             return Conditionals.Any(conditional => conditional.IsMet(game));
+        }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return Conditionals.Any(conditional => conditional.IsMet(game, triggerResult));
         }
     }
 
@@ -86,6 +99,12 @@ namespace Rebellion.Game.Events
         {
             return Conditionals.All(conditional => !conditional.IsMet(game));
         }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return Conditionals.All(conditional => !conditional.IsMet(game, triggerResult));
+        }
     }
 
     /// <summary>
@@ -108,6 +127,12 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameRoot game)
         {
             return Conditionals.Count(conditional => conditional.IsMet(game)) == 1;
+        }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return Conditionals.Count(conditional => conditional.IsMet(game, triggerResult)) == 1;
         }
     }
 
@@ -379,6 +404,30 @@ namespace Rebellion.Game.Events
             }
 
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Matches the ordered participants of the officer encounter that triggered an event.
+    /// </summary>
+    [PersistableObject(Name = "OfficerEncounterParticipants")]
+    public class OfficerEncounterParticipantsConditional : GameConditional
+    {
+        public string EncounteredOfficerInstanceID { get; set; }
+        public string OpposingOfficerInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            return false;
+        }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return triggerResult is OfficerEncounterResult encounter
+                && encounter.EncounteredOfficer?.InstanceID == EncounteredOfficerInstanceID
+                && encounter.OpposingOfficer?.InstanceID == OpposingOfficerInstanceID;
         }
     }
 }

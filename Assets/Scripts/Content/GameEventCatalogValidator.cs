@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game.Events;
+using Rebellion.Game.Results;
 
 /// <summary>
 /// Validates data-defined game events before a content pack can enter runtime.
@@ -57,6 +58,17 @@ public static class GameEventCatalogValidator
     private static void ValidateEvent(GameEvent gameEvent, List<string> errors)
     {
         string context = $"Event '{gameEvent.InstanceID}'";
+        if (
+            !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
+            && !typeof(GameResult)
+                .Assembly.GetTypes()
+                .Any(type =>
+                    !type.IsAbstract
+                    && typeof(GameResult).IsAssignableFrom(type)
+                    && type.Name == gameEvent.TriggerResultType
+                )
+        )
+            errors.Add($"{context}.TriggerResultType '{gameEvent.TriggerResultType}' is unknown.");
         ValidateDelay(
             gameEvent.InitialDelayTicks,
             context,
@@ -129,6 +141,12 @@ public static class GameEventCatalogValidator
                         errors.Add($"{conditionPath}.UnitInstanceID is required.");
                     if (string.IsNullOrWhiteSpace(atLocation.LocationInstanceID))
                         errors.Add($"{conditionPath}.LocationInstanceID is required.");
+                    break;
+                case OfficerEncounterParticipantsConditional encounter:
+                    if (string.IsNullOrWhiteSpace(encounter.EncounteredOfficerInstanceID))
+                        errors.Add($"{conditionPath}.EncounteredOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(encounter.OpposingOfficerInstanceID))
+                        errors.Add($"{conditionPath}.OpposingOfficerInstanceID is required.");
                     break;
                 case AndConditional and:
                     ValidateComposite(and.Conditionals, conditionPath, 1, errors);

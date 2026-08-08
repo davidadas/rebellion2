@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
 
@@ -93,6 +95,66 @@ namespace Rebellion.Tests.Systems
             _game.CurrentTick = 6;
             _system.ProcessEvents(_game.EventPool);
             Assert.AreEqual(2, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+        }
+
+        [Test]
+        public void HandleResults_MatchingEncounter_ExecutesResultTriggeredEventOnce()
+        {
+            Officer luke = new Officer { InstanceID = "luke" };
+            Officer vader = new Officer { InstanceID = "vader" };
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "HERITAGE",
+                TriggerResultType = nameof(OfficerEncounterResult),
+                Conditionals = new List<GameConditional>
+                {
+                    new OfficerEncounterParticipantsConditional
+                    {
+                        EncounteredOfficerInstanceID = luke.InstanceID,
+                        OpposingOfficerInstanceID = vader.InstanceID,
+                    },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "luke.heritage.revealed", Value = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.HandleResults(
+                new[]
+                {
+                    new OfficerEncounterResult
+                    {
+                        EncounteredOfficer = luke,
+                        OpposingOfficer = vader,
+                    },
+                }
+            );
+
+            Assert.AreEqual(1, _game.GetEventVariable("luke.heritage.revealed"));
+            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
+            Assert.AreEqual(1, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+        }
+
+        [Test]
+        public void ProcessEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "RESULT_ONLY",
+                TriggerResultType = nameof(OfficerEncounterResult),
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "unexpected", Value = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.ProcessEvents(_game.EventPool);
+
+            Assert.Zero(_game.GetEventVariable("unexpected"));
+            Assert.Contains(gameEvent, _game.EventPool);
         }
 
         private static GameEvent CreateTickEvent(string instanceId, int targetTick, bool repeatable)

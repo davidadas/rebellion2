@@ -1,3 +1,4 @@
+using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -58,5 +59,13 @@ namespace Rebellion.Game.Events
         /// <param name="game">The game instance to evaluate.</param>
         /// <returns>True if the condition is met; otherwise, false.</returns>
         public abstract bool IsMet(GameRoot game);
+
+        /// <summary>
+        /// Evaluates this condition with the result that triggered the event, when present.
+        /// </summary>
+        public virtual bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return IsMet(game);
+        }
     }
 }
