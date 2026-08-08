@@ -71,6 +71,8 @@ namespace Rebellion.Game.Messages
         Bombardment,
         PlanetaryAssault,
         OfficerAssassinated,
+        UnitsArrived,
+        HeadquartersArrived,
     }
 
     /// <summary>

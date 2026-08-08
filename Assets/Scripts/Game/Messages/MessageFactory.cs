@@ -276,35 +276,72 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
+        /// Creates a grouped arrival report for starfighters and regiments that traveled together.
+        /// </summary>
+        private Message CreateUnitsArrived(
+            Faction faction,
+            IEnumerable<IGameEntity> units,
+            Planet destination
+        )
+        {
+            IGameEntity[] unitArray = units?.Where(unit => unit != null).ToArray();
+            if (unitArray == null || unitArray.Length == 0)
+                return null;
+
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(MessageResultType.UnitsArrived),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            {
+                                "units",
+                                string.Join(
+                                    "\n",
+                                    unitArray.Select(unit => unit.GetDisplayName())
+                                )
+                            },
+                            { "system", destination?.GetDisplayName() ?? string.Empty },
+                        }
+                    ),
+                    destination,
+                    unitArray[0] as ISceneNode
+                ),
+                AdvisorNotificationCode.UnitsArrived
+            );
+        }
+
+        /// <summary>
         /// Creates a grouped arrival report for personnel that traveled together.
         /// </summary>
         /// <param name="faction">The faction receiving the report.</param>
-        /// <param name="personnel">The officers included in the arrival.</param>
+        /// <param name="personnel">The officers and special forces included in the arrival.</param>
         /// <param name="destination">The planet where the officers arrived.</param>
         /// <param name="game">The game state used for voice selection randomness.</param>
         /// <returns>The personnel arrival message, or null when no officers were provided.</returns>
         private Message CreatePersonnelArrived(
             Faction faction,
-            IEnumerable<Officer> personnel,
+            IEnumerable<IGameEntity> personnel,
             Planet destination,
             GameRoot game
         )
         {
-            Officer[] officers =
-                personnel?.Where(officer => officer != null).ToArray() ?? Array.Empty<Officer>();
-            if (officers.Length == 0)
+            IGameEntity[] personnelArray =
+                personnel?.Where(unit => unit != null).ToArray() ?? Array.Empty<IGameEntity>();
+            if (personnelArray.Length == 0)
                 return null;
 
-            Officer reporter = officers.FirstOrDefault(officer =>
+            Officer reporter = personnelArray.OfType<Officer>().FirstOrDefault(officer =>
                 officer.HasVoicePath(OfficerVoiceLineType.PersonnelArrived)
             );
-            Officer[] listedPersonnel =
+            IGameEntity[] listedPersonnel =
                 reporter == null
-                    ? officers
-                    : officers.Where(officer => officer != reporter).ToArray();
+                    ? personnelArray
+                    : personnelArray.Where(unit => unit != reporter).ToArray();
             string personnelList = string.Join(
                 "\n",
-                listedPersonnel.Select(officer => officer.GetDisplayName())
+                listedPersonnel.Select(unit => unit.GetDisplayName())
             );
             MessageResultType resultType =
                 reporter == null ? MessageResultType.PersonnelArrived
@@ -320,19 +357,49 @@ namespace Rebellion.Game.Messages
                         { "system", destination?.GetDisplayName() ?? string.Empty },
                         { "personnel", personnelList },
                     },
-                    overlayImagePath: GetMessageImagePath(reporter ?? officers[0]),
+                    overlayImagePath: GetMessageImagePath(reporter ?? personnelArray[0]),
                     officerVoicePath: reporter?.GetVoicePath(
                         OfficerVoiceLineType.PersonnelArrived,
                         game?.Random
                     )
                 ),
                 destination,
-                reporter ?? officers[0]
+                (reporter as ISceneNode) ?? personnelArray[0] as ISceneNode
             );
 
             return reporter == null
                 ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
+        }
+
+        /// <summary>
+        /// Creates the original arrival report for the mobile Alliance Headquarters.
+        /// </summary>
+        private Message CreateHeadquartersArrived(
+            Faction faction,
+            Building headquarters,
+            Planet destination
+        )
+        {
+            return WithAdvisorNotification(
+                WithEventLocation(
+                    CreateMessage(
+                        GetDefinition(
+                            MessageResultType.HeadquartersArrived,
+                            factionInstanceId: faction?.InstanceID
+                        ),
+                        faction,
+                        new Dictionary<string, string>
+                        {
+                            { "system", destination?.GetDisplayName() ?? string.Empty },
+                        },
+                        imageOverride: GetMessageImagePath(headquarters)
+                    ),
+                    destination,
+                    headquarters
+                ),
+                AdvisorNotificationCode.UnitsArrived
+            );
         }
 
         /// <summary>
@@ -1621,9 +1688,19 @@ namespace Rebellion.Game.Messages
             var personnelGroups =
                 new Dictionary<
                     (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
-                    List<Officer>
+                    List<IGameEntity>
                 >();
             var personnelDestinations =
+                new Dictionary<
+                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
+                    Planet
+                >();
+            var unitGroups =
+                new Dictionary<
+                    (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
+                    List<IGameEntity>
+                >();
+            var unitDestinations =
                 new Dictionary<
                     (string OwnerInstanceID, string DestinationInstanceID, string MovementGroupID),
                     Planet
@@ -1663,24 +1740,47 @@ namespace Rebellion.Game.Messages
                     continue;
                 }
 
-                if (arrival.Unit is Officer officer)
+                if (arrival.Unit is Officer or SpecialForces)
                 {
+                    IGameEntity personnelUnit = arrival.Unit;
                     string movementGroupID = string.IsNullOrEmpty(arrival.MovementGroupID)
-                        ? officer.GetInstanceID()
+                        ? personnelUnit.GetInstanceID()
                         : arrival.MovementGroupID;
                     var key = (
-                        officer.GetOwnerInstanceID(),
+                        GetOwnerInstanceID(personnelUnit),
                         arrival.Destination?.GetInstanceID(),
                         movementGroupID
                     );
-                    if (!personnelGroups.TryGetValue(key, out List<Officer> personnel))
+                    if (!personnelGroups.TryGetValue(key, out List<IGameEntity> personnel))
                     {
-                        personnel = new List<Officer>();
+                        personnel = new List<IGameEntity>();
                         personnelGroups[key] = personnel;
                         personnelDestinations[key] = arrival.Destination;
                     }
 
-                    personnel.Add(officer);
+                    personnel.Add(personnelUnit);
+                    continue;
+                }
+
+                if (arrival.Unit is Regiment or Starfighter)
+                {
+                    IGameEntity unit = arrival.Unit;
+                    string movementGroupID = string.IsNullOrEmpty(arrival.MovementGroupID)
+                        ? unit.GetInstanceID()
+                        : arrival.MovementGroupID;
+                    var key = (
+                        GetOwnerInstanceID(unit),
+                        arrival.Destination?.GetInstanceID(),
+                        movementGroupID
+                    );
+                    if (!unitGroups.TryGetValue(key, out List<IGameEntity> units))
+                    {
+                        units = new List<IGameEntity>();
+                        unitGroups[key] = units;
+                        unitDestinations[key] = arrival.Destination;
+                    }
+
+                    units.Add(unit);
                     continue;
                 }
 
@@ -1690,7 +1790,9 @@ namespace Rebellion.Game.Messages
                     AddDelivery(
                         deliveries,
                         faction,
-                        CreateFacilityDeployed(faction, building, arrival.Destination)
+                        building.BuildingType == BuildingType.Headquarters
+                            ? CreateHeadquartersArrived(faction, building, arrival.Destination)
+                            : CreateFacilityDeployed(faction, building, arrival.Destination)
                     );
                 }
             }
@@ -1717,6 +1819,16 @@ namespace Rebellion.Game.Messages
                         personnelDestinations[group.Key],
                         game
                     )
+                );
+            }
+
+            foreach (var group in unitGroups)
+            {
+                Faction faction = GetFaction(game, group.Key.OwnerInstanceID);
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateUnitsArrived(faction, group.Value, unitDestinations[group.Key])
                 );
             }
         }
@@ -2936,6 +3048,7 @@ namespace Rebellion.Game.Messages
         /// <param name="discipline">The research discipline selector to match.</param>
         /// <param name="gameObjectTypeId">The affected game object's type selector to match.</param>
         /// <param name="planetDestroyed">Whether the result destroyed its target planet.</param>
+        /// <param name="factionInstanceId">The recipient faction selector to match.</param>
         /// <returns>The matching message definition, or null when none exists.</returns>
         private MessageDefinition GetDefinition(
             MessageResultType resultType,
@@ -2945,7 +3058,8 @@ namespace Rebellion.Game.Messages
             ManufacturingType manufacturingType = ManufacturingType.None,
             ResearchDiscipline? discipline = null,
             string gameObjectTypeId = null,
-            bool planetDestroyed = false
+            bool planetDestroyed = false,
+            string factionInstanceId = null
         )
         {
             return _definitions
@@ -2960,9 +3074,13 @@ namespace Rebellion.Game.Messages
                     && (!discipline.HasValue || definition.ResearchDiscipline == discipline.Value)
                     && MatchesOptionalSelector(definition.GameObjectTypeID, gameObjectTypeId)
                     && definition.PlanetDestroyed == planetDestroyed
+                    && MatchesOptionalSelector(definition.FactionInstanceID, factionInstanceId)
                 )
                 .OrderByDescending(definition =>
                     !string.IsNullOrWhiteSpace(definition.GameObjectTypeID)
+                )
+                .ThenByDescending(definition =>
+                    !string.IsNullOrWhiteSpace(definition.FactionInstanceID)
                 )
                 .FirstOrDefault();
         }

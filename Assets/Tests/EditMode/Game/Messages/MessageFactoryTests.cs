@@ -419,6 +419,175 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SpecialForcesArrival_GroupsWithReportingOfficer()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Officer reporter = new Officer
+            {
+                TypeID = "OFAL003",
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = alliance.InstanceID,
+                PersonnelArrivedVoicePaths = new List<string> { "arrival-voice" },
+            };
+            SpecialForces infiltrators = new SpecialForces
+            {
+                DisplayName = "Infiltrators",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.PersonnelArrivedByOfficerWithCompany,
+                            MessageType.Mission,
+                            "{officer} Arrives",
+                            "Personnel:\n{personnel}"
+                        ),
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = reporter,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    },
+                    new UnitArrivedResult
+                    {
+                        Unit = infiltrators,
+                        Destination = destination,
+                        MovementGroupID = "group-1",
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Luke Skywalker Arrives", message.Title);
+            Assert.AreEqual("Personnel:\nInfiltrators", message.Body);
+            Assert.AreEqual("arrival-voice", message.OfficerVoicePath);
+        }
+
+        [Test]
+        public void CreateMessages_CombatUnitArrivalsWithSameMovementGroup_UseGroupedUnitsReport()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Regiment regiment = new Regiment
+            {
+                DisplayName = "Infantry Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Starfighter fighters = new Starfighter
+            {
+                DisplayName = "X-wing Squadron",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UnitsArrived,
+                        MessageType.Fleet,
+                        "Units Arrive at {system}",
+                        "Units:\n{units}"
+                    ),
+                },
+                new UnitArrivedResult
+                {
+                    Unit = regiment,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                },
+                new UnitArrivedResult
+                {
+                    Unit = fighters,
+                    Destination = destination,
+                    MovementGroupID = "group-1",
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual("Units Arrive at Yavin", deliveries[0].message.Title);
+            Assert.AreEqual(
+                "Units:\nInfantry Regiment\nX-wing Squadron",
+                deliveries[0].message.Body
+            );
+            Assert.AreEqual(
+                (int)AdvisorNotificationCode.UnitsArrived,
+                deliveries[0].message.AdvisorNotificationCode
+            );
+        }
+
+        [Test]
+        public void CreateMessages_HeadquartersArrival_UsesOriginalSpecialReport()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Building headquarters = new Building
+            {
+                InstanceID = "headquarters-1",
+                DisplayName = "Alliance Headquarters",
+                OwnerInstanceID = alliance.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.HeadquartersArrived,
+                            MessageType.Fleet,
+                            "Headquarters Arrives",
+                            "The Alliance Headquarters has arrived at {system}"
+                        ),
+                    },
+                    new UnitArrivedResult { Unit = headquarters, Destination = destination }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Headquarters Arrives", message.Title);
+            Assert.AreEqual("The Alliance Headquarters has arrived at Yavin", message.Body);
+            Assert.AreEqual(headquarters.InstanceID, message.NavigationTargetInstanceID);
+        }
+
+        [Test]
+        public void CreateMessages_HeadquartersArrival_RequiresMatchingFactionDefinition()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet destination) =
+                BuildTwoFactionMessageScene();
+            MessageDefinition allianceHeadquarters = Definition(
+                MessageResultType.HeadquartersArrived,
+                MessageType.Fleet,
+                "Headquarters Arrives",
+                "The Alliance Headquarters has arrived at {system}"
+            );
+            allianceHeadquarters.FactionInstanceID = alliance.InstanceID;
+            Building imperialHeadquarters = new Building
+            {
+                InstanceID = "imperial-headquarters",
+                DisplayName = "Imperial Headquarters",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Headquarters,
+            };
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[] { allianceHeadquarters },
+                new UnitArrivedResult
+                {
+                    Unit = imperialHeadquarters,
+                    Destination = destination,
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_DetachedShipArrival_CreatesArrivalDelivery()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();

@@ -534,6 +534,30 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_ClassicArrivalReports_IncludeUnitsAndMobileHeadquarters()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            MessageDefinition units = pack.GameData.MessageDefinitions.Single(candidate =>
+                candidate.ResultType == MessageResultType.UnitsArrived
+            );
+            MessageDefinition headquarters = pack.GameData.MessageDefinitions.Single(candidate =>
+                candidate.ResultType == MessageResultType.HeadquartersArrived
+            );
+
+            Assert.AreEqual("Units Arrive at {system}", units.TitleTemplate);
+            Assert.AreEqual(
+                "The following units have arrived at {system}:\n{units}",
+                units.BodyTemplate
+            );
+            Assert.AreEqual("Headquarters Arrives", headquarters.TitleTemplate);
+            Assert.AreEqual("FNALL1", headquarters.FactionInstanceID);
+            Assert.AreEqual(
+                "The Alliance Headquarters has arrived at {system}",
+                headquarters.BodyTemplate
+            );
+        }
+
+        [Test]
         public void OpenActive_SpaceBattleReports_PreserveOriginalModdableNarrativeCatalog()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
