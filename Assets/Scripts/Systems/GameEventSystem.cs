@@ -37,8 +37,10 @@ namespace Rebellion.Systems
 
             foreach (GameEvent gameEvent in gameEvents)
             {
-                allResults.AddRange(ProcessEvent(gameEvent));
+                if (!TryProcessEvent(gameEvent, out List<GameResult> results))
+                    continue;
 
+                allResults.AddRange(results);
                 if (!gameEvent.IsRepeatable)
                     eventsToRemove.Add(gameEvent);
             }
@@ -53,16 +55,20 @@ namespace Rebellion.Systems
         /// Executes a single game event if its conditions are met.
         /// </summary>
         /// <param name="gameEvent">The event to process.</param>
-        /// <returns>Results produced by the event, or an empty list.</returns>
-        private List<GameResult> ProcessEvent(GameEvent gameEvent)
+        /// <param name="results">Receives results produced by the event.</param>
+        /// <returns>True when the event executed; otherwise false.</returns>
+        private bool TryProcessEvent(GameEvent gameEvent, out List<GameResult> results)
         {
             if (!gameEvent.AreConditionsMet(_game))
-                return new List<GameResult>();
+            {
+                results = new List<GameResult>();
+                return false;
+            }
 
             GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
-            List<GameResult> results = gameEvent.Execute(_game, _provider);
+            results = gameEvent.Execute(_game, _provider);
             _game.AddCompletedEvent(gameEvent);
-            return results;
+            return true;
         }
     }
 }
