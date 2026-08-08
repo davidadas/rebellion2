@@ -187,6 +187,7 @@ namespace Rebellion.Game.Events
     {
         public string CandidateOfficerInstanceID { get; set; }
         public string DiscovererOfficerInstanceID { get; set; }
+        public ForceDiscoveryPresentation Presentation { get; set; }
 
         /// <summary>
         /// Returns whether this rule governs discovery of the supplied candidate.

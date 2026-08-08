@@ -197,8 +197,14 @@ namespace Rebellion.Systems
 
             foreach (Officer candidate in planet.GetChildren<Officer>(_ => true, recurse: true))
             {
-                if (CanDiscoverForceUser(scanner, candidate))
-                    DiscoverForceUser(scanner, candidate, results);
+                if (
+                    CanDiscoverForceUser(
+                        scanner,
+                        candidate,
+                        out ForceDiscoveryPresentation presentation
+                    )
+                )
+                    DiscoverForceUser(scanner, candidate, presentation, results);
             }
         }
 
@@ -207,9 +213,15 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="scanner">The scanning officer.</param>
         /// <param name="candidate">The hidden force user candidate.</param>
+        /// <param name="presentation">Receives the data-defined discovery presentation.</param>
         /// <returns>True when the candidate is discovered.</returns>
-        private bool CanDiscoverForceUser(Officer scanner, Officer candidate)
+        private bool CanDiscoverForceUser(
+            Officer scanner,
+            Officer candidate,
+            out ForceDiscoveryPresentation presentation
+        )
         {
+            presentation = ForceDiscoveryPresentation.Standard;
             string scannerOwnerInstanceID = scanner.GetOwnerInstanceID();
             if (
                 string.IsNullOrEmpty(scannerOwnerInstanceID)
@@ -223,8 +235,16 @@ namespace Rebellion.Systems
                 .OfType<ForceDiscoveryRule>()
                 .Where(rule => rule.AppliesTo(candidate))
                 .ToList();
-            if (rules.Count > 0 && !rules.Any(rule => rule.Allows(_game, scanner, candidate)))
-                return false;
+            if (rules.Count > 0)
+            {
+                ForceDiscoveryRule matchingRule = rules.FirstOrDefault(rule =>
+                    rule.Allows(_game, scanner, candidate)
+                );
+                if (matchingRule == null)
+                    return false;
+
+                presentation = matchingRule.Presentation;
+            }
 
             int probability =
                 scanner.ForceRank
@@ -242,8 +262,14 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="scanner">The scanning officer.</param>
         /// <param name="candidate">The discovered force user.</param>
+        /// <param name="presentation">Data-defined presentation for the discovery report.</param>
         /// <param name="results">Collection to append discovery results to.</param>
-        private void DiscoverForceUser(Officer scanner, Officer candidate, List<GameResult> results)
+        private void DiscoverForceUser(
+            Officer scanner,
+            Officer candidate,
+            ForceDiscoveryPresentation presentation,
+            List<GameResult> results
+        )
         {
             int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
@@ -270,6 +296,7 @@ namespace Rebellion.Systems
                     Officer = candidate,
                     Discoverer = scanner,
                     ForceRank = candidate.ForceRank,
+                    Presentation = presentation,
                     Tick = _game.CurrentTick,
                 }
             );

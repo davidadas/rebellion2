@@ -392,6 +392,10 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(0, bountyCapture.AttackRating);
             Assert.AreEqual("LEIA_ORGANA", leiaDiscoveryRule.CandidateOfficerInstanceID);
             Assert.AreEqual("LUKE_SKYWALKER", leiaDiscoveryRule.DiscovererOfficerInstanceID);
+            Assert.AreEqual(
+                ForceDiscoveryPresentation.AbilityRevealed,
+                leiaDiscoveryRule.Presentation
+            );
             Assert.AreEqual(nameof(ForceDiscoveryResult), leiaHeritage.TriggerResultType);
             Assert.IsInstanceOf<ForceDiscoveryParticipantsConditional>(
                 leiaHeritage.Conditionals.Single()

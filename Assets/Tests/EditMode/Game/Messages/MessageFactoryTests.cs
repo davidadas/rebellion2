@@ -2574,6 +2574,58 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_ForceDiscoveryPresentation_DoesNotDependOnVoiceInventory()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer discoverer = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                IsJedi = true,
+                IsJediTrainer = true,
+                IsForceEligible = true,
+                ForceValue = game.Config.Jedi.ForceQualifiedThreshold,
+            };
+            Officer candidate = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                ForceAbilityRevealedVoicePaths = new List<string> { "special-voice" },
+            };
+            game.AttachNode(discoverer, origin);
+            game.AttachNode(candidate, origin);
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.ForceUserDiscovered,
+                            MessageType.Mission,
+                            "standard",
+                            "standard"
+                        ),
+                        Definition(
+                            MessageResultType.ForceAbilityRevealed,
+                            MessageType.Mission,
+                            "special",
+                            "special"
+                        ),
+                    },
+                    new ForceDiscoveryResult
+                    {
+                        EventType = ForceEventType.ForceUserDiscovered,
+                        Officer = candidate,
+                        Discoverer = discoverer,
+                        Presentation = ForceDiscoveryPresentation.Standard,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("standard", message.Title);
+        }
+
+        [Test]
         public void CreateMessages_ForceAbilityRevealed_DoesNotUseDialog()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -2610,6 +2662,7 @@ namespace Rebellion.Tests.Game.Messages
                         EventType = ForceEventType.ForceUserDiscovered,
                         Officer = candidate,
                         Discoverer = discoverer,
+                        Presentation = ForceDiscoveryPresentation.AbilityRevealed,
                     }
                 ),
                 alliance

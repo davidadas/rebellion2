@@ -365,6 +365,7 @@ namespace Rebellion.Tests.Systems
                     InstanceID = "LEIA_RULE",
                     CandidateOfficerInstanceID = leia.InstanceID,
                     DiscovererOfficerInstanceID = luke.InstanceID,
+                    Presentation = ForceDiscoveryPresentation.AbilityRevealed,
                     Conditionals = new List<GameConditional>
                     {
                         new EventVariableConditional
@@ -386,6 +387,7 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreSame(luke, result.Discoverer);
             Assert.AreSame(leia, result.Officer);
+            Assert.AreEqual(ForceDiscoveryPresentation.AbilityRevealed, result.Presentation);
         }
 
         [Test]

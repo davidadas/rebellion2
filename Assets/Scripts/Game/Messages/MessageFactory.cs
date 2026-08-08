@@ -907,9 +907,8 @@ namespace Rebellion.Game.Messages
             if (result?.Officer == null || result.Discoverer == null)
                 return null;
 
-            bool abilityRevealed = result.Officer.HasVoicePath(
-                OfficerVoiceLineType.ForceAbilityRevealed
-            );
+            bool abilityRevealed =
+                result.Presentation == ForceDiscoveryPresentation.AbilityRevealed;
             bool canTrain = JediTrainingMission.CanLeadTraining(result.Discoverer, game);
             MessageResultType resultType =
                 abilityRevealed ? MessageResultType.ForceAbilityRevealed
