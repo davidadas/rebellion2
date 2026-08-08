@@ -197,6 +197,79 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_JediConfrontations_ReplaceGenericOfficerStateReports()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            (
+                string effectsEventId,
+                string sourceEventId,
+                string subjectId,
+                string opponentId
+            )[] encounters =
+            {
+                (
+                    "LUKE_VADER_ENCOUNTER_EFFECTS",
+                    "LUKE_ENCOUNTERS_VADER",
+                    "LUKE_SKYWALKER",
+                    "DARTH_VADER"
+                ),
+                (
+                    "LUKE_PALPATINE_ENCOUNTER_EFFECTS",
+                    "LUKE_ENCOUNTERS_PALPATINE",
+                    "LUKE_SKYWALKER",
+                    "EMPEROR_PALPATINE"
+                ),
+                (
+                    "LEIA_VADER_ENCOUNTER_EFFECTS",
+                    "LEIA_ENCOUNTERS_VADER",
+                    "LEIA_ORGANA",
+                    "DARTH_VADER"
+                ),
+                (
+                    "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
+                    "LEIA_ENCOUNTERS_PALPATINE",
+                    "LEIA_ORGANA",
+                    "EMPEROR_PALPATINE"
+                ),
+            };
+
+            foreach (
+                (
+                    string effectsEventId,
+                    string sourceEventId,
+                    string subjectId,
+                    string opponentId
+                ) in encounters
+            )
+            {
+                GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
+                    candidate.InstanceID == effectsEventId
+                );
+                Assert.AreEqual(nameof(OfficerEncounterResult), gameEvent.TriggerResultType);
+                Assert.IsTrue(gameEvent.SuppressSourceMessages, effectsEventId);
+                Assert.AreEqual(
+                    sourceEventId,
+                    gameEvent
+                        .Conditionals.OfType<ResultSourceEventConditional>()
+                        .Single()
+                        .SourceEventInstanceID,
+                    effectsEventId
+                );
+                OfficerEncounterParticipantsConditional participants = gameEvent
+                    .Conditionals.OfType<OfficerEncounterParticipantsConditional>()
+                    .Single();
+                Assert.AreEqual(subjectId, participants.EncounteredOfficerInstanceID);
+                Assert.AreEqual(opponentId, participants.OpposingOfficerInstanceID);
+                NarrativeMessageAction report = gameEvent
+                    .Actions.OfType<NarrativeMessageAction>()
+                    .Single();
+                Assert.AreEqual(subjectId, report.SubjectInstanceID);
+                Assert.AreEqual(opponentId, report.RelatedSubjectInstanceID);
+                Assert.AreEqual(5, report.BodySegments.Count);
+            }
+        }
+
+        [Test]
         public void OpenActive_ClassicStoryEvents_PreserveHeritageAndFinalBattleOutcomes()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
