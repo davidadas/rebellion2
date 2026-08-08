@@ -865,10 +865,16 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Mon Calamari Regiment",
                 OwnerInstanceID = alliance.InstanceID,
             };
+            Regiment secondRegiment = new Regiment
+            {
+                DisplayName = "Wookiee Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+            };
             game.AttachNode(ship, fleet);
             game.AttachNode(deathStar, fleet);
             game.AttachNode(fighter, origin);
             game.AttachNode(regiment, origin);
+            game.AttachNode(secondRegiment, origin);
 
             List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
@@ -900,13 +906,14 @@ namespace Rebellion.Tests.Game.Messages
                         MessageResultType.RegimentDeployed,
                         MessageType.Manufacturing,
                         "{item} Deployed to {system}",
-                        "The following units have been deployed to {system}:\n{item}"
+                        "The following units have been deployed to {system}:\n{items}"
                     ),
                 },
                 new GameObjectDeployedResult { GameObject = ship },
                 new GameObjectDeployedResult { GameObject = deathStar },
                 new GameObjectDeployedResult { GameObject = fighter },
-                new GameObjectDeployedResult { GameObject = regiment }
+                new GameObjectDeployedResult { GameObject = regiment },
+                new GameObjectDeployedResult { GameObject = secondRegiment }
             );
 
             Message[] messages = deliveries.Select(delivery => delivery.message).ToArray();
@@ -926,7 +933,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("fighter-image", messages[2].DisplayImagePath);
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
-                "The following units have been deployed to Coruscant:\nMon Calamari Regiment",
+                "The following units have been deployed to Coruscant:\n"
+                    + "Mon Calamari Regiment\nWookiee Regiment",
                 messages[3].Body
             );
         }

@@ -438,6 +438,44 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
+        /// Creates the original grouped report for regiments deployed to one planet.
+        /// </summary>
+        private Message CreateRegimentsDeployed(
+            Faction faction,
+            IEnumerable<Regiment> regiments,
+            Planet destination,
+            MessageDefinition definition
+        )
+        {
+            Regiment[] regimentArray = regiments?.Where(regiment => regiment != null).ToArray();
+            if (regimentArray == null || regimentArray.Length == 0)
+                return null;
+
+            string firstName = regimentArray[0].GetDisplayName() ?? string.Empty;
+            return WithEventLocation(
+                CreateMessage(
+                    definition,
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "item", firstName },
+                        {
+                            "items",
+                            string.Join(
+                                "\n",
+                                regimentArray.Select(regiment => regiment.GetDisplayName())
+                            )
+                        },
+                        { "system", destination?.GetDisplayName() ?? string.Empty },
+                    },
+                    imageOverride: GetMessageImagePath(regimentArray[0])
+                ),
+                destination,
+                regimentArray[0]
+            );
+        }
+
+        /// <summary>
         /// Creates the original report for a facility scrapped when it cannot deploy.
         /// </summary>
         private Message CreateFacilityLost(Faction faction, Building building, Planet destination)
@@ -2584,11 +2622,13 @@ namespace Rebellion.Game.Messages
             List<(Faction faction, Message message)> deliveries
         )
         {
-            foreach (GameObjectDeployedResult result in results)
-            {
-                if (result.GameObject is not IManufacturable unit)
-                    continue;
+            IManufacturable[] units = (results ?? Enumerable.Empty<GameObjectDeployedResult>())
+                .Select(result => result?.GameObject)
+                .OfType<IManufacturable>()
+                .ToArray();
 
+            foreach (IManufacturable unit in units.Where(unit => unit is not Regiment))
+            {
                 IGameEntity entity = unit as IGameEntity;
                 Planet destination = (unit as ISceneNode)?.GetParentOfType<Planet>();
                 Faction faction = GetFaction(game, unit.GetOwnerInstanceID());
@@ -2598,6 +2638,48 @@ namespace Rebellion.Game.Messages
                         : null
                     : CreateUnitDeployed(faction, entity, destination, game);
                 AddDelivery(deliveries, faction, message);
+            }
+
+            var regimentItems = units
+                .OfType<Regiment>()
+                .Select(regiment =>
+                {
+                    Planet destination = regiment.GetParentOfType<Planet>();
+                    Faction faction = GetFaction(game, regiment.GetOwnerInstanceID());
+                    return new
+                    {
+                        Regiment = regiment,
+                        Destination = destination,
+                        Faction = faction,
+                        Definition = GetDefinition(
+                            MessageResultType.RegimentDeployed,
+                            gameObjectTypeId: regiment.TypeID
+                        ),
+                    };
+                })
+                .Where(item => item.Faction != null && item.Definition != null);
+
+            foreach (
+                var group in regimentItems.GroupBy(item =>
+                    (
+                        item.Faction.InstanceID,
+                        DestinationInstanceID: item.Destination?.InstanceID,
+                        item.Definition
+                    )
+                )
+            )
+            {
+                var first = group.First();
+                AddDelivery(
+                    deliveries,
+                    first.Faction,
+                    CreateRegimentsDeployed(
+                        first.Faction,
+                        group.Select(item => item.Regiment),
+                        first.Destination,
+                        first.Definition
+                    )
+                );
             }
         }
 

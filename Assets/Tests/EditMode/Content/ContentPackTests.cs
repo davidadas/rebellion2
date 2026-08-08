@@ -504,6 +504,21 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_RegimentDeploymentReport_PreservesOriginalGroupedUnitList()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
+                candidate.ResultType == MessageResultType.RegimentDeployed
+            );
+
+            Assert.AreEqual("{item} Deployed to {system}", definition.TitleTemplate);
+            Assert.AreEqual(
+                "The following units have been deployed to {system}:\n{items}",
+                definition.BodyTemplate
+            );
+        }
+
+        [Test]
         public void OpenActive_SpaceBattleReports_PreserveOriginalModdableNarrativeCatalog()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
