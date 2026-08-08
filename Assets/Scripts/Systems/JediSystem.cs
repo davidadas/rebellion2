@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -215,6 +216,14 @@ namespace Rebellion.Systems
                 || candidate.GetOwnerInstanceID() != scannerOwnerInstanceID
                 || !candidate.IsUndiscoveredForceUser()
             )
+                return false;
+
+            List<ForceDiscoveryRule> rules = _game
+                .GetEventPool()
+                .OfType<ForceDiscoveryRule>()
+                .Where(rule => rule.AppliesTo(candidate))
+                .ToList();
+            if (rules.Count > 0 && !rules.Any(rule => rule.Allows(_game, scanner, candidate)))
                 return false;
 
             int probability =

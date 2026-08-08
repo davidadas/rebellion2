@@ -31,6 +31,47 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Validate_ValidForceDiscoveryRule_DoesNotThrow()
+        {
+            ForceDiscoveryRule rule = new ForceDiscoveryRule
+            {
+                InstanceID = "LEIA_DISCOVERY_RULE",
+                CandidateOfficerInstanceID = "LEIA",
+                DiscovererOfficerInstanceID = "LUKE",
+                Conditionals = new List<GameConditional>
+                {
+                    new EventVariableConditional
+                    {
+                        Key = "luke.vader.encountered",
+                        Comparison = EventVariableComparison.Equal,
+                        Value = 1,
+                    },
+                },
+            };
+
+            Assert.DoesNotThrow(() => GameEventCatalogValidator.Validate(new[] { rule }));
+        }
+
+        [Test]
+        public void Validate_MalformedForceDiscoveryRule_ReportsPolicyErrors()
+        {
+            ForceDiscoveryRule rule = new ForceDiscoveryRule
+            {
+                InstanceID = "BROKEN_RULE",
+                TriggerResultType = "ForceDiscoveryResult",
+                Actions = new List<GameAction> { new SetEventVariableAction() },
+            };
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { rule })
+            );
+
+            StringAssert.Contains("CandidateOfficerInstanceID is required", exception.Message);
+            StringAssert.Contains("cannot declare TriggerResultType", exception.Message);
+            StringAssert.Contains("cannot declare actions", exception.Message);
+        }
+
+        [Test]
         public void Validate_MultipleProblems_ReportsEventSpecificAggregateError()
         {
             GameEvent broken = CreateEvent("BROKEN");

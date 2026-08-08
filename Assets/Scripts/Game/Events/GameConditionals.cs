@@ -454,6 +454,41 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches the officer pair and event kind carried by a Force discovery result.
+    /// Blank officer IDs act as wildcards so authored events can target either participant.
+    /// </summary>
+    [PersistableObject(Name = "ForceDiscoveryParticipants")]
+    public sealed class ForceDiscoveryParticipantsConditional : GameConditional
+    {
+        public ForceEventType EventType { get; set; }
+        public string OfficerInstanceID { get; set; }
+        public string DiscovererOfficerInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            return false;
+        }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            if (triggerResult is not ForceDiscoveryResult discovery)
+                return false;
+
+            return discovery.EventType == EventType
+                && (
+                    string.IsNullOrWhiteSpace(OfficerInstanceID)
+                    || discovery.Officer?.InstanceID == OfficerInstanceID
+                )
+                && (
+                    string.IsNullOrWhiteSpace(DiscovererOfficerInstanceID)
+                    || discovery.Discoverer?.InstanceID == DiscovererOfficerInstanceID
+                );
+        }
+    }
+
+    /// <summary>
     /// Matches an arrival containing exactly one member of an authored officer pair.
     /// </summary>
     [PersistableObject(Name = "OfficerPairArrival")]

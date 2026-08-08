@@ -39,6 +39,23 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessEvents_ForceDiscoveryRule_RemainsPolicyAndNeverExecutes()
+        {
+            ForceDiscoveryRule rule = new ForceDiscoveryRule
+            {
+                InstanceID = "LEIA_RULE",
+                CandidateOfficerInstanceID = "LEIA",
+            };
+            _game.EventPool.Add(rule);
+
+            List<GameResult> results = _system.ProcessEvents(_game.EventPool);
+
+            Assert.IsEmpty(results);
+            Assert.Contains(rule, _game.EventPool);
+            Assert.IsFalse(_game.IsEventComplete(rule.InstanceID));
+        }
+
+        [Test]
         public void ProcessEvents_MetOneShotEvent_CompletesAndLeavesPool()
         {
             GameEvent gameEvent = CreateTickEvent("ONE_SHOT", targetTick: 10, repeatable: false);

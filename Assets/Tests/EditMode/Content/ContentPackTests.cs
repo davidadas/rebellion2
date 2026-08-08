@@ -122,9 +122,12 @@ namespace Rebellion.Tests.Content
             ConditionalAction leiaHeritageEffects = leiaVaderEffects
                 .Actions.OfType<ConditionalAction>()
                 .Single();
-            ConditionalAction leiaReveal = leiaHeritageEffects
-                .Actions.OfType<ConditionalAction>()
+            ForceDiscoveryRule leiaDiscoveryRule = pack
+                .GameData.GameEvents.OfType<ForceDiscoveryRule>()
                 .Single();
+            GameEvent leiaHeritage = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "LEIA_DISCOVERS_HERITAGE"
+            );
 
             Assert.AreEqual(6, heritageMessage.BodySegments.Count);
             Assert.IsTrue(
@@ -155,17 +158,17 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
             Assert.AreEqual(0, bountyCapture.AttackRating);
-            Assert.AreEqual(
-                "LEIA_ORGANA",
-                leiaReveal
-                    .Actions.OfType<RevealOfficerForcePotentialAction>()
-                    .Single()
-                    .OfficerInstanceID
+            Assert.AreEqual("LEIA_ORGANA", leiaDiscoveryRule.CandidateOfficerInstanceID);
+            Assert.AreEqual("LUKE_SKYWALKER", leiaDiscoveryRule.DiscovererOfficerInstanceID);
+            Assert.AreEqual(nameof(ForceDiscoveryResult), leiaHeritage.TriggerResultType);
+            Assert.IsInstanceOf<ForceDiscoveryParticipantsConditional>(
+                leiaHeritage.Conditionals.Single()
             );
             Assert.AreEqual(
                 1,
                 leiaHeritageEffects.Actions.OfType<IncreaseOfficerForceAction>().Count()
             );
+            Assert.IsEmpty(leiaHeritageEffects.Actions.OfType<RevealOfficerForcePotentialAction>());
             Assert.AreEqual(OfficerRating.Combat, bountyCapture.ResistanceRating);
             Assert.AreEqual(AbductionMission.MissionTypeID, bountyCapture.ProbabilityTableKey);
             Assert.AreEqual(

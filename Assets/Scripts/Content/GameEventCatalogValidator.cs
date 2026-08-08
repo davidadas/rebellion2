@@ -60,6 +60,12 @@ public static class GameEventCatalogValidator
     private static void ValidateEvent(GameEvent gameEvent, List<string> errors)
     {
         string context = $"Event '{gameEvent.InstanceID}'";
+        if (gameEvent is ForceDiscoveryRule discoveryRule)
+        {
+            ValidateForceDiscoveryRule(discoveryRule, context, errors);
+            return;
+        }
+
         if (gameEvent.Scope != GameEventScope.Global && !gameEvent.IsRepeatable)
             errors.Add($"{context} scoped events must be repeatable.");
         if (
@@ -124,6 +130,24 @@ public static class GameEventCatalogValidator
             errors.Add(
                 $"{context} ReportForceDetection requires TriggerResultType UnitArrivedResult."
             );
+    }
+
+    private static void ValidateForceDiscoveryRule(
+        ForceDiscoveryRule rule,
+        string context,
+        List<string> errors
+    )
+    {
+        if (string.IsNullOrWhiteSpace(rule.CandidateOfficerInstanceID))
+            errors.Add($"{context}.CandidateOfficerInstanceID is required.");
+        if (!string.IsNullOrWhiteSpace(rule.TriggerResultType))
+            errors.Add($"{context} discovery rules cannot declare TriggerResultType.");
+        if (rule.Actions?.Count > 0)
+            errors.Add($"{context} discovery rules cannot declare actions.");
+        if (rule.Effects?.Count > 0)
+            errors.Add($"{context} discovery rules cannot declare effects.");
+
+        ValidateConditionList(rule.Conditionals, $"{context}.Conditionals", errors);
     }
 
     private static void ValidateDelay(
@@ -218,6 +242,15 @@ public static class GameEventCatalogValidator
                         == encounter.OpposingOfficerInstanceID
                     )
                         errors.Add($"{conditionPath} requires two different officers.");
+                    break;
+                case ForceDiscoveryParticipantsConditional discovery:
+                    if (
+                        string.IsNullOrWhiteSpace(discovery.OfficerInstanceID)
+                        && string.IsNullOrWhiteSpace(discovery.DiscovererOfficerInstanceID)
+                    )
+                        errors.Add(
+                            $"{conditionPath} requires OfficerInstanceID or DiscovererOfficerInstanceID."
+                        );
                     break;
                 case OfficerPairArrivalConditional arrival:
                     if (string.IsNullOrWhiteSpace(arrival.FirstOfficerInstanceID))

@@ -42,6 +42,9 @@ namespace Rebellion.Systems
 
             foreach (GameEvent gameEvent in gameEvents.ToArray())
             {
+                if (gameEvent is ForceDiscoveryRule)
+                    continue;
+
                 if (!string.IsNullOrWhiteSpace(gameEvent.TriggerResultType))
                     continue;
 
@@ -124,6 +127,9 @@ namespace Rebellion.Systems
             {
                 foreach (GameEvent gameEvent in _game.GetEventPool().ToArray())
                 {
+                    if (gameEvent is ForceDiscoveryRule)
+                        continue;
+
                     if (
                         !string.Equals(
                             gameEvent.TriggerResultType,

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -163,6 +164,48 @@ namespace Rebellion.Game.Events
             }
 
             return results;
+        }
+    }
+
+    /// <summary>
+    /// A data-defined exception to the normal hidden Force-user discovery rules.
+    /// When one or more rules select a candidate, discovery is allowed when any matching
+    /// rule accepts the discoverer and its inherited event conditions are met.
+    /// </summary>
+    [PersistableObject(Name = "ForceDiscoveryRule")]
+    public sealed class ForceDiscoveryRule : GameEvent
+    {
+        public string CandidateOfficerInstanceID { get; set; }
+        public string DiscovererOfficerInstanceID { get; set; }
+
+        /// <summary>
+        /// Returns whether this rule governs discovery of the supplied candidate.
+        /// </summary>
+        public bool AppliesTo(Officer candidate)
+        {
+            return candidate?.InstanceID == CandidateOfficerInstanceID;
+        }
+
+        /// <summary>
+        /// Evaluates the authored discoverer restriction and normal event conditions.
+        /// </summary>
+        public bool Allows(GameRoot game, Officer discoverer, Officer candidate)
+        {
+            if (
+                !string.IsNullOrWhiteSpace(DiscovererOfficerInstanceID)
+                && discoverer?.InstanceID != DiscovererOfficerInstanceID
+            )
+                return false;
+
+            return AreConditionsMet(
+                game,
+                new ForceDiscoveryResult
+                {
+                    EventType = ForceEventType.ForceUserDiscovered,
+                    Officer = candidate,
+                    Discoverer = discoverer,
+                }
+            );
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
@@ -300,6 +301,111 @@ namespace Rebellion.Tests.Systems
             Assert.Greater(leia.ForceValue, 0);
             Assert.AreEqual(1, results.Count);
             Assert.AreEqual(luke, results[0].Discoverer);
+        }
+
+        [Test]
+        public void ProcessTick_DiscoveryRuleWithWrongDiscoverer_BlocksDiscovery()
+        {
+            Officer yoda = CreateJediTrainer("YODA", forceValue: 120);
+            Officer leia = CreateDormantJedi("LEIA");
+            _game.EventPool.Add(
+                new ForceDiscoveryRule
+                {
+                    InstanceID = "LEIA_RULE",
+                    CandidateOfficerInstanceID = leia.InstanceID,
+                    DiscovererOfficerInstanceID = "LUKE",
+                }
+            );
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            _system.ProcessTick();
+
+            Assert.IsTrue(yoda.IsDiscoveringForceUser);
+            Assert.IsFalse(leia.IsForceEligible);
+        }
+
+        [Test]
+        public void ProcessTick_DiscoveryRuleWithUnmetCondition_BlocksDiscovery()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            Officer leia = CreateDormantJedi("LEIA");
+            _game.EventPool.Add(
+                new ForceDiscoveryRule
+                {
+                    InstanceID = "LEIA_RULE",
+                    CandidateOfficerInstanceID = leia.InstanceID,
+                    DiscovererOfficerInstanceID = luke.InstanceID,
+                    Conditionals = new List<GameConditional>
+                    {
+                        new EventVariableConditional
+                        {
+                            Key = "luke.vader.encountered",
+                            Comparison = EventVariableComparison.Equal,
+                            Value = 1,
+                        },
+                    },
+                }
+            );
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            _system.ProcessTick();
+
+            Assert.IsFalse(leia.IsForceEligible);
+        }
+
+        [Test]
+        public void ProcessTick_DiscoveryRuleWithMatchingDiscovererAndCondition_AllowsDiscovery()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            Officer leia = CreateDormantJedi("LEIA");
+            _game.SetEventVariable("luke.vader.encountered", 1);
+            _game.EventPool.Add(
+                new ForceDiscoveryRule
+                {
+                    InstanceID = "LEIA_RULE",
+                    CandidateOfficerInstanceID = leia.InstanceID,
+                    DiscovererOfficerInstanceID = luke.InstanceID,
+                    Conditionals = new List<GameConditional>
+                    {
+                        new EventVariableConditional
+                        {
+                            Key = "luke.vader.encountered",
+                            Comparison = EventVariableComparison.Equal,
+                            Value = 1,
+                        },
+                    },
+                }
+            );
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            ForceDiscoveryResult result = _system
+                .ProcessTick()
+                .OfType<ForceDiscoveryResult>()
+                .Single(candidate => candidate.EventType == ForceEventType.ForceUserDiscovered);
+
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.AreSame(luke, result.Discoverer);
+            Assert.AreSame(leia, result.Officer);
+        }
+
+        [Test]
+        public void ProcessTick_UnruledCandidate_RemainsGenericallyDiscoverable()
+        {
+            CreateJediTrainer("LUKE", forceValue: 120);
+            Officer candidate = CreateDormantJedi("GENERIC_JEDI");
+            _game.EventPool.Add(
+                new ForceDiscoveryRule
+                {
+                    InstanceID = "LEIA_RULE",
+                    CandidateOfficerInstanceID = "LEIA",
+                    DiscovererOfficerInstanceID = "LUKE",
+                }
+            );
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            _system.ProcessTick();
+
+            Assert.IsTrue(candidate.IsForceEligible);
         }
 
         [Test]
