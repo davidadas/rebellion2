@@ -282,7 +282,8 @@ namespace Rebellion.Tests.Game.Events
             {
                 CaptiveOfficerInstanceID = han.InstanceID,
                 RescuerOfficerInstanceIDs = new List<string> { luke.InstanceID },
-                DurationTicks = 1,
+                DurationTicks = 5,
+                DurationRandomTicks = 10,
                 RatingDivisor = 3,
                 SuccessCombatBonus = 1,
                 SuccessEspionageBonus = 1,
@@ -294,6 +295,8 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreSame(han, result.Captive);
             Assert.AreSame(luke, result.Rescuers.Single());
+            Assert.AreEqual(5, result.DurationTicks);
+            Assert.AreEqual(10, result.DurationRandomTicks);
             Assert.AreEqual(3, result.RatingDivisor);
             Assert.IsTrue(result.CaptureRescuerOnFailure);
         }

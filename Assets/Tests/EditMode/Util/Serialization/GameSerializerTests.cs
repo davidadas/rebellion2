@@ -353,7 +353,8 @@ namespace Rebellion.Tests.Util.Serialization
                             "LEIA_ORGANA",
                             "CHEWBACCA",
                         },
-                        DurationTicks = 1,
+                        DurationTicks = 5,
+                        DurationRandomTicks = 10,
                         RatingDivisor = 3,
                         SuccessCombatBonus = 1,
                         SuccessEspionageBonus = 1,
@@ -434,6 +435,8 @@ namespace Rebellion.Tests.Util.Serialization
                 new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" },
                 rescue.RescuerOfficerInstanceIDs
             );
+            Assert.AreEqual(5, rescue.DurationTicks);
+            Assert.AreEqual(10, rescue.DurationRandomTicks);
             Assert.AreEqual(3, rescue.RatingDivisor);
             Assert.IsTrue(rescue.CaptureRescuerOnFailure);
             StartStoryPickupAction pickup = deserialized.Actions[8] as StartStoryPickupAction;
@@ -501,8 +504,10 @@ namespace Rebellion.Tests.Util.Serialization
             };
 
             string serializedXml = SerializeToString(serializer, mission);
-            StoryFinalBattleMission deserialized = (StoryFinalBattleMission)
-                DeserializeFromString(serializer, serializedXml);
+            StoryFinalBattleMission deserialized = (StoryFinalBattleMission)DeserializeFromString(
+                serializer,
+                serializedXml
+            );
 
             Assert.AreEqual(StoryFinalBattlePhase.EscortToPalpatine, deserialized.Phase);
             Assert.AreEqual("luke", deserialized.LukeOfficerInstanceID);

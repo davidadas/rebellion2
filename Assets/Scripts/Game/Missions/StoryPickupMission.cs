@@ -57,7 +57,7 @@ namespace Rebellion.Game.Missions
                     "Captive faction instance ID is required.",
                     nameof(captiveFactionInstanceId)
                 );
-            if (durationTicks < 1)
+            if (durationTicks < 0)
                 throw new ArgumentOutOfRangeException(nameof(durationTicks));
 
             CollectorOfficerInstanceID = collector.InstanceID;

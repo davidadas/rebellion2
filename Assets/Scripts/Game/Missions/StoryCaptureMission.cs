@@ -47,7 +47,7 @@ namespace Rebellion.Game.Missions
                 displayName
             )
         {
-            if (durationTicks < 1)
+            if (durationTicks < 0)
                 throw new ArgumentOutOfRangeException(nameof(durationTicks));
 
             TargetOfficerInstanceID = target.InstanceID;

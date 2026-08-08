@@ -29,8 +29,7 @@ namespace Rebellion.Game
 
         public JediConfig Jedi { get; set; } = new JediConfig();
 
-        public OfficerEncounterConfig OfficerEncounter { get; set; } =
-            new OfficerEncounterConfig();
+        public OfficerEncounterConfig OfficerEncounter { get; set; } = new OfficerEncounterConfig();
 
         public ResearchConfig Research { get; set; } = new ResearchConfig();
 

@@ -482,6 +482,36 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleStoryRescueRequest_RollsAuthoredBaseAndInclusiveSpread()
+        {
+            (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer captive = EntityFactory.CreateOfficer("han", "empire");
+            captive.IsCaptured = true;
+            game.AttachNode(captive, planet);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+            StoryRescueRequestedResult request = CreateStoryRescueRequest(captive, rescuer);
+            request.DurationTicks = 5;
+            request.DurationRandomTicks = 10;
+
+            missions.HandleResults(new[] { request });
+
+            StoryRescueMission mission = game.GetSceneNodesByType<StoryRescueMission>().Single();
+            Assert.AreEqual(5, mission.MaxProgress);
+            Assert.AreEqual(10, mission.DurationRandomTicks);
+        }
+
+        [Test]
         public void HandleStoryRescueRequest_FailureCapturesRescuerWithoutEscape()
         {
             (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
@@ -726,8 +756,7 @@ namespace Rebellion.Tests.Systems
             );
 
             missions.HandleResults(new[] { CreateFinalBattleRequest(luke, vader, palpatine) });
-            StoryFinalBattleMission mission = game
-                .GetSceneNodesByType<StoryFinalBattleMission>()
+            StoryFinalBattleMission mission = game.GetSceneNodesByType<StoryFinalBattleMission>()
                 .Single();
             game.MoveNode(luke, secondPrison);
 
@@ -757,8 +786,7 @@ namespace Rebellion.Tests.Systems
             );
 
             missions.HandleResults(new[] { CreateFinalBattleRequest(luke, vader, palpatine) });
-            StoryFinalBattleMission mission = game
-                .GetSceneNodesByType<StoryFinalBattleMission>()
+            StoryFinalBattleMission mission = game.GetSceneNodesByType<StoryFinalBattleMission>()
                 .Single();
             palpatine.Movement = new MovementState();
 
@@ -766,10 +794,7 @@ namespace Rebellion.Tests.Systems
 
             MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
             Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
-            Assert.AreEqual(
-                MissionCompletionReason.TargetUnavailable,
-                completed.CompletionReason
-            );
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completed.CompletionReason);
             Assert.IsEmpty(game.GetSceneNodesByType<StoryFinalBattleMission>());
             Assert.IsFalse(vader.IsOnMission());
         }

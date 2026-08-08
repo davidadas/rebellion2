@@ -12,8 +12,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Resolves asymmetric encounters between linked opposing officers.
     /// </summary>
-    public sealed class OfficerEncounterSystem
-        : IGameResultHandler<OfficerEncounterRequestedResult>
+    public sealed class OfficerEncounterSystem : IGameResultHandler<OfficerEncounterRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _random;
@@ -62,10 +61,7 @@ namespace Rebellion.Systems
                 && opposing.GetParentOfType<Planet>() == location;
         }
 
-        private void Resolve(
-            OfficerEncounterRequestedResult request,
-            List<GameResult> reactions
-        )
+        private void Resolve(OfficerEncounterRequestedResult request, List<GameResult> reactions)
         {
             Officer encountered = request.EncounteredOfficer;
             Officer opposing = request.OpposingOfficer;

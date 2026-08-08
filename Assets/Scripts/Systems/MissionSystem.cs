@@ -216,6 +216,7 @@ namespace Rebellion.Systems
                         captive,
                         rescuer,
                         result.DurationTicks,
+                        result.DurationRandomTicks,
                         result.RatingDivisor,
                         result.SuccessCombatBonus,
                         result.SuccessEspionageBonus,
@@ -1224,7 +1225,7 @@ namespace Rebellion.Systems
             if (mission is StoryCaptureMission capture)
                 return capture.DurationTicks;
             if (mission is StoryRescueMission rescue)
-                return rescue.DurationTicks;
+                return rescue.DurationTicks + _provider.NextInt(0, rescue.DurationRandomTicks + 1);
             if (mission is StoryPickupMission pickup)
                 return pickup.DurationTicks;
             if (mission is StoryFinalBattleMission finalBattle)

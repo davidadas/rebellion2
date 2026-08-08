@@ -398,6 +398,7 @@ namespace Rebellion.Game.Events
         public string CaptiveOfficerInstanceID { get; set; }
         public List<string> RescuerOfficerInstanceIDs { get; set; } = new List<string>();
         public int DurationTicks { get; set; }
+        public int DurationRandomTicks { get; set; }
         public int RatingDivisor { get; set; } = 1;
         public int SuccessCombatBonus { get; set; }
         public int SuccessEspionageBonus { get; set; }
@@ -432,6 +433,7 @@ namespace Rebellion.Game.Events
                     Captive = captive,
                     Rescuers = rescuers,
                     DurationTicks = DurationTicks,
+                    DurationRandomTicks = DurationRandomTicks,
                     RatingDivisor = RatingDivisor,
                     SuccessCombatBonus = SuccessCombatBonus,
                     SuccessEspionageBonus = SuccessEspionageBonus,

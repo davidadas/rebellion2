@@ -20,6 +20,7 @@ namespace Rebellion.Game.Missions
         public string CaptiveOfficerInstanceID { get; set; }
         public string RescuerOfficerInstanceID { get; set; }
         public int DurationTicks { get; set; }
+        public int DurationRandomTicks { get; set; }
         public int RatingDivisor { get; set; } = 1;
         public int SuccessCombatBonus { get; set; }
         public int SuccessEspionageBonus { get; set; }
@@ -41,6 +42,7 @@ namespace Rebellion.Game.Missions
             Officer captive,
             Officer rescuer,
             int durationTicks,
+            int durationRandomTicks,
             int ratingDivisor,
             int successCombatBonus,
             int successEspionageBonus,
@@ -60,8 +62,10 @@ namespace Rebellion.Game.Missions
                 displayName
             )
         {
-            if (durationTicks < 1)
+            if (durationTicks < 0)
                 throw new ArgumentOutOfRangeException(nameof(durationTicks));
+            if (durationRandomTicks < 0)
+                throw new ArgumentOutOfRangeException(nameof(durationRandomTicks));
             if (ratingDivisor < 1)
                 throw new ArgumentOutOfRangeException(nameof(ratingDivisor));
             if (successCombatBonus < 0)
@@ -72,6 +76,7 @@ namespace Rebellion.Game.Missions
             CaptiveOfficerInstanceID = captive.InstanceID;
             RescuerOfficerInstanceID = rescuer.InstanceID;
             DurationTicks = durationTicks;
+            DurationRandomTicks = durationRandomTicks;
             RatingDivisor = ratingDivisor;
             SuccessCombatBonus = successCombatBonus;
             SuccessEspionageBonus = successEspionageBonus;

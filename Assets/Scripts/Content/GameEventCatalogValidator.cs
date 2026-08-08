@@ -288,8 +288,8 @@ public static class GameEventCatalogValidator
                 case StartStoryCaptureAction capture:
                     if (string.IsNullOrWhiteSpace(capture.TargetOfficerInstanceID))
                         errors.Add($"{actionPath}.TargetOfficerInstanceID is required.");
-                    if (capture.DurationTicks < 1)
-                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (capture.DurationTicks < 0)
+                        errors.Add($"{actionPath}.DurationTicks cannot be negative.");
                     break;
                 case BountyAttackAction bountyAttack
                     when string.IsNullOrWhiteSpace(bountyAttack.OfficerInstanceID):
@@ -307,8 +307,10 @@ public static class GameEventCatalogValidator
                         errors.Add(
                             $"{actionPath}.RescuerOfficerInstanceIDs cannot contain blank IDs."
                         );
-                    if (rescue.DurationTicks < 1)
-                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (rescue.DurationTicks < 0)
+                        errors.Add($"{actionPath}.DurationTicks cannot be negative.");
+                    if (rescue.DurationRandomTicks < 0)
+                        errors.Add($"{actionPath}.DurationRandomTicks cannot be negative.");
                     if (rescue.RatingDivisor < 1)
                         errors.Add($"{actionPath}.RatingDivisor must be at least 1.");
                     if (rescue.SuccessCombatBonus < 0 || rescue.SuccessEspionageBonus < 0)
@@ -321,8 +323,8 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.LocationOfficerInstanceID is required.");
                     if (string.IsNullOrWhiteSpace(pickup.CaptiveFactionInstanceID))
                         errors.Add($"{actionPath}.CaptiveFactionInstanceID is required.");
-                    if (pickup.DurationTicks < 1)
-                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (pickup.DurationTicks < 0)
+                        errors.Add($"{actionPath}.DurationTicks cannot be negative.");
                     break;
                 case StartStoryFinalBattleAction finalBattle:
                     if (string.IsNullOrWhiteSpace(finalBattle.LukeOfficerInstanceID))
@@ -333,8 +335,8 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.PalpatineOfficerInstanceID is required.");
                     if (string.IsNullOrWhiteSpace(finalBattle.CaptorFactionInstanceID))
                         errors.Add($"{actionPath}.CaptorFactionInstanceID is required.");
-                    if (finalBattle.DurationTicks < 1)
-                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (finalBattle.DurationTicks < 0)
+                        errors.Add($"{actionPath}.DurationTicks cannot be negative.");
                     if (finalBattle.VictoryForceRank < 0)
                         errors.Add($"{actionPath}.VictoryForceRank cannot be negative.");
                     if (finalBattle.MinimumFailureInjury < 0)

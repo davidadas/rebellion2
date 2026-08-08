@@ -590,6 +590,7 @@ namespace Rebellion.Game.Results
         public Officer Captive { get; set; }
         public List<Officer> Rescuers { get; set; } = new List<Officer>();
         public int DurationTicks { get; set; }
+        public int DurationRandomTicks { get; set; }
         public int RatingDivisor { get; set; }
         public int SuccessCombatBonus { get; set; }
         public int SuccessEspionageBonus { get; set; }

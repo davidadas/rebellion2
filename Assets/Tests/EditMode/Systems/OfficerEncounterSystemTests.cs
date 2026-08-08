@@ -31,7 +31,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(encountered.IsCaptured);
             Assert.AreEqual("empire", encountered.CaptorInstanceID);
             Assert.IsTrue(encountered.CanEscape);
-            OfficerCaptureStateResult capture = results.OfType<OfficerCaptureStateResult>().Single();
+            OfficerCaptureStateResult capture = results
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
             Assert.AreSame(encountered, capture.TargetOfficer);
             Assert.AreSame(opposing, capture.LinkedOfficer);
             Assert.AreEqual("event", capture.SourceEventInstanceID);
