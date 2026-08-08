@@ -156,6 +156,119 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void ReportForceDetection_OpposingRevealedJediArrive_ReportsToBothFactions()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer arriving = EntityFactory.CreateOfficer("arriving-jedi", "rebels");
+            arriving.DisplayName = "Rebel Jedi";
+            arriving.IsJedi = true;
+            arriving.IsForceEligible = true;
+            arriving.MessageImagePath = "rebel-message";
+            arriving.EnemyDetectedVoicePaths.Add("rebel-detects");
+            Officer present = EntityFactory.CreateOfficer("present-jedi", "empire");
+            present.DisplayName = "Imperial Jedi";
+            present.IsJedi = true;
+            present.IsForceEligible = true;
+            present.MessageImagePath = "empire-message";
+            present.EnemyDetectedVoicePaths.Add("empire-detects");
+            Fleet arrivingFleet = EntityFactory.CreateFleet("arriving-fleet", "rebels");
+            CapitalShip arrivingShip = new CapitalShip
+            {
+                InstanceID = "arriving-ship",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(arrivingFleet, empirePlanet);
+            game.AttachNode(arrivingShip, arrivingFleet);
+            game.AttachNode(arriving, arrivingShip);
+            game.AttachNode(present, empirePlanet);
+            ReportForceDetectionAction action = new ReportForceDetectionAction
+            {
+                TitleTemplate = "{subject} Detects Enemy",
+                BodyTemplate = "{subject} detected {relatedSubject}.",
+                ImageKey = "mission_report",
+                VoicePaths = new Dictionary<string, string>
+                {
+                    { "rebels", "rebel-report" },
+                    { "empire", "empire-report" },
+                },
+            };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent { InstanceID = "FORCE_DETECTION" },
+                new GameEventState(),
+                null,
+                new UnitArrivedResult { Unit = arrivingFleet, Destination = empirePlanet }
+            );
+
+            List<NarrativeMessageResult> messages = action
+                .Execute(game, new FixedRandomProvider(new[] { 0.0 }), context)
+                .OfType<NarrativeMessageResult>()
+                .ToList();
+
+            Assert.AreEqual(2, messages.Count);
+            NarrativeMessageResult rebelMessage = messages.Single(message =>
+                message.Recipient.InstanceID == "rebels"
+            );
+            Assert.AreSame(arriving, rebelMessage.Subject);
+            Assert.AreSame(present, rebelMessage.RelatedSubject);
+            Assert.AreEqual("rebel-message", rebelMessage.OverlayImagePath);
+            Assert.AreEqual("rebel-report", rebelMessage.VoicePath);
+            Assert.AreEqual("rebel-detects", rebelMessage.OfficerVoicePath);
+            NarrativeMessageResult empireMessage = messages.Single(message =>
+                message.Recipient.InstanceID == "empire"
+            );
+            Assert.AreSame(present, empireMessage.Subject);
+            Assert.AreSame(arriving, empireMessage.RelatedSubject);
+            Assert.AreEqual("empire-detects", empireMessage.OfficerVoicePath);
+        }
+
+        [Test]
+        public void ReportForceDetection_ExcludedOrUnrevealedPair_EmitsNothing()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            Officer arriving = EntityFactory.CreateOfficer("luke", "rebels");
+            arriving.IsJedi = true;
+            arriving.IsForceEligible = true;
+            Officer present = EntityFactory.CreateOfficer("vader", "empire");
+            present.IsJedi = true;
+            present.IsForceEligible = true;
+            Fleet arrivingFleet = EntityFactory.CreateFleet("arriving-fleet", "rebels");
+            CapitalShip arrivingShip = new CapitalShip
+            {
+                InstanceID = "arriving-ship",
+                OwnerInstanceID = "rebels",
+            };
+            game.AttachNode(arrivingFleet, empirePlanet);
+            game.AttachNode(arrivingShip, arrivingFleet);
+            game.AttachNode(arriving, arrivingShip);
+            game.AttachNode(present, empirePlanet);
+            ReportForceDetectionAction action = new ReportForceDetectionAction
+            {
+                TitleTemplate = "Detected",
+                BodyTemplate = "Detected",
+                ExcludedPairs = new List<OfficerPairReference>
+                {
+                    new OfficerPairReference
+                    {
+                        FirstOfficerInstanceID = "luke",
+                        SecondOfficerInstanceID = "vader",
+                    },
+                },
+            };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null,
+                new UnitArrivedResult { Unit = arrivingFleet, Destination = empirePlanet }
+            );
+
+            Assert.IsEmpty(action.Execute(game, new FixedRandomProvider(new[] { 0.0 }), context));
+
+            action.ExcludedPairs.Clear();
+            present.IsForceEligible = false;
+            Assert.IsEmpty(action.Execute(game, new FixedRandomProvider(new[] { 0.0 }), context));
+        }
+
+        [Test]
         public void InformantIntelligence_OwnerSupportFails_EmitsOpposingFactionIntelligence()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);

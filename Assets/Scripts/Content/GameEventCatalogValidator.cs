@@ -109,6 +109,17 @@ public static class GameEventCatalogValidator
             && ContainsAction<InformantIntelligenceAction>(gameEvent.Actions)
         )
             errors.Add($"{context} InformantIntelligence requires Scope EachPlanet.");
+        if (
+            ContainsAction<ReportForceDetectionAction>(gameEvent.Actions)
+            && !string.Equals(
+                gameEvent.TriggerResultType,
+                nameof(UnitArrivedResult),
+                StringComparison.Ordinal
+            )
+        )
+            errors.Add(
+                $"{context} ReportForceDetection requires TriggerResultType UnitArrivedResult."
+            );
     }
 
     private static void ValidateDelay(
@@ -294,6 +305,19 @@ public static class GameEventCatalogValidator
                         )
                     )
                         errors.Add($"{actionPath}.IntelligenceChoices cannot contain None.");
+                    break;
+                case ReportForceDetectionAction forceDetection:
+                    if (string.IsNullOrWhiteSpace(forceDetection.TitleTemplate))
+                        errors.Add($"{actionPath}.TitleTemplate is required.");
+                    if (string.IsNullOrWhiteSpace(forceDetection.BodyTemplate))
+                        errors.Add($"{actionPath}.BodyTemplate is required.");
+                    if (
+                        forceDetection.ExcludedPairs?.Any(pair =>
+                            string.IsNullOrWhiteSpace(pair?.FirstOfficerInstanceID)
+                            || string.IsNullOrWhiteSpace(pair.SecondOfficerInstanceID)
+                        ) != false
+                    )
+                        errors.Add($"{actionPath}.ExcludedPairs contains an incomplete pair.");
                     break;
                 case RandomPlanetIncidentAction incident:
                     if (incident.MinimumRawMaterials > incident.MaximumRawMaterials)

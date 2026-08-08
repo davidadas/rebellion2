@@ -35,6 +35,28 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Identifies an unordered officer pair that a generic encounter action must ignore.
+    /// </summary>
+    [PersistableObject]
+    public sealed class OfficerPairReference
+    {
+        public string FirstOfficerInstanceID { get; set; }
+        public string SecondOfficerInstanceID { get; set; }
+
+        public bool Matches(Officer first, Officer second)
+        {
+            return (
+                    first?.InstanceID == FirstOfficerInstanceID
+                    && second?.InstanceID == SecondOfficerInstanceID
+                )
+                || (
+                    first?.InstanceID == SecondOfficerInstanceID
+                    && second?.InstanceID == FirstOfficerInstanceID
+                );
+        }
+    }
+
+    /// <summary>
     /// Recreates the original controlled-world informant check with data-defined faction routing
     /// and uniformly weighted intelligence categories.
     /// </summary>
@@ -501,6 +523,135 @@ namespace Rebellion.Game.Events
                     Tick = game.CurrentTick,
                 },
             };
+        }
+    }
+
+    /// <summary>
+    /// Reports opposing, revealed Force users brought together by a unit arrival.
+    /// Presentation and named-pair exclusions remain content-authored so other packs can extend
+    /// the mechanic without adding code.
+    /// </summary>
+    [PersistableObject(Name = "ReportForceDetection")]
+    public sealed class ReportForceDetectionAction : GameAction
+    {
+        public bool RequireForceEligible { get; set; } = true;
+        public MessageType MessageType { get; set; } = MessageType.Mission;
+        public string TitleTemplate { get; set; }
+        public string BodyTemplate { get; set; }
+        public string ImageKey { get; set; }
+        public string VoicePath { get; set; }
+        public Dictionary<string, string> VoicePaths { get; set; } =
+            new Dictionary<string, string>();
+        public AdvisorNotificationCode AdvisorNotification { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public List<OfficerPairReference> ExcludedPairs { get; set; } =
+            new List<OfficerPairReference>();
+
+        public override List<GameResult> Execute(GameRoot game) => new List<GameResult>();
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            if (
+                context?.TriggerResult is not UnitArrivedResult arrival
+                || arrival.Unit is not ISceneNode arrivingUnit
+                || arrival.Destination == null
+            )
+                return new List<GameResult>();
+
+            List<Officer> arrivingOfficers = GetOfficers(arrivingUnit)
+                .Where(IsEligible)
+                .OrderBy(officer => officer.InstanceID, StringComparer.Ordinal)
+                .ToList();
+            if (arrivingOfficers.Count == 0)
+                return new List<GameResult>();
+
+            List<Officer> presentOfficers = arrival
+                .Destination.GetChildren<Officer>(_ => true, recurse: true)
+                .Where(officer => !GameEventHierarchy.Contains(arrivingUnit, officer))
+                .Where(IsEligible)
+                .OrderBy(officer => officer.InstanceID, StringComparer.Ordinal)
+                .ToList();
+
+            List<GameResult> results = new List<GameResult>();
+            foreach (Officer arriving in arrivingOfficers)
+            {
+                foreach (Officer present in presentOfficers)
+                {
+                    if (
+                        arriving.OwnerInstanceID == present.OwnerInstanceID
+                        || ExcludedPairs.Any(pair => pair.Matches(arriving, present))
+                    )
+                        continue;
+
+                    AddReport(game, provider, results, arriving, present, arrival.Destination);
+                    AddReport(game, provider, results, present, arriving, arrival.Destination);
+                }
+            }
+
+            return results;
+        }
+
+        private bool IsEligible(Officer officer)
+        {
+            return officer.IsJedi
+                && (!RequireForceEligible || officer.IsForceEligible)
+                && !officer.IsCaptured
+                && !officer.IsKilled;
+        }
+
+        private static IEnumerable<Officer> GetOfficers(ISceneNode node)
+        {
+            if (node is Officer officer)
+                yield return officer;
+
+            foreach (Officer descendant in node.GetChildren<Officer>(_ => true, recurse: true))
+                yield return descendant;
+        }
+
+        private void AddReport(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            ICollection<GameResult> results,
+            Officer detector,
+            Officer detected,
+            Planet location
+        )
+        {
+            Faction recipient = game.Factions.FirstOrDefault(faction =>
+                faction.InstanceID == detector.OwnerInstanceID
+            );
+            if (recipient == null)
+                return;
+
+            string voicePath = VoicePaths.TryGetValue(recipient.InstanceID, out string routedVoice)
+                ? routedVoice
+                : VoicePath;
+            results.Add(
+                new NarrativeMessageResult
+                {
+                    Recipient = recipient,
+                    Subject = detector,
+                    RelatedSubject = detected,
+                    Location = location,
+                    MessageType = MessageType,
+                    TitleTemplate = TitleTemplate,
+                    BodyTemplate = BodyTemplate,
+                    ImageKey = ImageKey,
+                    OverlayImagePath = detector.MessageImagePath,
+                    VoicePath = voicePath,
+                    OfficerVoicePath = detector.GetVoicePath(
+                        OfficerVoiceLineType.EnemyDetected,
+                        provider ?? game.Random
+                    ),
+                    AdvisorNotification = AdvisorNotification,
+                    AdvisorSubjectNotification = AdvisorSubjectNotification,
+                    Tick = game.CurrentTick,
+                }
+            );
         }
     }
 

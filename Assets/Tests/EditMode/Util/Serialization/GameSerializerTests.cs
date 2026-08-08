@@ -398,6 +398,29 @@ namespace Rebellion.Tests.Util.Serialization
                         MaximumFailureInjury = 200,
                         CaptivesCanEscapeOnVictory = true,
                     },
+                    new ReportForceDetectionAction
+                    {
+                        RequireForceEligible = true,
+                        MessageType = MessageType.Mission,
+                        TitleTemplate = "{subject} Detects Enemy",
+                        BodyTemplate = "{subject} detected {relatedSubject}",
+                        ImageKey = "mission_report",
+                        VoicePaths = new Dictionary<string, string>
+                        {
+                            { "FNALL1", "Alliance/report" },
+                            { "FNEMP1", "Empire/report" },
+                        },
+                        AdvisorNotification = AdvisorNotificationCode.AgentReport,
+                        AdvisorSubjectNotification = AdvisorSubjectNotification.Report,
+                        ExcludedPairs = new List<OfficerPairReference>
+                        {
+                            new OfficerPairReference
+                            {
+                                FirstOfficerInstanceID = "LUKE_SKYWALKER",
+                                SecondOfficerInstanceID = "DARTH_VADER",
+                            },
+                        },
+                    },
                 },
             };
 
@@ -478,6 +501,28 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("EMPEROR_PALPATINE", finalBattle.PalpatineOfficerInstanceID);
             Assert.AreEqual(100, finalBattle.VictoryForceRank);
             Assert.AreEqual(200, finalBattle.MaximumFailureInjury);
+            ReportForceDetectionAction forceDetection =
+                deserialized.Actions[10] as ReportForceDetectionAction;
+            Assert.IsNotNull(forceDetection);
+            Assert.IsTrue(forceDetection.RequireForceEligible);
+            Assert.AreEqual(MessageType.Mission, forceDetection.MessageType);
+            Assert.AreEqual("{subject} Detects Enemy", forceDetection.TitleTemplate);
+            Assert.AreEqual("Alliance/report", forceDetection.VoicePaths["FNALL1"]);
+            Assert.AreEqual("Empire/report", forceDetection.VoicePaths["FNEMP1"]);
+            Assert.AreEqual(
+                AdvisorNotificationCode.AgentReport,
+                forceDetection.AdvisorNotification
+            );
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                forceDetection.AdvisorSubjectNotification
+            );
+            Assert.AreEqual(1, forceDetection.ExcludedPairs.Count);
+            Assert.AreEqual(
+                "LUKE_SKYWALKER",
+                forceDetection.ExcludedPairs[0].FirstOfficerInstanceID
+            );
+            Assert.AreEqual("DARTH_VADER", forceDetection.ExcludedPairs[0].SecondOfficerInstanceID);
         }
 
         [Test]

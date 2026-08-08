@@ -63,12 +63,33 @@ namespace Rebellion.Tests.Content
             NarrativeMessageAction confrontation = lukeVaderEffects
                 .Actions.OfType<NarrativeMessageAction>()
                 .Single();
+            GameEvent forceDetectionEvent = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "FORCE_USERS_DETECT_ENEMIES"
+            );
+            ReportForceDetectionAction forceDetection = forceDetectionEvent
+                .Actions.OfType<ReportForceDetectionAction>()
+                .Single();
 
             Assert.AreEqual(6, heritageMessage.BodySegments.Count);
             Assert.AreEqual(nameof(UnitArrivedResult), lukeVaderEncounter.TriggerResultType);
             Assert.IsInstanceOf<OfficerPairArrivalConditional>(lukeVaderEncounter.Conditionals[0]);
             Assert.AreEqual(5, confrontation.BodySegments.Count);
             Assert.IsTrue(confrontation.VoicePathFromOfficerEncounter);
+            Assert.AreEqual(nameof(UnitArrivedResult), forceDetectionEvent.TriggerResultType);
+            Assert.AreEqual("{subject} Detects Enemy", forceDetection.TitleTemplate);
+            Assert.AreEqual(
+                "{subject} has detected {relatedSubject} because of a disturbance in the Force.",
+                forceDetection.BodyTemplate
+            );
+            Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report",
+                forceDetection.VoicePaths["FNALL1"]
+            );
+            Assert.AreEqual(
+                "Pack/Factions/Empire/Strategy/Audio/Messages/message-faction-report",
+                forceDetection.VoicePaths["FNEMP1"]
+            );
             Assert.IsFalse(startFinalBattle.CaptivesCanEscapeOnVictory);
             Assert.AreEqual(
                 "Pack/Shared/Events/FinalBattle/Audio/luke-victorious",
