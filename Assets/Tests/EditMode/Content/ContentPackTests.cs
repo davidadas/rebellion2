@@ -78,6 +78,18 @@ namespace Rebellion.Tests.Content
             GameEvent lukeVaderEffects = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "LUKE_VADER_ENCOUNTER_EFFECTS"
             );
+            ConditionalAction firstLukeVaderInjury = lukeVaderEffects
+                .Actions.OfType<ConditionalAction>()
+                .Single();
+            IncreaseOfficerForceAction lukeVaderForceIncrease = lukeVaderEffects
+                .Actions.OfType<IncreaseOfficerForceAction>()
+                .Single();
+            GameEvent lukePalpatineEffects = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "LUKE_PALPATINE_ENCOUNTER_EFFECTS"
+            );
+            IncreaseOfficerForceAction lukePalpatineForceIncrease = lukePalpatineEffects
+                .Actions.OfType<IncreaseOfficerForceAction>()
+                .Single();
             NarrativeMessageAction confrontation = lukeVaderEffects
                 .Actions.OfType<NarrativeMessageAction>()
                 .Single();
@@ -124,6 +136,15 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(nameof(UnitArrivedResult), lukeVaderEncounter.TriggerResultType);
             Assert.IsInstanceOf<OfficerPairArrivalConditional>(lukeVaderEncounter.Conditionals[0]);
+            Assert.AreEqual(
+                "luke.vader.encountered",
+                firstLukeVaderInjury.Conditionals.OfType<EventVariableConditional>().Single().Key
+            );
+            Assert.AreEqual("DARTH_VADER", lukeVaderForceIncrease.ReferenceOfficerInstanceID);
+            Assert.AreEqual(
+                "EMPEROR_PALPATINE",
+                lukePalpatineForceIncrease.ReferenceOfficerInstanceID
+            );
             Assert.AreEqual(5, confrontation.BodySegments.Count);
             Assert.IsTrue(confrontation.VoicePathFromOfficerEncounter);
             Assert.AreEqual(nameof(UnitArrivedResult), forceDetectionEvent.TriggerResultType);
