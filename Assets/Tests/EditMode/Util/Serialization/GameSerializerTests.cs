@@ -335,6 +335,29 @@ namespace Rebellion.Tests.Util.Serialization
                         MinimumInjury = 1,
                         MaximumInjury = 100,
                     },
+                    new BountyAttackAction { OfficerInstanceID = "HAN_SOLO" },
+                    new StartStoryCaptureAction
+                    {
+                        TargetOfficerInstanceID = "HAN_SOLO",
+                        DurationTicks = 1,
+                        CanEscape = false,
+                        DisplayName = "Bounty Hunters",
+                    },
+                    new StartStoryRescueAction
+                    {
+                        CaptiveOfficerInstanceID = "HAN_SOLO",
+                        RescuerOfficerInstanceIDs = new List<string>
+                        {
+                            "LUKE_SKYWALKER",
+                            "LEIA_ORGANA",
+                            "CHEWBACCA",
+                        },
+                        DurationTicks = 1,
+                        RatingDivisor = 3,
+                        SuccessCombatBonus = 1,
+                        SuccessEspionageBonus = 1,
+                        CaptureRescuerOnFailure = true,
+                    },
                 },
             };
 
@@ -376,6 +399,22 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(injury);
             Assert.AreEqual(1, injury.MinimumInjury);
             Assert.AreEqual(100, injury.MaximumInjury);
+            BountyAttackAction bounty = deserialized.Actions[5] as BountyAttackAction;
+            Assert.IsNotNull(bounty);
+            Assert.AreEqual("HAN_SOLO", bounty.OfficerInstanceID);
+            StartStoryCaptureAction capture = deserialized.Actions[6] as StartStoryCaptureAction;
+            Assert.IsNotNull(capture);
+            Assert.AreEqual("HAN_SOLO", capture.TargetOfficerInstanceID);
+            Assert.AreEqual(1, capture.DurationTicks);
+            Assert.IsFalse(capture.CanEscape);
+            StartStoryRescueAction rescue = deserialized.Actions[7] as StartStoryRescueAction;
+            Assert.IsNotNull(rescue);
+            CollectionAssert.AreEqual(
+                new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" },
+                rescue.RescuerOfficerInstanceIDs
+            );
+            Assert.AreEqual(3, rescue.RatingDivisor);
+            Assert.IsTrue(rescue.CaptureRescuerOnFailure);
         }
 
         [Test]

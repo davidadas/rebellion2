@@ -19,7 +19,9 @@ namespace Rebellion.Systems
     /// </summary>
     public class MissionSystem
         : IGameResultHandler<PlanetUprisingStartedResult>,
-            IGameResultHandler<ScriptedTrainingRequestedResult>
+            IGameResultHandler<ScriptedTrainingRequestedResult>,
+            IGameResultHandler<StoryCaptureRequestedResult>,
+            IGameResultHandler<StoryRescueRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -130,6 +132,98 @@ namespace Rebellion.Systems
                 );
                 _game.AttachNode(mission, origin);
                 BeginMission(mission);
+            }
+
+            return missionResults;
+        }
+
+        /// <summary>
+        /// Creates content-authored capture missions without bypassing mission persistence or teardown.
+        /// </summary>
+        public List<GameResult> HandleResults(IReadOnlyList<StoryCaptureRequestedResult> results)
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            foreach (StoryCaptureRequestedResult result in results)
+            {
+                Officer target = _game.GetSceneNodeByInstanceID<Officer>(
+                    result?.Target?.InstanceID
+                );
+                Planet location = target?.GetParentOfType<Planet>();
+                if (
+                    target == null
+                    || location == null
+                    || target.IsCaptured
+                    || target.IsKilled
+                    || !target.IsMovable()
+                    || target.IsOnMission()
+                )
+                    continue;
+
+                StoryCaptureMission mission = new StoryCaptureMission(
+                    target,
+                    result.DurationTicks,
+                    result.CaptorFactionInstanceID,
+                    result.CanEscape,
+                    result.DisplayName,
+                    result.SourceEventInstanceID
+                );
+                _game.AttachNode(mission, location);
+                BeginMission(mission);
+            }
+
+            return missionResults;
+        }
+
+        /// <summary>
+        /// Creates one independent content-authored rescue mission per available rescuer.
+        /// </summary>
+        public List<GameResult> HandleResults(IReadOnlyList<StoryRescueRequestedResult> results)
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            foreach (StoryRescueRequestedResult result in results)
+            {
+                Officer captive = _game.GetSceneNodeByInstanceID<Officer>(
+                    result?.Captive?.InstanceID
+                );
+                Planet location = captive?.GetParentOfType<Planet>();
+                if (captive?.IsCaptured != true || location == null)
+                    continue;
+
+                foreach (Officer rescuerReference in result.Rescuers ?? new List<Officer>())
+                {
+                    Officer rescuer = _game.GetSceneNodeByInstanceID<Officer>(
+                        rescuerReference?.InstanceID
+                    );
+                    if (
+                        rescuer?.IsCaptured != false
+                        || rescuer?.IsKilled != false
+                        || rescuer?.IsMovable() != true
+                        || rescuer?.IsOnMission() != false
+                        || rescuer?.OwnerInstanceID != captive.OwnerInstanceID
+                    )
+                        continue;
+
+                    StoryRescueMission mission = new StoryRescueMission(
+                        captive,
+                        rescuer,
+                        result.DurationTicks,
+                        result.RatingDivisor,
+                        result.SuccessCombatBonus,
+                        result.SuccessEspionageBonus,
+                        result.CaptureRescuerOnFailure,
+                        result.FailedRescuerCanEscape,
+                        result.DisplayName,
+                        result.SourceEventInstanceID
+                    );
+                    _game.AttachNode(mission, location);
+                    BeginMission(mission);
+                }
             }
 
             return missionResults;
@@ -964,6 +1058,10 @@ namespace Rebellion.Systems
         {
             if (mission is ScriptedTrainingMission training)
                 return training.DurationTicks;
+            if (mission is StoryCaptureMission capture)
+                return capture.DurationTicks;
+            if (mission is StoryRescueMission rescue)
+                return rescue.DurationTicks;
 
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(

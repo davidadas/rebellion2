@@ -304,6 +304,25 @@ namespace Rebellion.Tests.Systems
             return (game, origin, targetPlanet, participant, target, missions);
         }
 
+        private static StoryRescueRequestedResult CreateStoryRescueRequest(
+            Officer captive,
+            Officer rescuer
+        )
+        {
+            return new StoryRescueRequestedResult
+            {
+                Captive = captive,
+                Rescuers = new List<Officer> { rescuer },
+                DurationTicks = 1,
+                RatingDivisor = 3,
+                SuccessCombatBonus = 1,
+                SuccessEspionageBonus = 1,
+                CaptureRescuerOnFailure = true,
+                FailedRescuerCanEscape = false,
+                DisplayName = "Rescue Han Solo",
+            };
+        }
+
         [Test]
         public void HandleScriptedTrainingRequest_CompletesThroughMissionLifecycleAndReturnsTrainee()
         {
@@ -357,6 +376,119 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(completionResults.OfType<ForceExperienceResult>().Any());
             Assert.IsTrue(completionResults.OfType<MissionCompletedResult>().Any());
             Assert.IsEmpty(game.GetSceneNodesByType<ScriptedTrainingMission>());
+        }
+
+        [Test]
+        public void HandleStoryCaptureRequest_CapturesTargetAfterAuthoredDuration()
+        {
+            (GameRoot game, Planet planet, Officer officer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(
+                new[]
+                {
+                    new StoryCaptureRequestedResult
+                    {
+                        Target = officer,
+                        DurationTicks = 2,
+                        CanEscape = false,
+                        DisplayName = "Bounty Hunters",
+                        SourceEventInstanceID = "HAN_BOUNTY_HUNTERS",
+                    },
+                }
+            );
+
+            StoryCaptureMission active = game.GetSceneNodesByType<StoryCaptureMission>().Single();
+            Assert.AreSame(active, officer.GetParent());
+            Assert.AreEqual(2, active.MaxProgress);
+            officer.Movement = null;
+
+            Assert.IsEmpty(missions.ProcessTick().OfType<OfficerCaptureStateResult>());
+            OfficerCaptureStateResult capture = missions
+                .ProcessTick()
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreEqual("HAN_BOUNTY_HUNTERS", capture.SourceEventInstanceID);
+            Assert.IsEmpty(game.GetSceneNodesByType<StoryCaptureMission>());
+        }
+
+        [Test]
+        public void HandleStoryRescueRequest_SuccessUsesOriginalCombinedScoreAndFreesCaptive()
+        {
+            (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            rescuer.SetBaseRating(OfficerRating.Combat, 30);
+            rescuer.SetBaseRating(OfficerRating.Espionage, 30);
+            Officer captive = EntityFactory.CreateOfficer("han", "empire");
+            captive.IsCaptured = true;
+            captive.CanEscape = false;
+            game.AttachNode(captive, planet);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(new[] { CreateStoryRescueRequest(captive, rescuer) });
+            rescuer.Movement = null;
+            List<GameResult> results = missions.ProcessTick();
+
+            Assert.IsFalse(captive.IsCaptured);
+            Assert.AreEqual(31, rescuer.GetBaseRating(OfficerRating.Combat));
+            Assert.AreEqual(31, rescuer.GetBaseRating(OfficerRating.Espionage));
+            Assert.IsTrue(results.OfType<OfficerRescuedResult>().Any());
+            Assert.AreSame(planet, captive.GetParent());
+        }
+
+        [Test]
+        public void HandleStoryRescueRequest_FailureCapturesRescuerWithoutEscape()
+        {
+            (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            Officer captive = EntityFactory.CreateOfficer("han", "empire");
+            captive.IsCaptured = true;
+            game.AttachNode(captive, planet);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.99),
+                movement
+            );
+
+            missions.HandleResults(new[] { CreateStoryRescueRequest(captive, rescuer) });
+            rescuer.Movement = null;
+            missions.ProcessTick();
+
+            Assert.IsTrue(captive.IsCaptured);
+            Assert.IsTrue(rescuer.IsCaptured);
+            Assert.IsFalse(rescuer.CanEscape);
+            Assert.AreSame(planet, rescuer.GetParent());
         }
 
         [Test]

@@ -148,6 +148,10 @@ public static class GameEventCatalogValidator
                     if (string.IsNullOrWhiteSpace(encounter.OpposingOfficerInstanceID))
                         errors.Add($"{conditionPath}.OpposingOfficerInstanceID is required.");
                     break;
+                case OfficerCaptureStateConditional capture
+                    when string.IsNullOrWhiteSpace(capture.OfficerInstanceID):
+                    errors.Add($"{path}.OfficerInstanceID is required.");
+                    break;
                 case OfficerStateConditional officerState
                     when string.IsNullOrWhiteSpace(officerState.OfficerInstanceID):
                     errors.Add($"{conditionPath}.OfficerInstanceID is required.");
@@ -270,6 +274,35 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.CompletionBonusPercent cannot be negative.");
                     if (string.IsNullOrWhiteSpace(training.CompletionVariableKey))
                         errors.Add($"{actionPath}.CompletionVariableKey is required.");
+                    break;
+                case StartStoryCaptureAction capture:
+                    if (string.IsNullOrWhiteSpace(capture.TargetOfficerInstanceID))
+                        errors.Add($"{actionPath}.TargetOfficerInstanceID is required.");
+                    if (capture.DurationTicks < 1)
+                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    break;
+                case BountyAttackAction bountyAttack
+                    when string.IsNullOrWhiteSpace(bountyAttack.OfficerInstanceID):
+                    errors.Add($"{actionPath}.OfficerInstanceID is required.");
+                    break;
+                case StartStoryRescueAction rescue:
+                    if (string.IsNullOrWhiteSpace(rescue.CaptiveOfficerInstanceID))
+                        errors.Add($"{actionPath}.CaptiveOfficerInstanceID is required.");
+                    if (
+                        rescue.RescuerOfficerInstanceIDs == null
+                        || rescue.RescuerOfficerInstanceIDs.Count == 0
+                    )
+                        errors.Add($"{actionPath} requires at least one rescuer officer.");
+                    else if (rescue.RescuerOfficerInstanceIDs.Any(string.IsNullOrWhiteSpace))
+                        errors.Add(
+                            $"{actionPath}.RescuerOfficerInstanceIDs cannot contain blank IDs."
+                        );
+                    if (rescue.DurationTicks < 1)
+                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (rescue.RatingDivisor < 1)
+                        errors.Add($"{actionPath}.RatingDivisor must be at least 1.");
+                    if (rescue.SuccessCombatBonus < 0 || rescue.SuccessEspionageBonus < 0)
+                        errors.Add($"{actionPath} success bonuses cannot be negative.");
                     break;
                 case IncreaseOfficerForceAction force:
                     if (string.IsNullOrWhiteSpace(force.OfficerInstanceID))

@@ -330,6 +330,121 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Starts a persistent, timed story capture through the authoritative mission system.
+    /// </summary>
+    [PersistableObject(Name = "StartStoryCapture")]
+    public sealed class StartStoryCaptureAction : GameAction
+    {
+        public string TargetOfficerInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public string CaptorFactionInstanceID { get; set; }
+        public bool CanEscape { get; set; }
+        public string DisplayName { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
+            if (target == null)
+                throw new InvalidOperationException(
+                    $"StartStoryCapture could not resolve target officer '{TargetOfficerInstanceID}'."
+                );
+
+            return new List<GameResult>
+            {
+                new StoryCaptureRequestedResult
+                {
+                    Target = target,
+                    DurationTicks = DurationTicks,
+                    CaptorFactionInstanceID = CaptorFactionInstanceID,
+                    CanEscape = CanEscape,
+                    DisplayName = DisplayName,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
+    /// Announces the original bounty-hunter attack through the normal result pipeline.
+    /// </summary>
+    [PersistableObject(Name = "BountyAttack")]
+    public sealed class BountyAttackAction : GameAction
+    {
+        public string OfficerInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"BountyAttack could not resolve officer '{OfficerInstanceID}'."
+                );
+
+            return new List<GameResult>
+            {
+                new BountyAttackResult { Officer = officer, Tick = game.CurrentTick },
+            };
+        }
+    }
+
+    /// <summary>
+    /// Starts independent rescue missions for all available content-authored rescuers.
+    /// </summary>
+    [PersistableObject(Name = "StartStoryRescue")]
+    public sealed class StartStoryRescueAction : GameAction
+    {
+        public string CaptiveOfficerInstanceID { get; set; }
+        public List<string> RescuerOfficerInstanceIDs { get; set; } = new List<string>();
+        public int DurationTicks { get; set; }
+        public int RatingDivisor { get; set; } = 1;
+        public int SuccessCombatBonus { get; set; }
+        public int SuccessEspionageBonus { get; set; }
+        public bool CaptureRescuerOnFailure { get; set; }
+        public bool FailedRescuerCanEscape { get; set; }
+        public string DisplayName { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer captive = game.GetSceneNodeByInstanceID<Officer>(CaptiveOfficerInstanceID);
+            if (captive == null)
+                throw new InvalidOperationException(
+                    $"StartStoryRescue could not resolve captive officer '{CaptiveOfficerInstanceID}'."
+                );
+
+            List<Officer> rescuers = new List<Officer>();
+            foreach (string rescuerId in RescuerOfficerInstanceIDs)
+            {
+                Officer rescuer = game.GetSceneNodeByInstanceID<Officer>(rescuerId);
+                if (rescuer == null)
+                    throw new InvalidOperationException(
+                        $"StartStoryRescue could not resolve rescuer officer '{rescuerId}'."
+                    );
+                rescuers.Add(rescuer);
+            }
+
+            return new List<GameResult>
+            {
+                new StoryRescueRequestedResult
+                {
+                    Captive = captive,
+                    Rescuers = rescuers,
+                    DurationTicks = DurationTicks,
+                    RatingDivisor = RatingDivisor,
+                    SuccessCombatBonus = SuccessCombatBonus,
+                    SuccessEspionageBonus = SuccessEspionageBonus,
+                    CaptureRescuerOnFailure = CaptureRescuerOnFailure,
+                    FailedRescuerCanEscape = FailedRescuerCanEscape,
+                    DisplayName = DisplayName,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
     /// Increases one officer's Force value using the greatest configured reward component.
     /// </summary>
     [PersistableObject(Name = "IncreaseOfficerForce")]

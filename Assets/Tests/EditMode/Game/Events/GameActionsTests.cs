@@ -227,6 +227,78 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void StartStoryCapture_ValidTarget_EmitsConfiguredRequest()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            game.AttachNode(han, rebelPlanet);
+            StartStoryCaptureAction action = new StartStoryCaptureAction
+            {
+                TargetOfficerInstanceID = han.InstanceID,
+                DurationTicks = 1,
+                CanEscape = false,
+                DisplayName = "Bounty Hunters",
+            };
+
+            StoryCaptureRequestedResult result = action
+                .Execute(game)
+                .OfType<StoryCaptureRequestedResult>()
+                .Single();
+
+            Assert.AreSame(han, result.Target);
+            Assert.AreEqual(1, result.DurationTicks);
+            Assert.IsFalse(result.CanEscape);
+            Assert.AreEqual("Bounty Hunters", result.DisplayName);
+        }
+
+        [Test]
+        public void BountyAttack_ValidOfficer_EmitsBountyResult()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            game.AttachNode(han, rebelPlanet);
+
+            BountyAttackResult result = new BountyAttackAction
+            {
+                OfficerInstanceID = han.InstanceID,
+            }
+                .Execute(game)
+                .OfType<BountyAttackResult>()
+                .Single();
+
+            Assert.AreSame(han, result.Officer);
+        }
+
+        [Test]
+        public void StartStoryRescue_ResolvesAuthoredOfficerReferences()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(han, rebelPlanet);
+            game.AttachNode(luke, rebelPlanet);
+
+            StoryRescueRequestedResult result = new StartStoryRescueAction
+            {
+                CaptiveOfficerInstanceID = han.InstanceID,
+                RescuerOfficerInstanceIDs = new List<string> { luke.InstanceID },
+                DurationTicks = 1,
+                RatingDivisor = 3,
+                SuccessCombatBonus = 1,
+                SuccessEspionageBonus = 1,
+                CaptureRescuerOnFailure = true,
+            }
+                .Execute(game)
+                .OfType<StoryRescueRequestedResult>()
+                .Single();
+
+            Assert.AreSame(han, result.Captive);
+            Assert.AreSame(luke, result.Rescuers.Single());
+            Assert.AreEqual(3, result.RatingDivisor);
+            Assert.IsTrue(result.CaptureRescuerOnFailure);
+        }
+
+        [Test]
         public void IncreaseOfficerForce_RankGapReward_UsesOriginalMaximumFormula()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);

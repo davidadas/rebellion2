@@ -443,6 +443,27 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches an authored officer and capture state on the result that triggered an event.
+    /// </summary>
+    [PersistableObject(Name = "OfficerCaptureState")]
+    public sealed class OfficerCaptureStateConditional : GameConditional
+    {
+        public string OfficerInstanceID { get; set; }
+        public bool IsCaptured { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game) => false;
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return triggerResult is OfficerCaptureStateResult capture
+                && capture.TargetOfficer?.InstanceID == OfficerInstanceID
+                && capture.IsCaptured == IsCaptured;
+        }
+    }
+
+    /// <summary>
     /// Tests a data-selected runtime state on one officer.
     /// </summary>
     [PersistableObject(Name = "OfficerState")]

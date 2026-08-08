@@ -571,6 +571,34 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A data-defined event requested a timed attempt to capture an officer.
+    /// </summary>
+    public class StoryCaptureRequestedResult : GameResult
+    {
+        public Officer Target { get; set; }
+        public int DurationTicks { get; set; }
+        public string CaptorFactionInstanceID { get; set; }
+        public bool CanEscape { get; set; }
+        public string DisplayName { get; set; }
+    }
+
+    /// <summary>
+    /// A data-defined event requested one or more timed rescue attempts.
+    /// </summary>
+    public class StoryRescueRequestedResult : GameResult
+    {
+        public Officer Captive { get; set; }
+        public List<Officer> Rescuers { get; set; } = new List<Officer>();
+        public int DurationTicks { get; set; }
+        public int RatingDivisor { get; set; }
+        public int SuccessCombatBonus { get; set; }
+        public int SuccessEspionageBonus { get; set; }
+        public bool CaptureRescuerOnFailure { get; set; }
+        public bool FailedRescuerCanEscape { get; set; }
+        public string DisplayName { get; set; }
+    }
+
+    /// <summary>
     /// Han Solo was attacked by a bounty hunter.
     /// </summary>
     public class BountyAttackResult : GameResult
