@@ -372,6 +372,7 @@ namespace Rebellion.Tests.Util.Serialization
                         TraineeInstanceID = "LUKE_SKYWALKER",
                         DurationTicks = 100,
                         CompletionBonusPercent = 60,
+                        InterruptionProgressDivisor = 2,
                         CompletionVariableKey = "luke.dagobah.completed",
                         CompletionVariableValue = 1,
                         DisplayName = "Journey to Dagobah",
@@ -496,6 +497,7 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(training);
             Assert.AreEqual(100, training.DurationTicks);
             Assert.AreEqual(60, training.CompletionBonusPercent);
+            Assert.AreEqual(2, training.InterruptionProgressDivisor);
             Assert.AreEqual("luke.dagobah.completed", training.CompletionVariableKey);
             IncreaseOfficerForceAction increase =
                 deserialized.Actions[3] as IncreaseOfficerForceAction;

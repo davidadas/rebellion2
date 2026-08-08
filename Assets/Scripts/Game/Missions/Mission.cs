@@ -163,6 +163,15 @@ namespace Rebellion.Game.Missions
         public abstract bool ShouldRepeatAfterCompletion(GameRoot game);
 
         /// <summary>
+        /// Produces mission-specific state changes when the mission ends before normal execution.
+        /// The mission system remains responsible for participant teardown and terminal results.
+        /// </summary>
+        internal virtual List<GameResult> ResolveInterruption(
+            GameRoot game,
+            IRandomNumberProvider provider
+        ) => new List<GameResult>();
+
+        /// <summary>
         /// Starts the mission and chooses its duration.
         /// </summary>
         /// <param name="maxProgress">The rolled mission duration.</param>

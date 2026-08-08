@@ -947,6 +947,7 @@ namespace Rebellion.Game.Events
         public string TraineeInstanceID { get; set; }
         public int DurationTicks { get; set; }
         public int CompletionBonusPercent { get; set; }
+        public int InterruptionProgressDivisor { get; set; } = 1;
         public string CompletionVariableKey { get; set; }
         public int CompletionVariableValue { get; set; } = 1;
         public string DisplayName { get; set; }
@@ -967,6 +968,7 @@ namespace Rebellion.Game.Events
                     Trainee = trainee,
                     DurationTicks = DurationTicks,
                     CompletionBonusPercent = CompletionBonusPercent,
+                    InterruptionProgressDivisor = InterruptionProgressDivisor,
                     CompletionVariableKey = CompletionVariableKey,
                     CompletionVariableValue = CompletionVariableValue,
                     DisplayName = DisplayName,

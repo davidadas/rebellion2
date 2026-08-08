@@ -133,6 +133,7 @@ namespace Rebellion.Systems
                     trainee,
                     result.DurationTicks,
                     result.CompletionBonusPercent,
+                    result.InterruptionProgressDivisor,
                     result.CompletionVariableKey,
                     result.CompletionVariableValue,
                     result.DisplayName
@@ -505,6 +506,11 @@ namespace Rebellion.Systems
             if (mission.IsWaitingForParticipants())
                 return false;
 
+            AddMissionResults(
+                mission,
+                mission.ResolveInterruption(_game, _provider),
+                _pendingResults
+            );
             TearDownMission(mission, null, _pendingResults);
             return true;
         }
@@ -537,6 +543,7 @@ namespace Rebellion.Systems
                     mission.GetAllParticipants()
                 );
                 result.MissionInstanceID = mission.InstanceID;
+                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
                 results.Add(result);
                 TearDownMission(mission, null, results);
             }
@@ -696,6 +703,7 @@ namespace Rebellion.Systems
                 mission is StoryFinalBattleMission ? null : mission.GetAbortReason(_game);
             if (abortReason.HasValue)
             {
+                AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
                 results.Add(
                     BuildTerminatingMissionResult(
                         mission,
@@ -719,6 +727,22 @@ namespace Rebellion.Systems
             results.AddRange(ExecuteMission(mission));
             FinishMissionIfCompleted(mission, results);
             return results;
+        }
+
+        private static void AddMissionResults(
+            Mission mission,
+            IEnumerable<GameResult> source,
+            List<GameResult> destination
+        )
+        {
+            if (source == null)
+                return;
+
+            foreach (GameResult result in source.Where(result => result != null))
+            {
+                result.MissionInstanceID = mission.InstanceID;
+                destination.Add(result);
+            }
         }
 
         /// <summary>
@@ -765,6 +789,7 @@ namespace Rebellion.Systems
             if (!missionFoiled)
                 return results;
 
+            AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
             results.Add(
                 BuildTerminatingMissionResult(
                     mission,

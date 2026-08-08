@@ -578,6 +578,7 @@ namespace Rebellion.Tests.Game.Events
                 TraineeInstanceID = luke.InstanceID,
                 DurationTicks = 100,
                 CompletionBonusPercent = 60,
+                InterruptionProgressDivisor = 2,
                 CompletionVariableKey = "luke.dagobah.completed",
                 CompletionVariableValue = 1,
                 DisplayName = "Journey to Dagobah",
@@ -591,6 +592,7 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(luke, result.Trainee);
             Assert.AreEqual(100, result.DurationTicks);
             Assert.AreEqual(60, result.CompletionBonusPercent);
+            Assert.AreEqual(2, result.InterruptionProgressDivisor);
             Assert.AreEqual("luke.dagobah.completed", result.CompletionVariableKey);
         }
 

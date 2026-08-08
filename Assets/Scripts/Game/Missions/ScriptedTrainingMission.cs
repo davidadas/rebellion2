@@ -20,6 +20,7 @@ namespace Rebellion.Game.Missions
         public string TraineeInstanceID { get; set; }
         public int DurationTicks { get; set; }
         public int CompletionBonusPercent { get; set; }
+        public int InterruptionProgressDivisor { get; set; } = 1;
         public string CompletionVariableKey { get; set; }
         public int CompletionVariableValue { get; set; } = 1;
 
@@ -33,6 +34,7 @@ namespace Rebellion.Game.Missions
             Officer trainee,
             int durationTicks,
             int completionBonusPercent,
+            int interruptionProgressDivisor,
             string completionVariableKey,
             int completionVariableValue,
             string displayName
@@ -51,6 +53,8 @@ namespace Rebellion.Game.Missions
                 throw new ArgumentOutOfRangeException(nameof(durationTicks));
             if (completionBonusPercent < 0)
                 throw new ArgumentOutOfRangeException(nameof(completionBonusPercent));
+            if (interruptionProgressDivisor < 1)
+                throw new ArgumentOutOfRangeException(nameof(interruptionProgressDivisor));
             if (string.IsNullOrWhiteSpace(completionVariableKey))
                 throw new ArgumentException(
                     "Completion variable key is required.",
@@ -60,11 +64,21 @@ namespace Rebellion.Game.Missions
             TraineeInstanceID = trainee.InstanceID;
             DurationTicks = durationTicks;
             CompletionBonusPercent = completionBonusPercent;
+            InterruptionProgressDivisor = interruptionProgressDivisor;
             CompletionVariableKey = completionVariableKey;
             CompletionVariableValue = completionVariableValue;
         }
 
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
+
+        internal override List<GameResult> ResolveInterruption(
+            GameRoot game,
+            IRandomNumberProvider provider
+        )
+        {
+            int elapsedTrainingPercent = CurrentProgress / InterruptionProgressDivisor;
+            return ResolveTraining(game, elapsedTrainingPercent);
+        }
 
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
@@ -81,8 +95,19 @@ namespace Rebellion.Game.Missions
                     ),
                 };
 
+            List<GameResult> results = ResolveTraining(game, CompletionBonusPercent);
+            results.Add(BuildCompletedResult(MissionOutcome.Success, game));
+            return results;
+        }
+
+        private List<GameResult> ResolveTraining(GameRoot game, int bonusPercent)
+        {
+            Officer trainee = game.GetSceneNodeByInstanceID<Officer>(TraineeInstanceID);
+            if (trainee == null)
+                return new List<GameResult>();
+
             int previousRank = trainee.ForceRank;
-            int bonus = previousRank * CompletionBonusPercent / 100;
+            int bonus = previousRank * bonusPercent / 100;
             trainee.ForceValue += bonus;
             int previousVariable = game.GetEventVariable(CompletionVariableKey);
             game.SetEventVariable(CompletionVariableKey, CompletionVariableValue);
@@ -105,7 +130,6 @@ namespace Rebellion.Game.Missions
                     CurrentValue = CompletionVariableValue,
                     Tick = game.CurrentTick,
                 },
-                BuildCompletedResult(MissionOutcome.Success, game),
             };
         }
     }

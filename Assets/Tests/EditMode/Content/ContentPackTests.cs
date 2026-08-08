@@ -51,6 +51,10 @@ namespace Rebellion.Tests.Content
             GameEvent heritage = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "LUKE_DISCOVERS_HERITAGE"
             );
+            StartScriptedTrainingAction dagobahTraining = pack
+                .GameData.GameEvents.Single(gameEvent => gameEvent.InstanceID == "LUKE_VISITS_YODA")
+                .Actions.OfType<StartScriptedTrainingAction>()
+                .Single();
             NarrativeMessageAction heritageMessage = heritage
                 .Actions.OfType<NarrativeMessageAction>()
                 .Single();
@@ -130,6 +134,9 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.AreEqual(6, heritageMessage.BodySegments.Count);
+            Assert.AreEqual(100, dagobahTraining.DurationTicks);
+            Assert.AreEqual(60, dagobahTraining.CompletionBonusPercent);
+            Assert.AreEqual(2, dagobahTraining.InterruptionProgressDivisor);
             Assert.IsTrue(
                 recurringEncounterEventIds.All(instanceId =>
                     pack.GameData.GameEvents.Single(gameEvent =>

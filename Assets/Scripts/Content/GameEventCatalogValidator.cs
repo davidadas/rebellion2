@@ -473,6 +473,8 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.DurationTicks must be at least 1.");
                     if (training.CompletionBonusPercent < 0)
                         errors.Add($"{actionPath}.CompletionBonusPercent cannot be negative.");
+                    if (training.InterruptionProgressDivisor < 1)
+                        errors.Add($"{actionPath}.InterruptionProgressDivisor must be at least 1.");
                     if (string.IsNullOrWhiteSpace(training.CompletionVariableKey))
                         errors.Add($"{actionPath}.CompletionVariableKey is required.");
                     break;

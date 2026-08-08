@@ -95,6 +95,7 @@ namespace Rebellion.Tests.Game.Missions
                 _student,
                 durationTicks: 100,
                 completionBonusPercent: 60,
+                interruptionProgressDivisor: 2,
                 completionVariableKey: "luke.dagobah.completed",
                 completionVariableValue: 1,
                 displayName: "Journey to Dagobah"
@@ -115,6 +116,35 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
+        }
+
+        [Test]
+        public void ScriptedTrainingMission_Interruption_AppliesElapsedTrainingFormulaAndState()
+        {
+            _student.ForceValue = 41;
+            ScriptedTrainingMission mission = new ScriptedTrainingMission(
+                _student,
+                durationTicks: 100,
+                completionBonusPercent: 60,
+                interruptionProgressDivisor: 2,
+                completionVariableKey: "luke.dagobah.completed",
+                completionVariableValue: 1,
+                displayName: "Journey to Dagobah"
+            );
+            mission.Initiate(100);
+            mission.CurrentProgress = 25;
+
+            List<GameResult> results = mission.ResolveInterruption(
+                _game,
+                new FixedRandomProvider(new[] { 0d })
+            );
+
+            ForceExperienceResult force = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreEqual(41, force.PreviousForceRank);
+            Assert.AreEqual(45, force.CurrentForceRank);
+            Assert.AreEqual(4, force.ExperienceGained);
+            Assert.AreEqual(1, _game.GetEventVariable("luke.dagobah.completed"));
+            Assert.IsFalse(results.OfType<MissionCompletedResult>().Any());
         }
 
         [Test]

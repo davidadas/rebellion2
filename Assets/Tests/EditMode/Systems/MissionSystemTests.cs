@@ -545,6 +545,7 @@ namespace Rebellion.Tests.Systems
                         Trainee = officer,
                         DurationTicks = 2,
                         CompletionBonusPercent = 60,
+                        InterruptionProgressDivisor = 2,
                         CompletionVariableKey = "training.complete",
                         CompletionVariableValue = 1,
                         DisplayName = "Journey to Dagobah",
@@ -567,6 +568,52 @@ namespace Rebellion.Tests.Systems
             Assert.IsTrue(completionResults.OfType<ForceExperienceResult>().Any());
             Assert.IsTrue(completionResults.OfType<MissionCompletedResult>().Any());
             Assert.IsEmpty(game.GetSceneNodesByType<ScriptedTrainingMission>());
+        }
+
+        [Test]
+        public void AbortMission_ScriptedTraining_AppliesElapsedGrowthAndCompletionState()
+        {
+            (GameRoot game, Planet planet, Officer officer, MovementSystem movement) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.IsJedi = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 40;
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+            missions.HandleResults(
+                new[]
+                {
+                    new ScriptedTrainingRequestedResult
+                    {
+                        Trainee = officer,
+                        DurationTicks = 100,
+                        CompletionBonusPercent = 60,
+                        InterruptionProgressDivisor = 2,
+                        CompletionVariableKey = "training.complete",
+                        CompletionVariableValue = 1,
+                        DisplayName = "Journey to Dagobah",
+                    },
+                }
+            );
+            ScriptedTrainingMission mission = game.GetSceneNodesByType<ScriptedTrainingMission>()
+                .Single();
+            officer.Movement = null;
+            mission.CurrentProgress = 20;
+
+            Assert.IsTrue(missions.AbortMission(mission.InstanceID));
+            List<GameResult> results = missions.ProcessTick();
+
+            ForceExperienceResult force = results.OfType<ForceExperienceResult>().Single();
+            Assert.AreEqual(40, force.PreviousForceRank);
+            Assert.AreEqual(44, force.CurrentForceRank);
+            Assert.AreEqual(1, game.GetEventVariable("training.complete"));
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsNull(mission.GetParent());
+            Assert.AreEqual(mission.InstanceID, force.MissionInstanceID);
         }
 
         [Test]
