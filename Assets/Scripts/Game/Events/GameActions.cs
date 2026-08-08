@@ -248,4 +248,41 @@ namespace Rebellion.Game.Events
             };
         }
     }
+
+    /// <summary>
+    /// Requests authoritative movement for one movable scene node.
+    /// </summary>
+    [PersistableObject(Name = "RequestMovement")]
+    public class RequestMovementAction : GameAction
+    {
+        public string UnitInstanceID { get; set; }
+        public string DestinationInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            IMovable unit = game.GetSceneNodeByInstanceID<IMovable>(UnitInstanceID);
+            ContainerNode destination = game.GetSceneNodeByInstanceID<ContainerNode>(
+                DestinationInstanceID
+            );
+            if (unit == null)
+                throw new InvalidOperationException(
+                    $"RequestMovement could not resolve movable unit '{UnitInstanceID}'."
+                );
+            if (destination == null)
+                throw new InvalidOperationException(
+                    $"RequestMovement could not resolve destination '{DestinationInstanceID}'."
+                );
+
+            return new List<GameResult>
+            {
+                new UnitMovementRequestedResult
+                {
+                    Unit = unit,
+                    Destination = destination,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
 }

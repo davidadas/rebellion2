@@ -176,5 +176,27 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(3, game.GetEventVariable("luke.stage"));
             Assert.AreEqual(0, game.GetEventVariable("wrong"));
         }
+
+        [Test]
+        public void RequestMovement_ValidReferences_EmitsAuthoritativeRequest()
+        {
+            GameRoot game = BuildGame(out Planet destination, out Planet origin);
+            Officer officer = EntityFactory.CreateOfficer("traveler", "rebels");
+            game.AttachNode(officer, origin);
+            RequestMovementAction action = new RequestMovementAction
+            {
+                UnitInstanceID = officer.InstanceID,
+                DestinationInstanceID = destination.InstanceID,
+            };
+
+            UnitMovementRequestedResult result = action
+                .Execute(game)
+                .OfType<UnitMovementRequestedResult>()
+                .Single();
+
+            Assert.AreSame(officer, result.Unit);
+            Assert.AreSame(destination, result.Destination);
+            Assert.AreSame(origin, officer.GetParent());
+        }
     }
 }

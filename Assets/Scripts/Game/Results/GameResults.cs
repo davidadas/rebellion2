@@ -534,6 +534,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A data-defined event requested movement through the authoritative movement system.
+    /// </summary>
+    public class UnitMovementRequestedResult : GameResult
+    {
+        public IMovable Unit { get; set; }
+        public ContainerNode Destination { get; set; }
+    }
+
+    /// <summary>
     /// Han Solo was attacked by a bounty hunter.
     /// </summary>
     public class BountyAttackResult : GameResult

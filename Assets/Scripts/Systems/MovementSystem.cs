@@ -20,7 +20,9 @@ namespace Rebellion.Systems
     /// The only system that calls game.MoveNode() for movement purposes.
     /// Other systems request movement via RequestMove() — never call MoveNode() directly.
     /// </summary>
-    public class MovementSystem : IGameResultHandler<BlockadeChangedResult>
+    public class MovementSystem
+        : IGameResultHandler<BlockadeChangedResult>,
+            IGameResultHandler<UnitMovementRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -112,6 +114,25 @@ namespace Rebellion.Systems
             }
 
             return reactions;
+        }
+
+        /// <summary>
+        /// Routes data-defined event movement through the same validation and transit path as UI and AI orders.
+        /// </summary>
+        List<GameResult> IGameResultHandler<UnitMovementRequestedResult>.HandleResults(
+            IReadOnlyList<UnitMovementRequestedResult> results
+        )
+        {
+            if (results == null)
+                return new List<GameResult>();
+
+            foreach (UnitMovementRequestedResult result in results)
+            {
+                if (result?.Unit != null && result.Destination != null)
+                    RequestMove(result.Unit, result.Destination);
+            }
+
+            return new List<GameResult>();
         }
 
         /// <summary>

@@ -124,6 +124,12 @@ public static class GameEventCatalogValidator
                 case EventVariableConditional variable when string.IsNullOrWhiteSpace(variable.Key):
                     errors.Add($"{conditionPath}.Key is required.");
                     break;
+                case IsAtLocationConditional atLocation:
+                    if (string.IsNullOrWhiteSpace(atLocation.UnitInstanceID))
+                        errors.Add($"{conditionPath}.UnitInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(atLocation.LocationInstanceID))
+                        errors.Add($"{conditionPath}.LocationInstanceID is required.");
+                    break;
                 case AndConditional and:
                     ValidateComposite(and.Conditionals, conditionPath, 1, errors);
                     break;
@@ -220,6 +226,12 @@ public static class GameEventCatalogValidator
                     break;
                 case SetEventVariableAction variable when string.IsNullOrWhiteSpace(variable.Key):
                     errors.Add($"{actionPath}.Key is required.");
+                    break;
+                case RequestMovementAction movement:
+                    if (string.IsNullOrWhiteSpace(movement.UnitInstanceID))
+                        errors.Add($"{actionPath}.UnitInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(movement.DestinationInstanceID))
+                        errors.Add($"{actionPath}.DestinationInstanceID is required.");
                     break;
                 case TriggerEventAction trigger
                     when string.IsNullOrWhiteSpace(trigger.EventInstanceID):

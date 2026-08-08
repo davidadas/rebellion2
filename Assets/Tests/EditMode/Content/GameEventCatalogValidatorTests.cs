@@ -119,6 +119,22 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("triggers unknown event 'MISSING'", exception.Message);
         }
 
+        [Test]
+        public void Validate_MovementAndLocationWithoutReferences_ReportsAllMissingIds()
+        {
+            GameEvent gameEvent = CreateEvent("TRAVEL");
+            gameEvent.Conditionals.Add(new IsAtLocationConditional());
+            gameEvent.Actions.Add(new RequestMovementAction());
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("UnitInstanceID is required", exception.Message);
+            StringAssert.Contains("LocationInstanceID is required", exception.Message);
+            StringAssert.Contains("DestinationInstanceID is required", exception.Message);
+        }
+
         private static GameEvent CreateEvent(string instanceId)
         {
             return new GameEvent

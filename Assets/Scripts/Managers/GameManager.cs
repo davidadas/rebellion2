@@ -364,6 +364,7 @@ public sealed class GameManager
     {
         _resultProcessor = new GameResultProcessor();
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
+        _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);

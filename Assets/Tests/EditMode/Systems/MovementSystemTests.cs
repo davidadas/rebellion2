@@ -135,6 +135,24 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleMovementRequest_RoutesThroughAuthoritativeMovePath()
+        {
+            (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
+                BuildScene();
+            IGameResultHandler<UnitMovementRequestedResult> handler = movement;
+
+            handler.HandleResults(
+                new[]
+                {
+                    new UnitMovementRequestedResult { Unit = officer, Destination = destination },
+                }
+            );
+
+            Assert.AreEqual(destination, officer.GetParent());
+            Assert.IsNotNull(officer.Movement);
+        }
+
+        [Test]
         public void RequestMove_ValidDestination_UnitIsNoLongerAtOrigin()
         {
             (

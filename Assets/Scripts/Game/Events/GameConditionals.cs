@@ -357,4 +357,28 @@ namespace Rebellion.Game.Events
             };
         }
     }
+
+    /// <summary>
+    /// Tests whether a scene node is contained by a specific location node.
+    /// </summary>
+    [PersistableObject(Name = "IsAtLocation")]
+    public class IsAtLocationConditional : GameConditional
+    {
+        public string UnitInstanceID { get; set; }
+        public string LocationInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            ISceneNode location = game.GetSceneNodeByInstanceID<ISceneNode>(LocationInstanceID);
+            for (ISceneNode current = unit; current != null; current = current.GetParent())
+            {
+                if (current == location)
+                    return true;
+            }
+
+            return false;
+        }
+    }
 }
