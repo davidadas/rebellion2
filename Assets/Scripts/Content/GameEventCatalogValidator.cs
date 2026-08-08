@@ -148,6 +148,14 @@ public static class GameEventCatalogValidator
                     if (string.IsNullOrWhiteSpace(encounter.OpposingOfficerInstanceID))
                         errors.Add($"{conditionPath}.OpposingOfficerInstanceID is required.");
                     break;
+                case OfficerStateConditional officerState
+                    when string.IsNullOrWhiteSpace(officerState.OfficerInstanceID):
+                    errors.Add($"{conditionPath}.OfficerInstanceID is required.");
+                    break;
+                case OfficerForceRankConditional forceRank
+                    when string.IsNullOrWhiteSpace(forceRank.OfficerInstanceID):
+                    errors.Add($"{conditionPath}.OfficerInstanceID is required.");
+                    break;
                 case AndConditional and:
                     ValidateComposite(and.Conditionals, conditionPath, 1, errors);
                     break;

@@ -20,6 +20,14 @@ namespace Rebellion.Game.Events
         LessThanOrEqual,
     }
 
+    public enum OfficerStateKind
+    {
+        Available,
+        Captured,
+        Killed,
+        ForceEligible,
+    }
+
     /// <summary>
     /// A <see cref="GameConditional"/> that is met when all child conditions are met.
     /// </summary>
@@ -156,6 +164,9 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameRoot game)
         {
             List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(UnitInstanceIDs);
+            if (sceneNodes.Count != UnitInstanceIDs.Count)
+                return false;
+
             Planet comparator = null;
 
             // Check if all units are on the same planet.
@@ -175,7 +186,7 @@ namespace Rebellion.Game.Events
                 }
             }
 
-            return true;
+            return comparator != null;
         }
     }
 
@@ -428,6 +439,68 @@ namespace Rebellion.Game.Events
             return triggerResult is OfficerEncounterResult encounter
                 && encounter.EncounteredOfficer?.InstanceID == EncounteredOfficerInstanceID
                 && encounter.OpposingOfficer?.InstanceID == OpposingOfficerInstanceID;
+        }
+    }
+
+    /// <summary>
+    /// Tests a data-selected runtime state on one officer.
+    /// </summary>
+    [PersistableObject(Name = "OfficerState")]
+    public class OfficerStateConditional : GameConditional
+    {
+        public string OfficerInstanceID { get; set; }
+        public OfficerStateKind State { get; set; }
+        public bool Expected { get; set; } = true;
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                return false;
+
+            bool current = State switch
+            {
+                OfficerStateKind.Available => !officer.IsKilled && !officer.IsCaptured,
+                OfficerStateKind.Captured => officer.IsCaptured,
+                OfficerStateKind.Killed => officer.IsKilled,
+                OfficerStateKind.ForceEligible => officer.IsForceEligible,
+                _ => throw new InvalidOperationException($"Unsupported officer state '{State}'."),
+            };
+            return current == Expected;
+        }
+    }
+
+    /// <summary>
+    /// Compares one officer's effective Force rank with an authored threshold.
+    /// </summary>
+    [PersistableObject(Name = "OfficerForceRank")]
+    public class OfficerForceRankConditional : GameConditional
+    {
+        public string OfficerInstanceID { get; set; }
+        public EventVariableComparison Comparison { get; set; }
+        public int Value { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                return false;
+
+            int current = officer.ForceRank;
+            return Comparison switch
+            {
+                EventVariableComparison.Equal => current == Value,
+                EventVariableComparison.NotEqual => current != Value,
+                EventVariableComparison.GreaterThan => current > Value,
+                EventVariableComparison.GreaterThanOrEqual => current >= Value,
+                EventVariableComparison.LessThan => current < Value,
+                EventVariableComparison.LessThanOrEqual => current <= Value,
+                _ => throw new InvalidOperationException(
+                    $"Unsupported Force-rank comparison '{Comparison}'."
+                ),
+            };
         }
     }
 }

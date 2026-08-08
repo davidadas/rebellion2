@@ -483,6 +483,25 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ProcessTick_DormantOfficerWithStoryGrowth_PreservesHigherForceValue()
+        {
+            Officer luke = CreateJediTrainer("LUKE", forceValue: 120);
+            luke.IsDiscoveringForceUser = true;
+            Officer leia = CreateDormantJedi("LEIA");
+            leia.ForceValue = 25;
+            _system = new JediSystem(_game, new FixedRNG(0.0));
+
+            ForceExperienceResult result = _system
+                .ProcessTick()
+                .OfType<ForceExperienceResult>()
+                .Single(r => r.Officer == leia);
+
+            Assert.IsTrue(leia.IsForceEligible);
+            Assert.AreEqual(25, leia.ForceValue);
+            Assert.Zero(result.ExperienceGained);
+        }
+
+        [Test]
         public void ApplyForceGrowth_EligibleOfficer_GrowsForce()
         {
             Officer luke = new Officer

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -237,15 +238,16 @@ namespace Rebellion.Systems
         {
             int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
-            candidate.ForceValue =
+            int revealedForceValue =
                 candidate.JediLevel + _provider.NextInt(0, candidate.JediLevelVariance + 1);
+            candidate.ForceValue = Math.Max(candidate.ForceValue, revealedForceValue);
             int currentForceRank = candidate.ForceRank;
 
             results.Add(
                 new ForceExperienceResult
                 {
                     Officer = candidate,
-                    ExperienceGained = candidate.ForceValue,
+                    ExperienceGained = Math.Max(0, currentForceRank - previousForceRank),
                     PreviousForceRank = previousForceRank,
                     CurrentForceRank = currentForceRank,
                     Tick = _game.CurrentTick,
