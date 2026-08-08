@@ -121,6 +121,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             GalaxyMapRenderData data = new GalaxyMapRenderData(
                 _firstTexture,
                 bounds,
+                Color.gray,
                 label,
                 clusters
             );
@@ -128,6 +129,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 
             Assert.AreSame(_firstTexture, data.BackgroundTexture);
             Assert.AreEqual(bounds, data.BackgroundBounds);
+            Assert.AreEqual(Color.gray, data.BackgroundColor);
             Assert.AreEqual("Filter", data.ActiveFilterLabel.Text);
             Assert.AreSame(cluster, data.Clusters[0]);
             Assert.Throws<NotSupportedException>(() =>
@@ -138,7 +140,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         [Test]
         public void Map_NullClusters_ReturnsEmptySnapshot()
         {
-            GalaxyMapRenderData data = new GalaxyMapRenderData(null, null, default, null);
+            GalaxyMapRenderData data = new GalaxyMapRenderData(
+                null,
+                null,
+                Color.white,
+                default,
+                null
+            );
 
             Assert.IsNull(data.BackgroundTexture);
             Assert.IsNull(data.BackgroundBounds);

@@ -113,6 +113,45 @@ public sealed class StrategyHudController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Cancels current protocol-advisor playback and replaces it with one resolved animation.
+    /// </summary>
+    /// <param name="animation">The resolved animation presentation.</param>
+    /// <param name="started">Invoked when playback starts after its configured delay.</param>
+    /// <param name="completed">Invoked after playback completes.</param>
+    public void ReplaceAdvisorAnimation(
+        StrategyAdvisorAnimationViewData animation,
+        Action started,
+        Action completed
+    )
+    {
+        advisorController.ReplaceAnimation(animation, started, completed);
+    }
+
+    /// <summary>
+    /// Cancels active advisor animation without invoking its completion callback.
+    /// </summary>
+    public void CancelAdvisorAnimation()
+    {
+        advisorController.CancelAnimation();
+    }
+
+    /// <summary>
+    /// Pauses the active advisor animation.
+    /// </summary>
+    public void PauseAdvisorAnimation()
+    {
+        advisorController.PauseAnimation();
+    }
+
+    /// <summary>
+    /// Resumes the active advisor animation.
+    /// </summary>
+    public void ResumeAdvisorAnimation()
+    {
+        advisorController.ResumeAnimation();
+    }
+
+    /// <summary>
     /// Clears advisor activity associated with a replaced game session.
     /// </summary>
     public void ResetSession()

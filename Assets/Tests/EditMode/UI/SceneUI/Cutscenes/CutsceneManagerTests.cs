@@ -18,6 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private CutsceneManager _manager;
         private GameObject _managerObject;
         private GameObject _playerPrefab;
+        private AudioManager _audioManager;
 
         [SetUp]
         public void SetUp()
@@ -26,6 +27,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             _managerObject = new GameObject("CutsceneManager");
             _manager = _managerObject.AddComponent<CutsceneManager>();
             _manager.Initialize(_playerPrefab);
+            _audioManager = _managerObject.AddComponent<AudioManager>();
+            _manager.InitializeAudio(_audioManager);
             _clip = AssetDatabase.LoadAssetAtPath<VideoClip>(_clipPath);
         }
 
@@ -79,6 +82,18 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsNotNull(player);
             Assert.AreEqual(0f, Time.timeScale);
             Assert.AreSame(_clip, player.GetComponent<VideoPlayer>().clip);
+        }
+
+        [Test]
+        public void Play_ValidClip_AppliesMasterScaledVideoVolume()
+        {
+            _audioManager.SetMasterVolume(0.5f);
+            _audioManager.SetVideoVolume(0.25f);
+
+            _manager.Play(_clip, null);
+            CutscenePlayer player = GetField<CutscenePlayer>("activePlayer");
+
+            Assert.AreEqual(0.125f, player.GetComponent<AudioSource>().volume);
         }
 
         [Test]

@@ -8,13 +8,147 @@ using Rebellion.Util.Serialization;
 [PersistableObject]
 public class StrategyAdvisorAnimationTheme
 {
-    public int BitmapID { get; set; }
+    public string Animation { get; set; }
 
     public int FrameCount { get; set; }
 
-    public int WaveID { get; set; }
+    public string Audio { get; set; }
+
+    public float DelayBeforeSeconds { get; set; }
 
     public bool RequiresAnnouncementsEnabled { get; set; }
+}
+
+/// <summary>
+/// Defines one ordered briefing segment and its galaxy-map presentation.
+/// </summary>
+[PersistableObject(Name = "Segment")]
+public class StrategyBriefingSegmentTheme
+{
+    public string Animation { get; set; }
+
+    public int FrameCount { get; set; }
+
+    public string Audio { get; set; }
+
+    public float DelayBeforeSeconds { get; set; }
+
+    public StrategyBriefingFocus Focus { get; set; }
+
+    public StrategyBriefingMapMode MapMode { get; set; }
+
+    public string TargetInstanceID { get; set; }
+
+    public string Label { get; set; }
+}
+
+/// <summary>
+/// Identifies the game object or galaxy region emphasized during a briefing segment.
+/// </summary>
+public enum StrategyBriefingFocus
+{
+    None,
+    Galaxy,
+    Target,
+    PlayerHeadquarters,
+    OpponentHeadquarters,
+}
+
+/// <summary>
+/// Identifies the galaxy-map presentation shown while one briefing segment plays.
+/// </summary>
+public enum StrategyBriefingMapMode
+{
+    Default,
+    PopularSupport,
+    PlayerLoyalty,
+    OpponentLoyalty,
+    MilitaryControl,
+    UnexploredSystems,
+    IdleFleets,
+    AllDefenses,
+    Spotlight,
+}
+
+/// <summary>
+/// Defines a faction's ordered new-game briefing using externally supplied advisor media.
+/// </summary>
+[PersistableObject]
+public class StrategyBriefingTheme
+{
+    private const int _texturesPerFrame = 64;
+
+    public string AnimationImageRoot { get; set; }
+
+    public string AudioRoot { get; set; }
+
+    public List<StrategyBriefingSegmentTheme> Segments { get; set; } =
+        new List<StrategyBriefingSegmentTheme>();
+
+    public StrategyBriefingSegmentTheme Skip { get; set; }
+
+    /// <summary>
+    /// Builds the active faction's briefing preload manifest so playback never performs disk
+    /// decoding between spoken segments.
+    /// </summary>
+    /// <returns>The textures and audio required by the complete briefing.</returns>
+    public ContentPreloadManifest CreatePreloadManifest()
+    {
+        ContentPreloadManifest manifest = new ContentPreloadManifest
+        {
+            TexturesPerFrame = _texturesPerFrame,
+        };
+        HashSet<string> animations = new HashSet<string>();
+        HashSet<string> audioNames = new HashSet<string>();
+        for (int i = 0; i < Segments.Count; i++)
+            AddPreloadAssets(Segments[i], animations, audioNames, manifest);
+        AddPreloadAssets(Skip, animations, audioNames, manifest);
+        return manifest;
+    }
+
+    /// <summary>
+    /// Builds the content address for one briefing animation frame.
+    /// </summary>
+    /// <param name="animation">The configured animation name.</param>
+    /// <param name="frameIndex">The zero-based frame index.</param>
+    /// <returns>The external content address for the frame.</returns>
+    public string GetFramePath(string animation, int frameIndex)
+    {
+        return $"{AnimationImageRoot}/{animation}/frame-{frameIndex:D3}";
+    }
+
+    /// <summary>
+    /// Builds the content address for one briefing voice clip.
+    /// </summary>
+    /// <param name="audio">The configured audio name.</param>
+    /// <returns>The external content address for the voice clip.</returns>
+    public string GetAudioPath(string audio)
+    {
+        return $"{AudioRoot}/{audio}";
+    }
+
+    /// <summary>
+    /// Adds one segment's distinct animation directory and voice clip to a preload manifest.
+    /// </summary>
+    /// <param name="segment">The configured briefing segment.</param>
+    /// <param name="animations">The animation names already added.</param>
+    /// <param name="audioNames">The audio names already added.</param>
+    /// <param name="manifest">The manifest receiving distinct content addresses.</param>
+    private void AddPreloadAssets(
+        StrategyBriefingSegmentTheme segment,
+        ISet<string> animations,
+        ISet<string> audioNames,
+        ContentPreloadManifest manifest
+    )
+    {
+        if (segment == null)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(segment.Animation) && animations.Add(segment.Animation))
+            manifest.TextureDirectories.Add($"{AnimationImageRoot}/{segment.Animation}");
+        if (!string.IsNullOrWhiteSpace(segment.Audio) && audioNames.Add(segment.Audio))
+            manifest.Audio.Add(GetAudioPath(segment.Audio));
+    }
 }
 
 /// <summary>
@@ -86,15 +220,11 @@ public class StrategyAdvisorTheme
 
     public string AnimationImageRoot { get; set; }
 
-    public string AnimationFilePrefix { get; set; }
-
     public string AudioRoot { get; set; }
 
-    public string AudioFilePrefix { get; set; }
+    public string ProtocolIdleAnimation { get; set; }
 
-    public int ProtocolIdleBitmapID { get; set; }
-
-    public int DroidIdleBitmapID { get; set; }
+    public string DroidIdleAnimation { get; set; }
 
     public float FrameIntervalSeconds { get; set; }
 
@@ -170,24 +300,23 @@ public class StrategyAdvisorTheme
     /// <summary>
     /// Builds the resource path for an advisor animation frame.
     /// </summary>
-    /// <param name="bitmapID">The animation bitmap identifier.</param>
+    /// <param name="animation">The configured animation name.</param>
     /// <param name="frameIndex">The zero-based frame index.</param>
     /// <param name="droid">Whether the frame belongs to the droid advisor.</param>
     /// <returns>The animation frame resource path.</returns>
-    public string GetFramePath(int bitmapID, int frameIndex, bool droid)
+    public string GetFramePath(string animation, int frameIndex, bool droid)
     {
-        string roleDirectory = droid ? "Droid" : "Protocol";
-        string roleName = droid ? "droid" : "protocol";
-        return $"{AnimationImageRoot}/{roleDirectory}/{bitmapID}/{AnimationFilePrefix}-{roleName}-{bitmapID}-frame-{frameIndex:D3}";
+        string roleDirectory = droid ? "Alert" : "Report";
+        return $"{AnimationImageRoot}/{roleDirectory}/{animation}/frame-{frameIndex:D3}";
     }
 
     /// <summary>
     /// Builds the resource path for an advisor audio clip.
     /// </summary>
-    /// <param name="waveID">The audio wave identifier.</param>
+    /// <param name="audio">The configured audio name.</param>
     /// <returns>The advisor audio resource path.</returns>
-    public string GetAudioPath(int waveID)
+    public string GetAudioPath(string audio)
     {
-        return $"{AudioRoot}/{AudioFilePrefix}-{waveID:D4}";
+        return $"{AudioRoot}/{audio}";
     }
 }

@@ -23,6 +23,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     private IStrategyHudActions actions;
     private StrategyAdvisorTheme theme;
     private StrategyAdvisorView view;
+    private Action playbackCompleted;
+    private Action playbackStarted;
 
     /// <summary>
     /// Creates an advisor controller with faction, texture, and audio dependencies.
@@ -70,6 +72,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         view.DroidClicked += HandleDroidClicked;
         view.DroidContextRequested += HandleDroidContextRequested;
         view.PlaybackStarted += HandlePlaybackStarted;
+        view.PlaybackCompleted += HandlePlaybackCompleted;
         view.ProtocolContextRequested += HandleProtocolContextRequested;
         view.Render(CreateViewData(theme));
     }
@@ -203,6 +206,71 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     /// <summary>
+    /// Cancels current protocol-advisor playback and replaces it with one resolved animation.
+    /// </summary>
+    /// <param name="animation">The resolved animation presentation.</param>
+    /// <param name="started">Invoked when playback starts after its configured delay.</param>
+    /// <param name="completed">Invoked after playback completes.</param>
+    public void ReplaceAnimation(
+        StrategyAdvisorAnimationViewData animation,
+        Action started,
+        Action completed
+    )
+    {
+        StrategyAdvisorView targetView = GetRequiredView();
+        playbackStarted = null;
+        playbackCompleted = null;
+        targetView.CancelPlayback();
+
+        if (animation == null || animation.Frames.Count == 0)
+        {
+            completed?.Invoke();
+            return;
+        }
+
+        playbackStarted = started;
+        playbackCompleted = completed;
+        targetView.EnqueuePlaybacks(new[] { animation });
+    }
+
+    /// <summary>
+    /// Cancels the active advisor animation without invoking its completion callback.
+    /// </summary>
+    public void CancelAnimation()
+    {
+        playbackStarted = null;
+        playbackCompleted = null;
+        GetRequiredView().CancelPlayback();
+    }
+
+    /// <summary>
+    /// Pauses the active advisor animation without discarding its position.
+    /// </summary>
+    public void PauseAnimation()
+    {
+        GetRequiredView().PausePlayback();
+    }
+
+    /// <summary>
+    /// Resumes the active advisor animation from its paused position.
+    /// </summary>
+    public void ResumeAnimation()
+    {
+        GetRequiredView().ResumePlayback();
+    }
+
+    /// <summary>
+    /// Invokes and clears the callback associated with completed generic playback.
+    /// </summary>
+    private void HandlePlaybackCompleted()
+    {
+        playbackStarted = null;
+        Action completed = playbackCompleted;
+        playbackCompleted = null;
+        completed?.Invoke();
+    }
+
+    /// <summary>
     /// Clears pending and active advisor presentation from a replaced game session.
     /// </summary>
     public void ResetSession()
@@ -210,6 +278,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         pendingNotifications.Clear();
         pendingExpirationTicks.Clear();
         nextAllowedTicks.Clear();
+        playbackStarted = null;
+        playbackCompleted = null;
         view?.ResetPlayback();
     }
 
@@ -459,8 +529,8 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
 
         return new StrategyAdvisorViewData(
             true,
-            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.ProtocolIdleBitmapID, 0, false)),
-            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.DroidIdleBitmapID, 0, true)),
+            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.ProtocolIdleAnimation, 0, false)),
+            ResolveTexture(advisorTheme.GetFramePath(advisorTheme.DroidIdleAnimation, 0, true)),
             ToRect(advisorTheme.ProtocolSourceLayout),
             ToRect(advisorTheme.DroidSourceLayout),
             advisorTheme.FrameIntervalSeconds
@@ -512,7 +582,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         for (int frameIndex = 0; frameIndex < animation.FrameCount; frameIndex++)
         {
             frames[frameIndex] = ResolveTexture(
-                theme.GetFramePath(animation.BitmapID, frameIndex, usesDroid)
+                theme.GetFramePath(animation.Animation, frameIndex, usesDroid)
             );
             ready &= frames[frameIndex] != null;
         }
@@ -524,7 +594,9 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
             new StrategyAdvisorAnimationViewData(
                 frames,
                 usesDroid,
-                animation.WaveID == 0 ? null : theme.GetAudioPath(animation.WaveID)
+                string.IsNullOrWhiteSpace(animation.Audio)
+                    ? null
+                    : theme.GetAudioPath(animation.Audio)
             )
         );
         return true;
@@ -559,6 +631,10 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <param name="animation">The animation that began playback.</param>
     private void HandlePlaybackStarted(StrategyAdvisorAnimationViewData animation)
     {
+        Action started = playbackStarted;
+        playbackStarted = null;
+        started?.Invoke();
+
         if (!string.IsNullOrEmpty(animation?.AudioPath))
             playSfx(animation.AudioPath);
     }
@@ -742,6 +818,7 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
         view.Destroyed -= HandleViewDestroyed;
         view.DroidClicked -= HandleDroidClicked;
         view.DroidContextRequested -= HandleDroidContextRequested;
+        view.PlaybackCompleted -= HandlePlaybackCompleted;
         view.PlaybackStarted -= HandlePlaybackStarted;
         view.ProtocolContextRequested -= HandleProtocolContextRequested;
         view = null;

@@ -27,6 +27,7 @@ public sealed class SceneLoader : MonoBehaviour
         if (_loadCoroutine != null)
             return;
 
+        AudioManager.Instance?.StopSfx();
         _loadCoroutine = StartCoroutine(LoadScene(sceneName));
     }
 

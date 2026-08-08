@@ -71,6 +71,14 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
+        public void SetVolume_ValueOutsideRange_ClampsAudioSourceVolume()
+        {
+            _player.SetVolume(2f);
+
+            Assert.AreEqual(1f, _audioSource.volume);
+        }
+
+        [Test]
         public void ConfigureUrlPlayback_ValidUrl_ConfiguresUrlVideoSource()
         {
             const string videoUrl = "file:///tmp/cutscene.mp4";

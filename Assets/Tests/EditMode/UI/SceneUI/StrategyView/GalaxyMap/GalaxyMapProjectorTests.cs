@@ -236,6 +236,169 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void Project_OpponentLoyaltyBriefing_HighlightsOnlyOpponentAndUsesCueLabel()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
+            Planet playerPlanet = CreatePlanet("player", _playerFactionId, 1, 2);
+            Planet opposingPlanet = CreatePlanet("opposing", _opposingFactionId, 3, 4);
+            playerPlanet.SetFullPopularSupport(_playerFactionId);
+            opposingPlanet.SetFullPopularSupport(_opposingFactionId);
+            GalaxyMapSector sector = CreateSector(system, playerPlanet, opposingPlanet);
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+            FactionTheme opposingTheme = _uiContext.GetTheme(_opposingFactionId);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.OpponentLoyalty,
+                "Systems Loyal to the Empire",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreEqual("Systems Loyal to the Empire", data.ActiveFilterLabel.Text);
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(opposingTheme.GalaxyBackground.PlanetIcons.XL),
+                data.Clusters[0].Stars[1].StarTexture
+            );
+        }
+
+        [Test]
+        public void Project_UnexploredSystemsBriefing_UsesBlueHighlightForUnexploredPlanets()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Outer Rim", 0, 0);
+            Planet exploredPlanet = CreatePlanet("explored", _playerFactionId, 1, 2);
+            Planet unexploredPlanet = CreatePlanet("unexplored", null, 3, 4);
+            unexploredPlanet.IsUnexploredView = true;
+            GalaxyMapSector sector = CreateSector(system, exploredPlanet, unexploredPlanet);
+            FactionTheme playerTheme = _uiContext.GetPlayerFactionTheme();
+            FactionTheme defaultTheme = _uiContext.GetTheme(null);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.UnexploredSystems,
+                "Unexplored Systems",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(playerTheme.GalaxyBackground.PlanetIcons.Small),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(defaultTheme.GalaxyBackground.PlanetIcons.XL),
+                data.Clusters[0].Stars[1].StarTexture
+            );
+        }
+
+        [Test]
+        public void Project_DimmedBriefing_DimsOnlyGalaxyBackground()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
+            Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
+            GalaxyMapSector sector = CreateSector(system, planet);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.Default,
+                null,
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId,
+                true
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreEqual(new Color(0.5f, 0.5f, 0.5f, 1f), data.BackgroundColor);
+            Assert.IsNotNull(data.Clusters[0].Stars[0].StarTexture);
+        }
+
+        [Test]
+        public void Project_TargetBriefing_RevealsTargetSystemAndOverridesLabel()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
+            Planet targetPlanet = CreatePlanet("planet", _playerFactionId, 1, 2);
+            GalaxyMapSector sector = CreateSector(system, targetPlanet);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.Spotlight,
+                "Mon Mothma",
+                system.InstanceID,
+                targetPlanet.InstanceID,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            GalaxyMapRenderData data = _projector.Project(
+                new[] { sector },
+                _playerFactionId,
+                GalacticInformationFilterMode.DisplayOff,
+                null,
+                briefing
+            );
+
+            Assert.AreEqual("Mon Mothma", data.ActiveFilterLabel.Text);
+            Assert.IsTrue(data.Clusters[0].ShowLabel);
+            Assert.AreSame(
+                _uiContext.GetTexture(
+                    _uiContext.GetPlayerFactionTheme().GalaxyBackground.PlanetIcons.XL
+                ),
+                data.Clusters[0].Stars[0].StarTexture
+            );
+        }
+
+        [Test]
+        public void Project_UnsupportedBriefingMode_ThrowsArgumentOutOfRangeException()
+        {
+            GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
+            Planet planet = CreatePlanet("planet", _playerFactionId, 1, 2);
+            GalaxyMapSector sector = CreateSector(system, planet);
+            StrategyBriefingMapPresentation briefing = new StrategyBriefingMapPresentation(
+                (StrategyBriefingMapMode)int.MaxValue,
+                "Invalid",
+                null,
+                null,
+                _playerFactionId,
+                _opposingFactionId
+            );
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                _projector.Project(
+                    new[] { sector },
+                    _playerFactionId,
+                    GalacticInformationFilterMode.DisplayOff,
+                    null,
+                    briefing
+                )
+            );
+        }
+
+        [Test]
         public void Project_MixedFactionFleets_ReturnsMixedMarker()
         {
             GamePlanetSystem system = CreateSystem("system", "Corellia", 0, 0);
@@ -375,11 +538,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             };
         }
 
-        private static GalaxyMapSector CreateSector(GamePlanetSystem system, Planet planet)
+        private static GalaxyMapSector CreateSector(
+            GamePlanetSystem system,
+            params Planet[] planets
+        )
         {
             return new GalaxyMapSector(
                 system,
-                new[] { new GalaxyMapPlanet(system, planet, string.Empty) }
+                planets
+                    .Select(planet => new GalaxyMapPlanet(system, planet, string.Empty))
+                    .ToArray()
             );
         }
 

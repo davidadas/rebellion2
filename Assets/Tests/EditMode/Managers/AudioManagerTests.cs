@@ -30,10 +30,12 @@ public sealed class AudioManagerTests
         Assert.AreEqual(1f, manager.MusicVolume);
         Assert.AreEqual(1f, manager.SfxVolume);
         Assert.AreEqual(1f, manager.AmbienceVolume);
+        Assert.AreEqual(1f, manager.VideoVolume);
         Assert.DoesNotThrow(() => manager.SetMasterVolume(0.75f));
         Assert.DoesNotThrow(() => manager.SetMusicVolume(0.25f));
         Assert.DoesNotThrow(() => manager.SetSfxVolume(0.5f));
         Assert.DoesNotThrow(() => manager.SetAmbienceVolume(0.625f));
+        Assert.DoesNotThrow(() => manager.SetVideoVolume(0.875f));
     }
 
     [Test]
@@ -46,6 +48,7 @@ public sealed class AudioManagerTests
             MusicVolume = 0.25f,
             SfxVolume = 0.5f,
             AmbienceVolume = 0.625f,
+            VideoVolume = 0.875f,
         };
 
         manager.ApplySettings(settings);
@@ -55,6 +58,8 @@ public sealed class AudioManagerTests
         Assert.AreEqual(0.25f, snapshot.MusicVolume);
         Assert.AreEqual(0.5f, snapshot.SfxVolume);
         Assert.AreEqual(0.625f, snapshot.AmbienceVolume);
+        Assert.AreEqual(0.875f, snapshot.VideoVolume);
+        Assert.AreEqual(0.65625f, manager.EffectiveVideoVolume);
     }
 
     [Test]
@@ -69,6 +74,7 @@ public sealed class AudioManagerTests
         Assert.AreEqual(1f, manager.MusicVolume);
         Assert.AreEqual(1f, manager.SfxVolume);
         Assert.AreEqual(1f, manager.AmbienceVolume);
+        Assert.AreEqual(1f, manager.VideoVolume);
     }
 
     [Test]
@@ -80,12 +86,14 @@ public sealed class AudioManagerTests
         manager.SetMusicVolume(2f);
         manager.SetSfxVolume(-0.5f);
         manager.SetAmbienceVolume(1.5f);
+        manager.SetVideoVolume(2f);
         UserAudioSettings snapshot = manager.CreateSettingsSnapshot();
 
         Assert.AreEqual(0f, snapshot.MasterVolume);
         Assert.AreEqual(1f, snapshot.MusicVolume);
         Assert.AreEqual(0f, snapshot.SfxVolume);
         Assert.AreEqual(1f, snapshot.AmbienceVolume);
+        Assert.AreEqual(1f, snapshot.VideoVolume);
     }
 
     [Test]

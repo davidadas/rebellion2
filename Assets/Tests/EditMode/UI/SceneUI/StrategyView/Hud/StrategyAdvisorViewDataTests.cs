@@ -42,12 +42,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             StrategyAdvisorAnimationViewData data = new StrategyAdvisorAnimationViewData(
                 null,
                 true,
-                "Audio/Advisor"
+                "Audio/Advisor",
+                -1f,
+                -2f
             );
 
             Assert.IsEmpty(data.Frames);
             Assert.IsTrue(data.UsesDroid);
             Assert.AreEqual("Audio/Advisor", data.AudioPath);
+            Assert.AreEqual(0f, data.DelayBeforeSeconds);
+            Assert.AreEqual(0f, data.MinimumPlaybackSeconds);
         }
 
         [Test]

@@ -26,6 +26,8 @@ public class FactionTheme
 
     public StrategyAdvisorTheme StrategyAdvisor { get; set; }
 
+    public StrategyBriefingTheme StrategyBriefing { get; set; }
+
     public GalaxyBackground GalaxyBackground { get; set; }
 
     public GalacticInformationDisplayTheme GalacticInformationDisplay { get; set; }

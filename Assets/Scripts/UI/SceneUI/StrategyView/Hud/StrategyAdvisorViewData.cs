@@ -59,15 +59,21 @@ public sealed class StrategyAdvisorAnimationViewData
     /// <param name="frames">The animation frames in playback order.</param>
     /// <param name="usesDroid">Whether the droid image presents the animation.</param>
     /// <param name="audioPath">The audio cue requested when playback starts.</param>
+    /// <param name="delayBeforeSeconds">The unscaled delay before playback starts.</param>
+    /// <param name="minimumPlaybackSeconds">The minimum time the playback remains active.</param>
     public StrategyAdvisorAnimationViewData(
         IReadOnlyList<Texture2D> frames,
         bool usesDroid,
-        string audioPath
+        string audioPath,
+        float delayBeforeSeconds = 0f,
+        float minimumPlaybackSeconds = 0f
     )
     {
         this.frames = Copy(frames);
         UsesDroid = usesDroid;
         AudioPath = audioPath;
+        DelayBeforeSeconds = Math.Max(0f, delayBeforeSeconds);
+        MinimumPlaybackSeconds = Math.Max(0f, minimumPlaybackSeconds);
     }
 
     public IReadOnlyList<Texture2D> Frames => frames;
@@ -75,6 +81,10 @@ public sealed class StrategyAdvisorAnimationViewData
     public bool UsesDroid { get; }
 
     public string AudioPath { get; }
+
+    public float DelayBeforeSeconds { get; }
+
+    public float MinimumPlaybackSeconds { get; }
 
     /// <summary>
     /// Copies animation frames into an isolated read-only snapshot.
