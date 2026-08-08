@@ -56,6 +56,11 @@ namespace Rebellion.Game.Messages
                 new List<(Faction faction, Message message)>();
 
             AddArrivalMessages(resultArray.OfType<UnitArrivedResult>(), game, deliveries);
+            AddFacilityLossMessages(
+                resultArray.OfType<GameObjectDestroyedOnArrivalResult>(),
+                game,
+                deliveries
+            );
             AddMissionMessages(missionResults, killedResults, sabotageResults, game, deliveries);
             AddRecruitmentMessages(resultArray.OfType<RecruitmentExhaustedResult>(), deliveries);
             AddOfficerMessages(
@@ -376,6 +381,28 @@ namespace Rebellion.Game.Messages
                 ),
                 destination,
                 building
+            );
+        }
+
+        /// <summary>
+        /// Creates the original report for a facility scrapped when it cannot deploy.
+        /// </summary>
+        private Message CreateFacilityLost(Faction faction, Building building, Planet destination)
+        {
+            if (building == null)
+                return null;
+
+            return WithEventLocation(
+                CreateMessage(
+                    GetDefinition(MessageResultType.FacilityLost),
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "item", building.GetDisplayName() ?? string.Empty },
+                        { "system", destination?.GetDisplayName() ?? string.Empty },
+                    }
+                ),
+                destination
             );
         }
 
@@ -1481,6 +1508,30 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
+        /// Adds reports for facilities that could not deploy at their destination.
+        /// </summary>
+        private void AddFacilityLossMessages(
+            IEnumerable<GameObjectDestroyedOnArrivalResult> results,
+            GameRoot game,
+            List<(Faction faction, Message message)> deliveries
+        )
+        {
+            foreach (GameObjectDestroyedOnArrivalResult result in results)
+            {
+                if (result.DestroyedObject is not Building building)
+                    continue;
+
+                Planet destination = GetResultPlanet(result.Context ?? result.Ref);
+                Faction faction = GetOwnerFaction(game, building);
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateFacilityLost(faction, building, destination)
+                );
+            }
+        }
+
+        /// <summary>
         /// Adds messages for completed missions.
         /// </summary>
         /// <param name="results">The completed mission results to process.</param>
@@ -2435,6 +2486,7 @@ namespace Rebellion.Game.Messages
                 MessageResultType.StarfighterRepaired =>
                     AdvisorNotificationCode.StarfighterRepaired,
                 MessageResultType.SabotageStrike => AdvisorNotificationCode.Maintenance,
+                MessageResultType.FacilityLost => AdvisorNotificationCode.Maintenance,
                 MessageResultType.ResearchComplete => AdvisorNotificationCode.Research,
                 MessageResultType.ResearchExhausted => AdvisorNotificationCode.Research,
                 MessageResultType.BlockadeInitiated => AdvisorNotificationCode.BlockadeInitiated,

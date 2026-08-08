@@ -19,6 +19,7 @@ namespace Rebellion.Game.Messages
         PersonnelArrivedByOfficerWithCompany,
         EmperorSeatOfPower,
         FacilityDeployed,
+        FacilityLost,
         ManufacturingIdle,
         MissionReport,
         EnemyMissionFoiled,

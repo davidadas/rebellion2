@@ -790,6 +790,85 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_FacilityDestroyedOnArrival_ReturnsOriginalFacilityLostReport()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Building shipyard = new Building
+            {
+                DisplayName = "Shipyard",
+                OwnerInstanceID = alliance.InstanceID,
+                BuildingType = BuildingType.Shipyard,
+            };
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.FacilityLost,
+                            MessageType.Manufacturing,
+                            "Facility Lost",
+                            "New {item} could not be deployed to {system}.  The facility has been scrapped.",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new GameObjectDestroyedOnArrivalResult
+                    {
+                        DestroyedObject = shipyard,
+                        Context = destination,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(MessageType.Manufacturing, message.Type);
+            Assert.AreEqual("Facility Lost", message.Title);
+            Assert.AreEqual(
+                "New Shipyard could not be deployed to Yavin.  The facility has been scrapped.",
+                message.Body
+            );
+            Assert.AreEqual("alliance-image", message.DisplayImagePath);
+            Assert.AreEqual(destination.InstanceID, message.NavigationTargetInstanceID);
+            Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(
+                (int)AdvisorNotificationCode.Maintenance,
+                message.AdvisorNotificationCode
+            );
+        }
+
+        [Test]
+        public void CreateMessages_RegimentDestroyedOnArrival_DoesNotReturnFacilityLostReport()
+        {
+            (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
+            Regiment regiment = new Regiment
+            {
+                DisplayName = "Army Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.FacilityLost,
+                        MessageType.Manufacturing,
+                        "Facility Lost",
+                        "lost"
+                    ),
+                },
+                new GameObjectDestroyedOnArrivalResult
+                {
+                    DestroyedObject = regiment,
+                    Context = destination,
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_ManufacturingIdle_UsesQueueTypeDefinition()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
