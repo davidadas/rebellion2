@@ -21,7 +21,8 @@ namespace Rebellion.Systems
         : IGameResultHandler<PlanetUprisingStartedResult>,
             IGameResultHandler<ScriptedTrainingRequestedResult>,
             IGameResultHandler<StoryCaptureRequestedResult>,
-            IGameResultHandler<StoryRescueRequestedResult>
+            IGameResultHandler<StoryRescueRequestedResult>,
+            IGameResultHandler<StoryPickupRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -224,6 +225,48 @@ namespace Rebellion.Systems
                     _game.AttachNode(mission, location);
                     BeginMission(mission);
                 }
+            }
+
+            return missionResults;
+        }
+
+        /// <summary>
+        /// Creates content-authored prisoner pickup missions for available collectors.
+        /// </summary>
+        public List<GameResult> HandleResults(IReadOnlyList<StoryPickupRequestedResult> results)
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            foreach (StoryPickupRequestedResult result in results)
+            {
+                Officer collector = _game.GetSceneNodeByInstanceID<Officer>(
+                    result?.Collector?.InstanceID
+                );
+                Planet location = _game.GetSceneNodeByInstanceID<Planet>(
+                    result?.Location?.InstanceID
+                );
+                if (
+                    collector?.IsCaptured != false
+                    || collector?.IsKilled != false
+                    || collector?.IsMovable() != true
+                    || collector?.IsOnMission() != false
+                    || location == null
+                )
+                    continue;
+
+                StoryPickupMission mission = new StoryPickupMission(
+                    collector,
+                    location,
+                    result.CaptiveFactionInstanceID,
+                    result.DurationTicks,
+                    result.CaptivesCanEscapeAfterPickup,
+                    result.DisplayName,
+                    result.SourceEventInstanceID
+                );
+                _game.AttachNode(mission, location);
+                BeginMission(mission);
             }
 
             return missionResults;
@@ -1062,6 +1105,8 @@ namespace Rebellion.Systems
                 return capture.DurationTicks;
             if (mission is StoryRescueMission rescue)
                 return rescue.DurationTicks;
+            if (mission is StoryPickupMission pickup)
+                return pickup.DurationTicks;
 
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(

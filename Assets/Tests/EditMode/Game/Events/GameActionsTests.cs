@@ -299,6 +299,33 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void StartStoryPickup_ResolvesCollectorAndPrisonerLocation()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
+            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            game.AttachNode(vader, empirePlanet);
+            game.AttachNode(han, rebelPlanet);
+
+            List<GameResult> results = new StartStoryPickupAction
+            {
+                CollectorOfficerInstanceID = vader.InstanceID,
+                LocationOfficerInstanceID = han.InstanceID,
+                CaptiveFactionInstanceID = "rebels",
+                DurationTicks = 1,
+                CaptivesCanEscapeAfterPickup = true,
+            }.Execute(game);
+
+            StoryPickupRequestedResult request = results
+                .OfType<StoryPickupRequestedResult>()
+                .Single();
+            Assert.AreSame(vader, request.Collector);
+            Assert.AreSame(rebelPlanet, request.Location);
+            Assert.IsTrue(request.CaptivesCanEscapeAfterPickup);
+            Assert.IsTrue(results.OfType<OfficerPickupResult>().Single().InProgress);
+        }
+
+        [Test]
         public void IncreaseOfficerForce_RankGapReward_UsesOriginalMaximumFormula()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);

@@ -464,6 +464,25 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Matches the collector that completed a story prisoner pickup.
+    /// </summary>
+    [PersistableObject(Name = "StoryPickupCollector")]
+    public sealed class StoryPickupCollectorConditional : GameConditional
+    {
+        public string CollectorOfficerInstanceID { get; set; }
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game) => false;
+
+        /// <inheritdoc />
+        public override bool IsMet(GameRoot game, GameResult triggerResult)
+        {
+            return triggerResult is StoryPickupCompletedResult pickup
+                && pickup.Collector?.InstanceID == CollectorOfficerInstanceID;
+        }
+    }
+
+    /// <summary>
     /// Tests a data-selected runtime state on one officer.
     /// </summary>
     [PersistableObject(Name = "OfficerState")]

@@ -358,6 +358,14 @@ namespace Rebellion.Tests.Util.Serialization
                         SuccessEspionageBonus = 1,
                         CaptureRescuerOnFailure = true,
                     },
+                    new StartStoryPickupAction
+                    {
+                        CollectorOfficerInstanceID = "DARTH_VADER",
+                        LocationOfficerInstanceID = "HAN_SOLO",
+                        CaptiveFactionInstanceID = "FNALL1",
+                        DurationTicks = 1,
+                        CaptivesCanEscapeAfterPickup = true,
+                    },
                 },
             };
 
@@ -415,6 +423,11 @@ namespace Rebellion.Tests.Util.Serialization
             );
             Assert.AreEqual(3, rescue.RatingDivisor);
             Assert.IsTrue(rescue.CaptureRescuerOnFailure);
+            StartStoryPickupAction pickup = deserialized.Actions[8] as StartStoryPickupAction;
+            Assert.IsNotNull(pickup);
+            Assert.AreEqual("DARTH_VADER", pickup.CollectorOfficerInstanceID);
+            Assert.AreEqual("HAN_SOLO", pickup.LocationOfficerInstanceID);
+            Assert.IsTrue(pickup.CaptivesCanEscapeAfterPickup);
         }
 
         [Test]

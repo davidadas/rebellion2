@@ -152,6 +152,10 @@ public static class GameEventCatalogValidator
                     when string.IsNullOrWhiteSpace(capture.OfficerInstanceID):
                     errors.Add($"{path}.OfficerInstanceID is required.");
                     break;
+                case StoryPickupCollectorConditional pickup
+                    when string.IsNullOrWhiteSpace(pickup.CollectorOfficerInstanceID):
+                    errors.Add($"{path}.CollectorOfficerInstanceID is required.");
+                    break;
                 case OfficerStateConditional officerState
                     when string.IsNullOrWhiteSpace(officerState.OfficerInstanceID):
                     errors.Add($"{conditionPath}.OfficerInstanceID is required.");
@@ -303,6 +307,16 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.RatingDivisor must be at least 1.");
                     if (rescue.SuccessCombatBonus < 0 || rescue.SuccessEspionageBonus < 0)
                         errors.Add($"{actionPath} success bonuses cannot be negative.");
+                    break;
+                case StartStoryPickupAction pickup:
+                    if (string.IsNullOrWhiteSpace(pickup.CollectorOfficerInstanceID))
+                        errors.Add($"{actionPath}.CollectorOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(pickup.LocationOfficerInstanceID))
+                        errors.Add($"{actionPath}.LocationOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(pickup.CaptiveFactionInstanceID))
+                        errors.Add($"{actionPath}.CaptiveFactionInstanceID is required.");
+                    if (pickup.DurationTicks < 1)
+                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
                     break;
                 case IncreaseOfficerForceAction force:
                     if (string.IsNullOrWhiteSpace(force.OfficerInstanceID))

@@ -492,6 +492,72 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleStoryPickupRequest_TransfersAndReturnsAllMatchingPrisoners()
+        {
+            (GameRoot game, Planet origin, Officer collector, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            game.Factions.Add(new Faction { InstanceID = "rebels" });
+            PlanetSystem system = origin.GetParentOfType<PlanetSystem>();
+            Planet palace = new Planet
+            {
+                InstanceID = "palace",
+                OwnerInstanceID = null,
+                IsColonized = true,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(palace, system);
+            Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            han.IsCaptured = true;
+            han.CanEscape = false;
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.IsCaptured = true;
+            luke.CanEscape = false;
+            game.AttachNode(han, palace);
+            game.AttachNode(luke, palace);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+            MissionSystem missions = TestSystems.CreateMissionSystem(
+                game,
+                new FixedRNG(0.0),
+                movement
+            );
+
+            missions.HandleResults(
+                new[]
+                {
+                    new StoryPickupRequestedResult
+                    {
+                        Collector = collector,
+                        Location = palace,
+                        CaptiveFactionInstanceID = "rebels",
+                        DurationTicks = 1,
+                        CaptivesCanEscapeAfterPickup = true,
+                        SourceEventInstanceID = "VADER_PICKUP",
+                    },
+                }
+            );
+            collector.Movement = null;
+            List<GameResult> results = missions.ProcessTick();
+
+            StoryPickupCompletedResult completed = results
+                .OfType<StoryPickupCompletedResult>()
+                .Single();
+            CollectionAssert.AreEquivalent(new[] { han, luke }, completed.Prisoners);
+            Assert.AreEqual("empire", han.CaptorInstanceID);
+            Assert.AreEqual("empire", luke.CaptorInstanceID);
+            Assert.IsTrue(han.CanEscape);
+            Assert.IsTrue(luke.CanEscape);
+            Assert.AreSame(origin, han.GetParent());
+            Assert.AreSame(origin, luke.GetParent());
+            Assert.AreEqual("VADER_PICKUP", completed.SourceEventInstanceID);
+        }
+
+        [Test]
         public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
             GameConfig config = TestConfig.Create();

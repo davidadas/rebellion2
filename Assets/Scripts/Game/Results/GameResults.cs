@@ -599,6 +599,29 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// A data-defined event requested a timed prisoner pickup.
+    /// </summary>
+    public class StoryPickupRequestedResult : GameResult
+    {
+        public Officer Collector { get; set; }
+        public Planet Location { get; set; }
+        public string CaptiveFactionInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public bool CaptivesCanEscapeAfterPickup { get; set; }
+        public string DisplayName { get; set; }
+    }
+
+    /// <summary>
+    /// A story collector completed a prisoner pickup.
+    /// </summary>
+    public class StoryPickupCompletedResult : GameResult
+    {
+        public Officer Collector { get; set; }
+        public Planet Location { get; set; }
+        public List<Officer> Prisoners { get; set; } = new List<Officer>();
+    }
+
+    /// <summary>
     /// Han Solo was attacked by a bounty hunter.
     /// </summary>
     public class BountyAttackResult : GameResult

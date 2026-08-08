@@ -445,6 +445,59 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Sends a content-selected collector to retrieve all matching prisoners at a story location.
+    /// </summary>
+    [PersistableObject(Name = "StartStoryPickup")]
+    public sealed class StartStoryPickupAction : GameAction
+    {
+        public string CollectorOfficerInstanceID { get; set; }
+        public string LocationOfficerInstanceID { get; set; }
+        public string CaptiveFactionInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public bool CaptivesCanEscapeAfterPickup { get; set; }
+        public string DisplayName { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer collector = game.GetSceneNodeByInstanceID<Officer>(CollectorOfficerInstanceID);
+            if (collector == null)
+                throw new InvalidOperationException(
+                    $"StartStoryPickup could not resolve collector officer '{CollectorOfficerInstanceID}'."
+                );
+
+            Officer locationOfficer = game.GetSceneNodeByInstanceID<Officer>(
+                LocationOfficerInstanceID
+            );
+            Planet location = locationOfficer?.GetParentOfType<Planet>();
+            if (location == null)
+                throw new InvalidOperationException(
+                    $"StartStoryPickup could not resolve a planet for officer '{LocationOfficerInstanceID}'."
+                );
+
+            return new List<GameResult>
+            {
+                new OfficerPickupResult
+                {
+                    Officer = collector,
+                    InProgress = true,
+                    Tick = game.CurrentTick,
+                },
+                new StoryPickupRequestedResult
+                {
+                    Collector = collector,
+                    Location = location,
+                    CaptiveFactionInstanceID = CaptiveFactionInstanceID,
+                    DurationTicks = DurationTicks,
+                    CaptivesCanEscapeAfterPickup = CaptivesCanEscapeAfterPickup,
+                    DisplayName = DisplayName,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
     /// Increases one officer's Force value using the greatest configured reward component.
     /// </summary>
     [PersistableObject(Name = "IncreaseOfficerForce")]
