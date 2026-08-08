@@ -790,6 +790,104 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_DeployedCombatUnits_UseOriginalUnitSpecificReports()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
+            {
+                "DEATH_STAR",
+            };
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = alliance.InstanceID };
+            game.AttachNode(fleet, origin);
+            CapitalShip ship = new CapitalShip
+            {
+                DisplayName = "Nebulon-B Frigate",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            CapitalShip deathStar = new CapitalShip
+            {
+                DisplayName = "Death Star Alpha",
+                TypeID = "DEATH_STAR",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Starfighter fighter = new Starfighter
+            {
+                DisplayName = "X-wing",
+                OwnerInstanceID = alliance.InstanceID,
+                MessageImagePath = "fighter-image",
+            };
+            Regiment regiment = new Regiment
+            {
+                DisplayName = "Mon Calamari Regiment",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(ship, fleet);
+            game.AttachNode(deathStar, fleet);
+            game.AttachNode(fighter, origin);
+            game.AttachNode(regiment, origin);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.CapitalShipDeployed,
+                        MessageType.Manufacturing,
+                        "{type} Deployed at {system}",
+                        "The new {type}, {item}, has been deployed at {system}."
+                    ),
+                    Definition(
+                        MessageResultType.DeathStarDeployed,
+                        MessageType.Manufacturing,
+                        "New Death Star Deployed at {system}",
+                        "The new Death Star, {item}, has been deployed at {system}."
+                    ),
+                    Definition(
+                        MessageResultType.StarfighterDeployed,
+                        MessageType.Manufacturing,
+                        "{item} Squadron Deployed at {system}",
+                        "A new {item} squadron has been deployed to {system}.",
+                        voicePaths: new Dictionary<string, string>
+                        {
+                            { alliance.InstanceID, "fighter-voice" },
+                        }
+                    ),
+                    Definition(
+                        MessageResultType.RegimentDeployed,
+                        MessageType.Manufacturing,
+                        "{item} Deployed to {system}",
+                        "The following units have been deployed to {system}:\n{item}"
+                    ),
+                },
+                new GameObjectDeployedResult { GameObject = ship },
+                new GameObjectDeployedResult { GameObject = deathStar },
+                new GameObjectDeployedResult { GameObject = fighter },
+                new GameObjectDeployedResult { GameObject = regiment }
+            );
+
+            Message[] messages = deliveries.Select(delivery => delivery.message).ToArray();
+            Assert.AreEqual(4, messages.Length);
+            Assert.AreEqual("Nebulon-B Frigate Deployed at Coruscant", messages[0].Title);
+            Assert.AreEqual(
+                "The new Nebulon-B Frigate, Nebulon-B Frigate, has been deployed at Coruscant.",
+                messages[0].Body
+            );
+            Assert.AreEqual("New Death Star Deployed at Coruscant", messages[1].Title);
+            Assert.AreEqual(
+                "The new Death Star, Death Star Alpha, has been deployed at Coruscant.",
+                messages[1].Body
+            );
+            Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
+            Assert.AreEqual("fighter-voice", messages[2].MessageVoicePath);
+            Assert.AreEqual("fighter-image", messages[2].DisplayImagePath);
+            Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
+            Assert.AreEqual(
+                "The following units have been deployed to Coruscant:\nMon Calamari Regiment",
+                messages[3].Body
+            );
+        }
+
+        [Test]
         public void CreateMessages_FacilityDestroyedOnArrival_ReturnsOriginalFacilityLostReport()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();

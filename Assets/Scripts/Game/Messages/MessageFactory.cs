@@ -386,6 +386,46 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
+        /// Creates an original deployment report for a completed ship, squadron, or regiment.
+        /// </summary>
+        private Message CreateUnitDeployed(
+            Faction faction,
+            IGameEntity unit,
+            Planet destination,
+            GameRoot game
+        )
+        {
+            MessageResultType resultType = unit switch
+            {
+                CapitalShip ship when IsPlanetDestroyingShip(ship, game) =>
+                    MessageResultType.DeathStarDeployed,
+                CapitalShip => MessageResultType.CapitalShipDeployed,
+                Starfighter => MessageResultType.StarfighterDeployed,
+                Regiment => MessageResultType.RegimentDeployed,
+                _ => MessageResultType.None,
+            };
+            if (resultType == MessageResultType.None)
+                return null;
+
+            string itemName = unit.GetDisplayName() ?? string.Empty;
+            return WithEventLocation(
+                CreateMessage(
+                    GetDefinition(resultType, gameObjectTypeId: unit.TypeID),
+                    faction,
+                    new Dictionary<string, string>
+                    {
+                        { "item", itemName },
+                        { "type", itemName },
+                        { "system", destination?.GetDisplayName() ?? string.Empty },
+                    },
+                    imageOverride: GetMessageImagePath(unit)
+                ),
+                destination,
+                unit as ISceneNode
+            );
+        }
+
+        /// <summary>
         /// Creates the original report for a facility scrapped when it cannot deploy.
         /// </summary>
         private Message CreateFacilityLost(Faction faction, Building building, Planet destination)
@@ -2396,7 +2436,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds messages for deployed buildings.
+        /// Adds original deployment messages for completed manufactured units.
         /// </summary>
         /// <param name="results">The deployment results to process.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>
@@ -2409,15 +2449,18 @@ namespace Rebellion.Game.Messages
         {
             foreach (GameObjectDeployedResult result in results)
             {
-                if (result.GameObject is not Building building || building.Movement != null)
+                if (result.GameObject is not IManufacturable unit)
                     continue;
 
-                Faction faction = GetFaction(game, building.GetOwnerInstanceID());
-                AddDelivery(
-                    deliveries,
-                    faction,
-                    CreateFacilityDeployed(faction, building, building.GetParentOfType<Planet>())
-                );
+                IGameEntity entity = unit as IGameEntity;
+                Planet destination = (unit as ISceneNode)?.GetParentOfType<Planet>();
+                Faction faction = GetFaction(game, unit.GetOwnerInstanceID());
+                Message message = unit is Building building
+                    ? building.Movement == null
+                        ? CreateFacilityDeployed(faction, building, destination)
+                        : null
+                    : CreateUnitDeployed(faction, entity, destination, game);
+                AddDelivery(deliveries, faction, message);
             }
         }
 
@@ -3178,6 +3221,14 @@ namespace Rebellion.Game.Messages
         private static string GetMessageImagePath(IGameEntity entity)
         {
             return string.IsNullOrEmpty(entity?.MessageImagePath) ? null : entity.MessageImagePath;
+        }
+
+        private static bool IsPlanetDestroyingShip(CapitalShip ship, GameRoot game)
+        {
+            return ship != null
+                && game?.Config?.Combat?.Bombardment?.PlanetDestroyingCapitalShipTypeIDs?.Contains(
+                    ship.TypeID
+                ) == true;
         }
 
         /// <summary>
