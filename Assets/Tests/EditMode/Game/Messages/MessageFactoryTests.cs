@@ -2098,6 +2098,53 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_AssassinatedOfficer_ReturnsOriginalImperialAssassinsReport()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Officer victim = new Officer
+            {
+                InstanceID = "victim",
+                DisplayName = "Mon Mothma",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Officer assassin = new Officer
+            {
+                InstanceID = "assassin",
+                DisplayName = "Menndo",
+                OwnerInstanceID = empire.InstanceID,
+            };
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.OfficerAssassinated,
+                            MessageType.Mission,
+                            "{officer} Killed",
+                            "{officer} was killed by Imperial Assassins at {system}.",
+                            imagePaths: FactionImages()
+                        ),
+                    },
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = victim,
+                        Assassin = assassin,
+                        Context = target,
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual("Mon Mothma Killed", message.Title);
+            Assert.AreEqual("Mon Mothma was killed by Imperial Assassins at Yavin.", message.Body);
+            Assert.AreEqual(target.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(victim.InstanceID, message.NavigationTargetInstanceID);
+        }
+
+        [Test]
         public void CreateMessages_ForceExperience_ReturnsForceGrowthMessage()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();

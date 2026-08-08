@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Events;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using UnityEngine;
 
@@ -98,6 +99,25 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(
                 "Pack/Shared/Events/FinalBattle/Audio/luke-defeated",
                 defeatMessage.VoicePath
+            );
+        }
+
+        [Test]
+        public void OpenActive_AssassinationDeathReport_PreservesOriginalVictimMessage()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
+                candidate.ResultType == MessageResultType.OfficerAssassinated
+            );
+
+            Assert.AreEqual("{officer} Killed", definition.TitleTemplate);
+            Assert.AreEqual(
+                "{officer} was killed by Imperial Assassins at {system}.",
+                definition.BodyTemplate
+            );
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Strategy/UI/Messages/character-killed",
+                definition.ImagePaths["FNALL1"]
             );
         }
 

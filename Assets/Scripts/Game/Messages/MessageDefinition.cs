@@ -69,6 +69,7 @@ namespace Rebellion.Game.Messages
         SpaceBattle,
         Bombardment,
         PlanetaryAssault,
+        OfficerAssassinated,
     }
 
     /// <summary>

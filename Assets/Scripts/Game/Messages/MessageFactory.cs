@@ -681,6 +681,7 @@ namespace Rebellion.Game.Messages
                 MessageResultType.OfficerInjured => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerRecovered => AdvisorSubjectNotification.Report,
                 MessageResultType.OfficerKilled => AdvisorSubjectNotification.Report,
+                MessageResultType.OfficerAssassinated => AdvisorSubjectNotification.Report,
                 _ => AdvisorSubjectNotification.None,
             };
             return WithAdvisorSubject(message, notification, officer);
@@ -1829,7 +1830,9 @@ namespace Rebellion.Game.Messages
                     deliveries,
                     faction,
                     CreateOfficerMessage(
-                        MessageResultType.OfficerKilled,
+                        result.Assassin == null
+                            ? MessageResultType.OfficerKilled
+                            : MessageResultType.OfficerAssassinated,
                         faction,
                         result.TargetOfficer,
                         planet,
