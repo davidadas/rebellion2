@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -257,6 +258,16 @@ namespace Rebellion.Game.Results
         public int OldValue { get; set; }
         public int NewValue { get; set; }
         public List<IGameEntity> DestroyedObjects { get; set; } = new List<IGameEntity>();
+    }
+
+    /// <summary>
+    /// Current category-limited intelligence was supplied about a planet.
+    /// </summary>
+    public class PlanetIntelligenceResult : GameResult
+    {
+        public Faction Recipient { get; set; }
+        public Planet Planet { get; set; }
+        public PlanetIntelligenceCategory Categories { get; set; }
     }
 
     #endregion

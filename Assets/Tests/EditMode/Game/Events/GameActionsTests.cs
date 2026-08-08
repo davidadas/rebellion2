@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -40,6 +41,31 @@ namespace Rebellion.Tests.Game.Events
             return game;
         }
 
+        private static InformantIntelligenceAction CreateInformantAction()
+        {
+            return new InformantIntelligenceAction
+            {
+                FactionRoutes = new List<InformantFactionRoute>
+                {
+                    new InformantFactionRoute
+                    {
+                        ControllerFactionInstanceID = "empire",
+                        RecipientFactionInstanceID = "rebels",
+                    },
+                },
+                IntelligenceChoices = new List<PlanetIntelligenceCategory>
+                {
+                    PlanetIntelligenceCategory.System,
+                    PlanetIntelligenceCategory.CapitalShips,
+                    PlanetIntelligenceCategory.Starfighters,
+                    PlanetIntelligenceCategory.GroundForces,
+                    PlanetIntelligenceCategory.Buildings,
+                    PlanetIntelligenceCategory.Officers,
+                    PlanetIntelligenceCategory.All,
+                },
+            };
+        }
+
         [Test]
         public void ResolveOfficerEncounter_ValidIDs_EmitsRequest()
         {
@@ -62,6 +88,56 @@ namespace Rebellion.Tests.Game.Events
                 .Single();
             Assert.AreSame(attacker, request.EncounteredOfficer);
             Assert.AreSame(defender, request.OpposingOfficer);
+        }
+
+        [Test]
+        public void InformantIntelligence_OwnerSupportFails_EmitsOpposingFactionIntelligence()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            empirePlanet.PopularSupport["empire"] = 20;
+            InformantIntelligenceAction action = CreateInformantAction();
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent { InstanceID = "INFORMANTS" },
+                new GameEventState(),
+                empirePlanet
+            );
+
+            List<GameResult> results = action.Execute(
+                game,
+                new FixedRandomProvider(new[] { 0.8, 0.5 }),
+                context
+            );
+
+            PlanetIntelligenceResult intelligence = results
+                .OfType<PlanetIntelligenceResult>()
+                .Single();
+            NarrativeMessageResult message = results.OfType<NarrativeMessageResult>().Single();
+            Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
+            Assert.AreSame(empirePlanet, intelligence.Planet);
+            Assert.AreEqual(PlanetIntelligenceCategory.GroundForces, intelligence.Categories);
+            Assert.AreSame(intelligence.Recipient, message.Recipient);
+            Assert.AreSame(empirePlanet, message.Location);
+        }
+
+        [Test]
+        public void InformantIntelligence_OwnerSupportSucceeds_EmitsNothing()
+        {
+            GameRoot game = BuildGame(out Planet empirePlanet, out _);
+            empirePlanet.PopularSupport["empire"] = 20;
+            InformantIntelligenceAction action = CreateInformantAction();
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent { InstanceID = "INFORMANTS" },
+                new GameEventState(),
+                empirePlanet
+            );
+
+            List<GameResult> results = action.Execute(
+                game,
+                new FixedRandomProvider(new[] { 0.19 }),
+                context
+            );
+
+            Assert.IsEmpty(results);
         }
 
         [Test]

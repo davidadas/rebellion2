@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Rebellion.Game.Events;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Results;
 
 /// <summary>
@@ -58,6 +59,13 @@ public static class GameEventCatalogValidator
     private static void ValidateEvent(GameEvent gameEvent, List<string> errors)
     {
         string context = $"Event '{gameEvent.InstanceID}'";
+        if (gameEvent.Scope != GameEventScope.Global && !gameEvent.IsRepeatable)
+            errors.Add($"{context} scoped events must be repeatable.");
+        if (
+            gameEvent.Scope != GameEventScope.Global
+            && !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
+        )
+            errors.Add($"{context} result-triggered events cannot use a polling scope.");
         if (
             !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
             && !typeof(GameResult)
@@ -96,6 +104,11 @@ public static class GameEventCatalogValidator
 
         ValidateConditionList(gameEvent.Conditionals, $"{context}.Conditionals", errors);
         ValidateActionList(gameEvent.Actions, $"{context}.Actions", errors);
+        if (
+            gameEvent.Scope != GameEventScope.EachPlanet
+            && ContainsAction<InformantIntelligenceAction>(gameEvent.Actions)
+        )
+            errors.Add($"{context} InformantIntelligence requires Scope EachPlanet.");
     }
 
     private static void ValidateDelay(
@@ -244,6 +257,31 @@ public static class GameEventCatalogValidator
 
             switch (action)
             {
+                case InformantIntelligenceAction informant:
+                    if (informant.MaximumPopularSupport < 1)
+                        errors.Add($"{actionPath}.MaximumPopularSupport must be at least 1.");
+                    if (informant.FactionRoutes == null || informant.FactionRoutes.Count == 0)
+                        errors.Add($"{actionPath} requires at least one faction route.");
+                    else if (
+                        informant.FactionRoutes.Any(route =>
+                            route == null
+                            || string.IsNullOrWhiteSpace(route.ControllerFactionInstanceID)
+                            || string.IsNullOrWhiteSpace(route.RecipientFactionInstanceID)
+                        )
+                    )
+                        errors.Add($"{actionPath}.FactionRoutes contains an incomplete route.");
+                    if (
+                        informant.IntelligenceChoices == null
+                        || informant.IntelligenceChoices.Count == 0
+                    )
+                        errors.Add($"{actionPath} requires at least one intelligence choice.");
+                    else if (
+                        informant.IntelligenceChoices.Any(choice =>
+                            choice == PlanetIntelligenceCategory.None
+                        )
+                    )
+                        errors.Add($"{actionPath}.IntelligenceChoices cannot contain None.");
+                    break;
                 case RandomPlanetIncidentAction incident:
                     if (incident.MinimumRawMaterials > incident.MaximumRawMaterials)
                         errors.Add(
@@ -423,6 +461,31 @@ public static class GameEventCatalogValidator
                     break;
             }
         }
+    }
+
+    private static bool ContainsAction<T>(IEnumerable<GameAction> actions)
+        where T : GameAction
+    {
+        if (actions == null)
+            return false;
+
+        foreach (GameAction action in actions)
+        {
+            if (action is T)
+                return true;
+            if (
+                action is ConditionalAction conditional
+                && (
+                    ContainsAction<T>(conditional.Actions)
+                    || ContainsAction<T>(conditional.ElseActions)
+                )
+            )
+                return true;
+            if (action is RandomOutcomeAction random && ContainsAction<T>(random.Actions))
+                return true;
+        }
+
+        return false;
     }
 
     private static void ValidateNarrativeMessage(

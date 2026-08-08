@@ -382,6 +382,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<StoryFinalBattleRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<StoryFinalBattleEscortRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
+        _resultProcessor.Subscribe<PlanetIntelligenceResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;

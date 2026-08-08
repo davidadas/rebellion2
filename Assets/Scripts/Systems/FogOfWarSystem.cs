@@ -16,7 +16,7 @@ namespace Rebellion.Systems
     /// Manages fog of war operations: capturing snapshots, invalidating moved entities, building faction views.
     /// Operates on faction state, does not hold its own state.
     /// </summary>
-    public class FogOfWarSystem
+    public class FogOfWarSystem : IGameResultHandler<PlanetIntelligenceResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarRecorder _recorder;
@@ -46,6 +46,28 @@ namespace Rebellion.Systems
         )
         {
             _recorder.RecordPlanetSnapshot(faction, planet, system, currentTick);
+        }
+
+        /// <summary>
+        /// Applies category-limited planet intelligence emitted by a simulation event.
+        /// </summary>
+        public List<GameResult> HandleResults(IReadOnlyList<PlanetIntelligenceResult> results)
+        {
+            foreach (PlanetIntelligenceResult result in results)
+            {
+                if (result?.Planet?.GetParent() is not PlanetSystem system)
+                    continue;
+
+                _recorder.RecordIntelligenceSnapshot(
+                    result.Recipient,
+                    result.Planet,
+                    system,
+                    result.Tick,
+                    result.Categories
+                );
+            }
+
+            return new List<GameResult>();
         }
 
         /// <summary>
@@ -468,7 +490,7 @@ namespace Rebellion.Systems
             viewPlanet.Officers.AddRange(
                 planetSnapshot
                     .Officers.Where(officer =>
-                        planetSnapshot.HasEspionageIntelligence
+                        HasIntelligence(planetSnapshot, PlanetIntelligenceCategory.Officers)
                         || FogOfWarRecorder.IsObservableAtPlanet(officer, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyOfficerForSnapshot)
@@ -485,7 +507,10 @@ namespace Rebellion.Systems
                             fleet,
                             faction.InstanceID,
                             includeManufacturing: true,
-                            includeInTransit: planetSnapshot.HasEspionageIntelligence
+                            includeInTransit: HasIntelligence(
+                                planetSnapshot,
+                                PlanetIntelligenceCategory.CapitalShips
+                            )
                         )
                     )
                     .Where(fleet => fleet != null)
@@ -493,7 +518,7 @@ namespace Rebellion.Systems
             viewPlanet.Regiments.AddRange(
                 planetSnapshot
                     .Regiments.Where(regiment =>
-                        planetSnapshot.HasEspionageIntelligence
+                        HasIntelligence(planetSnapshot, PlanetIntelligenceCategory.GroundForces)
                         || FogOfWarRecorder.IsObservableAtPlanet(regiment, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
@@ -501,7 +526,7 @@ namespace Rebellion.Systems
             viewPlanet.SpecialForces.AddRange(
                 planetSnapshot
                     .SpecialForces.Where(specialForces =>
-                        planetSnapshot.HasEspionageIntelligence
+                        HasIntelligence(planetSnapshot, PlanetIntelligenceCategory.GroundForces)
                         || FogOfWarRecorder.IsObservableAtPlanet(specialForces, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
@@ -509,7 +534,7 @@ namespace Rebellion.Systems
             viewPlanet.Starfighters.AddRange(
                 planetSnapshot
                     .Starfighters.Where(starfighter =>
-                        planetSnapshot.HasEspionageIntelligence
+                        HasIntelligence(planetSnapshot, PlanetIntelligenceCategory.Starfighters)
                         || FogOfWarRecorder.IsObservableAtPlanet(starfighter, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
@@ -517,12 +542,21 @@ namespace Rebellion.Systems
             viewPlanet.Buildings.AddRange(
                 planetSnapshot
                     .Buildings.Where(building =>
-                        planetSnapshot.HasEspionageIntelligence
+                        HasIntelligence(planetSnapshot, PlanetIntelligenceCategory.Buildings)
                         || FogOfWarRecorder.IsObservableAtPlanet(building, faction.InstanceID)
                     )
                     .Select(FogOfWarRecorder.CopyEntityForSnapshot)
             );
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
+        }
+
+        private static bool HasIntelligence(
+            PlanetSnapshot snapshot,
+            PlanetIntelligenceCategory category
+        )
+        {
+            return snapshot.HasEspionageIntelligence
+                || snapshot.IntelligenceCategories.HasFlag(category);
         }
 
         /// <summary>
@@ -537,7 +571,10 @@ namespace Rebellion.Systems
             Faction faction
         )
         {
-            if (snapshot?.HasEspionageIntelligence != true)
+            if (
+                snapshot == null
+                || !HasIntelligence(snapshot, PlanetIntelligenceCategory.CapitalShips)
+            )
                 return;
 
             foreach (

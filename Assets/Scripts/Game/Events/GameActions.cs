@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
@@ -24,6 +25,96 @@ namespace Rebellion.Game.Events
         Add,
         Minimum,
         Maximum,
+    }
+
+    [PersistableObject]
+    public sealed class InformantFactionRoute
+    {
+        public string ControllerFactionInstanceID { get; set; }
+        public string RecipientFactionInstanceID { get; set; }
+    }
+
+    /// <summary>
+    /// Recreates the original controlled-world informant check with data-defined faction routing
+    /// and uniformly weighted intelligence categories.
+    /// </summary>
+    [PersistableObject(Name = "InformantIntelligence")]
+    public sealed class InformantIntelligenceAction : GameAction
+    {
+        public int MaximumPopularSupport { get; set; } = 100;
+        public string TitleTemplate { get; set; }
+        public string BodyTemplate { get; set; }
+        public MessageType MessageType { get; set; } = MessageType.Advice;
+        public string ImageKey { get; set; }
+        public string VoicePath { get; set; }
+        public AdvisorNotificationCode AdvisorNotification { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public List<InformantFactionRoute> FactionRoutes { get; set; } =
+            new List<InformantFactionRoute>();
+        public List<PlanetIntelligenceCategory> IntelligenceChoices { get; set; } =
+            new List<PlanetIntelligenceCategory>();
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            throw new InvalidOperationException(
+                "InformantIntelligence must execute from a planet-scoped game event."
+            );
+        }
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+            Planet planet = context?.GetScopeTarget<Planet>();
+            if (planet == null)
+                return Execute(game);
+
+            InformantFactionRoute route = FactionRoutes.FirstOrDefault(candidate =>
+                candidate.ControllerFactionInstanceID == planet.OwnerInstanceID
+            );
+            if (route == null)
+                return new List<GameResult>();
+
+            int support = Math.Max(
+                0,
+                Math.Min(MaximumPopularSupport, planet.GetPopularSupport(planet.OwnerInstanceID))
+            );
+            if (provider.NextInt(0, MaximumPopularSupport) < support)
+                return new List<GameResult>();
+
+            PlanetIntelligenceCategory categories = IntelligenceChoices[
+                provider.NextInt(0, IntelligenceChoices.Count)
+            ];
+            Faction recipient = game.GetFactionByOwnerInstanceID(route.RecipientFactionInstanceID);
+            return new List<GameResult>
+            {
+                new PlanetIntelligenceResult
+                {
+                    Recipient = recipient,
+                    Planet = planet,
+                    Categories = categories,
+                    Tick = game.CurrentTick,
+                },
+                new NarrativeMessageResult
+                {
+                    Recipient = recipient,
+                    Subject = planet,
+                    Location = planet,
+                    MessageType = MessageType,
+                    TitleTemplate = TitleTemplate,
+                    BodyTemplate = BodyTemplate,
+                    ImageKey = ImageKey,
+                    VoicePath = VoicePath,
+                    AdvisorNotification = AdvisorNotification,
+                    AdvisorSubjectNotification = AdvisorSubjectNotification,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
     }
 
     /// <summary>
@@ -339,6 +430,19 @@ namespace Rebellion.Game.Events
 
             return new List<GameResult>();
         }
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+            if (provider.NextDouble() >= Probability)
+                return new List<GameResult>();
+            return Actions[provider.NextInt(0, Actions.Count)].Execute(game, provider, context);
+        }
     }
 
     [PersistableObject(Name = "ResolveOfficerEncounter")]
@@ -400,6 +504,20 @@ namespace Rebellion.Game.Events
         {
             GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
             return gameEvent.Execute(game, provider ?? game.Random);
+        }
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            GameEvent gameEvent = game.GetEventByInstanceID(EventInstanceID);
+            GameEventExecutionContext childContext =
+                context == null
+                    ? null
+                    : new GameEventExecutionContext(gameEvent, context.State, context.ScopeTarget);
+            return gameEvent.Execute(game, provider ?? game.Random, childContext);
         }
     }
 
@@ -497,6 +615,21 @@ namespace Rebellion.Game.Events
             List<GameResult> results = new List<GameResult>();
             foreach (GameAction action in selected)
                 results.AddRange(action.Execute(game, provider));
+            return results;
+        }
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            List<GameAction> selected = Conditionals.TrueForAll(condition => condition.IsMet(game))
+                ? Actions
+                : ElseActions;
+            List<GameResult> results = new List<GameResult>();
+            foreach (GameAction action in selected)
+                results.AddRange(action.Execute(game, provider, context));
             return results;
         }
     }

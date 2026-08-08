@@ -1250,6 +1250,90 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_CategoryLimitedIntelligence_RevealsOnlyRequestedCategory()
+        {
+            _coruscant.EnergyCapacity = 1;
+            Building building = new Building
+            {
+                InstanceID = "IMPERIAL_FACILITY",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer officer = CreateOfficer("VADER", _empire);
+            _game.AttachNode(building, _coruscant);
+            _game.AttachNode(officer, _coruscant);
+
+            _fogSystem.HandleResults(
+                new List<PlanetIntelligenceResult>
+                {
+                    new PlanetIntelligenceResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Planet = _coruscant,
+                        Categories = PlanetIntelligenceCategory.Buildings,
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
+            Assert.AreEqual(42, snapshot.TickCaptured);
+            Assert.AreEqual(PlanetIntelligenceCategory.Buildings, snapshot.IntelligenceCategories);
+            Assert.AreEqual("IMPERIAL_FACILITY", snapshot.Buildings.Single().InstanceID);
+            Assert.IsEmpty(snapshot.Officers);
+            Assert.IsFalse(snapshot.HasEspionageIntelligence);
+        }
+
+        [Test]
+        public void RecordIntelligenceSnapshot_CapitalShips_DoesNotLeakShipCargo()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+            ship.StarfighterCapacity = 1;
+            _game.AttachNode(CreateOfficer("VADER", _empire), ship);
+            _game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "TIE_SQUADRON",
+                    OwnerInstanceID = _empire.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                ship
+            );
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSystem,
+                42,
+                PlanetIntelligenceCategory.CapitalShips
+            );
+
+            CapitalShip knownShip = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single()
+                .CapitalShips.Single();
+            Assert.AreEqual("STAR_DESTROYER", knownShip.InstanceID);
+            Assert.IsEmpty(knownShip.Officers);
+            Assert.IsEmpty(knownShip.Starfighters);
+
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSystem,
+                43,
+                PlanetIntelligenceCategory.Starfighters
+            );
+            PlanetSnapshot updatedSnapshot = _alliance.Fog.Snapshots["CORESYS"].Planets[
+                "CORUSCANT"
+            ];
+            Assert.AreEqual("TIE_SQUADRON", updatedSnapshot.Starfighters.Single().InstanceID);
+            Assert.IsEmpty(updatedSnapshot.Fleets.Single().CapitalShips.Single().Starfighters);
+        }
+
+        [Test]
         public void RecordEspionageSnapshot_RevealsManufacturing()
         {
             AddQueuedBuilding(_coruscant, _empire, "REVEALED_BUILDING", 25);
@@ -1518,17 +1602,16 @@ namespace Rebellion.Tests.Systems
         private Fleet CreateFleet(string id, Faction faction) =>
             EntityFactory.CreateFleet(id, faction.InstanceID);
 
-        private void AddCapitalShip(Fleet fleet, Faction faction, string id)
+        private CapitalShip AddCapitalShip(Fleet fleet, Faction faction, string id)
         {
-            _game.AttachNode(
-                new CapitalShip
-                {
-                    InstanceID = id,
-                    OwnerInstanceID = faction.InstanceID,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                },
-                fleet
-            );
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = id,
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(ship, fleet);
+            return ship;
         }
 
         private Regiment CreateRegiment(string id, Faction faction)

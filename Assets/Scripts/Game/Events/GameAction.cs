@@ -31,5 +31,15 @@ namespace Rebellion.Game.Events
         /// <returns>Results describing what changed.</returns>
         public virtual List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
             Execute(game);
+
+        /// <summary>
+        /// Executes with the concrete scheduling context for a scoped event.
+        /// Existing actions remain context-independent unless they override this overload.
+        /// </summary>
+        public virtual List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        ) => Execute(game, provider);
     }
 }

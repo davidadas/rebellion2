@@ -55,6 +55,123 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records current intelligence for only the requested planet categories.
+        /// </summary>
+        public void RecordIntelligenceSnapshot(
+            Faction faction,
+            Planet planet,
+            PlanetSystem system,
+            int currentTick,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            if (
+                faction == null
+                || planet == null
+                || system == null
+                || categories == PlanetIntelligenceCategory.None
+            )
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
+            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
+            if (!systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+            {
+                snapshot = new PlanetSnapshot
+                {
+                    TickCaptured = currentTick,
+                    OwnerInstanceID = planet.OwnerInstanceID,
+                    IsColonized = planet.IsColonized,
+                    IsDestroyed = planet.IsDestroyed,
+                };
+                systemSnapshot.Planets[planet.InstanceID] = snapshot;
+            }
+
+            snapshot.TickCaptured = currentTick;
+            if (categories.HasFlag(PlanetIntelligenceCategory.System))
+                UpdatePlanetState(snapshot, planet, currentTick);
+            snapshot.IntelligenceCategories |= categories;
+            if (categories.HasFlag(PlanetIntelligenceCategory.Officers))
+            {
+                snapshot.Officers.Clear();
+                snapshot.Officers.AddRange(
+                    planet
+                        .GetChildren<Officer>(_ => true)
+                        .Where(officer => officer.OwnerInstanceID != faction.InstanceID)
+                        .Select(CopyOfficerForSnapshot)
+                );
+            }
+            if (categories.HasFlag(PlanetIntelligenceCategory.CapitalShips))
+            {
+                snapshot.Fleets.Clear();
+                AddFleetsToSnapshot(faction, planet, snapshot, true);
+                FilterFleetIntelligence(snapshot.Fleets, PlanetIntelligenceCategory.CapitalShips);
+            }
+            if (categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
+            {
+                snapshot.Regiments.Clear();
+                snapshot.SpecialForces.Clear();
+                AddIntelligenceEntityCopies(
+                    planet.GetChildren<Regiment>(_ => true),
+                    snapshot.Regiments,
+                    faction
+                );
+                AddEntityCopiesToSnapshot(
+                    planet.GetChildren<SpecialForces>(_ => true),
+                    snapshot.SpecialForces,
+                    faction,
+                    true
+                );
+            }
+            if (categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
+            {
+                snapshot.Starfighters.Clear();
+                AddIntelligenceEntityCopies(
+                    planet.GetChildren<Starfighter>(_ => true),
+                    snapshot.Starfighters,
+                    faction
+                );
+            }
+            if (categories.HasFlag(PlanetIntelligenceCategory.Buildings))
+            {
+                snapshot.Buildings.Clear();
+                AddEntityCopiesToSnapshot(planet.Buildings, snapshot.Buildings, faction, true);
+            }
+
+            ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
+        }
+
+        private void AddIntelligenceEntityCopies<T>(
+            IEnumerable<T> source,
+            List<T> destination,
+            Faction faction
+        )
+            where T : class, ISceneNode
+        {
+            AddEntityCopiesToSnapshot(source, destination, faction, true);
+        }
+
+        private static void FilterFleetIntelligence(
+            IEnumerable<Fleet> fleets,
+            PlanetIntelligenceCategory categories
+        )
+        {
+            foreach (CapitalShip ship in fleets.SelectMany(fleet => fleet.CapitalShips))
+            {
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Officers))
+                    ship.Officers.Clear();
+                if (!categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
+                {
+                    ship.Regiments.Clear();
+                    ship.SpecialForces.Clear();
+                }
+                if (!categories.HasFlag(PlanetIntelligenceCategory.Starfighters))
+                    ship.Starfighters.Clear();
+            }
+        }
+
+        /// <summary>
         /// Updates a faction's recorded owner for a planet without revealing other current state.
         /// </summary>
         /// <param name="faction">The faction receiving the ownership observation.</param>
@@ -146,6 +263,7 @@ namespace Rebellion.Game.FogOfWar
             if (includeEspionageIntelligence)
             {
                 planetSnapshot.HasEspionageIntelligence = true;
+                planetSnapshot.IntelligenceCategories = PlanetIntelligenceCategory.All;
                 AddEnemyMissionsToSnapshot(faction, planet, planetSnapshot);
                 AddManufacturingQueueToSnapshot(planet, planetSnapshot);
             }
@@ -153,6 +271,8 @@ namespace Rebellion.Game.FogOfWar
             {
                 planetSnapshot.HasEspionageIntelligence =
                     previousSnapshot?.HasEspionageIntelligence == true;
+                planetSnapshot.IntelligenceCategories =
+                    previousSnapshot?.IntelligenceCategories ?? PlanetIntelligenceCategory.None;
                 CarryForwardRevealedMissions(previousSnapshot, planetSnapshot);
                 PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
@@ -209,7 +329,15 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot snapshot
         )
         {
-            if (previousSnapshot?.HasEspionageIntelligence != true)
+            if (
+                previousSnapshot == null
+                || (
+                    !previousSnapshot.HasEspionageIntelligence
+                    && !previousSnapshot.IntelligenceCategories.HasFlag(
+                        PlanetIntelligenceCategory.CapitalShips
+                    )
+                )
+            )
                 return;
 
             foreach (
@@ -330,6 +458,24 @@ namespace Rebellion.Game.FogOfWar
                 AllocatedEnergy = planet.AllocatedEnergy,
                 PopularSupport = new Dictionary<string, int>(planet.PopularSupport),
             };
+        }
+
+        private static void UpdatePlanetState(
+            PlanetSnapshot snapshot,
+            Planet planet,
+            int currentTick
+        )
+        {
+            snapshot.TickCaptured = currentTick;
+            snapshot.OwnerInstanceID = planet.OwnerInstanceID;
+            snapshot.IsColonized = planet.IsColonized;
+            snapshot.IsInUprising = planet.IsInUprising;
+            snapshot.IsDestroyed = planet.IsDestroyed;
+            snapshot.IsHeadquarters = planet.IsHeadquarters;
+            snapshot.NumRawResourceNodes = planet.NumRawResourceNodes;
+            snapshot.EnergyCapacity = planet.EnergyCapacity;
+            snapshot.AllocatedEnergy = planet.AllocatedEnergy;
+            snapshot.PopularSupport = new Dictionary<string, int>(planet.PopularSupport);
         }
 
         /// <summary>

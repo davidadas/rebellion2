@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 
@@ -38,15 +40,37 @@ namespace Rebellion.Systems
 
             foreach (GameEvent gameEvent in gameEvents.ToArray())
             {
-                if (
-                    !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
-                    || !TryProcessEvent(gameEvent, null, out List<GameResult> results)
-                )
+                if (!string.IsNullOrWhiteSpace(gameEvent.TriggerResultType))
                     continue;
 
-                allResults.AddRange(results);
-                if (!gameEvent.IsRepeatable)
-                    eventsToRemove.Add(gameEvent);
+                if (gameEvent.Scope == GameEventScope.EachPlanet)
+                {
+                    foreach (Planet planet in GetPlanetScopeCandidates(gameEvent))
+                    {
+                        if (!IsPlanetScopeEligible(gameEvent, planet))
+                        {
+                            DeactivatePlanetScope(gameEvent, planet);
+                            continue;
+                        }
+
+                        ActivatePlanetScope(gameEvent, planet);
+                        if (
+                            TryProcessEvent(
+                                gameEvent,
+                                null,
+                                planet,
+                                out List<GameResult> scopedResults
+                            )
+                        )
+                            allResults.AddRange(scopedResults);
+                    }
+                }
+                else if (TryProcessEvent(gameEvent, null, null, out List<GameResult> globalResults))
+                {
+                    allResults.AddRange(globalResults);
+                    if (!gameEvent.IsRepeatable)
+                        eventsToRemove.Add(gameEvent);
+                }
             }
 
             foreach (GameEvent eventToRemove in eventsToRemove)
@@ -77,6 +101,7 @@ namespace Rebellion.Systems
                         || !TryProcessEvent(
                             gameEvent,
                             triggerResult,
+                            null,
                             out List<GameResult> reactions
                         )
                     )
@@ -96,16 +121,21 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="gameEvent">The event to process.</param>
         /// <param name="triggerResult">The simulation result that activated the event, if any.</param>
+        /// <param name="scopeTarget">The planet whose independent schedule is being processed.</param>
         /// <param name="results">Receives results produced by the event.</param>
         /// <returns>True when the event executed; otherwise false.</returns>
         private bool TryProcessEvent(
             GameEvent gameEvent,
             GameResult triggerResult,
+            Planet scopeTarget,
             out List<GameResult> results
         )
         {
-            GameEventState state = _game.GetEventState(gameEvent.InstanceID);
-            InitializeSchedule(gameEvent, state);
+            GameEventState state =
+                scopeTarget == null
+                    ? _game.GetEventState(gameEvent.InstanceID)
+                    : _game.GetEventState(gameEvent.InstanceID, scopeTarget.InstanceID);
+            InitializeSchedule(gameEvent, state, scopeTarget != null);
             if (_game.CurrentTick < state.NextEligibleTick)
             {
                 results = new List<GameResult>();
@@ -119,7 +149,12 @@ namespace Rebellion.Systems
             }
 
             GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
-            results = gameEvent.Execute(_game, _provider);
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                gameEvent,
+                state,
+                scopeTarget
+            );
+            results = gameEvent.Execute(_game, _provider, context);
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;
             if (gameEvent.IsRepeatable)
@@ -137,16 +172,66 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
-        private void InitializeSchedule(GameEvent gameEvent, GameEventState state)
+        /// <param name="initializeFromCurrentTick">
+        /// Whether the schedule begins relative to the current game tick.
+        /// </param>
+        private void InitializeSchedule(
+            GameEvent gameEvent,
+            GameEventState state,
+            bool initializeFromCurrentTick
+        )
         {
             if (state.IsInitialized)
                 return;
 
-            state.NextEligibleTick = RollDelay(
-                gameEvent.InitialDelayTicks,
-                gameEvent.InitialDelayRandomTicks
-            );
+            state.NextEligibleTick =
+                (initializeFromCurrentTick ? _game.CurrentTick : 0)
+                + RollDelay(gameEvent.InitialDelayTicks, gameEvent.InitialDelayRandomTicks);
             state.IsInitialized = true;
+        }
+
+        private IEnumerable<Planet> GetPlanetScopeCandidates(GameEvent gameEvent)
+        {
+            return _game
+                .GetGalaxyMap()
+                .PlanetSystems.Where(system =>
+                    !gameEvent.FilterPlanetScopeSystemType
+                    || system.SystemType == gameEvent.PlanetScopeSystemType
+                )
+                .SelectMany(system => system.Planets)
+                .Where(planet => !planet.IsDestroyed)
+                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal);
+        }
+
+        private static bool IsPlanetScopeEligible(GameEvent gameEvent, Planet planet)
+        {
+            return gameEvent.PlanetScopeOwnership switch
+            {
+                PlanetScopeOwnership.Owned => !string.IsNullOrWhiteSpace(planet.OwnerInstanceID),
+                PlanetScopeOwnership.Neutral => string.IsNullOrWhiteSpace(planet.OwnerInstanceID),
+                _ => true,
+            };
+        }
+
+        private void ActivatePlanetScope(GameEvent gameEvent, Planet planet)
+        {
+            GameEventState state = _game.GetEventState(gameEvent.InstanceID, planet.InstanceID);
+            state.IsScopeActive = true;
+        }
+
+        private void DeactivatePlanetScope(GameEvent gameEvent, Planet planet)
+        {
+            if (
+                !_game.TryGetEventState(
+                    gameEvent.InstanceID,
+                    planet.InstanceID,
+                    out GameEventState state
+                )
+            )
+                return;
+
+            state.IsScopeActive = false;
+            state.IsInitialized = false;
         }
 
         /// <summary>

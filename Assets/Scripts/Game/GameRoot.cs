@@ -542,6 +542,51 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Returns persistent scheduling state for one independently scheduled event target.
+        /// </summary>
+        public GameEventState GetEventState(string eventInstanceId, string scopeTargetInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(scopeTargetInstanceId))
+                throw new ArgumentException(
+                    "Scoped event target instance ID is required.",
+                    nameof(scopeTargetInstanceId)
+                );
+
+            return GetEventState(GetScopedEventStateKey(eventInstanceId, scopeTargetInstanceId));
+        }
+
+        /// <summary>
+        /// Attempts to retrieve scheduling state for one independently scheduled event target.
+        /// </summary>
+        public bool TryGetEventState(
+            string eventInstanceId,
+            string scopeTargetInstanceId,
+            out GameEventState state
+        )
+        {
+            if (string.IsNullOrWhiteSpace(eventInstanceId))
+                throw new ArgumentException(
+                    "Event instance ID is required.",
+                    nameof(eventInstanceId)
+                );
+            if (string.IsNullOrWhiteSpace(scopeTargetInstanceId))
+                throw new ArgumentException(
+                    "Scoped event target instance ID is required.",
+                    nameof(scopeTargetInstanceId)
+                );
+
+            return EventStates.TryGetValue(
+                GetScopedEventStateKey(eventInstanceId, scopeTargetInstanceId),
+                out state
+            );
+        }
+
+        private static string GetScopedEventStateKey(
+            string eventInstanceId,
+            string scopeTargetInstanceId
+        ) => $"{eventInstanceId.Length}:{eventInstanceId}{scopeTargetInstanceId}";
+
+        /// <summary>
         /// Returns a persistent event variable, treating an unset variable as zero.
         /// </summary>
         public int GetEventVariable(string key)

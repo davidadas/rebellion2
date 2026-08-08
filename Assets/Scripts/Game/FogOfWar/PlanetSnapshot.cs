@@ -5,6 +5,19 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.FogOfWar
 {
+    [System.Flags]
+    public enum PlanetIntelligenceCategory
+    {
+        None = 0,
+        System = 1 << 0,
+        CapitalShips = 1 << 1,
+        Starfighters = 1 << 2,
+        GroundForces = 1 << 3,
+        Buildings = 1 << 4,
+        Officers = 1 << 5,
+        All = System | CapitalShips | Starfighters | GroundForces | Buildings | Officers,
+    }
+
     /// <summary>
     /// Stores the last known state of an observed planet.
     /// </summary>
@@ -36,6 +49,9 @@ namespace Rebellion.Game.FogOfWar
 
         // Complete Espionage Intelligence.
         public bool HasEspionageIntelligence;
+
+        // Category-limited intelligence supplied by informants and other event sources.
+        public PlanetIntelligenceCategory IntelligenceCategories;
 
         // Manufacturing Intelligence.
         public bool HasManufacturingIntelligence;
