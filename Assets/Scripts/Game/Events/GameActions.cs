@@ -130,9 +130,11 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public string ImageKey { get; set; }
         public string ImagePath { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
+        public string OfficerVoicePath { get; set; }
         public AdvisorNotificationCode AdvisorNotification { get; set; }
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
 
@@ -171,9 +173,11 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = TitleTemplate,
                     BodyTemplate = BodyTemplate,
+                    ImageKey = ImageKey,
                     ImagePath = ImagePath,
                     OverlayImagePath = OverlayImagePath,
                     VoicePath = VoicePath,
+                    OfficerVoicePath = OfficerVoicePath,
                     AdvisorNotification = AdvisorNotification,
                     AdvisorSubjectNotification = AdvisorSubjectNotification,
                     Tick = game.CurrentTick,
@@ -280,6 +284,44 @@ namespace Rebellion.Game.Events
                 {
                     Unit = unit,
                     Destination = destination,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
+    /// Requests a timed, guaranteed Force-training journey managed by MissionSystem.
+    /// </summary>
+    [PersistableObject(Name = "StartScriptedTraining")]
+    public class StartScriptedTrainingAction : GameAction
+    {
+        public string TraineeInstanceID { get; set; }
+        public int DurationTicks { get; set; }
+        public int CompletionBonusPercent { get; set; }
+        public string CompletionVariableKey { get; set; }
+        public int CompletionVariableValue { get; set; } = 1;
+        public string DisplayName { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer trainee = game.GetSceneNodeByInstanceID<Officer>(TraineeInstanceID);
+            if (trainee == null)
+                throw new InvalidOperationException(
+                    $"StartScriptedTraining could not resolve trainee '{TraineeInstanceID}'."
+                );
+
+            return new List<GameResult>
+            {
+                new ScriptedTrainingRequestedResult
+                {
+                    Trainee = trainee,
+                    DurationTicks = DurationTicks,
+                    CompletionBonusPercent = CompletionBonusPercent,
+                    CompletionVariableKey = CompletionVariableKey,
+                    CompletionVariableValue = CompletionVariableValue,
+                    DisplayName = DisplayName,
                     Tick = game.CurrentTick,
                 },
             };

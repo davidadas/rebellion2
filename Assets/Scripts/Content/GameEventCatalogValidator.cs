@@ -233,6 +233,16 @@ public static class GameEventCatalogValidator
                     if (string.IsNullOrWhiteSpace(movement.DestinationInstanceID))
                         errors.Add($"{actionPath}.DestinationInstanceID is required.");
                     break;
+                case StartScriptedTrainingAction training:
+                    if (string.IsNullOrWhiteSpace(training.TraineeInstanceID))
+                        errors.Add($"{actionPath}.TraineeInstanceID is required.");
+                    if (training.DurationTicks < 1)
+                        errors.Add($"{actionPath}.DurationTicks must be at least 1.");
+                    if (training.CompletionBonusPercent < 0)
+                        errors.Add($"{actionPath}.CompletionBonusPercent cannot be negative.");
+                    if (string.IsNullOrWhiteSpace(training.CompletionVariableKey))
+                        errors.Add($"{actionPath}.CompletionVariableKey is required.");
+                    break;
                 case TriggerEventAction trigger
                     when string.IsNullOrWhiteSpace(trigger.EventInstanceID):
                     errors.Add($"{actionPath}.EventInstanceID is required.");

@@ -486,6 +486,7 @@ namespace Rebellion.Game.Results
         public int ExperienceGained { get; set; }
         public int PreviousForceRank { get; set; }
         public int CurrentForceRank { get; set; }
+        public bool SuppressRankChangeMessage { get; set; }
         public int Detail { get; set; }
     }
 
@@ -516,9 +517,11 @@ namespace Rebellion.Game.Results
         public MessageType MessageType { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public string ImageKey { get; set; }
         public string ImagePath { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
+        public string OfficerVoicePath { get; set; }
         public AdvisorNotificationCode AdvisorNotification { get; set; }
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
     }
@@ -540,6 +543,19 @@ namespace Rebellion.Game.Results
     {
         public IMovable Unit { get; set; }
         public ContainerNode Destination { get; set; }
+    }
+
+    /// <summary>
+    /// A data-defined event requested a timed Force-training journey.
+    /// </summary>
+    public class ScriptedTrainingRequestedResult : GameResult
+    {
+        public Officer Trainee { get; set; }
+        public int DurationTicks { get; set; }
+        public int CompletionBonusPercent { get; set; }
+        public string CompletionVariableKey { get; set; }
+        public int CompletionVariableValue { get; set; }
+        public string DisplayName { get; set; }
     }
 
     /// <summary>

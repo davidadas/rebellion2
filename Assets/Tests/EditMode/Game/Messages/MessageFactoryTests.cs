@@ -35,9 +35,11 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType = MessageType.Advice,
                         TitleTemplate = "{subject} at {location}",
                         BodyTemplate = "For {faction}",
+                        ImageKey = "mission_report",
                         ImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
                         VoicePath = "Story/dialogue",
+                        OfficerVoicePath = "Officers/luke/dialogue",
                         AdvisorSubjectNotification = AdvisorSubjectNotification.Report,
                     }
                 ),
@@ -47,8 +49,10 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
             Assert.AreEqual("For Alliance", message.Body);
             Assert.AreEqual("Story/image", message.DisplayImagePath);
+            Assert.AreEqual("mission_report", message.DisplayImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);
             Assert.AreEqual("Story/dialogue", message.MessageVoicePath);
+            Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
             Assert.AreEqual(luke.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
             Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
@@ -1905,6 +1909,36 @@ namespace Rebellion.Tests.Game.Messages
                     ExperienceGained = 1,
                     PreviousForceRank = game.Config.Jedi.RankLabelForceKnight,
                     CurrentForceRank = game.Config.Jedi.RankLabelForceKnight + 1,
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
+        public void CreateMessages_ForceExperience_WithSuppressedRankMessage_DoesNotReturnForceGrowthMessage()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer
+            {
+                OwnerInstanceID = alliance.InstanceID,
+                IsJedi = true,
+                ForceValue = game.Config.Jedi.RankLabelForceKnight,
+            };
+            game.AttachNode(officer, origin);
+
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(MessageResultType.ForceGrowth, MessageType.Mission, "force", "body"),
+                },
+                new ForceExperienceResult
+                {
+                    Officer = officer,
+                    PreviousForceRank = game.Config.Jedi.RankLabelForceKnight - 1,
+                    CurrentForceRank = game.Config.Jedi.RankLabelForceKnight,
+                    SuppressRankChangeMessage = true,
                 }
             );
 

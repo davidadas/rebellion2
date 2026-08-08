@@ -312,6 +312,15 @@ namespace Rebellion.Tests.Util.Serialization
                             },
                         },
                     },
+                    new StartScriptedTrainingAction
+                    {
+                        TraineeInstanceID = "LUKE_SKYWALKER",
+                        DurationTicks = 100,
+                        CompletionBonusPercent = 60,
+                        CompletionVariableKey = "luke.dagobah.completed",
+                        CompletionVariableValue = 1,
+                        DisplayName = "Journey to Dagobah",
+                    },
                 },
             };
 
@@ -338,6 +347,12 @@ namespace Rebellion.Tests.Util.Serialization
             SetEventVariableAction setVariable = conditional.Actions[0] as SetEventVariableAction;
             Assert.IsNotNull(setVariable);
             Assert.AreEqual(EventVariableOperation.Add, setVariable.Operation);
+            StartScriptedTrainingAction training =
+                deserialized.Actions[2] as StartScriptedTrainingAction;
+            Assert.IsNotNull(training);
+            Assert.AreEqual(100, training.DurationTicks);
+            Assert.AreEqual(60, training.CompletionBonusPercent);
+            Assert.AreEqual("luke.dagobah.completed", training.CompletionVariableKey);
         }
 
         [Test]

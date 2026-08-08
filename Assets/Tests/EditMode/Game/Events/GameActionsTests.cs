@@ -198,5 +198,32 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreSame(destination, result.Destination);
             Assert.AreSame(origin, officer.GetParent());
         }
+
+        [Test]
+        public void StartScriptedTraining_ValidTrainee_EmitsConfiguredRequest()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, origin);
+            StartScriptedTrainingAction action = new StartScriptedTrainingAction
+            {
+                TraineeInstanceID = luke.InstanceID,
+                DurationTicks = 100,
+                CompletionBonusPercent = 60,
+                CompletionVariableKey = "luke.dagobah.completed",
+                CompletionVariableValue = 1,
+                DisplayName = "Journey to Dagobah",
+            };
+
+            ScriptedTrainingRequestedResult result = action
+                .Execute(game)
+                .OfType<ScriptedTrainingRequestedResult>()
+                .Single();
+
+            Assert.AreSame(luke, result.Trainee);
+            Assert.AreEqual(100, result.DurationTicks);
+            Assert.AreEqual(60, result.CompletionBonusPercent);
+            Assert.AreEqual("luke.dagobah.completed", result.CompletionVariableKey);
+        }
     }
 }

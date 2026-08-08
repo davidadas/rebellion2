@@ -17,7 +17,9 @@ namespace Rebellion.Systems
     /// Mission creation and scene graph attachment are delegated to MissionFactory.
     /// Participant movement and mission initiation are orchestrated here.
     /// </summary>
-    public class MissionSystem : IGameResultHandler<PlanetUprisingStartedResult>
+    public class MissionSystem
+        : IGameResultHandler<PlanetUprisingStartedResult>,
+            IGameResultHandler<ScriptedTrainingRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
@@ -89,6 +91,46 @@ namespace Rebellion.Systems
                 .Distinct();
             foreach (Planet planet in affectedPlanets)
                 missionResults.AddRange(AbortInvalidMissions(planet));
+
+            return missionResults;
+        }
+
+        /// <summary>
+        /// Creates content-authored training missions and sends each trainee through the normal mission lifecycle.
+        /// </summary>
+        public List<GameResult> HandleResults(
+            IReadOnlyList<ScriptedTrainingRequestedResult> results
+        )
+        {
+            List<GameResult> missionResults = new List<GameResult>();
+            if (results == null)
+                return missionResults;
+
+            foreach (ScriptedTrainingRequestedResult result in results)
+            {
+                Officer trainee = _game.GetSceneNodeByInstanceID<Officer>(
+                    result?.Trainee?.InstanceID
+                );
+                Planet origin = trainee?.GetParentOfType<Planet>();
+                if (
+                    trainee == null
+                    || origin == null
+                    || !trainee.IsMovable()
+                    || trainee.IsOnMission()
+                )
+                    continue;
+
+                ScriptedTrainingMission mission = new ScriptedTrainingMission(
+                    trainee,
+                    result.DurationTicks,
+                    result.CompletionBonusPercent,
+                    result.CompletionVariableKey,
+                    result.CompletionVariableValue,
+                    result.DisplayName
+                );
+                _game.AttachNode(mission, origin);
+                BeginMission(mission);
+            }
 
             return missionResults;
         }
@@ -920,6 +962,9 @@ namespace Rebellion.Systems
         /// <returns>The mission duration in ticks.</returns>
         private int RollMissionDuration(Mission mission)
         {
+            if (mission is ScriptedTrainingMission training)
+                return training.DurationTicks;
+
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
                     mission.ConfigKey

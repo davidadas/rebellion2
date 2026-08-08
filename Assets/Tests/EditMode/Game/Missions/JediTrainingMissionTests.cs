@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -84,6 +85,36 @@ namespace Rebellion.Tests.Game.Missions
         public void TryCreate_NoParticipants_ReturnsNull()
         {
             Assert.IsNull(CreateMission(new List<IMissionParticipant>()));
+        }
+
+        [Test]
+        public void ScriptedTrainingMission_Completion_AppliesOriginalPercentFormulaAndState()
+        {
+            _student.ForceValue = 41;
+            ScriptedTrainingMission mission = new ScriptedTrainingMission(
+                _student,
+                durationTicks: 100,
+                completionBonusPercent: 60,
+                completionVariableKey: "luke.dagobah.completed",
+                completionVariableValue: 1,
+                displayName: "Journey to Dagobah"
+            );
+
+            List<GameResult> results = mission.Execute(
+                _game,
+                new FixedRandomProvider(new[] { 0d })
+            );
+
+            ForceExperienceResult force = results.OfType<ForceExperienceResult>().Single();
+            Assert.IsTrue(force.SuppressRankChangeMessage);
+            Assert.AreEqual(41, force.PreviousForceRank);
+            Assert.AreEqual(65, force.CurrentForceRank);
+            Assert.AreEqual(24, force.ExperienceGained);
+            Assert.AreEqual(1, _game.GetEventVariable("luke.dagobah.completed"));
+            Assert.AreEqual(
+                MissionOutcome.Success,
+                results.OfType<MissionCompletedResult>().Single().Outcome
+            );
         }
 
         [Test]

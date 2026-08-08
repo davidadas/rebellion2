@@ -652,6 +652,7 @@ namespace Rebellion.Game.Messages
                     MessageType = result.MessageType,
                     TitleTemplate = result.TitleTemplate,
                     BodyTemplate = result.BodyTemplate,
+                    ImageKey = result.ImageKey,
                     ImagePath = result.ImagePath,
                     VoicePath = result.VoicePath,
                 };
@@ -664,7 +665,8 @@ namespace Rebellion.Game.Messages
                         { "location", locationName },
                         { "faction", result.Recipient.GetDisplayName() },
                     },
-                    overlayImagePath: result.OverlayImagePath
+                    overlayImagePath: result.OverlayImagePath,
+                    officerVoicePath: result.OfficerVoicePath
                 );
                 if (message == null)
                     continue;
@@ -2740,7 +2742,7 @@ namespace Rebellion.Game.Messages
             GameRoot game
         )
         {
-            if (result?.Officer == null)
+            if (result?.Officer == null || result.SuppressRankChangeMessage)
                 return false;
 
             string previousRank = GetForceRankText(

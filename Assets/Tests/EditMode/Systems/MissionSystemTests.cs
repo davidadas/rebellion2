@@ -305,6 +305,61 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleScriptedTrainingRequest_CompletesThroughMissionLifecycleAndReturnsTrainee()
+        {
+            (GameRoot game, Planet planet, Officer officer, _) = BuildScene(
+                factionOwnsPlanet: true
+            );
+            officer.IsJedi = true;
+            officer.IsForceEligible = true;
+            officer.ForceValue = 10;
+            StubRNG rng = new StubRNG();
+            FogOfWarSystem fog = new FogOfWarSystem(game);
+            FleetSystem fleet = new FleetSystem(game);
+            MovementSystem movement = new MovementSystem(game, fog, fleet);
+            ManufacturingSystem manufacturing = new ManufacturingSystem(game, fleet, movement);
+            PlanetaryControlSystem control = new PlanetaryControlSystem(
+                game,
+                movement,
+                manufacturing,
+                fog
+            );
+            UprisingSystem uprising = new UprisingSystem(game, rng, control);
+            MissionSystem missions = new MissionSystem(game, rng, movement, uprising);
+
+            missions.HandleResults(
+                new[]
+                {
+                    new ScriptedTrainingRequestedResult
+                    {
+                        Trainee = officer,
+                        DurationTicks = 2,
+                        CompletionBonusPercent = 60,
+                        CompletionVariableKey = "training.complete",
+                        CompletionVariableValue = 1,
+                        DisplayName = "Journey to Dagobah",
+                    },
+                }
+            );
+
+            ScriptedTrainingMission active = game.GetSceneNodesByType<ScriptedTrainingMission>()
+                .Single();
+            Assert.AreSame(active, officer.GetParent());
+            Assert.AreEqual(2, active.MaxProgress);
+            officer.Movement = null;
+
+            Assert.IsEmpty(missions.ProcessTick().OfType<ForceExperienceResult>());
+            List<GameResult> completionResults = missions.ProcessTick();
+
+            Assert.AreEqual(16, officer.ForceRank);
+            Assert.AreEqual(1, game.GetEventVariable("training.complete"));
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.IsTrue(completionResults.OfType<ForceExperienceResult>().Any());
+            Assert.IsTrue(completionResults.OfType<MissionCompletedResult>().Any());
+            Assert.IsEmpty(game.GetSceneNodesByType<ScriptedTrainingMission>());
+        }
+
+        [Test]
         public void UpdateMission_CompletedWithoutReturnDestination_CapturesOfficerAndDetachesMission()
         {
             GameConfig config = TestConfig.Create();

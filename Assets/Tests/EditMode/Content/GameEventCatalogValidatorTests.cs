@@ -135,6 +135,24 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("DestinationInstanceID is required", exception.Message);
         }
 
+        [Test]
+        public void Validate_ScriptedTrainingWithInvalidConfiguration_ReportsAllProblems()
+        {
+            GameEvent gameEvent = CreateEvent("TRAINING");
+            gameEvent.Actions.Add(
+                new StartScriptedTrainingAction { DurationTicks = 0, CompletionBonusPercent = -1 }
+            );
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("TraineeInstanceID is required", exception.Message);
+            StringAssert.Contains("DurationTicks must be at least 1", exception.Message);
+            StringAssert.Contains("CompletionBonusPercent cannot be negative", exception.Message);
+            StringAssert.Contains("CompletionVariableKey is required", exception.Message);
+        }
+
         private static GameEvent CreateEvent(string instanceId)
         {
             return new GameEvent
