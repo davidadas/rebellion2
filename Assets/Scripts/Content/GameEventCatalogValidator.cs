@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game.Events;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 
 /// <summary>
@@ -104,6 +105,9 @@ public static class GameEventCatalogValidator
 
         ValidateConditionList(gameEvent.Conditionals, $"{context}.Conditionals", errors);
         ValidateActionList(gameEvent.Actions, $"{context}.Actions", errors);
+        ValidateEffectList(gameEvent.Effects, $"{context}.Effects", errors);
+        if (gameEvent.Effects?.Count > 0 && !gameEvent.IsRepeatable)
+            errors.Add($"{context} ongoing effects require a repeatable event.");
         if (
             gameEvent.Scope != GameEventScope.EachPlanet
             && ContainsAction<InformantIntelligenceAction>(gameEvent.Actions)
@@ -131,6 +135,44 @@ public static class GameEventCatalogValidator
     {
         if (value < 0)
             errors.Add($"{context}.{memberName} cannot be negative.");
+    }
+
+    private static void ValidateEffectList(
+        IReadOnlyList<GameEffect> effects,
+        string path,
+        List<string> errors
+    )
+    {
+        if (effects == null)
+        {
+            errors.Add($"{path} is null.");
+            return;
+        }
+
+        for (int index = 0; index < effects.Count; index++)
+        {
+            GameEffect effect = effects[index];
+            string effectPath = $"{path}[{index}]";
+            if (effect == null)
+            {
+                errors.Add($"{effectPath} is null.");
+                continue;
+            }
+
+            if (effect is FactionOfficerRatingAuraEffect aura)
+            {
+                if (string.IsNullOrWhiteSpace(aura.SourceUnitInstanceID))
+                    errors.Add($"{effectPath}.SourceUnitInstanceID is required.");
+                if (string.IsNullOrWhiteSpace(aura.LocationInstanceID))
+                    errors.Add($"{effectPath}.LocationInstanceID is required.");
+                if (string.IsNullOrWhiteSpace(aura.AffectedFactionInstanceID))
+                    errors.Add($"{effectPath}.AffectedFactionInstanceID is required.");
+                if (aura.Rating == OfficerRating.None)
+                    errors.Add($"{effectPath}.Rating is required.");
+                if (aura.Amount == 0)
+                    errors.Add($"{effectPath}.Amount cannot be zero.");
+            }
+        }
     }
 
     private static void ValidateConditionList(

@@ -867,6 +867,13 @@ namespace Rebellion.Game.FogOfWar
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
             copy.Ratings = new Dictionary<OfficerRating, int>(officer.Ratings);
+            copy.RatingModifiers =
+                officer.RatingModifiers?.ConvertAll(modifier => new OfficerRatingModifier
+                {
+                    Key = modifier.Key,
+                    Rating = modifier.Rating,
+                    Amount = modifier.Amount,
+                }) ?? new List<OfficerRatingModifier>();
             copy.Movement = CopyMovementForSnapshot(officer.Movement);
             ClearParentReferences(copy);
             return copy;

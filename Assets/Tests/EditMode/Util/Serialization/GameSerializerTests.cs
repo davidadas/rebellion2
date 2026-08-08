@@ -269,6 +269,42 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
+        public void Serialize_GameEventEffects_RoundTripsAliasAndConfiguration()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SEAT_OF_POWER",
+                IsRepeatable = true,
+                Effects = new List<GameEffect>
+                {
+                    new FactionOfficerRatingAuraEffect
+                    {
+                        SourceUnitInstanceID = "EMPEROR_PALPATINE",
+                        LocationInstanceID = "CORUSCANT",
+                        AffectedFactionInstanceID = "FNEMP1",
+                        Rating = OfficerRating.Leadership,
+                        Amount = 50,
+                    },
+                },
+            };
+
+            string serializedXml = SerializeToString(serializer, gameEvent);
+            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
+
+            StringAssert.Contains("<FactionOfficerRatingAura>", serializedXml);
+            Assert.IsFalse(serializedXml.Contains("FactionOfficerRatingAuraEffect"));
+            FactionOfficerRatingAuraEffect aura =
+                deserialized.Effects[0] as FactionOfficerRatingAuraEffect;
+            Assert.IsNotNull(aura);
+            Assert.AreEqual("EMPEROR_PALPATINE", aura.SourceUnitInstanceID);
+            Assert.AreEqual("CORUSCANT", aura.LocationInstanceID);
+            Assert.AreEqual("FNEMP1", aura.AffectedFactionInstanceID);
+            Assert.AreEqual(OfficerRating.Leadership, aura.Rating);
+            Assert.AreEqual(50, aura.Amount);
+        }
+
+        [Test]
         public void Serialize_GameEventNarrativeActions_RoundTripsAliasesAndPresentation()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));

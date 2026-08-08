@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -35,6 +36,7 @@ namespace Rebellion.Systems
         /// <returns>Results produced by events that executed.</returns>
         public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
         {
+            ReconcileEffects(gameEvents);
             List<GameResult> allResults = new List<GameResult>();
             List<GameEvent> eventsToRemove = new List<GameEvent>();
 
@@ -77,6 +79,36 @@ namespace Rebellion.Systems
                 _game.RemoveEvent(eventToRemove);
 
             return allResults;
+        }
+
+        private void ReconcileEffects(IReadOnlyList<GameEvent> gameEvents)
+        {
+            HashSet<string> activeModifierKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (GameEvent gameEvent in gameEvents)
+            {
+                if (gameEvent?.Effects == null)
+                    continue;
+
+                for (int index = 0; index < gameEvent.Effects.Count; index++)
+                {
+                    GameEffect effect = gameEvent.Effects[index];
+                    if (effect == null)
+                        continue;
+
+                    string modifierKey =
+                        $"{GameEffect.ModifierKeyPrefix}{gameEvent.InstanceID}:effect:{index}";
+                    activeModifierKeys.Add(modifierKey);
+                    effect.Reconcile(_game, modifierKey);
+                }
+            }
+
+            foreach (Officer officer in _game.GetRegisteredSceneNodesByType<Officer>())
+            {
+                officer.RemoveRatingModifiersExcept(
+                    GameEffect.ModifierKeyPrefix,
+                    activeModifierKeys
+                );
+            }
         }
 
         /// <summary>

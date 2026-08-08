@@ -97,6 +97,7 @@ namespace Rebellion.Game.Events
         public int RepeatDelayRandomTicks { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
+        public List<GameEffect> Effects { get; set; } = new List<GameEffect>();
 
         public GameEvent() { }
 

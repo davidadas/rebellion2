@@ -54,6 +54,18 @@ namespace Rebellion.Game.Units
     }
 
     /// <summary>
+    /// Identifies one additive, externally managed officer-rating adjustment.
+    /// Stable keys let ongoing systems reconcile modifiers without accumulating duplicates.
+    /// </summary>
+    [PersistableObject]
+    public sealed class OfficerRatingModifier
+    {
+        public string Key { get; set; }
+        public OfficerRating Rating { get; set; }
+        public int Amount { get; set; }
+    }
+
+    /// <summary>
     /// Represents an officer that can be used in missions.
     /// </summary>
     public class Officer : LeafNode, IMissionParticipant, IMovable
@@ -174,6 +186,8 @@ namespace Rebellion.Game.Units
                 { OfficerRating.Combat, 0 },
                 { OfficerRating.Leadership, 0 },
             };
+        public List<OfficerRatingModifier> RatingModifiers { get; set; } =
+            new List<OfficerRatingModifier>();
         public bool CanImproveMissionRating => true;
 
         /// <summary>
@@ -241,7 +255,7 @@ namespace Rebellion.Game.Units
         public int GetEffectiveRating(OfficerRating rating)
         {
             int baseRating = GetBaseRating(rating);
-            return rating switch
+            int officerRating = rating switch
             {
                 OfficerRating.Diplomacy => ApplyForceRatingBonus(baseRating),
                 OfficerRating.Espionage => ApplyForceRatingBonus(baseRating),
@@ -251,6 +265,76 @@ namespace Rebellion.Game.Units
                 ),
                 _ => baseRating,
             };
+            int effectiveRating = officerRating + GetRatingModifierTotal(rating);
+            return rating == OfficerRating.Combat ? Math.Max(0, effectiveRating) : effectiveRating;
+        }
+
+        /// <summary>
+        /// Adds or replaces one externally managed rating modifier.
+        /// </summary>
+        public void SetRatingModifier(string key, OfficerRating rating, int amount)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("A rating modifier key is required.", nameof(key));
+
+            RatingModifiers ??= new List<OfficerRatingModifier>();
+            OfficerRatingModifier modifier = RatingModifiers.Find(item => item.Key == key);
+            if (amount == 0)
+            {
+                if (modifier != null)
+                    RatingModifiers.Remove(modifier);
+                return;
+            }
+
+            if (modifier == null)
+            {
+                RatingModifiers.Add(
+                    new OfficerRatingModifier
+                    {
+                        Key = key,
+                        Rating = rating,
+                        Amount = amount,
+                    }
+                );
+                return;
+            }
+
+            modifier.Rating = rating;
+            modifier.Amount = amount;
+        }
+
+        /// <summary>
+        /// Removes one externally managed rating modifier.
+        /// </summary>
+        public void RemoveRatingModifier(string key)
+        {
+            RatingModifiers?.RemoveAll(modifier => modifier.Key == key);
+        }
+
+        /// <summary>
+        /// Removes managed modifiers in a namespace unless their keys are currently active.
+        /// </summary>
+        public void RemoveRatingModifiersExcept(string prefix, ISet<string> activeKeys)
+        {
+            RatingModifiers?.RemoveAll(modifier =>
+                modifier.Key?.StartsWith(prefix, StringComparison.Ordinal) == true
+                && !activeKeys.Contains(modifier.Key)
+            );
+        }
+
+        private int GetRatingModifierTotal(OfficerRating rating)
+        {
+            int total = 0;
+            if (RatingModifiers == null)
+                return total;
+
+            foreach (OfficerRatingModifier modifier in RatingModifiers)
+            {
+                if (modifier.Rating == rating)
+                    total += modifier.Amount;
+            }
+
+            return total;
         }
 
         /// <summary>

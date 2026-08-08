@@ -141,11 +141,19 @@ namespace Rebellion.Tests.Content
             NarrativeMessageAction message = gameEvent
                 .Actions.OfType<NarrativeMessageAction>()
                 .Single();
+            FactionOfficerRatingAuraEffect aura = gameEvent
+                .Effects.OfType<FactionOfficerRatingAuraEffect>()
+                .Single();
 
             Assert.IsTrue(gameEvent.IsRepeatable);
             Assert.AreEqual(nameof(UnitArrivedResult), gameEvent.TriggerResultType);
             Assert.AreEqual("EMPEROR_PALPATINE", arrival.UnitInstanceID);
             Assert.AreEqual("CORUSCANT", arrival.DestinationInstanceID);
+            Assert.AreEqual("EMPEROR_PALPATINE", aura.SourceUnitInstanceID);
+            Assert.AreEqual("CORUSCANT", aura.LocationInstanceID);
+            Assert.AreEqual("FNEMP1", aura.AffectedFactionInstanceID);
+            Assert.AreEqual(OfficerRating.Leadership, aura.Rating);
+            Assert.AreEqual(50, aura.Amount);
             Assert.AreEqual("Emperor Arrives at Coruscant", message.TitleTemplate);
             Assert.AreEqual(
                 "I have returned to the Seat of Power at Coruscant.",

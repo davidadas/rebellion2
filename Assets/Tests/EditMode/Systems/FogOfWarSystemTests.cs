@@ -238,11 +238,13 @@ namespace Rebellion.Tests.Systems
         {
             Officer vader = CreateOfficer("VADER", _empire);
             vader.SetBaseRating(OfficerRating.Diplomacy, 50);
+            vader.SetRatingModifier("game-event:aura:effect:0", OfficerRating.Leadership, 50);
             _game.AttachNode(vader, _coruscant);
 
             _fogSystem.CaptureSnapshot(_alliance, _coruscant, _coreSystem, 10);
 
             vader.SetBaseRating(OfficerRating.Diplomacy, 99);
+            vader.RatingModifiers[0].Amount = 5;
             _coruscant.Officers.Remove(vader);
 
             SystemSnapshot systemSnapshot = _alliance.Fog.Snapshots["CORESYS"];
@@ -250,6 +252,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(1, snapshot.Officers.Count);
             Assert.AreEqual(50, snapshot.Officers[0].GetBaseRating(OfficerRating.Diplomacy));
+            Assert.AreEqual(50, snapshot.Officers[0].RatingModifiers[0].Amount);
         }
 
         [Test]

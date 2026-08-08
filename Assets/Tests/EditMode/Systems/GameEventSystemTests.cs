@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
@@ -190,6 +192,100 @@ namespace Rebellion.Tests.Systems
 
             Assert.Zero(_game.GetEventVariable("unexpected"));
             Assert.Contains(gameEvent, _game.EventPool);
+        }
+
+        [Test]
+        public void ProcessEvents_FactionOfficerRatingAura_ReconcilesNestedSourceAndDeparture()
+        {
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            _game.Factions.Add(new Faction { InstanceID = "alliance" });
+            Planet coruscant = new Planet
+            {
+                InstanceID = "coruscant",
+                IsColonized = true,
+                OwnerInstanceID = "empire",
+            };
+            Planet anaxes = new Planet
+            {
+                InstanceID = "anaxes",
+                IsColonized = true,
+                OwnerInstanceID = "alliance",
+            };
+            StubMission mission = new StubMission { InstanceID = "mission" };
+            Officer palpatine = new Officer
+            {
+                InstanceID = "palpatine",
+                OwnerInstanceID = "empire",
+            };
+            Officer imperial = new Officer { InstanceID = "imperial", OwnerInstanceID = "empire" };
+            Officer rebel = new Officer { InstanceID = "rebel", OwnerInstanceID = "alliance" };
+            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(coruscant, system);
+            _game.AttachNode(anaxes, system);
+            _game.AttachNode(mission, coruscant);
+            _game.AttachNode(palpatine, mission);
+            _game.AttachNode(imperial, coruscant);
+            _game.AttachNode(rebel, anaxes);
+            palpatine.SetBaseRating(OfficerRating.Leadership, 80);
+            imperial.SetBaseRating(OfficerRating.Leadership, 40);
+            rebel.SetBaseRating(OfficerRating.Leadership, 30);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "SEAT_OF_POWER",
+                IsRepeatable = true,
+                TriggerResultType = nameof(UnitArrivedResult),
+                Effects = new List<GameEffect>
+                {
+                    new FactionOfficerRatingAuraEffect
+                    {
+                        SourceUnitInstanceID = palpatine.InstanceID,
+                        LocationInstanceID = coruscant.InstanceID,
+                        AffectedFactionInstanceID = "empire",
+                        Rating = OfficerRating.Leadership,
+                        Amount = 50,
+                    },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.EventPool);
+
+            Assert.AreEqual(130, palpatine.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(90, imperial.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(30, rebel.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(1, imperial.RatingModifiers.Count);
+            Assert.Zero(_game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+
+            _game.MoveNode(mission, anaxes);
+            _system.ProcessEvents(_game.EventPool);
+
+            Assert.AreEqual(80, palpatine.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(40, imperial.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.IsEmpty(imperial.RatingModifiers);
+        }
+
+        [Test]
+        public void ProcessEvents_RemovedEffect_CleansPersistedManagedModifier()
+        {
+            _game.Factions.Add(new Faction { InstanceID = "empire" });
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            Planet planet = new Planet
+            {
+                InstanceID = "planet",
+                IsColonized = true,
+                OwnerInstanceID = "empire",
+            };
+            Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "empire" };
+            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planet, system);
+            _game.AttachNode(officer, planet);
+            officer.SetRatingModifier("game-event:removed:effect:0", OfficerRating.Leadership, 50);
+
+            _system.ProcessEvents(_game.EventPool);
+
+            Assert.IsEmpty(officer.RatingModifiers);
         }
 
         [Test]

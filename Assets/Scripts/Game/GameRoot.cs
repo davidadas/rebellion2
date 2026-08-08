@@ -432,6 +432,16 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Retrieves every registered live scene node of a type, including nodes nested inside
+        /// containers whose public child projection intentionally omits runtime participants.
+        /// </summary>
+        public List<T> GetRegisteredSceneNodesByType<T>()
+            where T : class
+        {
+            return NodesByInstanceID.Values.OfType<T>().ToList();
+        }
+
+        /// <summary>
         /// Registers a unit to the faction that owns the unit.
         /// </summary>
         /// <param name="node">The unit to register.</param>

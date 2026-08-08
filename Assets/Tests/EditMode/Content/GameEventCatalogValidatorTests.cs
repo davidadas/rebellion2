@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
 using Rebellion.Game.Events;
+using Rebellion.Game.Missions;
 
 namespace Rebellion.Tests.Content
 {
@@ -218,6 +219,43 @@ namespace Rebellion.Tests.Content
             StringAssert.Contains("CurrentRankPercent cannot be negative", exception.Message);
             StringAssert.Contains("ReferenceOfficerInstanceID is required", exception.Message);
             StringAssert.Contains("MaximumInjury cannot be less", exception.Message);
+        }
+
+        [Test]
+        public void Validate_OngoingAuraWithInvalidConfiguration_ReportsAllProblems()
+        {
+            GameEvent gameEvent = CreateEvent("AURA");
+            gameEvent.Effects.Add(new FactionOfficerRatingAuraEffect());
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("SourceUnitInstanceID is required", exception.Message);
+            StringAssert.Contains("LocationInstanceID is required", exception.Message);
+            StringAssert.Contains("AffectedFactionInstanceID is required", exception.Message);
+            StringAssert.Contains("Rating is required", exception.Message);
+            StringAssert.Contains("Amount cannot be zero", exception.Message);
+            StringAssert.Contains("ongoing effects require a repeatable event", exception.Message);
+        }
+
+        [Test]
+        public void Validate_ValidOngoingAura_DoesNotThrow()
+        {
+            GameEvent gameEvent = CreateEvent("AURA");
+            gameEvent.IsRepeatable = true;
+            gameEvent.Effects.Add(
+                new FactionOfficerRatingAuraEffect
+                {
+                    SourceUnitInstanceID = "PALPATINE",
+                    LocationInstanceID = "CORUSCANT",
+                    AffectedFactionInstanceID = "EMPIRE",
+                    Rating = OfficerRating.Leadership,
+                    Amount = 50,
+                }
+            );
+
+            Assert.DoesNotThrow(() => GameEventCatalogValidator.Validate(new[] { gameEvent }));
         }
 
         private static GameEvent CreateEvent(string instanceId)
