@@ -185,6 +185,9 @@ public class SaveGameManager
         foreach (FileInfo file in files)
         {
             string fileName = Path.GetFileNameWithoutExtension(file.Name);
+            if (string.Equals(fileName, QuickSaveFileName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             SaveGameEntry save = TryReadSaveEntry(fileName);
             if (save != null)
                 saves.Add(save);
@@ -225,13 +228,45 @@ public class SaveGameManager
         else if (fileName == QuickSaveFileName)
             game.Metadata.SaveDisplayName = _quickSaveDisplayName;
 
-        // Serialize the data to a file.
         string saveFilePath = GetSaveFilePath(fileName);
         GameSerializer serializer = new GameSerializer(typeof(GameRoot));
-        using (FileStream fileStream = new FileStream(saveFilePath, FileMode.Create))
-            serializer.Serialize(fileStream, game);
+        WriteSave(saveFilePath, serializer, game);
 
         TryWriteSaveMetadata(fileName, game.Metadata);
+    }
+
+    /// <summary>
+    /// Serializes a save beside its destination and atomically publishes it only after the full
+    /// payload has reached durable storage.
+    /// </summary>
+    private static void WriteSave(string saveFilePath, GameSerializer serializer, GameRoot game)
+    {
+        string temporaryPath = saveFilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (
+                FileStream temporaryStream = new FileStream(
+                    temporaryPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None
+                )
+            )
+            {
+                serializer.Serialize(temporaryStream, game);
+                temporaryStream.Flush(true);
+            }
+
+            if (File.Exists(saveFilePath))
+                File.Replace(temporaryPath, saveFilePath, null);
+            else
+                File.Move(temporaryPath, saveFilePath);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
     }
 
     /// <summary>

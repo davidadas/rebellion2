@@ -72,6 +72,26 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_ExistingSave_AtomicallyReplacesWithoutTemporaryFiles()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+                CurrentTick = 10,
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            game.CurrentTick = 20;
+            _saveGameManager.SaveGameData(game, _saveFileName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(20, loadedGame.CurrentTick);
+            CollectionAssert.IsEmpty(Directory.GetFiles(_saveDirectoryPath, "*.tmp"));
+        }
+
+        [Test]
         public void SaveSlotAccessors_ReturnCanonicalNamesAndValidateBounds()
         {
             SaveGameManager manager = _saveGameManager;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
@@ -62,7 +63,7 @@ internal sealed class MissionsWindowProjector
             session.SelectedMissionIndex,
             selectedMission != null,
             selectedMission == null ? string.Empty : target?.GetDisplayName(),
-            selectedMission == null ? null : uiContext.GetEntityTexture(target, true),
+            selectedMission == null ? null : GetTargetTexture(uiContext, target),
             BuildMissionRows(uiContext, session.Missions, session.SelectedMissionIndex),
             BuildTabs(uiContext, session.ActiveRole),
             BuildParticipantRows(uiContext, session.ActiveParticipants)
@@ -209,6 +210,17 @@ internal sealed class MissionsWindowProjector
         return !string.IsNullOrEmpty(mission.LocationInstanceID)
             ? findVisibleNode(mission.LocationInstanceID)
             : mission.GetParent();
+    }
+
+    /// <summary>
+    /// Resolves planet targets through their current planet artwork and other targets through
+    /// their compact entity artwork.
+    /// </summary>
+    private static Texture GetTargetTexture(UIContext uiContext, ISceneNode target)
+    {
+        return target is Planet planet
+            ? uiContext.GetPlanetTexture(planet)
+            : uiContext.GetEntityTexture(target, true);
     }
 
     /// <summary>
