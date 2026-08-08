@@ -3,6 +3,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Messages
 {
@@ -100,6 +101,31 @@ namespace Rebellion.Game.Messages
     }
 
     /// <summary>
+    /// Defines the original situation and fleet-disposition text used to assemble a space battle
+    /// report. Keeping these fragments in content allows total-conversion packs to replace the
+    /// complete battle vocabulary without changing message routing code.
+    /// </summary>
+    [PersistableObject]
+    public class SpaceBattleNarrativeTemplates
+    {
+        public string VictoryHeadline { get; set; }
+        public string DefeatHeadline { get; set; }
+        public string StalemateHeadline { get; set; }
+        public string NeutralVictory { get; set; }
+        public string NeutralDefeat { get; set; }
+        public string SuccessfullyDefended { get; set; }
+        public string BlockadeEstablished { get; set; }
+        public string AttackFailed { get; set; }
+        public string BlockadeMaintained { get; set; }
+        public string BlockadeBroken { get; set; }
+        public string NoVictor { get; set; }
+        public string FleetDestroyed { get; set; }
+        public string FleetWithdrawn { get; set; }
+        public string FleetWithdrawnTo { get; set; }
+        public string AllShipsDestroyed { get; set; }
+    }
+
+    /// <summary>
     /// Defines the templates, selectors, and image map for one generated message.
     /// </summary>
     public class MessageDefinition : BaseGameEntity
@@ -123,6 +149,7 @@ namespace Rebellion.Game.Messages
         public bool PlanetDestroyed { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
+        public SpaceBattleNarrativeTemplates SpaceBattleNarrative { get; set; }
         public bool ShowOfficerOverlay { get; set; }
         public string ImageKey { get; set; }
         public string ImagePath { get; set; }

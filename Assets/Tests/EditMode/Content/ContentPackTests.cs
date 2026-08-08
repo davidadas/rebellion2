@@ -121,6 +121,35 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        [Test]
+        public void OpenActive_SpaceBattleReports_PreserveOriginalModdableNarrativeCatalog()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            MessageDefinition[] definitions = pack
+                .GameData.MessageDefinitions.Where(candidate =>
+                    candidate.ResultType == MessageResultType.SpaceBattle
+                )
+                .ToArray();
+
+            Assert.AreEqual(3, definitions.Length);
+            Assert.IsTrue(definitions.All(definition => definition.SpaceBattleNarrative != null));
+            SpaceBattleNarrativeTemplates narrative = definitions
+                .Single(definition => definition.Outcome == MessageResultOutcome.Victory)
+                .SpaceBattleNarrative;
+            Assert.AreEqual(
+                "The {fleetFaction} fleet has been completely destroyed.",
+                narrative.FleetDestroyed
+            );
+            Assert.AreEqual(
+                "The {fleetFaction} fleet has withdrawn to {retreatSystem}.",
+                narrative.FleetWithdrawnTo
+            );
+            Assert.AreEqual(
+                "All {faction} and {opponent} ships have been destroyed.",
+                narrative.AllShipsDestroyed
+            );
+        }
+
         [TestCase("main-menu")]
         [TestCase("save-menu")]
         [TestCase("strategy")]

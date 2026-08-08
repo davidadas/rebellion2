@@ -3220,6 +3220,112 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SpaceBattle_RestoresOriginalStrategicAndFleetOutcomeText()
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Fleet attacker = new Fleet
+            {
+                InstanceID = "alliance-fleet",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Fleet defender = new Fleet
+            {
+                InstanceID = "empire-fleet",
+                OwnerInstanceID = empire.InstanceID,
+            };
+
+            MessageDefinition[] definitions = ContentPackLoader
+                .OpenActive()
+                .GameData.MessageDefinitions.Where(definition =>
+                    definition.ResultType == MessageResultType.SpaceBattle
+                )
+                .ToArray();
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                definitions,
+                new SpaceCombatResult
+                {
+                    AttackerFleet = attacker,
+                    DefenderFleet = defender,
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
+                    Planet = target,
+                    Winner = CombatSide.Attacker,
+                    AttackerOutcome = SpaceCombatSideOutcome.Active,
+                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                }
+            );
+
+            Assert.AreEqual(
+                "The Alliance fleet is victorious.\n"
+                    + "Yavin is now under blockade by Alliance forces.\n"
+                    + "The Empire fleet has been completely destroyed.",
+                FirstMessageFor(deliveries, alliance).Body
+            );
+            Assert.AreEqual(
+                "The Empire fleet is defeated.\n"
+                    + "Yavin is now under blockade by Alliance forces.\n"
+                    + "The Empire fleet has been completely destroyed.",
+                FirstMessageFor(deliveries, empire).Body
+            );
+        }
+
+        [Test]
+        public void CreateMessages_SpaceBattle_ReportsRetreatDestinationOnlyToWithdrawingFaction()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet retreat, Planet target) =
+                BuildTwoFactionMessageScene();
+            Fleet attacker = new Fleet
+            {
+                InstanceID = "alliance-fleet",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            Fleet defender = new Fleet
+            {
+                InstanceID = "empire-fleet",
+                OwnerInstanceID = empire.InstanceID,
+            };
+            game.AttachNode(attacker, retreat);
+            game.AttachNode(defender, target);
+
+            MessageDefinition[] definitions = ContentPackLoader
+                .OpenActive()
+                .GameData.MessageDefinitions.Where(definition =>
+                    definition.ResultType == MessageResultType.SpaceBattle
+                )
+                .ToArray();
+            List<(Faction faction, Message message)> deliveries = CreateMessages(
+                game,
+                definitions,
+                new SpaceCombatResult
+                {
+                    AttackerFleet = attacker,
+                    DefenderFleet = defender,
+                    AttackerOwnerInstanceID = alliance.InstanceID,
+                    DefenderOwnerInstanceID = empire.InstanceID,
+                    Planet = target,
+                    Winner = CombatSide.Defender,
+                    AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                    DefenderOutcome = SpaceCombatSideOutcome.Active,
+                }
+            );
+
+            Assert.AreEqual(
+                "The Alliance fleet is defeated.\n"
+                    + "The Alliance attack on Yavin has failed.\n"
+                    + "The Alliance fleet has withdrawn to Coruscant.",
+                FirstMessageFor(deliveries, alliance).Body
+            );
+            Assert.AreEqual(
+                "The Empire fleet is victorious.\n"
+                    + "Yavin has been successfully defended from Alliance forces.\n"
+                    + "The Alliance fleet has withdrawn.",
+                FirstMessageFor(deliveries, empire).Body
+            );
+        }
+
+        [Test]
         public void CreateMessages_SpaceBattleWithPlanetaryStarfighters_DeliversToDefender()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =

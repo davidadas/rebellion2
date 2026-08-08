@@ -87,7 +87,7 @@ namespace Rebellion.Game.Messages
         /// <param name="template">The text template.</param>
         /// <param name="values">The template values to apply.</param>
         /// <returns>The interpolated text.</returns>
-        private static string Interpolate(string template, Dictionary<string, string> values)
+        internal static string Interpolate(string template, Dictionary<string, string> values)
         {
             string result = template ?? string.Empty;
             if (values == null)

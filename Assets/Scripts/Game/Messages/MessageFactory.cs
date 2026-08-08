@@ -1361,19 +1361,54 @@ namespace Rebellion.Game.Messages
             if (outcome == MessageResultOutcome.None)
                 return null;
 
+            MessageDefinition definition = GetDefinition(MessageResultType.SpaceBattle, outcome);
+            Dictionary<string, string> values = new Dictionary<string, string>
+            {
+                { "faction", faction?.GetDisplayName() ?? string.Empty },
+                { "opponent", opponent?.GetDisplayName() ?? string.Empty },
+                { "system", result.Planet?.GetDisplayName() ?? string.Empty },
+            };
+            AddSpaceBattleNarrativeValues(values, definition, faction, opponent, result, outcome);
+
             return WithEventLocation(
-                CreateMessage(
-                    GetDefinition(MessageResultType.SpaceBattle, outcome),
-                    faction,
-                    new Dictionary<string, string>
-                    {
-                        { "faction", faction?.GetDisplayName() ?? string.Empty },
-                        { "opponent", opponent?.GetDisplayName() ?? string.Empty },
-                        { "system", result.Planet?.GetDisplayName() ?? string.Empty },
-                    }
-                ),
+                CreateMessage(definition, faction, values),
                 result.Planet,
                 GetSpaceBattleFleet(faction, result)
+            );
+        }
+
+        /// <summary>
+        /// Adds the original outcome, strategic situation, and fleet-disposition fragments used by
+        /// a configured space battle body template.
+        /// </summary>
+        private static void AddSpaceBattleNarrativeValues(
+            Dictionary<string, string> values,
+            MessageDefinition definition,
+            Faction faction,
+            Faction opponent,
+            SpaceCombatResult result,
+            MessageResultOutcome outcome
+        )
+        {
+            SpaceBattleNarrativeTemplates templates = definition?.SpaceBattleNarrative;
+            if (templates == null)
+                return;
+
+            values["headline"] = RenderBattleTemplate(
+                GetSpaceBattleHeadlineTemplate(templates, outcome),
+                values
+            );
+            values["situation"] = RenderBattleTemplate(
+                GetSpaceBattleSituationTemplate(templates, faction, opponent, result, outcome),
+                values
+            );
+            values["fleetOutcome"] = BuildSpaceBattleFleetOutcome(
+                templates,
+                faction,
+                opponent,
+                result,
+                outcome,
+                values
             );
         }
 
@@ -3313,6 +3348,164 @@ namespace Rebellion.Game.Messages
                     : MessageResultOutcome.Defeat;
 
             return MessageResultOutcome.None;
+        }
+
+        private static string GetSpaceBattleHeadlineTemplate(
+            SpaceBattleNarrativeTemplates templates,
+            MessageResultOutcome outcome
+        )
+        {
+            return outcome switch
+            {
+                MessageResultOutcome.Victory => templates.VictoryHeadline,
+                MessageResultOutcome.Defeat => templates.DefeatHeadline,
+                MessageResultOutcome.Stalemate => templates.StalemateHeadline,
+                _ => string.Empty,
+            };
+        }
+
+        private static string GetSpaceBattleSituationTemplate(
+            SpaceBattleNarrativeTemplates templates,
+            Faction faction,
+            Faction opponent,
+            SpaceCombatResult result,
+            MessageResultOutcome outcome
+        )
+        {
+            if (outcome == MessageResultOutcome.Stalemate)
+                return templates.NoVictor;
+
+            string planetOwnerId = result.Planet?.OwnerInstanceID;
+            if (string.IsNullOrEmpty(planetOwnerId))
+                return outcome == MessageResultOutcome.Victory
+                    ? templates.NeutralVictory
+                    : templates.NeutralDefeat;
+
+            CombatSide factionSide = GetSpaceCombatSide(faction, result);
+            bool factionOwnsPlanet = planetOwnerId == faction?.InstanceID;
+            bool opponentOwnsPlanet = planetOwnerId == opponent?.InstanceID;
+
+            if (outcome == MessageResultOutcome.Victory)
+            {
+                if (factionOwnsPlanet)
+                    return factionSide == CombatSide.Defender
+                        ? templates.SuccessfullyDefended
+                        : templates.BlockadeBroken;
+
+                return factionSide == CombatSide.Defender
+                    ? templates.BlockadeMaintained
+                    : templates.BlockadeEstablished;
+            }
+
+            if (factionOwnsPlanet)
+                return factionSide == CombatSide.Defender
+                    ? templates.BlockadeEstablished
+                    : templates.BlockadeMaintained;
+
+            if (opponentOwnsPlanet)
+                return factionSide == CombatSide.Attacker
+                    ? templates.AttackFailed
+                    : templates.BlockadeBroken;
+
+            return templates.AttackFailed;
+        }
+
+        private static string BuildSpaceBattleFleetOutcome(
+            SpaceBattleNarrativeTemplates templates,
+            Faction faction,
+            Faction opponent,
+            SpaceCombatResult result,
+            MessageResultOutcome outcome,
+            Dictionary<string, string> values
+        )
+        {
+            SpaceCombatSideOutcome factionOutcome = GetSpaceCombatSideOutcome(faction, result);
+            SpaceCombatSideOutcome opponentOutcome = GetSpaceCombatSideOutcome(opponent, result);
+            if (
+                outcome == MessageResultOutcome.Stalemate
+                && factionOutcome == SpaceCombatSideOutcome.Destroyed
+                && opponentOutcome == SpaceCombatSideOutcome.Destroyed
+            )
+            {
+                return RenderBattleTemplate(templates.AllShipsDestroyed, values);
+            }
+
+            List<string> lines = new List<string>();
+            AddFleetOutcomeLine(lines, templates, faction, factionOutcome, result, values, true);
+            AddFleetOutcomeLine(lines, templates, opponent, opponentOutcome, result, values, false);
+            return string.Join("\n", lines);
+        }
+
+        private static void AddFleetOutcomeLine(
+            List<string> lines,
+            SpaceBattleNarrativeTemplates templates,
+            Faction fleetFaction,
+            SpaceCombatSideOutcome fleetOutcome,
+            SpaceCombatResult result,
+            Dictionary<string, string> values,
+            bool includeRetreatDestination
+        )
+        {
+            if (
+                fleetOutcome == SpaceCombatSideOutcome.Active
+                || fleetOutcome == SpaceCombatSideOutcome.Unknown
+            )
+                return;
+
+            Dictionary<string, string> lineValues = new Dictionary<string, string>(values)
+            {
+                ["fleetFaction"] = fleetFaction?.GetDisplayName() ?? string.Empty,
+            };
+            string template;
+            if (fleetOutcome == SpaceCombatSideOutcome.Destroyed)
+            {
+                template = templates.FleetDestroyed;
+            }
+            else
+            {
+                Planet destination = includeRetreatDestination
+                    ? GetSpaceBattleFleet(fleetFaction, result)?.GetParentOfType<Planet>()
+                    : null;
+                if (destination == result.Planet)
+                    destination = null;
+
+                lineValues["retreatSystem"] = destination?.GetDisplayName() ?? string.Empty;
+                template =
+                    destination == null ? templates.FleetWithdrawn : templates.FleetWithdrawnTo;
+            }
+
+            string line = RenderBattleTemplate(template, lineValues);
+            if (!string.IsNullOrWhiteSpace(line))
+                lines.Add(line);
+        }
+
+        private static string RenderBattleTemplate(
+            string template,
+            Dictionary<string, string> values
+        ) => MessageTemplateBuilder.Interpolate(template, values);
+
+        private static CombatSide GetSpaceCombatSide(Faction faction, SpaceCombatResult result)
+        {
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker))
+                return CombatSide.Attacker;
+
+            if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Defender))
+                return CombatSide.Defender;
+
+            return CombatSide.Draw;
+        }
+
+        private static SpaceCombatSideOutcome GetSpaceCombatSideOutcome(
+            Faction faction,
+            SpaceCombatResult result
+        )
+        {
+            return GetSpaceCombatSide(faction, result) switch
+            {
+                CombatSide.Attacker => result.AttackerOutcome,
+                CombatSide.Defender => result.DefenderOutcome,
+                _ => SpaceCombatSideOutcome.Unknown,
+            };
         }
 
         /// <summary>
