@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Execute_ValidIDs_PopulatesAttackersAndDefenders()
+        public void ResolveOfficerEncounter_ValidIDs_EmitsRequest()
         {
             GameRoot game = BuildGame(out Planet empPlanet, out Planet rebelPlanet);
             Officer attacker = EntityFactory.CreateOfficer("a1", "empire");
@@ -49,19 +49,19 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(attacker, empPlanet);
             game.AttachNode(defender, rebelPlanet);
 
-            TriggerDuelAction action = new TriggerDuelAction
+            ResolveOfficerEncounterAction action = new ResolveOfficerEncounterAction
             {
-                AttackerInstanceIDs = new List<string> { "a1" },
-                DefenderInstanceIDs = new List<string> { "d1" },
+                EncounteredOfficerInstanceID = "a1",
+                OpposingOfficerInstanceID = "d1",
             };
 
             List<GameResult> results = action.Execute(game);
 
-            DuelTriggeredResult duel = results.OfType<DuelTriggeredResult>().First();
-            Assert.AreEqual(1, duel.Attackers.Count);
-            Assert.AreEqual("a1", duel.Attackers[0].InstanceID);
-            Assert.AreEqual(1, duel.Defenders.Count);
-            Assert.AreEqual("d1", duel.Defenders[0].InstanceID);
+            OfficerEncounterRequestedResult request = results
+                .OfType<OfficerEncounterRequestedResult>()
+                .Single();
+            Assert.AreSame(attacker, request.EncounteredOfficer);
+            Assert.AreSame(defender, request.OpposingOfficer);
         }
 
         [Test]

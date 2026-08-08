@@ -56,34 +56,35 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "TriggerDuel")]
-    public class TriggerDuelAction : GameAction
+    [PersistableObject(Name = "ResolveOfficerEncounter")]
+    public class ResolveOfficerEncounterAction : GameAction
     {
-        public List<string> AttackerInstanceIDs { get; set; } = new List<string>();
-        public List<string> DefenderInstanceIDs { get; set; } = new List<string>();
+        public string EncounteredOfficerInstanceID { get; set; }
+        public string OpposingOfficerInstanceID { get; set; }
 
-        public TriggerDuelAction()
+        public ResolveOfficerEncounterAction()
             : base() { }
 
         /// <summary>
-        /// Resolves the referenced attacker and defender officers and emits a
-        /// <see cref="DuelTriggeredResult"/>. Duel resolution itself is not yet implemented.
+        /// Requests authoritative resolution of a linked-officer encounter.
         /// </summary>
-        /// <param name="game">The game state used to resolve officer references.</param>
-        /// <returns>A single <see cref="DuelTriggeredResult"/> describing the participants.</returns>
+        /// <param name="game">The game state used to resolve the officers.</param>
+        /// <returns>The encounter request, or no result when either officer is unavailable.</returns>
         public override List<GameResult> Execute(GameRoot game)
         {
-            // @TODO: Implement duel resolution
+            Officer encountered = game.GetSceneNodeByInstanceID<Officer>(
+                EncounteredOfficerInstanceID
+            );
+            Officer opposing = game.GetSceneNodeByInstanceID<Officer>(OpposingOfficerInstanceID);
+            if (encountered == null || opposing == null)
+                return new List<GameResult>();
+
             return new List<GameResult>
             {
-                new DuelTriggeredResult
+                new OfficerEncounterRequestedResult
                 {
-                    Attackers = AttackerInstanceIDs.ConvertAll(id =>
-                        game.GetSceneNodeByInstanceID<Officer>(id)
-                    ),
-                    Defenders = DefenderInstanceIDs.ConvertAll(id =>
-                        game.GetSceneNodeByInstanceID<Officer>(id)
-                    ),
+                    EncounteredOfficer = encountered,
+                    OpposingOfficer = opposing,
                     Tick = game.CurrentTick,
                 },
             };

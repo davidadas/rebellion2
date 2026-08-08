@@ -217,9 +217,11 @@ public static class GameEventCatalogValidator
                     else
                         ValidateActionList(randomOutcome.Actions, $"{actionPath}.Actions", errors);
                     break;
-                case TriggerDuelAction duel:
-                    ValidateIds(duel.AttackerInstanceIDs, $"{actionPath}.Attackers", 1, errors);
-                    ValidateIds(duel.DefenderInstanceIDs, $"{actionPath}.Defenders", 1, errors);
+                case ResolveOfficerEncounterAction encounter:
+                    if (string.IsNullOrWhiteSpace(encounter.EncounteredOfficerInstanceID))
+                        errors.Add($"{actionPath}.EncounteredOfficerInstanceID is required.");
+                    if (string.IsNullOrWhiteSpace(encounter.OpposingOfficerInstanceID))
+                        errors.Add($"{actionPath}.OpposingOfficerInstanceID is required.");
                     break;
                 case NarrativeMessageAction message:
                     ValidateNarrativeMessage(message, actionPath, errors);

@@ -29,6 +29,9 @@ namespace Rebellion.Game
 
         public JediConfig Jedi { get; set; } = new JediConfig();
 
+        public OfficerEncounterConfig OfficerEncounter { get; set; } =
+            new OfficerEncounterConfig();
+
         public ResearchConfig Research { get; set; } = new ResearchConfig();
 
         public AssassinationConfig Assassination { get; set; } = new AssassinationConfig();
@@ -546,6 +549,26 @@ namespace Rebellion.Game
             public int RankLabelForceKnight { get; set; }
 
             public int RankLabelForceMaster { get; set; }
+        }
+
+        /// <summary>
+        /// Linked-officer capture, injury, and combat-growth rules.
+        /// </summary>
+        [PersistableObject]
+        public class OfficerEncounterConfig
+        {
+            public Dictionary<int, int> CaptureAvoidanceTable { get; set; } =
+                new Dictionary<int, int>();
+
+            public int CaptureEvasionInjuryBaseChance { get; set; } = 100;
+
+            public int MinimumInjuryChance { get; set; } = 1;
+
+            public int InjuryBase { get; set; } = 1;
+
+            public int InjurySecondaryRollMaximum { get; set; } = 29;
+
+            public int CombatReward { get; set; } = 1;
         }
 
         /// <summary>

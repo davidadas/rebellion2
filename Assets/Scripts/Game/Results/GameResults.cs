@@ -438,13 +438,25 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Two factions' characters encountered each other.
+    /// Requests authoritative resolution of a linked-officer encounter.
+    /// </summary>
+    public class OfficerEncounterRequestedResult : GameResult
+    {
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+    }
+
+    /// <summary>
+    /// Records the complete outcome of a linked-officer encounter.
     /// </summary>
     public class OfficerEncounterResult : GameResult
     {
-        public Officer Officer { get; set; }
-        public Faction FactionA { get; set; }
-        public Faction FactionB { get; set; }
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+        public Planet Location { get; set; }
+        public bool EncounteredOfficerCaptured { get; set; }
+        public int EncounteredOfficerInjury { get; set; }
+        public int OpposingOfficerInjury { get; set; }
     }
 
     /// <summary>
@@ -998,15 +1010,6 @@ namespace Rebellion.Game.Results
             new List<CombatUnitSnapshot>();
         public List<GameResult> Events { get; set; } = new List<GameResult>();
         public PlanetOwnershipChangedResult OwnershipChange { get; set; }
-    }
-
-    /// <summary>
-    /// A lightsaber duel was triggered between Force users.
-    /// </summary>
-    public class DuelTriggeredResult : GameResult
-    {
-        public List<Officer> Attackers { get; set; } = new List<Officer>();
-        public List<Officer> Defenders { get; set; } = new List<Officer>();
     }
 
     /// <summary>

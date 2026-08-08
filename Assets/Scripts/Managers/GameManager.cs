@@ -30,6 +30,7 @@ public sealed class GameManager
     // Unit Systems.
     private FleetSystem _fleetSystem;
     private PersonnelSystem _personnelSystem;
+    private OfficerEncounterSystem _officerEncounterSystem;
     private MovementSystem _movementSystem;
     private HeadquartersSystem _headquartersSystem;
 
@@ -305,6 +306,7 @@ public sealed class GameManager
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
         _fleetSystem = new FleetSystem(_game);
         _personnelSystem = new PersonnelSystem(_game);
+        _officerEncounterSystem = new OfficerEncounterSystem(_game, _randomProvider);
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
@@ -365,6 +367,7 @@ public sealed class GameManager
         _resultProcessor = new GameResultProcessor();
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
         _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
+        _resultProcessor.Subscribe<OfficerEncounterRequestedResult>(_officerEncounterSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);

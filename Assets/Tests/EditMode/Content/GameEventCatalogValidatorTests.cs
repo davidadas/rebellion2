@@ -84,7 +84,14 @@ namespace Rebellion.Tests.Content
                 new RandomOutcomeAction
                 {
                     Probability = 1.1,
-                    Actions = new List<GameAction> { new TriggerDuelAction() },
+                    Actions = new List<GameAction>
+                    {
+                        new ResolveOfficerEncounterAction
+                        {
+                            EncounteredOfficerInstanceID = "luke",
+                            OpposingOfficerInstanceID = "vader",
+                        },
+                    },
                 }
             );
 
