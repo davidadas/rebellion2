@@ -102,6 +102,22 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Returns whether the active blockade opposes a faction.
+        /// </summary>
+        /// <param name="factionInstanceID">The faction whose access is being evaluated.</param>
+        /// <returns>True when the planet is blockaded by another faction.</returns>
+        public bool IsBlockadedFor(string factionInstanceID)
+        {
+            return !string.IsNullOrEmpty(factionInstanceID)
+                && IsBlockaded()
+                && Fleets.Any(fleet =>
+                    fleet.Movement == null
+                    && fleet.GetOwnerInstanceID() != factionInstanceID
+                    && fleet.HasOperationalCapitalShips()
+                );
+        }
+
+        /// <summary>
         /// Returns whether resource collection is suspended at this planet.
         /// </summary>
         /// <returns>True during a blockade or uprising.</returns>

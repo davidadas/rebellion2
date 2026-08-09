@@ -153,6 +153,15 @@ namespace Rebellion.Systems
                 }
             }
 
+            Planet requestedPlanet = RequireDestinationPlanet(destination);
+            if (IsBlockedFromDestinationByBlockade(unit, requestedPlanet))
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}."
+                );
+                return;
+            }
+
             ExecuteMove(unit, destination, _pendingResults);
         }
 
@@ -182,6 +191,15 @@ namespace Rebellion.Systems
             )
             {
                 ExecuteMove(unit, origin, _pendingResults);
+                return;
+            }
+
+            if (
+                destinationPlanet != origin
+                && IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
+            )
+            {
+                ReturnManufacturedUnitToOrigin(unit, origin, destinationPlanet);
                 return;
             }
 
@@ -617,10 +635,7 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (
-                unit is Starfighter
-                && HasOpposingBlockade(destinationPlanet, GetMovementControlOwner(unit))
-            )
+            if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet))
             {
                 return false;
             }
@@ -1182,7 +1197,7 @@ namespace Rebellion.Systems
                 return false;
 
             string movableOwner = GetMovementControlOwner(movable);
-            if (!HasOpposingBlockade(destinationPlanet, movableOwner))
+            if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
 
             _game.DetachNode(movable);
@@ -1201,19 +1216,18 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Checks whether an operational opposing fleet blockades a planet.
+        /// Returns whether a unit type requires an unobstructed destination.
         /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
-        /// <param name="ownerInstanceId">The moving faction's instance identifier.</param>
-        /// <returns>True when an opposing fleet currently blockades the planet.</returns>
-        private static bool HasOpposingBlockade(Planet planet, string ownerInstanceId)
+        /// <param name="unit">The unit requesting access.</param>
+        /// <param name="destinationPlanet">The planet receiving the unit.</param>
+        /// <returns>True when an opposing blockade prevents the unit from entering.</returns>
+        private static bool IsBlockedFromDestinationByBlockade(
+            IMovable unit,
+            Planet destinationPlanet
+        )
         {
-            return planet.IsBlockaded()
-                && planet.Fleets.Any(fleet =>
-                    fleet.Movement == null
-                    && fleet.GetOwnerInstanceID() != ownerInstanceId
-                    && fleet.HasOperationalCapitalShips()
-                );
+            return unit is Starfighter or Regiment or Building
+                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit));
         }
 
         /// <summary>
@@ -1806,6 +1820,24 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
+        /// Keeps a completed manufactured unit at its production planet when delivery is rejected.
+        /// </summary>
+        /// <param name="unit">The completed unit awaiting delivery.</param>
+        /// <param name="origin">The planet that produced the unit.</param>
+        /// <param name="rejectedDestination">The rejected delivery planet.</param>
+        private void ReturnManufacturedUnitToOrigin(
+            IMovable unit,
+            Planet origin,
+            Planet rejectedDestination
+        )
+        {
+            _game.MoveNode(unit, origin);
+            unit.Movement = null;
+            AddPlanetGarrisonChangedResults(_pendingResults, unit, rejectedDestination);
+            AddPlanetGarrisonChangedResults(_pendingResults, unit, origin);
+        }
+
+        /// <summary>
         /// Resolves a destination and verifies that it can receive the unit.
         /// </summary>
         /// <param name="unit">The unit being moved.</param>
@@ -1854,10 +1886,7 @@ namespace Rebellion.Systems
             }
 
             Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
-            if (
-                unit is Starfighter
-                && HasOpposingBlockade(destinationPlanet, GetMovementControlOwner(unit))
-            )
+            if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet))
             {
                 GameLogger.Warning(
                     $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}."
