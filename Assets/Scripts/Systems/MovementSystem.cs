@@ -194,15 +194,6 @@ namespace Rebellion.Systems
                 return;
             }
 
-            if (
-                destinationPlanet != origin
-                && IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
-            )
-            {
-                ReturnManufacturedUnitToOrigin(unit, origin, destinationPlanet);
-                return;
-            }
-
             if (destinationPlanet == origin)
             {
                 unit.Movement = null;
@@ -635,7 +626,10 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet))
+            if (
+                unit is Starfighter
+                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit))
+            )
             {
                 return false;
             }
@@ -1817,24 +1811,6 @@ namespace Rebellion.Systems
         private void ApplyManufacturingDestination(IMovable unit, ContainerNode resolvedDestination)
         {
             _game.MoveNode(unit, resolvedDestination);
-        }
-
-        /// <summary>
-        /// Keeps a completed manufactured unit at its production planet when delivery is rejected.
-        /// </summary>
-        /// <param name="unit">The completed unit awaiting delivery.</param>
-        /// <param name="origin">The planet that produced the unit.</param>
-        /// <param name="rejectedDestination">The rejected delivery planet.</param>
-        private void ReturnManufacturedUnitToOrigin(
-            IMovable unit,
-            Planet origin,
-            Planet rejectedDestination
-        )
-        {
-            _game.MoveNode(unit, origin);
-            unit.Movement = null;
-            AddPlanetGarrisonChangedResults(_pendingResults, unit, rejectedDestination);
-            AddPlanetGarrisonChangedResults(_pendingResults, unit, origin);
         }
 
         /// <summary>

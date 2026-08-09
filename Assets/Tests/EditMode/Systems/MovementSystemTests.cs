@@ -2990,7 +2990,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RequestMove_ManufacturedBuildingToBlockadedPlanet_ReturnsToProductionPlanet()
+        public void UpdateMovement_ManufacturedBuildingDispatchedAfterBlockadeStarted_DestroysOnArrival()
         {
             var scene = BuildBlockadeRetargetingScene();
             Building building = new Building
@@ -3007,12 +3007,26 @@ namespace Rebellion.Tests.Systems
             building.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
 
-            Assert.AreSame(scene.origin, building.GetParent());
-            Assert.IsNull(building.Movement);
+            int transitTicks = building.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(scene.movement.ProcessTick());
+
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            GameObjectDestroyedOnArrivalResult destroyed = results
+                .OfType<GameObjectDestroyedOnArrivalResult>()
+                .Single();
+            Assert.AreSame(building, destroyed.DestroyedObject);
+            Assert.AreSame(scene.blockadedDestination, destroyed.Context);
+            Assert.IsFalse(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, building))
+            );
         }
 
         [Test]
-        public void RequestMove_ManufacturedRegimentToBlockadedPlanet_ReturnsToProductionPlanet()
+        public void UpdateMovement_ManufacturedRegimentDispatchedAfterBlockadeStarted_DestroysOnArrival()
         {
             var scene = BuildBlockadeRetargetingScene();
             Regiment regiment = new Regiment
@@ -3028,8 +3042,61 @@ namespace Rebellion.Tests.Systems
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             scene.movement.RequestMove(regiment, scene.blockadedDestination, scene.origin);
 
-            Assert.AreSame(scene.origin, regiment.GetParent());
-            Assert.IsNull(regiment.Movement);
+            int transitTicks = regiment.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(scene.movement.ProcessTick());
+
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            GameObjectDestroyedOnArrivalResult destroyed = results
+                .OfType<GameObjectDestroyedOnArrivalResult>()
+                .Single();
+            Assert.AreSame(regiment, destroyed.DestroyedObject);
+            Assert.AreSame(scene.blockadedDestination, destroyed.Context);
+            Assert.IsFalse(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, regiment))
+            );
+        }
+
+        [Test]
+        public void UpdateMovement_BlockadeEndsBeforeManufacturedBuildingArrival_CompletesArrival()
+        {
+            var scene = BuildBlockadeRetargetingScene();
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = "empire",
+                BuildingType = BuildingType.Mine,
+                ManufacturingStatus = ManufacturingStatus.Building,
+            };
+            scene.game.AttachNode(building, scene.blockadedDestination);
+            (Fleet blockadingFleet, _) = AddBlockadingFleet(scene.game, scene.blockadedDestination);
+            ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
+
+            building.ManufacturingStatus = ManufacturingStatus.Complete;
+            scene.movement.RequestMove(building, scene.blockadedDestination, scene.origin);
+            scene.game.DetachNode(blockadingFleet);
+            scene.resultProcessor.Process(scene.blockade.ProcessTick());
+
+            int transitTicks = building.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int tick = 0; tick < transitTicks; tick++)
+                results.AddRange(scene.movement.ProcessTick());
+
+            Assert.AreSame(
+                building,
+                scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID)
+            );
+            Assert.AreSame(scene.blockadedDestination, building.GetParent());
+            Assert.IsNull(building.Movement);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            Assert.IsTrue(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, building))
+            );
         }
 
         [Test]
