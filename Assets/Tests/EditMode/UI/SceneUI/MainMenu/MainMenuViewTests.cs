@@ -86,6 +86,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
             Assert.IsNotNull(viewport.Find("SpaceBackdrop/Starfield"));
             Assert.IsNull(viewport.Find("SpaceBackdrop/Planet"));
+            Assert.IsNull(viewport.Find("SpaceBackdrop/Atmosphere"));
             Assert.IsNotNull(viewport.Find("Cockpit"));
             Assert.AreSame(viewport, viewport.Find("MainMenuControls").parent);
             Assert.AreEqual(6, _prefabRoot.GetComponentsInChildren<AutoRotate>(true).Length);
