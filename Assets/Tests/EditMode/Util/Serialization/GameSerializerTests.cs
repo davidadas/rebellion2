@@ -357,13 +357,13 @@ namespace Rebellion.Tests.Util.Serialization
                         Probability = 0.75,
                         Actions = new List<GameAction>
                         {
-                            new NarrativeMessageAction
+                            new AddMessageAction
                             {
                                 SubjectInstanceID = "LUKE",
                                 RelatedSubjectInstanceID = "VADER",
                                 MessageType = MessageType.Advice,
-                                TitleTemplate = "{subject}",
-                                BodyTemplate = "At {location}",
+                                Title = "{subject}",
+                                Body = "At {location}",
                                 BodySegments = new List<NarrativeBodySegment>
                                 {
                                     new NarrativeBodySegment
@@ -376,8 +376,8 @@ namespace Rebellion.Tests.Util.Serialization
                                                 State = OfficerStateKind.Injured,
                                             },
                                         },
-                                        BodyTemplate = "Injured",
-                                        ElseBodyTemplate = "Unharmed",
+                                        Body = "Injured",
+                                        ElseBody = "Unharmed",
                                     },
                                 },
                                 VoicePath = "Story/dialogue",
@@ -478,8 +478,8 @@ namespace Rebellion.Tests.Util.Serialization
                     {
                         RequireForceEligible = true,
                         MessageType = MessageType.Mission,
-                        TitleTemplate = "{subject} Detects Enemy",
-                        BodyTemplate = "{subject} detected {relatedSubject}",
+                        Title = "{subject} Detects Enemy",
+                        Body = "{subject} detected {relatedSubject}",
                         ImageKey = "mission_report",
                         VoicePaths = new Dictionary<string, string>
                         {
@@ -504,11 +504,11 @@ namespace Rebellion.Tests.Util.Serialization
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
             StringAssert.Contains("<RandomOutcome Value=\"0.75\">", serializedXml);
-            StringAssert.Contains("<NarrativeMessage>", serializedXml);
+            StringAssert.Contains("<AddMessage>", serializedXml);
             RandomOutcomeAction random = deserialized.Actions[0] as RandomOutcomeAction;
             Assert.IsNotNull(random);
             Assert.AreEqual(0.75, random.Probability);
-            NarrativeMessageAction message = random.Actions[0] as NarrativeMessageAction;
+            AddMessageAction message = random.Actions[0] as AddMessageAction;
             Assert.IsNotNull(message);
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
@@ -516,7 +516,7 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("Story/dialogue", message.VoicePath);
             Assert.IsTrue(message.VoicePathFromOfficerEncounter);
             Assert.AreEqual(1, message.BodySegments.Count);
-            Assert.AreEqual("Injured", message.BodySegments[0].BodyTemplate);
+            Assert.AreEqual("Injured", message.BodySegments[0].Body);
             OfficerStateConditional bodyCondition =
                 message.BodySegments[0].Conditionals[0] as OfficerStateConditional;
             Assert.IsNotNull(bodyCondition);
@@ -583,7 +583,7 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(forceDetection);
             Assert.IsTrue(forceDetection.RequireForceEligible);
             Assert.AreEqual(MessageType.Mission, forceDetection.MessageType);
-            Assert.AreEqual("{subject} Detects Enemy", forceDetection.TitleTemplate);
+            Assert.AreEqual("{subject} Detects Enemy", forceDetection.Title);
             Assert.AreEqual("Alliance/report", forceDetection.VoicePaths["FNALL1"]);
             Assert.AreEqual("Empire/report", forceDetection.VoicePaths["FNEMP1"]);
             Assert.AreEqual(

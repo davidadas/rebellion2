@@ -404,10 +404,10 @@ public static class GameEventCatalogValidator
                         errors.Add($"{actionPath}.IntelligenceChoices cannot contain None.");
                     break;
                 case ReportForceDetectionAction forceDetection:
-                    if (string.IsNullOrWhiteSpace(forceDetection.TitleTemplate))
-                        errors.Add($"{actionPath}.TitleTemplate is required.");
-                    if (string.IsNullOrWhiteSpace(forceDetection.BodyTemplate))
-                        errors.Add($"{actionPath}.BodyTemplate is required.");
+                    if (string.IsNullOrWhiteSpace(forceDetection.Title))
+                        errors.Add($"{actionPath}.Title is required.");
+                    if (string.IsNullOrWhiteSpace(forceDetection.Body))
+                        errors.Add($"{actionPath}.Body is required.");
                     if (
                         forceDetection.ExcludedPairs?.Any(pair =>
                             string.IsNullOrWhiteSpace(pair?.FirstOfficerInstanceID)
@@ -502,8 +502,8 @@ public static class GameEventCatalogValidator
                     )
                         errors.Add($"{actionPath} requires two different officers.");
                     break;
-                case NarrativeMessageAction message:
-                    ValidateNarrativeMessage(message, actionPath, errors);
+                case AddMessageAction message:
+                    ValidateAddMessage(message, actionPath, errors);
                     break;
                 case SetEventVariableAction variable when string.IsNullOrWhiteSpace(variable.Key):
                     errors.Add($"{actionPath}.Key is required.");
@@ -674,8 +674,8 @@ public static class GameEventCatalogValidator
         return false;
     }
 
-    private static void ValidateNarrativeMessage(
-        NarrativeMessageAction message,
+    private static void ValidateAddMessage(
+        AddMessageAction message,
         string path,
         List<string> errors
     )
@@ -692,11 +692,11 @@ public static class GameEventCatalogValidator
         }
 
         if (
-            string.IsNullOrWhiteSpace(message.TitleTemplate)
-            && string.IsNullOrWhiteSpace(message.BodyTemplate)
+            string.IsNullOrWhiteSpace(message.Title)
+            && string.IsNullOrWhiteSpace(message.Body)
             && (message.BodySegments == null || message.BodySegments.Count == 0)
         )
-            errors.Add($"{path} requires a title or body template.");
+            errors.Add($"{path} requires a title or body.");
 
         if (message.BodySegments == null)
         {
@@ -716,10 +716,10 @@ public static class GameEventCatalogValidator
 
             ValidateComposite(segment.Conditionals, segmentPath, 0, errors);
             if (
-                string.IsNullOrWhiteSpace(segment.BodyTemplate)
-                && string.IsNullOrWhiteSpace(segment.ElseBodyTemplate)
+                string.IsNullOrWhiteSpace(segment.Body)
+                && string.IsNullOrWhiteSpace(segment.ElseBody)
             )
-                errors.Add($"{segmentPath} requires BodyTemplate or ElseBodyTemplate.");
+                errors.Add($"{segmentPath} requires Body or ElseBody.");
         }
     }
 

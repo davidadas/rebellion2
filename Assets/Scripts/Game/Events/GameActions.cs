@@ -87,8 +87,8 @@ namespace Rebellion.Game.Events
     public sealed class InformantIntelligenceAction : GameAction
     {
         public int MaximumPopularSupport { get; set; } = 100;
-        public string TitleTemplate { get; set; }
-        public string BodyTemplate { get; set; }
+        public string Title { get; set; }
+        public string Body { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string ImageKey { get; set; }
         public string VoicePath { get; set; }
@@ -150,8 +150,8 @@ namespace Rebellion.Game.Events
                     Subject = planet,
                     Location = planet,
                     MessageType = MessageType,
-                    TitleTemplate = TitleTemplate,
-                    BodyTemplate = BodyTemplate,
+                    TitleTemplate = Title,
+                    BodyTemplate = Body,
                     ImageKey = ImageKey,
                     VoicePath = VoicePath,
                     AdvisorNotification = AdvisorNotification,
@@ -660,8 +660,8 @@ namespace Rebellion.Game.Events
         public bool UseForceRankDetectionChance { get; set; }
         public int ForceRankDetectionChanceModifier { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Mission;
-        public string TitleTemplate { get; set; }
-        public string BodyTemplate { get; set; }
+        public string Title { get; set; }
+        public string Body { get; set; }
         public string ImageKey { get; set; }
         public string VoicePath { get; set; }
         public Dictionary<string, string> VoicePaths { get; set; } =
@@ -773,8 +773,8 @@ namespace Rebellion.Game.Events
                     RelatedSubject = detected,
                     Location = location,
                     MessageType = MessageType,
-                    TitleTemplate = TitleTemplate,
-                    BodyTemplate = BodyTemplate,
+                    TitleTemplate = Title,
+                    BodyTemplate = Body,
                     ImageKey = ImageKey,
                     OverlayImagePath = detector.MessageImagePath,
                     VoicePath = voicePath,
@@ -843,22 +843,22 @@ namespace Rebellion.Game.Events
     public sealed class NarrativeBodySegment
     {
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public string BodyTemplate { get; set; }
-        public string ElseBodyTemplate { get; set; }
+        public string Body { get; set; }
+        public string ElseBody { get; set; }
 
         public string Resolve(GameRoot game, GameResult triggerResult = null)
         {
             return Conditionals.TrueForAll(condition => condition.IsMet(game, triggerResult))
-                ? BodyTemplate
-                : ElseBodyTemplate;
+                ? Body
+                : ElseBody;
         }
     }
 
     /// <summary>
     /// Emits a normal faction message from presentation data authored with a game event.
     /// </summary>
-    [PersistableObject(Name = "NarrativeMessage")]
-    public class NarrativeMessageAction : GameAction
+    [PersistableObject(Name = "AddMessage")]
+    public sealed class AddMessageAction : GameAction
     {
         public string RecipientFactionInstanceID { get; set; }
         public string RecipientUnitInstanceID { get; set; }
@@ -866,8 +866,8 @@ namespace Rebellion.Game.Events
         public string RelatedSubjectInstanceID { get; set; }
         public string LocationInstanceID { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
-        public string TitleTemplate { get; set; }
-        public string BodyTemplate { get; set; }
+        public string Title { get; set; }
+        public string Body { get; set; }
         public List<NarrativeBodySegment> BodySegments { get; set; } =
             new List<NarrativeBodySegment>();
         public string ImageKey { get; set; }
@@ -914,7 +914,7 @@ namespace Rebellion.Game.Events
 
             if (string.IsNullOrWhiteSpace(recipientId))
                 throw new InvalidOperationException(
-                    "NarrativeMessage could not resolve its recipient faction."
+                    "AddMessage could not resolve its recipient faction."
                 );
 
             Faction recipient = game.GetFactionByOwnerInstanceID(recipientId);
@@ -922,7 +922,7 @@ namespace Rebellion.Game.Events
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
-            string bodyTemplate = BodyTemplate ?? string.Empty;
+            string bodyTemplate = Body ?? string.Empty;
             foreach (NarrativeBodySegment segment in BodySegments)
                 bodyTemplate += segment.Resolve(game, triggerResult) ?? string.Empty;
             string voicePath =
@@ -944,7 +944,7 @@ namespace Rebellion.Game.Events
                     RelatedSubject = relatedSubject,
                     Location = location,
                     MessageType = MessageType,
-                    TitleTemplate = TitleTemplate,
+                    TitleTemplate = Title,
                     BodyTemplate = bodyTemplate,
                     ImageKey = ImageKey,
                     ImagePath = imagePath,

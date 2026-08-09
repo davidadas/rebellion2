@@ -151,10 +151,10 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void Validate_NarrativeMessageWithoutRecipientOrText_ReportsBothProblems()
+        public void Validate_AddMessageWithoutRecipientOrText_ReportsBothProblems()
         {
             GameEvent gameEvent = CreateEvent("STORY");
-            gameEvent.Actions.Add(new NarrativeMessageAction());
+            gameEvent.Actions.Add(new AddMessageAction());
 
             InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
                 GameEventCatalogValidator.Validate(new[] { gameEvent })

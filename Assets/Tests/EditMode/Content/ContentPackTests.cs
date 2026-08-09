@@ -61,12 +61,12 @@ namespace Rebellion.Tests.Content
                     .Single()
                     .SourceEventInstanceID
             );
-            NarrativeMessageAction message = gameEvent
-                .Actions.OfType<NarrativeMessageAction>()
+            AddMessageAction message = gameEvent
+                .Actions.OfType<AddMessageAction>()
                 .Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
-            Assert.AreEqual("Luke Leaves Dagobah", message.TitleTemplate);
-            Assert.AreEqual("I have finished my training with Yoda.", message.BodyTemplate);
+            Assert.AreEqual("Luke Leaves Dagobah", message.Title);
+            Assert.AreEqual("I have finished my training with Yoda.", message.Body);
         }
 
         [Test]
@@ -91,8 +91,8 @@ namespace Rebellion.Tests.Content
                 OfficerCaptureStateConditional capture = gameEvent
                     .Conditionals.OfType<OfficerCaptureStateConditional>()
                     .Single();
-                NarrativeMessageAction message = gameEvent
-                    .Actions.OfType<NarrativeMessageAction>()
+                AddMessageAction message = gameEvent
+                    .Actions.OfType<AddMessageAction>()
                     .Single();
 
                 Assert.AreEqual("core:officer.capture-changed", gameEvent.Trigger);
@@ -101,10 +101,10 @@ namespace Rebellion.Tests.Content
                 Assert.AreEqual(officerId, capture.OfficerInstanceID);
                 Assert.IsTrue(capture.IsCaptured);
                 Assert.AreEqual(officerId, message.SubjectInstanceID);
-                Assert.AreEqual("Jabba Captures {subject}", message.TitleTemplate);
+                Assert.AreEqual("Jabba Captures {subject}", message.Title);
                 Assert.AreEqual(
                     "{subject} was captured by Jabba while attempting to rescue Han Solo.",
-                    message.BodyTemplate
+                    message.Body
                 );
             }
 
@@ -256,8 +256,8 @@ namespace Rebellion.Tests.Content
                     .Single();
                 Assert.AreEqual(subjectId, participants.EncounteredOfficerInstanceID);
                 Assert.AreEqual(opponentId, participants.OpposingOfficerInstanceID);
-                NarrativeMessageAction report = gameEvent
-                    .Actions.OfType<NarrativeMessageAction>()
+                AddMessageAction report = gameEvent
+                    .Actions.OfType<AddMessageAction>()
                     .Single();
                 Assert.AreEqual(subjectId, report.SubjectInstanceID);
                 Assert.AreEqual(opponentId, report.RelatedSubjectInstanceID);
@@ -276,8 +276,8 @@ namespace Rebellion.Tests.Content
                 .GameData.GameEvents.Single(gameEvent => gameEvent.InstanceID == "LUKE_VISITS_YODA")
                 .Actions.OfType<StartScriptedTrainingAction>()
                 .Single();
-            NarrativeMessageAction heritageMessage = heritage
-                .Actions.OfType<NarrativeMessageAction>()
+            AddMessageAction heritageMessage = heritage
+                .Actions.OfType<AddMessageAction>()
                 .Single();
             GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "VADER_TAKES_LUKE_TO_EMPEROR"
@@ -285,17 +285,17 @@ namespace Rebellion.Tests.Content
             StartStoryFinalBattleAction startFinalBattle = finalBattle
                 .Actions.OfType<StartStoryFinalBattleAction>()
                 .Single();
-            NarrativeMessageAction victoryMessage = pack
+            AddMessageAction victoryMessage = pack
                 .GameData.GameEvents.Single(gameEvent =>
                     gameEvent.InstanceID == "LUKE_WINS_FINAL_BATTLE"
                 )
-                .Actions.OfType<NarrativeMessageAction>()
+                .Actions.OfType<AddMessageAction>()
                 .Single();
-            NarrativeMessageAction defeatMessage = pack
+            AddMessageAction defeatMessage = pack
                 .GameData.GameEvents.Single(gameEvent =>
                     gameEvent.InstanceID == "LUKE_LOSES_FINAL_BATTLE"
                 )
-                .Actions.OfType<NarrativeMessageAction>()
+                .Actions.OfType<AddMessageAction>()
                 .Single();
             GameEvent lukeVaderEncounter = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
@@ -315,8 +315,8 @@ namespace Rebellion.Tests.Content
             IncreaseOfficerForceAction lukePalpatineForceIncrease = lukePalpatineEffects
                 .Actions.OfType<IncreaseOfficerForceAction>()
                 .Single();
-            NarrativeMessageAction confrontation = lukeVaderEffects
-                .Actions.OfType<NarrativeMessageAction>()
+            AddMessageAction confrontation = lukeVaderEffects
+                .Actions.OfType<AddMessageAction>()
                 .Single();
             GameEvent forceDetectionEvent = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "FORCE_USERS_DETECT_ENEMIES"
@@ -379,10 +379,10 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(5, confrontation.BodySegments.Count);
             Assert.IsTrue(confrontation.VoicePathFromOfficerEncounter);
             Assert.AreEqual("core:unit.arrived", forceDetectionEvent.Trigger);
-            Assert.AreEqual("{subject} Detects Enemy", forceDetection.TitleTemplate);
+            Assert.AreEqual("{subject} Detects Enemy", forceDetection.Title);
             Assert.AreEqual(
                 "{subject} has detected {relatedSubject} because of a disturbance in the Force.",
-                forceDetection.BodyTemplate
+                forceDetection.Body
             );
             Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
             Assert.AreEqual(0, bountyCapture.AttackRating);
@@ -432,8 +432,8 @@ namespace Rebellion.Tests.Content
             UnitArrivalConditional arrival = gameEvent
                 .Conditionals.OfType<UnitArrivalConditional>()
                 .Single();
-            NarrativeMessageAction message = gameEvent
-                .Actions.OfType<NarrativeMessageAction>()
+            AddMessageAction message = gameEvent
+                .Actions.OfType<AddMessageAction>()
                 .Single();
             FactionOfficerRatingAuraEffect aura = gameEvent
                 .Effects.OfType<FactionOfficerRatingAuraEffect>()
@@ -448,10 +448,10 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual("FNEMP1", aura.AffectedFactionInstanceID);
             Assert.AreEqual(OfficerRating.Leadership, aura.Rating);
             Assert.AreEqual(50, aura.Amount);
-            Assert.AreEqual("Emperor Arrives at Coruscant", message.TitleTemplate);
+            Assert.AreEqual("Emperor Arrives at Coruscant", message.Title);
             Assert.AreEqual(
                 "I have returned to the Seat of Power at Coruscant.",
-                message.BodyTemplate
+                message.Body
             );
             Assert.AreEqual(
                 "Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01",

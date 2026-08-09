@@ -263,8 +263,8 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(present, empirePlanet);
             ReportForceDetectionAction action = new ReportForceDetectionAction
             {
-                TitleTemplate = "{subject} Detects Enemy",
-                BodyTemplate = "{subject} detected {relatedSubject}.",
+                Title = "{subject} Detects Enemy",
+                Body = "{subject} detected {relatedSubject}.",
                 ImageKey = "mission_report",
                 VoicePaths = new Dictionary<string, string>
                 {
@@ -323,8 +323,8 @@ namespace Rebellion.Tests.Game.Events
             {
                 UseForceRankDetectionChance = true,
                 ForceRankDetectionChanceModifier = -100,
-                TitleTemplate = "Detected",
-                BodyTemplate = "Detected",
+                Title = "Detected",
+                Body = "Detected",
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
@@ -365,8 +365,8 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(present, empirePlanet);
             ReportForceDetectionAction action = new ReportForceDetectionAction
             {
-                TitleTemplate = "Detected",
-                BodyTemplate = "Detected",
+                Title = "Detected",
+                Body = "Detected",
                 ExcludedPairs = new List<OfficerPairReference>
                 {
                     new OfficerPairReference
@@ -441,18 +441,18 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void NarrativeMessage_RecipientFromSubject_EmitsResolvedResult()
+        public void AddMessage_RecipientFromSubject_EmitsResolvedResult()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.DisplayName = "Luke Skywalker";
             game.AttachNode(luke, rebelPlanet);
-            NarrativeMessageAction action = new NarrativeMessageAction
+            AddMessageAction action = new AddMessageAction
             {
                 SubjectInstanceID = luke.InstanceID,
                 MessageType = MessageType.Advice,
-                TitleTemplate = "A message for {subject}",
-                BodyTemplate = "Report from {location}",
+                Title = "A message for {subject}",
+                Body = "Report from {location}",
                 VoicePath = "Audio/Luke/dialogue",
             };
 
@@ -468,16 +468,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void NarrativeMessage_ConditionalBodySegments_ComposeFromOfficerState()
+        public void AddMessage_ConditionalBodySegments_ComposeFromOfficerState()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.InjuryPoints = 12;
             game.AttachNode(luke, rebelPlanet);
-            NarrativeMessageAction action = new NarrativeMessageAction
+            AddMessageAction action = new AddMessageAction
             {
                 SubjectInstanceID = luke.InstanceID,
-                BodyTemplate = "Luke learned the truth. ",
+                Body = "Luke learned the truth. ",
                 BodySegments = new List<NarrativeBodySegment>
                 {
                     new NarrativeBodySegment
@@ -490,8 +490,8 @@ namespace Rebellion.Tests.Game.Events
                                 State = OfficerStateKind.Injured,
                             },
                         },
-                        BodyTemplate = "Luke was injured.",
-                        ElseBodyTemplate = "Luke escaped unharmed.",
+                        Body = "Luke was injured.",
+                        ElseBody = "Luke escaped unharmed.",
                     },
                 },
             };
@@ -505,12 +505,12 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void NarrativeMessage_EncounterVoice_UsesTriggerResultPath()
+        public void AddMessage_EncounterVoice_UsesTriggerResultPath()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
-            NarrativeMessageAction action = new NarrativeMessageAction
+            AddMessageAction action = new AddMessageAction
             {
                 SubjectInstanceID = luke.InstanceID,
                 VoicePath = "fallback",
@@ -545,10 +545,10 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "child",
                 Actions = new List<GameAction>
                 {
-                    new NarrativeMessageAction
+                    new AddMessageAction
                     {
                         RecipientFactionInstanceID = "rebels",
-                        TitleTemplate = "Child",
+                        Title = "Child",
                     },
                 },
             };
