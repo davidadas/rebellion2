@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
@@ -8,6 +9,39 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    /// <summary>
+    /// Defines stable content-facing identifiers for simulation result types.
+    /// </summary>
+    public static class GameEventTriggerRegistry
+    {
+        private static readonly Dictionary<string, Type> TypesById = new Dictionary<string, Type>(
+            StringComparer.Ordinal
+        )
+        {
+            ["core:dagobah.completed"] = typeof(DagobahCompletedResult),
+            ["core:force.discovered"] = typeof(ForceDiscoveryResult),
+            ["core:mission.completed"] = typeof(MissionCompletedResult),
+            ["core:officer.capture-changed"] = typeof(OfficerCaptureStateResult),
+            ["core:officer.encountered"] = typeof(OfficerEncounterResult),
+            ["core:story-capture.resolved"] = typeof(StoryCaptureResolvedResult),
+            ["core:story-final-battle.completed"] = typeof(StoryFinalBattleCompletedResult),
+            ["core:story-pickup.completed"] = typeof(StoryPickupCompletedResult),
+            ["core:unit.arrived"] = typeof(UnitArrivedResult),
+        };
+
+        public static bool IsKnown(string triggerId) =>
+            !string.IsNullOrWhiteSpace(triggerId) && TypesById.ContainsKey(triggerId);
+
+        public static bool Matches(string triggerId, GameResult result) =>
+            result != null
+            && TypesById.TryGetValue(triggerId, out Type resultType)
+            && resultType.IsInstanceOfType(result);
+
+        public static bool MatchesLegacyTypeName(string typeName, GameResult result) =>
+            result != null
+            && string.Equals(typeName, result.GetType().Name, StringComparison.Ordinal);
+    }
+
     internal static class GameEventHierarchy
     {
         public static bool Contains(ISceneNode container, ISceneNode node)
@@ -44,6 +78,10 @@ namespace Rebellion.Game.Events
     /// </summary>
     public sealed class GameEventExecutionContext
     {
+        private readonly Dictionary<string, object> _bindings = new Dictionary<string, object>(
+            StringComparer.Ordinal
+        );
+
         public GameEvent Event { get; }
         public GameEventState State { get; }
         public ISceneNode ScopeTarget { get; }
@@ -60,10 +98,67 @@ namespace Rebellion.Game.Events
             State = state;
             ScopeTarget = scopeTarget;
             TriggerResult = triggerResult;
+            Bind("scope", scopeTarget);
+            Bind("trigger", triggerResult);
+            GameEventBindings.BindTriggerValues(this, triggerResult);
         }
 
         public T GetScopeTarget<T>()
             where T : class, ISceneNode => ScopeTarget as T;
+
+        public void Bind(string name, object value)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("A binding name is required.", nameof(name));
+            if (value != null)
+                _bindings[name] = value;
+        }
+
+        public bool TryGetBinding<T>(string name, out T value)
+            where T : class
+        {
+            if (_bindings.TryGetValue(name, out object binding) && binding is T typed)
+            {
+                value = typed;
+                return true;
+            }
+
+            value = null;
+            return false;
+        }
+
+        public T GetBinding<T>(string name)
+            where T : class => TryGetBinding(name, out T value) ? value : null;
+    }
+
+    internal static class GameEventBindings
+    {
+        public static void BindTriggerValues(
+            GameEventExecutionContext context,
+            GameResult triggerResult
+        )
+        {
+            switch (triggerResult)
+            {
+                case UnitArrivedResult arrival:
+                    context.Bind("unit", arrival.Unit);
+                    context.Bind("destination", arrival.Destination);
+                    context.Bind("planet", arrival.Destination);
+                    break;
+                case OfficerEncounterResult encounter:
+                    context.Bind("officer", encounter.EncounteredOfficer);
+                    context.Bind("opponent", encounter.OpposingOfficer);
+                    break;
+                case OfficerCaptureStateResult capture:
+                    context.Bind("officer", capture.TargetOfficer ?? capture.CapturedOfficer);
+                    context.Bind("linkedOfficer", capture.LinkedOfficer);
+                    context.Bind("context", capture.Context);
+                    break;
+                case MissionCompletedResult completion:
+                    context.Bind("mission", completion.Mission);
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -92,6 +187,7 @@ namespace Rebellion.Game.Events
         public PlanetSystemType PlanetScopeSystemType { get; set; }
         public bool FilterPlanetScopeSystemType { get; set; }
         public string TriggerResultType { get; set; }
+        public string Trigger { get; set; }
 
         /// <summary>
         /// Gets or sets whether this reaction replaces its triggering result's automatic message.
@@ -125,7 +221,7 @@ namespace Rebellion.Game.Events
         /// <returns>True if every conditional is satisfied.</returns>
         public bool AreConditionsMet(GameRoot game)
         {
-            return AreConditionsMet(game, null);
+            return AreConditionsMet(game, (GameResult)null);
         }
 
         /// <summary>
@@ -133,9 +229,17 @@ namespace Rebellion.Game.Events
         /// </summary>
         public bool AreConditionsMet(GameRoot game, GameResult triggerResult)
         {
+            return AreConditionsMet(
+                game,
+                new GameEventExecutionContext(this, null, null, triggerResult)
+            );
+        }
+
+        public bool AreConditionsMet(GameRoot game, GameEventExecutionContext context)
+        {
             foreach (GameConditional conditional in Conditionals)
             {
-                if (!conditional.IsMet(game, triggerResult))
+                if (!conditional.IsMet(game, context))
                     return false;
             }
             return true;

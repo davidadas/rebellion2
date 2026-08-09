@@ -56,6 +56,9 @@ namespace Rebellion.Game.Events
         {
             return Conditionals.All(conditional => conditional.IsMet(game, triggerResult));
         }
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
+            Conditionals.All(conditional => conditional.IsMet(game, context));
     }
 
     /// <summary>
@@ -85,6 +88,9 @@ namespace Rebellion.Game.Events
         {
             return Conditionals.Any(conditional => conditional.IsMet(game, triggerResult));
         }
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
+            Conditionals.Any(conditional => conditional.IsMet(game, context));
     }
 
     /// <summary>
@@ -114,6 +120,9 @@ namespace Rebellion.Game.Events
         {
             return Conditionals.All(conditional => !conditional.IsMet(game, triggerResult));
         }
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
+            Conditionals.All(conditional => !conditional.IsMet(game, context));
     }
 
     /// <summary>
@@ -143,6 +152,9 @@ namespace Rebellion.Game.Events
         {
             return Conditionals.Count(conditional => conditional.IsMet(game, triggerResult)) == 1;
         }
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
+            Conditionals.Count(conditional => conditional.IsMet(game, context)) == 1;
     }
 
     /// <summary>

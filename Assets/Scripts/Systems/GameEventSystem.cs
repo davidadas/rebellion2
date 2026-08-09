@@ -45,7 +45,7 @@ namespace Rebellion.Systems
                 if (gameEvent is ForceDiscoveryRule)
                     continue;
 
-                if (!string.IsNullOrWhiteSpace(gameEvent.TriggerResultType))
+                if (HasResultTrigger(gameEvent))
                     continue;
 
                 if (gameEvent.Scope == GameEventScope.EachPlanet)
@@ -131,11 +131,7 @@ namespace Rebellion.Systems
                         continue;
 
                     if (
-                        !string.Equals(
-                            gameEvent.TriggerResultType,
-                            triggerResult.GetType().Name,
-                            StringComparison.Ordinal
-                        )
+                        !MatchesTrigger(gameEvent, triggerResult)
                         || !TryProcessEvent(
                             gameEvent,
                             triggerResult,
@@ -183,19 +179,19 @@ namespace Rebellion.Systems
                 return false;
             }
 
-            if (!gameEvent.AreConditionsMet(_game, triggerResult))
-            {
-                results = new List<GameResult>();
-                return false;
-            }
-
-            GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
             GameEventExecutionContext context = new GameEventExecutionContext(
                 gameEvent,
                 state,
                 scopeTarget,
                 triggerResult
             );
+            if (!gameEvent.AreConditionsMet(_game, context))
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
+            GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
             results = gameEvent.Execute(_game, _provider, context);
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;
@@ -208,6 +204,18 @@ namespace Rebellion.Systems
             _game.AddCompletedEvent(gameEvent);
             return true;
         }
+
+        private static bool HasResultTrigger(GameEvent gameEvent) =>
+            !string.IsNullOrWhiteSpace(gameEvent.Trigger)
+            || !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType);
+
+        private static bool MatchesTrigger(GameEvent gameEvent, GameResult result) =>
+            !string.IsNullOrWhiteSpace(gameEvent.Trigger)
+                ? GameEventTriggerRegistry.Matches(gameEvent.Trigger, result)
+                : GameEventTriggerRegistry.MatchesLegacyTypeName(
+                    gameEvent.TriggerResultType,
+                    result
+                );
 
         private static void SuppressSourceMessages(
             GameEvent gameEvent,

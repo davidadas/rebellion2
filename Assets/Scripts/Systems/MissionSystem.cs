@@ -140,6 +140,21 @@ namespace Rebellion.Systems
                     result.SourceEventInstanceID
                 );
                 _game.AttachNode(mission, origin);
+                VoidState dagobahState = new VoidState
+                {
+                    Status = VoidStatus.OnMission,
+                    Destination = SpecialDestination.Dagobah,
+                    MissionInstanceID = mission.InstanceID,
+                    SourceEventInstanceID = result.SourceEventInstanceID,
+                };
+                _game.MoveToVoid(mission, dagobahState);
+                trainee.VoidState = new VoidState
+                {
+                    Status = dagobahState.Status,
+                    Destination = dagobahState.Destination,
+                    MissionInstanceID = dagobahState.MissionInstanceID,
+                    SourceEventInstanceID = dagobahState.SourceEventInstanceID,
+                };
                 BeginMission(mission);
             }
 
@@ -503,6 +518,8 @@ namespace Rebellion.Systems
 
             Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
             if (mission == null)
+                return false;
+            if (!mission.CanAbort)
                 return false;
             if (mission.IsWaitingForParticipants())
                 return false;
@@ -1129,7 +1146,7 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            _game.DetachNode(specialForces);
+            _game.MoveToVoid(specialForces, VoidStatus.Destroyed);
             results.Add(
                 new GameObjectDestroyedResult
                 {
@@ -1165,7 +1182,7 @@ namespace Rebellion.Systems
             else
             {
                 officer.IsKilled = true;
-                _game.DetachNode(officer);
+                _game.MoveToVoid(officer, VoidStatus.Dead);
                 results.Add(
                     new OfficerKilledResult
                     {

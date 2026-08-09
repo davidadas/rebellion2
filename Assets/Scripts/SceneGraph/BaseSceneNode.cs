@@ -5,6 +5,35 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
 {
+    public enum VoidStatus
+    {
+        OnMission,
+        Captured,
+        Dead,
+        Destroyed,
+        Retired,
+        Unavailable,
+    }
+
+    public enum SpecialDestination
+    {
+        None,
+        Dagobah,
+        JabbasPalace,
+        AlliancePrison,
+        EmpirePrison,
+    }
+
+    [PersistableObject]
+    public sealed class VoidState
+    {
+        public VoidStatus Status { get; set; }
+        public SpecialDestination Destination { get; set; }
+        public string MissionInstanceID { get; set; }
+        public string SourceEventInstanceID { get; set; }
+        public string CaptorInstanceID { get; set; }
+    }
+
     /// <summary>
     /// Base implementation of the <see cref="ISceneNode"/> interface.
     /// </summary>
@@ -35,6 +64,7 @@ namespace Rebellion.SceneGraph
             set => SetOwnerInstanceID(value);
         }
         public List<string> AllowedOwnerInstanceIDs { get; set; }
+        public VoidState VoidState { get; set; }
 
         /// <summary>
         /// Default constructor.

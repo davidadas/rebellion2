@@ -287,6 +287,7 @@ public sealed class GameManager
         _game = game;
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
+        _game.InitializeVoidPools();
 
         _randomProvider = _game.Random;
         InitializeSystems();

@@ -37,6 +37,7 @@ namespace Rebellion.Game.Factions
 
         // Faction Info.
         public List<Officer> UnrecruitedOfficers { get; set; } = new List<Officer>();
+        public VoidPool VoidPool { get; set; } = new VoidPool();
         public List<string> DisallowedMissionTypeIDs { get; set; } = new List<string>();
         public FactionSettings Settings
         {

@@ -67,7 +67,7 @@ namespace Rebellion.Tests.Content
             );
 
             StringAssert.Contains("CandidateOfficerInstanceID is required", exception.Message);
-            StringAssert.Contains("cannot declare TriggerResultType", exception.Message);
+            StringAssert.Contains("cannot declare a result trigger", exception.Message);
             StringAssert.Contains("cannot declare actions", exception.Message);
         }
 

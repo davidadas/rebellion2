@@ -490,6 +490,89 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Executes every child action when one probability roll succeeds.
+    /// </summary>
+    [PersistableObject(Name = "Chance")]
+    public sealed class ChanceAction : GameAction
+    {
+        [PersistableAttribute(Name = "Value")]
+        public double Probability { get; set; }
+
+        public List<GameAction> Actions { get; set; } = new List<GameAction>();
+
+        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
+
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
+            Execute(game, provider, null);
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+            if (provider.NextDouble() >= Probability)
+                return new List<GameResult>();
+
+            List<GameResult> results = new List<GameResult>();
+            foreach (GameAction action in Actions)
+                results.AddRange(action.Execute(game, provider, context));
+            return results;
+        }
+    }
+
+    [PersistableObject(Name = "Choice")]
+    public sealed class RandomChoice
+    {
+        public int Weight { get; set; } = 1;
+        public List<GameAction> Actions { get; set; } = new List<GameAction>();
+    }
+
+    /// <summary>
+    /// Selects one weighted outcome and executes every action belonging to that outcome.
+    /// </summary>
+    [PersistableObject(Name = "RandomChoice")]
+    public sealed class RandomChoiceAction : GameAction
+    {
+        public List<RandomChoice> Choices { get; set; } = new List<RandomChoice>();
+
+        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
+
+        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
+            Execute(game, provider, null);
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
+
+            int totalWeight = Choices.Sum(choice => choice.Weight);
+            int roll = provider.NextInt(0, totalWeight);
+            RandomChoice selected = null;
+            foreach (RandomChoice choice in Choices)
+            {
+                roll -= choice.Weight;
+                if (roll < 0)
+                {
+                    selected = choice;
+                    break;
+                }
+            }
+
+            List<GameResult> results = new List<GameResult>();
+            foreach (GameAction action in selected.Actions)
+                results.AddRange(action.Execute(game, provider, context));
+            return results;
+        }
+    }
+
     [PersistableObject(Name = "ResolveOfficerEncounter")]
     public class ResolveOfficerEncounterAction : GameAction
     {
@@ -498,6 +581,7 @@ namespace Rebellion.Game.Events
         public bool EncounteredOfficerIsArrivingParticipant { get; set; }
         public bool UseForceRankDetectionChance { get; set; }
         public int ForceRankDetectionChanceModifier { get; set; }
+        public string ImagePath { get; set; }
         public string VoicePath { get; set; }
 
         public ResolveOfficerEncounterAction()
@@ -556,6 +640,7 @@ namespace Rebellion.Game.Events
                 {
                     EncounteredOfficer = encountered,
                     OpposingOfficer = opposing,
+                    ImagePath = ImagePath,
                     VoicePath = VoicePath,
                     Tick = game.CurrentTick,
                 },
@@ -787,6 +872,7 @@ namespace Rebellion.Game.Events
             new List<NarrativeBodySegment>();
         public string ImageKey { get; set; }
         public string ImagePath { get; set; }
+        public bool ImagePathFromOfficerEncounter { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
         public bool VoicePathFromOfficerEncounter { get; set; }
@@ -843,6 +929,11 @@ namespace Rebellion.Game.Events
                 VoicePathFromOfficerEncounter && triggerResult is OfficerEncounterResult encounter
                     ? encounter.VoicePath
                     : VoicePath;
+            string imagePath =
+                ImagePathFromOfficerEncounter
+                && triggerResult is OfficerEncounterResult encounterImage
+                    ? encounterImage.ImagePath
+                    : ImagePath;
 
             return new List<GameResult>
             {
@@ -856,7 +947,7 @@ namespace Rebellion.Game.Events
                     TitleTemplate = TitleTemplate,
                     BodyTemplate = bodyTemplate,
                     ImageKey = ImageKey,
-                    ImagePath = ImagePath,
+                    ImagePath = imagePath,
                     OverlayImagePath = OverlayImagePath,
                     VoicePath = voicePath,
                     OfficerVoicePath = OfficerVoicePath,
@@ -902,7 +993,9 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
-            List<GameAction> selected = Conditionals.TrueForAll(condition => condition.IsMet(game))
+            List<GameAction> selected = Conditionals.TrueForAll(condition =>
+                condition.IsMet(game, context)
+            )
                 ? Actions
                 : ElseActions;
             List<GameResult> results = new List<GameResult>();

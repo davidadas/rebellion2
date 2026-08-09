@@ -51,7 +51,7 @@ namespace Rebellion.Systems
                 return false;
 
             foreach (ISceneNode person in live)
-                _game.DetachNode(person);
+                _game.MoveToVoid(person, VoidStatus.Retired);
 
             return true;
         }

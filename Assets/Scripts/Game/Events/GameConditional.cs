@@ -67,5 +67,13 @@ namespace Rebellion.Game.Events
         {
             return IsMet(game);
         }
+
+        /// <summary>
+        /// Evaluates this condition against the complete event execution context.
+        /// </summary>
+        public virtual bool IsMet(GameRoot game, GameEventExecutionContext context)
+        {
+            return IsMet(game, context?.TriggerResult);
+        }
     }
 }

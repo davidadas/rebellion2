@@ -68,11 +68,18 @@ public static class GameEventCatalogValidator
 
         if (gameEvent.Scope != GameEventScope.Global && !gameEvent.IsRepeatable)
             errors.Add($"{context} scoped events must be repeatable.");
+        if (gameEvent.Scope != GameEventScope.Global && HasResultTrigger(gameEvent))
+            errors.Add($"{context} result-triggered events cannot use a polling scope.");
         if (
-            gameEvent.Scope != GameEventScope.Global
+            !string.IsNullOrWhiteSpace(gameEvent.Trigger)
             && !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
         )
-            errors.Add($"{context} result-triggered events cannot use a polling scope.");
+            errors.Add($"{context} cannot declare both Trigger and TriggerResultType.");
+        if (
+            !string.IsNullOrWhiteSpace(gameEvent.Trigger)
+            && !GameEventTriggerRegistry.IsKnown(gameEvent.Trigger)
+        )
+            errors.Add($"{context}.Trigger '{gameEvent.Trigger}' is unknown.");
         if (
             !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
             && !typeof(GameResult)
@@ -84,15 +91,9 @@ public static class GameEventCatalogValidator
                 )
         )
             errors.Add($"{context}.TriggerResultType '{gameEvent.TriggerResultType}' is unknown.");
-        if (
-            gameEvent.SuppressTriggerMessage
-            && string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
-        )
+        if (gameEvent.SuppressTriggerMessage && !HasResultTrigger(gameEvent))
             errors.Add($"{context}.SuppressTriggerMessage requires TriggerResultType.");
-        if (
-            gameEvent.SuppressSourceMessages
-            && string.IsNullOrWhiteSpace(gameEvent.TriggerResultType)
-        )
+        if (gameEvent.SuppressSourceMessages && !HasResultTrigger(gameEvent))
             errors.Add($"{context}.SuppressSourceMessages requires TriggerResultType.");
         ValidateDelay(
             gameEvent.InitialDelayTicks,
@@ -131,16 +132,17 @@ public static class GameEventCatalogValidator
             errors.Add($"{context} InformantIntelligence requires Scope EachPlanet.");
         if (
             ContainsAction<ReportForceDetectionAction>(gameEvent.Actions)
-            && !string.Equals(
-                gameEvent.TriggerResultType,
-                nameof(UnitArrivedResult),
-                StringComparison.Ordinal
-            )
+            && gameEvent.Trigger != "core:unit.arrived"
+            && gameEvent.TriggerResultType != nameof(UnitArrivedResult)
         )
             errors.Add(
                 $"{context} ReportForceDetection requires TriggerResultType UnitArrivedResult."
             );
     }
+
+    private static bool HasResultTrigger(GameEvent gameEvent) =>
+        !string.IsNullOrWhiteSpace(gameEvent.Trigger)
+        || !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType);
 
     private static void ValidateForceDiscoveryRule(
         ForceDiscoveryRule rule,
@@ -150,8 +152,8 @@ public static class GameEventCatalogValidator
     {
         if (string.IsNullOrWhiteSpace(rule.CandidateOfficerInstanceID))
             errors.Add($"{context}.CandidateOfficerInstanceID is required.");
-        if (!string.IsNullOrWhiteSpace(rule.TriggerResultType))
-            errors.Add($"{context} discovery rules cannot declare TriggerResultType.");
+        if (HasResultTrigger(rule))
+            errors.Add($"{context} discovery rules cannot declare a result trigger.");
         if (rule.Actions?.Count > 0)
             errors.Add($"{context} discovery rules cannot declare actions.");
         if (rule.Effects?.Count > 0)
@@ -457,6 +459,38 @@ public static class GameEventCatalogValidator
                     else
                         ValidateActionList(randomOutcome.Actions, $"{actionPath}.Actions", errors);
                     break;
+                case ChanceAction chance:
+                    if (chance.Probability < 0 || chance.Probability > 1)
+                        errors.Add($"{actionPath}.Probability must be between 0 and 1.");
+                    if (chance.Actions == null || chance.Actions.Count == 0)
+                        errors.Add($"{actionPath} requires at least one child action.");
+                    else
+                        ValidateActionList(chance.Actions, $"{actionPath}.Actions", errors);
+                    break;
+                case RandomChoiceAction randomChoice:
+                    if (randomChoice.Choices == null || randomChoice.Choices.Count == 0)
+                    {
+                        errors.Add($"{actionPath} requires at least one choice.");
+                        break;
+                    }
+                    for (
+                        int choiceIndex = 0;
+                        choiceIndex < randomChoice.Choices.Count;
+                        choiceIndex++
+                    )
+                    {
+                        RandomChoice choice = randomChoice.Choices[choiceIndex];
+                        string choicePath = $"{actionPath}.Choices[{choiceIndex}]";
+                        if (choice == null)
+                        {
+                            errors.Add($"{choicePath} is null.");
+                            continue;
+                        }
+                        if (choice.Weight < 1)
+                            errors.Add($"{choicePath}.Weight must be at least 1.");
+                        ValidateActionList(choice.Actions, $"{choicePath}.Actions", errors);
+                    }
+                    break;
                 case ResolveOfficerEncounterAction encounter:
                     if (string.IsNullOrWhiteSpace(encounter.EncounteredOfficerInstanceID))
                         errors.Add($"{actionPath}.EncounteredOfficerInstanceID is required.");
@@ -628,6 +662,13 @@ public static class GameEventCatalogValidator
                 return true;
             if (action is RandomOutcomeAction random && ContainsAction<T>(random.Actions))
                 return true;
+            if (action is ChanceAction chance && ContainsAction<T>(chance.Actions))
+                return true;
+            if (
+                action is RandomChoiceAction choice
+                && choice.Choices.Any(outcome => ContainsAction<T>(outcome?.Actions))
+            )
+                return true;
         }
 
         return false;
@@ -775,6 +816,19 @@ public static class GameEventCatalogValidator
             {
                 foreach (TriggerEventAction nested in EnumerateTriggers(random.Actions))
                     yield return nested;
+            }
+            if (action is ChanceAction chance)
+            {
+                foreach (TriggerEventAction nested in EnumerateTriggers(chance.Actions))
+                    yield return nested;
+            }
+            if (action is RandomChoiceAction choice)
+            {
+                foreach (RandomChoice outcome in choice.Choices ?? new List<RandomChoice>())
+                {
+                    foreach (TriggerEventAction nested in EnumerateTriggers(outcome?.Actions))
+                        yield return nested;
+                }
             }
             if (action is ConditionalAction conditional)
             {

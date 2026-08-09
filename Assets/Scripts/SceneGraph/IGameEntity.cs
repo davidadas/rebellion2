@@ -33,6 +33,7 @@ namespace Rebellion.SceneGraph
         public string DamagedSmallImagePath { get; set; }
         public string CapturedOverlayImagePath { get; set; }
         public string InjuredImagePath { get; set; }
+        public string EncyclopediaImagePath { get; set; }
         public string Description { get; set; }
 
         /// <summary>

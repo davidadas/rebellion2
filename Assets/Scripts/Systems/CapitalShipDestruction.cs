@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -25,7 +26,7 @@ namespace Rebellion.Systems
             EvacuateStarfighters(game, movement, ship, fleet);
             DestroyRegiments(game, ship);
 
-            game.DetachNode(ship);
+            game.MoveToVoid(ship, VoidStatus.Destroyed);
             GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
         }
 
@@ -109,7 +110,7 @@ namespace Rebellion.Systems
                 .ToList();
 
             foreach (Regiment regiment in regiments)
-                game.DetachNode(regiment);
+                game.MoveToVoid(regiment, VoidStatus.Destroyed);
         }
 
         /// <summary>

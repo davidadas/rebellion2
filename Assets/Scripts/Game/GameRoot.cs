@@ -276,7 +276,8 @@ namespace Rebellion.Game
             node.SetParent(parent);
 
             // Register the node to the faction's list of owned units.
-            RegisterOwnedUnit(node);
+            if (!IsInVoid(node))
+                RegisterOwnedUnit(node);
 
             // Register the node and its children.
             node.Traverse(AddSceneNodeByInstanceID);
@@ -341,6 +342,8 @@ namespace Rebellion.Game
             try
             {
                 AttachNode(node, newParent);
+                if (!IsInVoid(node))
+                    ((BaseSceneNode)node).VoidState = null;
             }
             catch
             {
@@ -348,6 +351,61 @@ namespace Rebellion.Game
                 throw;
             }
         }
+
+        /// <summary>
+        /// Moves an owned entity out of active play while preserving it in its faction's graph.
+        /// </summary>
+        public void MoveToVoid(ISceneNode node, VoidStatus status)
+        {
+            MoveToVoid(node, new VoidState { Status = status });
+        }
+
+        /// <summary>
+        /// Moves an owned entity out of active play with persisted context explaining why.
+        /// </summary>
+        public void MoveToVoid(ISceneNode node, VoidState state)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (state == null)
+                throw new ArgumentNullException(nameof(state));
+            if (string.IsNullOrEmpty(node.OwnerInstanceID))
+                throw new InvalidOperationException("Only faction-owned entities can enter a void pool.");
+
+            Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
+            VoidPool pool = faction.VoidPool ??= new VoidPool();
+            EnsureVoidPoolRegistered(faction);
+            MoveNode(node, pool);
+            ((BaseSceneNode)node).VoidState = state;
+        }
+
+        private void EnsureVoidPoolRegistered(Faction faction)
+        {
+            VoidPool pool = faction.VoidPool ??= new VoidPool();
+            pool.OwnerInstanceID = faction.InstanceID;
+            pool.DisplayName = $"{faction.DisplayName} Void Pool";
+            if (!NodesByInstanceID.ContainsKey(pool.InstanceID))
+            {
+                pool.Traverse(node =>
+                {
+                    AddSceneNodeByInstanceID(node);
+                    foreach (ISceneNode child in node.GetChildren())
+                        child.SetParent(node);
+                });
+            }
+        }
+
+        /// <summary>
+        /// Reconnects and registers faction void pools after save-game deserialization.
+        /// </summary>
+        public void InitializeVoidPools()
+        {
+            foreach (Faction faction in Factions)
+                EnsureVoidPoolRegistered(faction);
+        }
+
+        private static bool IsInVoid(ISceneNode node) =>
+            node is VoidPool || node?.GetParentOfType<VoidPool>() != null;
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.
@@ -692,6 +750,9 @@ namespace Rebellion.Game
                     }
                 }
             );
+
+            foreach (Faction faction in Factions)
+                EnsureVoidPoolRegistered(faction);
 
             return galaxy;
         }

@@ -1896,7 +1896,7 @@ namespace Rebellion.Systems
 
                 if (loss.SquadsAfter <= 0)
                 {
-                    _game.DetachNode(fighter);
+                    _game.MoveToVoid(fighter, VoidStatus.Destroyed);
                     GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                 }
             }
@@ -1908,7 +1908,7 @@ namespace Rebellion.Systems
         /// <param name="fleet">Empty fleet to remove.</param>
         private void RemoveFleetFromScene(Fleet fleet)
         {
-            _game.DetachNode(fleet);
+            _game.MoveToVoid(fleet, VoidStatus.Destroyed);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }
 

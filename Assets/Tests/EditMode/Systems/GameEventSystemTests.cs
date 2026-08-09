@@ -158,6 +158,33 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void HandleResults_StableTriggerId_ExecutesWithoutClrTypeName()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ARRIVAL_REACTION",
+                Trigger = "core:unit.arrived",
+                Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "arrival.triggered", Value = 1 },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            Planet destination = new Planet { InstanceID = "destination" };
+            Officer officer = new Officer { InstanceID = "officer" };
+
+            _system.HandleResults(
+                new[]
+                {
+                    new UnitArrivedResult { Unit = officer, Destination = destination },
+                }
+            );
+
+            Assert.AreEqual(1, _game.GetEventVariable("arrival.triggered"));
+        }
+
+        [Test]
         public void HandleResults_AuthoredReplacement_SuppressesMatchingSourceMessages()
         {
             Officer luke = new Officer { InstanceID = "luke" };
@@ -575,6 +602,15 @@ namespace Rebellion.Tests.Systems
                 );
                 return new List<GameResult>();
             }
+        }
+
+        private sealed class HasArrivalBindingsConditional : GameConditional
+        {
+            public override bool IsMet(GameRoot game) => false;
+
+            public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
+                context.GetBinding<Officer>("unit") != null
+                && context.GetBinding<Planet>("destination") != null;
         }
     }
 }

@@ -600,6 +600,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Nebulon-B Frigate",
                 OwnerInstanceID = alliance.InstanceID,
+                EncyclopediaImagePath = "ship-encyclopedia-image",
             };
             game.AttachNode(fleet, destination);
             game.AttachNode(ship, fleet);
@@ -1022,17 +1023,20 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Death Star Alpha",
                 TypeID = "DEATH_STAR",
                 OwnerInstanceID = alliance.InstanceID,
+                EncyclopediaImagePath = "death-star-encyclopedia-image",
             };
             Starfighter fighter = new Starfighter
             {
                 DisplayName = "X-wing",
                 OwnerInstanceID = alliance.InstanceID,
-                MessageImagePath = "fighter-image",
+                MessageImagePath = "fighter-message-image",
+                EncyclopediaImagePath = "fighter-encyclopedia-image",
             };
             Regiment regiment = new Regiment
             {
                 DisplayName = "Mon Calamari Regiment",
                 OwnerInstanceID = alliance.InstanceID,
+                EncyclopediaImagePath = "regiment-encyclopedia-image",
             };
             Regiment secondRegiment = new Regiment
             {
@@ -1092,20 +1096,23 @@ namespace Rebellion.Tests.Game.Messages
                 "The new Nebulon-B Frigate, Nebulon-B Frigate, has been deployed at Coruscant.",
                 messages[0].Body
             );
+            Assert.AreEqual("ship-encyclopedia-image", messages[0].DisplayImagePath);
             Assert.AreEqual("New Death Star Deployed at Coruscant", messages[1].Title);
             Assert.AreEqual(
                 "The new Death Star, Death Star Alpha, has been deployed at Coruscant.",
                 messages[1].Body
             );
+            Assert.AreEqual("death-star-encyclopedia-image", messages[1].DisplayImagePath);
             Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
             Assert.AreEqual("fighter-voice", messages[2].MessageVoicePath);
-            Assert.AreEqual("fighter-image", messages[2].DisplayImagePath);
+            Assert.AreEqual("fighter-encyclopedia-image", messages[2].DisplayImagePath);
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
                 "The following units have been deployed to Coruscant:\n"
                     + "Mon Calamari Regiment\nWookiee Regiment",
                 messages[3].Body
             );
+            Assert.AreEqual("regiment-encyclopedia-image", messages[3].DisplayImagePath);
         }
 
         [Test]

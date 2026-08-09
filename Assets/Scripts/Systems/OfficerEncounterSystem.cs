@@ -129,6 +129,7 @@ namespace Rebellion.Systems
                         EncounteredOfficerCaptured = captured,
                         EncounteredOfficerInjury = encounteredInjury,
                         OpposingOfficerInjury = opposingInjury,
+                        ImagePath = request.ImagePath,
                         VoicePath = request.VoicePath,
                         Tick = _game.CurrentTick,
                     },

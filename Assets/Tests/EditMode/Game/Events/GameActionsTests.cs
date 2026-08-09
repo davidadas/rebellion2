@@ -996,5 +996,60 @@ namespace Rebellion.Tests.Game.Events
                 results.OfType<PlanetIncidentResult>().Single().DestroyedObjects.Single()
             );
         }
+
+        [Test]
+        public void Chance_Success_ExecutesEveryChildAction()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            ChanceAction action = new ChanceAction
+            {
+                Probability = 1,
+                Actions = new List<GameAction>
+                {
+                    new SetEventVariableAction { Key = "first", Value = 1 },
+                    new SetEventVariableAction { Key = "second", Value = 2 },
+                },
+            };
+
+            action.Execute(game, new FixedRNG());
+
+            Assert.AreEqual(1, game.GetEventVariable("first"));
+            Assert.AreEqual(2, game.GetEventVariable("second"));
+        }
+
+        [Test]
+        public void RandomChoice_ExecutesEveryActionInSelectedWeightedChoice()
+        {
+            GameRoot game = BuildGame(out _, out _);
+            RandomChoiceAction action = new RandomChoiceAction
+            {
+                Choices = new List<RandomChoice>
+                {
+                    new RandomChoice
+                    {
+                        Weight = 1,
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "wrong", Value = 1 },
+                        },
+                    },
+                    new RandomChoice
+                    {
+                        Weight = 3,
+                        Actions = new List<GameAction>
+                        {
+                            new SetEventVariableAction { Key = "first", Value = 1 },
+                            new SetEventVariableAction { Key = "second", Value = 2 },
+                        },
+                    },
+                },
+            };
+
+            action.Execute(game, new SequenceRNG(new[] { 3 }));
+
+            Assert.Zero(game.GetEventVariable("wrong"));
+            Assert.AreEqual(1, game.GetEventVariable("first"));
+            Assert.AreEqual(2, game.GetEventVariable("second"));
+        }
     }
 }

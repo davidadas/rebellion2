@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Content
                 candidate.InstanceID == "LUKE_LEAVES_DAGOBAH"
             );
 
-            Assert.AreEqual(nameof(DagobahCompletedResult), gameEvent.TriggerResultType);
+            Assert.AreEqual("core:dagobah.completed", gameEvent.Trigger);
             Assert.IsTrue(gameEvent.SuppressSourceMessages);
             Assert.AreEqual(
                 "LUKE_VISITS_YODA",
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Content
                     .Actions.OfType<NarrativeMessageAction>()
                     .Single();
 
-                Assert.AreEqual(nameof(OfficerCaptureStateResult), gameEvent.TriggerResultType);
+                Assert.AreEqual("core:officer.capture-changed", gameEvent.Trigger);
                 Assert.IsTrue(gameEvent.SuppressSourceMessages);
                 Assert.AreEqual(sourceEventId, source.SourceEventInstanceID);
                 Assert.AreEqual(officerId, capture.OfficerInstanceID);
@@ -124,7 +124,7 @@ namespace Rebellion.Tests.Content
                 candidate.InstanceID == "PALACE_RESCUE_REPORT_POLICY"
             );
             Assert.IsTrue(reportPolicy.IsRepeatable);
-            Assert.AreEqual(nameof(MissionCompletedResult), reportPolicy.TriggerResultType);
+            Assert.AreEqual("core:mission.completed", reportPolicy.Trigger);
             Assert.IsTrue(reportPolicy.SuppressTriggerMessage);
             CollectionAssert.AreEquivalent(
                 expectedEvents.Select(expected => expected.sourceEventId),
@@ -142,24 +142,20 @@ namespace Rebellion.Tests.Content
             ContentPack pack = ContentPackLoader.OpenActive();
             (string eventId, string triggerType, string sourceEventId)[] replacements =
             {
-                (
-                    "HAN_EVADES_BOUNTY_HUNTERS",
-                    nameof(StoryCaptureResolvedResult),
-                    "HAN_BOUNTY_HUNTERS"
-                ),
+                ("HAN_EVADES_BOUNTY_HUNTERS", "core:story-capture.resolved", "HAN_BOUNTY_HUNTERS"),
                 (
                     "JABBA_DELIVERS_PRISONERS",
-                    nameof(StoryPickupCompletedResult),
+                    "core:story-pickup.completed",
                     "VADER_COLLECTS_JABBAS_PRISONERS"
                 ),
                 (
                     "LUKE_WINS_FINAL_BATTLE",
-                    nameof(StoryFinalBattleCompletedResult),
+                    "core:story-final-battle.completed",
                     "VADER_TAKES_LUKE_TO_EMPEROR"
                 ),
                 (
                     "LUKE_LOSES_FINAL_BATTLE",
-                    nameof(StoryFinalBattleCompletedResult),
+                    "core:story-final-battle.completed",
                     "VADER_TAKES_LUKE_TO_EMPEROR"
                 ),
             };
@@ -169,7 +165,7 @@ namespace Rebellion.Tests.Content
                 GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                     candidate.InstanceID == eventId
                 );
-                Assert.AreEqual(triggerType, gameEvent.TriggerResultType, eventId);
+                Assert.AreEqual(triggerType, gameEvent.Trigger, eventId);
                 Assert.IsTrue(gameEvent.SuppressSourceMessages, eventId);
                 Assert.AreEqual(
                     sourceEventId,
@@ -185,7 +181,7 @@ namespace Rebellion.Tests.Content
                 candidate.InstanceID == "FINAL_BATTLE_REPORT_POLICY"
             );
             Assert.IsTrue(finalBattlePolicy.IsRepeatable);
-            Assert.AreEqual(nameof(MissionCompletedResult), finalBattlePolicy.TriggerResultType);
+            Assert.AreEqual("core:mission.completed", finalBattlePolicy.Trigger);
             Assert.IsTrue(finalBattlePolicy.SuppressTriggerMessage);
             Assert.AreEqual(
                 "VADER_TAKES_LUKE_TO_EMPEROR",
@@ -245,7 +241,7 @@ namespace Rebellion.Tests.Content
                 GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                     candidate.InstanceID == effectsEventId
                 );
-                Assert.AreEqual(nameof(OfficerEncounterResult), gameEvent.TriggerResultType);
+                Assert.AreEqual("core:officer.encountered", gameEvent.Trigger);
                 Assert.IsTrue(gameEvent.SuppressSourceMessages, effectsEventId);
                 Assert.AreEqual(
                     sourceEventId,
@@ -369,7 +365,7 @@ namespace Rebellion.Tests.Content
                     ).IsRepeatable
                 )
             );
-            Assert.AreEqual(nameof(UnitArrivedResult), lukeVaderEncounter.TriggerResultType);
+            Assert.AreEqual("core:unit.arrived", lukeVaderEncounter.Trigger);
             Assert.IsInstanceOf<OfficerPairArrivalConditional>(lukeVaderEncounter.Conditionals[0]);
             Assert.AreEqual(
                 "luke.vader.encountered",
@@ -382,7 +378,7 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(5, confrontation.BodySegments.Count);
             Assert.IsTrue(confrontation.VoicePathFromOfficerEncounter);
-            Assert.AreEqual(nameof(UnitArrivedResult), forceDetectionEvent.TriggerResultType);
+            Assert.AreEqual("core:unit.arrived", forceDetectionEvent.Trigger);
             Assert.AreEqual("{subject} Detects Enemy", forceDetection.TitleTemplate);
             Assert.AreEqual(
                 "{subject} has detected {relatedSubject} because of a disturbance in the Force.",
@@ -396,7 +392,7 @@ namespace Rebellion.Tests.Content
                 ForceDiscoveryPresentation.AbilityRevealed,
                 leiaDiscoveryRule.Presentation
             );
-            Assert.AreEqual(nameof(ForceDiscoveryResult), leiaHeritage.TriggerResultType);
+            Assert.AreEqual("core:force.discovered", leiaHeritage.Trigger);
             Assert.IsInstanceOf<ForceDiscoveryParticipantsConditional>(
                 leiaHeritage.Conditionals.Single()
             );
@@ -444,7 +440,7 @@ namespace Rebellion.Tests.Content
                 .Single();
 
             Assert.IsTrue(gameEvent.IsRepeatable);
-            Assert.AreEqual(nameof(UnitArrivedResult), gameEvent.TriggerResultType);
+            Assert.AreEqual("core:unit.arrived", gameEvent.Trigger);
             Assert.AreEqual("EMPEROR_PALPATINE", arrival.UnitInstanceID);
             Assert.AreEqual("CORUSCANT", arrival.DestinationInstanceID);
             Assert.AreEqual("EMPEROR_PALPATINE", aura.SourceUnitInstanceID);

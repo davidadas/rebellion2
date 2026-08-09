@@ -5,6 +5,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -76,7 +77,7 @@ namespace Rebellion.Systems
                 Faction faction = _game.Factions.FirstOrDefault(f =>
                     f.InstanceID == unit.GetOwnerInstanceID()
                 );
-                _game.DetachNode(unit);
+                _game.MoveToVoid(unit, VoidStatus.Destroyed);
                 GameLogger.Log(
                     $"{unit.GetDisplayName()} destroyed running blockade at {originPlanet.GetDisplayName()}"
                 );

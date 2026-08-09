@@ -249,6 +249,38 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void MoveToVoid_OwnedNode_PreservesRegistrationAndRecordsStatus()
+        {
+            _game.AttachNode(_planetSystem, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSystem);
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER1",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            _game.MoveToVoid(
+                officer,
+                new VoidState
+                {
+                    Status = VoidStatus.Captured,
+                    Destination = SpecialDestination.JabbasPalace,
+                    SourceEventInstanceID = "bounty-hunters",
+                    CaptorInstanceID = "jabba",
+                }
+            );
+
+            Assert.AreSame(_faction1.VoidPool, officer.GetParent());
+            Assert.AreEqual(VoidStatus.Captured, officer.VoidState.Status);
+            Assert.AreEqual(SpecialDestination.JabbasPalace, officer.VoidState.Destination);
+            Assert.AreEqual("bounty-hunters", officer.VoidState.SourceEventInstanceID);
+            Assert.AreEqual("jabba", officer.VoidState.CaptorInstanceID);
+            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
+        }
+
+        [Test]
         public void AddSceneNodeByInstanceID_ValidNode_AddsToRegistry()
         {
             // Add node and verify that it is added to the _game.

@@ -486,6 +486,7 @@ namespace Rebellion.Game.Results
     {
         public Officer EncounteredOfficer { get; set; }
         public Officer OpposingOfficer { get; set; }
+        public string ImagePath { get; set; }
         public string VoicePath { get; set; }
     }
 
@@ -500,6 +501,7 @@ namespace Rebellion.Game.Results
         public bool EncounteredOfficerCaptured { get; set; }
         public int EncounteredOfficerInjury { get; set; }
         public int OpposingOfficerInjury { get; set; }
+        public string ImagePath { get; set; }
         public string VoicePath { get; set; }
     }
 

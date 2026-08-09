@@ -33,9 +33,9 @@ namespace Rebellion.Tests.App
         }
 
         [Test]
-        public void InitializeRuntime_BlankLaunchContext_SetsActiveContentDefaults()
+        public void EnsureRuntimeInitialized_BlankLaunchContext_SetsActiveContentDefaults()
         {
-            UIComponentTestHelper.InvokeLifecycle(bootstrap, "InitializeRuntime");
+            UIComponentTestHelper.InvokeLifecycle(bootstrap, "EnsureRuntimeInitialized");
 
             Assert.AreEqual(
                 TestContent.Pack.Scenario.DefaultPlayerFactionID,
@@ -47,6 +47,17 @@ namespace Rebellion.Tests.App
                 GameLaunchContext.Summary.PackVersion
             );
             Assert.AreEqual(TestContent.Pack.Scenario.ID, GameLaunchContext.Summary.ScenarioID);
+        }
+
+        [Test]
+        public void EnsureRuntimeInitialized_WhenAlreadyInitialized_PreservesRuntimeInstance()
+        {
+            UIComponentTestHelper.InvokeLifecycle(bootstrap, "EnsureRuntimeInitialized");
+            GameRuntime runtime = bootstrap.GetRuntime();
+
+            UIComponentTestHelper.InvokeLifecycle(bootstrap, "EnsureRuntimeInitialized");
+
+            Assert.AreSame(runtime, bootstrap.GetRuntime());
         }
 
         private static void DestroyAudioManagers()

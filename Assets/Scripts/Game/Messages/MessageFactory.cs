@@ -497,7 +497,7 @@ namespace Rebellion.Game.Messages
                         { "type", itemName },
                         { "system", destination?.GetDisplayName() ?? string.Empty },
                     },
-                    imageOverride: GetMessageImagePath(unit)
+                    imageOverride: GetEncyclopediaImagePath(unit)
                 ),
                 destination,
                 unit as ISceneNode
@@ -535,7 +535,7 @@ namespace Rebellion.Game.Messages
                         },
                         { "system", destination?.GetDisplayName() ?? string.Empty },
                     },
-                    imageOverride: GetMessageImagePath(regimentArray[0])
+                    imageOverride: GetEncyclopediaImagePath(regimentArray[0])
                 ),
                 destination,
                 regimentArray[0]
@@ -3601,6 +3601,13 @@ namespace Rebellion.Game.Messages
         private static string GetMessageImagePath(IGameEntity entity)
         {
             return string.IsNullOrEmpty(entity?.MessageImagePath) ? null : entity.MessageImagePath;
+        }
+
+        private static string GetEncyclopediaImagePath(IGameEntity entity)
+        {
+            return string.IsNullOrEmpty(entity?.EncyclopediaImagePath)
+                ? null
+                : entity.EncyclopediaImagePath;
         }
 
         private static bool IsPlanetDestroyingShip(CapitalShip ship, GameRoot game)
