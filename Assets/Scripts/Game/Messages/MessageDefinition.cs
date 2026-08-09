@@ -103,7 +103,7 @@ namespace Rebellion.Game.Messages
     }
 
     /// <summary>
-    /// Defines the original situation and fleet-disposition text used to assemble a space battle
+    /// Defines the situation and fleet-disposition text used to assemble a space battle
     /// report. Keeping these fragments in content allows total-conversion packs to replace the
     /// complete battle vocabulary without changing message routing code.
     /// </summary>

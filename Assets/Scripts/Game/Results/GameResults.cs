@@ -732,7 +732,7 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// The original Luke, Vader, and Palpatine confrontation resolved.
+    /// The Luke, Vader, and Palpatine confrontation resolved.
     /// </summary>
     public class StoryFinalBattleCompletedResult : GameResult
     {

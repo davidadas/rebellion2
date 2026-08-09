@@ -164,7 +164,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds the original Force-assisted traitor discovery reports.
+        /// Adds Force-assisted traitor discovery reports.
         /// </summary>
         /// <param name="results">The traitor discovery results to process.</param>
         /// <param name="game">The game state used to resolve recipients and opposing factions.</param>
@@ -373,7 +373,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates the original arrival report for the mobile Alliance Headquarters.
+        /// Creates the arrival report for the mobile Alliance Headquarters.
         /// </summary>
         private Message CreateHeadquartersArrived(
             Faction faction,
@@ -465,7 +465,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates an original deployment report for a completed ship, squadron, or regiment.
+        /// Creates a deployment report for a completed ship, squadron, or regiment.
         /// </summary>
         private Message CreateUnitDeployed(
             Faction faction,
@@ -505,7 +505,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates the original grouped report for regiments deployed to one planet.
+        /// Creates a grouped report for regiments deployed to one planet.
         /// </summary>
         private Message CreateRegimentsDeployed(
             Faction faction,
@@ -543,7 +543,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates the original report for a facility scrapped when it cannot deploy.
+        /// Creates the report for a facility scrapped when it cannot deploy.
         /// </summary>
         private Message CreateFacilityLost(Faction faction, Building building, Planet destination)
         {
@@ -565,7 +565,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates one side of an original smuggling start or end report.
+        /// Creates one side of a smuggling start or end report.
         /// </summary>
         private Message CreateSmugglingMessage(
             Faction faction,
@@ -1551,7 +1551,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds the original outcome, strategic situation, and fleet-disposition fragments used by
+        /// Adds the outcome, strategic situation, and fleet-disposition fragments used by
         /// a configured space battle body template.
         /// </summary>
         private static void AddSpaceBattleNarrativeValues(
@@ -2766,7 +2766,7 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Adds original deployment messages for completed manufactured units.
+        /// Adds deployment messages for completed manufactured units.
         /// </summary>
         /// <param name="results">The deployment results to process.</param>
         /// <param name="game">The game state used to resolve recipient factions.</param>

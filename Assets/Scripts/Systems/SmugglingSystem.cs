@@ -24,7 +24,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Recomputes the original support- and garrison-driven smuggling percentage.
+        /// Recomputes the support- and garrison-driven smuggling percentage.
         /// </summary>
         public List<GameResult> ProcessTick()
         {
@@ -43,7 +43,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the original per-resource smuggling roll to completed output.
+        /// Applies the per-resource smuggling roll to completed output.
         /// </summary>
         public Faction GetResourceRecipient(Faction controller, Building facility)
         {

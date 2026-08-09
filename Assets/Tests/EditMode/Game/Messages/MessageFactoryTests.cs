@@ -521,7 +521,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_HeadquartersArrival_UsesOriginalSpecialReport()
+        public void CreateMessages_HeadquartersArrival_UsesSpecialReport()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Building headquarters = new Building
@@ -1004,7 +1004,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_DeployedCombatUnits_UseOriginalUnitSpecificReports()
+        public void CreateMessages_DeployedCombatUnits_UseUnitSpecificReports()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             game.Config.Combat.Bombardment.PlanetDestroyingCapitalShipTypeIDs = new List<string>
@@ -1116,7 +1116,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_FacilityDestroyedOnArrival_ReturnsOriginalFacilityLostReport()
+        public void CreateMessages_FacilityDestroyedOnArrival_ReturnsFacilityLostReport()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Building shipyard = new Building
@@ -2422,7 +2422,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_AssassinatedOfficer_ReturnsOriginalImperialAssassinsReport()
+        public void CreateMessages_AssassinatedOfficer_ReturnsImperialAssassinsReport()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
@@ -2646,7 +2646,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_TraitorDiscovered_UsesOriginalReportAndDiscovererPresentation()
+        public void CreateMessages_TraitorDiscovered_UsesReportAndDiscovererPresentation()
         {
             (GameRoot game, Faction alliance, _, Planet origin, _) = BuildTwoFactionMessageScene();
             Officer discoverer = new Officer
@@ -2897,7 +2897,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SabotageResultsAtSameSystem_UseOneOriginalStyleReport()
+        public void CreateMessages_SabotageResultsAtSameSystem_UseOneCombinedReport()
         {
             (GameRoot game, _, Faction empire, _, Planet target) = BuildTwoFactionMessageScene();
             Building shield = new Building
@@ -3743,7 +3743,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_SpaceBattle_RestoresOriginalStrategicAndFleetOutcomeText()
+        public void CreateMessages_SpaceBattle_RestoresStrategicAndFleetOutcomeText()
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();

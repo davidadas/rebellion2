@@ -413,7 +413,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Original system smuggling calculation and resource-redirection rules.
+        /// System smuggling calculation and resource-redirection rules.
         /// </summary>
         [PersistableObject]
         public class SmugglingConfig
@@ -665,7 +665,7 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Loyalty and betrayal values reconstructed from the original parameter tables.
+        /// Loyalty and betrayal configuration values.
         /// </summary>
         [PersistableObject]
         public class BetrayalConfig

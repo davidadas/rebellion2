@@ -15,7 +15,7 @@ namespace Rebellion.Game.Missions
     }
 
     /// <summary>
-    /// Persists one travel leg of the original Luke, Vader, and Palpatine story chain.
+    /// Persists one travel leg of the Luke, Vader, and Palpatine story chain.
     /// </summary>
     [PersistableObject(Name = "StoryFinalBattleMission")]
     public sealed class StoryFinalBattleMission : Mission

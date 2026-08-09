@@ -80,7 +80,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Recreates the original controlled-world informant check with data-defined faction routing
+    /// Resolves a controlled-world informant check with data-defined faction routing
     /// and uniformly weighted intelligence categories.
     /// </summary>
     [PersistableObject(Name = "InformantIntelligence")]
@@ -163,7 +163,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Applies one original-style random incident to a uniformly selected eligible planet.
+    /// Applies one random incident to a uniformly selected eligible planet.
     /// All probabilities, limits, candidate-system rules, and affected facility types are content data.
     /// </summary>
     [PersistableObject(Name = "RandomPlanetIncident")]
@@ -1163,7 +1163,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Announces the original bounty-hunter attack through the normal result pipeline.
+    /// Announces a bounty-hunter attack through the normal result pipeline.
     /// </summary>
     [PersistableObject(Name = "BountyAttack")]
     public sealed class BountyAttackAction : GameAction
@@ -1297,7 +1297,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Starts the persisted, two-leg journey that culminates in the original final battle.
+    /// Starts the persisted, two-leg journey that culminates in the scripted final battle.
     /// </summary>
     [PersistableObject(Name = "StartStoryFinalBattle")]
     public sealed class StartStoryFinalBattleAction : GameAction

@@ -59,7 +59,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessTick_LowSupport_StartsOriginalSmugglingLossPercentage()
+        public void ProcessTick_LowSupport_StartsConfiguredSmugglingLossPercentage()
         {
             _planet.PopularSupport = new Dictionary<string, int>
             {

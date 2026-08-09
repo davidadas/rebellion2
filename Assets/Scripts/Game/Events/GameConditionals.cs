@@ -632,7 +632,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Matches the authored outcome of the original final battle.
+    /// Matches the authored outcome of the scripted final battle.
     /// </summary>
     [PersistableObject(Name = "StoryFinalBattleOutcome")]
     public sealed class StoryFinalBattleOutcomeConditional : GameConditional

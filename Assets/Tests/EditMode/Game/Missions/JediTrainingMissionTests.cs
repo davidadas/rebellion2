@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void ScriptedTrainingMission_Completion_AppliesOriginalPercentFormulaAndState()
+        public void ScriptedTrainingMission_Completion_AppliesPercentFormulaAndState()
         {
             _student.ForceValue = 41;
             ScriptedTrainingMission mission = new ScriptedTrainingMission(

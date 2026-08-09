@@ -778,7 +778,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryRescueRequest_SuccessUsesOriginalCombinedScoreAndFreesCaptive()
+        public void HandleStoryRescueRequest_SuccessUsesCombinedScoreAndFreesCaptive()
         {
             (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
                 factionOwnsPlanet: true

@@ -12,7 +12,7 @@ using Rebellion.Util.Common;
 namespace Rebellion.Systems
 {
     /// <summary>
-    /// Resolves the original loyalty-driven betrayal and Force-assisted discovery mechanics.
+    /// Resolves loyalty-driven betrayal and Force-assisted discovery mechanics.
     /// </summary>
     public class BetrayalSystem : IGameResultHandler<PlanetOwnershipChangedResult>
     {
@@ -31,7 +31,7 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Applies the original galaxy-wide loyalty reaction when a faction gains a planet.
+        /// Applies the galaxy-wide loyalty reaction when a faction gains a planet.
         /// </summary>
         /// <param name="results">The ownership changes to apply in their resolved order.</param>
         /// <returns>No follow-up results; loyalty changes are authoritative state updates.</returns>

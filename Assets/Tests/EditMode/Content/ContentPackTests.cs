@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_PlayableFactionThemes_ConfigureOriginalCampaignEndings()
+        public void OpenActive_PlayableFactionThemes_ConfigureCampaignEndings()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
 
@@ -423,7 +423,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_EmperorReturnsToCoruscant_PreservesOriginalReport()
+        public void OpenActive_EmperorReturnsToCoruscant_PreservesConfiguredReport()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
@@ -460,7 +460,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_AssassinationDeathReport_PreservesOriginalVictimMessage()
+        public void OpenActive_AssassinationDeathReport_PreservesVictimMessage()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
@@ -479,7 +479,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_EspionageSuccessReport_PreservesOriginalAdditionalSystemText()
+        public void OpenActive_EspionageSuccessReport_PreservesAdditionalSystemText()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
@@ -500,7 +500,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_RegimentDeploymentReport_PreservesOriginalGroupedUnitList()
+        public void OpenActive_RegimentDeploymentReport_PreservesGroupedUnitList()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
@@ -515,7 +515,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_MaintenanceShortfallReport_PreservesOriginalGroupedUnitList()
+        public void OpenActive_MaintenanceShortfallReport_PreservesGroupedUnitList()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             MessageDefinition definition = pack.GameData.MessageDefinitions.Single(candidate =>
@@ -554,7 +554,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_SpaceBattleReports_PreserveOriginalModdableNarrativeCatalog()
+        public void OpenActive_SpaceBattleReports_PreserveModdableNarrativeCatalog()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             MessageDefinition[] definitions = pack

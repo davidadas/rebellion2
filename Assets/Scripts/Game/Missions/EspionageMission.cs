@@ -210,7 +210,7 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
-        /// Selects distinct bonus planets using the original mission's target-specific pools.
+        /// Selects distinct bonus planets using the mission's target-specific pools.
         /// </summary>
         private IEnumerable<Planet> SelectBonusPlanets(
             GameRoot game,

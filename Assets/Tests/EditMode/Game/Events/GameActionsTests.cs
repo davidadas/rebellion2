@@ -131,7 +131,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ResolveOfficerEncounter_ForceRankChance_UsesOriginalSummedRankThreshold()
+        public void ResolveOfficerEncounter_ForceRankChance_UsesSummedRankThreshold()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -817,7 +817,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void IncreaseOfficerForce_RankGapReward_UsesOriginalMaximumFormula()
+        public void IncreaseOfficerForce_RankGapReward_UsesMaximumFormula()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
