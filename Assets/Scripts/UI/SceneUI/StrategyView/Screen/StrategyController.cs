@@ -740,14 +740,15 @@ public sealed class StrategyController
         StopMusic();
         briefingController.Play(
             briefing,
-            () =>
+            skipped =>
             {
                 briefingActive = false;
                 briefingSkipConfirmationOpen = false;
                 SetBriefingInteractionEnabled(true);
                 briefingEventSystem = null;
                 strategyMusicController.Resume();
-                messagesWindowController.Open(MessagesTab.Advice);
+                if (!skipped)
+                    messagesWindowController.Open(MessagesTab.Advice);
                 completed?.Invoke();
                 dirty = true;
             }

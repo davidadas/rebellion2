@@ -43,16 +43,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     textures,
                     rootObject
                 );
-                bool completed = false;
+                bool? skipped = null;
 
-                controller.Play(briefing, () => completed = true);
+                controller.Play(briefing, wasSkipped => skipped = wasSkipped);
 
                 Assert.AreSame(first, GetProtocolImage(rootObject).texture);
                 advisorView.AdvanceAnimation(0.5f);
                 Assert.AreSame(second, GetProtocolImage(rootObject).texture);
-                Assert.IsFalse(completed);
+                Assert.IsNull(skipped);
                 advisorView.AdvanceAnimation(0.5f);
-                Assert.IsTrue(completed);
+                Assert.IsFalse(skipped);
             }
             finally
             {
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Skip_ConfiguredResponse_ReplacesCurrentSegmentAndCompletesAfterResponse()
+        public void Skip_ConfiguredResponse_CompletesImmediatelyAndPlaysResponse()
         {
             GameRoot game = CreateGame();
             StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
@@ -88,15 +88,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     textures,
                     rootObject
                 );
-                bool completed = false;
-                controller.Play(briefing, () => completed = true);
+                bool? skipped = null;
+                controller.Play(briefing, wasSkipped => skipped = wasSkipped);
 
                 controller.Skip();
 
                 Assert.AreSame(skip, GetProtocolImage(rootObject).texture);
-                Assert.IsFalse(completed);
+                Assert.IsTrue(skipped);
                 advisorView.AdvanceAnimation(0.5f);
-                Assert.IsTrue(completed);
+                Assert.IsTrue(skipped);
             }
             finally
             {
@@ -235,7 +235,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 GamePlanetSystem system,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            { }
 
             public void RequestGalaxyMapRender() { }
         }
@@ -246,19 +247,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 ManufacturingType manufacturingType,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            { }
 
             public void OpenAdvisorCommandContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            { }
 
             public void OpenAdvisorNotificationContextMenu(
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            { }
 
             public void OpenAdvisorReport(AdvisorReportMode mode) { }
 
@@ -268,7 +272,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 ContextMenuRequest request,
                 int sourceX,
                 int sourceY
-            ) { }
+            )
+            { }
 
             public void ReleaseHudButton(StrategyHudAction action, int sourceX, int sourceY) { }
 

@@ -457,7 +457,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 
             _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
 
-            Assert.AreEqual("Victory", FindText("ResultSummaryTextField").text);
+            TextMeshProUGUI prompt = FindText("ResultDirectPromptTextField");
+            Assert.AreEqual("Victory", prompt.text);
+            Assert.AreEqual(
+                new RectInt(29, 141, 350, 36),
+                UILayout.GetSourceRect(prompt.rectTransform)
+            );
+            Assert.AreEqual(18f, prompt.fontSize);
+            Assert.AreEqual(TextAlignmentOptions.TopLeft, prompt.alignment);
+            Assert.IsFalse(FindObject("ResultSummaryTextField").activeSelf);
             Assert.IsTrue(FindObject("ResultDirectSystemButtonImage").activeSelf);
             Assert.IsTrue(FindObject("ResultDirectFleetButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);

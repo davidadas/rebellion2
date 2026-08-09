@@ -10,7 +10,7 @@
 
 6. Generated UI prefab payloads and generated Main Menu, Save Menu, and Strategy scenes are local build outputs and must not be committed. Their builders and committed base-scene templates are the source of truth. Developer builds include local preview references, while player builds generate clean prefabs that load raw files at runtime from the installation's external `Content` directory. Distributed images must not require Unity `.meta` files.
 
-7. The original Rebellion executable disassembly is at `/Users/davidadams/Library/CloudStorage/GoogleDrive-dadams@confluent.io/.shortcut-targets-by-id/1WAtd7FKg2jYR7T2wmqxXXhErSUSv4GvJ/Uploads/rebexe-disassembly-source-trees 4`. For the original custom cursor, begin with `ptr_tables/PTR_00655458_FUN.lpcursorname_0000002b.h` (cursor resource ID `0x2B`), `ptr_tables/PTR_006bb8a0_LoadCursorA.h`, and `ptr_tables/PTR_006bb8a4_SetCursor.h`. The corresponding original executable is at the sibling path `Uploads/Star Wars - Rebellion/REBEXE.EXE`.
+7. Do not include reverse-engineering provenance, executable or disassembly references, extraction notes, source addresses, or similar implementation-source details in committed code, comments, content, tests, commit messages, or pull request text. Describe only the resulting game behavior and design.
 
 8. If tests need to run while Unity is open, close Unity cleanly and run the tests. Do not skip local tests or push untested changes merely because Unity is open.
 

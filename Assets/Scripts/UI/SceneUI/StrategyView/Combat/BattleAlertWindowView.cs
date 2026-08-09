@@ -54,6 +54,9 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     private TextMeshProUGUI resultSummaryTextField;
 
     [SerializeField]
+    private TextMeshProUGUI resultDirectPromptTextField;
+
+    [SerializeField]
     private TextMeshProUGUI resultPlanetaryForceHeaderTextField;
 
     [SerializeField]
@@ -553,6 +556,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         HideResultDetailLabels();
         HideResultCategoryButtons();
         HideResultDirectButtons();
+        resultDirectPromptTextField.gameObject.SetActive(false);
         RenderResultTitle(titleColor, result);
         UILayout.SetTextContent(resultSummaryTextField, result.Summary, titleColor);
     }
@@ -566,6 +570,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     {
         HideRows();
         HideResultDirectButtons();
+        resultDirectPromptTextField.gameObject.SetActive(false);
         RenderResultTitle(titleColor, result);
         resultSummaryTextField.gameObject.SetActive(false);
         RenderResultDetailLabels(result);
@@ -585,7 +590,8 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         HideResultDetailLabels();
         HideResultCategoryButtons();
         RenderResultTitle(titleColor, result);
-        UILayout.SetTextContent(resultSummaryTextField, result.Summary, titleColor);
+        resultSummaryTextField.gameObject.SetActive(false);
+        UILayout.SetTextContent(resultDirectPromptTextField, result.Summary, titleColor);
         RenderButtons(
             resultDirectButtonImages,
             resultDirectButtonPressVisuals,
@@ -969,6 +975,7 @@ public sealed class BattleAlertWindowView : MonoBehaviour
         resultPlanetaryTitleTextField.gameObject.SetActive(false);
         resultFleetTitleTextField.gameObject.SetActive(false);
         resultSummaryTextField.gameObject.SetActive(false);
+        resultDirectPromptTextField.gameObject.SetActive(false);
         HideResultDetailLabels();
         HideResultItems();
         HideResultCategoryButtons();
@@ -1115,6 +1122,8 @@ public sealed class BattleAlertWindowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/ResultFleetTitleTextField is missing.");
         if (resultSummaryTextField == null)
             throw new MissingReferenceException($"{name}/ResultSummaryTextField is missing.");
+        if (resultDirectPromptTextField == null)
+            throw new MissingReferenceException($"{name}/ResultDirectPromptTextField is missing.");
         if (resultPlanetaryForceHeaderTextField == null)
             throw new MissingReferenceException(
                 $"{name}/ResultPlanetaryForceHeaderTextField is missing."

@@ -5643,6 +5643,8 @@ public static class StrategyViewPrefabBuilder
         ConfigureVerticalContent(rowsContent);
         BattleAlertRowView rowTemplate = CreateBattleAlertRowTemplate(rowsContent);
 
+        // The original UI passes font-table IDs here: 0xB maps to 24 px,
+        // 6 maps to 18 px, and 4 maps to 16 px.
         TextMeshProUGUI resultPlanetaryTitle = CreateBattleResultText(
             "ResultPlanetaryTitleTextField",
             window.transform,
@@ -5673,6 +5675,16 @@ public static class StrategyViewPrefabBuilder
             TextAlignmentOptions.TopLeft
         );
         resultSummary.textWrappingMode = TextWrappingModes.Normal;
+        TextMeshProUGUI resultDirectPrompt = CreateBattleResultText(
+            "ResultDirectPromptTextField",
+            window.transform,
+            "Select one of the following buttons to close this display and go directly to...",
+            new RectInt(29, 141, 350, 36),
+            18,
+            FontStyles.Normal,
+            TextAlignmentOptions.TopLeft
+        );
+        resultDirectPrompt.textWrappingMode = TextWrappingModes.Normal;
         TextMeshProUGUI resultPlanetaryForceHeader = CreateBattleResultText(
             "ResultPlanetaryForceHeaderTextField",
             window.transform,
@@ -6078,6 +6090,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "resultPlanetaryTitleTextField", resultPlanetaryTitle);
         AssignReference(view, "resultFleetTitleTextField", resultFleetTitle);
         AssignReference(view, "resultSummaryTextField", resultSummary);
+        AssignReference(view, "resultDirectPromptTextField", resultDirectPrompt);
         AssignReference(view, "resultPlanetaryForceHeaderTextField", resultPlanetaryForceHeader);
         AssignReference(view, "resultFleetForceHeaderTextField", resultFleetForceHeader);
         AssignReference(view, "resultFleetFiltersTextField", resultFleetFilters);

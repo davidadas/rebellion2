@@ -617,6 +617,14 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            if (
+                unit is Starfighter
+                && HasOpposingBlockade(destinationPlanet, GetMovementControlOwner(unit))
+            )
+            {
+                return false;
+            }
+
             if (destinationPlanet == origin)
                 return true;
 
@@ -1173,16 +1181,8 @@ namespace Rebellion.Systems
             if (movable is not Building && movable is not Regiment)
                 return false;
 
-            if (!destinationPlanet.IsBlockaded())
-                return false;
-
             string movableOwner = GetMovementControlOwner(movable);
-            bool hasOpposingBlockader = destinationPlanet.Fleets.Any(fleet =>
-                fleet.Movement == null
-                && fleet.GetOwnerInstanceID() != movableOwner
-                && fleet.HasOperationalCapitalShips()
-            );
-            if (!hasOpposingBlockader)
+            if (!HasOpposingBlockade(destinationPlanet, movableOwner))
                 return false;
 
             _game.DetachNode(movable);
@@ -1198,6 +1198,22 @@ namespace Rebellion.Systems
                 }
             );
             return true;
+        }
+
+        /// <summary>
+        /// Checks whether an operational opposing fleet blockades a planet.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="ownerInstanceId">The moving faction's instance identifier.</param>
+        /// <returns>True when an opposing fleet currently blockades the planet.</returns>
+        private static bool HasOpposingBlockade(Planet planet, string ownerInstanceId)
+        {
+            return planet.IsBlockaded()
+                && planet.Fleets.Any(fleet =>
+                    fleet.Movement == null
+                    && fleet.GetOwnerInstanceID() != ownerInstanceId
+                    && fleet.HasOperationalCapitalShips()
+                );
         }
 
         /// <summary>
@@ -1837,6 +1853,18 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
+            if (
+                unit is Starfighter
+                && HasOpposingBlockade(destinationPlanet, GetMovementControlOwner(unit))
+            )
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}."
+                );
+                return false;
+            }
+
             if (CanAcceptPlannedChild(resolvedDestination, unit, plannedChildren))
                 return true;
 
@@ -2068,8 +2096,6 @@ namespace Rebellion.Systems
             double distance = destination.GetRawDistanceTo(originPos);
 
             int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
-            int speedBonus = 0;
-
             if (unit is Fleet fleet)
             {
                 if (fleet.CapitalShips.Count > 0)
@@ -2081,12 +2107,6 @@ namespace Rebellion.Systems
                         .Min();
                     slowestHyperdrive = Math.Max(slowestHyperdrive, 1);
                 }
-
-                speedBonus = fleet
-                    .GetOfficers()
-                    .Select(o => Math.Max(o.HyperdriveModifier, 0))
-                    .DefaultIfEmpty(0)
-                    .Max();
             }
             else if (unit is CapitalShip capitalShip)
             {
@@ -2102,7 +2122,7 @@ namespace Rebellion.Systems
                 ? _game.GetConfig().Movement.SameSystemMinTransitTicks
                 : _game.GetConfig().Movement.MinTransitTicks;
 
-            return Math.Max(baseTicks - speedBonus, minimumTransitTicks);
+            return Math.Max(baseTicks, minimumTransitTicks);
         }
 
         /// <summary>

@@ -448,5 +448,50 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsTrue(options.Any(option => option.MissionTypeID == MissionTypeIDs.Diplomacy));
             Assert.AreEqual(MissionTypeIDs.Espionage, options.Last().MissionTypeID);
         }
+
+        [Test]
+        public void GetAvailableMissionOptions_WithResearchAndDiplomacy_ListsResearchFirst()
+        {
+            (GameRoot game, Planet planet, Officer officer, MissionFactory factory) = BuildScene();
+            officer.ShipResearch = 1;
+            officer.TroopResearch = 1;
+            officer.FacilityResearch = 1;
+            planet.EnergyCapacity = 30;
+            ManufacturingType[] facilityTypes =
+            {
+                ManufacturingType.Ship,
+                ManufacturingType.Troop,
+                ManufacturingType.Building,
+            };
+            foreach (ManufacturingType facilityType in facilityTypes)
+            {
+                game.AttachNode(
+                    new Building
+                    {
+                        InstanceID = $"{facilityType}-facility",
+                        OwnerInstanceID = "empire",
+                        ProductionType = facilityType,
+                        ProcessRate = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    planet
+                );
+            }
+            planet.AddVisitor("empire");
+            MissionContext context = CreateContext(game, null, "empire", officer, planet);
+
+            List<MissionOption> options = factory.GetAvailableMissionOptions(context);
+
+            int diplomacyIndex = options.FindIndex(option =>
+                option.MissionTypeID == MissionTypeIDs.Diplomacy
+            );
+            List<int> researchIndexes = options
+                .Select((option, index) => (option, index))
+                .Where(entry => entry.option.MissionTypeID == MissionTypeIDs.Research)
+                .Select(entry => entry.index)
+                .ToList();
+            Assert.IsNotEmpty(researchIndexes);
+            Assert.IsTrue(researchIndexes.All(index => index < diplomacyIndex));
+        }
     }
 }
