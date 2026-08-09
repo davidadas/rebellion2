@@ -45,7 +45,6 @@ public static class MainMenuPrefabBuilder
 
     // Space backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
-    private const string _atmosphereAddress = "Application/MainMenu/UI/atmosphere";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
@@ -1915,19 +1914,6 @@ public static class MainMenuPrefabBuilder
         RawImage stars = NewRawImage(backdrop.transform, "Starfield", null);
         SetBoundTexture(stars, _starfieldAddress);
         FillParent(stars.rectTransform);
-
-        // Soft background glow seen through the windshield, dimmed so it stays subtle. The planet is
-        // gone, so this is a standalone atmosphere glow rather than a limb around a globe.
-        RawImage glow = NewRawImage(backdrop.transform, "Atmosphere", null);
-        SetBoundTexture(glow, _atmosphereAddress);
-        glow.color = new Color(1f, 1f, 1f, 0.6f);
-        RectTransform glowRect = glow.rectTransform;
-        glowRect.anchorMin = new Vector2(0.5f, 0.63f);
-        glowRect.anchorMax = new Vector2(0.5f, 0.63f);
-        glowRect.pivot = new Vector2(0.5f, 0.5f);
-        glowRect.sizeDelta = new Vector2(3770.957f, 3526.246f);
-        glowRect.anchoredPosition = new Vector2(74f, -734f);
-        glowRect.localRotation = Quaternion.Euler(0f, 0f, -20.228f);
     }
 
     /// <summary>
