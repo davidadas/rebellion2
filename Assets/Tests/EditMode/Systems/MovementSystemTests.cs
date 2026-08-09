@@ -2909,6 +2909,87 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void TryRequestMove_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
+            AddBlockadingFleet(game, destination);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { starfighter },
+                destination,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_RegimentToEnemyBlockadedPlanet_ReturnsFalse()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Regiment regiment = EntityFactory.CreateRegiment("regiment", "empire");
+            regiment.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(regiment, origin);
+            AddBlockadingFleet(game, destination);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { regiment },
+                destination,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, regiment.GetParent());
+            Assert.IsNull(regiment.Movement);
+        }
+
+        [Test]
+        public void TryGetSelectionTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
+            AddBlockadingFleet(game, destination);
+
+            bool estimated = movement.TryGetSelectionTransitTicks(
+                new ISceneNode[] { starfighter },
+                destination,
+                "empire",
+                out _
+            );
+
+            Assert.IsFalse(estimated);
+        }
+
+        [Test]
+        public void TryEstimateManufacturedTransitTicks_StarfighterToEnemyBlockadedPlanet_ReturnsFalse()
+        {
+            (GameRoot game, Planet origin, Planet destination, Officer _, MovementSystem movement) =
+                BuildScene();
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Building;
+            AddBlockadingFleet(game, destination);
+
+            bool estimated = movement.TryEstimateManufacturedTransitTicks(
+                starfighter,
+                origin,
+                destination,
+                out _
+            );
+
+            Assert.IsFalse(estimated);
+        }
+
+        [Test]
         public void UpdateMovement_ManufacturedBuildingDispatchedAfterBlockadeStarted_DestroysOnArrival()
         {
             var scene = BuildBlockadeRetargetingScene();

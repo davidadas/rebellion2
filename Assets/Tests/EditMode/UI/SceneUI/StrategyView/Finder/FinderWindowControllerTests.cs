@@ -86,7 +86,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(FinderMode.Fleets, _controller.GetMode(finderView));
             FinderWindowState state = _controller.GetState(finderView);
             Assert.AreEqual(FinderMode.Fleets, state.Mode);
-            Assert.AreEqual(0, state.ActiveTab);
+            Assert.AreEqual(1, state.ActiveTab);
             Assert.AreEqual(-1, state.SelectedIndex);
             Assert.AreEqual(1, _dirtyCount);
         }

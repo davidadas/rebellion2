@@ -2074,7 +2074,7 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", item.transform);
         nameText.text = "Mon Calamari Regiment";
         nameText.color = Color.white;
-        nameText.fontSize = 11;
+        nameText.fontSize = 10;
         nameText.alignment = TextAlignmentOptions.TopLeft;
         nameText.textWrappingMode = TextWrappingModes.Normal;
         nameText.overflowMode = TextOverflowModes.Truncate;
@@ -3757,6 +3757,7 @@ public static class StrategyViewPrefabBuilder
         labelTemplate.color = Color.white;
         labelTemplate.fontSize = 14;
         labelTemplate.alignment = TextAlignmentOptions.Top;
+        labelTemplate.textWrappingMode = TextWrappingModes.Normal;
         SetSourceRect(labelTemplate.rectTransform, 242, 140, 126, 17);
         labelTemplate.gameObject.SetActive(false);
 
@@ -5673,6 +5674,16 @@ public static class StrategyViewPrefabBuilder
             TextAlignmentOptions.TopLeft
         );
         resultSummary.textWrappingMode = TextWrappingModes.Normal;
+        TextMeshProUGUI resultDirectPrompt = CreateBattleResultText(
+            "ResultDirectPromptTextField",
+            window.transform,
+            "Select one of the following buttons to close this display and go directly to...",
+            new RectInt(29, 141, 350, 36),
+            18,
+            FontStyles.Normal,
+            TextAlignmentOptions.TopLeft
+        );
+        resultDirectPrompt.textWrappingMode = TextWrappingModes.Normal;
         TextMeshProUGUI resultPlanetaryForceHeader = CreateBattleResultText(
             "ResultPlanetaryForceHeaderTextField",
             window.transform,
@@ -6078,6 +6089,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "resultPlanetaryTitleTextField", resultPlanetaryTitle);
         AssignReference(view, "resultFleetTitleTextField", resultFleetTitle);
         AssignReference(view, "resultSummaryTextField", resultSummary);
+        AssignReference(view, "resultDirectPromptTextField", resultDirectPrompt);
         AssignReference(view, "resultPlanetaryForceHeaderTextField", resultPlanetaryForceHeader);
         AssignReference(view, "resultFleetForceHeaderTextField", resultFleetForceHeader);
         AssignReference(view, "resultFleetFiltersTextField", resultFleetFilters);

@@ -56,7 +56,22 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" },
                 new Faction { InstanceID = _playerFactionId, DisplayName = "Player" },
             };
-            _builder = new FinderWindowRowBuilder(sectors, factions, _playerFactionId);
+            _builder = new FinderWindowRowBuilder(
+                sectors,
+                factions,
+                _playerFactionId,
+                _ => new[] { "armor", "infantry", "commando", "foreign" },
+                _ =>
+                    new[]
+                    {
+                        "commando",
+                        "spy",
+                        "mission spy",
+                        "fleet commando",
+                        "planet commando",
+                        "foreign",
+                    }
+            );
         }
 
         [Test]
@@ -64,6 +79,72 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         {
             Assert.Throws<System.ArgumentNullException>(() =>
                 new FinderWindowRowBuilder(null, new Faction[0], _playerFactionId)
+            );
+        }
+
+        [Test]
+        public void GetRows_TroopsWithoutConfiguredColumns_ThrowsInvalidOperationException()
+        {
+            _alpha.Regiments.Add(
+                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
+            );
+            FinderWindowRowBuilder builder = CreateBuilder(_ => null, _ => new[] { "commando" });
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                builder.GetRows(
+                    FinderMode.Troops,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
+            );
+        }
+
+        [TestCase(FinderMode.Troops, false)]
+        [TestCase(FinderMode.Personnel, true)]
+        public void GetRows_UnitModeWithoutFactionTab_ReturnsNoRows(FinderMode mode, bool panel)
+        {
+            List<FinderWindowRow> rows = _builder.GetRows(mode, panel, null);
+
+            Assert.IsEmpty(rows);
+        }
+
+        [Test]
+        public void GetRows_TroopsWithDuplicateColumns_ThrowsInvalidOperationException()
+        {
+            _alpha.Regiments.Add(
+                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
+            );
+            FinderWindowRowBuilder builder = CreateBuilder(
+                _ => new[] { "armor", "armor" },
+                _ => new[] { "commando" }
+            );
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                builder.GetRows(
+                    FinderMode.Troops,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
+            );
+        }
+
+        [Test]
+        public void GetRows_TroopsWithUnmappedUnitType_ThrowsInvalidOperationException()
+        {
+            _alpha.Regiments.Add(
+                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
+            );
+            FinderWindowRowBuilder builder = CreateBuilder(
+                _ => new[] { "infantry" },
+                _ => new[] { "commando" }
+            );
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                builder.GetRows(
+                    FinderMode.Troops,
+                    false,
+                    FinderWindowTab.Faction(_playerFactionId, "Player")
+                )
             );
         }
 
@@ -209,15 +290,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
-        public void GetRows_Troops_AggregatesPlanetAndFleetRegimentsByType()
+        public void GetRows_TroopsOnPlanet_AggregatesCountsInAuthoredColumnOrder()
         {
-            _alpha.Regiments.Add(CreateRegiment("planet-armor", "Armor", _playerFactionId));
-            _alpha.Regiments.Add(CreateRegiment("planet-infantry-1", "Infantry", _playerFactionId));
-            _alpha.Regiments.Add(CreateRegiment("planet-infantry-2", "infantry", _playerFactionId));
-            _alpha.Regiments.Add(CreateRegiment("foreign", "Foreign", _opponentFactionId));
+            _alpha.Regiments.Add(
+                CreateRegiment("planet-armor", "armor", "Armor", _playerFactionId)
+            );
+            _alpha.Regiments.Add(
+                CreateRegiment("planet-infantry-1", "infantry", "Infantry", _playerFactionId)
+            );
+            _alpha.Regiments.Add(
+                CreateRegiment("planet-infantry-2", "infantry", "infantry", _playerFactionId)
+            );
+            _alpha.Regiments.Add(
+                CreateRegiment("foreign", "foreign", "Foreign", _opponentFactionId)
+            );
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Troops,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            CollectionAssert.AreEqual(new[] { "Alpha" }, rows.Select(row => row.Name));
+            CollectionAssert.AreEqual(new[] { 1, 2, 0, 0 }, rows[0].Counts);
+            Assert.AreEqual(PlanetIcon.Defense, rows[0].TargetIcon);
+        }
+
+        [Test]
+        public void GetRows_TroopsInFleet_AggregatesCountsInAuthoredColumnOrder()
+        {
             CapitalShip transport = CreateCapitalShip("transport", "Transport", _playerFactionId);
-            transport.Regiments.Add(CreateRegiment("fleet-armor", "Armor", _playerFactionId));
-            transport.Regiments.Add(CreateRegiment("fleet-commando", "Commando", _playerFactionId));
+            transport.Regiments.Add(
+                CreateRegiment("fleet-armor", "armor", "Armor", _playerFactionId)
+            );
+            transport.Regiments.Add(
+                CreateRegiment("fleet-commando", "commando", "Commando", _playerFactionId)
+            );
             GameFleet fleet = CreateFleet("fleet", "Fleet Base", _playerFactionId, transport);
             _alpha.Fleets.Add(fleet);
 
@@ -227,15 +334,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 FinderWindowTab.Faction(_playerFactionId, "Player")
             );
 
-            CollectionAssert.AreEqual(
-                new[] { "Alpha", "Fleet Base" },
-                rows.Select(row => row.Name)
-            );
-            CollectionAssert.AreEqual(new[] { 1, 2 }, rows[0].Counts);
-            CollectionAssert.AreEqual(new[] { 1, 1 }, rows[1].Counts);
-            Assert.AreEqual(PlanetIcon.Defense, rows[0].TargetIcon);
-            Assert.AreEqual(PlanetIcon.Fleet, rows[1].TargetIcon);
-            Assert.AreSame(fleet, rows[1].Node);
+            Assert.AreEqual(1, rows.Count);
+            CollectionAssert.AreEqual(new[] { 1, 0, 1, 0 }, rows[0].Counts);
+            Assert.AreEqual(PlanetIcon.Fleet, rows[0].TargetIcon);
+            Assert.AreSame(fleet, rows[0].Node);
         }
 
         [Test]
@@ -357,7 +459,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
             Assert.IsEmpty(personnelRows);
             Assert.AreEqual(1, specialForcesRows.Count);
-            CollectionAssert.AreEqual(new[] { 1, 1, 1 }, specialForcesRows[0].Counts);
+            CollectionAssert.AreEqual(new[] { 0, 0, 1, 1, 1, 0 }, specialForcesRows[0].Counts);
         }
 
         [Test]
@@ -392,7 +494,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
             Assert.AreEqual(1, rows.Count);
             Assert.AreEqual("Alpha", rows[0].Name);
-            CollectionAssert.AreEqual(new[] { 3, 1 }, rows[0].Counts);
+            CollectionAssert.AreEqual(new[] { 3, 1, 0, 0, 0, 0 }, rows[0].Counts);
             Assert.AreEqual(PlanetIcon.Defense, rows[0].TargetIcon);
             Assert.AreSame(_alpha, rows[0].Node);
         }
@@ -447,6 +549,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
         private static Regiment CreateRegiment(
             string instanceId,
+            string typeId,
             string displayName,
             string ownerId
         )
@@ -454,9 +557,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             return new Regiment
             {
                 InstanceID = instanceId,
+                TypeID = typeId,
                 DisplayName = displayName,
                 OwnerInstanceID = ownerId,
             };
+        }
+
+        private FinderWindowRowBuilder CreateBuilder(
+            System.Func<string, IReadOnlyList<string>> getTroopColumnTypeIds,
+            System.Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds
+        )
+        {
+            GamePlanetSystem system = new GamePlanetSystem();
+            return new FinderWindowRowBuilder(
+                new[]
+                {
+                    new GalaxyMapSector(
+                        system,
+                        new[] { new GalaxyMapPlanet(system, _alpha, string.Empty) }
+                    ),
+                },
+                new[]
+                {
+                    new Faction { InstanceID = _playerFactionId, DisplayName = "Player" },
+                },
+                _playerFactionId,
+                getTroopColumnTypeIds,
+                getSpecialForcesColumnTypeIds
+            );
         }
 
         private static SpecialForces CreateSpecialForces(
@@ -468,6 +596,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             return new SpecialForces
             {
                 InstanceID = instanceId,
+                TypeID = displayName.ToLowerInvariant(),
                 DisplayName = displayName,
                 OwnerInstanceID = ownerId,
             };

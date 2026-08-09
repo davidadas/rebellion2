@@ -110,6 +110,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Render_LongLabel_WrapsWithinAuthoredStatusColumn()
+        {
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    false,
+                    "Special Forces Status",
+                    new[] { _firstTexture },
+                    "Longprobe Y-wing Recon Team",
+                    Array.Empty<StatusWindowRowRenderData>()
+                )
+            );
+
+            TextMeshProUGUI label = FindText("LabelTextField0");
+            RectInt labelRect = UILayout.GetSourceRect(label.rectTransform);
+
+            Assert.AreEqual(TextWrappingModes.Normal, label.textWrappingMode);
+            Assert.AreEqual(126, labelRect.width);
+            Assert.Greater(labelRect.height, 17);
+        }
+
+        [Test]
         public void Render_NullImagesAndEmptyText_HidesOptionalPresentation()
         {
             _view.Render(

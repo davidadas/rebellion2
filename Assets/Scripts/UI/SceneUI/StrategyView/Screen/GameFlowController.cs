@@ -176,8 +176,19 @@ public sealed class GameFlowController : MonoBehaviour
             );
 
             strategyController.Initialize(gameManager, uiContext);
-            if (GameLaunchContext.PlayIntroCutscene)
-                strategyController.PlayBriefing(() => activeGameManager = gameManager);
+            GameRoot activeGame = gameManager.GetGame();
+            GameMetadata metadata = activeGame.Metadata ??= new GameMetadata();
+            bool playBriefing =
+                GameLaunchContext.PlayIntroCutscene && !metadata.OpeningBriefingCompleted;
+            GameLaunchContext.PlayIntroCutscene = false;
+            if (playBriefing)
+            {
+                strategyController.PlayBriefing(() =>
+                {
+                    metadata.OpeningBriefingCompleted = true;
+                    activeGameManager = gameManager;
+                });
+            }
             else
                 activeGameManager = gameManager;
         }

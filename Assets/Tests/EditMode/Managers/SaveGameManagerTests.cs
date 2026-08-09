@@ -447,6 +447,7 @@ namespace Rebellion.Tests.Managers
             {
                 SaveDisplayName = "Test Save",
                 PlayerFactionID = "FNALL1",
+                OpeningBriefingCompleted = true,
                 LastSavedUtc = new System.DateTime(2025, 1, 1, 12, 0, 0, System.DateTimeKind.Utc),
             };
 
@@ -464,6 +465,7 @@ namespace Rebellion.Tests.Managers
             Assert.IsNotNull(loadedGame.Metadata);
             Assert.AreEqual("Test Save", loadedGame.Metadata.SaveDisplayName);
             Assert.AreEqual("FNALL1", loadedGame.Metadata.PlayerFactionID);
+            Assert.IsTrue(loadedGame.Metadata.OpeningBriefingCompleted);
         }
 
         [Test]

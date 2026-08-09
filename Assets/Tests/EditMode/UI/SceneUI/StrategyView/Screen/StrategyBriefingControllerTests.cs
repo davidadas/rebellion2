@@ -43,16 +43,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     textures,
                     rootObject
                 );
-                bool completed = false;
+                bool? skipped = null;
 
-                controller.Play(briefing, () => completed = true);
+                controller.Play(briefing, wasSkipped => skipped = wasSkipped);
 
                 Assert.AreSame(first, GetProtocolImage(rootObject).texture);
                 advisorView.AdvanceAnimation(0.5f);
                 Assert.AreSame(second, GetProtocolImage(rootObject).texture);
-                Assert.IsFalse(completed);
+                Assert.IsNull(skipped);
                 advisorView.AdvanceAnimation(0.5f);
-                Assert.IsTrue(completed);
+                Assert.IsFalse(skipped);
             }
             finally
             {
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void Skip_ConfiguredResponse_ReplacesCurrentSegmentAndCompletesAfterResponse()
+        public void Skip_ConfiguredResponse_CompletesImmediatelyAndPlaysResponse()
         {
             GameRoot game = CreateGame();
             StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
@@ -88,20 +88,132 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                     textures,
                     rootObject
                 );
-                bool completed = false;
-                controller.Play(briefing, () => completed = true);
+                bool? skipped = null;
+                controller.Play(briefing, wasSkipped => skipped = wasSkipped);
 
                 controller.Skip();
 
                 Assert.AreSame(skip, GetProtocolImage(rootObject).texture);
-                Assert.IsFalse(completed);
+                Assert.IsTrue(skipped);
                 advisorView.AdvanceAnimation(0.5f);
-                Assert.IsTrue(completed);
+                Assert.IsTrue(skipped);
             }
             finally
             {
                 UnityEngine.Object.DestroyImmediate(skip);
                 UnityEngine.Object.DestroyImmediate(first);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void Play_NoSegments_CompletesWithoutSkipping()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            Texture2D idle = new Texture2D(1, 1);
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject
+                );
+                bool? skipped = null;
+
+                controller.Play(CreateBriefing(), wasSkipped => skipped = wasSkipped);
+
+                Assert.IsFalse(skipped);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void Skip_NoActiveBriefing_DoesNotThrow()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            Texture2D idle = new Texture2D(1, 1);
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject
+                );
+
+                Assert.DoesNotThrow(controller.Skip);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public void PauseAndResume_NoActiveBriefing_DoNotThrow()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            Texture2D idle = new Texture2D(1, 1);
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject
+                );
+
+                Assert.DoesNotThrow(controller.Pause);
+                Assert.DoesNotThrow(controller.Resume);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [TestCase(null, 0)]
+        [TestCase("Missing", 1)]
+        public void Play_InvalidSegment_ThrowsInvalidOperationException(
+            string animation,
+            int frameCount
+        )
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            StrategyBriefingTheme briefing = CreateBriefing();
+            briefing.Segments.Add(
+                new StrategyBriefingSegmentTheme { Animation = animation, FrameCount = frameCount }
+            );
+            Texture2D idle = new Texture2D(1, 1);
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject
+                );
+
+                Assert.Throws<InvalidOperationException>(() => controller.Play(briefing, null));
+            }
+            finally
+            {
                 UnityEngine.Object.DestroyImmediate(idle);
                 UnityEngine.Object.DestroyImmediate(rootObject);
             }
@@ -138,6 +250,55 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             {
                 Focus = StrategyBriefingFocus.Target,
                 TargetInstanceID = "MISSING",
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                StrategyBriefingController.CreateMapPresentation(game, segment)
+            );
+        }
+
+        [Test]
+        public void CreateMapPresentation_NullGame_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                StrategyBriefingController.CreateMapPresentation(null, CreateSegment("First"))
+            );
+        }
+
+        [Test]
+        public void CreateMapPresentation_NullSegment_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                StrategyBriefingController.CreateMapPresentation(CreateGame(), null)
+            );
+        }
+
+        [TestCase(StrategyBriefingFocus.PlayerHeadquarters)]
+        [TestCase(StrategyBriefingFocus.OpponentHeadquarters)]
+        public void CreateMapPresentation_HeadquartersWithoutTarget_ThrowsInvalidOperationException(
+            StrategyBriefingFocus focus
+        )
+        {
+            StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
+            {
+                Focus = focus,
+            };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                StrategyBriefingController.CreateMapPresentation(CreateGame(), segment)
+            );
+        }
+
+        [Test]
+        public void CreateMapPresentation_TargetOutsidePlanetSystem_ThrowsInvalidOperationException()
+        {
+            GameRoot game = CreateGame();
+            Officer target = new Officer { InstanceID = "OFFICER" };
+            game.AttachNode(target, game.Galaxy);
+            StrategyBriefingSegmentTheme segment = new StrategyBriefingSegmentTheme
+            {
+                Focus = StrategyBriefingFocus.Target,
+                TargetInstanceID = target.InstanceID,
             };
 
             Assert.Throws<InvalidOperationException>(() =>

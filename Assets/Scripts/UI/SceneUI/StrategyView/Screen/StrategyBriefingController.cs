@@ -19,7 +19,7 @@ public sealed class StrategyBriefingController
     private readonly StrategyHudController strategyHudController;
 
     private StrategyBriefingTheme activeBriefing;
-    private Action completed;
+    private Action<bool> completed;
     private int segmentIndex;
 
     /// <summary>
@@ -56,12 +56,14 @@ public sealed class StrategyBriefingController
     /// Plays every configured segment in order.
     /// </summary>
     /// <param name="briefing">The active faction briefing.</param>
-    /// <param name="onCompleted">Invoked after playback completes or is skipped.</param>
-    public void Play(StrategyBriefingTheme briefing, Action onCompleted)
+    /// <param name="onCompleted">
+    /// Invoked with whether the briefing was skipped after playback relinquishes control.
+    /// </param>
+    public void Play(StrategyBriefingTheme briefing, Action<bool> onCompleted)
     {
         if (briefing == null || briefing.Segments.Count == 0)
         {
-            onCompleted?.Invoke();
+            onCompleted?.Invoke(false);
             return;
         }
 
@@ -72,23 +74,20 @@ public sealed class StrategyBriefingController
     }
 
     /// <summary>
-    /// Cancels the remaining segments and plays the configured skip response when available.
+    /// Cancels the remaining segments, relinquishes tutorial control, and plays the configured
+    /// skip response when available.
     /// </summary>
     public void Skip()
     {
         if (activeBriefing == null)
             return;
 
-        StrategyBriefingSegmentTheme skip = activeBriefing.Skip;
+        StrategyAdvisorAnimationViewData skipPlayback =
+            activeBriefing.Skip == null ? null : CreatePlayback(activeBriefing.Skip);
         strategyHudController.CancelAdvisorAnimation();
-        segmentIndex = activeBriefing.Segments.Count;
-        if (skip == null)
-        {
-            Complete();
-            return;
-        }
-
-        strategyHudController.ReplaceAdvisorAnimation(CreatePlayback(skip), null, Complete);
+        Complete(true);
+        if (skipPlayback != null)
+            strategyHudController.ReplaceAdvisorAnimation(skipPlayback, null, null);
     }
 
     /// <summary>
@@ -147,7 +146,7 @@ public sealed class StrategyBriefingController
         if (segmentIndex < activeBriefing.Segments.Count)
             PlayCurrentSegment();
         else
-            Complete();
+            Complete(false);
     }
 
     /// <summary>
@@ -249,13 +248,14 @@ public sealed class StrategyBriefingController
     /// <summary>
     /// Restores normal map presentation and reports final completion once.
     /// </summary>
-    private void Complete()
+    /// <param name="skipped">Whether the player skipped the remaining briefing.</param>
+    private void Complete(bool skipped)
     {
         activeBriefing = null;
         segmentIndex = 0;
         galaxyMapController.SetBriefingPresentation(null);
-        Action onCompleted = completed;
+        Action<bool> onCompleted = completed;
         completed = null;
-        onCompleted?.Invoke();
+        onCompleted?.Invoke(skipped);
     }
 }

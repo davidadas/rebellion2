@@ -451,17 +451,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void Render_DirectResult_AppliesSummaryAndNavigationControls()
+        public void Render_DirectResult_ShowsAuthoredNavigationPrompt()
         {
             BattleAlertResultRenderData result = CreateResult(BattleResultPanel.Direct);
 
             _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
 
-            Assert.AreEqual("Victory", FindText("ResultSummaryTextField").text);
+            TextMeshProUGUI prompt = FindText("ResultDirectPromptTextField");
+            Assert.AreEqual("Victory", prompt.text);
+            Assert.AreEqual(
+                new RectInt(29, 141, 350, 36),
+                UILayout.GetSourceRect(prompt.rectTransform)
+            );
+            Assert.AreEqual(18f, prompt.fontSize);
+            Assert.AreEqual(TextAlignmentOptions.TopLeft, prompt.alignment);
+            Assert.IsFalse(FindObject("ResultSummaryTextField").activeSelf);
+        }
+
+        [Test]
+        public void Render_DirectResult_ShowsNavigationControls()
+        {
+            BattleAlertResultRenderData result = CreateResult(BattleResultPanel.Direct);
+
+            _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
+
             Assert.IsTrue(FindObject("ResultDirectSystemButtonImage").activeSelf);
             Assert.IsTrue(FindObject("ResultDirectFleetButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultRowsScrollArea").activeSelf);
+        }
+
+        [Test]
+        public void Render_ResultWithUnsupportedCategory_IgnoresCategoryButton()
+        {
+            BattleResultCategoryRenderData[] categories =
+            {
+                new BattleResultCategoryRenderData((BattleResultCategory)99, CreateButton(true)),
+            };
+            BattleAlertResultRenderData result = CreateResult(
+                BattleResultPanel.FirstForces,
+                categoryButtons: categories
+            );
+
+            _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
+
+            Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
         }
 
         [Test]
@@ -644,7 +678,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             BattleResultPanel panel,
             BattleResultCategory category = BattleResultCategory.CapitalShips,
             BattleResultTableRenderData table = null,
-            bool planetary = false
+            bool planetary = false,
+            BattleResultCategoryRenderData[] categoryButtons = null
         )
         {
             string[] headers =
@@ -663,7 +698,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             int[] categoryXs = planetary
                 ? new[] { 36, 98, 160, 222, 284, 348 }
                 : new[] { 130, 179, 228, 277 };
-            BattleResultCategoryRenderData[] categories = categoryOrder
+            BattleResultCategoryRenderData[] renderedCategories = categoryOrder
                 .Select(
                     (value, index) =>
                         new BattleResultCategoryRenderData(
@@ -682,7 +717,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 Color.green,
                 category == BattleResultCategory.Personnel ? "Personnel" : "Capital Ships",
                 headers,
-                categories,
+                categoryButtons ?? renderedCategories,
                 planetary,
                 CreateButtons(2),
                 table

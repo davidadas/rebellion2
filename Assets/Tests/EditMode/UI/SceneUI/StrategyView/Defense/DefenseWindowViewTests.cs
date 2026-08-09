@@ -149,6 +149,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 
             Assert.AreEqual(new RectInt(2, 51, 231, 16), titleRect);
             Assert.AreEqual(new RectInt(2, 63, 228, 15), requirementRect);
+
+            StrategyUnitCardView itemTemplate = _viewObject
+                .GetComponentsInChildren<StrategyUnitCardView>(true)
+                .Single(item => item.name == "ItemCardTemplate");
+            TextMeshProUGUI nameText = FindCardText(itemTemplate, "NameTextField");
+            Assert.AreEqual(10, nameText.fontSize);
+            Assert.AreEqual(
+                new RectInt(0, 30, 66, 30),
+                UILayout.GetSourceRect(nameText.rectTransform)
+            );
         }
 
         [Test]
