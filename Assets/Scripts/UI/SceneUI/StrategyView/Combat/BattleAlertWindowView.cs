@@ -476,12 +476,6 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     private void RenderPending(BattleAlertWindowRenderData data)
     {
         BattleAlertPendingRenderData pending = data.Pending;
-        if (pending == null)
-        {
-            RenderHidden();
-            return;
-        }
-
         HideResultPresentation();
         UILayout.SetTextContent(titleTextField, pending.Title, data.TitleColor);
         RenderButtons(
@@ -514,12 +508,6 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     private void RenderResult(BattleAlertWindowRenderData data)
     {
         BattleAlertResultRenderData result = data.Result;
-        if (result == null)
-        {
-            RenderHidden();
-            return;
-        }
-
         HidePendingPresentation();
         HideButtons(commandButtonImages, commandButtonPressVisuals, commandButtons);
         RenderButton(
@@ -1100,119 +1088,108 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     /// </summary>
     private void VerifyReferences()
     {
-        if (panelBackgroundImage == null)
-            throw new MissingReferenceException($"{name}/PanelBackgroundImage is missing.");
-        if (frameImage == null)
-            throw new MissingReferenceException($"{name}/FrameImage is missing.");
-        if (titleTextField == null)
-            throw new MissingReferenceException($"{name}/TitleTextField is missing.");
-        if (headerTextField == null)
-            throw new MissingReferenceException($"{name}/HeaderTextField is missing.");
-        if (summaryTextField == null)
-            throw new MissingReferenceException($"{name}/SummaryTextField is missing.");
-        if (rowsScrollArea == null)
-            throw new MissingReferenceException($"{name}/RowsScrollArea is missing.");
-        if (rowTemplate == null)
-            throw new MissingReferenceException($"{name}/RowTemplate is missing.");
-        if (resultPlanetaryTitleTextField == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultPlanetaryTitleTextField is missing."
-            );
-        if (resultFleetTitleTextField == null)
-            throw new MissingReferenceException($"{name}/ResultFleetTitleTextField is missing.");
-        if (resultSummaryTextField == null)
-            throw new MissingReferenceException($"{name}/ResultSummaryTextField is missing.");
-        if (resultDirectPromptTextField == null)
-            throw new MissingReferenceException($"{name}/ResultDirectPromptTextField is missing.");
-        if (resultPlanetaryForceHeaderTextField == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultPlanetaryForceHeaderTextField is missing."
-            );
-        if (resultFleetForceHeaderTextField == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultFleetForceHeaderTextField is missing."
-            );
-        if (resultFleetFiltersTextField == null)
-            throw new MissingReferenceException($"{name}/ResultFleetFiltersTextField is missing.");
-        if (resultPlanetaryTableTitleTextField == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultPlanetaryTableTitleTextField is missing."
-            );
-        if (resultFleetTableTitleTextField == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultFleetTableTitleTextField is missing."
-            );
-        if (resultPlanetaryStandardColumnHeaderTextFields?.Length != _standardResultColumnCount)
-            throw new MissingReferenceException(
-                $"{name}/ResultPlanetaryStandardColumnHeaderTextFields are missing."
-            );
-        if (resultFleetStandardColumnHeaderTextFields?.Length != _standardResultColumnCount)
-            throw new MissingReferenceException(
-                $"{name}/ResultFleetStandardColumnHeaderTextFields are missing."
-            );
-        if (resultPlanetaryPersonnelColumnHeaderTextFields?.Length != _personnelResultColumnCount)
-            throw new MissingReferenceException(
-                $"{name}/ResultPlanetaryPersonnelColumnHeaderTextFields are missing."
-            );
-        if (resultFleetPersonnelColumnHeaderTextFields?.Length != _personnelResultColumnCount)
-            throw new MissingReferenceException(
-                $"{name}/ResultFleetPersonnelColumnHeaderTextFields are missing."
-            );
-        if (resultRowsScrollArea == null)
-            throw new MissingReferenceException($"{name}/ResultRowsScrollArea is missing.");
-        if (resultStandardOperationalColumn == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultStandardOperationalColumn is missing."
-            );
-        if (resultStandardDestroyedColumn == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultStandardDestroyedColumn is missing."
-            );
-        if (resultPersonnelOperationalColumn == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultPersonnelOperationalColumn is missing."
-            );
-        if (resultPersonnelDestroyedColumn == null)
-            throw new MissingReferenceException(
-                $"{name}/ResultPersonnelDestroyedColumn is missing."
-            );
-        if (resultStandardItemTemplate == null)
-            throw new MissingReferenceException($"{name}/ResultStandardItemTemplate is missing.");
-        if (resultPersonnelItemTemplate == null)
-            throw new MissingReferenceException($"{name}/ResultPersonnelItemTemplate is missing.");
-        if (
-            viewButtonImages?.Length != BattleAlertPanelCatalog.Ordered.Count
-            || viewButtonPressVisuals?.Length != viewButtonImages.Length
-            || viewButtons?.Length != viewButtonImages.Length
-        )
-            throw new MissingReferenceException($"{name}/ViewButtons are missing.");
-        if (
-            commandButtonImages?.Length != _pendingChoices.Length
-            || commandButtonPressVisuals?.Length != commandButtonImages.Length
-            || commandButtons?.Length != commandButtonImages.Length
-        )
-            throw new MissingReferenceException($"{name}/CommandButtons are missing.");
-        if (
-            resultCloseButtonImage == null
-            || resultCloseButtonPressVisual == null
-            || resultCloseButton == null
-        )
-            throw new MissingReferenceException($"{name}/ResultCloseButton is missing.");
-        if (
-            resultCategoryButtonImages?.Length != BattleResultCategoryCatalog.Ordered.Count
-            || resultCategoryButtonPressVisuals?.Length != resultCategoryButtonImages.Length
-            || resultCategoryButtons?.Length != resultCategoryButtonImages.Length
-        )
-            throw new MissingReferenceException($"{name}/ResultCategoryButtons are missing.");
-        if (
-            resultDirectButtonImages?.Length != _resultNavigationButtonCount
-            || resultDirectButtonPressVisuals?.Length != resultDirectButtonImages.Length
-            || resultDirectButtons?.Length != resultDirectButtonImages.Length
-        )
-            throw new MissingReferenceException($"{name}/ResultDirectButtons are missing.");
+        RequireReference(panelBackgroundImage, nameof(panelBackgroundImage));
+        RequireReference(frameImage, nameof(frameImage));
+        RequireReference(titleTextField, nameof(titleTextField));
+        RequireReference(headerTextField, nameof(headerTextField));
+        RequireReference(summaryTextField, nameof(summaryTextField));
+        RequireReference(rowsScrollArea, nameof(rowsScrollArea));
+        RequireReference(rowTemplate, nameof(rowTemplate));
+        RequireReference(resultPlanetaryTitleTextField, nameof(resultPlanetaryTitleTextField));
+        RequireReference(resultFleetTitleTextField, nameof(resultFleetTitleTextField));
+        RequireReference(resultSummaryTextField, nameof(resultSummaryTextField));
+        RequireReference(resultDirectPromptTextField, nameof(resultDirectPromptTextField));
+        RequireReference(
+            resultPlanetaryForceHeaderTextField,
+            nameof(resultPlanetaryForceHeaderTextField)
+        );
+        RequireReference(resultFleetForceHeaderTextField, nameof(resultFleetForceHeaderTextField));
+        RequireReference(resultFleetFiltersTextField, nameof(resultFleetFiltersTextField));
+        RequireReference(
+            resultPlanetaryTableTitleTextField,
+            nameof(resultPlanetaryTableTitleTextField)
+        );
+        RequireReference(resultFleetTableTitleTextField, nameof(resultFleetTableTitleTextField));
+        RequireReference(resultRowsScrollArea, nameof(resultRowsScrollArea));
+        RequireReference(resultStandardOperationalColumn, nameof(resultStandardOperationalColumn));
+        RequireReference(resultStandardDestroyedColumn, nameof(resultStandardDestroyedColumn));
+        RequireReference(
+            resultPersonnelOperationalColumn,
+            nameof(resultPersonnelOperationalColumn)
+        );
+        RequireReference(resultPersonnelDestroyedColumn, nameof(resultPersonnelDestroyedColumn));
+        RequireReference(resultStandardItemTemplate, nameof(resultStandardItemTemplate));
+        RequireReference(resultPersonnelItemTemplate, nameof(resultPersonnelItemTemplate));
+        RequireValid(
+            resultPlanetaryStandardColumnHeaderTextFields?.Length == _standardResultColumnCount,
+            nameof(resultPlanetaryStandardColumnHeaderTextFields)
+        );
+        RequireValid(
+            resultFleetStandardColumnHeaderTextFields?.Length == _standardResultColumnCount,
+            nameof(resultFleetStandardColumnHeaderTextFields)
+        );
+        RequireValid(
+            resultPlanetaryPersonnelColumnHeaderTextFields?.Length == _personnelResultColumnCount,
+            nameof(resultPlanetaryPersonnelColumnHeaderTextFields)
+        );
+        RequireValid(
+            resultFleetPersonnelColumnHeaderTextFields?.Length == _personnelResultColumnCount,
+            nameof(resultFleetPersonnelColumnHeaderTextFields)
+        );
+        RequireValid(
+            viewButtonImages?.Length == BattleAlertPanelCatalog.Ordered.Count
+                && viewButtonPressVisuals?.Length == viewButtonImages.Length
+                && viewButtons?.Length == viewButtonImages.Length,
+            "ViewButtons"
+        );
+        RequireValid(
+            commandButtonImages?.Length == _pendingChoices.Length
+                && commandButtonPressVisuals?.Length == commandButtonImages.Length
+                && commandButtons?.Length == commandButtonImages.Length,
+            "CommandButtons"
+        );
+        RequireValid(
+            resultCloseButtonImage != null
+                && resultCloseButtonPressVisual != null
+                && resultCloseButton != null,
+            "ResultCloseButton"
+        );
+        RequireValid(
+            resultCategoryButtonImages?.Length == BattleResultCategoryCatalog.Ordered.Count
+                && resultCategoryButtonPressVisuals?.Length == resultCategoryButtonImages.Length
+                && resultCategoryButtons?.Length == resultCategoryButtonImages.Length,
+            "ResultCategoryButtons"
+        );
+        RequireValid(
+            resultDirectButtonImages?.Length == _resultNavigationButtonCount
+                && resultDirectButtonPressVisuals?.Length == resultDirectButtonImages.Length
+                && resultDirectButtons?.Length == resultDirectButtonImages.Length,
+            "ResultDirectButtons"
+        );
 
         rowTemplate.gameObject.SetActive(false);
         resultStandardItemTemplate.gameObject.SetActive(false);
         resultPersonnelItemTemplate.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Verifies a required authored object reference.
+    /// </summary>
+    /// <param name="reference">The authored object reference.</param>
+    /// <param name="fieldName">The serialized field name.</param>
+    private void RequireReference(UnityEngine.Object reference, string fieldName)
+    {
+        RequireValid(reference != null, fieldName);
+    }
+
+    /// <summary>
+    /// Verifies an authored reference group or required cardinality.
+    /// </summary>
+    /// <param name="valid">Whether the authored data is valid.</param>
+    /// <param name="fieldName">The serialized field or group name.</param>
+    private void RequireValid(bool valid, string fieldName)
+    {
+        if (!valid)
+            throw new MissingReferenceException($"{name}/{fieldName} is missing.");
     }
 }

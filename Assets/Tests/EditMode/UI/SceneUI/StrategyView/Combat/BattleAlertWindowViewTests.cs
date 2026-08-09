@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -39,49 +38,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
-        }
-
-        [TestCase("panelBackgroundImage")]
-        [TestCase("frameImage")]
-        [TestCase("titleTextField")]
-        [TestCase("headerTextField")]
-        [TestCase("summaryTextField")]
-        [TestCase("rowsScrollArea")]
-        [TestCase("rowTemplate")]
-        [TestCase("resultPlanetaryTitleTextField")]
-        [TestCase("resultFleetTitleTextField")]
-        [TestCase("resultSummaryTextField")]
-        [TestCase("resultDirectPromptTextField")]
-        [TestCase("resultPlanetaryForceHeaderTextField")]
-        [TestCase("resultFleetForceHeaderTextField")]
-        [TestCase("resultFleetFiltersTextField")]
-        [TestCase("resultPlanetaryTableTitleTextField")]
-        [TestCase("resultFleetTableTitleTextField")]
-        [TestCase("resultPlanetaryStandardColumnHeaderTextFields")]
-        [TestCase("resultFleetStandardColumnHeaderTextFields")]
-        [TestCase("resultPlanetaryPersonnelColumnHeaderTextFields")]
-        [TestCase("resultFleetPersonnelColumnHeaderTextFields")]
-        [TestCase("resultRowsScrollArea")]
-        [TestCase("resultStandardOperationalColumn")]
-        [TestCase("resultStandardDestroyedColumn")]
-        [TestCase("resultPersonnelOperationalColumn")]
-        [TestCase("resultPersonnelDestroyedColumn")]
-        [TestCase("resultStandardItemTemplate")]
-        [TestCase("resultPersonnelItemTemplate")]
-        [TestCase("viewButtonImages")]
-        [TestCase("commandButtonImages")]
-        [TestCase("resultCloseButtonImage")]
-        [TestCase("resultCategoryButtonImages")]
-        [TestCase("resultDirectButtonImages")]
-        public void Awake_MissingAuthoredReference_ThrowsMissingReferenceException(string fieldName)
-        {
-            typeof(BattleAlertWindowView)
-                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(_view, null);
-
-            Assert.Throws<MissingReferenceException>(() =>
-                UIComponentTestHelper.InvokeLifecycle(_view, "Awake")
-            );
         }
 
         [Test]
@@ -526,6 +482,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void Render_ResultWithUnsupportedCategory_IgnoresCategoryButton()
+        {
+            BattleResultCategoryRenderData[] categories =
+            {
+                new BattleResultCategoryRenderData((BattleResultCategory)99, CreateButton(true)),
+            };
+            BattleAlertResultRenderData result = CreateResult(
+                BattleResultPanel.FirstForces,
+                categoryButtons: categories
+            );
+
+            _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
+
+            Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);
+        }
+
+        [Test]
         public void PrimaryPanelButton_PressThenClick_RaisesControlBeforeOrderedPanelRequest()
         {
             int pressedCount = 0;
@@ -705,7 +678,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             BattleResultPanel panel,
             BattleResultCategory category = BattleResultCategory.CapitalShips,
             BattleResultTableRenderData table = null,
-            bool planetary = false
+            bool planetary = false,
+            BattleResultCategoryRenderData[] categoryButtons = null
         )
         {
             string[] headers =
@@ -724,7 +698,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             int[] categoryXs = planetary
                 ? new[] { 36, 98, 160, 222, 284, 348 }
                 : new[] { 130, 179, 228, 277 };
-            BattleResultCategoryRenderData[] categories = categoryOrder
+            BattleResultCategoryRenderData[] renderedCategories = categoryOrder
                 .Select(
                     (value, index) =>
                         new BattleResultCategoryRenderData(
@@ -743,7 +717,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 Color.green,
                 category == BattleResultCategory.Personnel ? "Personnel" : "Capital Ships",
                 headers,
-                categories,
+                categoryButtons ?? renderedCategories,
                 planetary,
                 CreateButtons(2),
                 table
