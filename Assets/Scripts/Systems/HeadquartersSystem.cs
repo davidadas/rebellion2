@@ -155,7 +155,8 @@ namespace Rebellion.Systems
                 if (headquarters == null)
                     continue;
 
-                _game.MoveToVoid(headquarters, VoidStatus.Destroyed);
+                _game.AddToVoid(headquarters);
+                _game.SetVoidStatus(headquarters, VoidStatus.Destroyed);
 
                 planet.IsHeadquarters = false;
                 defender.HQInstanceID = null;

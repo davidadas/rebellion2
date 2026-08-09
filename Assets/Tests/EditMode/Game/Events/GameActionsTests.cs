@@ -10,6 +10,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Events
@@ -641,32 +642,46 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void StartScriptedTraining_ValidTrainee_EmitsConfiguredRequest()
+        public void AddToVoid_ActiveOfficer_RemovesOfficerFromSceneGraph()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, origin);
-            StartScriptedTrainingAction action = new StartScriptedTrainingAction
+
+            new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+
+            Assert.IsNull(luke.GetParent());
+            Assert.IsTrue(game.GetFactionByOwnerInstanceID("rebels").VoidPool.Contains(luke));
+        }
+
+        [Test]
+        public void SetStatus_OfficerInVoid_SetsVoidStatus()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, origin);
+            new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+
+            new SetStatusAction
             {
-                TraineeInstanceID = luke.InstanceID,
-                DurationTicks = 100,
-                CompletionBonusPercent = 60,
-                InterruptionProgressDivisor = 2,
-                CompletionVariableKey = "luke.dagobah.completed",
-                CompletionVariableValue = 1,
-                DisplayName = "Journey to Dagobah",
-            };
+                UnitInstanceID = luke.InstanceID,
+                Status = VoidStatus.Training,
+            }.Execute(game);
 
-            ScriptedTrainingRequestedResult result = action
-                .Execute(game)
-                .OfType<ScriptedTrainingRequestedResult>()
-                .Single();
+            Assert.AreEqual(VoidStatus.Training, luke.VoidState.Status);
+        }
 
-            Assert.AreSame(luke, result.Trainee);
-            Assert.AreEqual(100, result.DurationTicks);
-            Assert.AreEqual(60, result.CompletionBonusPercent);
-            Assert.AreEqual(2, result.InterruptionProgressDivisor);
-            Assert.AreEqual("luke.dagobah.completed", result.CompletionVariableKey);
+        [Test]
+        public void ReturnFromVoid_OfficerWithPreviousLocation_ReturnsOfficerToLocation()
+        {
+            GameRoot game = BuildGame(out _, out Planet origin);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, origin);
+            new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+
+            new ReturnFromVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+
+            Assert.AreSame(origin, luke.GetParent());
         }
 
         [Test]

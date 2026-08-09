@@ -274,9 +274,7 @@ internal sealed class StrategyStatusInfoBuilder
         int torpedoRating = starfighter.Torpedoes * Math.Max(starfighter.CurrentSquadronSize, 0);
         int maxTorpedoRating = starfighter.Torpedoes * Math.Max(starfighter.MaxSquadronSize, 0);
 
-        info.Rows.Add(
-            new StrategyStatusRow("Attached:", GetStatusLocationName(target, starfighter))
-        );
+        AddAttachedRow(info, target, starfighter);
         AddEtaDestinationRow(info, starfighter);
         info.Rows.Add(
             new StrategyStatusRow("Maintenance Cost:", starfighter.MaintenanceCost.ToString())
@@ -333,7 +331,7 @@ internal sealed class StrategyStatusInfoBuilder
             "Trooper Regiment Status",
             regiment.GetDisplayName()
         );
-        info.Rows.Add(new StrategyStatusRow("Attached:", GetStatusLocationName(target, regiment)));
+        AddAttachedRow(info, target, regiment);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(regiment)));
         AddEtaDestinationRow(info, regiment);
         info.Rows.Add(
@@ -369,9 +367,7 @@ internal sealed class StrategyStatusInfoBuilder
             "Trooper Regiment Status",
             specialForces.GetDisplayName()
         );
-        info.Rows.Add(
-            new StrategyStatusRow("Attached:", GetStatusLocationName(target, specialForces))
-        );
+        AddAttachedRow(info, target, specialForces);
         info.Rows.Add(new StrategyStatusRow("Status:", GetManufacturingStatusText(specialForces)));
         AddEtaDestinationRow(info, specialForces);
         info.Rows.Add(
@@ -419,7 +415,7 @@ internal sealed class StrategyStatusInfoBuilder
             officer.GetDisplayName()
         );
         info.Rows.Add(new StrategyStatusRow("Commanding:", GetOfficerCommandingText(officer)));
-        info.Rows.Add(new StrategyStatusRow("Attached:", GetStatusLocationName(target, officer)));
+        AddAttachedRow(info, target, officer);
         info.Rows.Add(new StrategyStatusRow("Status:", GetOfficerStatusText(officer)));
         AddEtaDestinationRow(info, officer);
         info.Rows.Add(new StrategyStatusRow("Force Ranking:", GetForceRankText(officer)));
@@ -763,6 +759,19 @@ internal sealed class StrategyStatusInfoBuilder
         return parent?.GetDisplayName() ?? "Unknown";
     }
 
+    private static void AddAttachedRow(
+        StrategyStatusInfo info,
+        StrategyStatusTarget target,
+        ISceneNode item
+    )
+    {
+        if (item?.GetParent() == null)
+            return;
+        string location = GetStatusLocationName(target, item);
+        if (!string.IsNullOrWhiteSpace(location))
+            info.Rows.Add(new StrategyStatusRow("Attached:", location));
+    }
+
     /// <summary>
     /// Resolves the displayed operational status for a manufacturable item.
     /// </summary>
@@ -801,6 +810,8 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed officer status.</returns>
     private static string GetOfficerStatusText(Officer officer)
     {
+        if (officer.VoidState != null)
+            return officer.VoidState.Status.ToString();
         if (officer.GetTransitMovement() != null)
             return "Enroute";
         if (officer.IsCaptured)

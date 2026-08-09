@@ -105,7 +105,6 @@ usage() {
     echo ""
     echo "Commands:"
     echo "  format    Check formatting with CSharpier"
-    echo "  xmlformat Format XML data files in-place with xmllint"
     echo "  lint      Run Roslynator static analysis"
     echo "  test      Run EditMode tests via Unity"
     echo "  coverage  Run EditMode tests with code coverage report"
@@ -121,16 +120,6 @@ do_format() {
     dotnet csharpier check Assets/
     echo ""
     echo "Format check complete."
-}
-
-do_xmlformat() {
-    echo "=== XML Format ==="
-    find Content -type f \( -name "*.xml" -o -name "*.xsd" \) | while read -r content_xml_path; do
-        xmllint --format "$content_xml_path" --output "$content_xml_path"
-        echo "Formatted $content_xml_path"
-    done
-    echo ""
-    echo "XML format complete."
 }
 
 do_lint() {
@@ -333,7 +322,6 @@ do_all() {
 
 case "${1:-}" in
     format)    do_format ;;
-    xmlformat) do_xmlformat ;;
     lint)      do_lint ;;
     test)     do_test ;;
     coverage) do_coverage ;;

@@ -496,6 +496,41 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_OfficerWithoutParent_OmitsAttachedLocation()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer-in-void",
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Attached:"));
+        }
+
+        [Test]
+        public void Build_OfficerInVoid_ShowsVoidStatus()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "officer-in-void",
+                DisplayName = "Luke Skywalker",
+                OwnerInstanceID = _ownerId,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+            _game.SetVoidStatus(officer, VoidStatus.Training);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, officer));
+
+            Assert.AreEqual("Training", info.Rows.Single(row => row.Left == "Status:").Right);
+        }
+
+        [Test]
         public void Build_CapturedOfficer_ReturnsCapturedOverlayStatus()
         {
             Officer officer = new Officer

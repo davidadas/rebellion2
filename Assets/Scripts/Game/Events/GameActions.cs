@@ -1117,42 +1117,128 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Requests a timed, guaranteed Force-training journey managed by MissionSystem.
+    /// Removes one active unit from the scene graph while retaining it in faction storage.
     /// </summary>
-    [PersistableObject(Name = "StartScriptedTraining")]
-    public class StartScriptedTrainingAction : GameAction
+    [PersistableObject(Name = "AddToVoid")]
+    public sealed class AddToVoidAction : GameAction
     {
-        public string TraineeInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public int CompletionBonusPercent { get; set; }
-        public int InterruptionProgressDivisor { get; set; } = 1;
-        public string CompletionVariableKey { get; set; }
-        public int CompletionVariableValue { get; set; } = 1;
-        public string DisplayName { get; set; }
+        public string UnitInstanceID { get; set; }
 
-        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
         {
-            Officer trainee = game.GetSceneNodeByInstanceID<Officer>(TraineeInstanceID);
-            if (trainee == null)
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            if (unit == null)
                 throw new InvalidOperationException(
-                    $"StartScriptedTraining could not resolve trainee '{TraineeInstanceID}'."
+                    $"AddToVoid could not resolve unit '{UnitInstanceID}'."
                 );
+            game.AddToVoid(unit);
+            return new List<GameResult>();
+        }
+    }
+
+    /// <summary>
+    /// Sets the reason an off-map unit is unavailable.
+    /// </summary>
+    [PersistableObject(Name = "SetStatus")]
+    public sealed class SetStatusAction : GameAction
+    {
+        public string UnitInstanceID { get; set; }
+        public VoidStatus Status { get; set; }
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            if (unit == null)
+                throw new InvalidOperationException(
+                    $"SetStatus could not resolve unit '{UnitInstanceID}'."
+                );
+            game.SetVoidStatus(unit, Status);
+            return new List<GameResult>();
+        }
+    }
+
+    /// <summary>
+    /// Schedules another global game event relative to the current tick.
+    /// </summary>
+    [PersistableObject(Name = "ScheduleEvent")]
+    public sealed class ScheduleEventAction : GameAction
+    {
+        public string EventInstanceID { get; set; }
+        public int DelayTicks { get; set; }
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            if (!game.EventPool.Any(gameEvent => gameEvent.InstanceID == EventInstanceID))
+                throw new InvalidOperationException(
+                    $"ScheduleEvent could not resolve event '{EventInstanceID}'."
+                );
+            if (DelayTicks < 0)
+                throw new InvalidOperationException("ScheduleEvent delay cannot be negative.");
+
+            GameEventState state = game.GetEventState(EventInstanceID);
+            state.IsInitialized = true;
+            state.NextEligibleTick = checked(game.CurrentTick + DelayTicks);
+            return new List<GameResult>();
+        }
+    }
+
+    /// <summary>
+    /// Adds Force experience calculated as a percentage of the officer's current rank.
+    /// </summary>
+    [PersistableObject(Name = "AddForceExperience")]
+    public sealed class AddForceExperienceAction : GameAction
+    {
+        public string OfficerInstanceID { get; set; }
+        public int PercentOfCurrentRank { get; set; }
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"AddForceExperience could not resolve officer '{OfficerInstanceID}'."
+                );
+            if (PercentOfCurrentRank < 0)
+                throw new InvalidOperationException(
+                    "AddForceExperience percentage cannot be negative."
+                );
+
+            int previousRank = officer.ForceRank;
+            int gained = previousRank * PercentOfCurrentRank / 100;
+            officer.ForceValue += gained;
 
             return new List<GameResult>
             {
-                new ScriptedTrainingRequestedResult
+                new ForceExperienceResult
                 {
-                    Trainee = trainee,
-                    DurationTicks = DurationTicks,
-                    CompletionBonusPercent = CompletionBonusPercent,
-                    InterruptionProgressDivisor = InterruptionProgressDivisor,
-                    CompletionVariableKey = CompletionVariableKey,
-                    CompletionVariableValue = CompletionVariableValue,
-                    DisplayName = DisplayName,
+                    Officer = officer,
+                    ExperienceGained = gained,
+                    PreviousForceRank = previousRank,
+                    CurrentForceRank = officer.ForceRank,
+                    SuppressRankChangeMessage = true,
                     Tick = game.CurrentTick,
                 },
             };
+        }
+    }
+
+    /// <summary>
+    /// Returns an off-map unit to its last valid attachment or a friendly fallback planet.
+    /// </summary>
+    [PersistableObject(Name = "ReturnFromVoid")]
+    public sealed class ReturnFromVoidAction : GameAction
+    {
+        public string UnitInstanceID { get; set; }
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
+            if (unit == null)
+                throw new InvalidOperationException(
+                    $"ReturnFromVoid could not resolve unit '{UnitInstanceID}'."
+                );
+            game.ReturnFromVoid(unit);
+            return new List<GameResult>();
         }
     }
 

@@ -1206,7 +1206,8 @@ namespace Rebellion.Systems
             if (!hasOpposingBlockader)
                 return false;
 
-            _game.MoveToVoid(movable, VoidStatus.Destroyed);
+            _game.AddToVoid(movable);
+            _game.SetVoidStatus(movable, VoidStatus.Destroyed);
             GameLogger.Log(
                 $"{movable.GetDisplayName()} destroyed on arrival at blockaded {destinationPlanet.GetDisplayName()}."
             );
@@ -1239,7 +1240,8 @@ namespace Rebellion.Systems
                 return;
             }
 
-            _game.MoveToVoid(movable, VoidStatus.Destroyed);
+            _game.AddToVoid(movable);
+            _game.SetVoidStatus(movable, VoidStatus.Destroyed);
             GameLogger.Log(
                 $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
             );
@@ -1484,7 +1486,8 @@ namespace Rebellion.Systems
             ICollection<GameResult> reactions
         )
         {
-            _game.MoveToVoid(unit, VoidStatus.Destroyed);
+            _game.AddToVoid(unit);
+            _game.SetVoidStatus(unit, VoidStatus.Destroyed);
             reactions.Add(
                 new GameObjectDestroyedResult
                 {

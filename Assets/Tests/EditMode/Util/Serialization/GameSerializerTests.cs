@@ -406,16 +406,7 @@ namespace Rebellion.Tests.Util.Serialization
                             },
                         },
                     },
-                    new StartScriptedTrainingAction
-                    {
-                        TraineeInstanceID = "LUKE_SKYWALKER",
-                        DurationTicks = 100,
-                        CompletionBonusPercent = 60,
-                        InterruptionProgressDivisor = 2,
-                        CompletionVariableKey = "luke.dagobah.completed",
-                        CompletionVariableValue = 1,
-                        DisplayName = "Journey to Dagobah",
-                    },
+                    new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
                     new IncreaseOfficerForceAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
@@ -531,13 +522,9 @@ namespace Rebellion.Tests.Util.Serialization
             SetEventVariableAction setVariable = conditional.Actions[0] as SetEventVariableAction;
             Assert.IsNotNull(setVariable);
             Assert.AreEqual(EventVariableOperation.Add, setVariable.Operation);
-            StartScriptedTrainingAction training =
-                deserialized.Actions[2] as StartScriptedTrainingAction;
-            Assert.IsNotNull(training);
-            Assert.AreEqual(100, training.DurationTicks);
-            Assert.AreEqual(60, training.CompletionBonusPercent);
-            Assert.AreEqual(2, training.InterruptionProgressDivisor);
-            Assert.AreEqual("luke.dagobah.completed", training.CompletionVariableKey);
+            AddToVoidAction addToVoid = deserialized.Actions[2] as AddToVoidAction;
+            Assert.IsNotNull(addToVoid);
+            Assert.AreEqual("LUKE_SKYWALKER", addToVoid.UnitInstanceID);
             IncreaseOfficerForceAction increase =
                 deserialized.Actions[3] as IncreaseOfficerForceAction;
             Assert.IsNotNull(increase);

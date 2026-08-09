@@ -26,7 +26,8 @@ namespace Rebellion.Systems
             EvacuateStarfighters(game, movement, ship, fleet);
             DestroyRegiments(game, ship);
 
-            game.MoveToVoid(ship, VoidStatus.Destroyed);
+            game.AddToVoid(ship);
+            game.SetVoidStatus(ship, VoidStatus.Destroyed);
             GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
         }
 
@@ -110,7 +111,10 @@ namespace Rebellion.Systems
                 .ToList();
 
             foreach (Regiment regiment in regiments)
-                game.MoveToVoid(regiment, VoidStatus.Destroyed);
+            {
+                game.AddToVoid(regiment);
+                game.SetVoidStatus(regiment, VoidStatus.Destroyed);
+            }
         }
 
         /// <summary>

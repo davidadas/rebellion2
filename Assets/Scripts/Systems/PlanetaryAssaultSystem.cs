@@ -283,7 +283,8 @@ namespace Rebellion.Systems
 
                 Regiment target = survivors[targetIndex].Regiment;
                 result.DestroyedAttackerRegiments.Add(target);
-                _game.MoveToVoid(target, VoidStatus.Destroyed);
+                _game.AddToVoid(target);
+                _game.SetVoidStatus(target, VoidStatus.Destroyed);
             }
         }
 
@@ -327,12 +328,14 @@ namespace Rebellion.Systems
                 if (score <= config.DefenderWinsMaximum)
                 {
                     result.DestroyedAttackerRegiments.Add(attacker.Regiment);
-                    _game.MoveToVoid(attacker.Regiment, VoidStatus.Destroyed);
+                    _game.AddToVoid(attacker.Regiment);
+                    _game.SetVoidStatus(attacker.Regiment, VoidStatus.Destroyed);
                 }
                 else if (score >= config.AttackerWinsMinimum)
                 {
                     result.DestroyedDefenderRegiments.Add(defender);
-                    _game.MoveToVoid(defender, VoidStatus.Destroyed);
+                    _game.AddToVoid(defender);
+                    _game.SetVoidStatus(defender, VoidStatus.Destroyed);
                 }
             }
 
@@ -449,7 +452,8 @@ namespace Rebellion.Systems
                 case CollateralTargetType.Building:
                     Building building = (Building)target.Entity;
                     result.CollateralDestroyedBuildings.Add(building);
-                    _game.MoveToVoid(building, VoidStatus.Destroyed);
+                    _game.AddToVoid(building);
+                    _game.SetVoidStatus(building, VoidStatus.Destroyed);
                     break;
                 case CollateralTargetType.EnergyCapacity:
                     planet.EnergyCapacity--;

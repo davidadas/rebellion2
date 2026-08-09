@@ -990,10 +990,9 @@ namespace Rebellion.Systems
             if (candidates.Count == 0)
                 return false;
 
-            _game.MoveToVoid(
-                candidates[_provider.NextInt(0, candidates.Count)],
-                VoidStatus.Destroyed
-            );
+            ISceneNode destroyed = candidates[_provider.NextInt(0, candidates.Count)];
+            _game.AddToVoid(destroyed);
+            _game.SetVoidStatus(destroyed, VoidStatus.Destroyed);
             results.Add(
                 new PlanetIncidentResult
                 {

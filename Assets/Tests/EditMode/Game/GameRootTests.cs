@@ -249,7 +249,7 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void MoveToVoid_OwnedNode_PreservesRegistrationAndRecordsStatus()
+        public void AddToVoid_OwnedNode_PreservesRegistrationWithoutSceneParent()
         {
             _game.AttachNode(_planetSystem, _game.Galaxy);
             _game.AttachNode(_planet, _planetSystem);
@@ -260,24 +260,32 @@ namespace Rebellion.Tests.Game
             };
             _game.AttachNode(officer, _planet);
 
-            _game.MoveToVoid(
-                officer,
-                new VoidState
-                {
-                    Status = VoidStatus.Captured,
-                    Destination = SpecialDestination.JabbasPalace,
-                    SourceEventInstanceID = "bounty-hunters",
-                    CaptorInstanceID = "jabba",
-                }
-            );
+            _game.AddToVoid(officer);
 
-            Assert.AreSame(_faction1.VoidPool, officer.GetParent());
-            Assert.AreEqual(VoidStatus.Captured, officer.VoidState.Status);
-            Assert.AreEqual(SpecialDestination.JabbasPalace, officer.VoidState.Destination);
-            Assert.AreEqual("bounty-hunters", officer.VoidState.SourceEventInstanceID);
-            Assert.AreEqual("jabba", officer.VoidState.CaptorInstanceID);
+            Assert.IsNull(officer.GetParent());
+            Assert.IsTrue(_faction1.VoidPool.Contains(officer));
+            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
+            Assert.AreEqual(_planet.InstanceID, officer.LastLocationInstanceID);
             Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
             Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
+        }
+
+        [Test]
+        public void SetVoidStatus_NodeInVoid_SetsStatus()
+        {
+            _game.AttachNode(_planetSystem, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSystem);
+            Officer officer = new Officer
+            {
+                InstanceID = "OFFICER1",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            _game.SetVoidStatus(officer, VoidStatus.Captured);
+
+            Assert.AreEqual(VoidStatus.Captured, officer.VoidState.Status);
         }
 
         [Test]

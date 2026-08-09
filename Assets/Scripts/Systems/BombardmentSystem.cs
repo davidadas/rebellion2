@@ -666,12 +666,14 @@ namespace Rebellion.Systems
                 case BombardmentTargetType.Regiment:
                     Regiment regiment = (Regiment)target.Entity;
                     result.DestroyedRegiments.Add(regiment);
-                    _game.MoveToVoid(regiment, VoidStatus.Destroyed);
+                    _game.AddToVoid(regiment);
+                    _game.SetVoidStatus(regiment, VoidStatus.Destroyed);
                     break;
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
                     result.DestroyedBuildings.Add(building);
-                    _game.MoveToVoid(building, VoidStatus.Destroyed);
+                    _game.AddToVoid(building);
+                    _game.SetVoidStatus(building, VoidStatus.Destroyed);
                     break;
                 case BombardmentTargetType.Headquarters:
                     DestroyHeadquarters(planet, defenderId, result);
@@ -804,7 +806,8 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-                _game.MoveToVoid(officer, VoidStatus.Dead);
+                _game.AddToVoid(officer);
+                _game.SetVoidStatus(officer, VoidStatus.Dead);
             }
         }
 

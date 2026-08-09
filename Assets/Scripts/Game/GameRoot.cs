@@ -276,8 +276,7 @@ namespace Rebellion.Game
             node.SetParent(parent);
 
             // Register the node to the faction's list of owned units.
-            if (!IsInVoid(node))
-                RegisterOwnedUnit(node);
+            RegisterOwnedUnit(node);
 
             // Register the node and its children.
             node.Traverse(AddSceneNodeByInstanceID);
@@ -342,8 +341,7 @@ namespace Rebellion.Game
             try
             {
                 AttachNode(node, newParent);
-                if (!IsInVoid(node))
-                    ((BaseSceneNode)node).VoidState = null;
+                ((BaseSceneNode)node).VoidState = null;
             }
             catch
             {
@@ -353,59 +351,150 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Moves an owned entity out of active play while preserving it in its faction's graph.
+        /// Removes an owned unit from active play while retaining it in faction-owned storage.
         /// </summary>
-        public void MoveToVoid(ISceneNode node, VoidStatus status)
-        {
-            MoveToVoid(node, new VoidState { Status = status });
-        }
-
-        /// <summary>
-        /// Moves an owned entity out of active play with persisted context explaining why.
-        /// </summary>
-        public void MoveToVoid(ISceneNode node, VoidState state)
+        public void AddToVoid(ISceneNode node)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
-            if (state == null)
-                throw new ArgumentNullException(nameof(state));
             if (string.IsNullOrEmpty(node.OwnerInstanceID))
-                throw new InvalidOperationException("Only faction-owned entities can enter a void pool.");
+                throw new InvalidOperationException(
+                    "Only faction-owned entities can enter a void pool."
+                );
+            if (node.GetParent() == null)
+                throw new InvalidOperationException(
+                    $"{node.GetDisplayName()} is not attached to the scene graph."
+                );
 
             Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
             VoidPool pool = faction.VoidPool ??= new VoidPool();
-            EnsureVoidPoolRegistered(faction);
-            MoveNode(node, pool);
-            ((BaseSceneNode)node).VoidState = state;
-        }
+            if (pool.Contains(node))
+                return;
+            if (!pool.CanStore(node))
+                throw new InvalidOperationException(
+                    $"{node.GetType().Name} cannot enter a void pool."
+                );
 
-        private void EnsureVoidPoolRegistered(Faction faction)
-        {
-            VoidPool pool = faction.VoidPool ??= new VoidPool();
-            pool.OwnerInstanceID = faction.InstanceID;
-            pool.DisplayName = $"{faction.DisplayName} Void Pool";
-            if (!NodesByInstanceID.ContainsKey(pool.InstanceID))
+            BaseSceneNode sceneNode = (BaseSceneNode)node;
+            sceneNode.LastLocationInstanceID = node.GetParentOfType<Planet>()?.InstanceID;
+            ISceneNode previousParent = node.GetParent();
+            DetachNode(node);
+            try
             {
-                pool.Traverse(node =>
-                {
-                    AddSceneNodeByInstanceID(node);
-                    foreach (ISceneNode child in node.GetChildren())
-                        child.SetParent(node);
-                });
+                pool.Add(node);
+                node.Traverse(AddSceneNodeByInstanceID);
+            }
+            catch
+            {
+                pool.Remove(node);
+                node.Traverse(RemoveSceneNodeByInstanceID);
+                AttachNode(node, previousParent);
+                throw;
             }
         }
 
         /// <summary>
-        /// Reconnects and registers faction void pools after save-game deserialization.
+        /// Sets the persisted reason that an off-map unit is unavailable.
+        /// </summary>
+        public void SetVoidStatus(ISceneNode node, VoidStatus status)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (!IsInVoid(node))
+                throw new InvalidOperationException(
+                    $"{node.GetDisplayName()} is not in a void pool."
+                );
+            ((BaseSceneNode)node).VoidState = new VoidState { Status = status };
+        }
+
+        /// <summary>
+        /// Registers retained off-map units after save-game deserialization.
         /// </summary>
         public void InitializeVoidPools()
         {
             foreach (Faction faction in Factions)
-                EnsureVoidPoolRegistered(faction);
+            {
+                faction.VoidPool ??= new VoidPool();
+                foreach (ISceneNode node in faction.VoidPool.GetUnits())
+                {
+                    node.SetParent(null);
+                    node.Traverse(child =>
+                    {
+                        if (!NodesByInstanceID.ContainsKey(child.InstanceID))
+                            AddSceneNodeByInstanceID(child);
+                    });
+                }
+            }
         }
 
-        private static bool IsInVoid(ISceneNode node) =>
-            node is VoidPool || node?.GetParentOfType<VoidPool>() != null;
+        /// <summary>
+        /// Returns an off-map unit to its prior attachment, prior planet, or nearest friendly planet.
+        /// </summary>
+        public bool ReturnFromVoid(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
+            VoidPool pool = faction.VoidPool ??= new VoidPool();
+            if (!pool.Contains(node))
+                throw new InvalidOperationException(
+                    $"{node.GetDisplayName()} is not in a void pool."
+                );
+
+            BaseSceneNode sceneNode = (BaseSceneNode)node;
+            Planet priorPlanet = GetSceneNodeByInstanceID<Planet>(sceneNode.LastLocationInstanceID);
+            ContainerNode destination = GetSceneNodeByInstanceID<ContainerNode>(
+                sceneNode.LastParentInstanceID
+            );
+            if (!CanReturnTo(node, destination))
+                destination = CanReturnTo(node, priorPlanet) ? priorPlanet : null;
+            if (destination == null)
+            {
+                destination = faction
+                    .GetOwnedColonizedPlanets()
+                    .Where(planet => CanReturnTo(node, planet))
+                    .OrderBy(planet =>
+                        priorPlanet == null ? 0 : planet.GetRawDistanceTo(priorPlanet)
+                    )
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                    .FirstOrDefault();
+            }
+            if (destination == null)
+                return false;
+
+            pool.Remove(node);
+            node.Traverse(RemoveSceneNodeByInstanceID);
+            try
+            {
+                AttachNode(node, destination);
+                sceneNode.VoidState = null;
+                return true;
+            }
+            catch
+            {
+                pool.Add(node);
+                node.Traverse(AddSceneNodeByInstanceID);
+                throw;
+            }
+        }
+
+        private bool IsInVoid(ISceneNode node)
+        {
+            for (ISceneNode current = node; current != null; current = current.GetParent())
+            {
+                if (Factions.Any(faction => faction.VoidPool?.Contains(current) == true))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool CanReturnTo(ISceneNode node, ContainerNode destination)
+        {
+            if (destination?.CanAcceptChild(node) != true)
+                return false;
+            Planet planet = destination as Planet ?? destination.GetParentOfType<Planet>();
+            return planet?.IsDestroyed == false && planet.OwnerInstanceID == node.OwnerInstanceID;
+        }
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.
@@ -751,8 +840,7 @@ namespace Rebellion.Game
                 }
             );
 
-            foreach (Faction faction in Factions)
-                EnsureVoidPoolRegistered(faction);
+            InitializeVoidPools();
 
             return galaxy;
         }

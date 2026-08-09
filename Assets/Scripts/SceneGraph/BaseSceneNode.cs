@@ -13,25 +13,13 @@ namespace Rebellion.SceneGraph
         Destroyed,
         Retired,
         Unavailable,
-    }
-
-    public enum SpecialDestination
-    {
-        None,
-        Dagobah,
-        JabbasPalace,
-        AlliancePrison,
-        EmpirePrison,
+        Training,
     }
 
     [PersistableObject]
     public sealed class VoidState
     {
         public VoidStatus Status { get; set; }
-        public SpecialDestination Destination { get; set; }
-        public string MissionInstanceID { get; set; }
-        public string SourceEventInstanceID { get; set; }
-        public string CaptorInstanceID { get; set; }
     }
 
     /// <summary>
@@ -45,6 +33,9 @@ namespace Rebellion.SceneGraph
 
         [CloneIgnore]
         public string LastParentInstanceID { get; set; }
+
+        [CloneIgnore]
+        public string LastLocationInstanceID { get; set; }
 
         [CloneIgnore]
         [PersistableIgnore]

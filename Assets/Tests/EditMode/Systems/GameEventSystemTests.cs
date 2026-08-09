@@ -118,6 +118,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ScheduleEvent_DelaysPendingEventRelativeToCurrentTick()
+        {
+            GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
+            pending.Conditionals.Add(
+                new EventVariableConditional
+                {
+                    Key = "return.enabled",
+                    Comparison = EventVariableComparison.Equal,
+                    Value = 1,
+                }
+            );
+            _game.EventPool.Add(pending);
+            _game.CurrentTick = 20;
+
+            new SetEventVariableAction { Key = "return.enabled", Value = 1 }.Execute(_game);
+            new ScheduleEventAction
+            {
+                EventInstanceID = pending.InstanceID,
+                DelayTicks = 5,
+            }.Execute(_game);
+
+            _game.CurrentTick = 24;
+            _system.ProcessEvents(_game.EventPool);
+            Assert.Contains(pending, _game.EventPool);
+
+            _game.CurrentTick = 25;
+            _system.ProcessEvents(_game.EventPool);
+            Assert.IsFalse(_game.EventPool.Contains(pending));
+        }
+
+        [Test]
         public void HandleResults_MatchingEncounter_ExecutesResultTriggeredEventOnce()
         {
             Officer luke = new Officer { InstanceID = "luke" };

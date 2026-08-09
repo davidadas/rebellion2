@@ -19,7 +19,6 @@ namespace Rebellion.Systems
     /// </summary>
     public class MissionSystem
         : IGameResultHandler<PlanetUprisingStartedResult>,
-            IGameResultHandler<ScriptedTrainingRequestedResult>,
             IGameResultHandler<StoryCaptureRequestedResult>,
             IGameResultHandler<StoryRescueRequestedResult>,
             IGameResultHandler<StoryPickupRequestedResult>,
@@ -100,63 +99,6 @@ namespace Rebellion.Systems
                 .Distinct();
             foreach (Planet planet in affectedPlanets)
                 missionResults.AddRange(AbortInvalidMissions(planet));
-
-            return missionResults;
-        }
-
-        /// <summary>
-        /// Creates content-authored training missions and sends each trainee through the normal mission lifecycle.
-        /// </summary>
-        public List<GameResult> HandleResults(
-            IReadOnlyList<ScriptedTrainingRequestedResult> results
-        )
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            foreach (ScriptedTrainingRequestedResult result in results)
-            {
-                Officer trainee = _game.GetSceneNodeByInstanceID<Officer>(
-                    result?.Trainee?.InstanceID
-                );
-                Planet origin = trainee?.GetParentOfType<Planet>();
-                if (
-                    trainee == null
-                    || origin == null
-                    || !trainee.IsMovable()
-                    || trainee.IsOnMission()
-                )
-                    continue;
-
-                ScriptedTrainingMission mission = new ScriptedTrainingMission(
-                    trainee,
-                    result.DurationTicks,
-                    result.CompletionBonusPercent,
-                    result.InterruptionProgressDivisor,
-                    result.CompletionVariableKey,
-                    result.CompletionVariableValue,
-                    result.DisplayName,
-                    result.SourceEventInstanceID
-                );
-                _game.AttachNode(mission, origin);
-                VoidState dagobahState = new VoidState
-                {
-                    Status = VoidStatus.OnMission,
-                    Destination = SpecialDestination.Dagobah,
-                    MissionInstanceID = mission.InstanceID,
-                    SourceEventInstanceID = result.SourceEventInstanceID,
-                };
-                _game.MoveToVoid(mission, dagobahState);
-                trainee.VoidState = new VoidState
-                {
-                    Status = dagobahState.Status,
-                    Destination = dagobahState.Destination,
-                    MissionInstanceID = dagobahState.MissionInstanceID,
-                    SourceEventInstanceID = dagobahState.SourceEventInstanceID,
-                };
-                BeginMission(mission);
-            }
 
             return missionResults;
         }
@@ -1146,7 +1088,8 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            _game.MoveToVoid(specialForces, VoidStatus.Destroyed);
+            _game.AddToVoid(specialForces);
+            _game.SetVoidStatus(specialForces, VoidStatus.Destroyed);
             results.Add(
                 new GameObjectDestroyedResult
                 {
@@ -1182,7 +1125,8 @@ namespace Rebellion.Systems
             else
             {
                 officer.IsKilled = true;
-                _game.MoveToVoid(officer, VoidStatus.Dead);
+                _game.AddToVoid(officer);
+                _game.SetVoidStatus(officer, VoidStatus.Dead);
                 results.Add(
                     new OfficerKilledResult
                     {
@@ -1284,8 +1228,6 @@ namespace Rebellion.Systems
         /// <returns>The mission duration in ticks.</returns>
         private int RollMissionDuration(Mission mission)
         {
-            if (mission is ScriptedTrainingMission training)
-                return training.DurationTicks;
             if (mission is StoryCaptureMission capture)
                 return capture.DurationTicks;
             if (mission is StoryRescueMission rescue)

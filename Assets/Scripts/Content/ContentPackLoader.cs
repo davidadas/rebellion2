@@ -24,6 +24,7 @@ public static class ContentPackLoader
     private const string _contentDirectoryName = "Content";
     private const string _contentPathArgument = "-contentPath";
     private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
+    private const string _gameEventsSchemaRelativePath = "Application/Schemas/game-events.xsd";
     private const string _packAddressPrefix = "Pack/";
     private const string _packsDirectoryName = "Packs";
     private const string _packFileName = "pack.xml";
@@ -238,9 +239,9 @@ public static class ContentPackLoader
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             packRoot,
             pack.GameEventsPath,
-            "GameEvents"
+            "GameEvents",
+            ResolveSafePath(contentRootPath, _gameEventsSchemaRelativePath)
         );
-        GameEventCatalogValidator.Validate(gameEvents);
         MessageDefinition[] messageDefinitions = DeserializeGameData<MessageDefinition[]>(
             packRoot,
             pack.MessageDefinitionsPath,

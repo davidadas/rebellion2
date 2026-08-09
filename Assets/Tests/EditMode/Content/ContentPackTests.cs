@@ -45,22 +45,19 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_DagobahCompletion_ReplacesHiddenMissionReports()
+        public void OpenActive_DagobahCompletion_UsesScheduledVoidWorkflow()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
             GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                 candidate.InstanceID == "LUKE_LEAVES_DAGOBAH"
             );
 
-            Assert.AreEqual("core:dagobah.completed", gameEvent.Trigger);
-            Assert.IsTrue(gameEvent.SuppressSourceMessages);
+            Assert.IsNull(gameEvent.Trigger);
             Assert.AreEqual(
-                "LUKE_VISITS_YODA",
-                gameEvent
-                    .Conditionals.OfType<ResultSourceEventConditional>()
-                    .Single()
-                    .SourceEventInstanceID
+                "luke.dagobah.started",
+                gameEvent.Conditionals.OfType<EventVariableConditional>().First().Key
             );
+            Assert.IsTrue(gameEvent.Actions.OfType<ReturnFromVoidAction>().Any());
             AddMessageAction message = gameEvent.Actions.OfType<AddMessageAction>().Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
             Assert.AreEqual("Luke Leaves Dagobah", message.Title);
@@ -272,9 +269,15 @@ namespace Rebellion.Tests.Content
             GameEvent heritage = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "LUKE_DISCOVERS_HERITAGE"
             );
-            StartScriptedTrainingAction dagobahTraining = pack
+            ScheduleEventAction dagobahReturn = pack
                 .GameData.GameEvents.Single(gameEvent => gameEvent.InstanceID == "LUKE_VISITS_YODA")
-                .Actions.OfType<StartScriptedTrainingAction>()
+                .Actions.OfType<ScheduleEventAction>()
+                .Single();
+            AddForceExperienceAction dagobahTraining = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "LUKE_LEAVES_DAGOBAH"
+                )
+                .Actions.OfType<AddForceExperienceAction>()
                 .Single();
             AddMessageAction heritageMessage = heritage.Actions.OfType<AddMessageAction>().Single();
             GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
@@ -353,9 +356,8 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.AreEqual(6, heritageMessage.BodySegments.Count);
-            Assert.AreEqual(100, dagobahTraining.DurationTicks);
-            Assert.AreEqual(60, dagobahTraining.CompletionBonusPercent);
-            Assert.AreEqual(2, dagobahTraining.InterruptionProgressDivisor);
+            Assert.AreEqual(100, dagobahReturn.DelayTicks);
+            Assert.AreEqual(60, dagobahTraining.PercentOfCurrentRank);
             Assert.IsTrue(
                 recurringEncounterEventIds.All(instanceId =>
                     pack.GameData.GameEvents.Single(gameEvent =>
