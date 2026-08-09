@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
@@ -38,6 +39,49 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         public void Render_NullData_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => _view.Render(null));
+        }
+
+        [TestCase("panelBackgroundImage")]
+        [TestCase("frameImage")]
+        [TestCase("titleTextField")]
+        [TestCase("headerTextField")]
+        [TestCase("summaryTextField")]
+        [TestCase("rowsScrollArea")]
+        [TestCase("rowTemplate")]
+        [TestCase("resultPlanetaryTitleTextField")]
+        [TestCase("resultFleetTitleTextField")]
+        [TestCase("resultSummaryTextField")]
+        [TestCase("resultDirectPromptTextField")]
+        [TestCase("resultPlanetaryForceHeaderTextField")]
+        [TestCase("resultFleetForceHeaderTextField")]
+        [TestCase("resultFleetFiltersTextField")]
+        [TestCase("resultPlanetaryTableTitleTextField")]
+        [TestCase("resultFleetTableTitleTextField")]
+        [TestCase("resultPlanetaryStandardColumnHeaderTextFields")]
+        [TestCase("resultFleetStandardColumnHeaderTextFields")]
+        [TestCase("resultPlanetaryPersonnelColumnHeaderTextFields")]
+        [TestCase("resultFleetPersonnelColumnHeaderTextFields")]
+        [TestCase("resultRowsScrollArea")]
+        [TestCase("resultStandardOperationalColumn")]
+        [TestCase("resultStandardDestroyedColumn")]
+        [TestCase("resultPersonnelOperationalColumn")]
+        [TestCase("resultPersonnelDestroyedColumn")]
+        [TestCase("resultStandardItemTemplate")]
+        [TestCase("resultPersonnelItemTemplate")]
+        [TestCase("viewButtonImages")]
+        [TestCase("commandButtonImages")]
+        [TestCase("resultCloseButtonImage")]
+        [TestCase("resultCategoryButtonImages")]
+        [TestCase("resultDirectButtonImages")]
+        public void Awake_MissingAuthoredReference_ThrowsMissingReferenceException(string fieldName)
+        {
+            typeof(BattleAlertWindowView)
+                .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(_view, null);
+
+            Assert.Throws<MissingReferenceException>(() =>
+                UIComponentTestHelper.InvokeLifecycle(_view, "Awake")
+            );
         }
 
         [Test]
@@ -451,7 +495,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        public void Render_DirectResult_AppliesSummaryAndNavigationControls()
+        public void Render_DirectResult_ShowsAuthoredNavigationPrompt()
         {
             BattleAlertResultRenderData result = CreateResult(BattleResultPanel.Direct);
 
@@ -466,6 +510,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(18f, prompt.fontSize);
             Assert.AreEqual(TextAlignmentOptions.TopLeft, prompt.alignment);
             Assert.IsFalse(FindObject("ResultSummaryTextField").activeSelf);
+        }
+
+        [Test]
+        public void Render_DirectResult_ShowsNavigationControls()
+        {
+            BattleAlertResultRenderData result = CreateResult(BattleResultPanel.Direct);
+
+            _view.Render(CreateWindowData(BattleAlertWindowMode.Result, null, result));
+
             Assert.IsTrue(FindObject("ResultDirectSystemButtonImage").activeSelf);
             Assert.IsTrue(FindObject("ResultDirectFleetButtonImage").activeSelf);
             Assert.IsFalse(FindObject("ResultCapitalShipsButtonImage").activeSelf);

@@ -21,7 +21,7 @@ namespace Rebellion.Game
 
         public string ScenarioID;
 
-        public bool BriefingCompleted;
+        public bool OpeningBriefingCompleted;
 
         public DateTime LastSavedUtc;
 

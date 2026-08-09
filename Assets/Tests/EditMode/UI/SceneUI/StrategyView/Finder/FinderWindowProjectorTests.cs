@@ -150,7 +150,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.IsTrue(data.Tabs.All(tab => tab.PressedTexture != null));
             Assert.AreEqual(1, data.Rows.Count);
             Assert.IsTrue(data.Rows[0].Selected);
-            CollectionAssert.AreEqual(new[] { "1", "3" }, data.Rows[0].Counts);
+            CollectionAssert.AreEqual(new[] { "1", string.Empty, "3" }, data.Rows[0].Counts);
         }
 
         [Test]
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 
             Assert.AreEqual("Ship Finder", data.Title);
             Assert.AreEqual("Ship Name", data.Label);
-            Assert.AreEqual("All Ships", data.ActiveTabText);
+            Assert.AreEqual("Alliance Ships", data.ActiveTabText);
             Assert.AreSame(
                 _uiContext.GetTexture(theme.ShipFinderBackgroundImagePath),
                 data.Frame.BackgroundTexture
@@ -198,6 +198,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreSame(
                 _uiContext.GetTexture(theme.FleetButton.GetImagePath(false)),
                 data.Frame.DialogButtons[3].Texture
+            );
+        }
+
+        [Test]
+        public void CreateRenderData_OpponentTroopTab_UsesOpponentTroopBackground()
+        {
+            FinderWindowSession session = new FinderWindowSession(_window, FinderMode.Troops);
+            List<FinderWindowTab> tabs = CreateTabs(FinderMode.Troops);
+            session.SelectTab(1);
+            session.SetProjection(tabs, Array.Empty<FinderWindowRow>());
+            FinderWindowTheme opponentTheme = _uiContext
+                .GetTheme(_opponentFactionId)
+                .StrategyWindows.Finder;
+
+            FinderWindowRenderData data = FinderWindowProjector.CreateRenderData(
+                _uiContext,
+                _window,
+                false,
+                session,
+                tabs
+            );
+
+            Assert.AreSame(
+                _uiContext.GetTexture(opponentTheme.TroopFinderBackgroundImagePath),
+                data.Frame.BackgroundTexture
             );
         }
 
@@ -361,7 +386,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual("first", data[0].RowId);
             Assert.AreEqual(string.Empty, data[0].Name);
             Assert.IsFalse(data[0].Selected);
-            CollectionAssert.AreEqual(new[] { "2", "5" }, data[0].Counts);
+            CollectionAssert.AreEqual(
+                new[] { string.Empty, "2", string.Empty, "5" },
+                data[0].Counts
+            );
             Assert.IsTrue(data[1].Selected);
             Assert.AreEqual(string.Empty, data[2].RowId);
             Assert.Throws<NotSupportedException>(() =>

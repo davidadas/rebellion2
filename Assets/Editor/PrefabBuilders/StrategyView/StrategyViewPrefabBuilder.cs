@@ -2074,7 +2074,7 @@ public static class StrategyViewPrefabBuilder
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", item.transform);
         nameText.text = "Mon Calamari Regiment";
         nameText.color = Color.white;
-        nameText.fontSize = 11;
+        nameText.fontSize = 10;
         nameText.alignment = TextAlignmentOptions.TopLeft;
         nameText.textWrappingMode = TextWrappingModes.Normal;
         nameText.overflowMode = TextOverflowModes.Truncate;
@@ -3757,6 +3757,7 @@ public static class StrategyViewPrefabBuilder
         labelTemplate.color = Color.white;
         labelTemplate.fontSize = 14;
         labelTemplate.alignment = TextAlignmentOptions.Top;
+        labelTemplate.textWrappingMode = TextWrappingModes.Normal;
         SetSourceRect(labelTemplate.rectTransform, 242, 140, 126, 17);
         labelTemplate.gameObject.SetActive(false);
 
@@ -5643,8 +5644,6 @@ public static class StrategyViewPrefabBuilder
         ConfigureVerticalContent(rowsContent);
         BattleAlertRowView rowTemplate = CreateBattleAlertRowTemplate(rowsContent);
 
-        // The original UI passes font-table IDs here: 0xB maps to 24 px,
-        // 6 maps to 18 px, and 4 maps to 16 px.
         TextMeshProUGUI resultPlanetaryTitle = CreateBattleResultText(
             "ResultPlanetaryTitleTextField",
             window.transform,

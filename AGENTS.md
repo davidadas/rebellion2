@@ -19,3 +19,7 @@
 10. Do not use slashes in branch names intended for pull requests.
 
 11. Use `git push-external` for pushes. Never use `git push`.
+
+12. Place tests in the directory and namespace that mirror the production code, and add them to the existing fixture for the class or system under test. Do not put behavior in a broad or convenient fixture merely because its setup is reusable.
+
+13. Name tests `MemberUnderTest_Scenario_ExpectedBehavior`, matching the established suite. Keep each test focused on one observable behavior and use one clear Arrange/Act/Assert flow, separated by blank lines. Do not combine multiple commands, lifecycle stages, or independently meaningful outcomes into one test; use separate tests and shared setup helpers instead.

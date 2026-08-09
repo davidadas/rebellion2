@@ -50,6 +50,14 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         }
 
         [Test]
+        public void Constructor_FleetMode_SelectsPlayerFactionTab()
+        {
+            FinderWindowSession session = new FinderWindowSession(_window, FinderMode.Fleets);
+
+            Assert.AreEqual(1, session.ActiveTab);
+        }
+
+        [Test]
         public void ReconcileTabCount_EmptyThenPopulated_SelectsFirstTab()
         {
             _session.ReconcileTabCount(0);
