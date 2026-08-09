@@ -90,7 +90,7 @@ namespace Rebellion.Game.Events
         public string Title { get; set; }
         public string Body { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
-        public string ImageKey { get; set; }
+        public string DetailImageKey { get; set; }
         public string VoicePath { get; set; }
         public AdvisorNotificationCode AdvisorNotification { get; set; }
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
@@ -152,7 +152,7 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = Title,
                     BodyTemplate = Body,
-                    ImageKey = ImageKey,
+                    DetailImageKey = DetailImageKey,
                     VoicePath = VoicePath,
                     AdvisorNotification = AdvisorNotification,
                     AdvisorSubjectNotification = AdvisorSubjectNotification,
@@ -662,7 +662,7 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Mission;
         public string Title { get; set; }
         public string Body { get; set; }
-        public string ImageKey { get; set; }
+        public string DetailImageKey { get; set; }
         public string VoicePath { get; set; }
         public Dictionary<string, string> VoicePaths { get; set; } =
             new Dictionary<string, string>();
@@ -775,7 +775,7 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = Title,
                     BodyTemplate = Body,
-                    ImageKey = ImageKey,
+                    DetailImageKey = DetailImageKey,
                     OverlayImagePath = detector.MessageImagePath,
                     VoicePath = voicePath,
                     OfficerVoicePath = detector.GetVoicePath(
@@ -870,7 +870,7 @@ namespace Rebellion.Game.Events
         public string Body { get; set; }
         public List<NarrativeBodySegment> BodySegments { get; set; } =
             new List<NarrativeBodySegment>();
-        public string ImageKey { get; set; }
+        public string DetailImageKey { get; set; }
         public string ImagePath { get; set; }
         public bool ImagePathFromOfficerEncounter { get; set; }
         public string OverlayImagePath { get; set; }
@@ -946,7 +946,7 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = Title,
                     BodyTemplate = bodyTemplate,
-                    ImageKey = ImageKey,
+                    DetailImageKey = DetailImageKey,
                     ImagePath = imagePath,
                     OverlayImagePath = OverlayImagePath,
                     VoicePath = voicePath,
@@ -1040,6 +1040,42 @@ namespace Rebellion.Game.Events
                     Tick = game.CurrentTick,
                 },
             };
+        }
+    }
+
+    /// <summary>
+    /// Updates the authored presentation used for an officer.
+    /// </summary>
+    [PersistableObject(Name = "UpdateOfficerPresentation")]
+    public sealed class UpdateOfficerPresentationAction : GameAction
+    {
+        public string OfficerInstanceID { get; set; }
+        public string DisplayImagePath { get; set; }
+        public string SmallDisplayImagePath { get; set; }
+        public string MessageImagePath { get; set; }
+        public string EncyclopediaImagePath { get; set; }
+        public bool UsesAdvancedVoiceLines { get; set; }
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"UpdateOfficerPresentation could not resolve officer '{OfficerInstanceID}'."
+                );
+
+            if (!string.IsNullOrWhiteSpace(DisplayImagePath))
+                officer.DisplayImagePath = DisplayImagePath;
+            if (!string.IsNullOrWhiteSpace(SmallDisplayImagePath))
+                officer.SmallDisplayImagePath = SmallDisplayImagePath;
+            if (!string.IsNullOrWhiteSpace(MessageImagePath))
+                officer.MessageImagePath = MessageImagePath;
+            if (!string.IsNullOrWhiteSpace(EncyclopediaImagePath))
+                officer.EncyclopediaImagePath = EncyclopediaImagePath;
+            officer.UsesAdvancedVoiceLines = UsesAdvancedVoiceLines;
+
+            return new List<GameResult>();
         }
     }
 

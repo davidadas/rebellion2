@@ -297,10 +297,7 @@ namespace Rebellion.Game.Messages
                         {
                             {
                                 "units",
-                                string.Join(
-                                    "\n",
-                                    unitArray.Select(unit => unit.GetDisplayName())
-                                )
+                                string.Join("\n", unitArray.Select(unit => unit.GetDisplayName()))
                             },
                             { "system", destination?.GetDisplayName() ?? string.Empty },
                         }
@@ -332,9 +329,11 @@ namespace Rebellion.Game.Messages
             if (personnelArray.Length == 0)
                 return null;
 
-            Officer reporter = personnelArray.OfType<Officer>().FirstOrDefault(officer =>
-                officer.HasVoicePath(OfficerVoiceLineType.PersonnelArrived)
-            );
+            Officer reporter = personnelArray
+                .OfType<Officer>()
+                .FirstOrDefault(officer =>
+                    officer.HasVoicePath(OfficerVoiceLineType.PersonnelArrived)
+                );
             IGameEntity[] listedPersonnel =
                 reporter == null
                     ? personnelArray
@@ -734,10 +733,7 @@ namespace Rebellion.Game.Messages
                 systemArray.Select(system =>
                     MessageTemplateBuilder.Interpolate(
                         definition.DetailListItemTemplate,
-                        new Dictionary<string, string>
-                        {
-                            { "system", system.GetDisplayName() },
-                        }
+                        new Dictionary<string, string> { { "system", system.GetDisplayName() } }
                     )
                 )
             );
@@ -967,7 +963,7 @@ namespace Rebellion.Game.Messages
                     MessageType = result.MessageType,
                     TitleTemplate = result.TitleTemplate,
                     BodyTemplate = result.BodyTemplate,
-                    ImageKey = result.ImageKey,
+                    DetailImageKey = result.DetailImageKey,
                     ImagePath = result.ImagePath,
                     VoicePath = result.VoicePath,
                 };
@@ -1104,7 +1100,9 @@ namespace Rebellion.Game.Messages
             MessageDefinition definition
         )
         {
-            GameObjectSabotagedResult[] resultArray = results?.Where(result => result != null).ToArray();
+            GameObjectSabotagedResult[] resultArray = results
+                ?.Where(result => result != null)
+                .ToArray();
             if (resultArray == null || resultArray.Length == 0)
                 return null;
 
@@ -1118,9 +1116,7 @@ namespace Rebellion.Game.Messages
                             "item",
                             string.Join(
                                 "\n",
-                                resultArray.Select(result =>
-                                    GetDisplayName(result.SabotagedObject)
-                                )
+                                resultArray.Select(result => GetDisplayName(result.SabotagedObject))
                             )
                         },
                         { "system", target?.GetDisplayName() ?? string.Empty },
@@ -1501,9 +1497,7 @@ namespace Rebellion.Game.Messages
                             "items",
                             string.Join(
                                 "\n",
-                                resultArray.Select(result =>
-                                    GetDisplayName(result.DestroyedObject)
-                                )
+                                resultArray.Select(result => GetDisplayName(result.DestroyedObject))
                             )
                         },
                         { "system", location?.GetDisplayName() ?? string.Empty },
@@ -1904,11 +1898,12 @@ namespace Rebellion.Game.Messages
                 .Select(result => result.TargetOfficer?.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
-            Dictionary<string, MissionSystemIntelligenceResult> systemIntelligenceByMission =
-                (systemIntelligenceResults ?? Array.Empty<MissionSystemIntelligenceResult>())
-                    .Where(result => !string.IsNullOrEmpty(result.MissionInstanceID))
-                    .GroupBy(result => result.MissionInstanceID)
-                    .ToDictionary(group => group.Key, group => group.Last());
+            Dictionary<string, MissionSystemIntelligenceResult> systemIntelligenceByMission = (
+                systemIntelligenceResults ?? Array.Empty<MissionSystemIntelligenceResult>()
+            )
+                .Where(result => !string.IsNullOrEmpty(result.MissionInstanceID))
+                .GroupBy(result => result.MissionInstanceID)
+                .ToDictionary(group => group.Key, group => group.Last());
 
             foreach (MissionCompletedResult result in results)
             {

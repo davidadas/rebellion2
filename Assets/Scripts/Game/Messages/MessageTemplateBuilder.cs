@@ -39,7 +39,7 @@ namespace Rebellion.Game.Messages
             {
                 ResultType = definition.ResultType,
                 DisplayName = title,
-                DisplayImageKey = definition.ImageKey,
+                DetailImageKey = definition.DetailImageKey,
                 DisplayImagePath =
                     imageOverride
                     ?? GetAssetPath(

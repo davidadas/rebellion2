@@ -155,7 +155,7 @@ namespace Rebellion.Game.Messages
         public string DetailListItemTemplate { get; set; }
         public SpaceBattleNarrativeTemplates SpaceBattleNarrative { get; set; }
         public bool ShowOfficerOverlay { get; set; }
-        public string ImageKey { get; set; }
+        public string DetailImageKey { get; set; }
         public string ImagePath { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();

@@ -61,12 +61,16 @@ namespace Rebellion.Tests.Content
                     .Single()
                     .SourceEventInstanceID
             );
-            AddMessageAction message = gameEvent
-                .Actions.OfType<AddMessageAction>()
-                .Single();
+            AddMessageAction message = gameEvent.Actions.OfType<AddMessageAction>().Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
             Assert.AreEqual("Luke Leaves Dagobah", message.Title);
             Assert.AreEqual("I have finished my training with Yoda.", message.Body);
+            UpdateOfficerPresentationAction presentation = gameEvent
+                .Actions.OfType<UpdateOfficerPresentationAction>()
+                .Single();
+            Assert.AreEqual("LUKE_SKYWALKER", presentation.OfficerInstanceID);
+            Assert.IsTrue(presentation.UsesAdvancedVoiceLines);
+            StringAssert.EndsWith("/jedi-display", presentation.DisplayImagePath);
         }
 
         [Test]
@@ -91,9 +95,7 @@ namespace Rebellion.Tests.Content
                 OfficerCaptureStateConditional capture = gameEvent
                     .Conditionals.OfType<OfficerCaptureStateConditional>()
                     .Single();
-                AddMessageAction message = gameEvent
-                    .Actions.OfType<AddMessageAction>()
-                    .Single();
+                AddMessageAction message = gameEvent.Actions.OfType<AddMessageAction>().Single();
 
                 Assert.AreEqual("core:officer.capture-changed", gameEvent.Trigger);
                 Assert.IsTrue(gameEvent.SuppressSourceMessages);
@@ -256,9 +258,7 @@ namespace Rebellion.Tests.Content
                     .Single();
                 Assert.AreEqual(subjectId, participants.EncounteredOfficerInstanceID);
                 Assert.AreEqual(opponentId, participants.OpposingOfficerInstanceID);
-                AddMessageAction report = gameEvent
-                    .Actions.OfType<AddMessageAction>()
-                    .Single();
+                AddMessageAction report = gameEvent.Actions.OfType<AddMessageAction>().Single();
                 Assert.AreEqual(subjectId, report.SubjectInstanceID);
                 Assert.AreEqual(opponentId, report.RelatedSubjectInstanceID);
                 Assert.AreEqual(5, report.BodySegments.Count);
@@ -276,9 +276,7 @@ namespace Rebellion.Tests.Content
                 .GameData.GameEvents.Single(gameEvent => gameEvent.InstanceID == "LUKE_VISITS_YODA")
                 .Actions.OfType<StartScriptedTrainingAction>()
                 .Single();
-            AddMessageAction heritageMessage = heritage
-                .Actions.OfType<AddMessageAction>()
-                .Single();
+            AddMessageAction heritageMessage = heritage.Actions.OfType<AddMessageAction>().Single();
             GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "VADER_TAKES_LUKE_TO_EMPEROR"
             );
@@ -432,9 +430,7 @@ namespace Rebellion.Tests.Content
             UnitArrivalConditional arrival = gameEvent
                 .Conditionals.OfType<UnitArrivalConditional>()
                 .Single();
-            AddMessageAction message = gameEvent
-                .Actions.OfType<AddMessageAction>()
-                .Single();
+            AddMessageAction message = gameEvent.Actions.OfType<AddMessageAction>().Single();
             FactionOfficerRatingAuraEffect aura = gameEvent
                 .Effects.OfType<FactionOfficerRatingAuraEffect>()
                 .Single();
@@ -449,10 +445,7 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(OfficerRating.Leadership, aura.Rating);
             Assert.AreEqual(50, aura.Amount);
             Assert.AreEqual("Emperor Arrives at Coruscant", message.Title);
-            Assert.AreEqual(
-                "I have returned to the Seat of Power at Coruscant.",
-                message.Body
-            );
+            Assert.AreEqual("I have returned to the Seat of Power at Coruscant.", message.Body);
             Assert.AreEqual(
                 "Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01",
                 message.OfficerVoicePath

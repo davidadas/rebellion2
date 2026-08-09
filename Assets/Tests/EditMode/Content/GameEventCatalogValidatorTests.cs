@@ -291,6 +291,19 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Validate_OfficerPresentationWithoutOfficer_ReportsMissingID()
+        {
+            GameEvent gameEvent = CreateEvent("PRESENTATION");
+            gameEvent.Actions.Add(new UpdateOfficerPresentationAction());
+
+            InvalidDataException exception = Assert.Throws<InvalidDataException>(() =>
+                GameEventCatalogValidator.Validate(new[] { gameEvent })
+            );
+
+            StringAssert.Contains("OfficerInstanceID is required", exception.Message);
+        }
+
+        [Test]
         public void Validate_OfficerEffectsWithInvalidConfiguration_ReportsAllProblems()
         {
             GameEvent gameEvent = CreateEvent("EFFECTS");

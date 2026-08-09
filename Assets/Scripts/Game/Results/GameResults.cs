@@ -576,7 +576,7 @@ namespace Rebellion.Game.Results
         public MessageType MessageType { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
-        public string ImageKey { get; set; }
+        public string DetailImageKey { get; set; }
         public string ImagePath { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }

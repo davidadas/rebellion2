@@ -370,8 +370,8 @@ internal static class MessagesWindowProjector
     /// <returns>The explicit key or the category default key.</returns>
     private static string GetDetailImageKey(Message message)
     {
-        if (!string.IsNullOrEmpty(message?.DisplayImageKey))
-            return message.DisplayImageKey;
+        if (!string.IsNullOrEmpty(message?.DetailImageKey))
+            return message.DetailImageKey;
 
         return message?.Type == MessageType.Advice ? "advice" : null;
     }

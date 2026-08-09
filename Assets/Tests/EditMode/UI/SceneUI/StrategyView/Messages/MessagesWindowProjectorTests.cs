@@ -301,7 +301,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             Message message = CreateMessage("message", "Message", MessageType.Conflict);
             MessageDetailImageTheme configuredImage = _theme.DetailImages.First();
-            message.DisplayImageKey = configuredImage.Key;
+            message.DetailImageKey = configuredImage.Key;
 
             MessagesWindowRenderData data = MessagesWindowProjector.Project(
                 _uiContext,

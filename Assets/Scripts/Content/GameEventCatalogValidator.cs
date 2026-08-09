@@ -508,6 +508,10 @@ public static class GameEventCatalogValidator
                 case SetEventVariableAction variable when string.IsNullOrWhiteSpace(variable.Key):
                     errors.Add($"{actionPath}.Key is required.");
                     break;
+                case UpdateOfficerPresentationAction presentation
+                    when string.IsNullOrWhiteSpace(presentation.OfficerInstanceID):
+                    errors.Add($"{actionPath}.OfficerInstanceID is required.");
+                    break;
                 case RequestMovementAction movement:
                     if (string.IsNullOrWhiteSpace(movement.UnitInstanceID))
                         errors.Add($"{actionPath}.UnitInstanceID is required.");

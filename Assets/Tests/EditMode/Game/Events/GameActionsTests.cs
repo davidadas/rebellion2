@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 Title = "{subject} Detects Enemy",
                 Body = "{subject} detected {relatedSubject}.",
-                ImageKey = "mission_report",
+                DetailImageKey = "mission_report",
                 VoicePaths = new Dictionary<string, string>
                 {
                     { "rebels", "rebel-report" },
@@ -545,11 +545,7 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "child",
                 Actions = new List<GameAction>
                 {
-                    new AddMessageAction
-                    {
-                        RecipientFactionInstanceID = "rebels",
-                        Title = "Child",
-                    },
+                    new AddMessageAction { RecipientFactionInstanceID = "rebels", Title = "Child" },
                 },
             };
             GameEvent root = new GameEvent
@@ -671,6 +667,29 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(60, result.CompletionBonusPercent);
             Assert.AreEqual(2, result.InterruptionProgressDivisor);
             Assert.AreEqual("luke.dagobah.completed", result.CompletionVariableKey);
+        }
+
+        [Test]
+        public void UpdateOfficerPresentation_ConfiguredValues_UpdatesOfficer()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, rebelPlanet);
+            UpdateOfficerPresentationAction action = new UpdateOfficerPresentationAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                DisplayImagePath = "jedi-display",
+                SmallDisplayImagePath = "jedi-small-display",
+                EncyclopediaImagePath = "jedi-encyclopedia",
+                UsesAdvancedVoiceLines = true,
+            };
+
+            Assert.IsEmpty(action.Execute(game));
+
+            Assert.AreEqual("jedi-display", luke.DisplayImagePath);
+            Assert.AreEqual("jedi-small-display", luke.SmallDisplayImagePath);
+            Assert.AreEqual("jedi-encyclopedia", luke.EncyclopediaImagePath);
+            Assert.IsTrue(luke.UsesAdvancedVoiceLines);
         }
 
         [Test]

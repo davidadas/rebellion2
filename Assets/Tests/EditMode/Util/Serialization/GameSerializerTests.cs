@@ -480,7 +480,7 @@ namespace Rebellion.Tests.Util.Serialization
                         MessageType = MessageType.Mission,
                         Title = "{subject} Detects Enemy",
                         Body = "{subject} detected {relatedSubject}",
-                        ImageKey = "mission_report",
+                        DetailImageKey = "mission_report",
                         VoicePaths = new Dictionary<string, string>
                         {
                             { "FNALL1", "Alliance/report" },

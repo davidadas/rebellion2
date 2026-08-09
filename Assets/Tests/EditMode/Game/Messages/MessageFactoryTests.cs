@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType = MessageType.Advice,
                         TitleTemplate = "{subject} at {location}",
                         BodyTemplate = "{subject} confronts {relatedSubject} for {faction}",
-                        ImageKey = "mission_report",
+                        DetailImageKey = "mission_report",
                         ImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
                         VoicePath = "Story/dialogue",
@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
             Assert.AreEqual("Luke Skywalker confronts Darth Vader for Alliance", message.Body);
             Assert.AreEqual("Story/image", message.DisplayImagePath);
-            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("mission_report", message.DetailImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);
             Assert.AreEqual("Story/dialogue", message.MessageVoicePath);
             Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
@@ -414,7 +414,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Mission, message.Type);
             Assert.AreEqual("personnel:Yavin", message.Title);
             Assert.AreEqual("body:Luke Skywalker\nHan Solo", message.Body);
-            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("mission_report", message.DetailImageKey);
             Assert.AreEqual("luke-card", message.OverlayImagePath);
         }
 
@@ -577,11 +577,7 @@ namespace Rebellion.Tests.Game.Messages
             List<(Faction faction, Message message)> deliveries = CreateMessages(
                 game,
                 new[] { allianceHeadquarters },
-                new UnitArrivedResult
-                {
-                    Unit = imperialHeadquarters,
-                    Destination = destination,
-                }
+                new UnitArrivedResult { Unit = imperialHeadquarters, Destination = destination }
             );
 
             Assert.IsEmpty(deliveries);
@@ -779,7 +775,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Fleet, message.Type);
             Assert.AreEqual("repaired", message.Title);
             Assert.AreEqual("body:Corellian Corvette:Fleet 1", message.Body);
-            Assert.AreEqual("capital_ship_repaired", message.DisplayImageKey);
+            Assert.AreEqual("capital_ship_repaired", message.DetailImageKey);
             Assert.IsNull(message.DisplayImagePath);
             Assert.IsNull(message.OverlayImagePath);
         }
@@ -891,7 +887,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Fleet, message.Type);
             Assert.AreEqual("full", message.Title);
             Assert.AreEqual("body:X-Wing Squadron:Carrier", message.Body);
-            Assert.AreEqual("starfighter_repaired", message.DisplayImageKey);
+            Assert.AreEqual("starfighter_repaired", message.DetailImageKey);
             Assert.IsNull(message.DisplayImagePath);
             Assert.IsNull(message.OverlayImagePath);
         }
@@ -1912,7 +1908,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("mission_report", message.DetailImageKey);
             Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
         }
 
@@ -1975,7 +1971,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("report:Trainer", message.Title);
             Assert.AreEqual("body:Trainer", message.Body);
-            Assert.AreEqual("mission_report", message.DisplayImageKey);
+            Assert.AreEqual("mission_report", message.DetailImageKey);
             Assert.AreEqual("trainer-card", message.OverlayImagePath);
             Assert.AreEqual("trainer-success", message.OfficerVoicePath);
         }
@@ -2971,7 +2967,9 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(2, deliveries.Count);
-            Assert.IsTrue(deliveries.Any(delivery => delivery.message.Title == "Death Star Sabotaged"));
+            Assert.IsTrue(
+                deliveries.Any(delivery => delivery.message.Title == "Death Star Sabotaged")
+            );
             Assert.IsTrue(
                 deliveries.Any(delivery => delivery.message.Body == "generic:Shield Generator")
             );
@@ -3631,16 +3629,8 @@ namespace Rebellion.Tests.Game.Messages
                         imagePaths: FactionImages()
                     ),
                 },
-                new GameObjectAutoscrappedResult
-                {
-                    DestroyedObject = shipyard,
-                    Context = origin,
-                },
-                new GameObjectAutoscrappedResult
-                {
-                    DestroyedObject = regiment,
-                    Context = origin,
-                }
+                new GameObjectAutoscrappedResult { DestroyedObject = shipyard, Context = origin },
+                new GameObjectAutoscrappedResult { DestroyedObject = regiment, Context = origin }
             );
             Message message = FirstMessageFor(deliveries, alliance);
 
@@ -4057,7 +4047,7 @@ namespace Rebellion.Tests.Game.Messages
                 TitleTemplate = titleTemplate,
                 BodyTemplate = bodyTemplate,
                 ShowOfficerOverlay = showOfficerOverlay,
-                ImageKey = imageKey,
+                DetailImageKey = imageKey,
                 ImagePath = imagePath,
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),
                 VoicePath = voicePath,
