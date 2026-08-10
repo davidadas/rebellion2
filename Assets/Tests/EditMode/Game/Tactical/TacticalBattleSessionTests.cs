@@ -109,6 +109,39 @@ namespace Rebellion.Tests.Game.Tactical
             );
         }
 
+        [Test]
+        public void CreateGroup_UnitsFromOneBattleSide_CreatesTrackedGroup()
+        {
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250), CreateShip(500, 200)),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalUnitState[] attackingUnits = session
+                .Units.Where(unit => unit.Side == TacticalBattleSide.Attacker)
+                .ToArray();
+
+            TacticalShipGroup group = session.CreateGroup(attackingUnits);
+
+            Assert.AreEqual(TacticalBattleSide.Attacker, group.Side);
+            Assert.AreEqual(2, group.Units.Count);
+            Assert.AreSame(group, session.Groups.Single());
+        }
+
+        [Test]
+        public void CreateGroup_UnitsFromOpposingSides_ThrowsArgumentException()
+        {
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+
+            Assert.Throws<ArgumentException>(() => session.CreateGroup(session.Units));
+        }
+
         private static CapitalShip CreateShip(int hull, int shields, params Starfighter[] fighters)
         {
             CapitalShip ship = new CapitalShip
