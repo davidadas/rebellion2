@@ -1,5 +1,6 @@
 using System;
 using Rebellion.Game.Results;
+using Rebellion.Game.Tactical;
 
 /// <summary>
 /// Carries one pending fleet encounter between the strategy and tactical scenes.
@@ -17,12 +18,50 @@ public static class TacticalBattleLaunchContext
     public static PendingCombatResult Encounter { get; private set; }
 
     /// <summary>
+    /// Gets whether a tactical session is waiting to resume after a temporary scene transition.
+    /// </summary>
+    public static bool HasRetainedSession => retainedSession != null;
+
+    private static TacticalBattleSession retainedSession;
+
+    /// <summary>
     /// Stores a pending encounter for the tactical scene.
     /// </summary>
     /// <param name="encounter">The pending encounter to command.</param>
     public static void Open(PendingCombatResult encounter)
     {
         Encounter = encounter ?? throw new ArgumentNullException(nameof(encounter));
+        retainedSession = null;
+    }
+
+    /// <summary>
+    /// Retains the active tactical simulation while a temporary application screen is open.
+    /// </summary>
+    /// <param name="session">The tactical session to retain.</param>
+    public static void RetainSession(TacticalBattleSession session)
+    {
+        if (session == null)
+            throw new ArgumentNullException(nameof(session));
+        if (!ReferenceEquals(session.Encounter, Encounter))
+        {
+            throw new ArgumentException(
+                "The retained tactical session does not represent the pending encounter.",
+                nameof(session)
+            );
+        }
+
+        retainedSession = session;
+    }
+
+    /// <summary>
+    /// Takes the retained tactical session when the tactical scene resumes.
+    /// </summary>
+    /// <returns>The retained session, or null when the encounter has not started.</returns>
+    public static TacticalBattleSession TakeRetainedSession()
+    {
+        TacticalBattleSession session = retainedSession;
+        retainedSession = null;
+        return session;
     }
 
     /// <summary>
@@ -31,5 +70,6 @@ public static class TacticalBattleLaunchContext
     public static void Clear()
     {
         Encounter = null;
+        retainedSession = null;
     }
 }

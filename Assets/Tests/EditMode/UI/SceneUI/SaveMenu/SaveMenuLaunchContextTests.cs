@@ -44,6 +44,18 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu
         }
 
         [Test]
+        public void OpenFromTacticalBattle_CurrentContext_EnablesSavingAndReturnsToBattle()
+        {
+            SaveMenuLaunchContext.OpenFromTacticalBattle();
+
+            Assert.IsTrue(SaveMenuLaunchContext.CanSave);
+            Assert.AreEqual(
+                TacticalBattleLaunchContext.SceneName,
+                SaveMenuLaunchContext.ReturnSceneName
+            );
+        }
+
+        [Test]
         public void Reset_StrategyContext_RestoresMainMenuDefaults()
         {
             SaveMenuLaunchContext.OpenFromStrategyView();

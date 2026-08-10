@@ -63,7 +63,9 @@ public sealed class TacticalBattleController : MonoBehaviour
             );
         }
 
-        Session = TacticalBattleSession.Create(encounter, gameManager.GetGame().Random);
+        Session =
+            TacticalBattleLaunchContext.TakeRetainedSession()
+            ?? TacticalBattleSession.Create(encounter, gameManager.GetGame().Random);
         view = GetComponentInChildren<TacticalBattleView>(true);
         if (view == null)
             throw new MissingReferenceException("Tactical battle view is missing.");
@@ -125,6 +127,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.WithdrawalCancelled += CancelWithdrawal;
         view.ImmediateResultRequested += ResolveImmediately;
         view.CommandModeToggled += ToggleCommandMode;
+        view.SettingsRequested += OpenSettings;
         view.GameOptionsClosed += CloseGameOptions;
         battleRenderer.NavigationPointSelected += SelectNavigationPoint;
         await battleRenderer.InitializeAsync(
@@ -192,6 +195,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.WithdrawalCancelled -= CancelWithdrawal;
             view.ImmediateResultRequested -= ResolveImmediately;
             view.CommandModeToggled -= ToggleCommandMode;
+            view.SettingsRequested -= OpenSettings;
             view.GameOptionsClosed -= CloseGameOptions;
         }
         if (battleRenderer != null)
@@ -245,6 +249,25 @@ public sealed class TacticalBattleController : MonoBehaviour
         selectedCapitalShip = null;
         battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
         view.SetObserving(observing);
+    }
+
+    /// <summary>
+    /// Retains the active battle and opens the common game-options screen.
+    /// </summary>
+    private void OpenSettings()
+    {
+        if (isCompleting)
+            return;
+
+        if (playerPaused)
+        {
+            Session.Resume();
+            playerPaused = false;
+        }
+
+        TacticalBattleLaunchContext.RetainSession(Session);
+        SaveMenuLaunchContext.OpenFromTacticalBattle();
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
     }
 
     /// <summary>

@@ -32,6 +32,15 @@ public static class SaveMenuLaunchContext
     }
 
     /// <summary>
+    /// Configures the save menu as the common options screen for an active tactical battle.
+    /// </summary>
+    public static void OpenFromTacticalBattle()
+    {
+        ReturnSceneName = TacticalBattleLaunchContext.SceneName;
+        CanSave = true;
+    }
+
+    /// <summary>
     /// Restores the default main-menu launch mode.
     /// </summary>
     public static void Reset()

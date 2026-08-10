@@ -229,6 +229,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
         bool hadActiveGame = runtime.HasActiveGame;
         if (!runtime.LoadGame(fileName))
             return false;
+        TacticalBattleLaunchContext.Clear();
         SaveMenuLaunchContext.OpenFromStrategyView();
         if (hadActiveGame)
             AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
@@ -344,13 +345,22 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     /// </summary>
     private void ReturnToLaunchScene()
     {
-        if (
-            SaveMenuLaunchContext.ReturnSceneName == SaveMenuLaunchContext.StrategyViewSceneName
-            && runtime?.HasActiveGame == true
-        )
+        if (runtime?.HasActiveGame == true)
         {
-            AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
-            return;
+            string returnSceneName = SaveMenuLaunchContext.ReturnSceneName;
+            if (returnSceneName == SaveMenuLaunchContext.StrategyViewSceneName)
+            {
+                AppBootstrap.Instance.LoadScene(returnSceneName);
+                return;
+            }
+            if (
+                returnSceneName == TacticalBattleLaunchContext.SceneName
+                && TacticalBattleLaunchContext.HasRetainedSession
+            )
+            {
+                AppBootstrap.Instance.LoadScene(returnSceneName);
+                return;
+            }
         }
 
         ReturnToMainMenu();
@@ -362,6 +372,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     private void ReturnToMainMenu()
     {
         runtime?.EndGame();
+        TacticalBattleLaunchContext.Clear();
         SaveMenuLaunchContext.Reset();
         AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
     }
@@ -372,6 +383,7 @@ public sealed class SaveMenuSceneController : MonoBehaviour
     private void ExitApplication()
     {
         runtime?.EndGame();
+        TacticalBattleLaunchContext.Clear();
         SaveMenuLaunchContext.Reset();
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
