@@ -295,6 +295,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         lodGroup.fadeMode = LODFadeMode.None;
         lodGroup.SetLODs(lods);
         lodGroup.RecalculateBounds();
+        SetCollisionExtents(unit, lods[0].renderers);
         unitView.Initialize(unit);
         unitViews.Add(unitView);
     }
@@ -374,6 +375,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         lodGroup.fadeMode = LODFadeMode.None;
         lodGroup.SetLODs(lods);
         lodGroup.RecalculateBounds();
+        SetCollisionExtents(unit, lods[0].renderers);
         unitView.Initialize(unit);
         unitViews.Add(unitView);
     }
@@ -415,6 +417,27 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         renderer.sprite = sprite;
         fighterBillboards.Add(lodObject.transform);
         return new LOD(screenHeight, new Renderer[] { renderer });
+    }
+
+    /// <summary>
+    /// Measures one unit's close presentation and supplies its physical extents to the simulation.
+    /// </summary>
+    /// <param name="unit">The tactical unit receiving the measured extents.</param>
+    /// <param name="renderers">The renderers that comprise the unit's close presentation.</param>
+    private static void SetCollisionExtents(
+        TacticalUnitState unit,
+        IReadOnlyList<Renderer> renderers
+    )
+    {
+        if (renderers == null || renderers.Count == 0)
+            throw new InvalidOperationException("A tactical unit has no close presentation bounds.");
+
+        Bounds bounds = renderers[0].bounds;
+        for (int index = 1; index < renderers.Count; index++)
+            bounds.Encapsulate(renderers[index].bounds);
+
+        float horizontalExtent = Mathf.Max(bounds.extents.x, bounds.extents.z);
+        unit.SetCollisionExtents(horizontalExtent, bounds.extents.y);
     }
 }
 

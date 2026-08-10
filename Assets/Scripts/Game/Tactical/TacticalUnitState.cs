@@ -109,6 +109,16 @@ namespace Rebellion.Game.Tactical
         public Vector3 Forward { get; set; }
 
         /// <summary>
+        /// Gets the horizontal collision extent measured from the loaded tactical presentation.
+        /// </summary>
+        public float HorizontalExtent { get; private set; }
+
+        /// <summary>
+        /// Gets the vertical collision extent measured from the loaded tactical presentation.
+        /// </summary>
+        public float VerticalExtent { get; private set; }
+
+        /// <summary>
         /// Gets whether the unit is leaving the tactical battlefield.
         /// </summary>
         public bool IsWithdrawing { get; private set; }
@@ -325,6 +335,22 @@ namespace Rebellion.Game.Tactical
         {
             if (IsWithdrawing)
                 HasWithdrawn = true;
+        }
+
+        /// <summary>
+        /// Configures the physical extents used by tactical movement and collision avoidance.
+        /// </summary>
+        /// <param name="horizontalExtent">The radius of the unit in the tactical X/Z plane.</param>
+        /// <param name="verticalExtent">The half-height of the unit on the tactical Y axis.</param>
+        public void SetCollisionExtents(float horizontalExtent, float verticalExtent)
+        {
+            if (horizontalExtent <= 0f)
+                throw new ArgumentOutOfRangeException(nameof(horizontalExtent));
+            if (verticalExtent <= 0f)
+                throw new ArgumentOutOfRangeException(nameof(verticalExtent));
+
+            HorizontalExtent = horizontalExtent;
+            VerticalExtent = verticalExtent;
         }
 
         /// <summary>

@@ -11,6 +11,33 @@ namespace Rebellion.Tests.Game.Tactical
     public class TacticalUnitStateTests
     {
         [Test]
+        public void SetCollisionExtents_PositiveDimensions_StoresPhysicalBounds()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 50);
+
+            unit.SetCollisionExtents(6f, 2f);
+
+            Assert.AreEqual(6f, unit.HorizontalExtent);
+            Assert.AreEqual(2f, unit.VerticalExtent);
+        }
+
+        [TestCase(0f, 1f)]
+        [TestCase(1f, 0f)]
+        [TestCase(-1f, 1f)]
+        [TestCase(1f, -1f)]
+        public void SetCollisionExtents_NonpositiveDimension_ThrowsArgumentOutOfRangeException(
+            float horizontalExtent,
+            float verticalExtent
+        )
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 50);
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                unit.SetCollisionExtents(horizontalExtent, verticalExtent)
+            );
+        }
+
+        [Test]
         public void ApplyDamage_DamageWithinShieldStrength_DamagesOnlyShields()
         {
             TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 50);

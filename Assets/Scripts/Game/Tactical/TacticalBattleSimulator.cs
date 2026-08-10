@@ -336,7 +336,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="unit">The moving unit.</param>
         /// <param name="destination">The desired tactical position.</param>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
-        private static void MoveTowards(
+        private void MoveTowards(
             TacticalUnitState unit,
             Vector3 destination,
             float elapsedTime
@@ -354,7 +354,78 @@ namespace Rebellion.Game.Tactical
                 desiredForward
             );
             float movement = Math.Min(distance, unit.EffectiveSublightSpeed * elapsedTime);
-            unit.Position += unit.Forward * movement;
+            Vector3 candidatePosition = unit.Position + unit.Forward * movement;
+            if (!TryFindCollision(unit, candidatePosition, out TacticalUnitState obstacle))
+            {
+                unit.Position = candidatePosition;
+                return;
+            }
+
+            float clearance = unit.VerticalExtent + obstacle.VerticalExtent;
+            Vector3 upperPosition = new Vector3(
+                candidatePosition.X,
+                obstacle.Position.Y + clearance,
+                candidatePosition.Z
+            );
+            Vector3 lowerPosition = new Vector3(
+                candidatePosition.X,
+                obstacle.Position.Y - clearance,
+                candidatePosition.Z
+            );
+            Vector3 firstClearance =
+                Math.Abs(upperPosition.Y - candidatePosition.Y)
+                    <= Math.Abs(lowerPosition.Y - candidatePosition.Y)
+                    ? upperPosition
+                    : lowerPosition;
+            Vector3 secondClearance = firstClearance == upperPosition ? lowerPosition : upperPosition;
+            if (!TryFindCollision(unit, firstClearance, out _))
+                unit.Position = firstClearance;
+            else if (!TryFindCollision(unit, secondClearance, out _))
+                unit.Position = secondClearance;
+        }
+
+        /// <summary>
+        /// Finds an active tactical object overlapping a unit at a prospective position.
+        /// </summary>
+        /// <param name="unit">The moving unit.</param>
+        /// <param name="position">The prospective center position.</param>
+        /// <param name="obstacle">The first overlapping object, when found.</param>
+        /// <returns>True when the prospective position overlaps another active object.</returns>
+        private bool TryFindCollision(
+            TacticalUnitState unit,
+            Vector3 position,
+            out TacticalUnitState obstacle
+        )
+        {
+            obstacle = null;
+            if (unit.HorizontalExtent <= 0f || unit.VerticalExtent <= 0f)
+                return false;
+
+            foreach (TacticalUnitState candidate in units)
+            {
+                if (
+                    ReferenceEquals(candidate, unit)
+                    || !candidate.IsActive
+                    || candidate.HorizontalExtent <= 0f
+                    || candidate.VerticalExtent <= 0f
+                )
+                    continue;
+
+                float verticalDistance = Math.Abs(position.Y - candidate.Position.Y);
+                if (verticalDistance >= unit.VerticalExtent + candidate.VerticalExtent)
+                    continue;
+
+                float x = position.X - candidate.Position.X;
+                float z = position.Z - candidate.Position.Z;
+                float horizontalClearance = unit.HorizontalExtent + candidate.HorizontalExtent;
+                if (x * x + z * z >= horizontalClearance * horizontalClearance)
+                    continue;
+
+                obstacle = candidate;
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -421,7 +492,7 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="unit">The withdrawing unit.</param>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
-        private static void AdvanceWithdrawal(TacticalUnitState unit, float elapsedTime)
+        private void AdvanceWithdrawal(TacticalUnitState unit, float elapsedTime)
         {
             if (!unit.CanWithdraw)
                 return;

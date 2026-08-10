@@ -436,6 +436,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_MovementWouldCollide_UsesVerticalClearanceLane()
+        {
+            CapitalShip movingShip = CreateShip(600, 0);
+            movingShip.Maneuverability = 10;
+            movingShip.SublightSpeed = 10;
+            CapitalShip stationaryShip = CreateShip(600, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(movingShip, stationaryShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState movingUnit = session.Units.Single(unit => unit.Unit == movingShip);
+            TacticalUnitState stationaryUnit = session.Units.Single(unit =>
+                unit.Unit == stationaryShip
+            );
+            movingUnit.Position = Vector3.Zero;
+            movingUnit.Forward = Vector3.UnitZ;
+            movingUnit.SetCollisionExtents(2.5f, 1f);
+            stationaryUnit.Position = new Vector3(0f, 0f, 5f);
+            stationaryUnit.SetCollisionExtents(2.5f, 1f);
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .ReplaceNavigationPoints(new[] { new TacticalNavPoint(0f, 0f, 10f) });
+
+            session.Advance(0.5f);
+
+            Assert.AreEqual(new Vector3(0f, 2f, 5f), movingUnit.Position);
+        }
+
+        [Test]
         public void Advance_AttackFightersBehavior_TargetsOnlyOpposingFighters()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
