@@ -306,15 +306,10 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         private void AdvanceRecovery(TacticalUnitState unit, float elapsedTime)
         {
-            TacticalUnitState carrier = units
-                .Where(candidate =>
-                    candidate.Side == unit.Side
-                    && candidate.Kind == TacticalUnitKind.CapitalShip
-                    && candidate.IsActive
-                )
-                .OrderBy(candidate => Vector3.DistanceSquared(unit.Position, candidate.Position))
-                .FirstOrDefault();
+            TacticalUnitState carrier = unit.RecoveryTarget;
             if (carrier == null)
+                return;
+            if (!carrier.IsActive)
                 return;
             if (Vector3.Distance(unit.Position, carrier.Position) <= _navigationArrivalDistance)
             {

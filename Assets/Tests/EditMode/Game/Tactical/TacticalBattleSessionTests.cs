@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
@@ -318,6 +319,38 @@ namespace Rebellion.Tests.Game.Tactical
                 session.Units.Single(unit => unit.Kind == TacticalUnitKind.Fighters).Hull
             );
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == defendingShip).Hull);
+        }
+
+        [Test]
+        public void Advance_RecoverBehavior_ReturnsFightersToTheirDeployingCapitalShip()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            fighters.Agility = 10;
+            fighters.SublightSpeed = 10;
+            CapitalShip deployingShip = CreateShip(600, 0, fighters);
+            CapitalShip nearbyShip = CreateShip(600, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(deployingShip, nearbyShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState deployingUnit = session.Units.Single(unit =>
+                unit.Unit == deployingShip
+            );
+            TacticalUnitState nearbyUnit = session.Units.Single(unit => unit.Unit == nearbyShip);
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            deployingUnit.Position = new Vector3(100f, 0f, 0f);
+            nearbyUnit.Position = new Vector3(-1f, 0f, 0f);
+            fighterUnit.Position = Vector3.Zero;
+            session.GetFighterGroups(TacticalBattleSide.Attacker).Single().SetBehavior(
+                TacticalBehavior.Recover
+            );
+
+            session.Advance(1f);
+
+            Assert.Greater(fighterUnit.Position.X, 0f);
         }
 
         [Test]

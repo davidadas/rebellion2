@@ -406,7 +406,8 @@ namespace Rebellion.Game.Tactical
                 )
                     continue;
 
-                units.Add(TacticalUnitState.FromCapitalShip(ship, side));
+                TacticalUnitState capitalUnit = TacticalUnitState.FromCapitalShip(ship, side);
+                units.Add(capitalUnit);
                 foreach (Starfighter fighters in ship.Starfighters)
                 {
                     if (
@@ -417,7 +418,7 @@ namespace Rebellion.Game.Tactical
                     )
                         continue;
 
-                    units.Add(TacticalUnitState.FromFighters(fighters, side));
+                    units.Add(TacticalUnitState.FromFighters(fighters, side, capitalUnit));
                 }
             }
         }

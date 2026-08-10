@@ -44,6 +44,11 @@ namespace Rebellion.Game.Tactical
         public TacticalUnitKind Kind { get; }
 
         /// <summary>
+        /// Gets the capital ship that deployed this fighter unit, when one participated.
+        /// </summary>
+        internal TacticalUnitState RecoveryTarget { get; }
+
+        /// <summary>
         /// Gets the unit's hull strength when the battle began.
         /// </summary>
         public int InitialHull { get; }
@@ -164,6 +169,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="maneuverability">The tactical turning rating.</param>
         /// <param name="damageControl">The chance to repair subsystem damage.</param>
         /// <param name="weaponBatteries">The unit's tactical weapon batteries.</param>
+        /// <param name="recoveryTarget">The capital ship that deployed this unit.</param>
         private TacticalUnitState(
             IGameEntity unit,
             TacticalBattleSide side,
@@ -175,7 +181,8 @@ namespace Rebellion.Game.Tactical
             int sublightSpeed,
             int maneuverability,
             int damageControl,
-            IList<TacticalWeaponBattery> weaponBatteries
+            IList<TacticalWeaponBattery> weaponBatteries,
+            TacticalUnitState recoveryTarget = null
         )
         {
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
@@ -191,6 +198,7 @@ namespace Rebellion.Game.Tactical
             Maneuverability = Math.Max(0, maneuverability);
             this.damageControl = Math.Max(0, damageControl);
             Forward = Vector3.UnitZ;
+            RecoveryTarget = recoveryTarget;
             this.weaponBatteries = new ReadOnlyCollection<TacticalWeaponBattery>(
                 weaponBatteries ?? Array.Empty<TacticalWeaponBattery>()
             );
@@ -229,8 +237,13 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="fighters">The strategic fighter squadron.</param>
         /// <param name="side">The side controlling the squadron.</param>
+        /// <param name="recoveryTarget">The capital ship that deployed the squadron.</param>
         /// <returns>The initialized tactical state.</returns>
-        public static TacticalUnitState FromFighters(Starfighter fighters, TacticalBattleSide side)
+        public static TacticalUnitState FromFighters(
+            Starfighter fighters,
+            TacticalBattleSide side,
+            TacticalUnitState recoveryTarget = null
+        )
         {
             if (fighters == null)
                 throw new ArgumentNullException(nameof(fighters));
@@ -246,7 +259,8 @@ namespace Rebellion.Game.Tactical
                 fighters.SublightSpeed,
                 fighters.Agility,
                 0,
-                CreateFighterBatteries(fighters)
+                CreateFighterBatteries(fighters),
+                recoveryTarget
             );
         }
 
