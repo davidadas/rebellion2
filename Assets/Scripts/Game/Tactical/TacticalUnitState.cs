@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Numerics;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -13,6 +14,9 @@ namespace Rebellion.Game.Tactical
     public sealed class TacticalUnitState
     {
         private readonly ReadOnlyCollection<TacticalWeaponBattery> weaponBatteries;
+        private readonly float[] arcCharge = new float[4];
+        private readonly float[] arcChargeRequired = new float[4];
+        private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
         private float shieldRechargeRemainder;
 
         /// <summary>
@@ -51,6 +55,21 @@ namespace Rebellion.Game.Tactical
         public int ShieldRechargeRate { get; }
 
         /// <summary>
+        /// Gets the weapon energy restored during one tactical time unit.
+        /// </summary>
+        public int WeaponRechargeRate { get; }
+
+        /// <summary>
+        /// Gets the unit's tactical sublight movement rating.
+        /// </summary>
+        public int SublightSpeed { get; }
+
+        /// <summary>
+        /// Gets the unit's tactical turning rating.
+        /// </summary>
+        public int Maneuverability { get; }
+
+        /// <summary>
         /// Gets or sets the unit's current tactical shield strength.
         /// </summary>
         public int Shields { get; set; }
@@ -58,13 +77,46 @@ namespace Rebellion.Game.Tactical
         /// <summary>
         /// Gets whether the unit can continue participating in combat.
         /// </summary>
-        public bool IsActive => Hull > 0;
+        public bool IsActive => Hull > 0 && !HasWithdrawn;
 
         /// <summary>
         /// Gets the capital ship's tactical weapon batteries.
         /// </summary>
         public IReadOnlyList<TacticalWeaponBattery> WeaponBatteries => weaponBatteries;
 
+        /// <summary>
+        /// Gets or sets the unit's center position in tactical space.
+        /// </summary>
+        public Vector3 Position { get; set; }
+
+        /// <summary>
+        /// Gets or sets the normalized direction faced by the unit.
+        /// </summary>
+        public Vector3 Forward { get; set; }
+
+        /// <summary>
+        /// Gets whether the unit is leaving the tactical battlefield.
+        /// </summary>
+        public bool IsWithdrawing { get; private set; }
+
+        /// <summary>
+        /// Gets whether the unit has completed its withdrawal.
+        /// </summary>
+        public bool HasWithdrawn { get; private set; }
+
+        /// <summary>
+        /// Initializes the mutable tactical state for one strategic unit.
+        /// </summary>
+        /// <param name="unit">The represented strategic unit.</param>
+        /// <param name="side">The side controlling the unit.</param>
+        /// <param name="kind">The tactical unit kind.</param>
+        /// <param name="hull">The initial hull strength.</param>
+        /// <param name="shields">The initial shield strength.</param>
+        /// <param name="shieldRechargeRate">The shield recharge rate.</param>
+        /// <param name="weaponRechargeRate">The weapon recharge rate.</param>
+        /// <param name="sublightSpeed">The tactical movement rating.</param>
+        /// <param name="maneuverability">The tactical turning rating.</param>
+        /// <param name="weaponBatteries">The unit's tactical weapon batteries.</param>
         private TacticalUnitState(
             IGameEntity unit,
             TacticalBattleSide side,
@@ -72,6 +124,9 @@ namespace Rebellion.Game.Tactical
             int hull,
             int shields,
             int shieldRechargeRate,
+            int weaponRechargeRate,
+            int sublightSpeed,
+            int maneuverability,
             IList<TacticalWeaponBattery> weaponBatteries
         )
         {
@@ -83,6 +138,10 @@ namespace Rebellion.Game.Tactical
             InitialShields = Math.Max(0, shields);
             Shields = InitialShields;
             ShieldRechargeRate = Math.Max(0, shieldRechargeRate);
+            WeaponRechargeRate = Math.Max(0, weaponRechargeRate);
+            SublightSpeed = Math.Max(0, sublightSpeed);
+            Maneuverability = Math.Max(0, maneuverability);
+            Forward = Vector3.UnitZ;
             this.weaponBatteries = new ReadOnlyCollection<TacticalWeaponBattery>(
                 weaponBatteries ?? Array.Empty<TacticalWeaponBattery>()
             );
@@ -106,6 +165,9 @@ namespace Rebellion.Game.Tactical
                 ship.CurrentHullStrength,
                 ship.MaxShieldStrength,
                 ship.ShieldRechargeRate,
+                ship.WeaponRecharge,
+                ship.SublightSpeed,
+                ship.Maneuverability,
                 ship.PrimaryWeapons.OrderBy(entry => entry.Key)
                     .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
                     .ToList()
@@ -129,9 +191,74 @@ namespace Rebellion.Game.Tactical
                 TacticalUnitKind.Fighters,
                 fighters.CurrentSquadronSize,
                 fighters.CurrentSquadronSize * fighters.ShieldStrength,
-                0,
-                null
+                fighters.CurrentSquadronSize,
+                fighters.CurrentSquadronSize,
+                fighters.SublightSpeed,
+                fighters.Agility,
+                CreateFighterBatteries(fighters)
             );
+        }
+
+        /// <summary>
+        /// Returns the charged weapon strength available from one arc at the given range.
+        /// </summary>
+        /// <param name="arc">The firing arc to inspect.</param>
+        /// <param name="distance">The distance to the prospective target.</param>
+        /// <returns>The available attack strength.</returns>
+        public int GetAvailableAttackStrength(TacticalWeaponArc arc, float distance)
+        {
+            if (distance < 0f)
+                throw new ArgumentOutOfRangeException(nameof(distance));
+            if (!IsArcReady(arc))
+                return 0;
+
+            return weaponBatteries
+                .Where(battery => distance <= battery.Range)
+                .Sum(battery => battery.GetCount(arc));
+        }
+
+        /// <summary>
+        /// Fires every charged weapon family in one arc that can reach the target.
+        /// </summary>
+        /// <param name="arc">The firing arc to discharge.</param>
+        /// <param name="distance">The distance to the target.</param>
+        /// <returns>The independently resolved attacks fired from the arc.</returns>
+        public IReadOnlyList<TacticalAttack> FireArc(TacticalWeaponArc arc, float distance)
+        {
+            if (!IsArcReady(arc))
+                return Array.Empty<TacticalAttack>();
+
+            TacticalAttack[] attacks = weaponBatteries
+                .Where(battery => distance <= battery.Range && battery.GetCount(arc) > 0)
+                .Select(battery => new TacticalAttack(battery.WeaponType, battery.GetCount(arc)))
+                .ToArray();
+            if (attacks.Length == 0)
+                return attacks;
+
+            int index = (int)arc;
+            arcCharge[index] = 0f;
+            arcChargeRequired[index] = attacks.Sum(attack => attack.Strength);
+            if (!rechargingArcs.Contains(arc))
+                rechargingArcs.Enqueue(arc);
+            return attacks;
+        }
+
+        /// <summary>
+        /// Marks the unit as withdrawing from tactical combat.
+        /// </summary>
+        public void BeginWithdrawal()
+        {
+            if (IsActive)
+                IsWithdrawing = true;
+        }
+
+        /// <summary>
+        /// Marks the withdrawing unit as having left tactical combat.
+        /// </summary>
+        public void CompleteWithdrawal()
+        {
+            if (IsWithdrawing)
+                HasWithdrawn = true;
         }
 
         /// <summary>
@@ -151,6 +278,15 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Applies one independently resolved weapon-family attack.
+        /// </summary>
+        /// <param name="attack">The attack to apply.</param>
+        public void ApplyDamage(TacticalAttack attack)
+        {
+            ApplyDamage(attack.Strength);
+        }
+
+        /// <summary>
         /// Advances the unit's continuous tactical recharge state.
         /// </summary>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
@@ -158,6 +294,8 @@ namespace Rebellion.Game.Tactical
         {
             if (elapsedTime < 0f)
                 throw new ArgumentOutOfRangeException(nameof(elapsedTime));
+            AdvanceWeaponRecharge(elapsedTime);
+
             if (!IsActive || Shields >= InitialShields || ShieldRechargeRate == 0)
             {
                 shieldRechargeRemainder = 0f;
@@ -170,6 +308,67 @@ namespace Rebellion.Game.Tactical
             Shields = Math.Min(InitialShields, Shields + wholeRecharge);
             if (Shields == InitialShields)
                 shieldRechargeRemainder = 0f;
+        }
+
+        /// <summary>
+        /// Creates the forward-firing batteries carried by a fighter squadron.
+        /// </summary>
+        /// <param name="fighters">The strategic fighter squadron.</param>
+        /// <returns>The squadron's tactical batteries.</returns>
+        private static IList<TacticalWeaponBattery> CreateFighterBatteries(Starfighter fighters)
+        {
+            return new[]
+            {
+                TacticalWeaponBattery.CreateFighter(
+                    TacticalWeaponType.LaserCannon,
+                    fighters.LaserCannon,
+                    fighters.LaserRange
+                ),
+                TacticalWeaponBattery.CreateFighter(
+                    TacticalWeaponType.IonCannon,
+                    fighters.IonCannon,
+                    fighters.IonRange
+                ),
+                TacticalWeaponBattery.CreateFighter(
+                    TacticalWeaponType.Torpedo,
+                    fighters.Torpedoes,
+                    fighters.TorpedoRange
+                ),
+            };
+        }
+
+        /// <summary>
+        /// Determines whether a firing arc has recovered enough energy to fire.
+        /// </summary>
+        /// <param name="arc">The firing arc to inspect.</param>
+        /// <returns>True when the arc is ready.</returns>
+        private bool IsArcReady(TacticalWeaponArc arc)
+        {
+            int index = (int)arc;
+            return arcChargeRequired[index] <= 0f || arcCharge[index] >= arcChargeRequired[index];
+        }
+
+        /// <summary>
+        /// Applies available weapon energy to discharged arcs in firing order.
+        /// </summary>
+        /// <param name="elapsedTime">The elapsed tactical time.</param>
+        private void AdvanceWeaponRecharge(float elapsedTime)
+        {
+            if (!IsActive || WeaponRechargeRate == 0 || rechargingArcs.Count == 0)
+                return;
+
+            float availableRecharge = WeaponRechargeRate * elapsedTime;
+            while (availableRecharge > 0f && rechargingArcs.Count > 0)
+            {
+                TacticalWeaponArc arc = rechargingArcs.Peek();
+                int index = (int)arc;
+                float remaining = arcChargeRequired[index] - arcCharge[index];
+                float applied = Math.Min(remaining, availableRecharge);
+                arcCharge[index] += applied;
+                availableRecharge -= applied;
+                if (arcCharge[index] >= arcChargeRequired[index])
+                    rechargingArcs.Dequeue();
+            }
         }
     }
 }

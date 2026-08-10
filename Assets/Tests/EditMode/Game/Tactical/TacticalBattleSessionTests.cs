@@ -136,62 +136,57 @@ namespace Rebellion.Tests.Game.Tactical
                 40,
                 state
                     .WeaponBatteries.Single(battery =>
-                        battery.WeaponType == PrimaryWeaponType.Turbolaser
+                        battery.WeaponType == TacticalWeaponType.Turbolaser
                     )
                     .GetCount(TacticalWeaponArc.Starboard)
             );
         }
 
         [Test]
-        public void CreateGroup_UnitsFromOneBattleSide_CreatesTrackedGroup()
+        public void GetTaskForces_TenCapitalShips_PartitionsShipsAcrossThreeSlots()
         {
             PendingCombatResult encounter = new PendingCombatResult
             {
-                AttackerFleet = CreateFleet(CreateShip(600, 250), CreateShip(500, 200)),
+                AttackerFleet = CreateFleet(
+                    Enumerable.Range(0, 10).Select(_ => CreateShip(600, 250)).ToArray()
+                ),
                 DefenderFleet = CreateFleet(CreateShip(450, 175)),
             };
             TacticalBattleSession session = TacticalBattleSession.Create(encounter);
-            TacticalUnitState[] attackingUnits = session
-                .Units.Where(unit => unit.Side == TacticalBattleSide.Attacker)
-                .ToArray();
 
-            TacticalShipGroup group = session.CreateGroup(attackingUnits);
+            System.Collections.Generic.IReadOnlyList<TacticalShipGroup> groups =
+                session.GetTaskForces(TacticalBattleSide.Attacker);
 
-            Assert.AreEqual(TacticalBattleSide.Attacker, group.Side);
-            Assert.AreEqual(2, group.Units.Count);
-            Assert.AreSame(group, session.Groups.Single());
+            Assert.AreEqual(3, groups.Count);
+            CollectionAssert.AreEqual(new[] { 3, 3, 4 }, groups.Select(group => group.Units.Count));
+            Assert.IsTrue(groups.All(group => group.Side == TacticalBattleSide.Attacker));
         }
 
         [Test]
-        public void CreateGroup_UnitsFromOpposingSides_ThrowsArgumentException()
+        public void GetFighterGroups_MultipleSquadronsOfSameType_GroupsByFighterType()
         {
+            Starfighter firstXWing = CreateFighters(12, 10, "CSAL001");
+            Starfighter secondXWing = CreateFighters(12, 10, "CSAL001");
+            Starfighter yWing = CreateFighters(12, 10, "CSAL002");
             PendingCombatResult encounter = new PendingCombatResult
             {
-                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                AttackerFleet = CreateFleet(CreateShip(600, 250, firstXWing, yWing, secondXWing)),
                 DefenderFleet = CreateFleet(CreateShip(450, 175)),
             };
             TacticalBattleSession session = TacticalBattleSession.Create(encounter);
 
-            Assert.Throws<ArgumentException>(() => session.CreateGroup(session.Units));
-        }
+            System.Collections.Generic.IReadOnlyList<TacticalShipGroup> groups =
+                session.GetFighterGroups(TacticalBattleSide.Attacker);
 
-        [Test]
-        public void DeleteGroup_TrackedGroup_RemovesGroup()
-        {
-            PendingCombatResult encounter = new PendingCombatResult
-            {
-                AttackerFleet = CreateFleet(CreateShip(600, 250)),
-                DefenderFleet = CreateFleet(CreateShip(450, 175)),
-            };
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
-            TacticalShipGroup group = session.CreateGroup(
-                session.Units.Where(unit => unit.Side == TacticalBattleSide.Attacker)
+            Assert.AreEqual(2, groups.Count);
+            CollectionAssert.AreEqual(
+                new[] { "CSAL001", "CSAL001" },
+                groups[0].Units.Select(unit => unit.Unit.TypeID)
             );
-
-            bool removed = session.DeleteGroup(group);
-
-            Assert.IsTrue(removed);
-            Assert.IsEmpty(session.Groups);
+            CollectionAssert.AreEqual(
+                new[] { "CSAL002" },
+                groups[1].Units.Select(unit => unit.Unit.TypeID)
+            );
         }
 
         [Test]
@@ -251,6 +246,96 @@ namespace Rebellion.Tests.Game.Tactical
             session.Advance(1f);
 
             Assert.AreEqual(170, attackingUnit.Shields);
+        }
+
+        [Test]
+        public void Advance_PrimaryTargetInWeaponRange_FiresStrongestEligibleArc()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(70, session.Units.Single(unit => unit.Unit == defendingShip).Hull);
+        }
+
+        [Test]
+        public void Advance_AttackFightersBehavior_TargetsOnlyOpposingFighters()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 6, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(100, 0, CreateFighters(12, 0));
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            group.SetBehavior(TacticalBehavior.AttackFighters);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(
+                6,
+                session.Units.Single(unit => unit.Kind == TacticalUnitKind.Fighters).Hull
+            );
+            Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == defendingShip).Hull);
+        }
+
+        [Test]
+        public void Advance_OpposingLethalAttacks_ResolvesBothAttacksBeforeCompletingBattle()
+        {
+            CapitalShip attackingShip = CreateShip(30, 0);
+            CapitalShip defendingShip = CreateShip(30, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            defendingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+            SpaceCombatResult result = session.BuildResult();
+
+            Assert.AreEqual(CombatSide.Draw, result.Winner);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+        }
+
+        [Test]
+        public void Advance_WithdrawBehavior_WithdrawsGroupAndCompletesSideOutcome()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.SublightSpeed = 100;
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(450, 0)),
+                }
+            );
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            group.SetBehavior(TacticalBehavior.Withdraw);
+
+            session.Advance(2f);
+            SpaceCombatResult result = session.BuildResult();
+
+            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(CombatSide.Defender, result.Winner);
         }
 
         [Test]
@@ -330,10 +415,15 @@ namespace Rebellion.Tests.Game.Tactical
             );
         }
 
-        private static Starfighter CreateFighters(int squadronSize, int shieldStrength)
+        private static Starfighter CreateFighters(
+            int squadronSize,
+            int shieldStrength,
+            string typeId = null
+        )
         {
             return new Starfighter
             {
+                TypeID = typeId,
                 CurrentSquadronSize = squadronSize,
                 MaxSquadronSize = Math.Max(squadronSize, 1),
                 ShieldStrength = shieldStrength,

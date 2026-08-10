@@ -4,6 +4,54 @@ using Rebellion.Game.Units;
 namespace Rebellion.Game.Tactical
 {
     /// <summary>
+    /// Identifies a weapon type used by the tactical simulation.
+    /// </summary>
+    public enum TacticalWeaponType
+    {
+        /// <summary>Heavy anti-ship energy weapons.</summary>
+        Turbolaser,
+
+        /// <summary>Ion weapons that primarily attack shields and systems.</summary>
+        IonCannon,
+
+        /// <summary>Rapid energy weapons used by ships and fighters.</summary>
+        LaserCannon,
+
+        /// <summary>Fighter-launched proton torpedoes.</summary>
+        Torpedo,
+    }
+
+    /// <summary>
+    /// Describes one weapon-family attack resolved by the tactical simulation.
+    /// </summary>
+    public readonly struct TacticalAttack
+    {
+        /// <summary>
+        /// Gets the weapon family that produced the attack.
+        /// </summary>
+        public TacticalWeaponType WeaponType { get; }
+
+        /// <summary>
+        /// Gets the attack strength.
+        /// </summary>
+        public int Strength { get; }
+
+        /// <summary>
+        /// Initializes a tactical attack.
+        /// </summary>
+        /// <param name="weaponType">The weapon family that produced the attack.</param>
+        /// <param name="strength">The nonnegative attack strength.</param>
+        public TacticalAttack(TacticalWeaponType weaponType, int strength)
+        {
+            if (strength < 0)
+                throw new ArgumentOutOfRangeException(nameof(strength));
+
+            WeaponType = weaponType;
+            Strength = strength;
+        }
+    }
+
+    /// <summary>
     /// Describes one capital ship weapon type across its four firing arcs.
     /// </summary>
     public sealed class TacticalWeaponBattery
@@ -18,15 +66,24 @@ namespace Rebellion.Game.Tactical
         /// <summary>
         /// Gets the weapon type represented by this battery.
         /// </summary>
-        public PrimaryWeaponType WeaponType { get; }
+        public TacticalWeaponType WeaponType { get; }
 
         /// <summary>
         /// Gets the weapon range.
         /// </summary>
         public int Range { get; }
 
+        /// <summary>
+        /// Initializes one weapon family across the four tactical firing arcs.
+        /// </summary>
+        /// <param name="weaponType">The tactical weapon family.</param>
+        /// <param name="fore">The forward-arc weapon count.</param>
+        /// <param name="aft">The aft-arc weapon count.</param>
+        /// <param name="port">The port-arc weapon count.</param>
+        /// <param name="starboard">The starboard-arc weapon count.</param>
+        /// <param name="range">The weapon range.</param>
         private TacticalWeaponBattery(
-            PrimaryWeaponType weaponType,
+            TacticalWeaponType weaponType,
             int fore,
             int aft,
             int port,
@@ -62,13 +119,29 @@ namespace Rebellion.Game.Tactical
                 );
 
             return new TacticalWeaponBattery(
-                weaponType,
+                (TacticalWeaponType)weaponType,
                 values[ForeIndex],
                 values[AftIndex],
                 values[PortIndex],
                 values[StarboardIndex],
                 values[RangeIndex]
             );
+        }
+
+        /// <summary>
+        /// Creates a forward-firing tactical battery for a fighter weapon.
+        /// </summary>
+        /// <param name="weaponType">The tactical weapon type.</param>
+        /// <param name="strength">The weapon strength.</param>
+        /// <param name="range">The weapon range.</param>
+        /// <returns>The initialized tactical battery.</returns>
+        public static TacticalWeaponBattery CreateFighter(
+            TacticalWeaponType weaponType,
+            int strength,
+            int range
+        )
+        {
+            return new TacticalWeaponBattery(weaponType, strength, 0, 0, 0, range);
         }
 
         /// <summary>

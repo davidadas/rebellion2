@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Game.Tactical
                 values
             );
 
-            Assert.AreEqual(PrimaryWeaponType.Turbolaser, battery.WeaponType);
+            Assert.AreEqual(TacticalWeaponType.Turbolaser, battery.WeaponType);
             Assert.AreEqual(10, battery.GetCount(TacticalWeaponArc.Fore));
             Assert.AreEqual(20, battery.GetCount(TacticalWeaponArc.Aft));
             Assert.AreEqual(30, battery.GetCount(TacticalWeaponArc.Port));

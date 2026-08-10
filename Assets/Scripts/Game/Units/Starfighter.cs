@@ -13,6 +13,11 @@ namespace Rebellion.Game.Units
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the content-address prefix for this squadron's tactical sprites.
+        /// </summary>
+        public string TacticalSpritePath { get; set; }
+
         // Construction Info.
         public int ConstructionCost { get; set; }
         public int MaintenanceCost { get; set; }

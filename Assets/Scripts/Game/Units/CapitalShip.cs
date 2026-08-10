@@ -33,6 +33,11 @@ namespace Rebellion.Game.Units
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the content-address prefix for this ship's tactical model LODs.
+        /// </summary>
+        public string TacticalModelPath { get; set; }
+
         // Manufacture Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }

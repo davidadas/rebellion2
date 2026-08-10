@@ -102,6 +102,17 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Enables only command slots that contain units for the played side.
+    /// </summary>
+    /// <param name="taskForceCount">The number of populated capital task-force slots.</param>
+    /// <param name="fighterGroupCount">The number of populated fighter-type slots.</param>
+    public void SetGroupAvailability(int taskForceCount, int fighterGroupCount)
+    {
+        SetAvailableButtons(taskForceButtons, taskForceCount);
+        SetAvailableButtons(fighterGroupButtons, fighterGroupCount);
+    }
+
+    /// <summary>
     /// Connects generated buttons after Unity has restored their serialized references.
     /// </summary>
     private void Awake()
@@ -125,6 +136,20 @@ public sealed class TacticalBattleView : MonoBehaviour
             int index = i;
             buttons[i].onClick.AddListener(() => handler(index));
         }
+    }
+
+    /// <summary>
+    /// Enables the populated prefix of a fixed tactical button bank.
+    /// </summary>
+    /// <param name="buttons">The fixed button bank.</param>
+    /// <param name="availableCount">The number of populated slots.</param>
+    private static void SetAvailableButtons(Button[] buttons, int availableCount)
+    {
+        if (availableCount < 0 || availableCount > buttons.Length)
+            throw new ArgumentOutOfRangeException(nameof(availableCount));
+
+        for (int index = 0; index < buttons.Length; index++)
+            buttons[index].interactable = index < availableCount;
     }
 
     /// <summary>

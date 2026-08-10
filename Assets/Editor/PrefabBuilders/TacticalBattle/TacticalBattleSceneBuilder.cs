@@ -27,6 +27,7 @@ public static class TacticalBattleSceneBuilder
 
         ConfigureEnvironment();
         GameObject root = CreateSceneController();
+        CreateBattleSpace(root.transform);
         CreateCamera();
         CreateLight();
         CreateHud(root.transform);
@@ -60,6 +61,17 @@ public static class TacticalBattleSceneBuilder
         GameObject root = new GameObject(TacticalBattleLaunchContext.SceneName);
         root.AddComponent<TacticalBattleController>();
         return root;
+    }
+
+    /// <summary>
+    /// Creates the runtime-owned hierarchy for tactical unit presentation.
+    /// </summary>
+    /// <param name="parent">The tactical scene root.</param>
+    private static void CreateBattleSpace(Transform parent)
+    {
+        GameObject battleSpace = new GameObject("BattleSpace");
+        battleSpace.transform.SetParent(parent, false);
+        battleSpace.AddComponent<TacticalBattleRenderer>();
     }
 
     /// <summary>

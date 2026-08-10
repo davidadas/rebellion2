@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -26,6 +27,29 @@ namespace Rebellion.Tests.Content
             Assert.AreSame(first, second);
             Assert.AreEqual(FilterMode.Point, first.filterMode);
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
+        }
+
+        [Test]
+        public void GetTexture_ConfiguredTacticalFighterSprites_LoadsEveryGroupColorAndLod()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            using ContentAssets assets = CreateAssets(pack);
+            string[] colors = { "red", "blue", "green", "gold", "gray" };
+            string[] lods = { "close", "far" };
+
+            foreach (Starfighter fighters in pack.GameData.Starfighters)
+            {
+                Assert.IsNotEmpty(fighters.TacticalSpritePath, fighters.TypeID);
+                foreach (string color in colors)
+                {
+                    foreach (string lod in lods)
+                    {
+                        string address = $"{fighters.TacticalSpritePath}/{color}-{lod}";
+
+                        Assert.IsNotNull(assets.GetTexture(address), address);
+                    }
+                }
+            }
         }
 
         [Test]

@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
@@ -68,6 +69,28 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.Throws<MissingReferenceException>(() =>
                 UIComponentTestHelper.InvokeLifecycle(view, "Awake")
             );
+        }
+
+        [Test]
+        public void SetGroupAvailability_PopulatedSlots_DisablesEmptySlots()
+        {
+            Button[] taskForces = CreateButtons(8, "TaskForce");
+            Button[] fighterGroups = CreateButtons(4, "FighterGroup");
+            RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
+            view.Configure(
+                taskForces,
+                fighterGroups,
+                CreateButtons(4, "NavigationSet"),
+                pauseButton,
+                pauseImage
+            );
+
+            view.SetGroupAvailability(3, 2);
+
+            Assert.IsTrue(taskForces.Take(3).All(button => button.interactable));
+            Assert.IsTrue(taskForces.Skip(3).All(button => !button.interactable));
+            Assert.IsTrue(fighterGroups.Take(2).All(button => button.interactable));
+            Assert.IsTrue(fighterGroups.Skip(2).All(button => !button.interactable));
         }
 
         private Button[] CreateButtons(int count, string name)

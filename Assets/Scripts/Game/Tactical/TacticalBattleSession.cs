@@ -16,7 +16,16 @@ namespace Rebellion.Game.Tactical
     {
         private readonly List<TacticalShipGroup> groups = new List<TacticalShipGroup>();
         private readonly ReadOnlyCollection<TacticalShipGroup> groupView;
+        private readonly Dictionary<
+            TacticalBattleSide,
+            IReadOnlyList<TacticalShipGroup>
+        > fighterGroups = new Dictionary<TacticalBattleSide, IReadOnlyList<TacticalShipGroup>>();
+        private readonly Dictionary<
+            TacticalBattleSide,
+            IReadOnlyList<TacticalShipGroup>
+        > taskForces = new Dictionary<TacticalBattleSide, IReadOnlyList<TacticalShipGroup>>();
         private readonly ReadOnlyCollection<TacticalUnitState> units;
+        private readonly TacticalBattleSimulator simulator;
         private int pauseCount;
 
         /// <summary>
@@ -51,6 +60,8 @@ namespace Rebellion.Game.Tactical
             Encounter = encounter;
             groupView = groups.AsReadOnly();
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
+            BuildCommandGroups();
+            simulator = new TacticalBattleSimulator(this.units, groupView);
         }
 
         /// <summary>
@@ -104,8 +115,8 @@ namespace Rebellion.Game.Tactical
                 DefenderOwnerInstanceID = Encounter.DefenderOwnerInstanceID,
                 Planet = Encounter.Planet,
                 Winner = DetermineWinner(attackerActive, defenderActive),
-                AttackerOutcome = GetOutcome(attackerActive),
-                DefenderOutcome = GetOutcome(defenderActive),
+                AttackerOutcome = GetOutcome(TacticalBattleSide.Attacker),
+                DefenderOutcome = GetOutcome(TacticalBattleSide.Defender),
                 Tick = Encounter.Tick,
                 AttackingUnits = CaptureUnits(TacticalBattleSide.Attacker),
                 DefendingUnits = CaptureUnits(TacticalBattleSide.Defender),
@@ -143,47 +154,25 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Creates a command group from units on one side of this battle.
+        /// Gets the capital-ship task forces assigned to one side's eight HUD slots.
         /// </summary>
-        /// <param name="selectedUnits">The units to assign to the group.</param>
-        /// <returns>The initialized tactical ship group.</returns>
-        public TacticalShipGroup CreateGroup(IEnumerable<TacticalUnitState> selectedUnits)
+        /// <param name="side">The side whose task forces to retrieve.</param>
+        /// <returns>The task forces in HUD order.</returns>
+        public IReadOnlyList<TacticalShipGroup> GetTaskForces(TacticalBattleSide side)
         {
-            if (selectedUnits == null)
-                throw new ArgumentNullException(nameof(selectedUnits));
-
-            List<TacticalUnitState> groupUnits = selectedUnits.Distinct().ToList();
-            if (groupUnits.Count == 0)
-                throw new ArgumentException(
-                    "A ship group requires at least one unit.",
-                    nameof(selectedUnits)
-                );
-            if (groupUnits.Any(unit => unit == null || !units.Contains(unit)))
-                throw new ArgumentException(
-                    "Every ship group unit must belong to this battle.",
-                    nameof(selectedUnits)
-                );
-
-            TacticalBattleSide side = groupUnits[0].Side;
-            if (groupUnits.Any(unit => unit.Side != side))
-                throw new ArgumentException(
-                    "Every ship group unit must belong to the same side.",
-                    nameof(selectedUnits)
-                );
-
-            TacticalShipGroup group = new TacticalShipGroup(side, units, groupUnits);
-            groups.Add(group);
-            return group;
+            ValidateSide(side);
+            return taskForces[side];
         }
 
         /// <summary>
-        /// Deletes a tactical command group from this battle.
+        /// Gets the fighter-type groups assigned to one side's four HUD slots.
         /// </summary>
-        /// <param name="group">The group to delete.</param>
-        /// <returns>True when the group belonged to this battle.</returns>
-        public bool DeleteGroup(TacticalShipGroup group)
+        /// <param name="side">The side whose fighter groups to retrieve.</param>
+        /// <returns>The fighter groups in HUD order.</returns>
+        public IReadOnlyList<TacticalShipGroup> GetFighterGroups(TacticalBattleSide side)
         {
-            return groups.Remove(group);
+            ValidateSide(side);
+            return fighterGroups[side];
         }
 
         /// <summary>
@@ -218,6 +207,8 @@ namespace Rebellion.Game.Tactical
 
             foreach (TacticalShipGroup group in groups)
                 group.RemoveInactiveTargets();
+
+            simulator.Advance(elapsedTime);
         }
 
         private static CombatSide DetermineWinner(bool attackerActive, bool defenderActive)
@@ -228,9 +219,107 @@ namespace Rebellion.Game.Tactical
             return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
         }
 
-        private static SpaceCombatSideOutcome GetOutcome(bool isActive)
+        /// <summary>
+        /// Builds the fixed capital and fighter command slots used by the tactical HUD.
+        /// </summary>
+        private void BuildCommandGroups()
         {
-            return isActive ? SpaceCombatSideOutcome.Active : SpaceCombatSideOutcome.Destroyed;
+            foreach (TacticalBattleSide side in Enum.GetValues(typeof(TacticalBattleSide)))
+            {
+                TacticalUnitState[] sideUnits = units.Where(unit => unit.Side == side).ToArray();
+                IReadOnlyList<TacticalShipGroup> sideTaskForces = BuildTaskForces(
+                    side,
+                    sideUnits.Where(unit => unit.Kind == TacticalUnitKind.CapitalShip).ToArray()
+                );
+                IReadOnlyList<TacticalShipGroup> sideFighterGroups = BuildFighterGroups(
+                    side,
+                    sideUnits.Where(unit => unit.Kind == TacticalUnitKind.Fighters).ToArray()
+                );
+
+                taskForces.Add(side, sideTaskForces);
+                fighterGroups.Add(side, sideFighterGroups);
+                groups.AddRange(sideTaskForces);
+                groups.AddRange(sideFighterGroups);
+            }
+        }
+
+        /// <summary>
+        /// Partitions capital ships into the source game's square-root task-force layout.
+        /// </summary>
+        /// <param name="side">The side that owns the capital ships.</param>
+        /// <param name="capitalShips">The capital ships in battle order.</param>
+        /// <returns>Up to eight task forces in HUD order.</returns>
+        private IReadOnlyList<TacticalShipGroup> BuildTaskForces(
+            TacticalBattleSide side,
+            IReadOnlyList<TacticalUnitState> capitalShips
+        )
+        {
+            if (capitalShips.Count == 0)
+                return Array.Empty<TacticalShipGroup>();
+
+            int groupCount = Math.Min(
+                8,
+                Math.Max(1, (int)Math.Floor(Math.Sqrt(capitalShips.Count)))
+            );
+            int unitsPerGroup = capitalShips.Count / groupCount;
+            List<TacticalShipGroup> result = new List<TacticalShipGroup>(groupCount);
+            for (int index = 0; index < capitalShips.Count; index++)
+            {
+                if (index % unitsPerGroup == 0 && result.Count < groupCount)
+                    result.Add(
+                        new TacticalShipGroup(side, units, Array.Empty<TacticalUnitState>())
+                    );
+
+                result[result.Count - 1].AddUnit(capitalShips[index]);
+            }
+
+            return result.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Groups fighter squadrons by fighter type for the four fixed fighter controls.
+        /// </summary>
+        /// <param name="side">The side that owns the fighter squadrons.</param>
+        /// <param name="fighters">The fighter squadrons in battle order.</param>
+        /// <returns>Up to four fighter-type groups in HUD order.</returns>
+        private IReadOnlyList<TacticalShipGroup> BuildFighterGroups(
+            TacticalBattleSide side,
+            IEnumerable<TacticalUnitState> fighters
+        )
+        {
+            List<IGrouping<string, TacticalUnitState>> typeGroups = fighters
+                .GroupBy(unit => unit.Unit.TypeID ?? string.Empty)
+                .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .ToList();
+            if (typeGroups.Count > 4)
+                throw new InvalidOperationException(
+                    "A tactical side cannot field more than four fighter types."
+                );
+
+            return typeGroups
+                .ConvertAll(group => new TacticalShipGroup(side, units, group))
+                .AsReadOnly();
+        }
+
+        /// <summary>
+        /// Rejects an undefined tactical side before indexing fixed command slots.
+        /// </summary>
+        /// <param name="side">The side to validate.</param>
+        private static void ValidateSide(TacticalBattleSide side)
+        {
+            if (!Enum.IsDefined(typeof(TacticalBattleSide), side))
+                throw new ArgumentOutOfRangeException(nameof(side));
+        }
+
+        private SpaceCombatSideOutcome GetOutcome(TacticalBattleSide side)
+        {
+            TacticalUnitState[] sideUnits = units.Where(unit => unit.Side == side).ToArray();
+            if (sideUnits.Any(unit => unit.IsActive))
+                return SpaceCombatSideOutcome.Active;
+            if (sideUnits.Any(unit => unit.Hull > 0))
+                return SpaceCombatSideOutcome.Withdrawn;
+
+            return SpaceCombatSideOutcome.Destroyed;
         }
 
         private bool HasActiveUnits(TacticalBattleSide side)
@@ -276,7 +365,7 @@ namespace Rebellion.Game.Tactical
                     .Select(unit => unit.Unit)
                     .OfType<ISceneNode>(),
                 sideUnits
-                    .Where(unit => !unit.IsActive)
+                    .Where(unit => unit.Hull <= 0)
                     .Select(unit => unit.Unit)
                     .OfType<ISceneNode>()
             );
