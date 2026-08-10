@@ -24,6 +24,8 @@ public class FactionTheme
 
     public TacticalHUDLayout TacticalHUDLayout { get; set; }
 
+    public TacticalBattleTheme TacticalBattle { get; set; }
+
     public StrategyAdvisorTheme StrategyAdvisor { get; set; }
 
     public StrategyBriefingTheme StrategyBriefing { get; set; }

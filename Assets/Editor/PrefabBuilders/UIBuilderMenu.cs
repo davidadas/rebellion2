@@ -1,6 +1,8 @@
 using System;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 /// <summary>
@@ -44,6 +46,8 @@ public static class UIBuilderMenu
         );
         foreach (string prefabGuid in prefabGuids)
             RemoveDevelopmentContentReferences(AssetDatabase.GUIDToAssetPath(prefabGuid));
+
+        RemoveDevelopmentContentReferencesFromScene(TacticalBattleSceneBuilder.ScenePath);
 
         SaveAndRefresh();
     }
@@ -122,6 +126,31 @@ public static class UIBuilderMenu
         {
             PrefabUtility.UnloadPrefabContents(root);
         }
+    }
+
+    /// <summary>
+    /// Removes development-content references from every component in one generated scene.
+    /// </summary>
+    /// <param name="scenePath">The generated scene path.</param>
+    private static void RemoveDevelopmentContentReferencesFromScene(string scenePath)
+    {
+        Scene scene = SceneManager.GetSceneByPath(scenePath);
+        bool openedForStripping = !scene.IsValid() || !scene.isLoaded;
+        if (openedForStripping)
+            scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
+
+        bool changed = false;
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            VerifyRuntimeContentBindings(root, scenePath);
+            foreach (Component component in root.GetComponentsInChildren<Component>(true))
+                changed |= RemoveDevelopmentContentReferences(component);
+        }
+
+        if (changed)
+            EditorSceneManager.SaveScene(scene);
+        if (openedForStripping)
+            EditorSceneManager.CloseScene(scene, true);
     }
 
     /// <summary>
