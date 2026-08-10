@@ -92,6 +92,8 @@ Assets/TextMesh Pro/
 
 # Misc
 *.md
+AGENTS.md
+CLAUDE.md
 !README.md
 !/CONTRIBUTING.md
 !/Docs/

@@ -16,6 +16,24 @@ namespace Rebellion.Game.Missions
         private readonly GameRoot _game;
         private static readonly List<MissionOption> _options = new List<MissionOption>
         {
+            new MissionOption(
+                ResearchMission.MissionTypeID,
+                "Ship Design Research",
+                OfficerRating.ShipResearch,
+                discipline: ResearchDiscipline.ShipDesign
+            ),
+            new MissionOption(
+                ResearchMission.MissionTypeID,
+                "Troop Training Research",
+                OfficerRating.TroopResearch,
+                discipline: ResearchDiscipline.TroopTraining
+            ),
+            new MissionOption(
+                ResearchMission.MissionTypeID,
+                "Facility Design Research",
+                OfficerRating.FacilityResearch,
+                discipline: ResearchDiscipline.FacilityDesign
+            ),
             new MissionOption(DiplomacyMission.MissionTypeID, "Diplomacy", OfficerRating.Diplomacy),
             new MissionOption(
                 RecruitmentMission.MissionTypeID,
@@ -62,24 +80,6 @@ namespace Rebellion.Game.Missions
                 "Reconnaissance",
                 OfficerRating.Espionage,
                 OfficerRating.Espionage
-            ),
-            new MissionOption(
-                ResearchMission.MissionTypeID,
-                "Ship Design Research",
-                OfficerRating.ShipResearch,
-                discipline: ResearchDiscipline.ShipDesign
-            ),
-            new MissionOption(
-                ResearchMission.MissionTypeID,
-                "Troop Training Research",
-                OfficerRating.TroopResearch,
-                discipline: ResearchDiscipline.TroopTraining
-            ),
-            new MissionOption(
-                ResearchMission.MissionTypeID,
-                "Facility Design Research",
-                OfficerRating.FacilityResearch,
-                discipline: ResearchDiscipline.FacilityDesign
             ),
             new MissionOption(
                 JediTrainingMission.MissionTypeID,

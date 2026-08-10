@@ -86,7 +86,6 @@ namespace Rebellion.Game.Units
         public bool CanBetray { get; set; }
         public bool IsTraitor { get; set; }
         public int Loyalty { get; set; }
-        public int HyperdriveModifier { get; set; }
 
         // Injury Info.
         public int InjuryPoints { get; set; }

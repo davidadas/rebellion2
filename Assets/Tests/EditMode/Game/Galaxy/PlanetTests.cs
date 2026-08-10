@@ -895,6 +895,28 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
+        public void IsBlockadedFor_OpposingFaction_ReturnsTrue()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            _planet.AddChild(enemyFleet);
+
+            bool isBlockaded = _planet.IsBlockadedFor("FNALL1");
+
+            Assert.IsTrue(isBlockaded);
+        }
+
+        [Test]
+        public void IsBlockadedFor_BlockadingFaction_ReturnsFalse()
+        {
+            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
+            _planet.AddChild(enemyFleet);
+
+            bool isBlockaded = _planet.IsBlockadedFor("ENEMY");
+
+            Assert.IsFalse(isBlockaded);
+        }
+
+        [Test]
         public void GetBlockadeModifier_ActiveShipsAndFighters_ReducesProduction()
         {
             Fleet enemyFleet = CreateOperationalFleet("ENEMY");

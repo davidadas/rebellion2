@@ -335,7 +335,10 @@ public sealed class FinderWindowController
         FinderWindowRowBuilder builder = new FinderWindowRowBuilder(
             sectors,
             uiContext.Game?.GetFactions(),
-            uiContext.GetPlayerFactionInstanceID()
+            uiContext.GetPlayerFactionInstanceID(),
+            factionId => uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.TroopColumnTypeIDs,
+            factionId =>
+                uiContext.GetTheme(factionId)?.StrategyWindows?.Finder?.SpecialForcesColumnTypeIDs
         );
         List<FinderWindowTab> tabs = builder.GetTabs(session.Mode);
         session.ReconcileTabCount(tabs.Count);
@@ -449,6 +452,7 @@ internal sealed class FinderWindowSession
     {
         Window = window ?? throw new ArgumentNullException(nameof(window));
         Mode = mode;
+        activeTab = mode == FinderMode.Fleets ? 1 : 0;
         ProjectedTabs = Array.Empty<FinderWindowTab>();
         ProjectedRows = Array.Empty<FinderWindowRow>();
     }

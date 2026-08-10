@@ -54,6 +54,7 @@ internal static class FinderWindowProjector
             throw new ArgumentNullException(nameof(session));
 
         FinderWindowTheme playerTheme = GetFinderTheme(uiContext, null);
+        FinderWindowTab activeTab = GetItem(tabs, session.ActiveTab);
         return new FinderWindowRenderData(
             session.Mode,
             session.Panel,
@@ -62,7 +63,7 @@ internal static class FinderWindowProjector
             session.SearchText,
             GetWindowTitle(session.Mode, session.Panel),
             GetWindowLabel(session.Mode, session.Panel),
-            GetTabText(uiContext, session.Mode, session.Panel, GetItem(tabs, session.ActiveTab)),
+            GetTabText(uiContext, session.Mode, session.Panel, activeTab),
             new FinderWindowFrameRenderData(
                 window.X,
                 window.Y,
@@ -70,7 +71,13 @@ internal static class FinderWindowProjector
                 window.Height,
                 window.ActiveWindow,
                 useUpperButtonLayout,
-                GetBackgroundTexture(uiContext, playerTheme, session.Mode, session.Panel),
+                GetBackgroundTexture(
+                    uiContext,
+                    playerTheme,
+                    session.Mode,
+                    session.Panel,
+                    activeTab
+                ),
                 GetTexture(uiContext, playerTheme?.OverlayFrameImagePath),
                 GetButtonStripTexture(uiContext, playerTheme, session.Mode, useUpperButtonLayout),
                 CreateDialogButtons(uiContext, playerTheme, session.Mode, session.Panel)
@@ -239,10 +246,10 @@ internal static class FinderWindowProjector
     }
 
     /// <summary>
-    /// Converts positive count values to Finder row text.
+    /// Converts count values to fixed Finder column text.
     /// </summary>
     /// <param name="counts">The projected aggregate counts.</param>
-    /// <returns>The non-zero count strings.</returns>
+    /// <returns>One string per Finder column, with zero counts represented by empty text.</returns>
     private static IReadOnlyList<string> CreateCountText(IReadOnlyList<int> counts)
     {
         if (counts == null || counts.Count == 0)
@@ -250,10 +257,7 @@ internal static class FinderWindowProjector
 
         List<string> result = new List<string>(counts.Count);
         for (int i = 0; i < counts.Count; i++)
-        {
-            if (counts[i] > 0)
-                result.Add(counts[i].ToString());
-        }
+            result.Add(counts[i] > 0 ? counts[i].ToString() : string.Empty);
 
         return FinderWindowRenderData.Copy(result);
     }
@@ -321,21 +325,27 @@ internal static class FinderWindowProjector
     /// <param name="theme">The player Finder theme.</param>
     /// <param name="mode">The active Finder category.</param>
     /// <param name="panel">Whether the alternate results panel is active.</param>
+    /// <param name="activeTab">The active semantic Finder tab.</param>
     /// <returns>The resolved background texture, or null.</returns>
     private static Texture GetBackgroundTexture(
         UIContext uiContext,
         FinderWindowTheme theme,
         FinderMode mode,
-        bool panel
+        bool panel,
+        FinderWindowTab activeTab
     )
     {
+        FinderWindowTheme activeTheme =
+            mode == FinderMode.Troops && !string.IsNullOrEmpty(activeTab?.FactionInstanceId)
+                ? GetFinderTheme(uiContext, activeTab.FactionInstanceId)
+                : theme;
         string path = mode switch
         {
             FinderMode.Systems => theme?.SystemFinderBackgroundImagePath,
             FinderMode.Fleets => panel
                 ? theme?.ShipFinderBackgroundImagePath
                 : theme?.FleetFinderBackgroundImagePath,
-            FinderMode.Troops => theme?.TroopFinderBackgroundImagePath,
+            FinderMode.Troops => activeTheme?.TroopFinderBackgroundImagePath,
             FinderMode.Personnel => panel
                 ? theme?.SpecialForcesFinderBackgroundImagePath
                 : theme?.PersonnelFinderBackgroundImagePath,

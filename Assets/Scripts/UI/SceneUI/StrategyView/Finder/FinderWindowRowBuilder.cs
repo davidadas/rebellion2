@@ -16,6 +16,8 @@ public sealed class FinderWindowRowBuilder
     private readonly IReadOnlyList<GalaxyMapSector> sectors;
     private readonly IReadOnlyList<Faction> factions;
     private readonly string playerFactionId;
+    private readonly Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds;
+    private readonly Func<string, IReadOnlyList<string>> getTroopColumnTypeIds;
 
     /// <summary>
     /// Creates a Finder row builder for one strategy snapshot.
@@ -23,15 +25,21 @@ public sealed class FinderWindowRowBuilder
     /// <param name="sectors">The visible strategy sectors.</param>
     /// <param name="factions">The game factions available for Finder tabs.</param>
     /// <param name="playerFactionId">The player faction identifier.</param>
+    /// <param name="getTroopColumnTypeIds">Returns regiment type identifiers in Finder column order.</param>
+    /// <param name="getSpecialForcesColumnTypeIds">Returns special-forces type identifiers in Finder column order.</param>
     public FinderWindowRowBuilder(
         IReadOnlyList<GalaxyMapSector> sectors,
         IReadOnlyList<Faction> factions,
-        string playerFactionId
+        string playerFactionId,
+        Func<string, IReadOnlyList<string>> getTroopColumnTypeIds = null,
+        Func<string, IReadOnlyList<string>> getSpecialForcesColumnTypeIds = null
     )
     {
         this.sectors = sectors ?? throw new ArgumentNullException(nameof(sectors));
         this.factions = factions ?? Array.Empty<Faction>();
         this.playerFactionId = playerFactionId;
+        this.getTroopColumnTypeIds = getTroopColumnTypeIds;
+        this.getSpecialForcesColumnTypeIds = getSpecialForcesColumnTypeIds;
     }
 
     /// <summary>
@@ -138,6 +146,12 @@ public sealed class FinderWindowRowBuilder
         if (string.IsNullOrEmpty(ownerId))
             return new List<FinderWindowRow>();
 
+        IReadOnlyList<string> columnTypeIds = RequireColumnTypeIds(
+            getTroopColumnTypeIds?.Invoke(ownerId),
+            ownerId,
+            "troop"
+        );
+
         List<FinderWindowRow> rows = new List<FinderWindowRow>();
         foreach (GalaxyMapPlanet planet in sectors.SelectMany(sector => sector.Planets))
         {
@@ -154,7 +168,7 @@ public sealed class FinderWindowRowBuilder
                         planet,
                         PlanetIcon.Defense,
                         planet.Planet,
-                        counts: CountRegimentsByType(planetRegiments)
+                        counts: CountUnitsByType(planetRegiments, columnTypeIds)
                     )
                 );
             }
@@ -174,7 +188,7 @@ public sealed class FinderWindowRowBuilder
                         planet,
                         PlanetIcon.Fleet,
                         fleet,
-                        counts: CountRegimentsByType(fleetRegiments)
+                        counts: CountUnitsByType(fleetRegiments, columnTypeIds)
                     )
                 );
             }
@@ -251,6 +265,12 @@ public sealed class FinderWindowRowBuilder
         if (string.IsNullOrEmpty(ownerId))
             return new List<FinderWindowRow>();
 
+        IReadOnlyList<string> columnTypeIds = RequireColumnTypeIds(
+            getSpecialForcesColumnTypeIds?.Invoke(ownerId),
+            ownerId,
+            "special-forces"
+        );
+
         return sectors
             .SelectMany(sector => sector.Planets)
             .Select(planet =>
@@ -265,7 +285,7 @@ public sealed class FinderWindowRowBuilder
                     planet,
                     PlanetIcon.Defense,
                     planet.Planet,
-                    counts: CountSpecialForcesByType(specialForces)
+                    counts: CountUnitsByType(specialForces, columnTypeIds)
                 );
             })
             .Where(row => row.Counts.Sum() > 0)
@@ -482,32 +502,56 @@ public sealed class FinderWindowRowBuilder
     }
 
     /// <summary>
-    /// Counts regiment types in stable alphabetical order.
+    /// Requires a non-empty, unambiguous type mapping for one Finder table.
     /// </summary>
-    /// <param name="regiments">The regiments to aggregate.</param>
-    /// <returns>The ordered type counts.</returns>
-    private static IReadOnlyList<int> CountRegimentsByType(IReadOnlyList<Regiment> regiments)
+    /// <param name="typeIds">The configured type identifiers.</param>
+    /// <param name="factionId">The faction owning the Finder table.</param>
+    /// <param name="tableName">The table name used in configuration errors.</param>
+    /// <returns>The validated type identifiers.</returns>
+    private static IReadOnlyList<string> RequireColumnTypeIds(
+        IReadOnlyList<string> typeIds,
+        string factionId,
+        string tableName
+    )
     {
-        return regiments
-            .GroupBy(regiment => regiment.GetDisplayName(), StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Count())
-            .ToList();
+        if (typeIds == null || typeIds.Count == 0)
+            throw new InvalidOperationException(
+                $"Finder {tableName} columns are not configured for faction '{factionId}'."
+            );
+
+        if (typeIds.Any(string.IsNullOrWhiteSpace) || typeIds.Distinct().Count() != typeIds.Count)
+            throw new InvalidOperationException(
+                $"Finder {tableName} columns contain invalid type identifiers for faction '{factionId}'."
+            );
+
+        return typeIds;
     }
 
     /// <summary>
-    /// Counts special-forces types in stable alphabetical order.
+    /// Counts units in the same authored order as the Finder columns.
     /// </summary>
-    /// <param name="specialForces">The special-forces units to aggregate.</param>
-    /// <returns>The ordered type counts.</returns>
-    private static IReadOnlyList<int> CountSpecialForcesByType(
-        IReadOnlyList<SpecialForces> specialForces
+    /// <typeparam name="T">The scene-node type represented by the table.</typeparam>
+    /// <param name="units">The units to aggregate.</param>
+    /// <param name="columnTypeIds">The unit type identifiers in Finder column order.</param>
+    /// <returns>One count for each authored Finder column.</returns>
+    private static IReadOnlyList<int> CountUnitsByType<T>(
+        IReadOnlyList<T> units,
+        IReadOnlyList<string> columnTypeIds
     )
+        where T : ISceneNode
     {
-        return specialForces
-            .GroupBy(unit => unit.GetDisplayName(), StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.Count())
-            .ToList();
+        Dictionary<string, int> counts = columnTypeIds.ToDictionary(typeId => typeId, _ => 0);
+        foreach (T unit in units)
+        {
+            string typeId = unit.GetTypeID();
+            if (!counts.ContainsKey(typeId))
+                throw new InvalidOperationException(
+                    $"Finder column is not configured for unit type '{typeId}'."
+                );
+
+            counts[typeId]++;
+        }
+
+        return columnTypeIds.Select(typeId => counts[typeId]).ToList();
     }
 }

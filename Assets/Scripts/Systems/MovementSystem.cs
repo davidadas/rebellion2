@@ -174,6 +174,15 @@ namespace Rebellion.Systems
                 }
             }
 
+            Planet requestedPlanet = RequireDestinationPlanet(destination);
+            if (IsBlockedFromDestinationByBlockade(unit, requestedPlanet))
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}."
+                );
+                return;
+            }
+
             ExecuteMove(unit, destination, _pendingResults);
         }
 
@@ -633,6 +642,14 @@ namespace Rebellion.Systems
             if (
                 destinationPlanet.GetOwnerInstanceID() != unit.GetOwnerInstanceID()
                 && !CanEnterHostileOrbit(unit, destination)
+            )
+            {
+                return false;
+            }
+
+            if (
+                unit is Starfighter
+                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit))
             )
             {
                 return false;
@@ -1194,16 +1211,8 @@ namespace Rebellion.Systems
             if (movable is not Building && movable is not Regiment)
                 return false;
 
-            if (!destinationPlanet.IsBlockaded())
-                return false;
-
             string movableOwner = GetMovementControlOwner(movable);
-            bool hasOpposingBlockader = destinationPlanet.Fleets.Any(fleet =>
-                fleet.Movement == null
-                && fleet.GetOwnerInstanceID() != movableOwner
-                && fleet.HasOperationalCapitalShips()
-            );
-            if (!hasOpposingBlockader)
+            if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
 
             _game.AddToVoid(movable);
@@ -1220,6 +1229,21 @@ namespace Rebellion.Systems
                 }
             );
             return true;
+        }
+
+        /// <summary>
+        /// Returns whether a unit type requires an unobstructed destination.
+        /// </summary>
+        /// <param name="unit">The unit requesting access.</param>
+        /// <param name="destinationPlanet">The planet receiving the unit.</param>
+        /// <returns>True when an opposing blockade prevents the unit from entering.</returns>
+        private static bool IsBlockedFromDestinationByBlockade(
+            IMovable unit,
+            Planet destinationPlanet
+        )
+        {
+            return unit is Starfighter or Regiment or Building
+                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit));
         }
 
         /// <summary>
@@ -1861,6 +1885,15 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
+            if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet))
+            {
+                GameLogger.Warning(
+                    $"RequestMove rejected: {unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}."
+                );
+                return false;
+            }
+
             if (CanAcceptPlannedChild(resolvedDestination, unit, plannedChildren))
                 return true;
 
@@ -2092,8 +2125,6 @@ namespace Rebellion.Systems
             double distance = destination.GetRawDistanceTo(originPos);
 
             int slowestHyperdrive = _game.GetConfig().Movement.DefaultFighterHyperdrive;
-            int speedBonus = 0;
-
             if (unit is Fleet fleet)
             {
                 if (fleet.CapitalShips.Count > 0)
@@ -2105,12 +2136,6 @@ namespace Rebellion.Systems
                         .Min();
                     slowestHyperdrive = Math.Max(slowestHyperdrive, 1);
                 }
-
-                speedBonus = fleet
-                    .GetOfficers()
-                    .Select(o => Math.Max(o.HyperdriveModifier, 0))
-                    .DefaultIfEmpty(0)
-                    .Max();
             }
             else if (unit is CapitalShip capitalShip)
             {
@@ -2126,7 +2151,7 @@ namespace Rebellion.Systems
                 ? _game.GetConfig().Movement.SameSystemMinTransitTicks
                 : _game.GetConfig().Movement.MinTransitTicks;
 
-            return Math.Max(baseTicks - speedBonus, minimumTransitTicks);
+            return Math.Max(baseTicks, minimumTransitTicks);
         }
 
         /// <summary>

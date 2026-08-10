@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -37,6 +38,16 @@ public class FinderWindowTheme
     public string SpecialForcesFinderBackgroundImagePath { get; set; }
 
     public string TroopFinderBackgroundImagePath { get; set; }
+
+    /// <summary>
+    /// Gets or sets regiment type identifiers in the order of the Troop Finder columns.
+    /// </summary>
+    public List<string> TroopColumnTypeIDs { get; set; } = new List<string>();
+
+    /// <summary>
+    /// Gets or sets unit type identifiers in the order of the Special Forces Finder columns.
+    /// </summary>
+    public List<string> SpecialForcesColumnTypeIDs { get; set; } = new List<string>();
 
     public string SystemsText { get; set; }
 

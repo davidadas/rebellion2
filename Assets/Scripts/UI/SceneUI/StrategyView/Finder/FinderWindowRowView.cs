@@ -60,7 +60,7 @@ public sealed class FinderWindowRowView : SelectableListRowView
     }
 
     /// <summary>
-    /// Renders non-zero count values into the authored count columns.
+    /// Renders count values into their authored columns without collapsing empty slots.
     /// </summary>
     /// <param name="counts">The count text values in display order.</param>
     private void RenderCounts(System.Collections.Generic.IReadOnlyList<string> counts)
