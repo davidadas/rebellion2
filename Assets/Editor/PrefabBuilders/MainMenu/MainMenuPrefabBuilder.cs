@@ -45,6 +45,8 @@ public static class MainMenuPrefabBuilder
 
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
+    private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
+    private const string _atmosphereShaderPath = "Assets/Shaders/AtmosphereRim.shader";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
@@ -1971,30 +1973,27 @@ public static class MainMenuPrefabBuilder
         GameObject cloudPivot = new GameObject("CloudPivot");
         cloudPivot.transform.SetParent(rig.transform, false);
         cloudPivot.AddComponent<AutoRotate>().Configure(-_cloudSpinDegreesPerSecond, Vector3.up);
-        GameObject cloudModelNode = new GameObject("Clouds");
-        cloudModelNode.transform.SetParent(cloudPivot.transform, false);
-        cloudModelNode
-            .AddComponent<ContentModelBinding>()
-            .SetModel(
-                "Application/MainMenu/Models/clouds",
-                1.010f,
-                new Vector3(0f, 180f, 0f),
-                overwrite: true,
-                normalize: true,
-                center: true,
-                layer: planetLayer
-            );
-        cloudModelNode.AddComponent<CloudMaterialFix>();
+        GameObject clouds = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        clouds.name = "Clouds";
+        UnityEngine.Object.DestroyImmediate(clouds.GetComponent<Collider>());
+        clouds.transform.SetParent(cloudPivot.transform, false);
+        clouds.transform.localScale = Vector3.one * 2.020f; // primitive radius 0.5 -> ~1.010
+        clouds.layer = planetLayer;
+        clouds
+            .AddComponent<ContentMaterialTextureBinding>()
+            .Configure(_cloudTextureAddress, "Unlit/Transparent");
 
         // Atmosphere: a static shell just outside the clouds with a Fresnel rim glow, so the limb
-        // reads as a lit atmosphere. Built here (not via a GLB) because the rim needs a custom shader.
+        // reads as a lit atmosphere. Built from a primitive with the custom rim shader assigned here.
         GameObject atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         atmosphere.name = "Atmosphere";
         UnityEngine.Object.DestroyImmediate(atmosphere.GetComponent<Collider>());
         atmosphere.transform.SetParent(rig.transform, false);
         atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
         atmosphere.layer = planetLayer;
-        atmosphere.AddComponent<AtmosphereMaterialFix>();
+        atmosphere.GetComponent<MeshRenderer>().sharedMaterial = new Material(
+            LoadRequiredAsset<Shader>(_atmosphereShaderPath)
+        );
 
         // Dedicated sun for the planet, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
