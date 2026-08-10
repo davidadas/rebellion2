@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -9,6 +12,8 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     public sealed class TacticalUnitState
     {
+        private readonly ReadOnlyCollection<TacticalWeaponBattery> weaponBatteries;
+
         /// <summary>
         /// Gets the strategic unit represented by this tactical unit.
         /// </summary>
@@ -49,12 +54,18 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         public bool IsActive => Hull > 0;
 
+        /// <summary>
+        /// Gets the capital ship's tactical weapon batteries.
+        /// </summary>
+        public IReadOnlyList<TacticalWeaponBattery> WeaponBatteries => weaponBatteries;
+
         private TacticalUnitState(
             IGameEntity unit,
             TacticalBattleSide side,
             TacticalUnitKind kind,
             int hull,
-            int shields
+            int shields,
+            IList<TacticalWeaponBattery> weaponBatteries
         )
         {
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
@@ -64,6 +75,9 @@ namespace Rebellion.Game.Tactical
             Hull = InitialHull;
             InitialShields = Math.Max(0, shields);
             Shields = InitialShields;
+            this.weaponBatteries = new ReadOnlyCollection<TacticalWeaponBattery>(
+                weaponBatteries ?? Array.Empty<TacticalWeaponBattery>()
+            );
         }
 
         /// <summary>
@@ -82,7 +96,10 @@ namespace Rebellion.Game.Tactical
                 side,
                 TacticalUnitKind.CapitalShip,
                 ship.CurrentHullStrength,
-                ship.MaxShieldStrength
+                ship.MaxShieldStrength,
+                ship.PrimaryWeapons.OrderBy(entry => entry.Key)
+                    .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
+                    .ToList()
             );
         }
 
@@ -102,7 +119,8 @@ namespace Rebellion.Game.Tactical
                 side,
                 TacticalUnitKind.Fighters,
                 fighters.CurrentSquadronSize,
-                fighters.CurrentSquadronSize * fighters.ShieldStrength
+                fighters.CurrentSquadronSize * fighters.ShieldStrength,
+                null
             );
         }
     }

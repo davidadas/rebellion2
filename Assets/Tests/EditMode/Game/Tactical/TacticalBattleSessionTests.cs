@@ -77,6 +77,38 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.IsTrue(session.Units.All(unit => unit.Kind == TacticalUnitKind.CapitalShip));
         }
 
+        [Test]
+        public void Create_CapitalShip_CreatesWeaponBatteriesForEveryPrimaryWeaponType()
+        {
+            CapitalShip attackingShip = CreateShip(600, 250);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+            {
+                10,
+                20,
+                30,
+                40,
+                50,
+            };
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(attackingShip),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+
+            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+
+            TacticalUnitState state = session.Units.Single(unit => unit.Unit == attackingShip);
+            Assert.AreEqual(3, state.WeaponBatteries.Count);
+            Assert.AreEqual(
+                40,
+                state
+                    .WeaponBatteries.Single(battery =>
+                        battery.WeaponType == PrimaryWeaponType.Turbolaser
+                    )
+                    .GetCount(TacticalWeaponArc.Starboard)
+            );
+        }
+
         private static CapitalShip CreateShip(int hull, int shields, params Starfighter[] fighters)
         {
             CapitalShip ship = new CapitalShip
