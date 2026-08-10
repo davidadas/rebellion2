@@ -64,6 +64,11 @@ namespace Rebellion.Game.Units
         public int RegimentCapacity;
         public List<CapitalShipRole> Roles = new List<CapitalShipRole>();
 
+        /// <summary>
+        /// Gets or sets whether this ship is the battle station targeted by dedicated fighter attack runs.
+        /// </summary>
+        public bool IsDeathStar { get; set; }
+
         // Unit Info.
         public List<Officer> Officers = new List<Officer>();
         public List<Regiment> Regiments = new List<Regiment>();

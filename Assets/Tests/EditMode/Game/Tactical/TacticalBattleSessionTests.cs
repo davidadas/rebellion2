@@ -290,10 +290,7 @@ namespace Rebellion.Tests.Game.Tactical
                 100,
                 session.Units.Single(unit => unit.Unit == firstDefendingShip).Hull
             );
-            Assert.AreEqual(
-                70,
-                session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull
-            );
+            Assert.AreEqual(70, session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull);
         }
 
         [Test]
@@ -322,6 +319,33 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AttackDeathStarBehavior_TargetsOnlyDeathStar()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            attackingFighters.LaserCannon = 10;
+            attackingFighters.LaserRange = 200;
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            CapitalShip ordinaryShip = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(deathStar, ordinaryShip),
+                }
+            );
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackDeathStar);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(90, session.Units.Single(unit => unit.Unit == deathStar).Hull);
+            Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == ordinaryShip).Hull);
+        }
+
+        [Test]
         public void Advance_RecoverBehavior_ReturnsFightersToTheirDeployingCapitalShip()
         {
             Starfighter fighters = CreateFighters(12, 0);
@@ -344,9 +368,10 @@ namespace Rebellion.Tests.Game.Tactical
             deployingUnit.Position = new Vector3(100f, 0f, 0f);
             nearbyUnit.Position = new Vector3(-1f, 0f, 0f);
             fighterUnit.Position = Vector3.Zero;
-            session.GetFighterGroups(TacticalBattleSide.Attacker).Single().SetBehavior(
-                TacticalBehavior.Recover
-            );
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Recover);
 
             session.Advance(1f);
 

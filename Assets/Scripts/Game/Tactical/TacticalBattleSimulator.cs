@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Game.Units;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Tactical
@@ -137,12 +138,13 @@ namespace Rebellion.Game.Tactical
                 candidates = candidates.Where(candidate =>
                     candidate.Kind == TacticalUnitKind.Fighters
                 );
-            else if (
-                behavior == TacticalBehavior.AttackCapitalShips
-                || behavior == TacticalBehavior.AttackDeathStar
-            )
+            else if (behavior == TacticalBehavior.AttackCapitalShips)
                 candidates = candidates.Where(candidate =>
                     candidate.Kind == TacticalUnitKind.CapitalShip
+                );
+            else if (behavior == TacticalBehavior.AttackDeathStar)
+                candidates = candidates.Where(candidate =>
+                    candidate.Unit is CapitalShip { IsDeathStar: true }
                 );
 
             TacticalUnitState[] eligibleTargets = candidates.ToArray();
