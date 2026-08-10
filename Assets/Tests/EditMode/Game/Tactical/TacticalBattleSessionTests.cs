@@ -195,6 +195,65 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Pause_MultiplePauseHolds_RequiresMatchingResumeCalls()
+        {
+            TacticalBattleSession session = CreateSession();
+
+            session.Pause();
+            session.Pause();
+            session.Resume();
+
+            Assert.IsTrue(session.IsPaused);
+
+            session.Resume();
+
+            Assert.IsFalse(session.IsPaused);
+        }
+
+        [Test]
+        public void Resume_RunningSession_RemainsRunning()
+        {
+            TacticalBattleSession session = CreateSession();
+
+            session.Resume();
+
+            Assert.IsFalse(session.IsPaused);
+        }
+
+        [Test]
+        public void Advance_PausedSession_DoesNotAdvanceUnitRecharge()
+        {
+            CapitalShip attackingShip = CreateShip(600, 250);
+            attackingShip.ShieldRechargeRate = 20;
+            TacticalBattleSession session = CreateSession(attackingShip);
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            attackingUnit.ApplyDamage(100);
+            session.Pause();
+
+            session.Advance(1f);
+
+            Assert.AreEqual(150, attackingUnit.Shields);
+        }
+
+        [Test]
+        public void Advance_RunningSession_AdvancesUnitRecharge()
+        {
+            CapitalShip attackingShip = CreateShip(600, 250);
+            attackingShip.ShieldRechargeRate = 20;
+            TacticalBattleSession session = CreateSession(attackingShip);
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            attackingUnit.ApplyDamage(100);
+
+            session.Advance(1f);
+
+            Assert.AreEqual(170, attackingUnit.Shields);
+        }
+
+        [Test]
         public void BuildResult_DestroyedDefender_RecordsWinnerAndUnitLosses()
         {
             CapitalShip attackingShip = CreateShip(600, 250);
@@ -258,6 +317,17 @@ namespace Rebellion.Tests.Game.Tactical
             };
             ship.Starfighters.AddRange(fighters);
             return ship;
+        }
+
+        private static TacticalBattleSession CreateSession(CapitalShip attackingShip = null)
+        {
+            return TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip ?? CreateShip(600, 250)),
+                    DefenderFleet = CreateFleet(CreateShip(450, 175)),
+                }
+            );
         }
 
         private static Starfighter CreateFighters(int squadronSize, int shieldStrength)

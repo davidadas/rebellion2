@@ -13,6 +13,7 @@ namespace Rebellion.Game.Tactical
     public sealed class TacticalUnitState
     {
         private readonly ReadOnlyCollection<TacticalWeaponBattery> weaponBatteries;
+        private float shieldRechargeRemainder;
 
         /// <summary>
         /// Gets the strategic unit represented by this tactical unit.
@@ -45,6 +46,11 @@ namespace Rebellion.Game.Tactical
         public int InitialShields { get; }
 
         /// <summary>
+        /// Gets the amount of shield strength restored during one tactical time unit.
+        /// </summary>
+        public int ShieldRechargeRate { get; }
+
+        /// <summary>
         /// Gets or sets the unit's current tactical shield strength.
         /// </summary>
         public int Shields { get; set; }
@@ -65,6 +71,7 @@ namespace Rebellion.Game.Tactical
             TacticalUnitKind kind,
             int hull,
             int shields,
+            int shieldRechargeRate,
             IList<TacticalWeaponBattery> weaponBatteries
         )
         {
@@ -75,6 +82,7 @@ namespace Rebellion.Game.Tactical
             Hull = InitialHull;
             InitialShields = Math.Max(0, shields);
             Shields = InitialShields;
+            ShieldRechargeRate = Math.Max(0, shieldRechargeRate);
             this.weaponBatteries = new ReadOnlyCollection<TacticalWeaponBattery>(
                 weaponBatteries ?? Array.Empty<TacticalWeaponBattery>()
             );
@@ -97,6 +105,7 @@ namespace Rebellion.Game.Tactical
                 TacticalUnitKind.CapitalShip,
                 ship.CurrentHullStrength,
                 ship.MaxShieldStrength,
+                ship.ShieldRechargeRate,
                 ship.PrimaryWeapons.OrderBy(entry => entry.Key)
                     .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
                     .ToList()
@@ -120,8 +129,47 @@ namespace Rebellion.Game.Tactical
                 TacticalUnitKind.Fighters,
                 fighters.CurrentSquadronSize,
                 fighters.CurrentSquadronSize * fighters.ShieldStrength,
+                0,
                 null
             );
+        }
+
+        /// <summary>
+        /// Applies tactical damage to shields before allowing any remainder to damage the hull.
+        /// </summary>
+        /// <param name="amount">The nonnegative damage amount.</param>
+        public void ApplyDamage(int amount)
+        {
+            if (amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount == 0 || !IsActive)
+                return;
+
+            int absorbedDamage = Math.Min(Shields, amount);
+            Shields -= absorbedDamage;
+            Hull = Math.Max(0, Hull - (amount - absorbedDamage));
+        }
+
+        /// <summary>
+        /// Advances the unit's continuous tactical recharge state.
+        /// </summary>
+        /// <param name="elapsedTime">The elapsed tactical time.</param>
+        internal void Advance(float elapsedTime)
+        {
+            if (elapsedTime < 0f)
+                throw new ArgumentOutOfRangeException(nameof(elapsedTime));
+            if (!IsActive || Shields >= InitialShields || ShieldRechargeRate == 0)
+            {
+                shieldRechargeRemainder = 0f;
+                return;
+            }
+
+            float recharge = shieldRechargeRemainder + ShieldRechargeRate * elapsedTime;
+            int wholeRecharge = (int)Math.Floor(recharge);
+            shieldRechargeRemainder = recharge - wholeRecharge;
+            Shields = Math.Min(InitialShields, Shields + wholeRecharge);
+            if (Shields == InitialShields)
+                shieldRechargeRemainder = 0f;
         }
     }
 }

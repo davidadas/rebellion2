@@ -17,6 +17,7 @@ namespace Rebellion.Game.Tactical
         private readonly List<TacticalShipGroup> groups = new List<TacticalShipGroup>();
         private readonly ReadOnlyCollection<TacticalShipGroup> groupView;
         private readonly ReadOnlyCollection<TacticalUnitState> units;
+        private int pauseCount;
 
         /// <summary>
         /// Gets the pending strategic encounter represented by this session.
@@ -39,6 +40,11 @@ namespace Rebellion.Game.Tactical
         public bool IsComplete =>
             !HasActiveUnits(TacticalBattleSide.Attacker)
             || !HasActiveUnits(TacticalBattleSide.Defender);
+
+        /// <summary>
+        /// Gets whether one or more tactical systems currently hold the simulation paused.
+        /// </summary>
+        public bool IsPaused => pauseCount > 0;
 
         private TacticalBattleSession(PendingCombatResult encounter, IList<TacticalUnitState> units)
         {
@@ -178,6 +184,40 @@ namespace Rebellion.Game.Tactical
         public bool DeleteGroup(TacticalShipGroup group)
         {
             return groups.Remove(group);
+        }
+
+        /// <summary>
+        /// Acquires one pause hold on the tactical simulation.
+        /// </summary>
+        public void Pause()
+        {
+            pauseCount++;
+        }
+
+        /// <summary>
+        /// Releases one pause hold without allowing the count to become negative.
+        /// </summary>
+        public void Resume()
+        {
+            pauseCount = Math.Max(0, pauseCount - 1);
+        }
+
+        /// <summary>
+        /// Advances every active tactical unit when the simulation is running.
+        /// </summary>
+        /// <param name="elapsedTime">The elapsed tactical time.</param>
+        public void Advance(float elapsedTime)
+        {
+            if (elapsedTime < 0f)
+                throw new ArgumentOutOfRangeException(nameof(elapsedTime));
+            if (IsPaused || IsComplete)
+                return;
+
+            foreach (TacticalUnitState unit in units)
+                unit.Advance(elapsedTime);
+
+            foreach (TacticalShipGroup group in groups)
+                group.RemoveInactiveTargets();
         }
 
         private static CombatSide DetermineWinner(bool attackerActive, bool defenderActive)
