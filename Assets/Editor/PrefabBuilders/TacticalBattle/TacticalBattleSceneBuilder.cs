@@ -28,9 +28,9 @@ public static class TacticalBattleSceneBuilder
         ConfigureEnvironment();
         GameObject root = CreateSceneController();
         CreateBattleSpace(root.transform);
-        CreateCamera();
+        TacticalCameraRig cameraRig = CreateCamera();
         CreateLight();
-        CreateHud(root.transform);
+        CreateHud(root.transform, cameraRig);
         CreateEventSystem();
 
         Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) ?? "Assets/Scenes");
@@ -78,7 +78,8 @@ public static class TacticalBattleSceneBuilder
     /// Creates the original 640 by 480 tactical control surface from configured content.
     /// </summary>
     /// <param name="parent">The tactical scene root.</param>
-    private static void CreateHud(Transform parent)
+    /// <param name="cameraRig">The tactical camera controlled by the HUD.</param>
+    private static void CreateHud(Transform parent, TacticalCameraRig cameraRig)
     {
         TacticalBattleTheme theme = GetPreviewTheme();
         string root = theme.SharedUIRoot;
@@ -445,7 +446,8 @@ public static class TacticalBattleSceneBuilder
             27,
             25
         );
-        CreateCameraControls(canvasObject.transform, root);
+        Button[] cameraControls = CreateCameraControls(canvasObject.transform, root);
+        cameraRig.Configure(cameraRig.GetComponent<Camera>(), cameraControls);
         view.Configure(
             taskForceButtons,
             fighterGroupButtons,
@@ -478,17 +480,30 @@ public static class TacticalBattleSceneBuilder
     /// </summary>
     /// <param name="parent">The tactical HUD transform.</param>
     /// <param name="root">The configured shared tactical UI root.</param>
-    private static void CreateCameraControls(Transform parent, string root)
+    /// <returns>The nine controls in source command order.</returns>
+    private static Button[] CreateCameraControls(Transform parent, string root)
     {
-        CreateCameraButton("ZoomIn", parent, root, "zoom-in", 491, 343, 24, 24);
-        CreateCameraButton("ZoomOut", parent, root, "zoom-out", 607, 343, 24, 24);
-        CreateCameraButton("RotateLeft", parent, root, "rotate-left", 497, 381, 42, 43);
-        CreateCameraButton("RotateRight", parent, root, "rotate-right", 582, 381, 43, 43);
-        CreateCameraButton("TiltUp", parent, root, "tilt-up", 539, 338, 43, 43);
-        CreateCameraButton("TiltDown", parent, root, "tilt-down", 540, 424, 43, 43);
-        CreateCameraButton("RememberPosition", parent, root, "remember-position", 594, 444, 43, 25);
-        CreateCameraButton("ResetView", parent, root, "reset-view", 486, 444, 43, 25);
-        CreateCameraButton("ResetSubject", parent, root, "reset-subject", 549, 391, 23, 23);
+        return new[]
+        {
+            CreateCameraButton("ZoomIn", parent, root, "zoom-in", 491, 343, 24, 24),
+            CreateCameraButton("ZoomOut", parent, root, "zoom-out", 607, 343, 24, 24),
+            CreateCameraButton("RotateLeft", parent, root, "rotate-left", 497, 381, 42, 43),
+            CreateCameraButton("RotateRight", parent, root, "rotate-right", 582, 381, 43, 43),
+            CreateCameraButton("TiltUp", parent, root, "tilt-up", 539, 338, 43, 43),
+            CreateCameraButton("TiltDown", parent, root, "tilt-down", 540, 424, 43, 43),
+            CreateCameraButton(
+                "RememberPosition",
+                parent,
+                root,
+                "remember-position",
+                594,
+                444,
+                43,
+                25
+            ),
+            CreateCameraButton("ResetView", parent, root, "reset-view", 486, 444, 43, 25),
+            CreateCameraButton("ResetSubject", parent, root, "reset-subject", 549, 391, 23, 23),
+        };
     }
 
     /// <summary>
@@ -502,7 +517,7 @@ public static class TacticalBattleSceneBuilder
     /// <param name="y">The source-space top edge.</param>
     /// <param name="width">The source-space width.</param>
     /// <param name="height">The source-space height.</param>
-    private static void CreateCameraButton(
+    private static Button CreateCameraButton(
         string name,
         Transform parent,
         string root,
@@ -513,7 +528,7 @@ public static class TacticalBattleSceneBuilder
         int height
     )
     {
-        CreateBoundButton(
+        return CreateBoundButton(
             name,
             parent,
             $"{root}/Camera/{assetName}-up",
@@ -681,7 +696,8 @@ public static class TacticalBattleSceneBuilder
     /// <summary>
     /// Creates the tactical presentation camera.
     /// </summary>
-    private static void CreateCamera()
+    /// <returns>The generated camera rig.</returns>
+    private static TacticalCameraRig CreateCamera()
     {
         GameObject cameraObject = new GameObject("TacticalCamera");
         cameraObject.tag = "MainCamera";
@@ -691,11 +707,8 @@ public static class TacticalBattleSceneBuilder
         camera.nearClipPlane = 0.1f;
         camera.farClipPlane = 10000f;
         camera.fieldOfView = 45f;
-        cameraObject.transform.SetPositionAndRotation(
-            new Vector3(0f, 80f, -240f),
-            Quaternion.Euler(15f, 0f, 0f)
-        );
         cameraObject.AddComponent<AudioListener>();
+        return cameraObject.AddComponent<TacticalCameraRig>();
     }
 
     /// <summary>

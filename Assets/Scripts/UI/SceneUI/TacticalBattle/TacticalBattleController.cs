@@ -22,6 +22,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
+    private TacticalCameraRig cameraRig;
     private TacticalBattleView view;
 
     /// <summary>
@@ -67,6 +68,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         battleRenderer = GetComponentInChildren<TacticalBattleRenderer>(true);
         if (battleRenderer == null)
             throw new MissingReferenceException("Tactical battle renderer is missing.");
+        cameraRig = GetComponentInChildren<TacticalCameraRig>(true);
+        if (cameraRig == null)
+            throw new MissingReferenceException("Tactical camera rig is missing.");
     }
 
     /// <summary>
@@ -82,13 +86,16 @@ public sealed class TacticalBattleController : MonoBehaviour
         FactionTheme theme = new FactionThemeLibrary(
             bootstrap.GetContentPack().GameData.FactionThemes
         ).GetTheme(gameManager.GetPlayerFaction().InstanceID);
+        TacticalBattleTheme tacticalTheme =
+            theme.TacticalBattle
+            ?? throw new InvalidOperationException(
+                $"Faction '{theme.FactionInstanceID}' requires a tactical battle theme."
+            );
         view.InitializeContent(
             bootstrap.GetContentAssets(),
-            theme.TacticalBattle
-                ?? throw new InvalidOperationException(
-                    $"Faction '{theme.FactionInstanceID}' requires a tactical battle theme."
-                )
+            tacticalTheme
         );
+        cameraRig.Initialize(tacticalTheme.InitialCameraYaw);
         string playerFactionId = gameManager.GetPlayerFaction().InstanceID;
         playerSide =
             Session.Encounter.AttackerOwnerInstanceID == playerFactionId
@@ -241,6 +248,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         pendingManeuver = SelectedGroup.Behavior;
         pendingFormation = SelectedGroup.Formation;
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
+        SetCameraSubject(SelectedGroup);
         view.ShowManeuvers(pendingFormation);
     }
 
@@ -255,6 +263,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.HideManeuvers();
         pendingFighterOrder = SelectedGroup.Behavior;
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
+        SetCameraSubject(SelectedGroup);
         bool canRecover = SelectedGroup.Units.Any(unit => unit.RecoveryTarget?.IsActive == true);
         bool canAttackDeathStar = Session.Units.Any(unit =>
             unit.Side != playerSide
@@ -262,6 +271,33 @@ public sealed class TacticalBattleController : MonoBehaviour
             && unit.Unit is CapitalShip { IsDeathStar: true }
         );
         view.ShowFighterOrders(canRecover, canAttackDeathStar);
+    }
+
+    /// <summary>
+    /// Updates the camera's reset subject from the selected command group's active units.
+    /// </summary>
+    /// <param name="group">The selected tactical command group.</param>
+    private void SetCameraSubject(TacticalShipGroup group)
+    {
+        TacticalUnitState[] activeUnits = group.Units.Where(unit => unit.IsActive).ToArray();
+        if (activeUnits.Length == 0)
+            return;
+
+        Vector3 subject = Vector3.zero;
+        foreach (TacticalUnitState unit in activeUnits)
+            subject += ToUnityVector(Session.GetPresentationPosition(unit));
+
+        cameraRig.SetSelectedSubject(subject / activeUnits.Length);
+    }
+
+    /// <summary>
+    /// Converts a simulation vector into the tactical scene coordinate system.
+    /// </summary>
+    /// <param name="vector">The simulation-space vector.</param>
+    /// <returns>The corresponding Unity vector.</returns>
+    private static Vector3 ToUnityVector(System.Numerics.Vector3 vector)
+    {
+        return new Vector3(vector.X, vector.Y, vector.Z);
     }
 
     /// <summary>

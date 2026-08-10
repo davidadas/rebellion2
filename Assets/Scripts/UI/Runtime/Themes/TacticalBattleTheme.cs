@@ -13,4 +13,6 @@ public sealed class TacticalBattleTheme
     public string FighterGroupHeaderImagePath { get; set; }
 
     public string FighterOrderVariant { get; set; }
+
+    public float InitialCameraYaw { get; set; }
 }
