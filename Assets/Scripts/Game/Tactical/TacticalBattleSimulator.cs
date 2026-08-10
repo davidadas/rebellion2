@@ -12,10 +12,10 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     internal sealed class TacticalBattleSimulator
     {
-        private const float _initialSeparation = 100f;
+        internal const float BattlefieldScale = 100f;
         private const float _formationSpacing = 8f;
         private const float _navigationArrivalDistance = 1f;
-        private const float _withdrawalDistance = _initialSeparation * 2f;
+        private const float _withdrawalDistance = BattlefieldScale * 2f;
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
@@ -61,8 +61,8 @@ namespace Rebellion.Game.Tactical
             this.units = units ?? throw new ArgumentNullException(nameof(units));
             this.groups = groups ?? throw new ArgumentNullException(nameof(groups));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
-            PlaceFormation(TacticalBattleSide.Attacker, -_initialSeparation / 2f, Vector3.UnitZ);
-            PlaceFormation(TacticalBattleSide.Defender, _initialSeparation / 2f, -Vector3.UnitZ);
+            PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
+            PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
         }
 
         /// <summary>

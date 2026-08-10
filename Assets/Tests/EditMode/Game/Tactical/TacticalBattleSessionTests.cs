@@ -226,13 +226,13 @@ namespace Rebellion.Tests.Game.Tactical
             session.OrderWithdrawal(TacticalBattleSide.Attacker);
 
             Assert.IsTrue(
-                session.Groups
-                    .Where(group => group.Side == TacticalBattleSide.Attacker)
+                session
+                    .Groups.Where(group => group.Side == TacticalBattleSide.Attacker)
                     .All(group => group.Behavior == TacticalBehavior.Withdraw)
             );
             Assert.IsTrue(
-                session.Groups
-                    .Where(group => group.Side == TacticalBattleSide.Defender)
+                session
+                    .Groups.Where(group => group.Side == TacticalBattleSide.Defender)
                     .All(group => group.Behavior != TacticalBehavior.Withdraw)
             );
         }

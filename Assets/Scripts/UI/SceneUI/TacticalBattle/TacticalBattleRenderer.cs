@@ -19,7 +19,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
     private static readonly string[] FighterGroupColors = { "red", "blue", "green", "gold" };
     private readonly List<Transform> fighterBillboards = new List<Transform>();
+    private readonly List<Material> navigationMaterials = new List<Material>();
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
+    private readonly List<GameObject> navigationSets = new List<GameObject>();
     private readonly List<Sprite> sprites = new List<Sprite>();
     private readonly List<TacticalUnitView> unitViews = new List<TacticalUnitView>();
     private bool initialized;
@@ -72,6 +74,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         }
 
         CreateFighterGroups(session, contentAssets);
+        CreateNavigationGrid(session.NavigationGrid);
 
         initialized = true;
         Synchronize();
@@ -94,6 +97,19 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Shows or hides one concentric tactical waypoint-marker set.
+    /// </summary>
+    /// <param name="setIndex">The zero-based internal shell index.</param>
+    /// <param name="visible">Whether the marker set should be visible.</param>
+    public void SetNavigationSetVisible(int setIndex, bool visible)
+    {
+        if (setIndex < 0 || setIndex >= navigationSets.Count)
+            throw new ArgumentOutOfRangeException(nameof(setIndex));
+
+        navigationSets[setIndex].SetActive(visible);
+    }
+
+    /// <summary>
     /// Releases instantiated model hierarchies when the tactical scene closes.
     /// </summary>
     private void OnDestroy()
@@ -107,7 +123,75 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 
         sprites.Clear();
         fighterBillboards.Clear();
+        foreach (Material material in navigationMaterials)
+            Destroy(material);
+
+        navigationMaterials.Clear();
+        navigationSets.Clear();
         unitViews.Clear();
+    }
+
+    /// <summary>
+    /// Creates the four original concentric waypoint-marker shells.
+    /// </summary>
+    /// <param name="grid">The tactical waypoint lattice to present.</param>
+    private void CreateNavigationGrid(TacticalNavigationGrid grid)
+    {
+        Material lowerMaterial = CreateNavigationMaterial(new Color(0f, 0.541f, 1f));
+        Material centerMaterial = CreateNavigationMaterial(Color.red);
+        Material upperMaterial = CreateNavigationMaterial(Color.white);
+        for (int setIndex = 0; setIndex < grid.SetCount; setIndex++)
+        {
+            GameObject setObject = new GameObject($"Navigation Set {setIndex + 1}");
+            setObject.transform.SetParent(transform, false);
+            foreach (TacticalNavPoint point in grid.GetPoints(setIndex))
+            {
+                Material material =
+                    point.Y < 0f ? lowerMaterial
+                    : point.Y > 0f ? upperMaterial
+                    : centerMaterial;
+                CreateNavigationMarker(setObject.transform, point, material);
+            }
+
+            setObject.SetActive(grid.IsVisible(setIndex));
+            navigationSets.Add(setObject);
+        }
+    }
+
+    /// <summary>
+    /// Creates one compact waypoint marker at a lattice position.
+    /// </summary>
+    /// <param name="parent">The marker-set transform.</param>
+    /// <param name="point">The waypoint represented by the marker.</param>
+    /// <param name="material">The material for the waypoint's vertical layer.</param>
+    private static void CreateNavigationMarker(
+        Transform parent,
+        TacticalNavPoint point,
+        Material material
+    )
+    {
+        GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        marker.name = "Waypoint";
+        marker.transform.SetParent(parent, false);
+        marker.transform.localPosition = new UnityEngine.Vector3(point.X, point.Y, point.Z);
+        marker.transform.localScale = UnityEngine.Vector3.one * 0.8f;
+        marker.GetComponent<MeshRenderer>().sharedMaterial = material;
+    }
+
+    /// <summary>
+    /// Creates and owns one unlit material used by a tactical waypoint layer.
+    /// </summary>
+    /// <param name="color">The source-defined marker color.</param>
+    /// <returns>The shared waypoint material.</returns>
+    private Material CreateNavigationMaterial(Color color)
+    {
+        Shader shader = Shader.Find("Unlit/Color");
+        if (shader == null)
+            throw new InvalidOperationException("The tactical waypoint shader is unavailable.");
+
+        Material material = new Material(shader) { color = color };
+        navigationMaterials.Add(material);
+        return material;
     }
 
     /// <summary>

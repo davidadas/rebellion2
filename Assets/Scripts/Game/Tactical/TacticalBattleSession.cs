@@ -46,6 +46,11 @@ namespace Rebellion.Game.Tactical
         public IReadOnlyList<TacticalShipGroup> Groups => groupView;
 
         /// <summary>
+        /// Gets the fixed tactical waypoint-marker lattice.
+        /// </summary>
+        public TacticalNavigationGrid NavigationGrid { get; }
+
+        /// <summary>
         /// Gets whether one or both sides no longer have an active tactical unit.
         /// </summary>
         public bool IsComplete =>
@@ -67,6 +72,7 @@ namespace Rebellion.Game.Tactical
             groupView = groups.AsReadOnly();
             this.random = random;
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
+            NavigationGrid = new TacticalNavigationGrid(TacticalBattleSimulator.BattlefieldScale);
             BuildCommandGroups();
             simulator = new TacticalBattleSimulator(this.units, groupView, random);
         }

@@ -100,6 +100,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         );
         view.TaskForceSelected += SelectTaskForce;
         view.FighterGroupSelected += SelectFighterGroup;
+        view.NavigationSetVisibilityToggled += ToggleNavigationSetVisibility;
         view.FighterOrderSelected += SelectPendingFighterOrder;
         view.FighterOrderAssigned += AssignPendingFighterOrder;
         view.FighterOrderCancelled += CancelPendingFighterOrder;
@@ -145,6 +146,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         {
             view.TaskForceSelected -= SelectTaskForce;
             view.FighterGroupSelected -= SelectFighterGroup;
+            view.NavigationSetVisibilityToggled -= ToggleNavigationSetVisibility;
             view.FighterOrderSelected -= SelectPendingFighterOrder;
             view.FighterOrderAssigned -= AssignPendingFighterOrder;
             view.FighterOrderCancelled -= CancelPendingFighterOrder;
@@ -258,14 +260,25 @@ public sealed class TacticalBattleController : MonoBehaviour
     }
 
     /// <summary>
+    /// Toggles the source-ordered waypoint shell represented by one HUD button.
+    /// </summary>
+    /// <param name="buttonIndex">The zero-based HUD button index.</param>
+    private void ToggleNavigationSetVisibility(int buttonIndex)
+    {
+        int setIndex = Session.NavigationGrid.GetSetIndexForButton(buttonIndex);
+        bool visible = Session.NavigationGrid.ToggleVisibility(setIndex);
+        battleRenderer.SetNavigationSetVisible(setIndex, visible);
+    }
+
+    /// <summary>
     /// Stores a fighter order without changing the active group command before confirmation.
     /// </summary>
     /// <param name="behavior">The pending fighter order.</param>
     private void SelectPendingFighterOrder(TacticalBehavior behavior)
     {
         if (
-            SelectedGroup == null
-            || SelectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.Fighters)
+            SelectedGroup is not { } selectedGroup
+            || selectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.Fighters)
         )
             return;
 
@@ -301,8 +314,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectPendingManeuver(TacticalBehavior behavior)
     {
         if (
-            SelectedGroup == null
-            || SelectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
+            SelectedGroup is not { } selectedGroup
+            || selectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
         )
             return;
 
@@ -316,8 +329,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectPendingFormation(TacticalFormation formation)
     {
         if (
-            SelectedGroup == null
-            || SelectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
+            SelectedGroup is not { } selectedGroup
+            || selectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
         )
             return;
 

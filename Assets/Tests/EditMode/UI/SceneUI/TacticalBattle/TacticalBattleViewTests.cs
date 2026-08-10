@@ -58,7 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             int selectedTaskForce = -1;
             int selectedFighterGroup = -1;
-            int selectedNavigationSet = -1;
+            int toggledNavigationSet = -1;
             bool pauseToggled = false;
             view.Configure(
                 taskForces,
@@ -78,7 +78,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             );
             view.TaskForceSelected += index => selectedTaskForce = index;
             view.FighterGroupSelected += index => selectedFighterGroup = index;
-            view.NavigationSetSelected += index => selectedNavigationSet = index;
+            view.NavigationSetVisibilityToggled += index => toggledNavigationSet = index;
             view.PauseToggled += () => pauseToggled = true;
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
 
@@ -89,7 +89,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             Assert.AreEqual(6, selectedTaskForce);
             Assert.AreEqual(2, selectedFighterGroup);
-            Assert.AreEqual(3, selectedNavigationSet);
+            Assert.AreEqual(3, toggledNavigationSet);
             Assert.IsTrue(pauseToggled);
         }
 

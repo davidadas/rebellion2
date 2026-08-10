@@ -80,9 +80,9 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action<int> FighterGroupSelected;
 
     /// <summary>
-    /// Raised when the player selects one of the four navigation-point sets.
+    /// Raised when the player toggles one of the four navigation-point sets.
     /// </summary>
-    public event Action<int> NavigationSetSelected;
+    public event Action<int> NavigationSetVisibilityToggled;
 
     /// <summary>
     /// Raised when the player chooses a pending fighter-group order.
@@ -325,7 +325,10 @@ public sealed class TacticalBattleView : MonoBehaviour
         VerifyReferences();
         BindIndexedButtons(taskForceButtons, index => TaskForceSelected?.Invoke(index));
         BindIndexedButtons(fighterGroupButtons, index => FighterGroupSelected?.Invoke(index));
-        BindIndexedButtons(navigationSetButtons, index => NavigationSetSelected?.Invoke(index));
+        BindIndexedButtons(
+            navigationSetButtons,
+            index => NavigationSetVisibilityToggled?.Invoke(index)
+        );
         TacticalBehavior[] fighterOrders =
         {
             TacticalBehavior.AttackCapitalShips,
