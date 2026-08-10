@@ -54,6 +54,18 @@ public sealed class TacticalBattleView : MonoBehaviour
     [SerializeField]
     private RawImage pauseImage;
 
+    [SerializeField]
+    private Button withdrawalButton;
+
+    [SerializeField]
+    private GameObject withdrawalPanel;
+
+    [SerializeField]
+    private Button confirmWithdrawalButton;
+
+    [SerializeField]
+    private Button cancelWithdrawalButton;
+
     private IContentAssetSource contentAssets;
     private string sharedUIRoot;
 
@@ -113,6 +125,21 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action PauseToggled;
 
     /// <summary>
+    /// Raised when the player requests withdrawal from the battle.
+    /// </summary>
+    public event Action WithdrawalRequested;
+
+    /// <summary>
+    /// Raised when the player confirms withdrawal from the battle.
+    /// </summary>
+    public event Action WithdrawalConfirmed;
+
+    /// <summary>
+    /// Raised when the player cancels withdrawal from the battle.
+    /// </summary>
+    public event Action WithdrawalCancelled;
+
+    /// <summary>
     /// Supplies the generated tactical HUD references.
     /// </summary>
     /// <param name="taskForces">The eight task-force controls.</param>
@@ -168,6 +195,26 @@ public sealed class TacticalBattleView : MonoBehaviour
             cancelManeuver ?? throw new ArgumentNullException(nameof(cancelManeuver));
         pauseButton = pause ?? throw new ArgumentNullException(nameof(pause));
         pauseImage = pauseVisual ?? throw new ArgumentNullException(nameof(pauseVisual));
+    }
+
+    /// <summary>
+    /// Supplies the generated withdrawal controls.
+    /// </summary>
+    /// <param name="withdraw">The control that requests withdrawal.</param>
+    /// <param name="panel">The tactical withdrawal confirmation panel.</param>
+    /// <param name="confirm">The control that confirms withdrawal.</param>
+    /// <param name="cancel">The control that cancels withdrawal.</param>
+    public void ConfigureWithdrawal(
+        Button withdraw,
+        GameObject panel,
+        Button confirm,
+        Button cancel
+    )
+    {
+        withdrawalButton = withdraw ?? throw new ArgumentNullException(nameof(withdraw));
+        withdrawalPanel = panel ?? throw new ArgumentNullException(nameof(panel));
+        confirmWithdrawalButton = confirm ?? throw new ArgumentNullException(nameof(confirm));
+        cancelWithdrawalButton = cancel ?? throw new ArgumentNullException(nameof(cancel));
     }
 
     /// <summary>
@@ -253,6 +300,24 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Replaces the tactical command panel with the withdrawal confirmation panel.
+    /// </summary>
+    public void ShowWithdrawalConfirmation()
+    {
+        HideFighterOrders();
+        HideManeuvers();
+        withdrawalPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Closes the withdrawal confirmation panel.
+    /// </summary>
+    public void HideWithdrawalConfirmation()
+    {
+        withdrawalPanel.SetActive(false);
+    }
+
+    /// <summary>
     /// Connects generated buttons after Unity has restored their serialized references.
     /// </summary>
     private void Awake()
@@ -291,8 +356,12 @@ public sealed class TacticalBattleView : MonoBehaviour
         assignManeuverButton.onClick.AddListener(() => ManeuverAssigned?.Invoke());
         cancelManeuverButton.onClick.AddListener(() => ManeuverCancelled?.Invoke());
         pauseButton.onClick.AddListener(() => PauseToggled?.Invoke());
+        withdrawalButton.onClick.AddListener(() => WithdrawalRequested?.Invoke());
+        confirmWithdrawalButton.onClick.AddListener(() => WithdrawalConfirmed?.Invoke());
+        cancelWithdrawalButton.onClick.AddListener(() => WithdrawalCancelled?.Invoke());
         HideFighterOrders();
         HideManeuvers();
+        HideWithdrawalConfirmation();
     }
 
     /// <summary>
@@ -354,6 +423,17 @@ public sealed class TacticalBattleView : MonoBehaviour
             );
         if (pauseButton == null || pauseImage == null)
             throw new MissingReferenceException("Tactical HUD pause references are incomplete.");
+        if (
+            withdrawalButton == null
+            || withdrawalPanel == null
+            || confirmWithdrawalButton == null
+            || cancelWithdrawalButton == null
+        )
+        {
+            throw new MissingReferenceException(
+                "Tactical HUD withdrawal references are incomplete."
+            );
+        }
     }
 
     /// <summary>

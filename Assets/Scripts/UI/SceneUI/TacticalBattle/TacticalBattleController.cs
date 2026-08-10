@@ -15,6 +15,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private bool isCompleting;
     private bool isReady;
     private bool playerPaused;
+    private bool withdrawalConfirmationOpen;
     private TacticalBehavior? pendingFighterOrder;
     private TacticalBehavior? pendingManeuver;
     private TacticalFormation pendingFormation;
@@ -107,6 +108,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.ManeuverAssigned += AssignPendingManeuver;
         view.ManeuverCancelled += CancelPendingManeuver;
         view.PauseToggled += TogglePlayerPause;
+        view.WithdrawalRequested += RequestWithdrawal;
+        view.WithdrawalConfirmed += ConfirmWithdrawal;
+        view.WithdrawalCancelled += CancelWithdrawal;
         await battleRenderer.InitializeAsync(
             Session,
             bootstrap.GetContentModelCache(),
@@ -149,8 +153,13 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.ManeuverAssigned -= AssignPendingManeuver;
             view.ManeuverCancelled -= CancelPendingManeuver;
             view.PauseToggled -= TogglePlayerPause;
+            view.WithdrawalRequested -= RequestWithdrawal;
+            view.WithdrawalConfirmed -= ConfirmWithdrawal;
+            view.WithdrawalCancelled -= CancelWithdrawal;
         }
         if (playerPaused)
+            Session?.Resume();
+        if (withdrawalConfirmationOpen)
             Session?.Resume();
     }
 
@@ -165,6 +174,53 @@ public sealed class TacticalBattleController : MonoBehaviour
             Session.Pause();
 
         playerPaused = !playerPaused;
+        view.SetPaused(Session.IsPaused);
+    }
+
+    /// <summary>
+    /// Pauses the simulation and opens the dedicated tactical withdrawal confirmation panel.
+    /// </summary>
+    private void RequestWithdrawal()
+    {
+        if (withdrawalConfirmationOpen)
+            return;
+
+        withdrawalConfirmationOpen = true;
+        Session.Pause();
+        view.ShowWithdrawalConfirmation();
+    }
+
+    /// <summary>
+    /// Assigns withdrawal to every command group on the played side and resumes the simulation.
+    /// </summary>
+    private void ConfirmWithdrawal()
+    {
+        if (!withdrawalConfirmationOpen)
+            return;
+
+        Session.OrderWithdrawal(playerSide);
+        CloseWithdrawalConfirmation();
+    }
+
+    /// <summary>
+    /// Dismisses the withdrawal confirmation without changing tactical orders.
+    /// </summary>
+    private void CancelWithdrawal()
+    {
+        if (!withdrawalConfirmationOpen)
+            return;
+
+        CloseWithdrawalConfirmation();
+    }
+
+    /// <summary>
+    /// Releases the confirmation pause hold and restores the tactical command surface.
+    /// </summary>
+    private void CloseWithdrawalConfirmation()
+    {
+        view.HideWithdrawalConfirmation();
+        withdrawalConfirmationOpen = false;
+        Session.Resume();
         view.SetPaused(Session.IsPaused);
     }
 

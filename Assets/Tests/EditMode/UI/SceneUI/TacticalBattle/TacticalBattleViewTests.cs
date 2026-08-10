@@ -16,6 +16,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button formationButton;
         private Button assignManeuverButton;
         private Button cancelManeuverButton;
+        private GameObject withdrawalPanel;
+        private Button withdrawalButton;
+        private Button confirmWithdrawalButton;
+        private Button cancelWithdrawalButton;
 
         [SetUp]
         public void SetUp()
@@ -24,6 +28,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             root.SetActive(false);
             view = root.AddComponent<TacticalBattleView>();
             CreateManeuverControls();
+            CreateWithdrawalControls();
+            view.ConfigureWithdrawal(
+                withdrawalButton,
+                withdrawalPanel,
+                confirmWithdrawalButton,
+                cancelWithdrawalButton
+            );
         }
 
         [TearDown]
@@ -268,6 +279,59 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsFalse(assigned);
         }
 
+        [Test]
+        public void Awake_WithdrawalButton_RaisesWithdrawalRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.WithdrawalRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            withdrawalButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
+        public void Awake_ConfirmWithdrawalButton_RaisesWithdrawalConfirmed()
+        {
+            ConfigureCompleteView();
+            bool confirmed = false;
+            view.WithdrawalConfirmed += () => confirmed = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            confirmWithdrawalButton.onClick.Invoke();
+
+            Assert.IsTrue(confirmed);
+        }
+
+        [Test]
+        public void Awake_CancelWithdrawalButton_RaisesWithdrawalCancelled()
+        {
+            ConfigureCompleteView();
+            bool cancelled = false;
+            view.WithdrawalCancelled += () => cancelled = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            cancelWithdrawalButton.onClick.Invoke();
+
+            Assert.IsTrue(cancelled);
+        }
+
+        [Test]
+        public void ShowWithdrawalConfirmation_OpenPanel_ClosesOtherCommandPanels()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.ShowFighterOrders(true, true);
+            view.ShowManeuvers(TacticalFormation.StandOff);
+
+            view.ShowWithdrawalConfirmation();
+
+            Assert.IsTrue(withdrawalPanel.activeSelf);
+            Assert.IsFalse(maneuverPanel.activeSelf);
+        }
+
         private Button[] CreateButtons(int count, string name)
         {
             Button[] buttons = new Button[count];
@@ -299,6 +363,42 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CreateButton("Formation", out formationButton);
             CreateButton("AssignManeuver", out assignManeuverButton);
             CreateButton("CancelManeuver", out cancelManeuverButton);
+        }
+
+        private void CreateWithdrawalControls()
+        {
+            withdrawalPanel = new GameObject("Withdrawal", typeof(RectTransform));
+            withdrawalPanel.transform.SetParent(root.transform, false);
+            CreateButton("Withdraw", out withdrawalButton);
+            CreateButton("ConfirmWithdrawal", out confirmWithdrawalButton);
+            CreateButton("CancelWithdrawal", out cancelWithdrawalButton);
+        }
+
+        private void ConfigureCompleteView()
+        {
+            CreateFighterOrderControls(
+                out GameObject fighterOrderPanel,
+                out Button[] fighterOrders,
+                out Button assignFighterOrder,
+                out Button cancelFighterOrder
+            );
+            RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
+            view.Configure(
+                CreateButtons(8, "TaskForce"),
+                CreateButtons(4, "FighterGroup"),
+                CreateButtons(4, "NavigationSet"),
+                fighterOrderPanel,
+                fighterOrders,
+                assignFighterOrder,
+                cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
+                pauseButton,
+                pauseImage
+            );
         }
 
         private RawImage CreateButton(string name, out Button button)

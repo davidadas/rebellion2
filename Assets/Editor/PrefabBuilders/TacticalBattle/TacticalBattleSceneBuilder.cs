@@ -399,6 +399,52 @@ public static class TacticalBattleSceneBuilder
             21
         );
         Button pauseButton = CreateButton(pauseImage);
+        Button withdrawalButton = CreateBoundButton(
+            "Withdraw",
+            canvasObject.transform,
+            $"{root}/Actions/withdraw-up",
+            $"{root}/Actions/withdraw-down",
+            18,
+            19,
+            48,
+            34
+        );
+        GameObject withdrawalPanel = new GameObject(
+            "WithdrawalConfirmation",
+            typeof(RectTransform)
+        );
+        withdrawalPanel.transform.SetParent(canvasObject.transform, false);
+        RectTransform withdrawalRect = withdrawalPanel.GetComponent<RectTransform>();
+        SetSourceRect(withdrawalRect, 475, 0, 165, 262);
+        CreateBoundImage(
+            "Background",
+            withdrawalPanel.transform,
+            $"{root}/Hud/withdrawal-panel",
+            0,
+            0,
+            165,
+            262
+        );
+        Button confirmWithdrawalButton = CreateBoundButton(
+            "Confirm",
+            withdrawalPanel.transform,
+            $"{root}/Actions/assign-up",
+            $"{root}/Actions/assign-down",
+            66,
+            202,
+            27,
+            25
+        );
+        Button cancelWithdrawalButton = CreateBoundButton(
+            "Cancel",
+            withdrawalPanel.transform,
+            $"{root}/Actions/cancel-up",
+            $"{root}/Actions/cancel-down",
+            106,
+            202,
+            27,
+            25
+        );
         CreateCameraControls(canvasObject.transform, root);
         view.Configure(
             taskForceButtons,
@@ -416,8 +462,15 @@ public static class TacticalBattleSceneBuilder
             pauseButton,
             pauseImage
         );
+        view.ConfigureWithdrawal(
+            withdrawalButton,
+            withdrawalPanel,
+            confirmWithdrawalButton,
+            cancelWithdrawalButton
+        );
         fighterOrderPanel.SetActive(false);
         maneuverPanel.SetActive(false);
+        withdrawalPanel.SetActive(false);
     }
 
     /// <summary>
