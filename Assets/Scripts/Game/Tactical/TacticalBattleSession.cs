@@ -11,10 +11,24 @@ using Rebellion.Util.Common;
 namespace Rebellion.Game.Tactical
 {
     /// <summary>
+    /// Identifies the active stage of a tactical battle.
+    /// </summary>
+    public enum TacticalBattlePhase
+    {
+        /// <summary>The participating ships are entering their battle positions.</summary>
+        Arrival = 0,
+
+        /// <summary>The participating sides can execute tactical commands and attacks.</summary>
+        Engagement = 1,
+    }
+
+    /// <summary>
     /// Owns the isolated tactical state for one pending strategic encounter.
     /// </summary>
     public sealed class TacticalBattleSession
     {
+        private const float _arrivalDuration = 1f;
+        private static readonly float[] ArrivalDistances = { 40f, 57.5f, 65f, 32.5f };
         private readonly List<TacticalShipGroup> groups = new List<TacticalShipGroup>();
         private readonly ReadOnlyCollection<TacticalShipGroup> groupView;
         private readonly Dictionary<
@@ -28,6 +42,7 @@ namespace Rebellion.Game.Tactical
         private readonly IRandomNumberProvider random;
         private readonly ReadOnlyCollection<TacticalUnitState> units;
         private readonly TacticalBattleSimulator simulator;
+        private float arrivalElapsedTime;
         private int pauseCount;
 
         /// <summary>
@@ -49,6 +64,11 @@ namespace Rebellion.Game.Tactical
         /// Gets the fixed tactical waypoint-marker lattice.
         /// </summary>
         public TacticalNavigationGrid NavigationGrid { get; }
+
+        /// <summary>
+        /// Gets the active tactical battle stage.
+        /// </summary>
+        public TacticalBattlePhase Phase { get; private set; } = TacticalBattlePhase.Arrival;
 
         /// <summary>
         /// Gets whether one or both sides no longer have an active tactical unit.
@@ -233,6 +253,15 @@ namespace Rebellion.Game.Tactical
             if (IsPaused || IsComplete)
                 return;
 
+            if (Phase == TacticalBattlePhase.Arrival)
+            {
+                arrivalElapsedTime = Math.Min(_arrivalDuration, arrivalElapsedTime + elapsedTime);
+                if (arrivalElapsedTime >= _arrivalDuration)
+                    Phase = TacticalBattlePhase.Engagement;
+
+                return;
+            }
+
             foreach (TacticalUnitState unit in units)
                 unit.Advance(elapsedTime, random);
 
@@ -240,6 +269,30 @@ namespace Rebellion.Game.Tactical
                 group.RemoveInactiveTargets();
 
             simulator.Advance(elapsedTime);
+        }
+
+        /// <summary>
+        /// Gets a unit's presentation position during its initial flight into battle.
+        /// </summary>
+        /// <param name="unit">The tactical unit being presented.</param>
+        /// <returns>The current presentation position.</returns>
+        public System.Numerics.Vector3 GetPresentationPosition(TacticalUnitState unit)
+        {
+            if (unit == null)
+                throw new ArgumentNullException(nameof(unit));
+            int index = units.IndexOf(unit);
+            if (index < 0)
+                throw new ArgumentException(
+                    "The unit does not belong to this battle.",
+                    nameof(unit)
+                );
+            if (Phase != TacticalBattlePhase.Arrival)
+                return unit.Position;
+
+            float progress = arrivalElapsedTime / _arrivalDuration;
+            float remaining = 1f - progress * progress;
+            float distance = ArrivalDistances[index % ArrivalDistances.Length] * remaining;
+            return unit.Position - unit.Forward * distance;
         }
 
         private static CombatSide DetermineWinner(bool attackerActive, bool defenderActive)

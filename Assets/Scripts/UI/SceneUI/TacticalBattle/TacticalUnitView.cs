@@ -9,6 +9,11 @@ public sealed class TacticalUnitView : MonoBehaviour
     private TacticalUnitState unit;
 
     /// <summary>
+    /// Gets the tactical unit projected by this view.
+    /// </summary>
+    internal TacticalUnitState Unit => unit;
+
+    /// <summary>
     /// Connects this presentation object to its tactical unit.
     /// </summary>
     /// <param name="state">The tactical unit to present.</param>
@@ -26,8 +31,20 @@ public sealed class TacticalUnitView : MonoBehaviour
         if (unit == null)
             return;
 
+        Synchronize(unit.Position);
+    }
+
+    /// <summary>
+    /// Applies the unit's latest state at a presentation-specific position.
+    /// </summary>
+    /// <param name="position">The position to present without changing simulation state.</param>
+    public void Synchronize(System.Numerics.Vector3 position)
+    {
+        if (unit == null)
+            return;
+
         gameObject.SetActive(unit.IsActive);
-        transform.localPosition = ToUnityVector(unit.Position);
+        transform.localPosition = ToUnityVector(position);
         Vector3 forward = ToUnityVector(unit.Forward);
         if (forward.sqrMagnitude > 0f)
             transform.localRotation = Quaternion.LookRotation(forward.normalized, Vector3.up);

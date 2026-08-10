@@ -26,6 +26,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private readonly List<TacticalUnitView> unitViews = new List<TacticalUnitView>();
     private Material navigationSelectedMaterial;
     private bool initialized;
+    private TacticalBattleSession session;
 
     /// <summary>
     /// Raised when the player selects a visible tactical waypoint marker.
@@ -54,6 +55,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             throw new ArgumentNullException(nameof(contentAssets));
         if (initialized)
             throw new InvalidOperationException("Tactical presentation is already initialized.");
+
+        this.session = session;
 
         CapitalShip[] capitalShips = session
             .Units.Select(unit => unit.Unit)
@@ -92,7 +95,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     public void Synchronize()
     {
         foreach (TacticalUnitView unitView in unitViews)
-            unitView.Synchronize();
+            unitView.Synchronize(session.GetPresentationPosition(unitView.Unit));
 
         Camera battleCamera = Camera.main;
         if (battleCamera == null)

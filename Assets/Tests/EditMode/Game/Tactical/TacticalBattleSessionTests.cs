@@ -113,6 +113,58 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Create_OperationalFleets_StartsInArrivalPhaseWithoutMovingSimulationPositions()
+        {
+            TacticalBattleSession session = CreateArrivingSession();
+            TacticalUnitState attacker = session.Units.First(unit =>
+                unit.Side == TacticalBattleSide.Attacker
+            );
+            Vector3 simulationPosition = attacker.Position;
+
+            Vector3 presentationPosition = session.GetPresentationPosition(attacker);
+
+            Assert.AreEqual(TacticalBattlePhase.Arrival, session.Phase);
+            Assert.AreEqual(simulationPosition, attacker.Position);
+            Assert.Less(presentationPosition.Z, simulationPosition.Z);
+        }
+
+        [Test]
+        public void Advance_ArrivalDuration_EntersEngagementAtSimulationPosition()
+        {
+            TacticalBattleSession session = CreateArrivingSession();
+            TacticalUnitState attacker = session.Units.First(unit =>
+                unit.Side == TacticalBattleSide.Attacker
+            );
+
+            session.Advance(1f);
+
+            Assert.AreEqual(TacticalBattlePhase.Engagement, session.Phase);
+            Assert.AreEqual(attacker.Position, session.GetPresentationPosition(attacker));
+        }
+
+        [Test]
+        public void Advance_ArrivalPhase_DoesNotRechargeOrResolveCombat()
+        {
+            CapitalShip attackingShip = CreateShip(600, 250);
+            attackingShip.ShieldRechargeRate = 20;
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = CreateArrivingSession(attackingShip, defendingShip);
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            TacticalUnitState defendingUnit = session.Units.Single(unit =>
+                unit.Unit == defendingShip
+            );
+            attackingUnit.ApplyDamage(100);
+
+            session.Advance(0.5f);
+
+            Assert.AreEqual(150, attackingUnit.Shields);
+            Assert.AreEqual(100, defendingUnit.Hull);
+        }
+
+        [Test]
         public void Create_CapitalShip_CreatesWeaponBatteriesForEveryPrimaryWeaponType()
         {
             CapitalShip attackingShip = CreateShip(600, 250);
@@ -557,7 +609,27 @@ namespace Rebellion.Tests.Game.Tactical
 
         private static TacticalBattleSession CreateTacticalSession(PendingCombatResult encounter)
         {
-            return TacticalBattleSession.Create(encounter, new FixedRandomProvider(new[] { 0d }));
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                encounter,
+                new FixedRandomProvider(new[] { 0d })
+            );
+            session.Advance(1f);
+            return session;
+        }
+
+        private static TacticalBattleSession CreateArrivingSession(
+            CapitalShip attackingShip = null,
+            CapitalShip defendingShip = null
+        )
+        {
+            return TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip ?? CreateShip(600, 250)),
+                    DefenderFleet = CreateFleet(defendingShip ?? CreateShip(450, 175)),
+                },
+                new FixedRandomProvider(new[] { 0d })
+            );
         }
 
         private static Starfighter CreateFighters(
