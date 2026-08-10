@@ -189,6 +189,18 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Orders every command group on one side to leave the tactical battlefield.
+        /// Units with disabled drives remain in combat until they can move or are destroyed.
+        /// </summary>
+        /// <param name="side">The side withdrawing from combat.</param>
+        public void OrderWithdrawal(TacticalBattleSide side)
+        {
+            ValidateSide(side);
+            foreach (TacticalShipGroup group in groups.Where(group => group.Side == side))
+                group.SetBehavior(TacticalBehavior.Withdraw);
+        }
+
+        /// <summary>
         /// Acquires one pause hold on the tactical simulation.
         /// </summary>
         public void Pause()

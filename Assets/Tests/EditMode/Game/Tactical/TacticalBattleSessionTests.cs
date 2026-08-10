@@ -218,6 +218,36 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void OrderWithdrawal_ActiveSide_AssignsEveryCommandGroup()
+        {
+            Starfighter fighters = CreateFighters(12, 10);
+            TacticalBattleSession session = CreateSession(CreateShip(600, 250, fighters));
+
+            session.OrderWithdrawal(TacticalBattleSide.Attacker);
+
+            Assert.IsTrue(
+                session.Groups
+                    .Where(group => group.Side == TacticalBattleSide.Attacker)
+                    .All(group => group.Behavior == TacticalBehavior.Withdraw)
+            );
+            Assert.IsTrue(
+                session.Groups
+                    .Where(group => group.Side == TacticalBattleSide.Defender)
+                    .All(group => group.Behavior != TacticalBehavior.Withdraw)
+            );
+        }
+
+        [Test]
+        public void OrderWithdrawal_UndefinedSide_ThrowsArgumentOutOfRangeException()
+        {
+            TacticalBattleSession session = CreateSession();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                session.OrderWithdrawal((TacticalBattleSide)99)
+            );
+        }
+
+        [Test]
         public void Advance_PausedSession_DoesNotAdvanceUnitRecharge()
         {
             CapitalShip attackingShip = CreateShip(600, 250);
