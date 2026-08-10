@@ -11,6 +11,12 @@ using UnityEngine;
 public interface IBattleAlertWindowActions
 {
     /// <summary>
+    /// Opens the pending encounter in the tactical battle scene.
+    /// </summary>
+    /// <param name="encounter">The pending encounter to command.</param>
+    void TakeCommand(PendingCombatResult encounter);
+
+    /// <summary>
     /// Opens the fleet pane for a completed battle's planet.
     /// </summary>
     /// <param name="planet">The battle planet.</param>
@@ -310,7 +316,23 @@ public sealed class BattleAlertWindowController
             case BattleAlertChoice.AutoResolve:
                 ResolveAutomatically(view);
                 break;
+            case BattleAlertChoice.TakeCommand:
+                TakeCommand();
+                break;
         }
+    }
+
+    /// <summary>
+    /// Transfers the pending encounter to player-controlled tactical combat.
+    /// </summary>
+    private void TakeCommand()
+    {
+        PendingCombatResult encounter = getPendingCombat();
+        if (encounter == null)
+            return;
+
+        stopMusic();
+        actions.TakeCommand(encounter);
     }
 
     /// <summary>

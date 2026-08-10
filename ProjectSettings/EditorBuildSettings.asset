@@ -17,4 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SaveMenu.unity
     guid: b19299a31035c427ca6207edf32ca3cf
+  - enabled: 1
+    path: Assets/Scenes/TacticalBattle.unity
+    guid: 931bb55df6fd644d1860144bc84a0775
   m_configObjects: {}

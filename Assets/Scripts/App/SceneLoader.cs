@@ -78,6 +78,8 @@ public sealed class SceneLoader : MonoBehaviour
             return bootstrap.InitializeSaveMenuContentAsync();
         if (sceneName == SaveMenuLaunchContext.StrategyViewSceneName)
             return bootstrap.InitializeStrategyContentAsync();
+        if (sceneName == TacticalBattleLaunchContext.SceneName)
+            return bootstrap.InitializeStrategyContentAsync();
 
         return bootstrap.InitializeMainMenuSceneAsync();
     }

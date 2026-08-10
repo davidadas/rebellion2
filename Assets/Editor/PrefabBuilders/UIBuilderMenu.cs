@@ -18,6 +18,7 @@ public static class UIBuilderMenu
         MainMenuPrefabBuilder.Rebuild();
         SaveMenuPrefabBuilder.Rebuild();
         StrategyViewPrefabBuilder.Rebuild();
+        TacticalBattleSceneBuilder.Rebuild();
         SaveAndRefresh();
     }
 
@@ -77,6 +78,17 @@ public static class UIBuilderMenu
     {
         UIAuthoringGuard.EnsureEditMode();
         StrategyViewPrefabBuilder.Rebuild();
+        SaveAndRefresh();
+    }
+
+    /// <summary>
+    /// Rebuilds the tactical space-battle scene.
+    /// </summary>
+    [MenuItem("Rebellion/Build/Build Tactical Battle", false, 23)]
+    public static void BuildTacticalBattle()
+    {
+        UIAuthoringGuard.EnsureEditMode();
+        TacticalBattleSceneBuilder.Rebuild();
         SaveAndRefresh();
     }
 

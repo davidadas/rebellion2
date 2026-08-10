@@ -1910,6 +1910,16 @@ public sealed class StrategyController
     }
 
     /// <summary>
+    /// Opens a pending encounter in the tactical battle scene.
+    /// </summary>
+    /// <param name="encounter">The pending encounter to command.</param>
+    void IBattleAlertWindowActions.TakeCommand(PendingCombatResult encounter)
+    {
+        TacticalBattleLaunchContext.Open(encounter);
+        AppBootstrap.Instance.LoadScene(TacticalBattleLaunchContext.SceneName);
+    }
+
+    /// <summary>
     /// Routes one semantic HUD action to its destination feature or scene.
     /// </summary>
     /// <param name="action">The semantic HUD action.</param>

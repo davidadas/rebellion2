@@ -206,6 +206,18 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
+        public void TakeCommandButton_PendingCombat_OpensTacticalBattleAndStopsMusic()
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            FindButton(view, "TakeCommandButtonImage").onClick.Invoke();
+
+            Assert.AreSame(_pending, _actions.TacticalEncounter);
+            Assert.AreEqual(1, _stopMusicCount);
+            Assert.IsFalse(_controller.HasCombatResult(view));
+        }
+
+        [Test]
         public void SyncPendingCombatWindow_ResultWithPendingCleared_PreservesResultWindow()
         {
             BattleAlertWindowView view = OpenWindow(out UIWindow _);
@@ -386,6 +398,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             public int RebuildCount { get; private set; }
 
+            public PendingCombatResult TacticalEncounter { get; private set; }
+
             public void OpenBattleResultFleet(Planet planet, int sourceX, int sourceY) { }
 
             public void OpenBattleResultSystem(
@@ -397,6 +411,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             public void RebuildBattleSnapshot()
             {
                 RebuildCount++;
+            }
+
+            public void TakeCommand(PendingCombatResult encounter)
+            {
+                TacticalEncounter = encounter;
             }
         }
     }
