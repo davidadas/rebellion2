@@ -46,8 +46,7 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
-    private const string _atmosphereShaderPath = "Assets/Shaders/AtmosphereRim.shader";
-    private const string _atmosphereMaterialPath = "Assets/Art/Models/MainMenu/AtmosphereRim.mat";
+    private const string _atmosphereShaderName = "Custom/AtmosphereRim";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
@@ -1991,7 +1990,7 @@ public static class MainMenuPrefabBuilder
         atmosphere.transform.SetParent(rig.transform, false);
         atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
         atmosphere.layer = planetLayer;
-        atmosphere.GetComponent<MeshRenderer>().sharedMaterial = CreateAtmosphereMaterial();
+        atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
 
         // Dedicated sun for the planet, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
@@ -2046,23 +2045,6 @@ public static class MainMenuPrefabBuilder
         };
         AssetDatabase.CreateAsset(created, _renderTexturePath);
         return created;
-    }
-
-    /// <summary>
-    /// Creates the atmosphere rim material asset from the rim shader, regenerated with the prefab. A
-    /// material asset (unlike an inline new Material()) serialises into the generated prefab and
-    /// renders at runtime, so no runtime material assignment is needed for the atmosphere shell.
-    /// </summary>
-    /// <returns>The atmosphere rim material asset.</returns>
-    private static Material CreateAtmosphereMaterial()
-    {
-        AssetDatabase.DeleteAsset(_atmosphereMaterialPath);
-        Material material = new Material(LoadRequiredAsset<Shader>(_atmosphereShaderPath))
-        {
-            name = "AtmosphereRim",
-        };
-        AssetDatabase.CreateAsset(material, _atmosphereMaterialPath);
-        return material;
     }
 
     /// <summary>
