@@ -194,6 +194,22 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void CanWithdraw_MaximumSublightDriveDamage_ReturnsFalse()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
+
+            for (int hit = 0; hit < 4; hit++)
+            {
+                unit.ApplyDamage(
+                    new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                    CreateRandom(0.93d)
+                );
+            }
+
+            Assert.IsFalse(unit.CanWithdraw);
+        }
+
+        [Test]
         public void Advance_DamagedSubsystemAndSuccessfulDamageControl_RepairsOneLevel()
         {
             TacticalUnitState unit = CreateCapitalShipState(

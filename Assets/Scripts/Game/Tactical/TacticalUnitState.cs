@@ -140,10 +140,11 @@ namespace Rebellion.Game.Tactical
                 );
 
         /// <summary>
-        /// Gets whether the hyperdrive remains capable of completing a tactical withdrawal.
+        /// Gets whether the unit can move and its hyperdrive can complete a tactical withdrawal.
         /// </summary>
         public bool CanWithdraw =>
-            GetSystemDamage(TacticalDamageSystem.Hyperdrive) < _maximumSystemDamage;
+            EffectiveSublightSpeed > 0f
+            && GetSystemDamage(TacticalDamageSystem.Hyperdrive) < _maximumSystemDamage;
 
         /// <summary>
         /// Gets the remaining temporary component disruption time.
