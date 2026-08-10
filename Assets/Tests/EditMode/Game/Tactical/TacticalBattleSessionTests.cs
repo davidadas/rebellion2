@@ -352,7 +352,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_PrimaryTargetWithoutAssignment_TargetsLastOpposingUnit()
+        public void Advance_PrimaryTargetWithoutAssignment_TargetsNearestOpposingUnit()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
@@ -365,14 +365,47 @@ namespace Rebellion.Tests.Game.Tactical
                     DefenderFleet = CreateFleet(firstDefendingShip, lastDefendingShip),
                 }
             );
+            session.Units.Single(unit => unit.Unit == firstDefendingShip).Position =
+                new Vector3(0f, 0f, 10f);
+            session.Units.Single(unit => unit.Unit == lastDefendingShip).Position =
+                new Vector3(0f, 0f, 40f);
 
             session.Advance(0.1f);
 
             Assert.AreEqual(
-                100,
+                70,
                 session.Units.Single(unit => unit.Unit == firstDefendingShip).Hull
             );
-            Assert.AreEqual(70, session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull);
+            Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull);
+        }
+
+        [Test]
+        public void Advance_OrderedTargetAssignment_AttacksFirstEligibleTarget()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip firstDefendingShip = CreateShip(100, 0);
+            CapitalShip secondDefendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(firstDefendingShip, secondDefendingShip),
+                }
+            );
+            TacticalUnitState firstTarget = session.Units.Single(unit =>
+                unit.Unit == firstDefendingShip
+            );
+            TacticalUnitState secondTarget = session.Units.Single(unit =>
+                unit.Unit == secondDefendingShip
+            );
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            group.ReplaceTargets(new[] { secondTarget, firstTarget });
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(100, firstTarget.Hull);
+            Assert.AreEqual(70, secondTarget.Hull);
         }
 
         [Test]

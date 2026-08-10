@@ -143,7 +143,7 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Retains the unit's current target or acquires the last eligible opposing object.
+        /// Retains the unit's current engagement or acquires the highest-priority eligible object.
         /// </summary>
         /// <param name="unit">The acting unit.</param>
         /// <param name="group">The unit's controlling group, if assigned.</param>
@@ -191,7 +191,14 @@ namespace Rebellion.Game.Tactical
                 return currentTarget;
             }
 
-            TacticalUnitState selectedTarget = eligibleTargets.LastOrDefault();
+            TacticalUnitState selectedTarget =
+                group?.Targets.Count > 0
+                    ? eligibleTargets.FirstOrDefault()
+                    : eligibleTargets
+                        .OrderBy(candidate =>
+                            Vector3.DistanceSquared(unit.Position, candidate.Position)
+                        )
+                        .FirstOrDefault();
             if (selectedTarget == null)
                 targets.Remove(unit);
             else
