@@ -246,6 +246,70 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void ConfigurePlayerControl_UnconfiguredSession_AutomatesOnlyOpposingSide()
+        {
+            TacticalBattleSession session = CreateSession();
+
+            session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+
+            Assert.IsFalse(session.IsAutomated(TacticalBattleSide.Attacker));
+            Assert.IsTrue(session.IsAutomated(TacticalBattleSide.Defender));
+        }
+
+        [Test]
+        public void ConfigurePlayerControl_ExistingControlSelection_PreservesControlSelection()
+        {
+            TacticalBattleSession session = CreateSession();
+            session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+            session.SetAutomated(TacticalBattleSide.Attacker, true);
+
+            session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+
+            Assert.IsTrue(session.IsAutomated(TacticalBattleSide.Attacker));
+        }
+
+        [Test]
+        public void Advance_AutomatedSide_AssignsRankedOpposingTargets()
+        {
+            CapitalShip weakerTarget = CreateShip(100, 0);
+            weakerTarget.TypeID = "weaker";
+            CapitalShip strongerTarget = CreateShip(500, 200);
+            strongerTarget.TypeID = "stronger";
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                DefenderFleet = CreateFleet(weakerTarget, strongerTarget),
+            };
+            TacticalBattleSession session = CreateTacticalSession(encounter);
+            session.SetAutomated(TacticalBattleSide.Attacker, true);
+
+            session.Advance(1f);
+            session.Advance(0.1f);
+
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            CollectionAssert.AreEqual(
+                new[] { strongerTarget, weakerTarget },
+                group.Targets.Select(target => target.Unit)
+            );
+            Assert.AreEqual(TacticalBehavior.PrimaryTarget, group.Behavior);
+        }
+
+        [Test]
+        public void SetAutomated_DisabledSide_PreservesExistingOrders()
+        {
+            TacticalBattleSession session = CreateSession();
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            group.SetBehavior(TacticalBehavior.Hold);
+
+            session.SetAutomated(TacticalBattleSide.Attacker, false);
+            session.Advance(1f);
+            session.Advance(1f);
+
+            Assert.AreEqual(TacticalBehavior.Hold, group.Behavior);
+            Assert.IsEmpty(group.Targets);
+        }
+
+        [Test]
         public void Pause_MultiplePauseHolds_RequiresMatchingResumeCalls()
         {
             TacticalBattleSession session = CreateSession();

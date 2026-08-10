@@ -45,6 +45,7 @@ namespace Rebellion.Game.Tactical
         private readonly IRandomNumberProvider random;
         private readonly ReadOnlyCollection<TacticalUnitState> units;
         private readonly TacticalBattleSimulator simulator;
+        private readonly TacticalCommandAutomation commandAutomation;
         private float arrivalElapsedTime;
         private int pauseCount;
 
@@ -97,6 +98,7 @@ namespace Rebellion.Game.Tactical
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
             NavigationGrid = new TacticalNavigationGrid(TacticalBattleSimulator.BattlefieldScale);
             BuildCommandGroups();
+            commandAutomation = new TacticalCommandAutomation(this.units, groupView);
             simulator = new TacticalBattleSimulator(
                 this.units,
                 groupView,
@@ -223,6 +225,37 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Configures the played side for manual commands and the opposing side for automated commands.
+        /// A retained session preserves any command-mode changes made after this initial configuration.
+        /// </summary>
+        /// <param name="playerSide">The side controlled by the local player.</param>
+        public void ConfigurePlayerControl(TacticalBattleSide playerSide)
+        {
+            commandAutomation.ConfigurePlayerControl(playerSide);
+        }
+
+        /// <summary>
+        /// Gets whether one side periodically receives computer-generated tactical orders.
+        /// </summary>
+        /// <param name="side">The tactical side to inspect.</param>
+        /// <returns>True when the side is under automated command.</returns>
+        public bool IsAutomated(TacticalBattleSide side)
+        {
+            return commandAutomation.IsAutomated(side);
+        }
+
+        /// <summary>
+        /// Enables or disables periodic computer-generated orders for one tactical side.
+        /// Existing orders remain active when manual command is restored.
+        /// </summary>
+        /// <param name="side">The tactical side whose control mode changes.</param>
+        /// <param name="automated">Whether the side should receive automated orders.</param>
+        public void SetAutomated(TacticalBattleSide side, bool automated)
+        {
+            commandAutomation.SetAutomated(side, automated);
+        }
+
+        /// <summary>
         /// Orders every command group on one side to leave the tactical battlefield.
         /// Units with disabled drives remain in combat until they can move or are destroyed.
         /// </summary>
@@ -303,6 +336,7 @@ namespace Rebellion.Game.Tactical
             foreach (TacticalShipGroup group in groups)
                 group.RemoveInactiveTargets();
 
+            commandAutomation.Advance(elapsedTime);
             simulator.Advance(elapsedTime);
         }
 

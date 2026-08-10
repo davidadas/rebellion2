@@ -102,6 +102,9 @@ public sealed class TacticalBattleController : MonoBehaviour
             Session.Encounter.AttackerOwnerInstanceID == playerFactionId
                 ? TacticalBattleSide.Attacker
                 : TacticalBattleSide.Defender;
+        Session.ConfigurePlayerControl(playerSide);
+        observing = Session.IsAutomated(playerSide);
+        view.SetObserving(observing);
         view.SetGroupAvailability(
             Session.GetTaskForces(playerSide).Count,
             Session.GetFighterGroups(playerSide).Count
@@ -244,7 +247,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void ToggleCommandMode()
     {
-        observing = !observing;
+        Session.SetAutomated(playerSide, !Session.IsAutomated(playerSide));
+        observing = Session.IsAutomated(playerSide);
         SelectedGroup = null;
         selectedCapitalShip = null;
         battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
