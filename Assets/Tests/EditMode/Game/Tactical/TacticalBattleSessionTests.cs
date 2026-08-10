@@ -352,6 +352,36 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_HoldBehavior_FiresWithoutMoving()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.Maneuverability = 10;
+            attackingShip.SublightSpeed = 10;
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            Vector3 initialPosition = attackingUnit.Position;
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Hold);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(initialPosition, attackingUnit.Position);
+            Assert.AreEqual(70, session.Units.Single(unit => unit.Unit == defendingShip).Hull);
+        }
+
+        [Test]
         public void Advance_PrimaryTargetWithoutAssignment_TargetsNearestOpposingUnit()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

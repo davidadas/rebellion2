@@ -117,8 +117,6 @@ namespace Rebellion.Game.Tactical
                 candidate.Units.Contains(unit)
             );
             TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.PrimaryTarget;
-            if (behavior == TacticalBehavior.Hold)
-                return Array.Empty<PendingAttack>();
             if (behavior == TacticalBehavior.Withdraw)
             {
                 AdvanceWithdrawal(unit, elapsedTime);
@@ -137,6 +135,9 @@ namespace Rebellion.Game.Tactical
                 return Array.Empty<PendingAttack>();
 
             IReadOnlyList<PendingAttack> attacks = FireStrongestArc(unit, target);
+            if (behavior == TacticalBehavior.Hold)
+                return attacks;
+
             Vector3 destination = GetApproachPosition(unit, target, group, behavior);
             MoveTowards(unit, destination, elapsedTime);
             return attacks;
