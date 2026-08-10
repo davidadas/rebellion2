@@ -18,6 +18,11 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _random;
         private readonly ProbabilityTable _captureAvoidance;
 
+        /// <summary>
+        /// Creates the authoritative resolver for officer encounter requests.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="random">The deterministic simulation random source.</param>
         public OfficerEncounterSystem(GameRoot game, IRandomNumberProvider random)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));

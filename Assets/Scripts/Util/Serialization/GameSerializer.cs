@@ -688,6 +688,11 @@ namespace Rebellion.Util.Serialization
                         object value = ReadMember(member, reader);
                         ReflectionHelper.SetMemberValue(member, obj, value);
                     }
+                    else if (attributes.TryGetValue(elementName, out MemberInfo attributeMember))
+                    {
+                        object value = ReadMember(attributeMember, reader);
+                        ReflectionHelper.SetMemberValue(attributeMember, obj, value);
+                    }
                     else
                     {
                         throw new InvalidOperationException(

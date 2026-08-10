@@ -43,7 +43,6 @@ namespace Rebellion.Game.Messages
         ForceGrowth,
         ForceUserDiscovered,
         ForceUserDiscoveredByStudent,
-        ForceAbilityRevealed,
         DagobahCompleted,
         HeritageRevealed,
         CapitalShipRepaired,

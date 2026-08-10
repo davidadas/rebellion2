@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleMovementRequest_RoutesThroughAuthoritativeMovePath()
+        public void HandleMovementRequest_ValidRequest_RoutesThroughAuthoritativeMovePath()
         {
             (GameRoot game, _, Planet destination, Officer officer, MovementSystem movement) =
                 BuildScene();

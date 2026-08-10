@@ -108,6 +108,12 @@ expected by the XML or update the corresponding definition. Application-level ma
 cutscene media lives under `Application/`; faction- and scenario-specific media belongs in the
 pack.
 
+### Game events
+
+Game events define scheduled and result-triggered narrative behavior without a code rebuild. See
+[Creating custom game events](GameEvents.md) for lifecycle, scheduling, targeting, conditions,
+actions, schema validation, and complete examples.
+
 ### Preloaded assets
 
 Preload manifests list textures, texture directories, and audio needed before a major screen is

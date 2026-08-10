@@ -92,21 +92,50 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
-        public void SaveSlotAccessors_ReturnCanonicalNamesAndValidateBounds()
+        public void SaveSlotCount_DefaultConfiguration_ReturnsSix()
         {
-            SaveGameManager manager = _saveGameManager;
+            int count = _saveGameManager.SaveSlotCount;
 
-            Assert.AreEqual(6, manager.SaveSlotCount);
-            Assert.IsFalse(manager.IsValidSaveSlot(-1));
-            Assert.IsTrue(manager.IsValidSaveSlot(0));
-            Assert.IsTrue(manager.IsValidSaveSlot(5));
-            Assert.IsFalse(manager.IsValidSaveSlot(6));
-            Assert.AreEqual("save_slot_1", manager.GetSaveSlotFileName(0));
-            Assert.AreEqual("save_slot_6", manager.GetSaveSlotFileName(5));
-            Assert.AreEqual("Save Slot 1", manager.GetSaveSlotDisplayName(0));
-            Assert.AreEqual("Save Slot 6", manager.GetSaveSlotDisplayName(5));
-            Assert.Throws<ArgumentOutOfRangeException>(() => manager.GetSaveSlotFileName(-1));
-            Assert.Throws<ArgumentOutOfRangeException>(() => manager.GetSaveSlotDisplayName(6));
+            Assert.AreEqual(6, count);
+        }
+
+        [Test]
+        public void IsValidSaveSlot_BoundaryValues_ValidatesBounds()
+        {
+            Assert.IsFalse(_saveGameManager.IsValidSaveSlot(-1));
+            Assert.IsTrue(_saveGameManager.IsValidSaveSlot(0));
+            Assert.IsTrue(_saveGameManager.IsValidSaveSlot(5));
+            Assert.IsFalse(_saveGameManager.IsValidSaveSlot(6));
+        }
+
+        [Test]
+        public void GetSaveSlotFileName_ValidSlots_ReturnsCanonicalNames()
+        {
+            Assert.AreEqual("save_slot_1", _saveGameManager.GetSaveSlotFileName(0));
+            Assert.AreEqual("save_slot_6", _saveGameManager.GetSaveSlotFileName(5));
+        }
+
+        [Test]
+        public void GetSaveSlotFileName_InvalidSlot_ThrowsArgumentOutOfRangeException()
+        {
+            TestDelegate getName = () => _saveGameManager.GetSaveSlotFileName(-1);
+
+            Assert.Throws<ArgumentOutOfRangeException>(getName);
+        }
+
+        [Test]
+        public void GetSaveSlotDisplayName_ValidSlots_ReturnsCanonicalNames()
+        {
+            Assert.AreEqual("Save Slot 1", _saveGameManager.GetSaveSlotDisplayName(0));
+            Assert.AreEqual("Save Slot 6", _saveGameManager.GetSaveSlotDisplayName(5));
+        }
+
+        [Test]
+        public void GetSaveSlotDisplayName_InvalidSlot_ThrowsArgumentOutOfRangeException()
+        {
+            TestDelegate getName = () => _saveGameManager.GetSaveSlotDisplayName(6);
+
+            Assert.Throws<ArgumentOutOfRangeException>(getName);
         }
 
         [Test]
@@ -354,10 +383,10 @@ namespace Rebellion.Tests.Managers
             {
                 InstanceID = "EVENT1",
                 DisplayName = "Event1",
-                InitialDelayTicks = 300,
-                InitialDelayRandomTicks = 100,
-                RepeatDelayTicks = 20,
-                RepeatDelayRandomTicks = 5,
+                Schedule = new GameEventScheduler
+                {
+                    Random = new RandomTickRange { MinimumTicks = 300, MaximumTicks = 400 },
+                },
             };
             GameEvent event2 = new GameEvent { InstanceID = "EVENT2", DisplayName = "Event2" };
 
@@ -375,10 +404,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(2, loadedGame.EventPool.Count);
             Assert.AreEqual("EVENT1", loadedGame.EventPool[0].InstanceID);
             Assert.AreEqual("EVENT2", loadedGame.EventPool[1].InstanceID);
-            Assert.AreEqual(300, loadedGame.EventPool[0].InitialDelayTicks);
-            Assert.AreEqual(100, loadedGame.EventPool[0].InitialDelayRandomTicks);
-            Assert.AreEqual(20, loadedGame.EventPool[0].RepeatDelayTicks);
-            Assert.AreEqual(5, loadedGame.EventPool[0].RepeatDelayRandomTicks);
+            Assert.AreEqual(300, loadedGame.EventPool[0].Schedule.Random.MinimumTicks);
+            Assert.AreEqual(400, loadedGame.EventPool[0].Schedule.Random.MaximumTicks);
         }
 
         [Test]

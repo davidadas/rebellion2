@@ -269,42 +269,6 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_GameEventEffects_RoundTripsAliasAndConfiguration()
-        {
-            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "SEAT_OF_POWER",
-                IsRepeatable = true,
-                Effects = new List<GameEffect>
-                {
-                    new FactionOfficerRatingAuraEffect
-                    {
-                        SourceUnitInstanceID = "EMPEROR_PALPATINE",
-                        LocationInstanceID = "CORUSCANT",
-                        AffectedFactionInstanceID = "FNEMP1",
-                        Rating = OfficerRating.Leadership,
-                        Amount = 50,
-                    },
-                },
-            };
-
-            string serializedXml = SerializeToString(serializer, gameEvent);
-            GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
-
-            StringAssert.Contains("<FactionOfficerRatingAura>", serializedXml);
-            Assert.IsFalse(serializedXml.Contains("FactionOfficerRatingAuraEffect"));
-            FactionOfficerRatingAuraEffect aura =
-                deserialized.Effects[0] as FactionOfficerRatingAuraEffect;
-            Assert.IsNotNull(aura);
-            Assert.AreEqual("EMPEROR_PALPATINE", aura.SourceUnitInstanceID);
-            Assert.AreEqual("CORUSCANT", aura.LocationInstanceID);
-            Assert.AreEqual("FNEMP1", aura.AffectedFactionInstanceID);
-            Assert.AreEqual(OfficerRating.Leadership, aura.Rating);
-            Assert.AreEqual(50, aura.Amount);
-        }
-
-        [Test]
         public void Serialize_ResultTriggeredReplacement_RoundTripsSourceAndSuppression()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
@@ -477,8 +441,7 @@ namespace Rebellion.Tests.Util.Serialization
                             { "FNALL1", "Alliance/report" },
                             { "FNEMP1", "Empire/report" },
                         },
-                        AdvisorNotification = AdvisorNotificationCode.AgentReport,
-                        AdvisorSubjectNotification = AdvisorSubjectNotification.Report,
+                        AdvisorCue = AdvisorCue.SubjectReport,
                         ExcludedPairs = new List<OfficerPairReference>
                         {
                             new OfficerPairReference
@@ -496,6 +459,7 @@ namespace Rebellion.Tests.Util.Serialization
 
             StringAssert.Contains("<RandomOutcome Value=\"0.75\">", serializedXml);
             StringAssert.Contains("<AddMessage>", serializedXml);
+            StringAssert.Contains("<AddToVoid UnitInstanceID=\"LUKE_SKYWALKER\"", serializedXml);
             RandomOutcomeAction random = deserialized.Actions[0] as RandomOutcomeAction;
             Assert.IsNotNull(random);
             Assert.AreEqual(0.75, random.Probability);
@@ -573,20 +537,26 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("{subject} Detects Enemy", forceDetection.Title);
             Assert.AreEqual("Alliance/report", forceDetection.VoicePaths["FNALL1"]);
             Assert.AreEqual("Empire/report", forceDetection.VoicePaths["FNEMP1"]);
-            Assert.AreEqual(
-                AdvisorNotificationCode.AgentReport,
-                forceDetection.AdvisorNotification
-            );
-            Assert.AreEqual(
-                AdvisorSubjectNotification.Report,
-                forceDetection.AdvisorSubjectNotification
-            );
+            Assert.AreEqual(AdvisorCue.SubjectReport, forceDetection.AdvisorCue);
             Assert.AreEqual(1, forceDetection.ExcludedPairs.Count);
             Assert.AreEqual(
                 "LUKE_SKYWALKER",
                 forceDetection.ExcludedPairs[0].FirstOfficerInstanceID
             );
             Assert.AreEqual("DARTH_VADER", forceDetection.ExcludedPairs[0].SecondOfficerInstanceID);
+        }
+
+        [Test]
+        public void Deserialize_AddToVoidWithElementUnitInstanceID_ReadsUnitInstanceID()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameAction));
+
+            AddToVoidAction action = (AddToVoidAction)DeserializeFromString(
+                serializer,
+                "<AddToVoid><UnitInstanceID>LUKE_SKYWALKER</UnitInstanceID></AddToVoid>"
+            );
+
+            Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
         }
 
         [Test]

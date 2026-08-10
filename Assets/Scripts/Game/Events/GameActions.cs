@@ -17,7 +17,6 @@ namespace Rebellion.Game.Events
     public enum PlanetIncidentActionType
     {
         ResourceChange,
-        NaturalDisaster,
     }
 
     public enum EventVariableOperation
@@ -30,6 +29,14 @@ namespace Rebellion.Game.Events
 
     internal static class ForceEncounterDetection
     {
+        /// <summary>
+        /// Rolls whether two known Force ranks produce a detectable encounter.
+        /// </summary>
+        /// <param name="first">The first officer.</param>
+        /// <param name="second">The second officer.</param>
+        /// <param name="chanceModifier">The authored percentage-point modifier.</param>
+        /// <param name="provider">The deterministic simulation random source.</param>
+        /// <returns>True when the detection roll succeeds.</returns>
         public static bool Succeeds(
             Officer first,
             Officer second,
@@ -66,6 +73,12 @@ namespace Rebellion.Game.Events
         public string FirstOfficerInstanceID { get; set; }
         public string SecondOfficerInstanceID { get; set; }
 
+        /// <summary>
+        /// Returns whether two officers match the authored pair in either order.
+        /// </summary>
+        /// <param name="first">The first officer to compare.</param>
+        /// <param name="second">The second officer to compare.</param>
+        /// <returns>True when both authored instance IDs are present.</returns>
         public bool Matches(Officer first, Officer second)
         {
             return (
@@ -92,8 +105,7 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string DetailImageKey { get; set; }
         public string VoicePath { get; set; }
-        public AdvisorNotificationCode AdvisorNotification { get; set; }
-        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public AdvisorCue AdvisorCue { get; set; }
         public List<InformantFactionRoute> FactionRoutes { get; set; } =
             new List<InformantFactionRoute>();
         public List<PlanetIntelligenceCategory> IntelligenceChoices { get; set; } =
@@ -154,8 +166,7 @@ namespace Rebellion.Game.Events
                     BodyTemplate = Body,
                     DetailImageKey = DetailImageKey,
                     VoicePath = VoicePath,
-                    AdvisorNotification = AdvisorNotification,
-                    AdvisorSubjectNotification = AdvisorSubjectNotification,
+                    AdvisorCue = AdvisorCue,
                     Tick = game.CurrentTick,
                 },
             };
@@ -175,10 +186,7 @@ namespace Rebellion.Game.Events
         public int MaximumRawMaterials { get; set; } = 15;
         public int MinimumEnergy { get; set; }
         public int MaximumEnergy { get; set; } = 15;
-        public double DisasterLossProbabilityPerResource { get; set; } = 0.05;
-        public double FacilityDestructionProbability { get; set; } = 0.1;
         public List<BuildingType> EnergyFacilityTypes { get; set; } = new List<BuildingType>();
-        public List<BuildingType> DisasterFacilityTypes { get; set; } = new List<BuildingType>();
 
         public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
 
@@ -200,11 +208,6 @@ namespace Rebellion.Game.Events
             return ActionType switch
             {
                 PlanetIncidentActionType.ResourceChange => ApplyResourceChange(
-                    game,
-                    planet,
-                    provider
-                ),
-                PlanetIncidentActionType.NaturalDisaster => ApplyNaturalDisaster(
                     game,
                     planet,
                     provider
@@ -286,12 +289,48 @@ namespace Rebellion.Game.Events
             };
         }
 
-        private List<GameResult> ApplyNaturalDisaster(
-            GameRoot game,
+        private static bool HasCompletedFacility(Planet planet, BuildingType type) =>
+            planet.Buildings.Any(building =>
+                building.BuildingType == type
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+            );
+
+        private static bool HasAnyCompletedFacility(
             Planet planet,
-            IRandomNumberProvider provider
+            IReadOnlyCollection<BuildingType> types
+        ) =>
+            planet.Buildings.Any(building =>
+                types.Contains(building.BuildingType)
+                && building.ManufacturingStatus == ManufacturingStatus.Complete
+            );
+
+        private static Faction FindOwner(GameRoot game, Planet planet) =>
+            game.GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
+    }
+
+    [PersistableObject(Name = "ReduceResources")]
+    public sealed class ReduceResourcesAction : GameAction
+    {
+        [PersistableAttribute(Name = "LossProbabilityPerResource")]
+        public double LossProbabilityPerResource { get; set; } = 0.05;
+
+        [PersistableAttribute(Name = "MinimumTotalLoss")]
+        public int MinimumTotalLoss { get; set; } = 1;
+
+        public override List<GameResult> Execute(GameRoot game) =>
+            throw new InvalidOperationException("ReduceResources requires a planet target.");
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
         )
         {
+            Planet planet = context?.GetScopeTarget<Planet>();
+            if (planet == null)
+                return Execute(game);
+
             int oldRaw = planet.NumRawResourceNodes;
             int oldEnergy = planet.EnergyCapacity;
             if (oldRaw == 0 && oldEnergy == 0)
@@ -306,8 +345,7 @@ namespace Rebellion.Game.Events
                     iteration < oldRaw
                     && RollProbability(
                         provider,
-                        ((oldEnergy - rawLoss - energyLoss) + oldRaw)
-                            * DisasterLossProbabilityPerResource
+                        ((oldEnergy - rawLoss - energyLoss) + oldRaw) * LossProbabilityPerResource
                     )
                 )
                     rawLoss++;
@@ -315,40 +353,25 @@ namespace Rebellion.Game.Events
                     iteration < oldEnergy
                     && RollProbability(
                         provider,
-                        ((oldRaw - rawLoss - energyLoss) + oldEnergy)
-                            * DisasterLossProbabilityPerResource
+                        ((oldRaw - rawLoss - energyLoss) + oldEnergy) * LossProbabilityPerResource
                     )
                 )
                     energyLoss++;
             }
 
-            if (rawLoss == 0 && energyLoss == 0)
+            int requiredLoss = Math.Min(MinimumTotalLoss, oldRaw + oldEnergy);
+            while (rawLoss + energyLoss < requiredLoss)
             {
-                if (oldRaw > 0)
-                    rawLoss = 1;
+                if (oldRaw - rawLoss > 0)
+                    rawLoss++;
+                else if (oldEnergy - energyLoss > 0)
+                    energyLoss++;
                 else
-                    energyLoss = 1;
+                    break;
             }
 
             planet.EnergyCapacity = oldEnergy - energyLoss;
             planet.NumRawResourceNodes = Math.Min(oldRaw - rawLoss, planet.EnergyCapacity);
-
-            List<IGameEntity> destroyed = new List<IGameEntity>();
-            foreach (
-                Building building in planet
-                    .Buildings.Where(building =>
-                        building.ManufacturingStatus == ManufacturingStatus.Complete
-                        && DisasterFacilityTypes.Contains(building.BuildingType)
-                    )
-                    .OrderBy(building => building.InstanceID, StringComparer.Ordinal)
-                    .ToArray()
-            )
-            {
-                if (!RollProbability(provider, FacilityDestructionProbability))
-                    continue;
-                destroyed.Add(building);
-                game.DetachNode(building);
-            }
 
             List<GameResult> results = new List<GameResult>();
             AddStatChange(
@@ -367,46 +390,19 @@ namespace Rebellion.Game.Events
                 oldEnergy,
                 planet.EnergyCapacity
             );
-            results.AddRange(
-                destroyed.Select(entity =>
-                    (GameResult)
-                        new GameObjectDestroyedResult
-                        {
-                            DestroyedObject = entity,
-                            Context = planet,
-                            Tick = game.CurrentTick,
-                        }
-                )
-            );
             results.Add(
                 new PlanetIncidentResult
                 {
                     Planet = planet,
                     IncidentType = IncidentType.Disaster,
-                    Severity = rawLoss + energyLoss + destroyed.Count,
+                    Severity = rawLoss + energyLoss,
                     OldValue = oldRaw + oldEnergy,
                     NewValue = planet.NumRawResourceNodes + planet.EnergyCapacity,
-                    DestroyedObjects = destroyed,
                     Tick = game.CurrentTick,
                 }
             );
             return results;
         }
-
-        private static bool HasCompletedFacility(Planet planet, BuildingType type) =>
-            planet.Buildings.Any(building =>
-                building.BuildingType == type
-                && building.ManufacturingStatus == ManufacturingStatus.Complete
-            );
-
-        private static bool HasAnyCompletedFacility(
-            Planet planet,
-            IReadOnlyCollection<BuildingType> types
-        ) =>
-            planet.Buildings.Any(building =>
-                types.Contains(building.BuildingType)
-                && building.ManufacturingStatus == ManufacturingStatus.Complete
-            );
 
         private static bool RollProbability(IRandomNumberProvider provider, double probability) =>
             provider.NextDouble() < Math.Min(1.0, Math.Max(0.0, probability));
@@ -426,7 +422,8 @@ namespace Rebellion.Game.Events
                 new PlanetStatChangedResult
                 {
                     Planet = planet,
-                    Faction = FindOwner(game, planet),
+                    Faction = game.GetFactions()
+                        .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID),
                     Stat = stat,
                     OldValue = oldValue,
                     NewValue = newValue,
@@ -434,10 +431,104 @@ namespace Rebellion.Game.Events
                 }
             );
         }
+    }
 
-        private static Faction FindOwner(GameRoot game, Planet planet) =>
-            game.GetFactions()
-                .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
+    [PersistableObject]
+    public sealed class BuildingCandidates
+    {
+        public List<BuildingType> BuildingTypes { get; set; } = new List<BuildingType>();
+    }
+
+    [PersistableObject]
+    public sealed class RegimentCandidates { }
+
+    [PersistableObject]
+    public sealed class DestroyUnitCandidates
+    {
+        public BuildingCandidates Buildings { get; set; }
+        public RegimentCandidates Regiments { get; set; }
+    }
+
+    [PersistableObject(Name = "DestroyUnits")]
+    public sealed class DestroyUnitsAction : GameAction
+    {
+        [PersistableAttribute(Name = "ChancePerUnit")]
+        public double ChancePerUnit { get; set; } = 0.1;
+
+        [PersistableAttribute(Name = "MinimumCount")]
+        public int MinimumCount { get; set; }
+
+        [PersistableAttribute(Name = "MaximumCount")]
+        public int MaximumCount { get; set; } = int.MaxValue;
+
+        public DestroyUnitCandidates Candidates { get; set; } = new DestroyUnitCandidates();
+
+        public override List<GameResult> Execute(GameRoot game) =>
+            throw new InvalidOperationException("DestroyUnits requires a planet target.");
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            Planet planet = context?.GetScopeTarget<Planet>();
+            if (planet == null)
+                return Execute(game);
+
+            List<ISceneNode> eligible = new List<ISceneNode>();
+            if (Candidates?.Buildings != null)
+            {
+                eligible.AddRange(
+                    planet.Buildings.Where(building =>
+                        building.ManufacturingStatus == ManufacturingStatus.Complete
+                        && building.OwnerInstanceID == planet.OwnerInstanceID
+                        && Candidates.Buildings.BuildingTypes.Contains(building.BuildingType)
+                    )
+                );
+            }
+            if (Candidates?.Regiments != null)
+                eligible.AddRange(
+                    planet.Regiments.Where(regiment =>
+                        regiment.OwnerInstanceID == planet.OwnerInstanceID
+                    )
+                );
+
+            eligible = eligible.OrderBy(unit => unit.InstanceID, StringComparer.Ordinal).ToList();
+            List<ISceneNode> destroyed = eligible
+                .Where(_ => provider.NextDouble() < Math.Clamp(ChancePerUnit, 0.0, 1.0))
+                .ToList();
+            List<ISceneNode> remaining = eligible.Except(destroyed).ToList();
+            while (destroyed.Count < Math.Min(MinimumCount, eligible.Count))
+            {
+                int index = provider.NextInt(0, remaining.Count);
+                destroyed.Add(remaining[index]);
+                remaining.RemoveAt(index);
+            }
+            while (destroyed.Count > Math.Max(0, MaximumCount))
+                destroyed.RemoveAt(provider.NextInt(0, destroyed.Count));
+
+            foreach (ISceneNode unit in destroyed)
+                game.DetachNode(unit);
+
+            PlanetIncidentResult incident = context
+                .Results.OfType<PlanetIncidentResult>()
+                .LastOrDefault(result =>
+                    result.Planet == planet && result.IncidentType == IncidentType.Disaster
+                );
+            if (incident != null)
+            {
+                incident.DestroyedObjects.AddRange(destroyed.Cast<IGameEntity>());
+                incident.Severity += destroyed.Count;
+            }
+
+            return destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
+            {
+                DestroyedObject = unit,
+                Context = planet,
+                Tick = game.CurrentTick,
+            });
+        }
     }
 
     [PersistableObject(Name = "RandomOutcome")]
@@ -573,8 +664,8 @@ namespace Rebellion.Game.Events
         }
     }
 
-    [PersistableObject(Name = "ResolveOfficerEncounter")]
-    public class ResolveOfficerEncounterAction : GameAction
+    [PersistableObject(Name = "TriggerDuel")]
+    public class TriggerDuelAction : GameAction
     {
         public string EncounteredOfficerInstanceID { get; set; }
         public string OpposingOfficerInstanceID { get; set; }
@@ -584,7 +675,7 @@ namespace Rebellion.Game.Events
         public string ImagePath { get; set; }
         public string VoicePath { get; set; }
 
-        public ResolveOfficerEncounterAction()
+        public TriggerDuelAction()
             : base() { }
 
         /// <summary>
@@ -626,8 +717,14 @@ namespace Rebellion.Game.Events
             {
                 ISceneNode arrivingUnit =
                     (context?.TriggerResult as UnitArrivedResult)?.Unit as ISceneNode;
-                bool encounteredArrived = GameEventHierarchy.Contains(arrivingUnit, encountered);
-                bool opposingArrived = GameEventHierarchy.Contains(arrivingUnit, opposing);
+                bool encounteredArrived =
+                    arrivingUnit == encountered
+                    || arrivingUnit?.GetChildren<Officer>(officer => officer == encountered).Any()
+                        == true;
+                bool opposingArrived =
+                    arrivingUnit == opposing
+                    || arrivingUnit?.GetChildren<Officer>(officer => officer == opposing).Any()
+                        == true;
                 if (encounteredArrived == opposingArrived)
                     return new List<GameResult>();
                 if (opposingArrived)
@@ -666,8 +763,7 @@ namespace Rebellion.Game.Events
         public string VoicePath { get; set; }
         public Dictionary<string, string> VoicePaths { get; set; } =
             new Dictionary<string, string>();
-        public AdvisorNotificationCode AdvisorNotification { get; set; }
-        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public AdvisorCue AdvisorCue { get; set; }
         public List<OfficerPairReference> ExcludedPairs { get; set; } =
             new List<OfficerPairReference>();
 
@@ -695,7 +791,7 @@ namespace Rebellion.Game.Events
 
             List<Officer> presentOfficers = arrival
                 .Destination.GetChildren<Officer>(_ => true, recurse: true)
-                .Where(officer => !GameEventHierarchy.Contains(arrivingUnit, officer))
+                .Except(arrivingOfficers)
                 .Where(IsEligible)
                 .OrderBy(officer => officer.InstanceID, StringComparer.Ordinal)
                 .ToList();
@@ -782,8 +878,7 @@ namespace Rebellion.Game.Events
                         OfficerVoiceLineType.EnemyDetected,
                         provider ?? game.Random
                     ),
-                    AdvisorNotification = AdvisorNotification,
-                    AdvisorSubjectNotification = AdvisorSubjectNotification,
+                    AdvisorCue = AdvisorCue,
                     Tick = game.CurrentTick,
                 }
             );
@@ -846,6 +941,12 @@ namespace Rebellion.Game.Events
         public string Body { get; set; }
         public string ElseBody { get; set; }
 
+        /// <summary>
+        /// Selects the primary or fallback body from the current conditions.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="triggerResult">The result that activated the containing event.</param>
+        /// <returns>The body selected by the condition results.</returns>
         public string Resolve(GameRoot game, GameResult triggerResult = null)
         {
             return Conditionals.TrueForAll(condition => condition.IsMet(game, triggerResult))
@@ -877,8 +978,7 @@ namespace Rebellion.Game.Events
         public string VoicePath { get; set; }
         public bool VoicePathFromOfficerEncounter { get; set; }
         public string OfficerVoicePath { get; set; }
-        public AdvisorNotificationCode AdvisorNotification { get; set; }
-        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public AdvisorCue AdvisorCue { get; set; }
 
         /// <summary>
         /// Resolves the authored references and emits presentation-neutral narrative data.
@@ -951,8 +1051,7 @@ namespace Rebellion.Game.Events
                     OverlayImagePath = OverlayImagePath,
                     VoicePath = voicePath,
                     OfficerVoicePath = OfficerVoicePath,
-                    AdvisorNotification = AdvisorNotification,
-                    AdvisorSubjectNotification = AdvisorSubjectNotification,
+                    AdvisorCue = AdvisorCue,
                     Tick = game.CurrentTick,
                 },
             };
@@ -1122,6 +1221,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "AddToVoid")]
     public sealed class AddToVoidAction : GameAction
     {
+        [PersistableAttribute(Name = "UnitInstanceID")]
         public string UnitInstanceID { get; set; }
 
         public override List<GameResult> Execute(GameRoot game)
@@ -1483,7 +1583,7 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Reveals an officer's dormant Force potential and initializes its authored starting value.
+    /// Reveals an officer's authored Force potential and initializes its starting value.
     /// </summary>
     [PersistableObject(Name = "RevealOfficerForcePotential")]
     public sealed class RevealOfficerForcePotentialAction : GameAction
@@ -1518,10 +1618,11 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"RevealOfficerForcePotential could not resolve {nameof(OfficerInstanceID)} '{OfficerInstanceID}'."
                 );
-            if (!officer.IsJedi || officer.IsForceEligible)
+            if (officer.IsForceEligible)
                 return new List<GameResult>();
 
             int previousRank = officer.ForceRank;
+            officer.IsJedi = true;
             officer.IsForceEligible = true;
             int startingValue =
                 officer.JediLevel + provider.NextInt(0, officer.JediLevelVariance + 1);

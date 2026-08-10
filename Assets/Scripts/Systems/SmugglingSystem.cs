@@ -18,6 +18,10 @@ namespace Rebellion.Systems
 
         private readonly GameRoot _game;
 
+        /// <summary>
+        /// Creates a smuggling system for the supplied game.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
         public SmugglingSystem(GameRoot game)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -26,6 +30,7 @@ namespace Rebellion.Systems
         /// <summary>
         /// Recomputes the support- and garrison-driven smuggling percentage.
         /// </summary>
+        /// <returns>Results for percentages that changed during this tick.</returns>
         public List<GameResult> ProcessTick()
         {
             List<GameResult> results = new List<GameResult>();
@@ -45,6 +50,9 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies the per-resource smuggling roll to completed output.
         /// </summary>
+        /// <param name="controller">The faction that ordinarily receives production.</param>
+        /// <param name="facility">The facility producing the resource.</param>
+        /// <returns>The controlling faction or the faction benefiting from smuggling.</returns>
         public Faction GetResourceRecipient(Faction controller, Building facility)
         {
             Planet planet = facility.GetParentOfType<Planet>();

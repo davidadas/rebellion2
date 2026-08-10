@@ -1337,7 +1337,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RecordEspionageSnapshot_RevealsManufacturing()
+        public void RecordEspionageSnapshot_EnemyManufacturing_RevealsManufacturing()
         {
             AddQueuedBuilding(_coruscant, _empire, "REVEALED_BUILDING", 25);
             FogOfWarRecorder recorder = new FogOfWarRecorder();
@@ -1359,7 +1359,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RecordEspionageSnapshot_RevealsEnemyMissions()
+        public void RecordEspionageSnapshot_EnemyMissions_RevealsMissions()
         {
             Mission empireMission = CreateMission("M1", _empire, _coruscant);
             _game.AttachNode(empireMission, _coruscant);
@@ -1377,7 +1377,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void RecordEspionageSnapshot_RevealsIncomingEnemyFleet()
+        public void RecordEspionageSnapshot_IncomingEnemyFleet_RevealsFleet()
         {
             Fleet empireFleet = CreateFleet("INCOMING_FLEET", _empire);
             _game.AttachNode(empireFleet, _coruscant);

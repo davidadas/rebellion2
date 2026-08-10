@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game.Messages
                         OverlayImagePath = "Officers/luke",
                         VoicePath = "Story/dialogue",
                         OfficerVoicePath = "Officers/luke/dialogue",
-                        AdvisorSubjectNotification = AdvisorSubjectNotification.Report,
+                        AdvisorCue = AdvisorCue.SubjectReport,
                     }
                 ),
                 alliance
@@ -2747,107 +2747,6 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("body:Candidate", message.Body);
             Assert.AreEqual("discoverer-image", message.OverlayImagePath);
-            Assert.IsNull(message.OfficerVoicePath);
-            Assert.AreEqual(0, message.AdvisorNotificationCode);
-            Assert.AreEqual(AdvisorSubjectNotification.None, message.AdvisorSubjectNotification);
-            Assert.IsNull(message.AdvisorSubjectTypeID);
-        }
-
-        [Test]
-        public void CreateMessages_ForceDiscoveryPresentation_DoesNotDependOnVoiceInventory()
-        {
-            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
-            Officer discoverer = new Officer
-            {
-                OwnerInstanceID = alliance.InstanceID,
-                IsJedi = true,
-                IsJediTrainer = true,
-                IsForceEligible = true,
-                ForceValue = game.Config.Jedi.ForceQualifiedThreshold,
-            };
-            Officer candidate = new Officer
-            {
-                OwnerInstanceID = alliance.InstanceID,
-                ForceAbilityRevealedVoicePaths = new List<string> { "special-voice" },
-            };
-            game.AttachNode(discoverer, origin);
-            game.AttachNode(candidate, origin);
-
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[]
-                    {
-                        Definition(
-                            MessageResultType.ForceUserDiscovered,
-                            MessageType.Mission,
-                            "standard",
-                            "standard"
-                        ),
-                        Definition(
-                            MessageResultType.ForceAbilityRevealed,
-                            MessageType.Mission,
-                            "special",
-                            "special"
-                        ),
-                    },
-                    new ForceDiscoveryResult
-                    {
-                        EventType = ForceEventType.ForceUserDiscovered,
-                        Officer = candidate,
-                        Discoverer = discoverer,
-                        Presentation = ForceDiscoveryPresentation.Standard,
-                    }
-                ),
-                alliance
-            );
-
-            Assert.AreEqual("standard", message.Title);
-        }
-
-        [Test]
-        public void CreateMessages_ForceAbilityRevealed_DoesNotUseDialog()
-        {
-            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
-            Officer discoverer = new Officer
-            {
-                TypeID = "OFAL003",
-                OwnerInstanceID = alliance.InstanceID,
-                ForceUserDiscoveredVoicePaths = new List<string> { "discovery-voice" },
-            };
-            Officer candidate = new Officer
-            {
-                TypeID = "OFAL002",
-                DisplayName = "Candidate",
-                OwnerInstanceID = alliance.InstanceID,
-                ForceAbilityRevealedVoicePaths = new List<string> { "revelation-voice" },
-            };
-            game.AttachNode(discoverer, origin);
-            game.AttachNode(candidate, origin);
-
-            Message message = FirstMessageFor(
-                CreateMessages(
-                    game,
-                    new[]
-                    {
-                        Definition(
-                            MessageResultType.ForceAbilityRevealed,
-                            MessageType.Mission,
-                            "ability revealed",
-                            "body"
-                        ),
-                    },
-                    new ForceDiscoveryResult
-                    {
-                        EventType = ForceEventType.ForceUserDiscovered,
-                        Officer = candidate,
-                        Discoverer = discoverer,
-                        Presentation = ForceDiscoveryPresentation.AbilityRevealed,
-                    }
-                ),
-                alliance
-            );
-
             Assert.IsNull(message.OfficerVoicePath);
             Assert.AreEqual(0, message.AdvisorNotificationCode);
             Assert.AreEqual(AdvisorSubjectNotification.None, message.AdvisorSubjectNotification);

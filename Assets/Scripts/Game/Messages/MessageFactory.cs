@@ -983,12 +983,30 @@ namespace Rebellion.Game.Messages
                 if (message == null)
                     continue;
 
-                message.AdvisorNotificationCode = (int)result.AdvisorNotification;
-                message.AdvisorSubjectNotification = result.AdvisorSubjectNotification;
+                ApplyAdvisorCue(message, result.AdvisorCue);
                 message.AdvisorSubjectTypeID = result.Subject?.TypeID;
                 message.EventLocationInstanceID = result.Location?.InstanceID;
                 message.NavigationTargetInstanceID = result.Subject?.InstanceID;
                 AddDelivery(deliveries, result.Recipient, message);
+            }
+        }
+
+        private static void ApplyAdvisorCue(Message message, AdvisorCue cue)
+        {
+            switch (cue)
+            {
+                case AdvisorCue.SubjectReport:
+                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Report;
+                    break;
+                case AdvisorCue.SubjectCaptured:
+                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Captured;
+                    break;
+                case AdvisorCue.SubjectReleased:
+                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Released;
+                    break;
+                default:
+                    message.AdvisorNotificationCode = (int)cue;
+                    break;
             }
         }
 
@@ -1008,12 +1026,9 @@ namespace Rebellion.Game.Messages
             if (result?.Officer == null || result.Discoverer == null)
                 return null;
 
-            bool abilityRevealed =
-                result.Presentation == ForceDiscoveryPresentation.AbilityRevealed;
             bool canTrain = JediTrainingMission.CanLeadTraining(result.Discoverer, game);
-            MessageResultType resultType =
-                abilityRevealed ? MessageResultType.ForceAbilityRevealed
-                : canTrain ? MessageResultType.ForceUserDiscovered
+            MessageResultType resultType = canTrain
+                ? MessageResultType.ForceUserDiscovered
                 : MessageResultType.ForceUserDiscoveredByStudent;
 
             return WithEventLocation(
@@ -1024,9 +1039,7 @@ namespace Rebellion.Game.Messages
                     {
                         { "officer", result.Officer.GetDisplayName() ?? string.Empty },
                     },
-                    overlayImagePath: GetMessageImagePath(
-                        abilityRevealed ? result.Officer : result.Discoverer
-                    )
+                    overlayImagePath: GetMessageImagePath(result.Discoverer)
                 ),
                 GetOfficerPlanet(result.Officer),
                 result.Officer

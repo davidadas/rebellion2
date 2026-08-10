@@ -5,7 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
@@ -36,15 +36,11 @@ namespace Rebellion.Systems
         /// <returns>Results produced by events that executed.</returns>
         public List<GameResult> ProcessEvents(List<GameEvent> gameEvents)
         {
-            ReconcileEffects(gameEvents);
             List<GameResult> allResults = new List<GameResult>();
             List<GameEvent> eventsToRemove = new List<GameEvent>();
 
             foreach (GameEvent gameEvent in gameEvents.ToArray())
             {
-                if (gameEvent is ForceDiscoveryRule)
-                    continue;
-
                 if (HasResultTrigger(gameEvent))
                     continue;
 
@@ -84,36 +80,6 @@ namespace Rebellion.Systems
             return allResults;
         }
 
-        private void ReconcileEffects(IReadOnlyList<GameEvent> gameEvents)
-        {
-            HashSet<string> activeModifierKeys = new HashSet<string>(StringComparer.Ordinal);
-            foreach (GameEvent gameEvent in gameEvents)
-            {
-                if (gameEvent?.Effects == null)
-                    continue;
-
-                for (int index = 0; index < gameEvent.Effects.Count; index++)
-                {
-                    GameEffect effect = gameEvent.Effects[index];
-                    if (effect == null)
-                        continue;
-
-                    string modifierKey =
-                        $"{GameEffect.ModifierKeyPrefix}{gameEvent.InstanceID}:effect:{index}";
-                    activeModifierKeys.Add(modifierKey);
-                    effect.Reconcile(_game, modifierKey);
-                }
-            }
-
-            foreach (Officer officer in _game.GetRegisteredSceneNodesByType<Officer>())
-            {
-                officer.RemoveRatingModifiersExcept(
-                    GameEffect.ModifierKeyPrefix,
-                    activeModifierKeys
-                );
-            }
-        }
-
         /// <summary>
         /// Executes events whose authored trigger type matches a newly produced simulation result.
         /// </summary>
@@ -127,9 +93,6 @@ namespace Rebellion.Systems
             {
                 foreach (GameEvent gameEvent in _game.GetEventPool().ToArray())
                 {
-                    if (gameEvent is ForceDiscoveryRule)
-                        continue;
-
                     if (
                         !MatchesTrigger(gameEvent, triggerResult)
                         || !TryProcessEvent(
@@ -179,10 +142,17 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            ISceneNode executionTarget = scopeTarget ?? gameEvent.Target?.Resolve(_game, _provider);
+            if (gameEvent.Target != null && executionTarget == null)
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
             GameEventExecutionContext context = new GameEventExecutionContext(
                 gameEvent,
                 state,
-                scopeTarget,
+                executionTarget,
                 triggerResult
             );
             if (!gameEvent.AreConditionsMet(_game, context))
@@ -197,9 +167,8 @@ namespace Rebellion.Systems
             state.LastExecutionTick = _game.CurrentTick;
             if (gameEvent.IsRepeatable)
             {
-                state.NextEligibleTick =
-                    _game.CurrentTick
-                    + RollDelay(gameEvent.RepeatDelayTicks, gameEvent.RepeatDelayRandomTicks);
+                GetRepeatRange(gameEvent, out int minimum, out int maximum);
+                state.NextEligibleTick = _game.CurrentTick + RollRange(minimum, maximum);
             }
             _game.AddCompletedEvent(gameEvent);
             return true;
@@ -242,25 +211,25 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Initializes an event's absolute first eligible tick from its data-defined delay.
+        /// Initializes an event's absolute first eligible tick from its authored schedule.
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
-        /// <param name="initializeFromCurrentTick">
-        /// Whether the schedule begins relative to the current game tick.
+        /// <param name="relativeToCurrentTick">
+        /// Whether the first delay begins at the current tick instead of campaign tick zero.
         /// </param>
         private void InitializeSchedule(
             GameEvent gameEvent,
             GameEventState state,
-            bool initializeFromCurrentTick
+            bool relativeToCurrentTick
         )
         {
             if (state.IsInitialized)
                 return;
 
+            GetInitialRange(gameEvent, out int minimum, out int maximum);
             state.NextEligibleTick =
-                (initializeFromCurrentTick ? _game.CurrentTick : 0)
-                + RollDelay(gameEvent.InitialDelayTicks, gameEvent.InitialDelayRandomTicks);
+                (relativeToCurrentTick ? _game.CurrentTick : 0) + RollRange(minimum, maximum);
             state.IsInitialized = true;
         }
 
@@ -309,19 +278,34 @@ namespace Rebellion.Systems
         }
 
         /// <summary>
-        /// Rolls a non-negative base delay plus an inclusive zero-based random spread.
+        /// Gets the inclusive tick range for an event's first execution.
         /// </summary>
-        /// <param name="baseTicks">The guaranteed delay.</param>
-        /// <param name="randomTicks">The maximum additional random delay.</param>
-        /// <returns>The rolled delay in ticks.</returns>
-        private int RollDelay(int baseTicks, int randomTicks)
+        /// <param name="gameEvent">The event whose schedule is evaluated.</param>
+        /// <param name="minimum">Receives the minimum delay in ticks.</param>
+        /// <param name="maximum">Receives the maximum delay in ticks.</param>
+        private static void GetInitialRange(GameEvent gameEvent, out int minimum, out int maximum)
         {
-            if (baseTicks < 0)
-                throw new InvalidOperationException("Game event delays cannot be negative.");
-            if (randomTicks < 0)
-                throw new InvalidOperationException("Game event random delays cannot be negative.");
+            if (gameEvent.Schedule == null)
+            {
+                minimum = maximum = 0;
+                return;
+            }
+            gameEvent.Schedule.GetInitialRange(out minimum, out maximum);
+        }
 
-            return baseTicks + (randomTicks == 0 ? 0 : _provider.NextInt(0, randomTicks + 1));
+        private static void GetRepeatRange(GameEvent gameEvent, out int minimum, out int maximum)
+        {
+            if (gameEvent.Schedule == null)
+            {
+                minimum = maximum = 0;
+                return;
+            }
+            gameEvent.Schedule.GetRepeatRange(out minimum, out maximum);
+        }
+
+        private int RollRange(int minimum, int maximum)
+        {
+            return minimum == maximum ? minimum : _provider.NextInt(minimum, maximum + 1);
         }
     }
 }

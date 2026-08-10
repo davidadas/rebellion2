@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -27,6 +28,31 @@ namespace Rebellion.Game.Events
         Killed,
         Injured,
         ForceEligible,
+    }
+
+    [PersistableObject(Name = "IsOwned")]
+    public sealed class IsOwnedConditional : GameConditional
+    {
+        [PersistableAttribute(Name = "PlanetInstanceID")]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute(Name = "FactionInstanceID")]
+        public string FactionInstanceID { get; set; }
+
+        public override bool IsMet(GameRoot game)
+        {
+            Planet planet = game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+            if (planet?.IsDestroyed != false)
+                return false;
+
+            Faction owner = game.GetFactions()
+                .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
+            return owner != null
+                && (
+                    string.IsNullOrWhiteSpace(FactionInstanceID)
+                    || owner.InstanceID == FactionInstanceID
+                );
+        }
     }
 
     /// <summary>
@@ -466,41 +492,6 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Matches the officer pair and event kind carried by a Force discovery result.
-    /// Blank officer IDs act as wildcards so authored events can target either participant.
-    /// </summary>
-    [PersistableObject(Name = "ForceDiscoveryParticipants")]
-    public sealed class ForceDiscoveryParticipantsConditional : GameConditional
-    {
-        public ForceEventType EventType { get; set; }
-        public string OfficerInstanceID { get; set; }
-        public string DiscovererOfficerInstanceID { get; set; }
-
-        /// <inheritdoc />
-        public override bool IsMet(GameRoot game)
-        {
-            return false;
-        }
-
-        /// <inheritdoc />
-        public override bool IsMet(GameRoot game, GameResult triggerResult)
-        {
-            if (triggerResult is not ForceDiscoveryResult discovery)
-                return false;
-
-            return discovery.EventType == EventType
-                && (
-                    string.IsNullOrWhiteSpace(OfficerInstanceID)
-                    || discovery.Officer?.InstanceID == OfficerInstanceID
-                )
-                && (
-                    string.IsNullOrWhiteSpace(DiscovererOfficerInstanceID)
-                    || discovery.Discoverer?.InstanceID == DiscovererOfficerInstanceID
-                );
-        }
-    }
-
-    /// <summary>
     /// Matches an arrival containing exactly one member of an authored officer pair.
     /// </summary>
     [PersistableObject(Name = "OfficerPairArrival")]
@@ -521,8 +512,10 @@ namespace Rebellion.Game.Events
 
             Officer first = game.GetSceneNodeByInstanceID<Officer>(FirstOfficerInstanceID);
             Officer second = game.GetSceneNodeByInstanceID<Officer>(SecondOfficerInstanceID);
-            bool firstArrived = GameEventHierarchy.Contains(unit, first);
-            bool secondArrived = GameEventHierarchy.Contains(unit, second);
+            bool firstArrived =
+                unit == first || unit.GetChildren<Officer>(officer => officer == first).Any();
+            bool secondArrived =
+                unit == second || unit.GetChildren<Officer>(officer => officer == second).Any();
             return firstArrived != secondArrived;
         }
     }
@@ -548,7 +541,8 @@ namespace Rebellion.Game.Events
                 return false;
 
             ISceneNode expectedUnit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-            return GameEventHierarchy.Contains(arrivingUnit, expectedUnit);
+            return arrivingUnit == expectedUnit
+                || arrivingUnit.GetChildren<ISceneNode>(node => node == expectedUnit).Any();
         }
     }
 

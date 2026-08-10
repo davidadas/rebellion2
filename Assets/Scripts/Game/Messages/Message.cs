@@ -46,6 +46,36 @@ namespace Rebellion.Game.Messages
         Released,
     }
 
+    /// <summary>
+    /// Selects the advisor announcement produced for a data-authored narrative message.
+    /// Subject cues combine with the message subject; all other cues select a generic category.
+    /// </summary>
+    public enum AdvisorCue
+    {
+        None = AdvisorNotificationCode.None,
+        PositivePopularSupport = AdvisorNotificationCode.PositivePopularSupport,
+        NegativePopularSupport = AdvisorNotificationCode.NegativePopularSupport,
+        Manufacturing = AdvisorNotificationCode.Manufacturing,
+        Research = AdvisorNotificationCode.Research,
+        FleetArrived = AdvisorNotificationCode.FleetArrived,
+        UnitsArrived = AdvisorNotificationCode.UnitsArrived,
+        CapitalShipRepaired = AdvisorNotificationCode.CapitalShipRepaired,
+        StarfighterRepaired = AdvisorNotificationCode.StarfighterRepaired,
+        Maintenance = AdvisorNotificationCode.Maintenance,
+        BlockadeInitiated = AdvisorNotificationCode.BlockadeInitiated,
+        BlockadeDetected = AdvisorNotificationCode.BlockadeDetected,
+        FieldPersonnel = AdvisorNotificationCode.FieldPersonnel,
+        AgentReport = AdvisorNotificationCode.AgentReport,
+        PlanetaryStatus = AdvisorNotificationCode.PlanetaryStatus,
+        PrisonerEscaped = AdvisorNotificationCode.PrisonerEscaped,
+        InterceptedCommunication = AdvisorNotificationCode.InterceptedCommunication,
+        Bombardment = AdvisorNotificationCode.Bombardment,
+        PlanetaryAssault = AdvisorNotificationCode.PlanetaryAssault,
+        SubjectReport = 1000,
+        SubjectCaptured,
+        SubjectReleased,
+    }
+
     public class Message : BaseGameEntity
     {
         public MessageType Type;

@@ -41,12 +41,6 @@ namespace Rebellion.Game.Results
         ForceUserDiscovered,
     }
 
-    public enum ForceDiscoveryPresentation
-    {
-        Standard,
-        AbilityRevealed,
-    }
-
     public enum CombatSide
     {
         Attacker,
@@ -185,7 +179,6 @@ namespace Rebellion.Game.Results
         public Officer Officer { get; set; }
         public Officer Discoverer { get; set; }
         public int ForceRank { get; set; }
-        public ForceDiscoveryPresentation Presentation { get; set; }
     }
 
     /// <summary>
@@ -581,8 +574,7 @@ namespace Rebellion.Game.Results
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
         public string OfficerVoicePath { get; set; }
-        public AdvisorNotificationCode AdvisorNotification { get; set; }
-        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public AdvisorCue AdvisorCue { get; set; }
     }
 
     /// <summary>

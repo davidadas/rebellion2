@@ -39,23 +39,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessEvents_ForceDiscoveryRule_RemainsPolicyAndNeverExecutes()
-        {
-            ForceDiscoveryRule rule = new ForceDiscoveryRule
-            {
-                InstanceID = "LEIA_RULE",
-                CandidateOfficerInstanceID = "LEIA",
-            };
-            _game.EventPool.Add(rule);
-
-            List<GameResult> results = _system.ProcessEvents(_game.EventPool);
-
-            Assert.IsEmpty(results);
-            Assert.Contains(rule, _game.EventPool);
-            Assert.IsFalse(_game.IsEventComplete(rule.InstanceID));
-        }
-
-        [Test]
         public void ProcessEvents_MetOneShotEvent_CompletesAndLeavesPool()
         {
             GameEvent gameEvent = CreateTickEvent("ONE_SHOT", targetTick: 10, repeatable: false);
@@ -85,8 +68,10 @@ namespace Rebellion.Tests.Systems
         public void ProcessEvents_InitialRandomDelay_WaitsUntilRolledAbsoluteTick()
         {
             GameEvent gameEvent = CreateTickEvent("DELAYED", targetTick: 0, repeatable: false);
-            gameEvent.InitialDelayTicks = 10;
-            gameEvent.InitialDelayRandomTicks = 4;
+            gameEvent.Schedule = new GameEventScheduler
+            {
+                Random = new RandomTickRange { MinimumTicks = 10, MaximumTicks = 14 },
+            };
             _game.EventPool.Add(gameEvent);
 
             _game.CurrentTick = 11;
@@ -103,7 +88,7 @@ namespace Rebellion.Tests.Systems
         public void ProcessEvents_RepeatDelay_PreventsExecutionUntilCooldownExpires()
         {
             GameEvent gameEvent = CreateTickEvent("COOLDOWN", targetTick: 0, repeatable: true);
-            gameEvent.RepeatDelayTicks = 5;
+            gameEvent.Schedule = new GameEventScheduler { Every = new EveryTicks { Ticks = 5 } };
             _game.EventPool.Add(gameEvent);
 
             _game.CurrentTick = 1;
@@ -118,7 +103,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ScheduleEvent_DelaysPendingEventRelativeToCurrentTick()
+        public void ScheduleEvent_PendingEvent_DelaysRelativeToCurrentTick()
         {
             GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
             pending.Conditionals.Add(
@@ -392,100 +377,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ProcessEvents_FactionOfficerRatingAura_ReconcilesNestedSourceAndDeparture()
-        {
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
-            _game.Factions.Add(new Faction { InstanceID = "alliance" });
-            Planet coruscant = new Planet
-            {
-                InstanceID = "coruscant",
-                IsColonized = true,
-                OwnerInstanceID = "empire",
-            };
-            Planet anaxes = new Planet
-            {
-                InstanceID = "anaxes",
-                IsColonized = true,
-                OwnerInstanceID = "alliance",
-            };
-            StubMission mission = new StubMission { InstanceID = "mission" };
-            Officer palpatine = new Officer
-            {
-                InstanceID = "palpatine",
-                OwnerInstanceID = "empire",
-            };
-            Officer imperial = new Officer { InstanceID = "imperial", OwnerInstanceID = "empire" };
-            Officer rebel = new Officer { InstanceID = "rebel", OwnerInstanceID = "alliance" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(coruscant, system);
-            _game.AttachNode(anaxes, system);
-            _game.AttachNode(mission, coruscant);
-            _game.AttachNode(palpatine, mission);
-            _game.AttachNode(imperial, coruscant);
-            _game.AttachNode(rebel, anaxes);
-            palpatine.SetBaseRating(OfficerRating.Leadership, 80);
-            imperial.SetBaseRating(OfficerRating.Leadership, 40);
-            rebel.SetBaseRating(OfficerRating.Leadership, 30);
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "SEAT_OF_POWER",
-                IsRepeatable = true,
-                TriggerResultType = nameof(UnitArrivedResult),
-                Effects = new List<GameEffect>
-                {
-                    new FactionOfficerRatingAuraEffect
-                    {
-                        SourceUnitInstanceID = palpatine.InstanceID,
-                        LocationInstanceID = coruscant.InstanceID,
-                        AffectedFactionInstanceID = "empire",
-                        Rating = OfficerRating.Leadership,
-                        Amount = 50,
-                    },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-
-            _system.ProcessEvents(_game.EventPool);
-            _system.ProcessEvents(_game.EventPool);
-
-            Assert.AreEqual(130, palpatine.GetEffectiveRating(OfficerRating.Leadership));
-            Assert.AreEqual(90, imperial.GetEffectiveRating(OfficerRating.Leadership));
-            Assert.AreEqual(30, rebel.GetEffectiveRating(OfficerRating.Leadership));
-            Assert.AreEqual(1, imperial.RatingModifiers.Count);
-            Assert.Zero(_game.GetEventState(gameEvent.InstanceID).ExecutionCount);
-
-            _game.MoveNode(mission, anaxes);
-            _system.ProcessEvents(_game.EventPool);
-
-            Assert.AreEqual(80, palpatine.GetEffectiveRating(OfficerRating.Leadership));
-            Assert.AreEqual(40, imperial.GetEffectiveRating(OfficerRating.Leadership));
-            Assert.IsEmpty(imperial.RatingModifiers);
-        }
-
-        [Test]
-        public void ProcessEvents_RemovedEffect_CleansPersistedManagedModifier()
-        {
-            _game.Factions.Add(new Faction { InstanceID = "empire" });
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            Planet planet = new Planet
-            {
-                InstanceID = "planet",
-                IsColonized = true,
-                OwnerInstanceID = "empire",
-            };
-            Officer officer = new Officer { InstanceID = "officer", OwnerInstanceID = "empire" };
-            _game.AttachNode(system, _game.Galaxy);
-            _game.AttachNode(planet, system);
-            _game.AttachNode(officer, planet);
-            officer.SetRatingModifier("game-event:removed:effect:0", OfficerRating.Leadership, 50);
-
-            _system.ProcessEvents(_game.EventPool);
-
-            Assert.IsEmpty(officer.RatingModifiers);
-        }
-
-        [Test]
         public void ProcessEvents_PlanetScope_MaintainsIndependentPersistedSchedules()
         {
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
@@ -502,8 +393,10 @@ namespace Rebellion.Tests.Systems
                 Scope = GameEventScope.EachPlanet,
                 PlanetScopeOwnership = PlanetScopeOwnership.Owned,
                 IsRepeatable = true,
-                InitialDelayTicks = 10,
-                RepeatDelayTicks = 20,
+                Schedule = new GameEventScheduler
+                {
+                    Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 10 },
+                },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
             _game.EventPool.Add(gameEvent);
@@ -547,7 +440,10 @@ namespace Rebellion.Tests.Systems
                 Scope = GameEventScope.EachPlanet,
                 PlanetScopeOwnership = PlanetScopeOwnership.Owned,
                 IsRepeatable = true,
-                InitialDelayTicks = 30,
+                Schedule = new GameEventScheduler
+                {
+                    Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
+                },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
             _game.EventPool.Add(gameEvent);
@@ -579,7 +475,10 @@ namespace Rebellion.Tests.Systems
                 Scope = GameEventScope.EachPlanet,
                 PlanetScopeOwnership = PlanetScopeOwnership.Owned,
                 IsRepeatable = true,
-                InitialDelayTicks = 30,
+                Schedule = new GameEventScheduler
+                {
+                    Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
+                },
                 Actions = new List<GameAction> { new RecordScopedPlanetAction() },
             };
             _game.EventPool.Add(gameEvent);

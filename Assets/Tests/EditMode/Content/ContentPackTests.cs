@@ -348,9 +348,6 @@ namespace Rebellion.Tests.Content
             ConditionalAction leiaHeritageEffects = leiaVaderEffects
                 .Actions.OfType<ConditionalAction>()
                 .Single();
-            ForceDiscoveryRule leiaDiscoveryRule = pack
-                .GameData.GameEvents.OfType<ForceDiscoveryRule>()
-                .Single();
             GameEvent leiaHeritage = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "LEIA_DISCOVERS_HERITAGE"
             );
@@ -386,15 +383,21 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
             Assert.AreEqual(0, bountyCapture.AttackRating);
-            Assert.AreEqual("LEIA_ORGANA", leiaDiscoveryRule.CandidateOfficerInstanceID);
-            Assert.AreEqual("LUKE_SKYWALKER", leiaDiscoveryRule.DiscovererOfficerInstanceID);
+            EventVariableConditional leiaHeritageCondition = leiaHeritage
+                .Conditionals.OfType<EventVariableConditional>()
+                .Single();
+            Assert.AreEqual("luke.vader.encountered", leiaHeritageCondition.Key);
+            Assert.IsEmpty(leiaHeritage.Trigger);
             Assert.AreEqual(
-                ForceDiscoveryPresentation.AbilityRevealed,
-                leiaDiscoveryRule.Presentation
+                "LEIA_ORGANA",
+                leiaHeritage
+                    .Actions.OfType<RevealOfficerForcePotentialAction>()
+                    .Single()
+                    .OfficerInstanceID
             );
-            Assert.AreEqual("core:force.discovered", leiaHeritage.Trigger);
-            Assert.IsInstanceOf<ForceDiscoveryParticipantsConditional>(
-                leiaHeritage.Conditionals.Single()
+            Assert.AreEqual(
+                "Leia Uses Force",
+                leiaHeritage.Actions.OfType<AddMessageAction>().Single().Title
             );
             Assert.AreEqual(
                 1,
@@ -433,19 +436,10 @@ namespace Rebellion.Tests.Content
                 .Conditionals.OfType<UnitArrivalConditional>()
                 .Single();
             AddMessageAction message = gameEvent.Actions.OfType<AddMessageAction>().Single();
-            FactionOfficerRatingAuraEffect aura = gameEvent
-                .Effects.OfType<FactionOfficerRatingAuraEffect>()
-                .Single();
-
             Assert.IsTrue(gameEvent.IsRepeatable);
             Assert.AreEqual("core:unit.arrived", gameEvent.Trigger);
             Assert.AreEqual("EMPEROR_PALPATINE", arrival.UnitInstanceID);
             Assert.AreEqual("CORUSCANT", arrival.DestinationInstanceID);
-            Assert.AreEqual("EMPEROR_PALPATINE", aura.SourceUnitInstanceID);
-            Assert.AreEqual("CORUSCANT", aura.LocationInstanceID);
-            Assert.AreEqual("FNEMP1", aura.AffectedFactionInstanceID);
-            Assert.AreEqual(OfficerRating.Leadership, aura.Rating);
-            Assert.AreEqual(50, aura.Amount);
             Assert.AreEqual("Emperor Arrives at Coruscant", message.Title);
             Assert.AreEqual("I have returned to the Seat of Power at Coruscant.", message.Body);
             Assert.AreEqual(

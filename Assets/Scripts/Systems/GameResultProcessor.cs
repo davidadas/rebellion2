@@ -10,14 +10,14 @@ namespace Rebellion.Systems
     /// </summary>
     public sealed class GameResultProcessor
     {
-        private const int DefaultMaximumReactionResults = 10000;
+        private const int _defaultMaximumReactionResults = 10000;
         private readonly int _maximumReactionResults;
         private readonly List<Func<IReadOnlyList<GameResult>, List<GameResult>>> _subscriptions =
             new List<Func<IReadOnlyList<GameResult>, List<GameResult>>>();
         private readonly List<Action<IReadOnlyList<GameResult>>> _observers =
             new List<Action<IReadOnlyList<GameResult>>>();
 
-        public GameResultProcessor(int maximumReactionResults = DefaultMaximumReactionResults)
+        public GameResultProcessor(int maximumReactionResults = _defaultMaximumReactionResults)
         {
             if (maximumReactionResults < 1)
                 throw new ArgumentOutOfRangeException(nameof(maximumReactionResults));

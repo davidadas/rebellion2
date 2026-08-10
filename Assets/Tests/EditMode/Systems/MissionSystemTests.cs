@@ -515,7 +515,7 @@ namespace Rebellion.Tests.Systems
             };
 
         [Test]
-        public void HandleStoryCaptureRequest_CapturesTargetAfterAuthoredDuration()
+        public void HandleStoryCaptureRequest_ValidRequest_CapturesTargetAfterAuthoredDuration()
         {
             (GameRoot game, Planet planet, Officer officer, _) = BuildScene(
                 factionOwnsPlanet: true
@@ -671,7 +671,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryRescueRequest_SuccessUsesCombinedScoreAndFreesCaptive()
+        public void HandleStoryRescueRequest_SuccessfulRescue_UsesCombinedScoreAndFreesCaptive()
         {
             (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
                 factionOwnsPlanet: true
@@ -705,7 +705,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryRescueRequest_RollsAuthoredBaseAndInclusiveSpread()
+        public void HandleStoryRescueRequest_AuthoredDuration_RollsBaseAndInclusiveSpread()
         {
             (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
                 factionOwnsPlanet: true
@@ -735,7 +735,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryRescueRequest_FailureCapturesRescuerWithoutEscape()
+        public void HandleStoryRescueRequest_FailedRescue_CapturesRescuerWithoutEscape()
         {
             (GameRoot game, Planet planet, Officer rescuer, _) = BuildScene(
                 factionOwnsPlanet: true
@@ -765,7 +765,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryPickupRequest_TransfersAndReturnsAllMatchingPrisoners()
+        public void HandleStoryPickupRequest_MatchingPrisoners_TransfersAndReturnsAll()
         {
             (GameRoot game, Planet origin, Officer collector, _) = BuildScene(
                 factionOwnsPlanet: true
@@ -831,7 +831,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryFinalBattleRequest_VictoriousLukeCapturesImperialLeaders()
+        public void HandleStoryFinalBattleRequest_VictoriousLuke_CapturesImperialLeaders()
         {
             (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -888,7 +888,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleStoryFinalBattleRequest_DefeatedLukeIsInjuredAndCannotEscape()
+        public void HandleStoryFinalBattleRequest_DefeatedLuke_InjuresAndPreventsEscape()
         {
             (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -942,7 +942,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateStoryFinalBattleMission_RetargetsVaderWhenCapturedLukeMoves()
+        public void UpdateStoryFinalBattleMission_CapturedLukeMoves_RetargetsVader()
         {
             (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);
@@ -991,7 +991,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void UpdateStoryFinalBattleMission_ReleasesVaderWhenPalpatineBecomesBusy()
+        public void UpdateStoryFinalBattleMission_PalpatineBecomesBusy_ReleasesVader()
         {
             (GameRoot game, Planet imperialCapital, Officer vader, MovementSystem movement) =
                 BuildScene(factionOwnsPlanet: true);

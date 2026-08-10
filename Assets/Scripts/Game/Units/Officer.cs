@@ -45,7 +45,6 @@ namespace Rebellion.Game.Units
         EnemyDetected,
         ForceGrowth,
         ForceUserDiscovered,
-        ForceAbilityRevealed,
         TraitorDiscovered,
         RescueAttempt,
         BountyAttack,
@@ -168,7 +167,6 @@ namespace Rebellion.Game.Units
         public List<string> ForceGrowthVoicePaths { get; set; } = new List<string>();
         public List<string> AdvancedForceGrowthVoicePaths { get; set; } = new List<string>();
         public List<string> ForceUserDiscoveredVoicePaths { get; set; } = new List<string>();
-        public List<string> ForceAbilityRevealedVoicePaths { get; set; } = new List<string>();
         public List<string> TraitorDiscoveredVoicePaths { get; set; } = new List<string>();
         public List<string> AdvancedTraitorDiscoveredVoicePaths { get; set; } = new List<string>();
         public List<string> RescueAttemptVoicePaths { get; set; } = new List<string>();
@@ -520,7 +518,6 @@ namespace Rebellion.Game.Units
                 OfficerVoiceLineType.EnemyDetected => EnemyDetectedVoicePaths,
                 OfficerVoiceLineType.ForceGrowth => ForceGrowthVoicePaths,
                 OfficerVoiceLineType.ForceUserDiscovered => ForceUserDiscoveredVoicePaths,
-                OfficerVoiceLineType.ForceAbilityRevealed => ForceAbilityRevealedVoicePaths,
                 OfficerVoiceLineType.TraitorDiscovered => TraitorDiscoveredVoicePaths,
                 OfficerVoiceLineType.RescueAttempt => RescueAttemptVoicePaths,
                 OfficerVoiceLineType.BountyAttack => BountyAttackVoicePaths,

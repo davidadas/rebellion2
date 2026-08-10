@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ResolveOfficerEncounter_ValidIDs_EmitsRequest()
+        public void TriggerDuel_ValidIDs_EmitsRequest()
         {
             GameRoot game = BuildGame(out Planet empPlanet, out Planet rebelPlanet);
             Officer attacker = EntityFactory.CreateOfficer("a1", "empire");
@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(attacker, empPlanet);
             game.AttachNode(defender, rebelPlanet);
 
-            ResolveOfficerEncounterAction action = new ResolveOfficerEncounterAction
+            TriggerDuelAction action = new TriggerDuelAction
             {
                 EncounteredOfficerInstanceID = "a1",
                 OpposingOfficerInstanceID = "d1",
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ResolveOfficerEncounter_ArrivingSecondOfficer_ReversesAuthoredOrder()
+        public void TriggerDuel_ArrivingSecondOfficer_ReversesAuthoredOrder()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -107,7 +107,7 @@ namespace Rebellion.Tests.Game.Events
                 Unit = vader,
                 Destination = rebelPlanet,
             };
-            ResolveOfficerEncounterAction action = new ResolveOfficerEncounterAction
+            TriggerDuelAction action = new TriggerDuelAction
             {
                 EncounteredOfficerInstanceID = "luke",
                 OpposingOfficerInstanceID = "vader",
@@ -132,7 +132,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ResolveOfficerEncounter_ForceRankChance_UsesSummedRankThreshold()
+        public void TriggerDuel_ForceRankChance_UsesSummedRankThreshold()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -143,7 +143,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, empirePlanet);
             luke.IsCaptured = false;
             game.AttachNode(vader, empirePlanet);
-            ResolveOfficerEncounterAction action = new ResolveOfficerEncounterAction
+            TriggerDuelAction action = new TriggerDuelAction
             {
                 EncounteredOfficerInstanceID = luke.InstanceID,
                 OpposingOfficerInstanceID = vader.InstanceID,
@@ -162,76 +162,6 @@ namespace Rebellion.Tests.Game.Events
 
             luke.ForceValue = 0;
             Assert.IsEmpty(action.Execute(game, new SequenceRNG(new[] { 0 }), null));
-        }
-
-        [Test]
-        public void OfficerPairArrival_OfficerInsideArrivingFleet_MatchesPair()
-        {
-            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
-            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
-            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
-            game.AttachNode(luke, rebelPlanet);
-            game.AttachNode(fleet, empirePlanet);
-            game.AttachNode(ship, fleet);
-            game.AttachNode(vader, ship);
-            OfficerPairArrivalConditional conditional = new OfficerPairArrivalConditional
-            {
-                FirstOfficerInstanceID = "luke",
-                SecondOfficerInstanceID = "vader",
-            };
-
-            bool matches = conditional.IsMet(
-                game,
-                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
-            );
-
-            Assert.IsTrue(matches);
-        }
-
-        [Test]
-        public void UnitArrival_OfficerInsideArrivingFleetAtAuthoredDestination_Matches()
-        {
-            GameRoot game = BuildGame(out Planet empirePlanet, out _);
-            Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
-            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
-            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
-            game.AttachNode(fleet, empirePlanet);
-            game.AttachNode(ship, fleet);
-            game.AttachNode(emperor, ship);
-            UnitArrivalConditional conditional = new UnitArrivalConditional
-            {
-                UnitInstanceID = emperor.InstanceID,
-                DestinationInstanceID = empirePlanet.InstanceID,
-            };
-
-            bool matches = conditional.IsMet(
-                game,
-                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
-            );
-
-            Assert.IsTrue(matches);
-        }
-
-        [Test]
-        public void UnitArrival_WrongDestination_DoesNotMatch()
-        {
-            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
-            Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
-            game.AttachNode(emperor, empirePlanet);
-            UnitArrivalConditional conditional = new UnitArrivalConditional
-            {
-                UnitInstanceID = emperor.InstanceID,
-                DestinationInstanceID = empirePlanet.InstanceID,
-            };
-
-            bool matches = conditional.IsMet(
-                game,
-                new UnitArrivedResult { Unit = emperor, Destination = rebelPlanet }
-            );
-
-            Assert.IsFalse(matches);
         }
 
         [Test]
@@ -538,46 +468,6 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void GameEvent_NestedRandomTrigger_UsesOneProviderAndPreservesChildSource()
-        {
-            GameRoot game = BuildGame(out _, out _);
-            GameEvent child = new GameEvent
-            {
-                InstanceID = "child",
-                Actions = new List<GameAction>
-                {
-                    new AddMessageAction { RecipientFactionInstanceID = "rebels", Title = "Child" },
-                },
-            };
-            GameEvent root = new GameEvent
-            {
-                InstanceID = "root",
-                Actions = new List<GameAction>
-                {
-                    new RandomOutcomeAction
-                    {
-                        Probability = 1,
-                        Actions = new List<GameAction>
-                        {
-                            new TriggerEventAction { EventInstanceID = child.InstanceID },
-                        },
-                    },
-                },
-            };
-            game.EventPool.Add(child);
-            game.EventPool.Add(root);
-
-            NarrativeMessageResult result = root.Execute(
-                    game,
-                    new FixedRandomProvider(new[] { 0d })
-                )
-                .OfType<NarrativeMessageResult>()
-                .Single();
-
-            Assert.AreEqual(child.InstanceID, result.SourceEventInstanceID);
-        }
-
-        [Test]
         public void ConditionalAction_EventVariable_SelectsBranchAndPersistsMutation()
         {
             GameRoot game = BuildGame(out _, out _);
@@ -757,7 +647,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void StartStoryRescue_ResolvesAuthoredOfficerReferences()
+        public void StartStoryRescue_ValidReferences_ResolvesAuthoredOfficers()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
@@ -789,7 +679,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void StartStoryPickup_ResolvesCollectorAndPrisonerLocation()
+        public void StartStoryPickup_ValidReferences_ResolvesCollectorAndPrisonerLocation()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             Officer vader = EntityFactory.CreateOfficer("vader", "empire");
@@ -816,7 +706,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void StartStoryFinalBattle_ResolvesAuthoredParticipantsAndRules()
+        public void StartStoryFinalBattle_ValidReferences_ResolvesParticipantsAndRules()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -880,11 +770,11 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RevealOfficerForcePotential_DormantJedi_InitializesAuthoredForceOnce()
+        public void RevealOfficerForcePotential_AuthoredOfficer_ActivatesAndInitializesForceOnce()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer leia = EntityFactory.CreateOfficer("leia", "rebels");
-            leia.IsJedi = true;
+            leia.IsJedi = false;
             leia.IsForceEligible = false;
             leia.JediLevel = 10;
             leia.JediLevelVariance = 5;
@@ -899,6 +789,7 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<ForceExperienceResult>()
                 .Single();
 
+            Assert.IsTrue(leia.IsJedi);
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(13, leia.ForceValue);
             Assert.AreEqual(13, result.ExperienceGained);
@@ -973,19 +864,24 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RandomPlanetIncident_NaturalDisaster_GuaranteesOneResourceLoss()
+        public void ReduceResources_MinimumLoss_GuaranteesOneResourceLoss()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 3;
             planet.EnergyCapacity = 3;
-            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            ReduceResourcesAction action = new ReduceResourcesAction
             {
-                ActionType = PlanetIncidentActionType.NaturalDisaster,
-                DisasterLossProbabilityPerResource = 0,
-                FacilityDestructionProbability = 0,
+                LossProbabilityPerResource = 0,
+                MinimumTotalLoss = 1,
             };
+            GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                gameEvent,
+                null,
+                planet
+            );
 
-            List<GameResult> results = action.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = action.Execute(game, new FixedRNG(0.99), context);
 
             Assert.AreEqual(2, planet.NumRawResourceNodes);
             Assert.AreEqual(3, planet.EnergyCapacity);
@@ -997,7 +893,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RandomPlanetIncident_NaturalDisaster_DestroysAuthoredFacilityTypes()
+        public void DestroyUnits_BuildingCandidate_AddsFacilityToDisasterResult()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 1;
@@ -1010,15 +906,36 @@ namespace Rebellion.Tests.Game.Events
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             game.AttachNode(shipyard, planet);
-            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            GameEvent gameEvent = new GameEvent
             {
-                ActionType = PlanetIncidentActionType.NaturalDisaster,
-                DisasterLossProbabilityPerResource = 0,
-                FacilityDestructionProbability = 1,
-                DisasterFacilityTypes = new List<BuildingType> { BuildingType.Shipyard },
+                InstanceID = "disaster",
+                Actions = new List<GameAction>
+                {
+                    new ReduceResourcesAction
+                    {
+                        LossProbabilityPerResource = 0,
+                        MinimumTotalLoss = 1,
+                    },
+                    new DestroyUnitsAction
+                    {
+                        ChancePerUnit = 1,
+                        Candidates = new DestroyUnitCandidates
+                        {
+                            Buildings = new BuildingCandidates
+                            {
+                                BuildingTypes = new List<BuildingType> { BuildingType.Shipyard },
+                            },
+                        },
+                    },
+                },
             };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                gameEvent,
+                null,
+                planet
+            );
 
-            List<GameResult> results = action.Execute(game, new FixedRNG(0.99));
+            List<GameResult> results = gameEvent.Execute(game, new FixedRNG(0.99), context);
 
             Assert.IsFalse(planet.Buildings.Contains(shipyard));
             Assert.AreSame(
@@ -1052,7 +969,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RandomChoice_ExecutesEveryActionInSelectedWeightedChoice()
+        public void RandomChoice_WeightedSelection_ExecutesEveryActionInSelectedChoice()
         {
             GameRoot game = BuildGame(out _, out _);
             RandomChoiceAction action = new RandomChoiceAction
