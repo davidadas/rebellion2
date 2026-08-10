@@ -67,6 +67,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             );
         }
 
+        [Test]
+        public void HasActiveCombatEffects_TransientEffectExists_ReturnsTrue()
+        {
+            GameObject effect = new GameObject("Effect");
+            effect.transform.SetParent(root.transform, false);
+            effect.AddComponent<TacticalCombatEffectView>();
+
+            bool hasActiveEffects = renderer.HasActiveCombatEffects;
+
+            Assert.IsTrue(hasActiveEffects);
+        }
+
         /// <summary>
         /// Builds the runtime-only marker hierarchy through the renderer's initialization helper.
         /// </summary>

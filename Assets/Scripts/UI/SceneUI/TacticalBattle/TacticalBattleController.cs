@@ -152,7 +152,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             RefreshCapitalShipStatus();
         }
         battleRenderer.Synchronize();
-        if (Session.IsComplete)
+        if (Session.IsComplete && !battleRenderer.HasActiveCombatEffects)
             CompleteBattle();
     }
 

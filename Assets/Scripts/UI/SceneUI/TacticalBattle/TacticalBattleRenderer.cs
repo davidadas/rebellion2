@@ -36,6 +36,12 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     public event Action<TacticalNavPoint, bool> NavigationPointSelected;
 
     /// <summary>
+    /// Gets whether a weapon or destruction effect still requires presentation time.
+    /// </summary>
+    public bool HasActiveCombatEffects =>
+        GetComponentInChildren<TacticalCombatEffectView>(true) != null;
+
+    /// <summary>
     /// Loads and creates all model-backed tactical units.
     /// </summary>
     /// <param name="session">The active tactical session.</param>
