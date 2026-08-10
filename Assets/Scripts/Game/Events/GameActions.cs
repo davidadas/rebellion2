@@ -14,11 +14,9 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    public enum PlanetIncidentActionType
-    {
-        ResourceChange,
-    }
-
+    /// <summary>
+    /// Selects how a persistent integer event variable is updated.
+    /// </summary>
     public enum EventVariableOperation
     {
         Set,
@@ -27,6 +25,9 @@ namespace Rebellion.Game.Events
         Maximum,
     }
 
+    /// <summary>
+    /// Resolves deterministic Force-awareness checks shared by encounter actions.
+    /// </summary>
     internal static class ForceEncounterDetection
     {
         /// <summary>
@@ -57,6 +58,9 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Routes intelligence from a planet controller to one recipient faction.
+    /// </summary>
     [PersistableObject]
     public sealed class InformantFactionRoute
     {
@@ -111,6 +115,7 @@ namespace Rebellion.Game.Events
         public List<PlanetIntelligenceCategory> IntelligenceChoices { get; set; } =
             new List<PlanetIntelligenceCategory>();
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
         {
             throw new InvalidOperationException(
@@ -118,6 +123,7 @@ namespace Rebellion.Game.Events
             );
         }
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -174,50 +180,43 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Applies one random incident to a uniformly selected eligible planet.
-    /// All probabilities, limits, candidate-system rules, and affected facility types are content data.
+    /// Changes one resource capacity on the planet selected by the event target.
+    /// Limits and affected facility types are supplied by content.
     /// </summary>
-    [PersistableObject(Name = "RandomPlanetIncident")]
-    public sealed class RandomPlanetIncidentAction : GameAction
+    [PersistableObject(Name = "ChangeResources")]
+    public sealed class ChangeResourcesAction : GameAction
     {
-        public PlanetIncidentActionType ActionType { get; set; }
-        public PlanetSystemType SystemType { get; set; } = PlanetSystemType.CoreSystem;
         public int MinimumRawMaterials { get; set; }
         public int MaximumRawMaterials { get; set; } = 15;
         public int MinimumEnergy { get; set; }
         public int MaximumEnergy { get; set; } = 15;
         public List<BuildingType> EnergyFacilityTypes { get; set; } = new List<BuildingType>();
 
-        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            throw new InvalidOperationException("ChangeResources requires a planet target.");
+        }
 
-        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
+        /// <inheritdoc />
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
         {
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
+            Planet planet = context?.GetScopeTarget<Planet>();
+            if (planet == null)
+                return Execute(game);
 
-            Planet[] candidates = game.GetGalaxyMap()
-                .PlanetSystems.Where(system => system.SystemType == SystemType)
-                .SelectMany(system => system.Planets)
-                .Where(planet => !planet.IsDestroyed)
-                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .ToArray();
-            if (candidates.Length == 0)
-                return new List<GameResult>();
-
-            Planet planet = candidates[provider.NextInt(0, candidates.Length)];
-            return ActionType switch
-            {
-                PlanetIncidentActionType.ResourceChange => ApplyResourceChange(
-                    game,
-                    planet,
-                    provider
-                ),
-                _ => throw new InvalidOperationException(
-                    $"Unsupported planet incident type '{ActionType}'."
-                ),
-            };
+            return ApplyResourceChange(game, planet, provider);
         }
 
+        /// <summary>
+        /// Applies one eligible resource change and reports the resulting planet state.
+        /// </summary>
         private List<GameResult> ApplyResourceChange(
             GameRoot game,
             Planet planet,
@@ -289,12 +288,18 @@ namespace Rebellion.Game.Events
             };
         }
 
+        /// <summary>
+        /// Returns whether the planet contains a completed facility of the requested type.
+        /// </summary>
         private static bool HasCompletedFacility(Planet planet, BuildingType type) =>
             planet.Buildings.Any(building =>
                 building.BuildingType == type
                 && building.ManufacturingStatus == ManufacturingStatus.Complete
             );
 
+        /// <summary>
+        /// Returns whether the planet contains a completed facility of any requested type.
+        /// </summary>
         private static bool HasAnyCompletedFacility(
             Planet planet,
             IReadOnlyCollection<BuildingType> types
@@ -304,11 +309,17 @@ namespace Rebellion.Game.Events
                 && building.ManufacturingStatus == ManufacturingStatus.Complete
             );
 
+        /// <summary>
+        /// Resolves the faction that currently owns the planet.
+        /// </summary>
         private static Faction FindOwner(GameRoot game, Planet planet) =>
             game.GetFactions()
                 .FirstOrDefault(faction => faction.InstanceID == planet.OwnerInstanceID);
     }
 
+    /// <summary>
+    /// Removes a probability-driven number of resource nodes from the selected planet.
+    /// </summary>
     [PersistableObject(Name = "ReduceResources")]
     public sealed class ReduceResourcesAction : GameAction
     {
@@ -318,9 +329,11 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "MinimumTotalLoss")]
         public int MinimumTotalLoss { get; set; } = 1;
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game) =>
             throw new InvalidOperationException("ReduceResources requires a planet target.");
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -404,9 +417,15 @@ namespace Rebellion.Game.Events
             return results;
         }
 
+        /// <summary>
+        /// Rolls a normalized probability against the supplied random source.
+        /// </summary>
         private static bool RollProbability(IRandomNumberProvider provider, double probability) =>
             provider.NextDouble() < Math.Min(1.0, Math.Max(0.0, probability));
 
+        /// <summary>
+        /// Adds a planet-stat result when the value changed.
+        /// </summary>
         private static void AddStatChange(
             ICollection<GameResult> results,
             GameRoot game,
@@ -433,15 +452,24 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Selects candidate buildings by their general gameplay type.
+    /// </summary>
     [PersistableObject]
     public sealed class BuildingCandidates
     {
         public List<BuildingType> BuildingTypes { get; set; } = new List<BuildingType>();
     }
 
+    /// <summary>
+    /// Includes all eligible regiments on the selected planet.
+    /// </summary>
     [PersistableObject]
     public sealed class RegimentCandidates { }
 
+    /// <summary>
+    /// Combines the unit categories eligible for a destructive incident.
+    /// </summary>
     [PersistableObject]
     public sealed class DestroyUnitCandidates
     {
@@ -449,6 +477,9 @@ namespace Rebellion.Game.Events
         public RegimentCandidates Regiments { get; set; }
     }
 
+    /// <summary>
+    /// Destroys a bounded random subset of eligible units on the selected planet.
+    /// </summary>
     [PersistableObject(Name = "DestroyUnits")]
     public sealed class DestroyUnitsAction : GameAction
     {
@@ -463,9 +494,11 @@ namespace Rebellion.Game.Events
 
         public DestroyUnitCandidates Candidates { get; set; } = new DestroyUnitCandidates();
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game) =>
             throw new InvalidOperationException("DestroyUnits requires a planet target.");
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -531,6 +564,9 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Executes one authored action list when its probability roll succeeds.
+    /// </summary>
     [PersistableObject(Name = "RandomOutcome")]
     public class RandomOutcomeAction : GameAction
     {
@@ -567,6 +603,7 @@ namespace Rebellion.Game.Events
             return new List<GameResult>();
         }
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -592,11 +629,14 @@ namespace Rebellion.Game.Events
 
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
             Execute(game, provider, null);
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -615,6 +655,9 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Defines one weighted action list within a random choice.
+    /// </summary>
     [PersistableObject(Name = "Choice")]
     public sealed class RandomChoice
     {
@@ -630,11 +673,14 @@ namespace Rebellion.Game.Events
     {
         public List<RandomChoice> Choices { get; set; } = new List<RandomChoice>();
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider) =>
             Execute(game, provider, null);
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -664,6 +710,9 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Requests authoritative resolution of an encounter between two opposing officers.
+    /// </summary>
     [PersistableObject(Name = "TriggerDuel")]
     public class TriggerDuelAction : GameAction
     {
@@ -675,6 +724,9 @@ namespace Rebellion.Game.Events
         public string ImagePath { get; set; }
         public string VoicePath { get; set; }
 
+        /// <summary>
+        /// Creates an empty action for content deserialization.
+        /// </summary>
         public TriggerDuelAction()
             : base() { }
 
@@ -688,6 +740,7 @@ namespace Rebellion.Game.Events
             return Execute(game, null, null);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -767,8 +820,10 @@ namespace Rebellion.Game.Events
         public List<OfficerPairReference> ExcludedPairs { get; set; } =
             new List<OfficerPairReference>();
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game) => new List<GameResult>();
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -826,6 +881,9 @@ namespace Rebellion.Game.Events
             return results;
         }
 
+        /// <summary>
+        /// Returns whether an officer may participate in Force-detection reporting.
+        /// </summary>
         private bool IsEligible(Officer officer)
         {
             return officer.IsJedi
@@ -834,6 +892,9 @@ namespace Rebellion.Game.Events
                 && !officer.IsKilled;
         }
 
+        /// <summary>
+        /// Enumerates an officer node or the officers contained beneath a composite node.
+        /// </summary>
         private static IEnumerable<Officer> GetOfficers(ISceneNode node)
         {
             if (node is Officer officer)
@@ -843,6 +904,9 @@ namespace Rebellion.Game.Events
                 yield return descendant;
         }
 
+        /// <summary>
+        /// Adds one faction-routed Force-detection report.
+        /// </summary>
         private void AddReport(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -885,6 +949,9 @@ namespace Rebellion.Game.Events
         }
     }
 
+    /// <summary>
+    /// Executes another event immediately within the current deterministic result pipeline.
+    /// </summary>
     [PersistableObject(Name = "TriggerEvent")]
     public class TriggerEventAction : GameAction
     {
@@ -911,6 +978,7 @@ namespace Rebellion.Game.Events
             return gameEvent.Execute(game, provider ?? game.Random);
         }
 
+        /// <inheritdoc />
         public override List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,
@@ -999,6 +1067,9 @@ namespace Rebellion.Game.Events
             return ExecuteCore(game, context?.TriggerResult);
         }
 
+        /// <summary>
+        /// Builds the configured narrative result from the optional triggering result.
+        /// </summary>
         private List<GameResult> ExecuteCore(GameRoot game, GameResult triggerResult)
         {
             ISceneNode subject = game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
@@ -1573,6 +1644,9 @@ namespace Rebellion.Game.Events
             };
         }
 
+        /// <summary>
+        /// Resolves a required officer reference for a story action.
+        /// </summary>
         private static Officer ResolveOfficer(GameRoot game, string instanceId, string memberName)
         {
             return game.GetSceneNodeByInstanceID<Officer>(instanceId)
@@ -1689,6 +1763,9 @@ namespace Rebellion.Game.Events
             };
         }
 
+        /// <summary>
+        /// Resolves a required officer reference for a story action.
+        /// </summary>
         private static Officer ResolveOfficer(GameRoot game, string instanceId, string memberName)
         {
             return game.GetSceneNodeByInstanceID<Officer>(instanceId)

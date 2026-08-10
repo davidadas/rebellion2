@@ -1013,6 +1013,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 DisplayName = "Nebulon-B Frigate",
                 OwnerInstanceID = alliance.InstanceID,
+                EncyclopediaImagePath = "ship-encyclopedia-image",
             };
             CapitalShip deathStar = new CapitalShip
             {

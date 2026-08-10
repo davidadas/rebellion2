@@ -997,6 +997,7 @@ namespace Rebellion.Game.Galaxy
             }
         }
 
+        /// <inheritdoc />
         internal override bool CanAcceptChild(
             ISceneNode child,
             IReadOnlyCollection<ISceneNode> plannedChildren

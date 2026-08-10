@@ -1,38 +1,12 @@
 using System;
 using NUnit.Framework;
 using Rebellion.Game.Events;
-using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
-using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Events
 {
     [TestFixture]
     public class GameEventExecutionContextTests
     {
-        [Test]
-        public void Constructor_UnitArrival_BindsUnitDestinationAndPlanet()
-        {
-            Officer officer = new Officer { InstanceID = "officer" };
-            Planet destination = new Planet { InstanceID = "planet" };
-            UnitArrivedResult arrival = new UnitArrivedResult
-            {
-                Unit = officer,
-                Destination = destination,
-            };
-
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                new GameEvent(),
-                new GameEventState(),
-                null,
-                arrival
-            );
-
-            Assert.AreSame(officer, context.GetBinding<Officer>("unit"));
-            Assert.AreSame(destination, context.GetBinding<Planet>("destination"));
-            Assert.AreSame(destination, context.GetBinding<Planet>("planet"));
-        }
-
         [Test]
         public void Bind_BlankName_ThrowsArgumentException()
         {

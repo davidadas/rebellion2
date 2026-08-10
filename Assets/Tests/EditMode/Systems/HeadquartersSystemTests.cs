@@ -126,7 +126,7 @@ namespace Rebellion.Tests.Systems
                     }
                 );
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(hq.InstanceID));
+            Assert.IsTrue(game.IsInVoid(hq));
             Assert.IsFalse(origin.IsHeadquarters);
             Assert.IsNull(faction.HQInstanceID);
             HeadquartersDestroyedResult destroyed = results[0] as HeadquartersDestroyedResult;

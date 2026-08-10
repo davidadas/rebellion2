@@ -269,6 +269,9 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Adds or replaces one externally managed rating modifier.
         /// </summary>
+        /// <param name="key">The stable key owned by the managing system.</param>
+        /// <param name="rating">The officer rating being adjusted.</param>
+        /// <param name="amount">The signed additive adjustment; zero removes the modifier.</param>
         public void SetRatingModifier(string key, OfficerRating rating, int amount)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -303,22 +306,38 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Removes one externally managed rating modifier.
         /// </summary>
+        /// <param name="key">The stable modifier key to remove.</param>
         public void RemoveRatingModifier(string key)
         {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("A rating modifier key is required.", nameof(key));
+
             RatingModifiers?.RemoveAll(modifier => modifier.Key == key);
         }
 
         /// <summary>
         /// Removes managed modifiers in a namespace unless their keys are currently active.
         /// </summary>
+        /// <param name="prefix">The stable namespace prefix owned by the managing system.</param>
+        /// <param name="activeKeys">The modifier keys that remain active.</param>
         public void RemoveRatingModifiersExcept(string prefix, ISet<string> activeKeys)
         {
+            if (prefix == null)
+                throw new ArgumentNullException(nameof(prefix));
+            if (activeKeys == null)
+                throw new ArgumentNullException(nameof(activeKeys));
+
             RatingModifiers?.RemoveAll(modifier =>
                 modifier.Key?.StartsWith(prefix, StringComparison.Ordinal) == true
                 && !activeKeys.Contains(modifier.Key)
             );
         }
 
+        /// <summary>
+        /// Sums every managed adjustment applied to one rating.
+        /// </summary>
+        /// <param name="rating">The rating whose modifiers are summed.</param>
+        /// <returns>The signed additive total.</returns>
         private int GetRatingModifierTotal(OfficerRating rating)
         {
             int total = 0;

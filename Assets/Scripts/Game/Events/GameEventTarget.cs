@@ -24,6 +24,8 @@ namespace Rebellion.Game.Events
         /// <returns>The selected scene node, or null when no eligible target exists.</returns>
         public ISceneNode Resolve(GameRoot game, IRandomNumberProvider provider)
         {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
             if (Planet != null && RandomPlanets != null)
                 throw new InvalidOperationException(
                     "An event can define only one target selector."
@@ -49,6 +51,9 @@ namespace Rebellion.Game.Events
         /// <returns>The eligible planet, or null.</returns>
         public Planet Resolve(GameRoot game)
         {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+
             Planet planet = game.GetSceneNodeByInstanceID<Planet>(InstanceID);
             return planet?.IsDestroyed == false ? planet : null;
         }
@@ -74,6 +79,10 @@ namespace Rebellion.Game.Events
         /// <returns>The selected planet, or null when no eligible planet exists.</returns>
         public Planet Resolve(GameRoot game, IRandomNumberProvider provider)
         {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+            if (provider == null)
+                throw new ArgumentNullException(nameof(provider));
             if (Count != 1)
                 throw new InvalidOperationException(
                     "RandomPlanets currently supports exactly one target."

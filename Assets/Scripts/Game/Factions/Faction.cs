@@ -818,6 +818,9 @@ namespace Rebellion.Game.Factions
                 );
         }
 
+        /// <summary>
+        /// Maps a manufacturable template to its faction research queue.
+        /// </summary>
         private static ManufacturingType GetResearchQueueType(IManufacturable template)
         {
             return template switch

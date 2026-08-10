@@ -16,6 +16,7 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "StoryCapture";
 
+        // Story State.
         public string TargetOfficerInstanceID { get; set; }
         public int DurationTicks { get; set; }
         public string CaptorFactionInstanceID { get; set; }
@@ -24,6 +25,9 @@ namespace Rebellion.Game.Missions
         public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
         public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
 
+        /// <summary>
+        /// Creates an empty story-capture mission for deserialization.
+        /// </summary>
         public StoryCaptureMission()
         {
             ConfigKey = MissionTypeID;
@@ -31,6 +35,18 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.None;
         }
 
+        /// <summary>
+        /// Creates a content-authored attempt to capture an officer.
+        /// </summary>
+        /// <param name="target">The officer targeted for capture.</param>
+        /// <param name="durationTicks">The mission duration.</param>
+        /// <param name="captorFactionInstanceId">The faction credited with a successful capture.</param>
+        /// <param name="targetCanEscape">Whether the captive may escape.</param>
+        /// <param name="attackRating">The authored attack strength.</param>
+        /// <param name="resistanceRating">The target rating used for resistance.</param>
+        /// <param name="probabilityTableKey">The probability table used to resolve the attempt.</param>
+        /// <param name="displayName">The player-facing mission name.</param>
+        /// <param name="sourceEventInstanceId">The event that started this mission.</param>
         public StoryCaptureMission(
             Officer target,
             int durationTicks,
@@ -70,15 +86,21 @@ namespace Rebellion.Game.Missions
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 
+        /// <inheritdoc />
         internal override bool AppliesFoiledParticipantConsequences => false;
 
         /// <summary>
         /// Story captures are authored attacks, not player missions that local defenses can foil.
         /// </summary>
+        /// <param name="defenseScore">The local mission-defense score.</param>
+        /// <param name="game">The current game state.</param>
+        /// <returns>Always zero.</returns>
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
+        /// <inheritdoc />
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);

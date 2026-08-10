@@ -76,8 +76,10 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(retired);
-            Assert.AreSame(_game.Factions[0].VoidPool, officer.GetParent());
-            Assert.AreSame(_game.Factions[0].VoidPool, specialForces.GetParent());
+            Assert.IsNull(officer.GetParent());
+            Assert.IsNull(specialForces.GetParent());
+            Assert.IsTrue(_game.IsInVoid(officer));
+            Assert.IsTrue(_game.IsInVoid(specialForces));
             Assert.AreEqual(VoidStatus.Retired, officer.VoidState.Status);
             Assert.AreEqual(VoidStatus.Retired, specialForces.VoidState.Status);
         }

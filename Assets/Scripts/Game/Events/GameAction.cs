@@ -36,6 +36,10 @@ namespace Rebellion.Game.Events
         /// Executes with the concrete scheduling context for a scoped event.
         /// Existing actions remain context-independent unless they override this overload.
         /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="provider">The random provider for this execution chain.</param>
+        /// <param name="context">The current target, trigger, state, and runtime bindings.</param>
+        /// <returns>Results describing what changed.</returns>
         public virtual List<GameResult> Execute(
             GameRoot game,
             IRandomNumberProvider provider,

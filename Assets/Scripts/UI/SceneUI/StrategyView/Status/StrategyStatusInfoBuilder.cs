@@ -759,6 +759,9 @@ internal sealed class StrategyStatusInfoBuilder
         return parent?.GetDisplayName() ?? "Unknown";
     }
 
+    /// <summary>
+    /// Adds the attachment row only when the selected node has an active parent.
+    /// </summary>
     private static void AddAttachedRow(
         StrategyStatusInfo info,
         StrategyStatusTarget target,

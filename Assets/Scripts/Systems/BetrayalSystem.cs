@@ -96,6 +96,12 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Resolves one eligible officer's loyalty-based betrayal roll.
+        /// </summary>
+        /// <param name="officer">The participating officer.</param>
+        /// <param name="provider">The deterministic simulation random source.</param>
+        /// <returns>True when the officer betrays the mission.</returns>
         private static bool BetraysMission(Officer officer, IRandomNumberProvider provider)
         {
             if (
@@ -113,11 +119,20 @@ namespace Rebellion.Systems
             return provider.NextInt(0, 100) < betrayalProbability;
         }
 
+        /// <summary>
+        /// Returns whether a companion can attempt to detect a traitor.
+        /// </summary>
+        /// <param name="officer">The companion to inspect.</param>
+        /// <returns>True when the officer is active and Force-capable.</returns>
         private static bool CanDiscoverTraitor(Officer officer)
         {
             return officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
         }
 
+        /// <summary>
+        /// Applies one deterministic loyalty shift after a faction gains control.
+        /// </summary>
+        /// <param name="incomingFaction">The faction gaining a planet.</param>
         private void ApplyIncomingControlLoyaltyShift(Faction incomingFaction)
         {
             if (incomingFaction == null)
@@ -144,6 +159,11 @@ namespace Rebellion.Systems
             }
         }
 
+        /// <summary>
+        /// Returns whether an officer participates in galaxy-wide loyalty shifts.
+        /// </summary>
+        /// <param name="officer">The officer to inspect.</param>
+        /// <returns>True for living, uncaptured officers without command rank.</returns>
         private static bool IsFreeLivingOfficer(Officer officer)
         {
             return officer is { CurrentRank: OfficerRank.None, IsCaptured: false, IsKilled: false };

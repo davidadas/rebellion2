@@ -57,6 +57,11 @@ namespace Rebellion.Game.FogOfWar
         /// <summary>
         /// Records current intelligence for only the requested planet categories.
         /// </summary>
+        /// <param name="faction">The faction receiving intelligence.</param>
+        /// <param name="planet">The observed planet.</param>
+        /// <param name="system">The planet's containing system.</param>
+        /// <param name="currentTick">The observation tick.</param>
+        /// <param name="categories">The categories revealed by this observation.</param>
         public void RecordIntelligenceSnapshot(
             Faction faction,
             Planet planet,
@@ -142,6 +147,13 @@ namespace Rebellion.Game.FogOfWar
             ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
         }
 
+        /// <summary>
+        /// Adds fully revealed entity copies to a category-limited snapshot.
+        /// </summary>
+        /// <typeparam name="T">The scene-node type being copied.</typeparam>
+        /// <param name="source">The live entities.</param>
+        /// <param name="destination">The snapshot collection.</param>
+        /// <param name="faction">The observing faction.</param>
         private void AddIntelligenceEntityCopies<T>(
             IEnumerable<T> source,
             List<T> destination,
@@ -152,6 +164,11 @@ namespace Rebellion.Game.FogOfWar
             AddEntityCopiesToSnapshot(source, destination, faction, true);
         }
 
+        /// <summary>
+        /// Removes fleet cargo categories not included by an intelligence result.
+        /// </summary>
+        /// <param name="fleets">The copied fleets to filter.</param>
+        /// <param name="categories">The revealed intelligence categories.</param>
         private static void FilterFleetIntelligence(
             IEnumerable<Fleet> fleets,
             PlanetIntelligenceCategory categories
@@ -460,6 +477,12 @@ namespace Rebellion.Game.FogOfWar
             };
         }
 
+        /// <summary>
+        /// Copies current strategic planet state into an existing snapshot.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to update.</param>
+        /// <param name="planet">The live planet state.</param>
+        /// <param name="currentTick">The observation tick.</param>
         private static void UpdatePlanetState(
             PlanetSnapshot snapshot,
             Planet planet,
@@ -1166,6 +1189,9 @@ namespace Rebellion.Game.FogOfWar
             RemoveEntityFromSnapshot(oldPlanetSnapshot, entityId);
         }
 
+        /// <summary>
+        /// Removes an entity from every retained collection in a planet snapshot.
+        /// </summary>
         private static void RemoveEntityFromSnapshot(PlanetSnapshot snapshot, string entityId)
         {
             snapshot.Officers.RemoveAll(o => o.InstanceID == entityId);
@@ -1183,6 +1209,9 @@ namespace Rebellion.Game.FogOfWar
             snapshot.Fleets.RemoveAll(f => f.CapitalShips.Count == 0);
         }
 
+        /// <summary>
+        /// Removes an entity from a retained fleet and its nested capital ships.
+        /// </summary>
         private static void RemoveEntityFromFleet(Fleet fleet, string entityId)
         {
             foreach (CapitalShip ship in fleet.CapitalShips)
@@ -1191,6 +1220,9 @@ namespace Rebellion.Game.FogOfWar
             fleet.CapitalShips.RemoveAll(s => s.InstanceID == entityId);
         }
 
+        /// <summary>
+        /// Removes an entity from the retained contents of a capital ship.
+        /// </summary>
         private static void RemoveEntityFromCapitalShip(CapitalShip ship, string entityId)
         {
             ship.Officers.RemoveAll(o => o.InstanceID == entityId);

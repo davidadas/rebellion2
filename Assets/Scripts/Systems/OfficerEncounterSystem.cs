@@ -50,6 +50,11 @@ namespace Rebellion.Systems
             return reactions;
         }
 
+        /// <summary>
+        /// Returns whether both officers remain eligible and share a planet.
+        /// </summary>
+        /// <param name="request">The encounter request to validate.</param>
+        /// <returns>True when authoritative resolution may proceed.</returns>
         private bool CanResolve(OfficerEncounterRequestedResult request)
         {
             Officer encountered = request?.EncounteredOfficer;
@@ -66,6 +71,11 @@ namespace Rebellion.Systems
                 && opposing.GetParentOfType<Planet>() == location;
         }
 
+        /// <summary>
+        /// Applies capture, injury, and advancement outcomes for one encounter.
+        /// </summary>
+        /// <param name="request">The validated encounter request.</param>
+        /// <param name="reactions">The result collection receiving authoritative outcomes.</param>
         private void Resolve(OfficerEncounterRequestedResult request, List<GameResult> reactions)
         {
             Officer encountered = request.EncounteredOfficer;
@@ -143,6 +153,11 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Resolves an injury chance and generates its configured severity.
+        /// </summary>
+        /// <param name="chance">The percentage chance of injury.</param>
+        /// <returns>The injury severity, or zero when avoided.</returns>
         private int TryRollInjury(int chance)
         {
             if (!RollPercent(chance))
@@ -154,11 +169,24 @@ namespace Rebellion.Systems
                 + _random.NextInt(0, config.InjurySecondaryRollMaximum + 1);
         }
 
+        /// <summary>
+        /// Rolls a clamped percentage against the deterministic simulation stream.
+        /// </summary>
+        /// <param name="chance">The percentage chance to test.</param>
+        /// <returns>True when the roll succeeds.</returns>
         private bool RollPercent(int chance)
         {
             return _random.NextInt(0, 100) < Math.Min(100, Math.Max(0, chance));
         }
 
+        /// <summary>
+        /// Applies an injury and awards the opposing officer when severity is positive.
+        /// </summary>
+        /// <param name="injured">The officer receiving the injury.</param>
+        /// <param name="injury">The resolved injury severity.</param>
+        /// <param name="beneficiary">The opposing officer receiving combat growth.</param>
+        /// <param name="request">The source encounter request.</param>
+        /// <param name="reactions">The result collection receiving the injury report.</param>
         private void ApplyInjury(
             Officer injured,
             int injury,
@@ -188,6 +216,13 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Copies event provenance from an encounter request to a reaction.
+        /// </summary>
+        /// <typeparam name="T">The emitted result type.</typeparam>
+        /// <param name="reaction">The reaction to stamp.</param>
+        /// <param name="request">The source encounter request.</param>
+        /// <returns>The stamped reaction.</returns>
         private static T Stamp<T>(T reaction, OfficerEncounterRequestedResult request)
             where T : GameResult
         {

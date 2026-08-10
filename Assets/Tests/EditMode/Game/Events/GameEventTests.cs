@@ -6,6 +6,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Events
 {

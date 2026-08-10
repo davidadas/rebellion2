@@ -117,7 +117,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void RatingModifiers_StableKeys_ReconcileWithoutMutatingBaseRating()
+        public void SetRatingModifier_StableKeys_ReconcilesWithoutMutatingBaseRating()
         {
             Officer officer = new Officer();
             officer.SetBaseRating(OfficerRating.Leadership, 40);

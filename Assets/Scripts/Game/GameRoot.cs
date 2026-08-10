@@ -353,6 +353,7 @@ namespace Rebellion.Game
         /// <summary>
         /// Removes an owned unit from active play while retaining it in faction-owned storage.
         /// </summary>
+        /// <param name="node">The attached faction-owned unit to retain.</param>
         public void AddToVoid(ISceneNode node)
         {
             if (node == null)
@@ -396,6 +397,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Sets the persisted reason that an off-map unit is unavailable.
         /// </summary>
+        /// <param name="node">The unit already retained by a void pool.</param>
+        /// <param name="status">The reason the unit is outside active play.</param>
         public void SetVoidStatus(ISceneNode node, VoidStatus status)
         {
             if (node == null)
@@ -430,6 +433,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns an off-map unit to its prior attachment, prior planet, or nearest friendly planet.
         /// </summary>
+        /// <param name="node">The retained unit to return.</param>
+        /// <returns>True when a valid destination accepts the unit; otherwise false.</returns>
         public bool ReturnFromVoid(ISceneNode node)
         {
             if (node == null)
@@ -478,7 +483,12 @@ namespace Rebellion.Game
             }
         }
 
-        private bool IsInVoid(ISceneNode node)
+        /// <summary>
+        /// Returns whether a unit or one of its retained ancestors is stored in a faction void pool.
+        /// </summary>
+        /// <param name="node">The unit to inspect.</param>
+        /// <returns>True when the unit is outside active play in a void pool.</returns>
+        public bool IsInVoid(ISceneNode node)
         {
             for (ISceneNode current = node; current != null; current = current.GetParent())
             {
@@ -488,6 +498,12 @@ namespace Rebellion.Game
             return false;
         }
 
+        /// <summary>
+        /// Returns whether a destination can accept a unit on a surviving friendly planet.
+        /// </summary>
+        /// <param name="node">The unit to place.</param>
+        /// <param name="destination">The candidate container.</param>
+        /// <returns>True when the destination is valid and friendly.</returns>
         private static bool CanReturnTo(ISceneNode node, ContainerNode destination)
         {
             if (destination?.CanAcceptChild(node) != true)
@@ -582,6 +598,8 @@ namespace Rebellion.Game
         /// Retrieves every registered live scene node of a type, including nodes nested inside
         /// containers whose public child projection intentionally omits runtime participants.
         /// </summary>
+        /// <typeparam name="T">The scene-node type to retrieve.</typeparam>
+        /// <returns>All compatible registered nodes.</returns>
         public List<T> GetRegisteredSceneNodesByType<T>()
             where T : class
         {
@@ -701,6 +719,9 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns persistent scheduling state for one independently scheduled event target.
         /// </summary>
+        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
+        /// <param name="scopeTargetInstanceId">The scoped target's stable instance ID.</param>
+        /// <returns>The save-game-owned state for this event and target pair.</returns>
         public GameEventState GetEventState(string eventInstanceId, string scopeTargetInstanceId)
         {
             if (string.IsNullOrWhiteSpace(scopeTargetInstanceId))
@@ -715,6 +736,10 @@ namespace Rebellion.Game
         /// <summary>
         /// Attempts to retrieve scheduling state for one independently scheduled event target.
         /// </summary>
+        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
+        /// <param name="scopeTargetInstanceId">The scoped target's stable instance ID.</param>
+        /// <param name="state">Receives the saved state when present.</param>
+        /// <returns>True when state already exists for the pair.</returns>
         public bool TryGetEventState(
             string eventInstanceId,
             string scopeTargetInstanceId,
@@ -738,6 +763,12 @@ namespace Rebellion.Game
             );
         }
 
+        /// <summary>
+        /// Builds an unambiguous persisted key for one event and scope-target pair.
+        /// </summary>
+        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
+        /// <param name="scopeTargetInstanceId">The scoped target's stable instance ID.</param>
+        /// <returns>The length-prefixed composite key.</returns>
         private static string GetScopedEventStateKey(
             string eventInstanceId,
             string scopeTargetInstanceId
@@ -746,6 +777,8 @@ namespace Rebellion.Game
         /// <summary>
         /// Returns a persistent event variable, treating an unset variable as zero.
         /// </summary>
+        /// <param name="key">The stable variable key.</param>
+        /// <returns>The stored value, or zero when unset.</returns>
         public int GetEventVariable(string key)
         {
             if (string.IsNullOrWhiteSpace(key))

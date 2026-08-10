@@ -215,8 +215,8 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = 1;
             system.ProcessTick();
 
-            Assert.IsNull(
-                game.GetSceneNodeByInstanceID<Building>("b1"),
+            Assert.IsTrue(
+                game.IsInVoid(facility),
                 "Facility should be destroyed by uprising case 1"
             );
             Assert.IsTrue(planet.IsInUprising, "Uprising should remain active after consequence");
@@ -569,7 +569,7 @@ namespace Rebellion.Tests.Systems
 
             system.ProcessTick();
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>("b1"));
+            Assert.IsTrue(game.IsInVoid(facility));
             Assert.AreEqual(8, planet.GetPopularSupport("empire"));
             Assert.AreEqual(92, planet.GetPopularSupport("rebels"));
         }

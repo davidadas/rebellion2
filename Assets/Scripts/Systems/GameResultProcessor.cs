@@ -17,6 +17,10 @@ namespace Rebellion.Systems
         private readonly List<Action<IReadOnlyList<GameResult>>> _observers =
             new List<Action<IReadOnlyList<GameResult>>>();
 
+        /// <summary>
+        /// Creates a processor with a bounded reaction queue.
+        /// </summary>
+        /// <param name="maximumReactionResults">The maximum number of results accepted per processing cycle.</param>
         public GameResultProcessor(int maximumReactionResults = _defaultMaximumReactionResults)
         {
             if (maximumReactionResults < 1)

@@ -672,8 +672,15 @@ namespace Rebellion.Systems
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
                     result.DestroyedBuildings.Add(building);
-                    _game.AddToVoid(building);
-                    _game.SetVoidStatus(building, VoidStatus.Destroyed);
+                    if (string.IsNullOrEmpty(building.OwnerInstanceID))
+                    {
+                        _game.DetachNode(building);
+                    }
+                    else
+                    {
+                        _game.AddToVoid(building);
+                        _game.SetVoidStatus(building, VoidStatus.Destroyed);
+                    }
                     break;
                 case BombardmentTargetType.Headquarters:
                     DestroyHeadquarters(planet, defenderId, result);

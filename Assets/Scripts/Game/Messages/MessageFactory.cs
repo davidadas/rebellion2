@@ -945,6 +945,9 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Converts data-driven narrative results into faction message deliveries.
+        /// </summary>
         private void AddNarrativeEventMessages(
             IEnumerable<NarrativeMessageResult> results,
             List<(Faction faction, Message message)> deliveries
@@ -991,6 +994,9 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Applies a content-authored advisor cue to a narrative message.
+        /// </summary>
         private static void ApplyAdvisorCue(Message message, AdvisorCue cue)
         {
             switch (cue)
@@ -2476,6 +2482,9 @@ namespace Rebellion.Game.Messages
             }
         }
 
+        /// <summary>
+        /// Finds the most specific strategic-event message definition matching the supplied selectors.
+        /// </summary>
         private MessageDefinition FindStrategicEventDefinition(
             MessageResultType resultType,
             string planetInstanceId,
@@ -2496,6 +2505,9 @@ namespace Rebellion.Game.Messages
             );
         }
 
+        /// <summary>
+        /// Returns whether an optional content selector accepts the supplied runtime value.
+        /// </summary>
         private static bool MatchesOptionalSelector(string selector, string value) =>
             string.IsNullOrWhiteSpace(selector)
             || string.Equals(selector, value, StringComparison.Ordinal);
@@ -3618,6 +3630,9 @@ namespace Rebellion.Game.Messages
                 : entity.EncyclopediaImagePath;
         }
 
+        /// <summary>
+        /// Returns whether the ship template carries planet-destroying capability.
+        /// </summary>
         private static bool IsPlanetDestroyingShip(CapitalShip ship, GameRoot game)
         {
             return ship != null
@@ -3707,6 +3722,9 @@ namespace Rebellion.Game.Messages
             return MessageResultOutcome.None;
         }
 
+        /// <summary>
+        /// Selects the space-battle headline template for the recipient's outcome.
+        /// </summary>
         private static string GetSpaceBattleHeadlineTemplate(
             SpaceBattleNarrativeTemplates templates,
             MessageResultOutcome outcome
@@ -3721,6 +3739,9 @@ namespace Rebellion.Game.Messages
             };
         }
 
+        /// <summary>
+        /// Selects the space-battle situation template for the recipient's outcome.
+        /// </summary>
         private static string GetSpaceBattleSituationTemplate(
             SpaceBattleNarrativeTemplates templates,
             Faction faction,
@@ -3767,6 +3788,9 @@ namespace Rebellion.Game.Messages
             return templates.AttackFailed;
         }
 
+        /// <summary>
+        /// Builds the localized fleet-loss summary for one side of a space battle.
+        /// </summary>
         private static string BuildSpaceBattleFleetOutcome(
             SpaceBattleNarrativeTemplates templates,
             Faction faction,
@@ -3793,6 +3817,9 @@ namespace Rebellion.Game.Messages
             return string.Join("\n", lines);
         }
 
+        /// <summary>
+        /// Adds one non-empty fleet outcome line to the message body.
+        /// </summary>
         private static void AddFleetOutcomeLine(
             List<string> lines,
             SpaceBattleNarrativeTemplates templates,
@@ -3836,11 +3863,17 @@ namespace Rebellion.Game.Messages
                 lines.Add(line);
         }
 
+        /// <summary>
+        /// Renders a battle message template with the supplied values.
+        /// </summary>
         private static string RenderBattleTemplate(
             string template,
             Dictionary<string, string> values
         ) => MessageTemplateBuilder.Interpolate(template, values);
 
+        /// <summary>
+        /// Resolves which combat side represents the receiving faction.
+        /// </summary>
         private static CombatSide GetSpaceCombatSide(Faction faction, SpaceCombatResult result)
         {
             if (faction?.InstanceID == GetSpaceCombatOwnerInstanceID(result, CombatSide.Attacker))
@@ -3852,6 +3885,9 @@ namespace Rebellion.Game.Messages
             return CombatSide.Draw;
         }
 
+        /// <summary>
+        /// Resolves the outcome classification for one side of a space battle.
+        /// </summary>
         private static SpaceCombatSideOutcome GetSpaceCombatSideOutcome(
             Faction faction,
             SpaceCombatResult result

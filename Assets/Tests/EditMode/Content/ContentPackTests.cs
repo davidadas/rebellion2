@@ -387,7 +387,7 @@ namespace Rebellion.Tests.Content
                 .Conditionals.OfType<EventVariableConditional>()
                 .Single();
             Assert.AreEqual("luke.vader.encountered", leiaHeritageCondition.Key);
-            Assert.IsEmpty(leiaHeritage.Trigger);
+            Assert.IsNull(leiaHeritage.Trigger);
             Assert.AreEqual(
                 "LEIA_ORGANA",
                 leiaHeritage

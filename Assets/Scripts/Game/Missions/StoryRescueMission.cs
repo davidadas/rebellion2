@@ -17,6 +17,10 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "StoryRescue";
 
+        [PersistableIgnore]
+        private readonly List<string> _releasedOfficerInstanceIDs = new List<string>();
+
+        // Story State.
         public string CaptiveOfficerInstanceID { get; set; }
         public string RescuerOfficerInstanceID { get; set; }
         public int DurationTicks { get; set; }
@@ -27,9 +31,9 @@ namespace Rebellion.Game.Missions
         public bool CaptureRescuerOnFailure { get; set; }
         public bool FailedRescuerCanEscape { get; set; }
 
-        [PersistableIgnore]
-        private readonly List<string> _releasedOfficerInstanceIDs = new List<string>();
-
+        /// <summary>
+        /// Creates an empty story-rescue mission for deserialization.
+        /// </summary>
         public StoryRescueMission()
         {
             ConfigKey = MissionTypeID;
@@ -37,6 +41,20 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.None;
         }
 
+        /// <summary>
+        /// Creates a rescue mission with content-authored timing and consequences.
+        /// </summary>
+        /// <param name="captive">The officer whose location anchors the rescue.</param>
+        /// <param name="rescuer">The officer performing the rescue.</param>
+        /// <param name="durationTicks">The fixed mission duration.</param>
+        /// <param name="durationRandomTicks">The exclusive upper bound of added random duration.</param>
+        /// <param name="ratingDivisor">The divisor applied to each contributing rating.</param>
+        /// <param name="successCombatBonus">The combat increase awarded on success.</param>
+        /// <param name="successEspionageBonus">The espionage increase awarded on success.</param>
+        /// <param name="captureRescuerOnFailure">Whether failure captures the rescuer.</param>
+        /// <param name="failedRescuerCanEscape">Whether a captured rescuer may escape.</param>
+        /// <param name="displayName">The player-facing mission name.</param>
+        /// <param name="sourceEventInstanceId">The event that started this mission.</param>
         public StoryRescueMission(
             Officer captive,
             Officer rescuer,
@@ -84,12 +102,16 @@ namespace Rebellion.Game.Missions
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 
+        /// <inheritdoc />
         internal override bool AppliesFoiledParticipantConsequences => false;
 
+        /// <inheritdoc />
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
             MissionCompletionReason? reason = base.GetAbortReason(game);
@@ -102,6 +124,7 @@ namespace Rebellion.Game.Missions
                 : MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             Officer rescuer = game.GetSceneNodeByInstanceID<Officer>(RescuerOfficerInstanceID);
@@ -138,6 +161,7 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <inheritdoc />
         internal override IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game)
         {
             foreach (string officerId in _releasedOfficerInstanceIDs)
@@ -148,6 +172,12 @@ namespace Rebellion.Game.Missions
             }
         }
 
+        /// <summary>
+        /// Applies rescue rewards and releases every matching prisoner at the location.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="rescuer">The successful rescuer.</param>
+        /// <returns>The capture-state and rescue results.</returns>
         private List<GameResult> ResolveSuccess(GameRoot game, Officer rescuer)
         {
             rescuer.IncrementBaseRating(OfficerRating.Combat, SuccessCombatBonus);
@@ -195,6 +225,12 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <summary>
+        /// Applies the authored failure consequence to the rescuer.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="rescuer">The unsuccessful rescuer.</param>
+        /// <returns>The capture result, or an empty collection.</returns>
         private List<GameResult> ResolveFailure(GameRoot game, Officer rescuer)
         {
             if (!CaptureRescuerOnFailure)
@@ -217,6 +253,12 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <summary>
+        /// Copies this mission's event provenance to a result.
+        /// </summary>
+        /// <typeparam name="T">The emitted result type.</typeparam>
+        /// <param name="result">The result to stamp.</param>
+        /// <returns>The stamped result.</returns>
         private T Stamp<T>(T result)
             where T : GameResult
         {

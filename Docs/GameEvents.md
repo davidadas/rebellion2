@@ -193,7 +193,7 @@ same execution. Available actions are grouped below:
 - State: `SetEventVariable`, `RequestMovement`, `AddToVoid`, `SetStatus`, `ReturnFromVoid`,
   `UpdateOfficerPresentation`, `RevealOfficerForcePotential`, `AddForceExperience`,
   `IncreaseOfficerForce`, and `ApplyOfficerInjury`.
-- Planet incidents: `InformantIntelligence`, `RandomPlanetIncident`, `ReduceResources`, and
+- Planet incidents: `InformantIntelligence`, `ChangeResources`, `ReduceResources`, and
   `DestroyUnits`.
 - Encounters and story sequences: `TriggerDuel`, `ReportForceDetection`, `StartStoryCapture`,
   `BountyAttack`, `StartStoryRescue`, `StartStoryPickup`, and `StartStoryFinalBattle`.

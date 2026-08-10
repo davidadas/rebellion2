@@ -62,6 +62,9 @@ namespace Rebellion.Game.Events
                 );
         }
 
+        /// <summary>
+        /// Ensures content configured exactly one mutually exclusive schedule mode.
+        /// </summary>
         private void EnsureSingleMode()
         {
             int configuredModes =

@@ -44,7 +44,12 @@ namespace Rebellion.Tests.Game
             // Create game objects.
             _galaxyMap = new GalaxyMap();
             _planetSystem = new PlanetSystem { InstanceID = "SYSTEM1" };
-            _planet = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
+            _planet = new Planet
+            {
+                InstanceID = "PLANET1",
+                OwnerInstanceID = "FACTION1",
+                IsColonized = true,
+            };
             _fleet = new Fleet { InstanceID = "FLEET1", OwnerInstanceID = "FACTION1" };
 
             // Initialize the _game.

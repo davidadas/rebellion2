@@ -820,19 +820,23 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RandomPlanetIncident_ResourceIncrease_UsesAuthoredQuartileAndLimits()
+        public void ChangeResources_ResourceIncrease_UsesAuthoredQuartileAndLimits()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
+            ChangeResourcesAction action = new ChangeResourcesAction
             {
-                ActionType = PlanetIncidentActionType.ResourceChange,
                 MaximumRawMaterials = 15,
                 MaximumEnergy = 15,
             };
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                null,
+                planet
+            );
 
-            List<GameResult> results = action.Execute(game, new SequenceRNG(new[] { 0, 2 }));
+            List<GameResult> results = action.Execute(game, new SequenceRNG(new[] { 2 }), context);
 
             Assert.AreEqual(5, planet.NumRawResourceNodes);
             PlanetIncidentResult incident = results.OfType<PlanetIncidentResult>().Single();
@@ -843,19 +847,21 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void RandomPlanetIncident_NeutralPlanet_StillChangesResourcesWithoutFaction()
+        public void ChangeResources_NeutralPlanet_StillChangesResourcesWithoutFaction()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.OwnerInstanceID = null;
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            RandomPlanetIncidentAction action = new RandomPlanetIncidentAction
-            {
-                ActionType = PlanetIncidentActionType.ResourceChange,
-            };
+            ChangeResourcesAction action = new ChangeResourcesAction();
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                null,
+                planet
+            );
 
             PlanetStatChangedResult result = action
-                .Execute(game, new SequenceRNG(new[] { 0, 2 }))
+                .Execute(game, new SequenceRNG(new[] { 2 }), context)
                 .OfType<PlanetStatChangedResult>()
                 .Single();
 

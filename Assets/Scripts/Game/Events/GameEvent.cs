@@ -41,8 +41,16 @@ namespace Rebellion.Game.Events
         public GameEventTarget Target { get; set; }
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
+        /// <summary>
+        /// Creates an empty event definition for deserialization.
+        /// </summary>
         public GameEvent() { }
 
+        /// <summary>
+        /// Creates an event from an in-memory condition and action pipeline.
+        /// </summary>
+        /// <param name="conditionals">The conditions that must all pass.</param>
+        /// <param name="actions">The actions executed in authored order.</param>
         public GameEvent(List<GameConditional> conditionals, List<GameAction> actions)
         {
             Conditionals = conditionals;

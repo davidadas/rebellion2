@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Game.Events
             PlanetSystem rimSystem = new PlanetSystem
             {
                 InstanceID = "rim-system",
-                SystemType = PlanetSystemType.RimSystem,
+                SystemType = PlanetSystemType.OuterRim,
             };
             Planet rimPlanet = new Planet { InstanceID = "rim-planet" };
             game.AttachNode(rimSystem, game.Galaxy);
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Events
                 RandomPlanets = new RandomPlanetsTarget
                 {
                     Count = 1,
-                    SystemType = PlanetSystemType.RimSystem,
+                    SystemType = PlanetSystemType.OuterRim,
                 },
             };
 
@@ -73,6 +73,20 @@ namespace Rebellion.Tests.Game.Events
             {
                 Planet = new PlanetTarget { InstanceID = planet.InstanceID },
                 RandomPlanets = new RandomPlanetsTarget(),
+            };
+
+            TestDelegate resolve = () => target.Resolve(game, new StubRNG());
+
+            Assert.Throws<InvalidOperationException>(resolve);
+        }
+
+        [Test]
+        public void Resolve_RandomPlanetCountAboveOne_ThrowsInvalidOperationException()
+        {
+            GameRoot game = BuildGame(out _);
+            GameEventTarget target = new GameEventTarget
+            {
+                RandomPlanets = new RandomPlanetsTarget { Count = 2 },
             };
 
             TestDelegate resolve = () => target.Resolve(game, new StubRNG());

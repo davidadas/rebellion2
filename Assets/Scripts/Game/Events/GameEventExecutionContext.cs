@@ -42,7 +42,7 @@ namespace Rebellion.Game.Events
             TriggerResult = triggerResult;
             Bind("scope", scopeTarget);
             Bind("trigger", triggerResult);
-            BindTriggerValues(triggerResult);
+            GameEventTriggerBindings.Bind(this, triggerResult);
         }
 
         /// <summary>
@@ -103,30 +103,6 @@ namespace Rebellion.Game.Events
         {
             if (result != null)
                 _results.Add(result);
-        }
-
-        private void BindTriggerValues(GameResult triggerResult)
-        {
-            switch (triggerResult)
-            {
-                case UnitArrivedResult arrival:
-                    Bind("unit", arrival.Unit);
-                    Bind("destination", arrival.Destination);
-                    Bind("planet", arrival.Destination);
-                    break;
-                case OfficerEncounterResult encounter:
-                    Bind("officer", encounter.EncounteredOfficer);
-                    Bind("opponent", encounter.OpposingOfficer);
-                    break;
-                case OfficerCaptureStateResult capture:
-                    Bind("officer", capture.TargetOfficer ?? capture.CapturedOfficer);
-                    Bind("linkedOfficer", capture.LinkedOfficer);
-                    Bind("context", capture.Context);
-                    break;
-                case MissionCompletedResult completion:
-                    Bind("mission", completion.Mission);
-                    break;
-            }
         }
     }
 }

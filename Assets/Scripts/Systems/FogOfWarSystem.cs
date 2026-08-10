@@ -51,6 +51,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Applies category-limited planet intelligence emitted by a simulation event.
         /// </summary>
+        /// <param name="results">The intelligence results to record.</param>
+        /// <returns>No reactions; snapshots are updated directly.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<PlanetIntelligenceResult> results)
         {
             foreach (PlanetIntelligenceResult result in results)
@@ -550,6 +552,12 @@ namespace Rebellion.Systems
             ApplyManufacturingQueue(viewPlanet, planetSnapshot);
         }
 
+        /// <summary>
+        /// Returns whether a snapshot reveals one category through full or selective intelligence.
+        /// </summary>
+        /// <param name="snapshot">The snapshot to inspect.</param>
+        /// <param name="category">The requested intelligence category.</param>
+        /// <returns>True when the category is available.</returns>
         private static bool HasIntelligence(
             PlanetSnapshot snapshot,
             PlanetIntelligenceCategory category

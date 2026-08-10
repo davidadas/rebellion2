@@ -63,6 +63,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Evaluates this condition with the result that triggered the event, when present.
         /// </summary>
+        /// <param name="game">The game instance to evaluate.</param>
+        /// <param name="triggerResult">The result that activated the event, if any.</param>
+        /// <returns>True when the condition is met.</returns>
         public virtual bool IsMet(GameRoot game, GameResult triggerResult)
         {
             return IsMet(game);
@@ -71,6 +74,9 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Evaluates this condition against the complete event execution context.
         /// </summary>
+        /// <param name="game">The game instance to evaluate.</param>
+        /// <param name="context">The current target, trigger, state, and runtime bindings.</param>
+        /// <returns>True when the condition is met.</returns>
         public virtual bool IsMet(GameRoot game, GameEventExecutionContext context)
         {
             return IsMet(game, context?.TriggerResult);

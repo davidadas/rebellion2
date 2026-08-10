@@ -274,7 +274,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 
             ConfirmOpenDialog();
 
-            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(_officer.InstanceID));
+            Assert.IsTrue(_game.IsInVoid(_officer));
             Assert.AreSame(_sourceWindow, _clearedWindow);
             Assert.AreEqual(1, _rebuildCount);
             Assert.AreEqual(1, _dirtyCount);

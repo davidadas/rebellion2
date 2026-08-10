@@ -174,10 +174,21 @@ namespace Rebellion.Systems
             return true;
         }
 
+        /// <summary>
+        /// Returns whether an event activates from simulation results instead of tick scheduling.
+        /// </summary>
+        /// <param name="gameEvent">The event to inspect.</param>
+        /// <returns>True when a stable or legacy trigger is configured.</returns>
         private static bool HasResultTrigger(GameEvent gameEvent) =>
             !string.IsNullOrWhiteSpace(gameEvent.Trigger)
             || !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType);
 
+        /// <summary>
+        /// Returns whether a simulation result matches an event's configured trigger.
+        /// </summary>
+        /// <param name="gameEvent">The triggered event definition.</param>
+        /// <param name="result">The simulation result to inspect.</param>
+        /// <returns>True when the trigger registry accepts the result.</returns>
         private static bool MatchesTrigger(GameEvent gameEvent, GameResult result) =>
             !string.IsNullOrWhiteSpace(gameEvent.Trigger)
                 ? GameEventTriggerRegistry.Matches(gameEvent.Trigger, result)
@@ -186,6 +197,12 @@ namespace Rebellion.Systems
                     result
                 );
 
+        /// <summary>
+        /// Suppresses automatic reports emitted by the same source event as a triggering result.
+        /// </summary>
+        /// <param name="gameEvent">The event requesting suppression.</param>
+        /// <param name="triggerResult">The result that activated the event.</param>
+        /// <param name="sourceResults">The complete result batch being processed.</param>
         private static void SuppressSourceMessages(
             GameEvent gameEvent,
             GameResult triggerResult,
@@ -233,6 +250,11 @@ namespace Rebellion.Systems
             state.IsInitialized = true;
         }
 
+        /// <summary>
+        /// Enumerates surviving planets that satisfy the event's optional system-type filter.
+        /// </summary>
+        /// <param name="gameEvent">The scoped event definition.</param>
+        /// <returns>Candidate planets in stable instance-ID order.</returns>
         private IEnumerable<Planet> GetPlanetScopeCandidates(GameEvent gameEvent)
         {
             return _game
@@ -246,6 +268,12 @@ namespace Rebellion.Systems
                 .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal);
         }
 
+        /// <summary>
+        /// Returns whether a planet currently satisfies the event's ownership filter.
+        /// </summary>
+        /// <param name="gameEvent">The scoped event definition.</param>
+        /// <param name="planet">The planet to evaluate.</param>
+        /// <returns>True when the scope remains eligible.</returns>
         private static bool IsPlanetScopeEligible(GameEvent gameEvent, Planet planet)
         {
             return gameEvent.PlanetScopeOwnership switch
@@ -256,12 +284,22 @@ namespace Rebellion.Systems
             };
         }
 
+        /// <summary>
+        /// Marks one planet's independent event schedule as active.
+        /// </summary>
+        /// <param name="gameEvent">The scoped event definition.</param>
+        /// <param name="planet">The active scope planet.</param>
         private void ActivatePlanetScope(GameEvent gameEvent, Planet planet)
         {
             GameEventState state = _game.GetEventState(gameEvent.InstanceID, planet.InstanceID);
             state.IsScopeActive = true;
         }
 
+        /// <summary>
+        /// Disarms one planet's schedule so renewed eligibility starts a fresh delay.
+        /// </summary>
+        /// <param name="gameEvent">The scoped event definition.</param>
+        /// <param name="planet">The ineligible scope planet.</param>
         private void DeactivatePlanetScope(GameEvent gameEvent, Planet planet)
         {
             if (
@@ -293,6 +331,12 @@ namespace Rebellion.Systems
             gameEvent.Schedule.GetInitialRange(out minimum, out maximum);
         }
 
+        /// <summary>
+        /// Gets the inclusive delay range for an event's next repeat.
+        /// </summary>
+        /// <param name="gameEvent">The event whose schedule is evaluated.</param>
+        /// <param name="minimum">Receives the minimum delay in ticks.</param>
+        /// <param name="maximum">Receives the maximum delay in ticks.</param>
         private static void GetRepeatRange(GameEvent gameEvent, out int minimum, out int maximum)
         {
             if (gameEvent.Schedule == null)
@@ -303,6 +347,12 @@ namespace Rebellion.Systems
             gameEvent.Schedule.GetRepeatRange(out minimum, out maximum);
         }
 
+        /// <summary>
+        /// Selects one value from an inclusive deterministic range.
+        /// </summary>
+        /// <param name="minimum">The inclusive lower bound.</param>
+        /// <param name="maximum">The inclusive upper bound.</param>
+        /// <returns>The selected value.</returns>
         private int RollRange(int minimum, int maximum)
         {
             return minimum == maximum ? minimum : _provider.NextInt(minimum, maximum + 1);

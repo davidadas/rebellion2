@@ -17,14 +17,18 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "StoryPickup";
 
+        [PersistableIgnore]
+        private readonly List<string> _prisonerInstanceIDs = new List<string>();
+
+        // Story State.
         public string CollectorOfficerInstanceID { get; set; }
         public string CaptiveFactionInstanceID { get; set; }
         public int DurationTicks { get; set; }
         public bool CaptivesCanEscapeAfterPickup { get; set; }
 
-        [PersistableIgnore]
-        private readonly List<string> _prisonerInstanceIDs = new List<string>();
-
+        /// <summary>
+        /// Creates an empty prisoner-pickup mission for deserialization.
+        /// </summary>
         public StoryPickupMission()
         {
             ConfigKey = MissionTypeID;
@@ -32,6 +36,16 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.None;
         }
 
+        /// <summary>
+        /// Creates a mission that transfers eligible prisoners to a collector.
+        /// </summary>
+        /// <param name="collector">The officer collecting the prisoners.</param>
+        /// <param name="location">The planet holding the prisoners.</param>
+        /// <param name="captiveFactionInstanceId">The faction whose officers may be collected.</param>
+        /// <param name="durationTicks">The mission duration.</param>
+        /// <param name="captivesCanEscapeAfterPickup">Whether collected prisoners may escape.</param>
+        /// <param name="displayName">The player-facing mission name.</param>
+        /// <param name="sourceEventInstanceId">The event that started this mission.</param>
         public StoryPickupMission(
             Officer collector,
             Planet location,
@@ -66,12 +80,16 @@ namespace Rebellion.Game.Missions
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 
+        /// <inheritdoc />
         internal override bool AppliesFoiledParticipantConsequences => false;
 
+        /// <inheritdoc />
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
             MissionCompletionReason? reason = base.GetAbortReason(game);
@@ -81,6 +99,7 @@ namespace Rebellion.Game.Missions
             return GetEligiblePrisoners().Any() ? null : MissionCompletionReason.TargetUnavailable;
         }
 
+        /// <inheritdoc />
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             Officer collector = game.GetSceneNodeByInstanceID<Officer>(CollectorOfficerInstanceID);
@@ -130,6 +149,7 @@ namespace Rebellion.Game.Missions
             };
         }
 
+        /// <inheritdoc />
         internal override IEnumerable<IMovable> GetSuccessfulReturnPassengers(GameRoot game)
         {
             foreach (string prisonerId in _prisonerInstanceIDs)
@@ -140,6 +160,10 @@ namespace Rebellion.Game.Missions
             }
         }
 
+        /// <summary>
+        /// Enumerates living matching prisoners at the mission location.
+        /// </summary>
+        /// <returns>The prisoners eligible for transfer.</returns>
         private IEnumerable<Officer> GetEligiblePrisoners()
         {
             Planet location = GetParent() as Planet;
@@ -153,6 +177,12 @@ namespace Rebellion.Game.Missions
                 ?? Enumerable.Empty<Officer>();
         }
 
+        /// <summary>
+        /// Copies this mission's event provenance to a result.
+        /// </summary>
+        /// <typeparam name="T">The emitted result type.</typeparam>
+        /// <param name="result">The result to stamp.</param>
+        /// <returns>The stamped result.</returns>
         private T Stamp<T>(T result)
             where T : GameResult
         {

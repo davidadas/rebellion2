@@ -10,7 +10,10 @@ namespace Rebellion.Game.Missions
 {
     public enum StoryFinalBattlePhase
     {
+        /// <summary>Vader travels to Luke's current location.</summary>
         GatherLuke,
+
+        /// <summary>Vader escorts Luke to Palpatine's current location.</summary>
         EscortToPalpatine,
     }
 
@@ -22,6 +25,10 @@ namespace Rebellion.Game.Missions
     {
         public const string MissionTypeID = "StoryFinalBattle";
 
+        [PersistableIgnore]
+        private bool _lukeVictorious;
+
+        // Story State.
         public StoryFinalBattlePhase Phase { get; set; }
         public string LukeOfficerInstanceID { get; set; }
         public string VaderOfficerInstanceID { get; set; }
@@ -33,9 +40,9 @@ namespace Rebellion.Game.Missions
         public int MaximumFailureInjury { get; set; }
         public bool CaptivesCanEscapeOnVictory { get; set; }
 
-        [PersistableIgnore]
-        private bool _lukeVictorious;
-
+        /// <summary>
+        /// Creates an empty final-battle mission for deserialization.
+        /// </summary>
         public StoryFinalBattleMission()
         {
             ConfigKey = MissionTypeID;
@@ -43,6 +50,22 @@ namespace Rebellion.Game.Missions
             ParticipantRating = OfficerRating.None;
         }
 
+        /// <summary>
+        /// Creates one travel leg in the final-battle story chain.
+        /// </summary>
+        /// <param name="phase">The travel leg represented by this mission.</param>
+        /// <param name="luke">The Luke officer participating in the story.</param>
+        /// <param name="vader">The Vader officer performing the mission.</param>
+        /// <param name="palpatine">The Palpatine officer awaiting the final encounter.</param>
+        /// <param name="location">The mission's initial destination.</param>
+        /// <param name="captorFactionInstanceId">The faction currently holding Luke captive.</param>
+        /// <param name="durationTicks">The fixed duration of this travel leg.</param>
+        /// <param name="victoryForceRank">The Force rank Luke needs to win.</param>
+        /// <param name="minimumFailureInjury">The minimum injury applied on failure.</param>
+        /// <param name="maximumFailureInjury">The maximum injury applied on failure.</param>
+        /// <param name="captivesCanEscapeOnVictory">Whether defeated captives may escape.</param>
+        /// <param name="displayName">The player-facing mission name.</param>
+        /// <param name="sourceEventInstanceId">The event that started this mission.</param>
         public StoryFinalBattleMission(
             StoryFinalBattlePhase phase,
             Officer luke,
@@ -94,17 +117,22 @@ namespace Rebellion.Game.Missions
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
+        /// <inheritdoc />
         public override bool ShouldRepeatAfterCompletion(GameRoot game) => false;
 
+        /// <inheritdoc />
         internal override bool AppliesFoiledParticipantConsequences => false;
 
+        /// <inheritdoc />
         internal override bool SuccessfulParticipantsRemainAtLocation => true;
 
+        /// <inheritdoc />
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         /// <summary>
         /// Keeps Vader's first-leg destination attached to Luke if the prisoner is relocated.
         /// </summary>
+        /// <param name="game">The current game state.</param>
         internal void RefreshTravelTarget(GameRoot game)
         {
             if (Phase != StoryFinalBattlePhase.GatherLuke)
@@ -119,6 +147,7 @@ namespace Rebellion.Game.Missions
             }
         }
 
+        /// <inheritdoc />
         public override MissionCompletionReason? GetAbortReason(GameRoot game)
         {
             MissionCompletionReason? reason = base.GetAbortReason(game);
@@ -144,6 +173,7 @@ namespace Rebellion.Game.Missions
             return null;
         }
 
+        /// <inheritdoc />
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             Officer luke = ResolveOfficer(game, LukeOfficerInstanceID);
@@ -239,9 +269,25 @@ namespace Rebellion.Game.Missions
             return results;
         }
 
+        /// <summary>
+        /// Resolves a story participant from the registered scene-node catalog.
+        /// </summary>
+        /// <param name="game">The current game state.</param>
+        /// <param name="instanceId">The officer's stable instance ID.</param>
+        /// <returns>The matching officer, or null.</returns>
         private static Officer ResolveOfficer(GameRoot game, string instanceId) =>
             game.GetSceneNodeByInstanceID<Officer>(instanceId);
 
+        /// <summary>
+        /// Applies one final-battle capture transition and records it.
+        /// </summary>
+        /// <param name="officer">The affected officer.</param>
+        /// <param name="isCaptured">The new capture state.</param>
+        /// <param name="captorInstanceId">The new captor faction, if captured.</param>
+        /// <param name="canEscape">Whether the captive may escape.</param>
+        /// <param name="location">The location reported with the transition.</param>
+        /// <param name="game">The current game state.</param>
+        /// <param name="results">The result collection receiving the transition.</param>
         private void SetCaptureState(
             Officer officer,
             bool isCaptured,
@@ -268,6 +314,12 @@ namespace Rebellion.Game.Missions
             );
         }
 
+        /// <summary>
+        /// Copies this mission's event provenance to a result.
+        /// </summary>
+        /// <typeparam name="T">The emitted result type.</typeparam>
+        /// <param name="result">The result to stamp.</param>
+        /// <returns>The stamped result.</returns>
         private T Stamp<T>(T result)
             where T : GameResult
         {

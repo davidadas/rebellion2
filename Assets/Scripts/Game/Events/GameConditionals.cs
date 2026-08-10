@@ -11,6 +11,9 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    /// <summary>
+    /// Selects the comparison applied to a persistent event variable.
+    /// </summary>
     public enum EventVariableComparison
     {
         Equal,
@@ -21,6 +24,9 @@ namespace Rebellion.Game.Events
         LessThanOrEqual,
     }
 
+    /// <summary>
+    /// Selects one boolean officer state for a data-defined condition.
+    /// </summary>
     public enum OfficerStateKind
     {
         Available,
@@ -30,6 +36,9 @@ namespace Rebellion.Game.Events
         ForceEligible,
     }
 
+    /// <summary>
+    /// Tests whether an authored planet has any owner or one specific faction owner.
+    /// </summary>
     [PersistableObject(Name = "IsOwned")]
     public sealed class IsOwnedConditional : GameConditional
     {
@@ -348,6 +357,9 @@ namespace Rebellion.Game.Events
             LessThan,
         }
 
+        /// <summary>
+        /// Creates an empty tick condition for content deserialization.
+        /// </summary>
         public TickCountConditional()
             : base() { }
 

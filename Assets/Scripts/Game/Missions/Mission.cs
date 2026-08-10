@@ -132,6 +132,9 @@ namespace Rebellion.Game.Missions
             return planet;
         }
 
+        /// <summary>
+        /// Returns whether a mission target remains attached to the playable scene graph.
+        /// </summary>
         internal static bool IsOperationalTarget(ISceneNode target)
         {
             if (target == null)

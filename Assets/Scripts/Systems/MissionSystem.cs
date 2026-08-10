@@ -106,6 +106,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates content-authored capture missions without bypassing mission persistence or teardown.
         /// </summary>
+        /// <param name="results">The capture requests to start.</param>
+        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<StoryCaptureRequestedResult> results)
         {
             List<GameResult> missionResults = new List<GameResult>();
@@ -149,6 +151,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates one independent content-authored rescue mission per available rescuer.
         /// </summary>
+        /// <param name="results">The rescue requests to start.</param>
+        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<StoryRescueRequestedResult> results)
         {
             List<GameResult> missionResults = new List<GameResult>();
@@ -202,6 +206,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Creates content-authored prisoner pickup missions for available collectors.
         /// </summary>
+        /// <param name="results">The prisoner-pickup requests to start.</param>
+        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<StoryPickupRequestedResult> results)
         {
             List<GameResult> missionResults = new List<GameResult>();
@@ -244,6 +250,8 @@ namespace Rebellion.Systems
         /// <summary>
         /// Starts Vader's journey to a captured Luke.
         /// </summary>
+        /// <param name="results">The final-battle requests to start.</param>
+        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
         public List<GameResult> HandleResults(
             IReadOnlyList<StoryFinalBattleRequestedResult> results
         ) => StartFinalBattleMissions(results, StoryFinalBattlePhase.GatherLuke);
@@ -251,10 +259,19 @@ namespace Rebellion.Systems
         /// <summary>
         /// Starts Vader and Luke's escorted journey to Palpatine.
         /// </summary>
+        /// <param name="results">The escort requests emitted by the first travel leg.</param>
+        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
         public List<GameResult> HandleResults(
             IReadOnlyList<StoryFinalBattleEscortRequestedResult> results
         ) => StartFinalBattleMissions(results, StoryFinalBattlePhase.EscortToPalpatine);
 
+        /// <summary>
+        /// Starts one validated travel leg in the final-battle story chain.
+        /// </summary>
+        /// <typeparam name="T">The final-battle request result type.</typeparam>
+        /// <param name="results">The requests to validate.</param>
+        /// <param name="phase">The travel leg to create.</param>
+        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
         private List<GameResult> StartFinalBattleMissions<T>(
             IReadOnlyList<T> results,
             StoryFinalBattlePhase phase
@@ -689,6 +706,12 @@ namespace Rebellion.Systems
             return results;
         }
 
+        /// <summary>
+        /// Adds mission provenance to interruption results before returning them to the pipeline.
+        /// </summary>
+        /// <param name="mission">The mission producing the results.</param>
+        /// <param name="source">The results to stamp.</param>
+        /// <param name="destination">The collection receiving stamped results.</param>
         private static void AddMissionResults(
             Mission mission,
             IEnumerable<GameResult> source,

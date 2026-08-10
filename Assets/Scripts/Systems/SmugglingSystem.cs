@@ -66,6 +66,11 @@ namespace Rebellion.Systems
             return FindBeneficiary(planet, controller) ?? controller;
         }
 
+        /// <summary>
+        /// Reconciles one planet's smuggling state and emits changes.
+        /// </summary>
+        /// <param name="planet">The planet to reconcile.</param>
+        /// <param name="results">The result collection receiving changes.</param>
         private void RefreshPlanet(Planet planet, List<GameResult> results)
         {
             Faction controller = FindFaction(planet.OwnerInstanceID);
@@ -99,6 +104,15 @@ namespace Rebellion.Systems
             planet.SmugglingControllerInstanceID = newPercent > 0 ? controller?.InstanceID : null;
         }
 
+        /// <summary>
+        /// Records a smuggling percentage change and any start-or-end notification.
+        /// </summary>
+        /// <param name="results">The result collection receiving changes.</param>
+        /// <param name="planet">The affected planet.</param>
+        /// <param name="controller">The faction controlling production.</param>
+        /// <param name="beneficiary">The faction receiving diverted output.</param>
+        /// <param name="oldPercent">The previous diversion percentage.</param>
+        /// <param name="newPercent">The new diversion percentage.</param>
         private void AddChange(
             List<GameResult> results,
             Planet planet,
@@ -135,6 +149,13 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Calculates smuggling after support and garrison suppression.
+        /// </summary>
+        /// <param name="planet">The planet being evaluated.</param>
+        /// <param name="controller">The faction controlling production.</param>
+        /// <param name="beneficiary">The strongest opposing beneficiary.</param>
+        /// <returns>The clamped resource-diversion percentage.</returns>
         private int CalculatePercent(Planet planet, Faction controller, Faction beneficiary)
         {
             if (
@@ -207,6 +228,12 @@ namespace Rebellion.Systems
             );
         }
 
+        /// <summary>
+        /// Selects the opposing faction with the strongest local support.
+        /// </summary>
+        /// <param name="planet">The planet being evaluated.</param>
+        /// <param name="controller">The current controlling faction.</param>
+        /// <returns>The deterministic beneficiary, or null without a controller.</returns>
         private Faction FindBeneficiary(Planet planet, Faction controller)
         {
             if (controller == null)
@@ -220,6 +247,11 @@ namespace Rebellion.Systems
                 .FirstOrDefault();
         }
 
+        /// <summary>
+        /// Resolves a faction by stable instance ID.
+        /// </summary>
+        /// <param name="instanceId">The faction instance ID.</param>
+        /// <returns>The matching faction, or null.</returns>
         private Faction FindFaction(string instanceId)
         {
             if (string.IsNullOrEmpty(instanceId))
@@ -228,6 +260,11 @@ namespace Rebellion.Systems
             return _game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceId);
         }
 
+        /// <summary>
+        /// Returns whether a capital ship is complete and stationary.
+        /// </summary>
+        /// <param name="ship">The ship to inspect.</param>
+        /// <returns>True when the ship can suppress smuggling.</returns>
         private static bool IsOperational(CapitalShip ship)
         {
             return ship.ManufacturingStatus == ManufacturingStatus.Complete
