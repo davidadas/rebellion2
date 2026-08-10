@@ -14,6 +14,7 @@ public sealed class TacticalBattleController : MonoBehaviour
 {
     private bool isCompleting;
     private bool isReady;
+    private bool observing;
     private bool playerPaused;
     private bool withdrawalConfirmationOpen;
     private TacticalBehavior? pendingMissionOrder;
@@ -118,9 +119,13 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.CapitalShipMissionsRequested += ShowSelectedTaskForceMissions;
         view.CapitalShipManeuversRequested += ShowSelectedTaskForceManeuvers;
         view.PauseToggled += TogglePlayerPause;
+        view.GameOptionsRequested += OpenGameOptions;
         view.WithdrawalRequested += RequestWithdrawal;
         view.WithdrawalConfirmed += ConfirmWithdrawal;
         view.WithdrawalCancelled += CancelWithdrawal;
+        view.ImmediateResultRequested += ResolveImmediately;
+        view.CommandModeToggled += ToggleCommandMode;
+        view.GameOptionsClosed += CloseGameOptions;
         battleRenderer.NavigationPointSelected += SelectNavigationPoint;
         await battleRenderer.InitializeAsync(
             Session,
@@ -181,9 +186,13 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.CapitalShipMissionsRequested -= ShowSelectedTaskForceMissions;
             view.CapitalShipManeuversRequested -= ShowSelectedTaskForceManeuvers;
             view.PauseToggled -= TogglePlayerPause;
+            view.GameOptionsRequested -= OpenGameOptions;
             view.WithdrawalRequested -= RequestWithdrawal;
             view.WithdrawalConfirmed -= ConfirmWithdrawal;
             view.WithdrawalCancelled -= CancelWithdrawal;
+            view.ImmediateResultRequested -= ResolveImmediately;
+            view.CommandModeToggled -= ToggleCommandMode;
+            view.GameOptionsClosed -= CloseGameOptions;
         }
         if (battleRenderer != null)
             battleRenderer.NavigationPointSelected -= SelectNavigationPoint;
@@ -205,6 +214,52 @@ public sealed class TacticalBattleController : MonoBehaviour
 
         playerPaused = !playerPaused;
         view.SetPaused(Session.IsPaused);
+    }
+
+    /// <summary>
+    /// Opens the original tactical game-options right panel.
+    /// </summary>
+    private void OpenGameOptions()
+    {
+        view.ShowGameOptions();
+    }
+
+    /// <summary>
+    /// Closes the tactical game-options right panel.
+    /// </summary>
+    private void CloseGameOptions()
+    {
+        view.HideGameOptions();
+        SelectedGroup = null;
+        selectedCapitalShip = null;
+        battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
+    }
+
+    /// <summary>
+    /// Switches the played side between player commands and autonomous observation.
+    /// </summary>
+    private void ToggleCommandMode()
+    {
+        observing = !observing;
+        SelectedGroup = null;
+        selectedCapitalShip = null;
+        battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
+        view.SetObserving(observing);
+    }
+
+    /// <summary>
+    /// Finishes the active tactical simulation without replacing its accumulated state.
+    /// </summary>
+    private void ResolveImmediately()
+    {
+        if (isCompleting || Session.IsComplete)
+            return;
+
+        view.HideGameOptions();
+        Session.ResolveImmediately();
+        Session.DrainEvents();
+        battleRenderer.Synchronize();
+        CompleteBattle();
     }
 
     /// <summary>

@@ -29,6 +29,8 @@ namespace Rebellion.Game.Tactical
     public sealed class TacticalBattleSession
     {
         private const float _arrivalDuration = 1f;
+        private const float _immediateResultStep = 1f / 60f;
+        private const int _maximumImmediateResultSteps = 216000;
         private static readonly float[] ArrivalDistances = { 40f, 57.5f, 65f, 32.5f };
         private readonly List<TacticalShipGroup> groups = new List<TacticalShipGroup>();
         private readonly ReadOnlyCollection<TacticalShipGroup> groupView;
@@ -246,6 +248,24 @@ namespace Rebellion.Game.Tactical
         public void Resume()
         {
             pauseCount = Math.Max(0, pauseCount - 1);
+        }
+
+        /// <summary>
+        /// Advances the existing battle deterministically to its final result without presentation delays.
+        /// </summary>
+        public void ResolveImmediately()
+        {
+            pauseCount = 0;
+            int remainingSteps = _maximumImmediateResultSteps;
+            while (!IsComplete && remainingSteps-- > 0)
+                Advance(_immediateResultStep);
+
+            if (!IsComplete)
+            {
+                throw new InvalidOperationException(
+                    "Tactical combat did not reach an immediate result."
+                );
+            }
         }
 
         /// <summary>

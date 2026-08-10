@@ -80,7 +80,28 @@ public sealed class TacticalBattleView : MonoBehaviour
     private RawImage pauseImage;
 
     [SerializeField]
+    private Button gameOptionsButton;
+
+    [SerializeField]
+    private GameObject gameOptionsPanel;
+
+    [SerializeField]
     private Button withdrawalButton;
+
+    [SerializeField]
+    private Button immediateResultButton;
+
+    [SerializeField]
+    private Button commandModeButton;
+
+    [SerializeField]
+    private RawImage commandModeImage;
+
+    [SerializeField]
+    private Button settingsButton;
+
+    [SerializeField]
+    private Button closeGameOptionsButton;
 
     [SerializeField]
     private GameObject withdrawalPanel;
@@ -93,6 +114,9 @@ public sealed class TacticalBattleView : MonoBehaviour
 
     private IContentAssetSource contentAssets;
     private string sharedUIRoot;
+    private int availableTaskForceCount;
+    private int availableFighterGroupCount;
+    private bool observing;
 
     /// <summary>
     /// Raised when the player selects one of the eight capital-ship task forces.
@@ -170,6 +194,11 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action PauseToggled;
 
     /// <summary>
+    /// Raised when the player opens the tactical game-options panel.
+    /// </summary>
+    public event Action GameOptionsRequested;
+
+    /// <summary>
     /// Raised when the player requests withdrawal from the battle.
     /// </summary>
     public event Action WithdrawalRequested;
@@ -183,6 +212,26 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// Raised when the player cancels withdrawal from the battle.
     /// </summary>
     public event Action WithdrawalCancelled;
+
+    /// <summary>
+    /// Raised when the player requests an immediate tactical result.
+    /// </summary>
+    public event Action ImmediateResultRequested;
+
+    /// <summary>
+    /// Raised when the player toggles between commanding and observing the battle.
+    /// </summary>
+    public event Action CommandModeToggled;
+
+    /// <summary>
+    /// Raised when the player requests the general game settings.
+    /// </summary>
+    public event Action SettingsRequested;
+
+    /// <summary>
+    /// Raised when the player closes the tactical game-options panel.
+    /// </summary>
+    public event Action GameOptionsClosed;
 
     /// <summary>
     /// Supplies the generated tactical HUD references.
@@ -263,6 +312,37 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Supplies the generated tactical game-options controls.
+    /// </summary>
+    /// <param name="open">The control that opens the panel.</param>
+    /// <param name="panel">The tactical game-options panel.</param>
+    /// <param name="immediateResult">The immediate-result control.</param>
+    /// <param name="commandMode">The command/observe toggle.</param>
+    /// <param name="commandModeVisual">The command/observe toggle image.</param>
+    /// <param name="settings">The general settings control.</param>
+    /// <param name="close">The control that closes the panel.</param>
+    public void ConfigureGameOptions(
+        Button open,
+        GameObject panel,
+        Button immediateResult,
+        Button commandMode,
+        RawImage commandModeVisual,
+        Button settings,
+        Button close
+    )
+    {
+        gameOptionsButton = open ?? throw new ArgumentNullException(nameof(open));
+        gameOptionsPanel = panel ?? throw new ArgumentNullException(nameof(panel));
+        immediateResultButton =
+            immediateResult ?? throw new ArgumentNullException(nameof(immediateResult));
+        commandModeButton = commandMode ?? throw new ArgumentNullException(nameof(commandMode));
+        commandModeImage =
+            commandModeVisual ?? throw new ArgumentNullException(nameof(commandModeVisual));
+        settingsButton = settings ?? throw new ArgumentNullException(nameof(settings));
+        closeGameOptionsButton = close ?? throw new ArgumentNullException(nameof(close));
+    }
+
+    /// <summary>
     /// Supplies the generated capital-ship status controls.
     /// </summary>
     /// <param name="panel">The selected-capital-ship status panel.</param>
@@ -311,7 +391,57 @@ public sealed class TacticalBattleView : MonoBehaviour
         sharedUIRoot = theme.SharedUIRoot;
         ContentBindings.Apply(gameObject, contentAssets);
         ApplyMissionOrderTextures(theme.FighterOrderVariant);
+        SetObserving(false);
         SetPaused(false);
+    }
+
+    /// <summary>
+    /// Displays the tactical game-options panel in the original right-panel region.
+    /// </summary>
+    public void ShowGameOptions()
+    {
+        HideMissionOrders();
+        HideManeuvers();
+        HideCapitalShipStatus();
+        HideWithdrawalConfirmation();
+        gameOptionsPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Closes the tactical game-options panel.
+    /// </summary>
+    public void HideGameOptions()
+    {
+        gameOptionsPanel.SetActive(false);
+    }
+
+    /// <summary>
+    /// Switches the played side between direct command and autonomous observation.
+    /// </summary>
+    /// <param name="observing">Whether the player is observing instead of commanding.</param>
+    public void SetObserving(bool observing)
+    {
+        this.observing = observing;
+        SetAvailableButtons(taskForceButtons, observing ? 0 : availableTaskForceCount);
+        SetAvailableButtons(fighterGroupButtons, observing ? 0 : availableFighterGroupCount);
+        bool commandsEnabled = !observing;
+        foreach (Button button in navigationSetButtons)
+            button.interactable = commandsEnabled;
+        capitalShipMissionsButton.interactable = commandsEnabled;
+        capitalShipManeuversButton.interactable = commandsEnabled;
+        if (observing)
+        {
+            HideMissionOrders();
+            HideManeuvers();
+            HideCapitalShipStatus();
+        }
+
+        if (contentAssets != null)
+        {
+            string address =
+                $"{sharedUIRoot}/{(observing ? "1153-1033-tactical-ui-take-command" : "1154-1033-tactical-ui-observe-battle")}";
+            commandModeImage.texture = ContentBindings.RequireTexture(contentAssets, address);
+        }
     }
 
     /// <summary>
@@ -334,8 +464,10 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// <param name="fighterGroupCount">The number of populated fighter-type slots.</param>
     public void SetGroupAvailability(int taskForceCount, int fighterGroupCount)
     {
-        SetAvailableButtons(taskForceButtons, taskForceCount);
-        SetAvailableButtons(fighterGroupButtons, fighterGroupCount);
+        availableTaskForceCount = taskForceCount;
+        availableFighterGroupCount = fighterGroupCount;
+        SetAvailableButtons(taskForceButtons, observing ? 0 : taskForceCount);
+        SetAvailableButtons(fighterGroupButtons, observing ? 0 : fighterGroupCount);
     }
 
     /// <summary>
@@ -415,6 +547,8 @@ public sealed class TacticalBattleView : MonoBehaviour
     {
         HideMissionOrders();
         HideManeuvers();
+        HideCapitalShipStatus();
+        HideGameOptions();
         withdrawalPanel.SetActive(true);
     }
 
@@ -474,12 +608,18 @@ public sealed class TacticalBattleView : MonoBehaviour
             CapitalShipManeuversRequested?.Invoke()
         );
         pauseButton.onClick.AddListener(() => PauseToggled?.Invoke());
+        gameOptionsButton.onClick.AddListener(() => GameOptionsRequested?.Invoke());
         withdrawalButton.onClick.AddListener(() => WithdrawalRequested?.Invoke());
+        immediateResultButton.onClick.AddListener(() => ImmediateResultRequested?.Invoke());
+        commandModeButton.onClick.AddListener(() => CommandModeToggled?.Invoke());
+        settingsButton.onClick.AddListener(() => SettingsRequested?.Invoke());
+        closeGameOptionsButton.onClick.AddListener(() => GameOptionsClosed?.Invoke());
         confirmWithdrawalButton.onClick.AddListener(() => WithdrawalConfirmed?.Invoke());
         cancelWithdrawalButton.onClick.AddListener(() => WithdrawalCancelled?.Invoke());
         HideMissionOrders();
         HideManeuvers();
         HideCapitalShipStatus();
+        HideGameOptions();
         HideWithdrawalConfirmation();
     }
 
@@ -558,6 +698,20 @@ public sealed class TacticalBattleView : MonoBehaviour
         }
         if (pauseButton == null || pauseImage == null)
             throw new MissingReferenceException("Tactical HUD pause references are incomplete.");
+        if (
+            gameOptionsButton == null
+            || gameOptionsPanel == null
+            || immediateResultButton == null
+            || commandModeButton == null
+            || commandModeImage == null
+            || settingsButton == null
+            || closeGameOptionsButton == null
+        )
+        {
+            throw new MissingReferenceException(
+                "Tactical HUD game-options references are incomplete."
+            );
+        }
         if (
             withdrawalButton == null
             || withdrawalPanel == null

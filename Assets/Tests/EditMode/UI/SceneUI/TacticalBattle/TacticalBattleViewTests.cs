@@ -20,6 +20,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button withdrawalButton;
         private Button confirmWithdrawalButton;
         private Button cancelWithdrawalButton;
+        private GameObject gameOptionsPanel;
+        private Button gameOptionsButton;
+        private Button immediateResultButton;
+        private Button commandModeButton;
+        private Button settingsButton;
+        private Button closeGameOptionsButton;
+        private GameObject capitalShipStatusPanel;
         private Button previousCapitalShipButton;
         private Button nextCapitalShipButton;
         private Button capitalShipMissionsButton;
@@ -33,12 +40,22 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             view = root.AddComponent<TacticalBattleView>();
             CreateManeuverControls();
             CreateWithdrawalControls();
+            CreateGameOptionsControls();
             CreateCapitalShipStatusControls();
             view.ConfigureWithdrawal(
                 withdrawalButton,
                 withdrawalPanel,
                 confirmWithdrawalButton,
                 cancelWithdrawalButton
+            );
+            view.ConfigureGameOptions(
+                gameOptionsButton,
+                gameOptionsPanel,
+                immediateResultButton,
+                commandModeButton,
+                commandModeButton.targetGraphic as RawImage,
+                settingsButton,
+                closeGameOptionsButton
             );
         }
 
@@ -298,6 +315,71 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void Awake_GameOptionsButton_RaisesGameOptionsRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.GameOptionsRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            gameOptionsButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
+        public void Awake_ImmediateResultButton_RaisesImmediateResultRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.ImmediateResultRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            immediateResultButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
+        public void Awake_CommandModeButton_RaisesCommandModeToggled()
+        {
+            ConfigureCompleteView();
+            bool toggled = false;
+            view.CommandModeToggled += () => toggled = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            commandModeButton.onClick.Invoke();
+
+            Assert.IsTrue(toggled);
+        }
+
+        [Test]
+        public void Awake_SettingsButton_RaisesSettingsRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.SettingsRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            settingsButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
+        public void Awake_CloseGameOptionsButton_RaisesGameOptionsClosed()
+        {
+            ConfigureCompleteView();
+            bool closed = false;
+            view.GameOptionsClosed += () => closed = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            closeGameOptionsButton.onClick.Invoke();
+
+            Assert.IsTrue(closed);
+        }
+
+        [Test]
         public void Awake_PreviousCapitalShipButton_RaisesPreviousCapitalShipRequested()
         {
             ConfigureCompleteView();
@@ -389,6 +471,35 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsFalse(maneuverPanel.activeSelf);
         }
 
+        [Test]
+        public void ShowGameOptions_ClosedPanel_OpensOriginalRightPanel()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            capitalShipStatusPanel.SetActive(true);
+
+            view.ShowGameOptions();
+
+            Assert.IsTrue(gameOptionsPanel.activeSelf);
+            Assert.IsFalse(capitalShipStatusPanel.activeSelf);
+        }
+
+        [Test]
+        public void SetObserving_PopulatedGroups_DisablesPlayerCommandSlots()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.SetGroupAvailability(3, 2);
+
+            view.SetObserving(true);
+
+            Assert.IsTrue(
+                GetButtons("TaskForce")
+                    .Concat(GetButtons("FighterGroup"))
+                    .All(button => !button.interactable)
+            );
+        }
+
         private Button[] CreateButtons(int count, string name)
         {
             Button[] buttons = new Button[count];
@@ -431,10 +542,28 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CreateButton("CancelWithdrawal", out cancelWithdrawalButton);
         }
 
+        private void CreateGameOptionsControls()
+        {
+            gameOptionsPanel = new GameObject("GameOptions", typeof(RectTransform));
+            gameOptionsPanel.transform.SetParent(root.transform, false);
+            CreateButton("OpenGameOptions", out gameOptionsButton);
+            CreateButton("ImmediateResult", out immediateResultButton);
+            CreateButton("CommandMode", out commandModeButton);
+            CreateButton("Settings", out settingsButton);
+            CreateButton("CloseGameOptions", out closeGameOptionsButton);
+        }
+
+        private Button[] GetButtons(string namePrefix)
+        {
+            return root.GetComponentsInChildren<Button>(true)
+                .Where(button => button.name.StartsWith(namePrefix))
+                .ToArray();
+        }
+
         private void CreateCapitalShipStatusControls()
         {
-            GameObject panel = new GameObject("CapitalShipStatus", typeof(RectTransform));
-            panel.transform.SetParent(root.transform, false);
+            capitalShipStatusPanel = new GameObject("CapitalShipStatus", typeof(RectTransform));
+            capitalShipStatusPanel.transform.SetParent(root.transform, false);
             CreateButton("PreviousCapitalShip", out previousCapitalShipButton);
             CreateButton("NextCapitalShip", out nextCapitalShipButton);
             CreateButton("CapitalShipMissions", out capitalShipMissionsButton);
@@ -456,7 +585,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             }
 
             view.ConfigureCapitalShipStatus(
-                panel,
+                capitalShipStatusPanel,
                 previousCapitalShipButton,
                 nextCapitalShipButton,
                 capitalShipMissionsButton,

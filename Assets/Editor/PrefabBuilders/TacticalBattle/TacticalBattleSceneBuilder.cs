@@ -474,7 +474,7 @@ public static class TacticalBattleSceneBuilder
             30,
             26
         );
-        CreateBoundButton(
+        Button gameOptionsButton = CreateBoundButton(
             "GameOptions",
             canvasObject.transform,
             $"{root}/Hud/options-up",
@@ -495,9 +495,23 @@ public static class TacticalBattleSceneBuilder
             21
         );
         Button pauseButton = CreateButton(pauseImage);
+
+        GameObject gameOptionsPanel = new GameObject("GameOptionsPanel", typeof(RectTransform));
+        gameOptionsPanel.transform.SetParent(canvasObject.transform, false);
+        RectTransform gameOptionsRect = gameOptionsPanel.GetComponent<RectTransform>();
+        SetSourceRect(gameOptionsRect, 482, 24, 149, 236);
+        CreateBoundImage(
+            "Background",
+            gameOptionsPanel.transform,
+            $"{root}/1306-1033-tactical-ui-game-options-hud",
+            0,
+            0,
+            149,
+            236
+        );
         Button withdrawalButton = CreateBoundButton(
             "Withdraw",
-            canvasObject.transform,
+            gameOptionsPanel.transform,
             $"{root}/Actions/withdraw-up",
             $"{root}/Actions/withdraw-down",
             18,
@@ -505,21 +519,61 @@ public static class TacticalBattleSceneBuilder
             48,
             34
         );
+        Button immediateResultButton = CreateBoundButton(
+            "ImmediateResult",
+            gameOptionsPanel.transform,
+            $"{root}/Actions/immediate-result-up",
+            $"{root}/Actions/immediate-result-down",
+            14,
+            93,
+            44,
+            25
+        );
+        RawImage commandModeImage = CreateBoundImage(
+            "CommandMode",
+            gameOptionsPanel.transform,
+            $"{root}/1154-1033-tactical-ui-observe-battle",
+            87,
+            93,
+            45,
+            25
+        );
+        Button commandModeButton = CreateButton(commandModeImage);
+        Button settingsButton = CreateBoundButton(
+            "Settings",
+            gameOptionsPanel.transform,
+            $"{root}/1155-1033-tactical-ui-game-options-unpressed",
+            $"{root}/1156-1033-tactical-ui-game-options-pressed",
+            23,
+            184,
+            52,
+            33
+        );
+        Button closeGameOptionsButton = CreateBoundButton(
+            "Close",
+            gameOptionsPanel.transform,
+            $"{root}/1157-1033-tactical-ui-close-unpressed",
+            $"{root}/1158-1033-tactical-ui-close-pressed",
+            97,
+            184,
+            29,
+            33
+        );
         GameObject withdrawalPanel = new GameObject(
             "WithdrawalConfirmation",
             typeof(RectTransform)
         );
         withdrawalPanel.transform.SetParent(canvasObject.transform, false);
         RectTransform withdrawalRect = withdrawalPanel.GetComponent<RectTransform>();
-        SetSourceRect(withdrawalRect, 475, 0, 165, 262);
+        SetSourceRect(withdrawalRect, 482, 24, 149, 236);
         CreateBoundImage(
             "Background",
             withdrawalPanel.transform,
-            $"{root}/Hud/withdrawal-panel",
+            $"{root}/Hud/withdrawal-confirmation",
             0,
             0,
-            165,
-            262
+            149,
+            236
         );
         Button confirmWithdrawalButton = CreateBoundButton(
             "Confirm",
@@ -565,6 +619,15 @@ public static class TacticalBattleSceneBuilder
             confirmWithdrawalButton,
             cancelWithdrawalButton
         );
+        view.ConfigureGameOptions(
+            gameOptionsButton,
+            gameOptionsPanel,
+            immediateResultButton,
+            commandModeButton,
+            commandModeImage,
+            settingsButton,
+            closeGameOptionsButton
+        );
         view.ConfigureCapitalShipStatus(
             capitalShipStatusPanel,
             previousCapitalShipButton,
@@ -578,6 +641,7 @@ public static class TacticalBattleSceneBuilder
         capitalShipStatusPanel.SetActive(false);
         missionOrderPanel.SetActive(false);
         maneuverPanel.SetActive(false);
+        gameOptionsPanel.SetActive(false);
         withdrawalPanel.SetActive(false);
     }
 

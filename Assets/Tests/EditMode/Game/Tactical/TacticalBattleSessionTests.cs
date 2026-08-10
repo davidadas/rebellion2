@@ -272,6 +272,25 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void ResolveImmediately_PausedWithdrawingSide_CompletesExistingBattle()
+        {
+            CapitalShip attackingShip = CreateShip(600, 250);
+            attackingShip.SublightSpeed = 10;
+            TacticalBattleSession session = CreateSession(attackingShip);
+            session.OrderWithdrawal(TacticalBattleSide.Attacker);
+            session.Pause();
+
+            session.ResolveImmediately();
+
+            Assert.IsTrue(session.IsComplete);
+            Assert.IsFalse(session.IsPaused);
+            Assert.AreEqual(
+                SpaceCombatSideOutcome.Withdrawn,
+                session.BuildResult().AttackerOutcome
+            );
+        }
+
+        [Test]
         public void OrderWithdrawal_ActiveSide_AssignsEveryCommandGroup()
         {
             Starfighter fighters = CreateFighters(12, 10);
