@@ -47,7 +47,15 @@ public sealed class RuntimeMaterialBinding : MonoBehaviour, IContentInitializabl
 
         Material material = new Material(shader);
         if (!string.IsNullOrWhiteSpace(textureAddress))
-            material.mainTexture = ContentBindings.RequireTexture(contentAssets, textureAddress);
+        {
+            Texture2D texture = ContentBindings.RequireTexture(contentAssets, textureAddress);
+            // Smooth, wrapping sampling so very slow rotation drifts sub-pixel instead of snapping
+            // texel-to-texel, and the equirectangular seam wraps cleanly.
+            texture.wrapMode = TextureWrapMode.Repeat;
+            texture.filterMode = FilterMode.Trilinear;
+            texture.anisoLevel = 8;
+            material.mainTexture = texture;
+        }
 
         GetComponent<Renderer>().sharedMaterial = material;
     }

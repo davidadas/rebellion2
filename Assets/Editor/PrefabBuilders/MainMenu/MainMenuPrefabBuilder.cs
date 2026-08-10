@@ -46,7 +46,8 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
-    private const string _atmosphereShaderName = "Custom/AtmosphereRim";
+    private const string _atmosphereShaderPath = "Assets/Shaders/AtmosphereRim.shader";
+    private const string _atmosphereMaterialPath = "Assets/Art/Models/MainMenu/AtmosphereRim.mat";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
@@ -1930,7 +1931,7 @@ public static class MainMenuPrefabBuilder
         rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
         rect.anchoredPosition = new Vector2(74f, -734f);
-        rect.localRotation = Quaternion.Euler(0f, 0f, -20.228f);
+        rect.localRotation = Quaternion.identity;
     }
 
     /// <summary>
@@ -1947,8 +1948,7 @@ public static class MainMenuPrefabBuilder
 
         GameObject pivot = new GameObject("Pivot");
         pivot.transform.SetParent(rig.transform, false);
-        // The planet turns at half the cloud drift rate.
-        pivot.AddComponent<AutoRotate>().Configure(-_cloudSpinDegreesPerSecond * 0.5f, Vector3.up);
+        // The planet stays still; only the cloud layer drifts.
 
         // The planet ships as a pre-skinned GLB in the content pack. Load it at runtime and apply
         // the same pole-forward rotation, unit normalization, centering, and render layer the baked
@@ -1991,7 +1991,7 @@ public static class MainMenuPrefabBuilder
         atmosphere.transform.SetParent(rig.transform, false);
         atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
         atmosphere.layer = planetLayer;
-        atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
+        atmosphere.GetComponent<MeshRenderer>().sharedMaterial = CreateAtmosphereMaterial();
 
         // Dedicated sun for the planet, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
@@ -2046,6 +2046,23 @@ public static class MainMenuPrefabBuilder
         };
         AssetDatabase.CreateAsset(created, _renderTexturePath);
         return created;
+    }
+
+    /// <summary>
+    /// Creates the atmosphere rim material asset from the rim shader, regenerated with the prefab. A
+    /// material asset (unlike an inline new Material()) serialises into the generated prefab and
+    /// renders at runtime, so no runtime material assignment is needed for the atmosphere shell.
+    /// </summary>
+    /// <returns>The atmosphere rim material asset.</returns>
+    private static Material CreateAtmosphereMaterial()
+    {
+        AssetDatabase.DeleteAsset(_atmosphereMaterialPath);
+        Material material = new Material(LoadRequiredAsset<Shader>(_atmosphereShaderPath))
+        {
+            name = "AtmosphereRim",
+        };
+        AssetDatabase.CreateAsset(material, _atmosphereMaterialPath);
+        return material;
     }
 
     /// <summary>
