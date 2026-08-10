@@ -32,6 +32,23 @@ public sealed class TacticalBattleView : MonoBehaviour
     private readonly string[] fighterOrderAddressStems = new string[4];
 
     [SerializeField]
+    private GameObject maneuverPanel;
+
+    [SerializeField]
+    private Button[] maneuverButtons = Array.Empty<Button>();
+
+    [SerializeField]
+    private Button formationButton;
+
+    [SerializeField]
+    private Button assignManeuverButton;
+
+    [SerializeField]
+    private Button cancelManeuverButton;
+
+    private TacticalFormation pendingFormation;
+
+    [SerializeField]
     private Button pauseButton;
 
     [SerializeField]
@@ -71,6 +88,26 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action FighterOrderCancelled;
 
     /// <summary>
+    /// Raised when the player chooses a pending capital-ship maneuver.
+    /// </summary>
+    public event Action<TacticalBehavior> ManeuverSelected;
+
+    /// <summary>
+    /// Raised when the player changes the pending capital-ship formation.
+    /// </summary>
+    public event Action<TacticalFormation> FormationSelected;
+
+    /// <summary>
+    /// Raised when the player assigns the pending maneuver and formation.
+    /// </summary>
+    public event Action ManeuverAssigned;
+
+    /// <summary>
+    /// Raised when the player dismisses the maneuver panel without assigning its pending values.
+    /// </summary>
+    public event Action ManeuverCancelled;
+
+    /// <summary>
     /// Raised when the player toggles tactical simulation pause.
     /// </summary>
     public event Action PauseToggled;
@@ -85,6 +122,11 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// <param name="fighterOrdersPanel">The fighter-order panel.</param>
     /// <param name="assignFighterOrder">The pending-order assignment control.</param>
     /// <param name="cancelFighterOrder">The pending-order cancellation control.</param>
+    /// <param name="maneuversPanel">The capital-ship maneuver panel.</param>
+    /// <param name="maneuvers">The five capital-ship maneuver controls.</param>
+    /// <param name="formation">The Stand Off/Surround formation control.</param>
+    /// <param name="assignManeuver">The pending-maneuver assignment control.</param>
+    /// <param name="cancelManeuver">The pending-maneuver cancellation control.</param>
     /// <param name="pause">The pause control.</param>
     /// <param name="pauseVisual">The pause control image.</param>
     public void Configure(
@@ -95,6 +137,11 @@ public sealed class TacticalBattleView : MonoBehaviour
         Button[] fighterOrders,
         Button assignFighterOrder,
         Button cancelFighterOrder,
+        GameObject maneuversPanel,
+        Button[] maneuvers,
+        Button formation,
+        Button assignManeuver,
+        Button cancelManeuver,
         Button pause,
         RawImage pauseVisual
     )
@@ -112,6 +159,13 @@ public sealed class TacticalBattleView : MonoBehaviour
             assignFighterOrder ?? throw new ArgumentNullException(nameof(assignFighterOrder));
         cancelFighterOrderButton =
             cancelFighterOrder ?? throw new ArgumentNullException(nameof(cancelFighterOrder));
+        maneuverPanel = maneuversPanel ?? throw new ArgumentNullException(nameof(maneuversPanel));
+        maneuverButtons = maneuvers ?? throw new ArgumentNullException(nameof(maneuvers));
+        formationButton = formation ?? throw new ArgumentNullException(nameof(formation));
+        assignManeuverButton =
+            assignManeuver ?? throw new ArgumentNullException(nameof(assignManeuver));
+        cancelManeuverButton =
+            cancelManeuver ?? throw new ArgumentNullException(nameof(cancelManeuver));
         pauseButton = pause ?? throw new ArgumentNullException(nameof(pause));
         pauseImage = pauseVisual ?? throw new ArgumentNullException(nameof(pauseVisual));
     }
@@ -181,6 +235,24 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Opens the capital-ship maneuver panel with the group's current formation.
+    /// </summary>
+    /// <param name="formation">The formation currently assigned to the group.</param>
+    public void ShowManeuvers(TacticalFormation formation)
+    {
+        SetFormation(formation);
+        maneuverPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Closes the capital-ship maneuver panel.
+    /// </summary>
+    public void HideManeuvers()
+    {
+        maneuverPanel.SetActive(false);
+    }
+
+    /// <summary>
     /// Connects generated buttons after Unity has restored their serialized references.
     /// </summary>
     private void Awake()
@@ -206,8 +278,21 @@ public sealed class TacticalBattleView : MonoBehaviour
         );
         assignFighterOrderButton.onClick.AddListener(() => FighterOrderAssigned?.Invoke());
         cancelFighterOrderButton.onClick.AddListener(() => FighterOrderCancelled?.Invoke());
+        TacticalBehavior[] maneuvers =
+        {
+            TacticalBehavior.LeftHook,
+            TacticalBehavior.RightHook,
+            TacticalBehavior.Hammer,
+            TacticalBehavior.Anvil,
+            TacticalBehavior.Hold,
+        };
+        BindIndexedButtons(maneuverButtons, index => ManeuverSelected?.Invoke(maneuvers[index]));
+        formationButton.onClick.AddListener(ToggleFormation);
+        assignManeuverButton.onClick.AddListener(() => ManeuverAssigned?.Invoke());
+        cancelManeuverButton.onClick.AddListener(() => ManeuverCancelled?.Invoke());
         pauseButton.onClick.AddListener(() => PauseToggled?.Invoke());
         HideFighterOrders();
+        HideManeuvers();
     }
 
     /// <summary>
@@ -260,6 +345,12 @@ public sealed class TacticalBattleView : MonoBehaviour
         if (assignFighterOrderButton == null || cancelFighterOrderButton == null)
             throw new MissingReferenceException(
                 "Tactical HUD fighter-order action references are incomplete."
+            );
+        if (maneuverPanel == null || maneuverButtons?.Length != 5)
+            throw new MissingReferenceException("Tactical HUD maneuver references are incomplete.");
+        if (formationButton == null || assignManeuverButton == null || cancelManeuverButton == null)
+            throw new MissingReferenceException(
+                "Tactical HUD maneuver action references are incomplete."
             );
         if (pauseButton == null || pauseImage == null)
             throw new MissingReferenceException("Tactical HUD pause references are incomplete.");
@@ -322,5 +413,39 @@ public sealed class TacticalBattleView : MonoBehaviour
         }
 
         button.interactable = available;
+    }
+
+    /// <summary>
+    /// Changes the pending formation and updates its authored toggle artwork.
+    /// </summary>
+    /// <param name="formation">The pending formation.</param>
+    private void SetFormation(TacticalFormation formation)
+    {
+        pendingFormation = formation;
+        if (contentAssets == null)
+            return;
+
+        string root = $"{sharedUIRoot}/Maneuvers";
+        string current = formation == TacticalFormation.StandOff ? "stand-off" : "surround";
+        string alternate = formation == TacticalFormation.StandOff ? "surround" : "stand-off";
+        formationButton
+            .GetComponent<RawImagePressVisual>()
+            .SetInteractiveTextures(
+                ContentBindings.RequireTexture(contentAssets, $"{root}/{current}"),
+                ContentBindings.RequireTexture(contentAssets, $"{root}/{alternate}")
+            );
+    }
+
+    /// <summary>
+    /// Toggles the pending formation without publishing it before assignment.
+    /// </summary>
+    private void ToggleFormation()
+    {
+        TacticalFormation formation =
+            pendingFormation == TacticalFormation.StandOff
+                ? TacticalFormation.Surround
+                : TacticalFormation.StandOff;
+        SetFormation(formation);
+        FormationSelected?.Invoke(formation);
     }
 }

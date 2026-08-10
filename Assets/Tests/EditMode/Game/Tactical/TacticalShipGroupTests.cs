@@ -20,6 +20,16 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void SetFormation_ValidFormation_ReplacesCurrentFormation()
+        {
+            TacticalShipGroup group = CreateGroup(TacticalBattleSide.Attacker);
+
+            group.SetFormation(TacticalFormation.Surround);
+
+            Assert.AreEqual(TacticalFormation.Surround, group.Formation);
+        }
+
+        [Test]
         public void AddTarget_OpposingActiveUnit_AddsTargetOnce()
         {
             TacticalUnitState unit = CreateUnit(TacticalBattleSide.Attacker);

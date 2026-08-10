@@ -240,8 +240,8 @@ public static class TacticalBattleSceneBuilder
         Button assignFighterOrderButton = CreateBoundButton(
             "Assign",
             fighterOrderPanel.transform,
-            $"{root}/FighterOrders/assign-up",
-            $"{root}/FighterOrders/assign-down",
+            $"{root}/Actions/assign-up",
+            $"{root}/Actions/assign-down",
             548,
             226,
             27,
@@ -250,8 +250,108 @@ public static class TacticalBattleSceneBuilder
         Button cancelFighterOrderButton = CreateBoundButton(
             "Cancel",
             fighterOrderPanel.transform,
-            $"{root}/FighterOrders/cancel-up",
-            $"{root}/FighterOrders/cancel-down",
+            $"{root}/Actions/cancel-up",
+            $"{root}/Actions/cancel-down",
+            588,
+            226,
+            27,
+            25
+        );
+
+        GameObject maneuverPanel = new GameObject("Maneuvers", typeof(RectTransform));
+        maneuverPanel.transform.SetParent(canvasObject.transform, false);
+        RectTransform maneuverRect = maneuverPanel.GetComponent<RectTransform>();
+        maneuverRect.anchorMin = Vector2.zero;
+        maneuverRect.anchorMax = Vector2.one;
+        maneuverRect.offsetMin = Vector2.zero;
+        maneuverRect.offsetMax = Vector2.zero;
+        CreateBoundImage(
+            "Background",
+            maneuverPanel.transform,
+            $"{root}/Maneuvers/panel",
+            482,
+            24,
+            149,
+            236
+        );
+        Button[] maneuverButtons =
+        {
+            CreateBoundButton(
+                "LeftHook",
+                maneuverPanel.transform,
+                $"{root}/Maneuvers/left-hook-up",
+                $"{root}/Maneuvers/left-hook-down",
+                495,
+                183,
+                28,
+                28
+            ),
+            CreateBoundButton(
+                "RightHook",
+                maneuverPanel.transform,
+                $"{root}/Maneuvers/right-hook-up",
+                $"{root}/Maneuvers/right-hook-down",
+                525,
+                183,
+                28,
+                28
+            ),
+            CreateBoundButton(
+                "Hammer",
+                maneuverPanel.transform,
+                $"{root}/Maneuvers/hammer-up",
+                $"{root}/Maneuvers/hammer-down",
+                495,
+                153,
+                28,
+                28
+            ),
+            CreateBoundButton(
+                "Anvil",
+                maneuverPanel.transform,
+                $"{root}/Maneuvers/anvil-up",
+                $"{root}/Maneuvers/anvil-down",
+                525,
+                153,
+                28,
+                28
+            ),
+            CreateBoundButton(
+                "Hold",
+                maneuverPanel.transform,
+                $"{root}/Maneuvers/hold-up",
+                $"{root}/Maneuvers/hold-down",
+                557,
+                168,
+                28,
+                28
+            ),
+        };
+        Button formationButton = CreateBoundButton(
+            "Formation",
+            maneuverPanel.transform,
+            $"{root}/Maneuvers/stand-off",
+            $"{root}/Maneuvers/surround",
+            593,
+            156,
+            24,
+            52
+        );
+        Button assignManeuverButton = CreateBoundButton(
+            "Assign",
+            maneuverPanel.transform,
+            $"{root}/Actions/assign-up",
+            $"{root}/Actions/assign-down",
+            548,
+            226,
+            27,
+            25
+        );
+        Button cancelManeuverButton = CreateBoundButton(
+            "Cancel",
+            maneuverPanel.transform,
+            $"{root}/Actions/cancel-up",
+            $"{root}/Actions/cancel-down",
             588,
             226,
             27,
@@ -308,10 +408,16 @@ public static class TacticalBattleSceneBuilder
             fighterOrderButtons,
             assignFighterOrderButton,
             cancelFighterOrderButton,
+            maneuverPanel,
+            maneuverButtons,
+            formationButton,
+            assignManeuverButton,
+            cancelManeuverButton,
             pauseButton,
             pauseImage
         );
         fighterOrderPanel.SetActive(false);
+        maneuverPanel.SetActive(false);
     }
 
     /// <summary>

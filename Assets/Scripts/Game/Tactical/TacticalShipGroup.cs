@@ -43,6 +43,11 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         public TacticalBehavior Behavior { get; private set; }
 
+        /// <summary>
+        /// Gets the capital ships' current engagement formation.
+        /// </summary>
+        public TacticalFormation Formation { get; private set; } = TacticalFormation.StandOff;
+
         internal TacticalShipGroup(
             TacticalBattleSide side,
             IReadOnlyCollection<TacticalUnitState> battleUnits,
@@ -87,6 +92,18 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentOutOfRangeException(nameof(behavior));
 
             Behavior = behavior;
+        }
+
+        /// <summary>
+        /// Replaces the capital ships' engagement formation.
+        /// </summary>
+        /// <param name="formation">The formation to assign.</param>
+        public void SetFormation(TacticalFormation formation)
+        {
+            if (!Enum.IsDefined(typeof(TacticalFormation), formation))
+                throw new ArgumentOutOfRangeException(nameof(formation));
+
+            Formation = formation;
         }
 
         /// <summary>

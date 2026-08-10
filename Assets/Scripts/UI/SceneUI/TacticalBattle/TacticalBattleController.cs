@@ -16,6 +16,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private bool isReady;
     private bool playerPaused;
     private TacticalBehavior? pendingFighterOrder;
+    private TacticalBehavior? pendingManeuver;
+    private TacticalFormation pendingFormation;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
@@ -100,6 +102,10 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.FighterOrderSelected += SelectPendingFighterOrder;
         view.FighterOrderAssigned += AssignPendingFighterOrder;
         view.FighterOrderCancelled += CancelPendingFighterOrder;
+        view.ManeuverSelected += SelectPendingManeuver;
+        view.FormationSelected += SelectPendingFormation;
+        view.ManeuverAssigned += AssignPendingManeuver;
+        view.ManeuverCancelled += CancelPendingManeuver;
         view.PauseToggled += TogglePlayerPause;
         await battleRenderer.InitializeAsync(
             Session,
@@ -138,6 +144,10 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.FighterOrderSelected -= SelectPendingFighterOrder;
             view.FighterOrderAssigned -= AssignPendingFighterOrder;
             view.FighterOrderCancelled -= CancelPendingFighterOrder;
+            view.ManeuverSelected -= SelectPendingManeuver;
+            view.FormationSelected -= SelectPendingFormation;
+            view.ManeuverAssigned -= AssignPendingManeuver;
+            view.ManeuverCancelled -= CancelPendingManeuver;
             view.PauseToggled -= TogglePlayerPause;
         }
         if (playerPaused)
@@ -167,6 +177,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
         pendingFighterOrder = null;
         view.HideFighterOrders();
+        pendingManeuver = SelectedGroup.Behavior;
+        pendingFormation = SelectedGroup.Formation;
+        view.ShowManeuvers(pendingFormation);
     }
 
     /// <summary>
@@ -176,6 +189,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectFighterGroup(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
+        pendingManeuver = null;
+        view.HideManeuvers();
         pendingFighterOrder = SelectedGroup.Behavior;
         bool canRecover = SelectedGroup.Units.Any(unit => unit.RecoveryTarget?.IsActive == true);
         bool canAttackDeathStar = Session.Units.Any(unit =>
@@ -221,6 +236,59 @@ public sealed class TacticalBattleController : MonoBehaviour
     {
         pendingFighterOrder = null;
         view.HideFighterOrders();
+    }
+
+    /// <summary>
+    /// Stores a capital-ship maneuver without changing the active group command.
+    /// </summary>
+    /// <param name="behavior">The pending maneuver.</param>
+    private void SelectPendingManeuver(TacticalBehavior behavior)
+    {
+        if (
+            SelectedGroup == null
+            || SelectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
+        )
+            return;
+
+        pendingManeuver = behavior;
+    }
+
+    /// <summary>
+    /// Stores a capital-ship formation without changing the active group formation.
+    /// </summary>
+    /// <param name="formation">The pending formation.</param>
+    private void SelectPendingFormation(TacticalFormation formation)
+    {
+        if (
+            SelectedGroup == null
+            || SelectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
+        )
+            return;
+
+        pendingFormation = formation;
+    }
+
+    /// <summary>
+    /// Applies the pending capital-ship maneuver and formation.
+    /// </summary>
+    private void AssignPendingManeuver()
+    {
+        if (SelectedGroup == null || pendingManeuver == null)
+            return;
+
+        SelectedGroup.SetBehavior(pendingManeuver.Value);
+        SelectedGroup.SetFormation(pendingFormation);
+        pendingManeuver = null;
+        view.HideManeuvers();
+    }
+
+    /// <summary>
+    /// Discards the pending capital-ship maneuver and formation.
+    /// </summary>
+    private void CancelPendingManeuver()
+    {
+        pendingManeuver = null;
+        view.HideManeuvers();
     }
 
     /// <summary>

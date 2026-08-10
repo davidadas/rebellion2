@@ -11,6 +11,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
     {
         private GameObject root;
         private TacticalBattleView view;
+        private GameObject maneuverPanel;
+        private Button[] maneuverButtons;
+        private Button formationButton;
+        private Button assignManeuverButton;
+        private Button cancelManeuverButton;
 
         [SetUp]
         public void SetUp()
@@ -18,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             root = new GameObject("TacticalBattleViewTests");
             root.SetActive(false);
             view = root.AddComponent<TacticalBattleView>();
+            CreateManeuverControls();
         }
 
         [TearDown]
@@ -51,6 +57,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 fighterOrders,
                 assignFighterOrder,
                 cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
                 pauseButton,
                 pauseImage
             );
@@ -89,6 +100,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 fighterOrders,
                 assignFighterOrder,
                 cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
                 pauseButton,
                 pauseImage
             );
@@ -118,6 +134,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 fighterOrders,
                 assignFighterOrder,
                 cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
                 pauseButton,
                 pauseImage
             );
@@ -150,6 +171,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 fighterOrders,
                 assignFighterOrder,
                 cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
                 pauseButton,
                 pauseImage
             );
@@ -183,6 +209,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 fighterOrders,
                 assignFighterOrder,
                 cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
                 pauseButton,
                 pauseImage
             );
@@ -192,6 +223,49 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsFalse(fighterOrders[1].interactable);
             Assert.IsFalse(fighterOrders[2].interactable);
             Assert.IsTrue(assignFighterOrder.interactable);
+        }
+
+        [Test]
+        public void Awake_ManeuverSelection_RaisesPendingValuesBeforeAssignment()
+        {
+            CreateFighterOrderControls(
+                out GameObject fighterOrderPanel,
+                out Button[] fighterOrders,
+                out Button assignFighterOrder,
+                out Button cancelFighterOrder
+            );
+            RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
+            TacticalBehavior selectedManeuver = TacticalBehavior.None;
+            TacticalFormation selectedFormation = TacticalFormation.StandOff;
+            bool assigned = false;
+            view.Configure(
+                CreateButtons(8, "TaskForce"),
+                CreateButtons(4, "FighterGroup"),
+                CreateButtons(4, "NavigationSet"),
+                fighterOrderPanel,
+                fighterOrders,
+                assignFighterOrder,
+                cancelFighterOrder,
+                maneuverPanel,
+                maneuverButtons,
+                formationButton,
+                assignManeuverButton,
+                cancelManeuverButton,
+                pauseButton,
+                pauseImage
+            );
+            view.ManeuverSelected += behavior => selectedManeuver = behavior;
+            view.FormationSelected += formation => selectedFormation = formation;
+            view.ManeuverAssigned += () => assigned = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.ShowManeuvers(TacticalFormation.StandOff);
+
+            maneuverButtons[3].onClick.Invoke();
+            formationButton.onClick.Invoke();
+
+            Assert.AreEqual(TacticalBehavior.Anvil, selectedManeuver);
+            Assert.AreEqual(TacticalFormation.Surround, selectedFormation);
+            Assert.IsFalse(assigned);
         }
 
         private Button[] CreateButtons(int count, string name)
@@ -215,6 +289,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             orders = CreateButtons(4, "FighterOrder");
             CreateButton("AssignFighterOrder", out assign);
             CreateButton("CancelFighterOrder", out cancel);
+        }
+
+        private void CreateManeuverControls()
+        {
+            maneuverPanel = new GameObject("Maneuvers", typeof(RectTransform));
+            maneuverPanel.transform.SetParent(root.transform, false);
+            maneuverButtons = CreateButtons(5, "Maneuver");
+            CreateButton("Formation", out formationButton);
+            CreateButton("AssignManeuver", out assignManeuverButton);
+            CreateButton("CancelManeuver", out cancelManeuverButton);
         }
 
         private RawImage CreateButton(string name, out Button button)
