@@ -22,6 +22,8 @@
 !Assets/Editor/PrefabBuilders/*/*.meta
 !Assets/Prefabs/UI/Cutscenes/CutsceneRenderTexture.renderTexture.meta
 !Assets/Scripts/App/SceneLoader.cs.meta
+!Assets/Shaders.meta
+!Assets/Shaders/*.meta
 !Assets/Scripts/Content.meta
 !Assets/Scripts/Content/*.meta
 !Assets/Scripts/UI/Components/AutoRotate.cs.meta
