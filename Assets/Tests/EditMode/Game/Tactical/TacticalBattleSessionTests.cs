@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
@@ -561,11 +562,11 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_AttackDeathStarBehavior_TargetsOnlyDeathStar()
+        public void Advance_AttackDeathStarBehavior_UsesDedicatedAttackRun()
         {
             Starfighter attackingFighters = CreateFighters(12, 0);
             attackingFighters.LaserCannon = 10;
-            attackingFighters.LaserRange = 200;
+            attackingFighters.SublightSpeed = 100;
             CapitalShip deathStar = CreateShip(100, 0);
             deathStar.IsDeathStar = true;
             CapitalShip ordinaryShip = CreateShip(100, 0);
@@ -580,11 +581,15 @@ namespace Rebellion.Tests.Game.Tactical
                 .GetFighterGroups(TacticalBattleSide.Attacker)
                 .Single()
                 .SetBehavior(TacticalBehavior.AttackDeathStar);
+            session.Units.Single(unit => unit.Unit == attackingFighters).Position = session
+                .Units.Single(unit => unit.Unit == deathStar)
+                .Position;
 
             session.Advance(0.1f);
 
-            Assert.AreEqual(90, session.Units.Single(unit => unit.Unit == deathStar).Hull);
+            Assert.AreEqual(0, session.Units.Single(unit => unit.Unit == deathStar).Hull);
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == ordinaryShip).Hull);
+            Assert.AreEqual(12, session.Units.Single(unit => unit.Unit == attackingFighters).Hull);
         }
 
         [Test]
@@ -609,6 +614,38 @@ namespace Rebellion.Tests.Game.Tactical
             session.Advance(0.1f);
 
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == deathStar).Hull);
+        }
+
+        [Test]
+        public void Advance_AttackDeathStarBehavior_UsesAssignedCommanderCombatRating()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip attackingShip = CreateShip(600, 0, attackingFighters);
+            Officer commander = new Officer { CurrentRank = OfficerRank.Commander };
+            commander.SetBaseRating(OfficerRating.Combat, 100);
+            attackingShip.Officers.Add(commander);
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(deathStar),
+                },
+                new FixedRandomProvider(new[] { 0.02d })
+            );
+            session.Advance(1f);
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackDeathStar);
+            session.Units.Single(unit => unit.Unit == attackingFighters).Position = session
+                .Units.Single(unit => unit.Unit == deathStar)
+                .Position;
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(0, session.Units.Single(unit => unit.Unit == deathStar).Hull);
         }
 
         [Test]

@@ -44,7 +44,11 @@ namespace Rebellion.Game.Tactical
             new Vector3(-1f, -1f, 0f),
         };
         private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
+        private readonly TacticalDeathStarAttackResolver deathStarAttackResolver;
+        private readonly HashSet<TacticalShipGroup> resolvedDeathStarAttackGroups =
+            new HashSet<TacticalShipGroup>();
         private readonly IReadOnlyList<TacticalShipGroup> groups;
+        private readonly IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
         private readonly IRandomNumberProvider random;
@@ -128,16 +132,22 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="units">The battle's tactical units.</param>
         /// <param name="groups">The battle's mutable command groups.</param>
+        /// <param name="fighterCommandBudgets">The normalized fighter-command contribution for each side.</param>
         /// <param name="random">The battle's deterministic random source.</param>
         public TacticalBattleSimulator(
             IReadOnlyList<TacticalUnitState> units,
             IReadOnlyList<TacticalShipGroup> groups,
+            IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets,
             IRandomNumberProvider random
         )
         {
             this.units = units ?? throw new ArgumentNullException(nameof(units));
             this.groups = groups ?? throw new ArgumentNullException(nameof(groups));
+            this.fighterCommandBudgets =
+                fighterCommandBudgets
+                ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
+            deathStarAttackResolver = new TacticalDeathStarAttackResolver(random);
             PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
             PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
             PlaceGroupMarkers();
@@ -209,6 +219,11 @@ namespace Rebellion.Game.Tactical
                 AdvanceRecovery(unit, group, elapsedTime);
                 return Array.Empty<PendingAttack>();
             }
+            if (behavior == TacticalBehavior.AttackDeathStar)
+            {
+                AdvanceDeathStarAttack(unit, group, elapsedTime);
+                return Array.Empty<PendingAttack>();
+            }
             if (TryAdvanceNavigation(unit, group, elapsedTime))
                 return Array.Empty<PendingAttack>();
 
@@ -230,6 +245,81 @@ namespace Rebellion.Game.Tactical
             group?.SetMarkerPosition(markerPosition);
             MoveTowards(unit, destination, elapsedTime);
             return attacks;
+        }
+
+        /// <summary>
+        /// Advances a fighter group through its dedicated Death Star attack run.
+        /// </summary>
+        /// <param name="unit">The group member currently being advanced.</param>
+        /// <param name="group">The fighter group performing the attack.</param>
+        /// <param name="elapsedTime">The elapsed tactical time.</param>
+        private void AdvanceDeathStarAttack(
+            TacticalUnitState unit,
+            TacticalShipGroup group,
+            float elapsedTime
+        )
+        {
+            if (
+                unit.Kind != TacticalUnitKind.Fighters
+                || group == null
+                || resolvedDeathStarAttackGroups.Contains(group)
+            )
+            {
+                return;
+            }
+
+            TacticalUnitState deathStar = GetTarget(unit, group, TacticalBehavior.AttackDeathStar);
+            if (deathStar == null)
+                return;
+
+            if (Vector3.Distance(unit.Position, deathStar.Position) > _tacticalApproachDistance)
+            {
+                Vector3 destination = GetApproachPosition(
+                    unit,
+                    deathStar,
+                    group,
+                    TacticalBehavior.AttackDeathStar,
+                    out Vector3 markerPosition
+                );
+                group.SetMarkerPosition(markerPosition);
+                MoveTowards(unit, destination, elapsedTime);
+                return;
+            }
+
+            resolvedDeathStarAttackGroups.Add(group);
+            TacticalUnitState[] participants = group
+                .Units.Where(candidate => candidate.IsActive)
+                .ToArray();
+            Dictionary<TacticalUnitState, bool> activeBefore = participants.ToDictionary(
+                candidate => candidate,
+                candidate => candidate.IsActive
+            );
+            bool succeeded = deathStarAttackResolver.Resolve(
+                participants,
+                fighterCommandBudgets.TryGetValue(group.Side, out float commandBudget)
+                    ? commandBudget
+                    : 1f
+            );
+            foreach (TacticalUnitState participant in participants)
+            {
+                if (activeBefore[participant] && !participant.IsActive)
+                {
+                    events.Add(
+                        TacticalCombatEvent.UnitLifecycle(
+                            TacticalCombatEventKind.UnitDestroyed,
+                            participant
+                        )
+                    );
+                }
+            }
+
+            if (!succeeded)
+                return;
+
+            deathStar.Hull = 0;
+            events.Add(
+                TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, deathStar)
+            );
         }
 
         /// <summary>

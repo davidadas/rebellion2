@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -94,7 +95,12 @@ namespace Rebellion.Game.Tactical
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
             NavigationGrid = new TacticalNavigationGrid(TacticalBattleSimulator.BattlefieldScale);
             BuildCommandGroups();
-            simulator = new TacticalBattleSimulator(this.units, groupView, random);
+            simulator = new TacticalBattleSimulator(
+                this.units,
+                groupView,
+                BuildFighterCommandBudgets(encounter),
+                random
+            );
         }
 
         /// <summary>
@@ -310,6 +316,39 @@ namespace Rebellion.Game.Tactical
                 return CombatSide.Draw;
 
             return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
+        }
+
+        /// <summary>
+        /// Builds each side's normalized fighter-command contribution from its assigned commander.
+        /// </summary>
+        /// <param name="encounter">The strategic encounter supplying both fleets.</param>
+        /// <returns>The fighter-command contribution indexed by tactical side.</returns>
+        private static IReadOnlyDictionary<TacticalBattleSide, float> BuildFighterCommandBudgets(
+            PendingCombatResult encounter
+        )
+        {
+            return new Dictionary<TacticalBattleSide, float>
+            {
+                [TacticalBattleSide.Attacker] = GetFighterCommandBudget(encounter.AttackerFleet),
+                [TacticalBattleSide.Defender] = GetFighterCommandBudget(encounter.DefenderFleet),
+            };
+        }
+
+        /// <summary>
+        /// Normalizes the assigned commander's Combat rating into the tactical fighter budget.
+        /// </summary>
+        /// <param name="fleet">The fleet whose commander supports its fighters.</param>
+        /// <returns>A value from one through nine, with one used when no commander is assigned.</returns>
+        private static float GetFighterCommandBudget(Fleet fleet)
+        {
+            Officer commander = fleet
+                ?.GetOfficers()
+                .FirstOrDefault(officer => officer.CurrentRank == OfficerRank.Commander);
+            return Math.Clamp(
+                (commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0) / 20f + 1f,
+                1f,
+                9f
+            );
         }
 
         /// <summary>
