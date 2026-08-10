@@ -2548,7 +2548,7 @@ public static class MainMenuPrefabBuilder
         light.color = color;
         light.shadows = shadows;
         // Skip the planet's isolated layer -- it has its own warm sun, and this set's cool fill
-        // light would tint the red planet magenta/purple. (Layer 31 = _planetLayer in BuildPlanetRig.)
+        // light would wash out the planet's colors. (Layer 31 = planetLayer in BuildPlanetRig.)
         light.cullingMask = ~(1 << 31);
     }
 

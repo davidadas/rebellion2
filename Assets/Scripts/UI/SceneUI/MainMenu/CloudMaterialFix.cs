@@ -17,6 +17,11 @@ public sealed class CloudMaterialFix : MonoBehaviour
         if (applied)
             return;
 
+        // childCount is a cheap property; skip the allocating GetComponentsInChildren until the
+        // async-loaded model has actually parented a child under this node.
+        if (transform.childCount == 0)
+            return;
+
         MeshRenderer[] renderers = GetComponentsInChildren<MeshRenderer>(true);
         if (renderers.Length == 0)
             return;
