@@ -112,6 +112,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.WithdrawalRequested += RequestWithdrawal;
         view.WithdrawalConfirmed += ConfirmWithdrawal;
         view.WithdrawalCancelled += CancelWithdrawal;
+        battleRenderer.NavigationPointSelected += SelectNavigationPoint;
         await battleRenderer.InitializeAsync(
             Session,
             bootstrap.GetContentModelCache(),
@@ -159,6 +160,8 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.WithdrawalConfirmed -= ConfirmWithdrawal;
             view.WithdrawalCancelled -= CancelWithdrawal;
         }
+        if (battleRenderer != null)
+            battleRenderer.NavigationPointSelected -= SelectNavigationPoint;
         if (playerPaused)
             Session?.Resume();
         if (withdrawalConfirmationOpen)
@@ -237,6 +240,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.HideFighterOrders();
         pendingManeuver = SelectedGroup.Behavior;
         pendingFormation = SelectedGroup.Formation;
+        battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
         view.ShowManeuvers(pendingFormation);
     }
 
@@ -250,6 +254,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         pendingManeuver = null;
         view.HideManeuvers();
         pendingFighterOrder = SelectedGroup.Behavior;
+        battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
         bool canRecover = SelectedGroup.Units.Any(unit => unit.RecoveryTarget?.IsActive == true);
         bool canAttackDeathStar = Session.Units.Any(unit =>
             unit.Side != playerSide
@@ -268,6 +273,32 @@ public sealed class TacticalBattleController : MonoBehaviour
         int setIndex = Session.NavigationGrid.GetSetIndexForButton(buttonIndex);
         bool visible = Session.NavigationGrid.ToggleVisibility(setIndex);
         battleRenderer.SetNavigationSetVisible(setIndex, visible);
+    }
+
+    /// <summary>
+    /// Replaces or edits the selected group's ordered navigation route.
+    /// </summary>
+    /// <param name="point">The selected waypoint.</param>
+    /// <param name="editRoute">Whether to toggle the point within the current route.</param>
+    private void SelectNavigationPoint(TacticalNavPoint point, bool editRoute)
+    {
+        if (SelectedGroup == null)
+            return;
+
+        if (!editRoute)
+        {
+            SelectedGroup.ReplaceNavigationPoints(new[] { point });
+        }
+        else if (SelectedGroup.NavigationPoints.Contains(point))
+        {
+            SelectedGroup.RemoveNavigationPoint(point);
+        }
+        else
+        {
+            SelectedGroup.AddNavigationPoint(point);
+        }
+
+        battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
     }
 
     /// <summary>

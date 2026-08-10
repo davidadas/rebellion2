@@ -24,7 +24,13 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private readonly List<GameObject> navigationSets = new List<GameObject>();
     private readonly List<Sprite> sprites = new List<Sprite>();
     private readonly List<TacticalUnitView> unitViews = new List<TacticalUnitView>();
+    private Material navigationSelectedMaterial;
     private bool initialized;
+
+    /// <summary>
+    /// Raised when the player selects a visible tactical waypoint marker.
+    /// </summary>
+    public event Action<TacticalNavPoint, bool> NavigationPointSelected;
 
     /// <summary>
     /// Loads and creates all model-backed tactical units.
@@ -110,6 +116,29 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies the selected group's ordered route to the waypoint-marker materials.
+    /// </summary>
+    /// <param name="route">The selected group's active route.</param>
+    public void SetNavigationRoute(IReadOnlyList<TacticalNavPoint> route)
+    {
+        if (route == null)
+            throw new ArgumentNullException(nameof(route));
+
+        foreach (
+            TacticalNavigationMarker marker in GetComponentsInChildren<TacticalNavigationMarker>(
+                true
+            )
+        )
+        {
+            MeshRenderer markerRenderer = marker.GetComponent<MeshRenderer>();
+            markerRenderer.sharedMaterial =
+                GetRouteIndex(route, marker.Point) > 0
+                    ? navigationSelectedMaterial
+                    : marker.NormalMaterial;
+        }
+    }
+
+    /// <summary>
     /// Releases instantiated model hierarchies when the tactical scene closes.
     /// </summary>
     private void OnDestroy()
@@ -140,6 +169,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         Material lowerMaterial = CreateNavigationMaterial(new Color(0f, 0.541f, 1f));
         Material centerMaterial = CreateNavigationMaterial(Color.red);
         Material upperMaterial = CreateNavigationMaterial(Color.white);
+        navigationSelectedMaterial = CreateNavigationMaterial(Color.magenta);
         for (int setIndex = 0; setIndex < grid.SetCount; setIndex++)
         {
             GameObject setObject = new GameObject($"Navigation Set {setIndex + 1}");
@@ -164,11 +194,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <param name="parent">The marker-set transform.</param>
     /// <param name="point">The waypoint represented by the marker.</param>
     /// <param name="material">The material for the waypoint's vertical layer.</param>
-    private static void CreateNavigationMarker(
-        Transform parent,
-        TacticalNavPoint point,
-        Material material
-    )
+    private void CreateNavigationMarker(Transform parent, TacticalNavPoint point, Material material)
     {
         GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         marker.name = "Waypoint";
@@ -176,6 +202,36 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         marker.transform.localPosition = new UnityEngine.Vector3(point.X, point.Y, point.Z);
         marker.transform.localScale = UnityEngine.Vector3.one * 0.8f;
         marker.GetComponent<MeshRenderer>().sharedMaterial = material;
+        TacticalNavigationMarker interaction = marker.AddComponent<TacticalNavigationMarker>();
+        interaction.Initialize(point, material);
+        interaction.Selected += OnNavigationPointSelected;
+    }
+
+    /// <summary>
+    /// Forwards one marker selection to the tactical scene controller.
+    /// </summary>
+    /// <param name="point">The selected waypoint.</param>
+    /// <param name="editRoute">Whether the existing route should be edited.</param>
+    private void OnNavigationPointSelected(TacticalNavPoint point, bool editRoute)
+    {
+        NavigationPointSelected?.Invoke(point, editRoute);
+    }
+
+    /// <summary>
+    /// Finds a waypoint by reference within an ordered route.
+    /// </summary>
+    /// <param name="route">The route to search.</param>
+    /// <param name="point">The waypoint to locate.</param>
+    /// <returns>The route index, or -1 when absent.</returns>
+    private static int GetRouteIndex(IReadOnlyList<TacticalNavPoint> route, TacticalNavPoint point)
+    {
+        for (int index = 0; index < route.Count; index++)
+        {
+            if (ReferenceEquals(route[index], point))
+                return index;
+        }
+
+        return -1;
     }
 
     /// <summary>
@@ -356,5 +412,53 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         renderer.sprite = sprite;
         fighterBillboards.Add(lodObject.transform);
         return new LOD(screenHeight, new Renderer[] { renderer });
+    }
+}
+
+/// <summary>
+/// Converts pointer presses on one tactical waypoint marker into route-edit requests.
+/// </summary>
+internal sealed class TacticalNavigationMarker : MonoBehaviour
+{
+    private TacticalNavPoint point;
+
+    /// <summary>
+    /// Gets the represented waypoint.
+    /// </summary>
+    public TacticalNavPoint Point => point;
+
+    /// <summary>
+    /// Gets the marker's normal vertical-layer material.
+    /// </summary>
+    public Material NormalMaterial { get; private set; }
+
+    /// <summary>
+    /// Raised when the player selects this waypoint.
+    /// </summary>
+    public event Action<TacticalNavPoint, bool> Selected;
+
+    /// <summary>
+    /// Associates the rendered marker with its tactical waypoint.
+    /// </summary>
+    /// <param name="navigationPoint">The represented waypoint.</param>
+    /// <param name="normalMaterial">The normal material for its vertical layer.</param>
+    public void Initialize(TacticalNavPoint navigationPoint, Material normalMaterial)
+    {
+        point = navigationPoint ?? throw new ArgumentNullException(nameof(navigationPoint));
+        NormalMaterial = normalMaterial
+            ? normalMaterial
+            : throw new ArgumentNullException(nameof(normalMaterial));
+    }
+
+    /// <summary>
+    /// Requests replacement by default and list editing while either Control key is held.
+    /// </summary>
+    private void OnMouseDown()
+    {
+        if (point == null)
+            return;
+
+        bool editRoute = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+        Selected?.Invoke(point, editRoute);
     }
 }
