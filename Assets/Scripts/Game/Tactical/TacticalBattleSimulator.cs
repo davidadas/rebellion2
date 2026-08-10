@@ -16,6 +16,8 @@ namespace Rebellion.Game.Tactical
         private const float _navigationArrivalDistance = 1f;
         private const float _withdrawalDistance = _initialSeparation * 2f;
         private readonly IReadOnlyList<TacticalShipGroup> groups;
+        private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
+            new Dictionary<TacticalUnitState, TacticalUnitState>();
         private readonly IRandomNumberProvider random;
         private readonly IReadOnlyList<TacticalUnitState> units;
 
@@ -103,81 +105,83 @@ namespace Rebellion.Game.Tactical
             if (TryAdvanceNavigation(unit, group, elapsedTime))
                 return Array.Empty<PendingAttack>();
 
-            IReadOnlyList<TacticalUnitState> targets = GetTargets(unit, group, behavior);
-            if (targets.Count == 0)
+            TacticalUnitState target = GetTarget(unit, group, behavior);
+            if (target == null)
                 return Array.Empty<PendingAttack>();
 
-            IReadOnlyList<PendingAttack> attacks = FireStrongestArc(unit, targets);
-            TacticalUnitState movementTarget = targets
-                .OrderBy(target => Vector3.DistanceSquared(unit.Position, target.Position))
-                .First();
-            Vector3 destination = GetApproachPosition(movementTarget, behavior);
+            IReadOnlyList<PendingAttack> attacks = FireStrongestArc(unit, target);
+            Vector3 destination = GetApproachPosition(target, behavior);
             MoveTowards(unit, destination, elapsedTime);
             return attacks;
         }
 
         /// <summary>
-        /// Resolves the active command's eligible targets in priority order.
+        /// Retains the unit's current target or acquires the last eligible opposing object.
         /// </summary>
         /// <param name="unit">The acting unit.</param>
         /// <param name="group">The unit's controlling group, if assigned.</param>
         /// <param name="behavior">The group's active behavior.</param>
-        /// <returns>The eligible opposing targets.</returns>
-        private IReadOnlyList<TacticalUnitState> GetTargets(
+        /// <returns>The selected opposing target, or null when none is eligible.</returns>
+        private TacticalUnitState GetTarget(
             TacticalUnitState unit,
             TacticalShipGroup group,
             TacticalBehavior behavior
         )
         {
-            IEnumerable<TacticalUnitState> targets =
+            IEnumerable<TacticalUnitState> candidates =
                 group?.Targets.Count > 0
                     ? group.Targets
                     : units.Where(candidate => candidate.Side != unit.Side);
-            targets = targets.Where(target => target.IsActive);
+            candidates = candidates.Where(candidate => candidate.IsActive);
             if (behavior == TacticalBehavior.AttackFighters)
-                targets = targets.Where(target => target.Kind == TacticalUnitKind.Fighters);
+                candidates = candidates.Where(candidate =>
+                    candidate.Kind == TacticalUnitKind.Fighters
+                );
             else if (
                 behavior == TacticalBehavior.AttackCapitalShips
                 || behavior == TacticalBehavior.AttackDeathStar
             )
-                targets = targets.Where(target => target.Kind == TacticalUnitKind.CapitalShip);
+                candidates = candidates.Where(candidate =>
+                    candidate.Kind == TacticalUnitKind.CapitalShip
+                );
 
-            return targets.ToArray();
+            TacticalUnitState[] eligibleTargets = candidates.ToArray();
+            if (
+                targets.TryGetValue(unit, out TacticalUnitState currentTarget)
+                && eligibleTargets.Contains(currentTarget)
+            )
+            {
+                return currentTarget;
+            }
+
+            TacticalUnitState selectedTarget = eligibleTargets.LastOrDefault();
+            if (selectedTarget == null)
+                targets.Remove(unit);
+            else
+                targets[unit] = selectedTarget;
+
+            return selectedTarget;
         }
 
         /// <summary>
         /// Selects and discharges the strongest charged arc that can reach an eligible target.
         /// </summary>
         /// <param name="attacker">The acting unit.</param>
-        /// <param name="targets">The eligible opposing targets.</param>
+        /// <param name="target">The engaged opposing target.</param>
         /// <returns>The pending attack, if an arc can fire.</returns>
         private static IReadOnlyList<PendingAttack> FireStrongestArc(
             TacticalUnitState attacker,
-            IEnumerable<TacticalUnitState> targets
+            TacticalUnitState target
         )
         {
-            TacticalUnitState selectedTarget = null;
-            TacticalWeaponArc selectedArc = TacticalWeaponArc.Fore;
-            int selectedStrength = 0;
-            foreach (TacticalUnitState target in targets)
-            {
-                float distance = Vector3.Distance(attacker.Position, target.Position);
-                TacticalWeaponArc arc = GetFiringArc(attacker, target.Position);
-                int strength = attacker.GetAvailableAttackStrength(arc, distance);
-                if (strength <= selectedStrength)
-                    continue;
-
-                selectedTarget = target;
-                selectedArc = arc;
-                selectedStrength = strength;
-            }
-
-            if (selectedTarget == null)
+            float distance = Vector3.Distance(attacker.Position, target.Position);
+            TacticalWeaponArc arc = GetFiringArc(attacker, target.Position);
+            if (attacker.GetAvailableAttackStrength(arc, distance) <= 0)
                 return Array.Empty<PendingAttack>();
 
             return attacker
-                .FireArc(selectedArc, Vector3.Distance(attacker.Position, selectedTarget.Position))
-                .Select(attack => new PendingAttack(selectedTarget, attack))
+                .FireArc(arc, distance)
+                .Select(attack => new PendingAttack(target, attack))
                 .ToArray();
         }
 

@@ -269,6 +269,33 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_PrimaryTargetWithoutAssignment_TargetsLastOpposingUnit()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip firstDefendingShip = CreateShip(100, 0);
+            CapitalShip lastDefendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(firstDefendingShip, lastDefendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(
+                100,
+                session.Units.Single(unit => unit.Unit == firstDefendingShip).Hull
+            );
+            Assert.AreEqual(
+                70,
+                session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull
+            );
+        }
+
+        [Test]
         public void Advance_AttackFightersBehavior_TargetsOnlyOpposingFighters()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
