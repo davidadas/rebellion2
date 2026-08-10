@@ -44,4 +44,22 @@ namespace Rebellion.Game.Events
             return IsMet(game, context?.TriggerResult);
         }
     }
+
+    /// <summary>
+    /// Represents a condition that can only match the result that triggered an event.
+    /// </summary>
+    public abstract class GameResultConditional : GameConditional
+    {
+        /// <inheritdoc />
+        public sealed override bool IsMet(GameRoot game) => false;
+
+        /// <inheritdoc />
+        public sealed override bool IsMet(GameRoot game, GameResult triggerResult) =>
+            triggerResult != null && IsMatch(game, triggerResult);
+
+        /// <summary>
+        /// Determines whether the triggering result matches this condition.
+        /// </summary>
+        protected abstract bool IsMatch(GameRoot game, GameResult triggerResult);
+    }
 }

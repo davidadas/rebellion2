@@ -9,36 +9,10 @@ using Rebellion.Game.Units;
 namespace Rebellion.Tests.Game.Events
 {
     [TestFixture]
-    public class GameConditionalsTests
+    public class TriggerResultConditionsTests
     {
         [Test]
-        public void OfficerPairArrival_OfficerInsideArrivingFleet_MatchesPair()
-        {
-            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
-            Fleet fleet = EntityFactory.CreateFleet("fleet", "empire");
-            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
-            game.AttachNode(luke, rebelPlanet);
-            game.AttachNode(fleet, empirePlanet);
-            game.AttachNode(ship, fleet);
-            game.AttachNode(vader, ship);
-            OfficerPairArrivalConditional conditional = new OfficerPairArrivalConditional
-            {
-                FirstOfficerInstanceID = "luke",
-                SecondOfficerInstanceID = "vader",
-            };
-
-            bool matches = conditional.IsMet(
-                game,
-                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
-            );
-
-            Assert.IsTrue(matches);
-        }
-
-        [Test]
-        public void UnitArrival_OfficerInsideFleetAtDestination_MatchesArrival()
+        public void UnitArrived_OfficerInsideFleetAtDestination_MatchesArrival()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
@@ -47,7 +21,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(fleet, empirePlanet);
             game.AttachNode(ship, fleet);
             game.AttachNode(emperor, ship);
-            UnitArrivalConditional conditional = new UnitArrivalConditional
+            UnitArrivedConditional conditional = new UnitArrivedConditional
             {
                 UnitInstanceID = emperor.InstanceID,
                 DestinationInstanceID = empirePlanet.InstanceID,
@@ -62,12 +36,12 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void UnitArrival_WrongDestination_DoesNotMatchArrival()
+        public void UnitArrived_WrongDestination_DoesNotMatchArrival()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
             game.AttachNode(emperor, empirePlanet);
-            UnitArrivalConditional conditional = new UnitArrivalConditional
+            UnitArrivedConditional conditional = new UnitArrivedConditional
             {
                 UnitInstanceID = emperor.InstanceID,
                 DestinationInstanceID = empirePlanet.InstanceID,

@@ -3,6 +3,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
@@ -12,8 +13,11 @@ namespace Rebellion.Game.Events
     /// </summary>
     public class GameEvent : BaseGameEntity
     {
-        // Execution Behavior.
-        public bool IsRepeatable { get; set; }
+        [PersistableAttribute]
+        public bool RunsOnce { get; set; }
+
+        [PersistableIgnore]
+        public bool Repeats => !RunsOnce && Schedule?.At == null && Schedule?.After == null;
 
         // Scope Selection.
         public GameEventScope Scope { get; set; }

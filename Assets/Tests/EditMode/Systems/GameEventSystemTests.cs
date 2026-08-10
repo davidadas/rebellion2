@@ -133,13 +133,14 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HERITAGE",
+                RunsOnce = true,
                 TriggerResultType = nameof(OfficerEncounterResult),
                 Conditionals = new List<GameConditional>
                 {
-                    new OfficerEncounterParticipantsConditional
+                    new DuelIncludesConditional
                     {
-                        EncounteredOfficerInstanceID = luke.InstanceID,
-                        OpposingOfficerInstanceID = vader.InstanceID,
+                        FirstOfficerInstanceID = luke.InstanceID,
+                        SecondOfficerInstanceID = vader.InstanceID,
                     },
                 },
                 Actions = new List<GameAction>
@@ -199,19 +200,13 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "JABBA_CAPTURES_LUKE",
+                RunsOnce = true,
                 TriggerResultType = nameof(OfficerCaptureStateResult),
                 SuppressSourceMessages = true,
                 Conditionals = new List<GameConditional>
                 {
-                    new ResultSourceEventConditional
-                    {
-                        SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
-                    },
-                    new OfficerCaptureStateConditional
-                    {
-                        OfficerInstanceID = luke.InstanceID,
-                        IsCaptured = true,
-                    },
+                    new TriggeredByConditional { EventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA" },
+                    new OfficerCapturedConditional { OfficerInstanceID = luke.InstanceID },
                 },
                 Actions = new List<GameAction>
                 {
@@ -279,14 +274,13 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RECURRING_ENCOUNTER_EFFECTS",
-                IsRepeatable = true,
                 TriggerResultType = nameof(OfficerEncounterResult),
                 Conditionals = new List<GameConditional>
                 {
-                    new OfficerEncounterParticipantsConditional
+                    new DuelIncludesConditional
                     {
-                        EncounteredOfficerInstanceID = luke.InstanceID,
-                        OpposingOfficerInstanceID = vader.InstanceID,
+                        FirstOfficerInstanceID = luke.InstanceID,
+                        SecondOfficerInstanceID = vader.InstanceID,
                     },
                 },
                 Actions = new List<GameAction>
@@ -321,14 +315,11 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "BOUNTY_FAILED",
+                RunsOnce = true,
                 TriggerResultType = nameof(OfficerCaptureAttemptResult),
                 Conditionals = new List<GameConditional>
                 {
-                    new OfficerCaptureOutcomeConditional
-                    {
-                        TargetOfficerInstanceID = han.InstanceID,
-                        WasCaptured = false,
-                    },
+                    new CaptureFailedConditional { OfficerInstanceID = han.InstanceID },
                 },
                 Actions = new List<GameAction>
                 {
@@ -384,7 +375,6 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "SCOPED",
                 Scope = GameEventScope.EachPlanet,
                 PlanetScopeOwnership = PlanetScopeOwnership.Owned,
-                IsRepeatable = true,
                 Schedule = new GameEventScheduler
                 {
                     Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 10 },
@@ -431,7 +421,6 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "OWNED_ONLY",
                 Scope = GameEventScope.EachPlanet,
                 PlanetScopeOwnership = PlanetScopeOwnership.Owned,
-                IsRepeatable = true,
                 Schedule = new GameEventScheduler
                 {
                     Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
@@ -466,7 +455,6 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "OWNED_ONLY",
                 Scope = GameEventScope.EachPlanet,
                 PlanetScopeOwnership = PlanetScopeOwnership.Owned,
-                IsRepeatable = true,
                 Schedule = new GameEventScheduler
                 {
                     Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
@@ -495,7 +483,7 @@ namespace Rebellion.Tests.Systems
             return new GameEvent
             {
                 InstanceID = instanceId,
-                IsRepeatable = repeatable,
+                RunsOnce = !repeatable,
                 Conditionals = new List<GameConditional>
                 {
                     new TickCountConditional

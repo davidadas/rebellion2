@@ -23,7 +23,11 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "child",
                 Actions = new List<GameAction>
                 {
-                    new AddMessageAction { RecipientFactionInstanceID = "rebels", Title = "Child" },
+                    new SendMessageAction
+                    {
+                        RecipientFactionInstanceID = "rebels",
+                        Title = "Child",
+                    },
                 },
             };
             GameEvent root = new GameEvent

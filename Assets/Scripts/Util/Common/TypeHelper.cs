@@ -163,6 +163,10 @@ namespace Rebellion.Util.Common
         /// <returns>The converted scalar value.</returns>
         public static object ConvertToScalar(string content, Type targetType)
         {
+            Type nullableType = Nullable.GetUnderlyingType(targetType);
+            if (nullableType != null)
+                return ConvertToScalar(content, nullableType);
+
             if (targetType.IsEnum)
                 return Enum.Parse(targetType, content);
             if (targetType == typeof(string))

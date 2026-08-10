@@ -251,9 +251,8 @@ namespace Rebellion.Tests.Util.Serialization
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
             string xmlInput =
                 @"<?xml version=""1.0"" encoding=""utf-8""?>
-<GameEvent>
+<GameEvent RunsOnce=""true"">
   <InstanceID>EVENT_TEST</InstanceID>
-  <IsRepeatable>false</IsRepeatable>
   <Conditionals>
     <TickCount Comparison=""GreaterThan"" Ticks=""30"">
       <InstanceID>TICK_CONDITION</InstanceID>
@@ -283,10 +282,7 @@ namespace Rebellion.Tests.Util.Serialization
                 SuppressSourceMessages = true,
                 Conditionals = new List<GameConditional>
                 {
-                    new ResultSourceEventConditional
-                    {
-                        SourceEventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA",
-                    },
+                    new TriggeredByConditional { EventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA" },
                 },
             };
 
@@ -301,13 +297,15 @@ namespace Rebellion.Tests.Util.Serialization
                 "<SuppressSourceMessages>True</SuppressSourceMessages>",
                 serializedXml
             );
-            StringAssert.Contains("<ResultSourceEvent>", serializedXml);
+            StringAssert.Contains(
+                "<TriggeredBy EventInstanceID=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
+                serializedXml
+            );
             Assert.IsTrue(deserialized.SuppressTriggerMessage);
             Assert.IsTrue(deserialized.SuppressSourceMessages);
-            ResultSourceEventConditional source =
-                deserialized.Conditionals[0] as ResultSourceEventConditional;
+            TriggeredByConditional source = deserialized.Conditionals[0] as TriggeredByConditional;
             Assert.IsNotNull(source);
-            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.SourceEventInstanceID);
+            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.EventInstanceID);
         }
 
         [Test]
@@ -324,7 +322,7 @@ namespace Rebellion.Tests.Util.Serialization
                         Probability = 0.75,
                         Actions = new List<GameAction>
                         {
-                            new AddMessageAction
+                            new SendMessageAction
                             {
                                 SubjectInstanceID = "LUKE",
                                 RelatedSubjectInstanceID = "VADER",
@@ -340,7 +338,7 @@ namespace Rebellion.Tests.Util.Serialization
                                             new OfficerStateConditional
                                             {
                                                 OfficerInstanceID = "LUKE",
-                                                State = OfficerStateKind.Injured,
+                                                Is = OfficerStateKind.Injured,
                                             },
                                         },
                                         Body = "Injured",
@@ -348,7 +346,6 @@ namespace Rebellion.Tests.Util.Serialization
                                     },
                                 },
                                 VoicePath = "Story/dialogue",
-                                VoicePathFromOfficerEncounter = true,
                             },
                         },
                     },
@@ -401,36 +398,6 @@ namespace Rebellion.Tests.Util.Serialization
                             },
                         },
                     },
-                    new ReportForceDetectionAction
-                    {
-                        RequireForceEligible = true,
-                        MessageType = MessageType.Mission,
-                        Title = "{subject} Detects Enemy",
-                        Body = "{subject} detected {relatedSubject}",
-                        BackgroundImage = new MessageBackgroundImage { Key = "mission_report" },
-                        VoicePaths = new List<RecipientVoicePath>
-                        {
-                            new RecipientVoicePath
-                            {
-                                RecipientFactionInstanceID = "FNALL1",
-                                Path = "Alliance/report",
-                            },
-                            new RecipientVoicePath
-                            {
-                                RecipientFactionInstanceID = "FNEMP1",
-                                Path = "Empire/report",
-                            },
-                        },
-                        AdvisorCue = AdvisorCue.SubjectReport,
-                        ExcludedPairs = new List<OfficerPairReference>
-                        {
-                            new OfficerPairReference
-                            {
-                                FirstOfficerInstanceID = "LUKE_SKYWALKER",
-                                SecondOfficerInstanceID = "DARTH_VADER",
-                            },
-                        },
-                    },
                 },
             };
 
@@ -438,24 +405,23 @@ namespace Rebellion.Tests.Util.Serialization
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
             StringAssert.Contains("<RandomOutcome Probability=\"0.75\">", serializedXml);
-            StringAssert.Contains("<AddMessage>", serializedXml);
+            StringAssert.Contains("<SendMessage ", serializedXml);
             StringAssert.Contains("<AddToVoid UnitInstanceID=\"LUKE_SKYWALKER\"", serializedXml);
             RandomOutcomeAction random = deserialized.Actions[0] as RandomOutcomeAction;
             Assert.IsNotNull(random);
             Assert.AreEqual(0.75, random.Probability);
-            AddMessageAction message = random.Actions[0] as AddMessageAction;
+            SendMessageAction message = random.Actions[0] as SendMessageAction;
             Assert.IsNotNull(message);
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual(MessageType.Advice, message.MessageType);
             Assert.AreEqual("Story/dialogue", message.VoicePath);
-            Assert.IsTrue(message.VoicePathFromOfficerEncounter);
             Assert.AreEqual(1, message.BodySegments.Count);
             Assert.AreEqual("Injured", message.BodySegments[0].Body);
             OfficerStateConditional bodyCondition =
                 message.BodySegments[0].Conditionals[0] as OfficerStateConditional;
             Assert.IsNotNull(bodyCondition);
-            Assert.AreEqual(OfficerStateKind.Injured, bodyCondition.State);
+            Assert.AreEqual(OfficerStateKind.Injured, bodyCondition.Is);
             ConditionalAction conditional = deserialized.Actions[1] as ConditionalAction;
             Assert.IsNotNull(conditional);
             EventVariableConditional condition =
@@ -486,21 +452,6 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", startMission.MissionDefinitionID);
             Assert.AreEqual("Target", startMission.Roles.Single().Name);
             Assert.AreEqual("HAN_SOLO", startMission.Roles.Single().UnitInstanceID);
-            ReportForceDetectionAction forceDetection =
-                deserialized.Actions[7] as ReportForceDetectionAction;
-            Assert.IsNotNull(forceDetection);
-            Assert.IsTrue(forceDetection.RequireForceEligible);
-            Assert.AreEqual(MessageType.Mission, forceDetection.MessageType);
-            Assert.AreEqual("{subject} Detects Enemy", forceDetection.Title);
-            Assert.AreEqual("Alliance/report", forceDetection.VoicePaths[0].Path);
-            Assert.AreEqual("Empire/report", forceDetection.VoicePaths[1].Path);
-            Assert.AreEqual(AdvisorCue.SubjectReport, forceDetection.AdvisorCue);
-            Assert.AreEqual(1, forceDetection.ExcludedPairs.Count);
-            Assert.AreEqual(
-                "LUKE_SKYWALKER",
-                forceDetection.ExcludedPairs[0].FirstOfficerInstanceID
-            );
-            Assert.AreEqual("DARTH_VADER", forceDetection.ExcludedPairs[0].SecondOfficerInstanceID);
         }
 
         [Test]

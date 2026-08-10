@@ -69,7 +69,7 @@ namespace Rebellion.Systems
                 else if (TryProcessEvent(gameEvent, null, null, out List<GameResult> globalResults))
                 {
                     allResults.AddRange(globalResults);
-                    if (!gameEvent.IsRepeatable)
+                    if (!gameEvent.Repeats)
                         eventsToRemove.Add(gameEvent);
                 }
             }
@@ -108,7 +108,7 @@ namespace Rebellion.Systems
                     if (gameEvent.SuppressTriggerMessage)
                         triggerResult.SuppressDefaultMessage = true;
                     SuppressSourceMessages(gameEvent, triggerResult, results);
-                    if (!gameEvent.IsRepeatable)
+                    if (!gameEvent.Repeats)
                         _game.RemoveEvent(gameEvent);
                 }
             }
@@ -169,7 +169,7 @@ namespace Rebellion.Systems
             results = gameEvent.Execute(_game, _provider, context);
             state.ExecutionCount++;
             state.LastExecutionTick = _game.CurrentTick;
-            if (gameEvent.IsRepeatable)
+            if (gameEvent.Repeats)
             {
                 GetRepeatRange(gameEvent, out int minimum, out int maximum);
                 state.NextEligibleTick = _game.CurrentTick + RollRange(minimum, maximum);
