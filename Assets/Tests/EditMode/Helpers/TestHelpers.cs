@@ -283,7 +283,8 @@ public static class TestSystems
     public static MissionSystem CreateMissionSystem(
         GameRoot game,
         IRandomNumberProvider provider,
-        MovementSystem movement
+        MovementSystem movement,
+        IEnumerable<CustomMissionDefinition> customMissionDefinitions = null
     )
     {
         FogOfWarSystem fog = new FogOfWarSystem(game);
@@ -296,7 +297,13 @@ public static class TestSystems
             fog
         );
         UprisingSystem uprising = new UprisingSystem(game, provider, control);
-        return new MissionSystem(game, provider, movement, uprising);
+        return new MissionSystem(
+            game,
+            provider,
+            movement,
+            uprising,
+            customMissionDefinitions: customMissionDefinitions
+        );
     }
 }
 

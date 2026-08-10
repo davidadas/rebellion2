@@ -42,8 +42,8 @@ namespace Rebellion.Tests.Systems
                     {
                         ResultType = MessageResultType.FleetArrived,
                         MessageType = MessageType.Fleet,
-                        TitleTemplate = "{fleet} arrived",
-                        BodyTemplate = "{system}",
+                        Subject = "{fleet} arrived",
+                        Body = "{system}",
                     },
                 }
             );

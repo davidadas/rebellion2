@@ -408,47 +408,17 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void GetVoicePath_AdvancedVoiceEnabled_UsesAdvancedEventPool()
+        public void GetVoicePath_ConfiguredEventPool_ReturnsConfiguredPath()
         {
             Officer officer = new Officer
             {
-                UsesAdvancedVoiceLines = true,
-                PersonnelArrivedVoicePaths = new List<string> { "standard" },
-                AdvancedPersonnelArrivedVoicePaths = new List<string> { "advanced" },
+                PersonnelArrivedVoicePaths = new List<string> { "configured" },
             };
 
             Assert.AreEqual(
-                "advanced",
+                "configured",
                 officer.GetVoicePath(OfficerVoiceLineType.PersonnelArrived, null)
             );
-        }
-
-        [Test]
-        public void GetVoicePath_AdvancedVoiceEnabled_UsesAdvancedTraitorDiscoveredPool()
-        {
-            Officer officer = new Officer
-            {
-                UsesAdvancedVoiceLines = true,
-                TraitorDiscoveredVoicePaths = new List<string> { "standard" },
-                AdvancedTraitorDiscoveredVoicePaths = new List<string> { "advanced" },
-            };
-
-            Assert.AreEqual(
-                "advanced",
-                officer.GetVoicePath(OfficerVoiceLineType.TraitorDiscovered, null)
-            );
-        }
-
-        [Test]
-        public void GetVoicePath_AdvancedPoolMissing_FallsBackToStandardPool()
-        {
-            Officer officer = new Officer
-            {
-                UsesAdvancedVoiceLines = true,
-                ReleasedVoicePaths = new List<string> { "standard" },
-            };
-
-            Assert.AreEqual("standard", officer.GetVoicePath(OfficerVoiceLineType.Released, null));
         }
     }
 }

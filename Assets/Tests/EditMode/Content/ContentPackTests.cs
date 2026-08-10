@@ -53,21 +53,30 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.IsNull(gameEvent.Trigger);
+            Assert.AreEqual("LUKE_VISITS_YODA", gameEvent.Schedule.After.EventInstanceID);
+            Assert.AreEqual(100, gameEvent.Schedule.After.DelayTicks);
             Assert.AreEqual(
-                "luke.dagobah.started",
-                gameEvent.Conditionals.OfType<EventVariableConditional>().First().Key
+                "LUKE_VISITS_YODA",
+                gameEvent.Conditionals.OfType<IsEventCompleteConditional>().Single().EventInstanceID
             );
             Assert.IsTrue(gameEvent.Actions.OfType<ReturnFromVoidAction>().Any());
             AddMessageAction message = gameEvent.Actions.OfType<AddMessageAction>().Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
             Assert.AreEqual("Luke Leaves Dagobah", message.Title);
             Assert.AreEqual("I have finished my training with Yoda.", message.Body);
-            UpdateOfficerPresentationAction presentation = gameEvent
-                .Actions.OfType<UpdateOfficerPresentationAction>()
+            SetOfficerImagesAction presentation = gameEvent
+                .Actions.OfType<SetOfficerImagesAction>()
                 .Single();
             Assert.AreEqual("LUKE_SKYWALKER", presentation.OfficerInstanceID);
-            Assert.IsTrue(presentation.UsesAdvancedVoiceLines);
             StringAssert.EndsWith("/jedi-display", presentation.DisplayImagePath);
+            SetOfficerVoiceSetAction voiceSet = gameEvent
+                .Actions.OfType<SetOfficerVoiceSetAction>()
+                .Single();
+            Assert.AreEqual("LUKE_SKYWALKER", voiceSet.OfficerInstanceID);
+            StringAssert.EndsWith(
+                "/advanced-personnel-arrived-01",
+                voiceSet.PersonnelArrivedVoicePaths.First()
+            );
         }
 
         [Test]
@@ -141,20 +150,24 @@ namespace Rebellion.Tests.Content
             ContentPack pack = ContentPackLoader.OpenActive();
             (string eventId, string triggerType, string sourceEventId)[] replacements =
             {
-                ("HAN_EVADES_BOUNTY_HUNTERS", "core:story-capture.resolved", "HAN_BOUNTY_HUNTERS"),
+                (
+                    "HAN_EVADES_BOUNTY_HUNTERS",
+                    "core:officer.capture-attempted",
+                    "HAN_BOUNTY_HUNTERS"
+                ),
                 (
                     "JABBA_DELIVERS_PRISONERS",
-                    "core:story-pickup.completed",
+                    "core:prisoner-pickup.completed",
                     "VADER_COLLECTS_JABBAS_PRISONERS"
                 ),
                 (
                     "LUKE_WINS_FINAL_BATTLE",
-                    "core:story-final-battle.completed",
+                    "core:force-confrontation.completed",
                     "VADER_TAKES_LUKE_TO_EMPEROR"
                 ),
                 (
                     "LUKE_LOSES_FINAL_BATTLE",
-                    "core:story-final-battle.completed",
+                    "core:force-confrontation.completed",
                     "VADER_TAKES_LUKE_TO_EMPEROR"
                 ),
             };
@@ -269,10 +282,11 @@ namespace Rebellion.Tests.Content
             GameEvent heritage = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "LUKE_DISCOVERS_HERITAGE"
             );
-            ScheduleEventAction dagobahReturn = pack
-                .GameData.GameEvents.Single(gameEvent => gameEvent.InstanceID == "LUKE_VISITS_YODA")
-                .Actions.OfType<ScheduleEventAction>()
-                .Single();
+            AfterEvent dagobahReturn = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "LUKE_LEAVES_DAGOBAH"
+                )
+                .Schedule.After;
             AddForceExperienceAction dagobahTraining = pack
                 .GameData.GameEvents.Single(gameEvent =>
                     gameEvent.InstanceID == "LUKE_LEAVES_DAGOBAH"
@@ -283,8 +297,8 @@ namespace Rebellion.Tests.Content
             GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "VADER_TAKES_LUKE_TO_EMPEROR"
             );
-            StartStoryFinalBattleAction startFinalBattle = finalBattle
-                .Actions.OfType<StartStoryFinalBattleAction>()
+            StartMissionAction startFinalBattle = finalBattle
+                .Actions.OfType<StartMissionAction>()
                 .Single();
             AddMessageAction victoryMessage = pack
                 .GameData.GameEvents.Single(gameEvent =>
@@ -325,11 +339,11 @@ namespace Rebellion.Tests.Content
             ReportForceDetectionAction forceDetection = forceDetectionEvent
                 .Actions.OfType<ReportForceDetectionAction>()
                 .Single();
-            StartStoryCaptureAction bountyCapture = pack
+            StartMissionAction bountyCapture = pack
                 .GameData.GameEvents.Single(gameEvent =>
                     gameEvent.InstanceID == "HAN_BOUNTY_HUNTERS"
                 )
-                .Actions.OfType<StartStoryCaptureAction>()
+                .Actions.OfType<StartMissionAction>()
                 .Single();
             string[] recurringEncounterEventIds =
             {
@@ -382,7 +396,13 @@ namespace Rebellion.Tests.Content
                 forceDetection.Body
             );
             Assert.AreEqual(4, forceDetection.ExcludedPairs.Count);
-            Assert.AreEqual(0, bountyCapture.AttackRating);
+            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", bountyCapture.MissionDefinitionID);
+            Assert.AreEqual(
+                0,
+                pack.GameData.MissionDefinitions.Single(definition =>
+                    definition.InstanceID == bountyCapture.MissionDefinitionID
+                ).AttackRating
+            );
             EventVariableConditional leiaHeritageCondition = leiaHeritage
                 .Conditionals.OfType<EventVariableConditional>()
                 .Single();
@@ -404,17 +424,28 @@ namespace Rebellion.Tests.Content
                 leiaHeritageEffects.Actions.OfType<IncreaseOfficerForceAction>().Count()
             );
             Assert.IsEmpty(leiaHeritageEffects.Actions.OfType<RevealOfficerForcePotentialAction>());
-            Assert.AreEqual(OfficerRating.Combat, bountyCapture.ResistanceRating);
-            Assert.AreEqual(AbductionMission.MissionTypeID, bountyCapture.ProbabilityTableKey);
+            CustomMissionDefinition bountyDefinition = pack.GameData.MissionDefinitions.Single(
+                definition => definition.InstanceID == bountyCapture.MissionDefinitionID
+            );
+            Assert.AreEqual(OfficerRating.Combat, bountyDefinition.ResistanceRating);
+            Assert.AreEqual(AbductionMission.MissionTypeID, bountyDefinition.ProbabilityTableKey);
             Assert.AreEqual(
                 "Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report",
-                forceDetection.VoicePaths["FNALL1"]
+                forceDetection
+                    .VoicePaths.Single(path => path.RecipientFactionInstanceID == "FNALL1")
+                    .Path
             );
             Assert.AreEqual(
                 "Pack/Factions/Empire/Strategy/Audio/Messages/message-faction-report",
-                forceDetection.VoicePaths["FNEMP1"]
+                forceDetection
+                    .VoicePaths.Single(path => path.RecipientFactionInstanceID == "FNEMP1")
+                    .Path
             );
-            Assert.IsFalse(startFinalBattle.CaptivesCanEscapeOnVictory);
+            Assert.IsFalse(
+                pack.GameData.MissionDefinitions.Single(definition =>
+                    definition.InstanceID == startFinalBattle.MissionDefinitionID
+                ).CaptivesCanEscapeOnVictory
+            );
             Assert.AreEqual(
                 "Pack/Shared/Events/FinalBattle/Audio/luke-victorious",
                 victoryMessage.VoicePath
@@ -456,10 +487,10 @@ namespace Rebellion.Tests.Content
                 candidate.ResultType == MessageResultType.OfficerAssassinated
             );
 
-            Assert.AreEqual("{officer} Killed", definition.TitleTemplate);
+            Assert.AreEqual("{officer} Killed", definition.Subject);
             Assert.AreEqual(
                 "{officer} was killed by Imperial Assassins at {system}.",
-                definition.BodyTemplate
+                definition.Body
             );
             Assert.AreEqual(
                 "Pack/Factions/Alliance/Strategy/UI/Messages/character-killed",
@@ -479,7 +510,7 @@ namespace Rebellion.Tests.Content
 
             Assert.AreEqual(
                 "My espionage mission to {system} was successful.  {details}",
-                definition.BodyTemplate
+                definition.Body
             );
             Assert.AreEqual(
                 "In addition, information was provided on the following systems:",
@@ -496,10 +527,10 @@ namespace Rebellion.Tests.Content
                 candidate.ResultType == MessageResultType.RegimentDeployed
             );
 
-            Assert.AreEqual("{item} Deployed to {system}", definition.TitleTemplate);
+            Assert.AreEqual("{item} Deployed to {system}", definition.Subject);
             Assert.AreEqual(
                 "The following units have been deployed to {system}:\n{items}",
-                definition.BodyTemplate
+                definition.Body
             );
         }
 
@@ -511,10 +542,10 @@ namespace Rebellion.Tests.Content
                 candidate.ResultType == MessageResultType.MaintenanceAutoscrap
             );
 
-            Assert.AreEqual("Maintenance Shortfall", definition.TitleTemplate);
+            Assert.AreEqual("Maintenance Shortfall", definition.Subject);
             Assert.AreEqual(
                 "The following units have been destroyed at {system} due to a maintenance shortfall:\n{items}",
-                definition.BodyTemplate
+                definition.Body
             );
         }
 
@@ -529,17 +560,11 @@ namespace Rebellion.Tests.Content
                 candidate.ResultType == MessageResultType.HeadquartersArrived
             );
 
-            Assert.AreEqual("Units Arrive at {system}", units.TitleTemplate);
-            Assert.AreEqual(
-                "The following units have arrived at {system}:\n{units}",
-                units.BodyTemplate
-            );
-            Assert.AreEqual("Headquarters Arrives", headquarters.TitleTemplate);
+            Assert.AreEqual("Units Arrive at {system}", units.Subject);
+            Assert.AreEqual("The following units have arrived at {system}:\n{units}", units.Body);
+            Assert.AreEqual("Headquarters Arrives", headquarters.Subject);
             Assert.AreEqual("FNALL1", headquarters.FactionInstanceID);
-            Assert.AreEqual(
-                "The Alliance Headquarters has arrived at {system}",
-                headquarters.BodyTemplate
-            );
+            Assert.AreEqual("The Alliance Headquarters has arrived at {system}", headquarters.Body);
         }
 
         [Test]

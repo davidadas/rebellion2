@@ -569,8 +569,8 @@ namespace Rebellion.Game.Results
         public MessageType MessageType { get; set; }
         public string TitleTemplate { get; set; }
         public string BodyTemplate { get; set; }
-        public string DetailImageKey { get; set; }
-        public string ImagePath { get; set; }
+        public string BackgroundImageKey { get; set; }
+        public string BackgroundImagePath { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
         public string OfficerVoicePath { get; set; }
@@ -597,24 +597,18 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A data-defined event requested a timed attempt to capture an officer.
+    /// A game event requested a content-defined mission with concrete role bindings.
     /// </summary>
-    public class StoryCaptureRequestedResult : GameResult
+    public class CustomMissionRequestedResult : GameResult
     {
-        public Officer Target { get; set; }
-        public int DurationTicks { get; set; }
-        public string CaptorFactionInstanceID { get; set; }
-        public bool CanEscape { get; set; }
-        public int AttackRating { get; set; }
-        public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
-        public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
-        public string DisplayName { get; set; }
+        public string MissionDefinitionID { get; set; }
+        public List<MissionRoleAssignment> Roles { get; set; } = new List<MissionRoleAssignment>();
     }
 
     /// <summary>
     /// A content-authored capture attempt resolved against its target.
     /// </summary>
-    public class StoryCaptureResolvedResult : GameResult
+    public class OfficerCaptureAttemptResult : GameResult
     {
         public Officer Target { get; set; }
         public Planet Location { get; set; }
@@ -622,39 +616,9 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A data-defined event requested one or more timed rescue attempts.
-    /// </summary>
-    public class StoryRescueRequestedResult : GameResult
-    {
-        public Officer Captive { get; set; }
-        public List<Officer> Rescuers { get; set; } = new List<Officer>();
-        public int DurationTicks { get; set; }
-        public int DurationRandomTicks { get; set; }
-        public int RatingDivisor { get; set; }
-        public int SuccessCombatBonus { get; set; }
-        public int SuccessEspionageBonus { get; set; }
-        public bool CaptureRescuerOnFailure { get; set; }
-        public bool FailedRescuerCanEscape { get; set; }
-        public string DisplayName { get; set; }
-    }
-
-    /// <summary>
-    /// A data-defined event requested a timed prisoner pickup.
-    /// </summary>
-    public class StoryPickupRequestedResult : GameResult
-    {
-        public Officer Collector { get; set; }
-        public Planet Location { get; set; }
-        public string CaptiveFactionInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public bool CaptivesCanEscapeAfterPickup { get; set; }
-        public string DisplayName { get; set; }
-    }
-
-    /// <summary>
     /// A story collector completed a prisoner pickup.
     /// </summary>
-    public class StoryPickupCompletedResult : GameResult
+    public class PrisonerPickupCompletedResult : GameResult
     {
         public Officer Collector { get; set; }
         public Planet Location { get; set; }
@@ -662,57 +626,9 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A data-defined event requested Vader's journey to a captured Luke.
-    /// </summary>
-    public interface IStoryFinalBattleRequest
-    {
-        Officer Luke { get; set; }
-        Officer Vader { get; set; }
-        Officer Palpatine { get; set; }
-        string CaptorFactionInstanceID { get; set; }
-        int DurationTicks { get; set; }
-        int VictoryForceRank { get; set; }
-        int MinimumFailureInjury { get; set; }
-        int MaximumFailureInjury { get; set; }
-        bool CaptivesCanEscapeOnVictory { get; set; }
-        string DisplayName { get; set; }
-    }
-
-    public class StoryFinalBattleRequestedResult : GameResult, IStoryFinalBattleRequest
-    {
-        public Officer Luke { get; set; }
-        public Officer Vader { get; set; }
-        public Officer Palpatine { get; set; }
-        public string CaptorFactionInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public int VictoryForceRank { get; set; }
-        public int MinimumFailureInjury { get; set; }
-        public int MaximumFailureInjury { get; set; }
-        public bool CaptivesCanEscapeOnVictory { get; set; }
-        public string DisplayName { get; set; }
-    }
-
-    /// <summary>
-    /// Vader reached Luke and requested their escorted journey to Palpatine.
-    /// </summary>
-    public class StoryFinalBattleEscortRequestedResult : GameResult, IStoryFinalBattleRequest
-    {
-        public Officer Luke { get; set; }
-        public Officer Vader { get; set; }
-        public Officer Palpatine { get; set; }
-        public string CaptorFactionInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public int VictoryForceRank { get; set; }
-        public int MinimumFailureInjury { get; set; }
-        public int MaximumFailureInjury { get; set; }
-        public bool CaptivesCanEscapeOnVictory { get; set; }
-        public string DisplayName { get; set; }
-    }
-
-    /// <summary>
     /// The Luke, Vader, and Palpatine confrontation resolved.
     /// </summary>
-    public class StoryFinalBattleCompletedResult : GameResult
+    public class ForceConfrontationCompletedResult : GameResult
     {
         public Officer Luke { get; set; }
         public Officer Vader { get; set; }

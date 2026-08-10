@@ -90,7 +90,7 @@ namespace Rebellion.Tests.Systems
         private static (GameRoot game, Officer encountered, Officer opposing) BuildEncounter()
         {
             GameConfig config = TestConfig.Create();
-            config.OfficerEncounter = new GameConfig.OfficerEncounterConfig
+            config.DuelResolution = new GameConfig.DuelResolutionConfig
             {
                 CaptureAvoidanceTable = new Dictionary<int, int> { { 0, 50 } },
                 CaptureEvasionInjuryBaseChance = 100,

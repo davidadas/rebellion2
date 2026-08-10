@@ -18,9 +18,9 @@ namespace Rebellion.Game.Events
             ["core:mission.completed"] = typeof(MissionCompletedResult),
             ["core:officer.capture-changed"] = typeof(OfficerCaptureStateResult),
             ["core:officer.encountered"] = typeof(OfficerEncounterResult),
-            ["core:story-capture.resolved"] = typeof(StoryCaptureResolvedResult),
-            ["core:story-final-battle.completed"] = typeof(StoryFinalBattleCompletedResult),
-            ["core:story-pickup.completed"] = typeof(StoryPickupCompletedResult),
+            ["core:officer.capture-attempted"] = typeof(OfficerCaptureAttemptResult),
+            ["core:force-confrontation.completed"] = typeof(ForceConfrontationCompletedResult),
+            ["core:prisoner-pickup.completed"] = typeof(PrisonerPickupCompletedResult),
             ["core:unit.arrived"] = typeof(UnitArrivedResult),
         };
 

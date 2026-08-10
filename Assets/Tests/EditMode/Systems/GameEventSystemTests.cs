@@ -103,26 +103,18 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void ScheduleEvent_PendingEvent_DelaysRelativeToCurrentTick()
+        public void ProcessEvents_AfterSchedule_DelaysFromPredecessorExecution()
         {
+            GameEvent predecessor = CreateTickEvent("DEPARTURE", targetTick: 19, repeatable: false);
             GameEvent pending = CreateTickEvent("PENDING_RETURN", targetTick: 0, repeatable: false);
-            pending.Conditionals.Add(
-                new EventVariableConditional
-                {
-                    Key = "return.enabled",
-                    Comparison = EventVariableComparison.Equal,
-                    Value = 1,
-                }
-            );
+            pending.Schedule = new GameEventScheduler
+            {
+                After = new AfterEvent { EventInstanceID = predecessor.InstanceID, DelayTicks = 5 },
+            };
+            _game.EventPool.Add(predecessor);
             _game.EventPool.Add(pending);
             _game.CurrentTick = 20;
-
-            new SetEventVariableAction { Key = "return.enabled", Value = 1 }.Execute(_game);
-            new ScheduleEventAction
-            {
-                EventInstanceID = pending.InstanceID,
-                DelayTicks = 5,
-            }.Execute(_game);
+            _system.ProcessEvents(_game.EventPool);
 
             _game.CurrentTick = 24;
             _system.ProcessEvents(_game.EventPool);
@@ -152,7 +144,7 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "luke.heritage.revealed", Value = 1 },
+                    new SetEventVariableAction { Key = "luke.heritage.revealed", Operand = 1 },
                 },
             };
             _game.EventPool.Add(gameEvent);
@@ -183,7 +175,7 @@ namespace Rebellion.Tests.Systems
                 Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
                 Actions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "arrival.triggered", Value = 1 },
+                    new SetEventVariableAction { Key = "arrival.triggered", Operand = 1 },
                 },
             };
             _game.EventPool.Add(gameEvent);
@@ -223,7 +215,7 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "jabba.captured.luke", Value = 1 },
+                    new SetEventVariableAction { Key = "jabba.captured.luke", Operand = 1 },
                 },
             };
             _game.EventPool.Add(gameEvent);
@@ -303,7 +295,7 @@ namespace Rebellion.Tests.Systems
                     {
                         Key = "encounter.count",
                         Operation = EventVariableOperation.Add,
-                        Value = 1,
+                        Operand = 1,
                     },
                 },
             };
@@ -323,16 +315,16 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_MatchingStoryCaptureOutcome_ExecutesAuthoredReaction()
+        public void HandleResults_MatchingOfficerCaptureOutcome_ExecutesAuthoredReaction()
         {
             Officer han = new Officer { InstanceID = "han" };
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "BOUNTY_FAILED",
-                TriggerResultType = nameof(StoryCaptureResolvedResult),
+                TriggerResultType = nameof(OfficerCaptureAttemptResult),
                 Conditionals = new List<GameConditional>
                 {
-                    new StoryCaptureOutcomeConditional
+                    new OfficerCaptureOutcomeConditional
                     {
                         TargetOfficerInstanceID = han.InstanceID,
                         WasCaptured = false,
@@ -340,7 +332,7 @@ namespace Rebellion.Tests.Systems
                 },
                 Actions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "han.evaded", Value = 1 },
+                    new SetEventVariableAction { Key = "han.evaded", Operand = 1 },
                 },
             };
             _game.EventPool.Add(gameEvent);
@@ -348,7 +340,7 @@ namespace Rebellion.Tests.Systems
             _system.HandleResults(
                 new[]
                 {
-                    new StoryCaptureResolvedResult { Target = han, WasCaptured = false },
+                    new OfficerCaptureAttemptResult { Target = han, WasCaptured = false },
                 }
             );
 
@@ -365,7 +357,7 @@ namespace Rebellion.Tests.Systems
                 TriggerResultType = nameof(OfficerEncounterResult),
                 Actions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "unexpected", Value = 1 },
+                    new SetEventVariableAction { Key = "unexpected", Operand = 1 },
                 },
             };
             _game.EventPool.Add(gameEvent);
@@ -508,8 +500,8 @@ namespace Rebellion.Tests.Systems
                 {
                     new TickCountConditional
                     {
-                        ConditionalType = "GreaterThan",
-                        ConditionalValue = targetTick.ToString(),
+                        Comparison = EventVariableComparison.GreaterThan,
+                        Ticks = targetTick,
                     },
                 },
             };

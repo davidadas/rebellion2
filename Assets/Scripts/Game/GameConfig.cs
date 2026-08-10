@@ -31,7 +31,7 @@ namespace Rebellion.Game
 
         public JediConfig Jedi { get; set; } = new JediConfig();
 
-        public OfficerEncounterConfig OfficerEncounter { get; set; } = new OfficerEncounterConfig();
+        public DuelResolutionConfig DuelResolution { get; set; } = new DuelResolutionConfig();
 
         public ResearchConfig Research { get; set; } = new ResearchConfig();
 
@@ -41,7 +41,7 @@ namespace Rebellion.Game
 
         public CaptiveConfig Captive { get; set; } = new CaptiveConfig();
 
-        public BetrayalConfig Betrayal { get; set; } = new BetrayalConfig();
+        public OfficerLoyaltyConfig OfficerLoyalty { get; set; } = new OfficerLoyaltyConfig();
 
         public GameSpeedConfig GameSpeed { get; set; } = new GameSpeedConfig();
 
@@ -586,7 +586,7 @@ namespace Rebellion.Game
         /// Linked-officer capture, injury, and combat-growth rules.
         /// </summary>
         [PersistableObject]
-        public class OfficerEncounterConfig
+        public class DuelResolutionConfig
         {
             public Dictionary<int, int> CaptureAvoidanceTable { get; set; } =
                 new Dictionary<int, int>();
@@ -665,17 +665,22 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Loyalty and betrayal configuration values.
+        /// Officer loyalty reactions to strategic control changes.
         /// </summary>
         [PersistableObject]
-        public class BetrayalConfig
+        public class OfficerLoyaltyConfig
         {
-            public int IncomingControlLoyaltyRollMinimum { get; set; }
+            public RandomRangeConfig IncomingControlShift { get; set; } = new RandomRangeConfig();
+        }
 
-            /// <summary>
-            /// Inclusive upper bound for the loyalty shift when a faction gains a planet.
-            /// </summary>
-            public int IncomingControlLoyaltyRollMaximum { get; set; } = 5;
+        /// <summary>
+        /// An authored inclusive integer range.
+        /// </summary>
+        [PersistableObject]
+        public class RandomRangeConfig
+        {
+            public int Minimum { get; set; }
+            public int Maximum { get; set; }
         }
 
         /// <summary>

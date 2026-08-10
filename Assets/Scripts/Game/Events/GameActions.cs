@@ -97,6 +97,19 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Routes one authored voice asset to a specific recipient faction.
+    /// </summary>
+    [PersistableObject(Name = "VoicePath")]
+    public sealed class RecipientVoicePath
+    {
+        [PersistableAttribute]
+        public string RecipientFactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string Path { get; set; }
+    }
+
+    /// <summary>
     /// Resolves a controlled-world informant check with data-defined faction routing
     /// and uniformly weighted intelligence categories.
     /// </summary>
@@ -107,7 +120,7 @@ namespace Rebellion.Game.Events
         public string Title { get; set; }
         public string Body { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
-        public string DetailImageKey { get; set; }
+        public MessageBackgroundImage BackgroundImage { get; set; }
         public string VoicePath { get; set; }
         public AdvisorCue AdvisorCue { get; set; }
         public List<InformantFactionRoute> FactionRoutes { get; set; } =
@@ -170,7 +183,8 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = Title,
                     BodyTemplate = Body,
-                    DetailImageKey = DetailImageKey,
+                    BackgroundImageKey = BackgroundImage?.Key,
+                    BackgroundImagePath = BackgroundImage?.Path,
                     VoicePath = VoicePath,
                     AdvisorCue = AdvisorCue,
                     Tick = game.CurrentTick,
@@ -570,7 +584,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "RandomOutcome")]
     public class RandomOutcomeAction : GameAction
     {
-        [PersistableAttribute(Name = "Value")]
+        [PersistableAttribute]
         public double Probability { get; set; }
 
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
@@ -624,7 +638,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "Chance")]
     public sealed class ChanceAction : GameAction
     {
-        [PersistableAttribute(Name = "Value")]
+        [PersistableAttribute]
         public double Probability { get; set; }
 
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
@@ -812,10 +826,9 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Mission;
         public string Title { get; set; }
         public string Body { get; set; }
-        public string DetailImageKey { get; set; }
+        public MessageBackgroundImage BackgroundImage { get; set; }
         public string VoicePath { get; set; }
-        public Dictionary<string, string> VoicePaths { get; set; } =
-            new Dictionary<string, string>();
+        public List<RecipientVoicePath> VoicePaths { get; set; } = new List<RecipientVoicePath>();
         public AdvisorCue AdvisorCue { get; set; }
         public List<OfficerPairReference> ExcludedPairs { get; set; } =
             new List<OfficerPairReference>();
@@ -922,9 +935,13 @@ namespace Rebellion.Game.Events
             if (recipient == null)
                 return;
 
-            string voicePath = VoicePaths.TryGetValue(recipient.InstanceID, out string routedVoice)
-                ? routedVoice
-                : VoicePath;
+            string voicePath =
+                VoicePaths
+                    .FirstOrDefault(route =>
+                        route.RecipientFactionInstanceID == recipient.InstanceID
+                    )
+                    ?.Path
+                ?? VoicePath;
             results.Add(
                 new NarrativeMessageResult
                 {
@@ -935,7 +952,8 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = Title,
                     BodyTemplate = Body,
-                    DetailImageKey = DetailImageKey,
+                    BackgroundImageKey = BackgroundImage?.Key,
+                    BackgroundImagePath = BackgroundImage?.Path,
                     OverlayImagePath = detector.MessageImagePath,
                     VoicePath = voicePath,
                     OfficerVoicePath = detector.GetVoicePath(
@@ -1039,8 +1057,7 @@ namespace Rebellion.Game.Events
         public string Body { get; set; }
         public List<NarrativeBodySegment> BodySegments { get; set; } =
             new List<NarrativeBodySegment>();
-        public string DetailImageKey { get; set; }
-        public string ImagePath { get; set; }
+        public MessageBackgroundImage BackgroundImage { get; set; }
         public bool ImagePathFromOfficerEncounter { get; set; }
         public string OverlayImagePath { get; set; }
         public string VoicePath { get; set; }
@@ -1104,7 +1121,7 @@ namespace Rebellion.Game.Events
                 ImagePathFromOfficerEncounter
                 && triggerResult is OfficerEncounterResult encounterImage
                     ? encounterImage.ImagePath
-                    : ImagePath;
+                    : BackgroundImage?.Path;
 
             return new List<GameResult>
             {
@@ -1117,8 +1134,8 @@ namespace Rebellion.Game.Events
                     MessageType = MessageType,
                     TitleTemplate = Title,
                     BodyTemplate = bodyTemplate,
-                    DetailImageKey = DetailImageKey,
-                    ImagePath = imagePath,
+                    BackgroundImageKey = BackgroundImage?.Key,
+                    BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImagePath,
                     VoicePath = voicePath,
                     OfficerVoicePath = OfficerVoicePath,
@@ -1183,7 +1200,7 @@ namespace Rebellion.Game.Events
     {
         public string Key { get; set; }
         public EventVariableOperation Operation { get; set; }
-        public int Value { get; set; }
+        public int Operand { get; set; }
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
@@ -1191,10 +1208,10 @@ namespace Rebellion.Game.Events
             int previousValue = game.GetEventVariable(Key);
             int currentValue = Operation switch
             {
-                EventVariableOperation.Set => Value,
-                EventVariableOperation.Add => checked(previousValue + Value),
-                EventVariableOperation.Minimum => Math.Min(previousValue, Value),
-                EventVariableOperation.Maximum => Math.Max(previousValue, Value),
+                EventVariableOperation.Set => Operand,
+                EventVariableOperation.Add => checked(previousValue + Operand),
+                EventVariableOperation.Minimum => Math.Min(previousValue, Operand),
+                EventVariableOperation.Maximum => Math.Max(previousValue, Operand),
                 _ => throw new InvalidOperationException(
                     $"Unsupported event variable operation '{Operation}'."
                 ),
@@ -1214,17 +1231,17 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Updates the authored presentation used for an officer.
+    /// Replaces the authored image paths used for an officer.
     /// </summary>
-    [PersistableObject(Name = "UpdateOfficerPresentation")]
-    public sealed class UpdateOfficerPresentationAction : GameAction
+    [PersistableObject(Name = "SetOfficerImages")]
+    public sealed class SetOfficerImagesAction : GameAction
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
         public string DisplayImagePath { get; set; }
         public string SmallDisplayImagePath { get; set; }
         public string MessageImagePath { get; set; }
         public string EncyclopediaImagePath { get; set; }
-        public bool UsesAdvancedVoiceLines { get; set; }
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
@@ -1232,7 +1249,7 @@ namespace Rebellion.Game.Events
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 throw new InvalidOperationException(
-                    $"UpdateOfficerPresentation could not resolve officer '{OfficerInstanceID}'."
+                    $"SetOfficerImages could not resolve officer '{OfficerInstanceID}'."
                 );
 
             if (!string.IsNullOrWhiteSpace(DisplayImagePath))
@@ -1243,9 +1260,54 @@ namespace Rebellion.Game.Events
                 officer.MessageImagePath = MessageImagePath;
             if (!string.IsNullOrWhiteSpace(EncyclopediaImagePath))
                 officer.EncyclopediaImagePath = EncyclopediaImagePath;
-            officer.UsesAdvancedVoiceLines = UsesAdvancedVoiceLines;
-
             return new List<GameResult>();
+        }
+    }
+
+    /// <summary>
+    /// Replaces selected officer voice-line collections with authored asset paths.
+    /// </summary>
+    [PersistableObject(Name = "SetOfficerVoiceSet")]
+    public sealed class SetOfficerVoiceSetAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        public List<string> PersonnelArrivedVoicePaths { get; set; } = new List<string>();
+        public List<string> MissionAbortVoicePaths { get; set; } = new List<string>();
+        public List<string> ReleasedVoicePaths { get; set; } = new List<string>();
+        public List<string> RecoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> EnemyDetectedVoicePaths { get; set; } = new List<string>();
+        public List<string> ForceGrowthVoicePaths { get; set; } = new List<string>();
+        public List<string> TraitorDiscoveredVoicePaths { get; set; } = new List<string>();
+        public List<string> RescueAttemptVoicePaths { get; set; } = new List<string>();
+
+        /// <inheritdoc />
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"SetOfficerVoiceSet could not resolve officer '{OfficerInstanceID}'."
+                );
+
+            ReplaceWhenAuthored(PersonnelArrivedVoicePaths, officer.PersonnelArrivedVoicePaths);
+            ReplaceWhenAuthored(MissionAbortVoicePaths, officer.MissionAbortVoicePaths);
+            ReplaceWhenAuthored(ReleasedVoicePaths, officer.ReleasedVoicePaths);
+            ReplaceWhenAuthored(RecoveredVoicePaths, officer.RecoveredVoicePaths);
+            ReplaceWhenAuthored(EnemyDetectedVoicePaths, officer.EnemyDetectedVoicePaths);
+            ReplaceWhenAuthored(ForceGrowthVoicePaths, officer.ForceGrowthVoicePaths);
+            ReplaceWhenAuthored(TraitorDiscoveredVoicePaths, officer.TraitorDiscoveredVoicePaths);
+            ReplaceWhenAuthored(RescueAttemptVoicePaths, officer.RescueAttemptVoicePaths);
+            return new List<GameResult>();
+        }
+
+        private static void ReplaceWhenAuthored(List<string> authored, List<string> destination)
+        {
+            if (authored == null || authored.Count == 0)
+                return;
+            destination.Clear();
+            destination.AddRange(authored);
         }
     }
 
@@ -1255,6 +1317,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "RequestMovement")]
     public class RequestMovementAction : GameAction
     {
+        [PersistableAttribute]
         public string UnitInstanceID { get; set; }
         public string DestinationInstanceID { get; set; }
 
@@ -1313,8 +1376,10 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "SetStatus")]
     public sealed class SetStatusAction : GameAction
     {
+        [PersistableAttribute]
         public string UnitInstanceID { get; set; }
         public VoidStatus Status { get; set; }
+        public string DisplayText { get; set; }
 
         public override List<GameResult> Execute(GameRoot game)
         {
@@ -1323,32 +1388,7 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"SetStatus could not resolve unit '{UnitInstanceID}'."
                 );
-            game.SetVoidStatus(unit, Status);
-            return new List<GameResult>();
-        }
-    }
-
-    /// <summary>
-    /// Schedules another global game event relative to the current tick.
-    /// </summary>
-    [PersistableObject(Name = "ScheduleEvent")]
-    public sealed class ScheduleEventAction : GameAction
-    {
-        public string EventInstanceID { get; set; }
-        public int DelayTicks { get; set; }
-
-        public override List<GameResult> Execute(GameRoot game)
-        {
-            if (!game.EventPool.Any(gameEvent => gameEvent.InstanceID == EventInstanceID))
-                throw new InvalidOperationException(
-                    $"ScheduleEvent could not resolve event '{EventInstanceID}'."
-                );
-            if (DelayTicks < 0)
-                throw new InvalidOperationException("ScheduleEvent delay cannot be negative.");
-
-            GameEventState state = game.GetEventState(EventInstanceID);
-            state.IsInitialized = true;
-            state.NextEligibleTick = checked(game.CurrentTick + DelayTicks);
+            game.SetVoidStatus(unit, Status, DisplayText);
             return new List<GameResult>();
         }
     }
@@ -1359,6 +1399,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "AddForceExperience")]
     public sealed class AddForceExperienceAction : GameAction
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
         public int PercentOfCurrentRank { get; set; }
 
@@ -1399,6 +1440,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ReturnFromVoid")]
     public sealed class ReturnFromVoidAction : GameAction
     {
+        [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
         public override List<GameResult> Execute(GameRoot game)
@@ -1414,41 +1456,36 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Starts a persistent, timed story capture through the authoritative mission system.
+    /// Starts a mission definition with explicit semantic unit roles.
     /// </summary>
-    [PersistableObject(Name = "StartStoryCapture")]
-    public sealed class StartStoryCaptureAction : GameAction
+    [PersistableObject(Name = "StartMission")]
+    public sealed class StartMissionAction : GameAction
     {
-        public string TargetOfficerInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public string CaptorFactionInstanceID { get; set; }
-        public bool CanEscape { get; set; }
-        public int AttackRating { get; set; }
-        public OfficerRating ResistanceRating { get; set; } = OfficerRating.Combat;
-        public string ProbabilityTableKey { get; set; } = AbductionMission.MissionTypeID;
-        public string DisplayName { get; set; }
+        [PersistableAttribute]
+        public string MissionDefinitionID { get; set; }
 
-        /// <inheritdoc />
+        public List<MissionRoleAssignment> Roles { get; set; } = new List<MissionRoleAssignment>();
+
         public override List<GameResult> Execute(GameRoot game)
         {
-            Officer target = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-            if (target == null)
-                throw new InvalidOperationException(
-                    $"StartStoryCapture could not resolve target officer '{TargetOfficerInstanceID}'."
-                );
+            foreach (MissionRoleAssignment role in Roles)
+            {
+                if (game.GetSceneNodeByInstanceID<ISceneNode>(role.UnitInstanceID) == null)
+                    throw new InvalidOperationException(
+                        $"StartMission could not resolve role '{role.Name}' unit '{role.UnitInstanceID}'."
+                    );
+            }
 
             return new List<GameResult>
             {
-                new StoryCaptureRequestedResult
+                new CustomMissionRequestedResult
                 {
-                    Target = target,
-                    DurationTicks = DurationTicks,
-                    CaptorFactionInstanceID = CaptorFactionInstanceID,
-                    CanEscape = CanEscape,
-                    AttackRating = AttackRating,
-                    ResistanceRating = ResistanceRating,
-                    ProbabilityTableKey = ProbabilityTableKey,
-                    DisplayName = DisplayName,
+                    MissionDefinitionID = MissionDefinitionID,
+                    Roles = Roles.ConvertAll(role => new MissionRoleAssignment
+                    {
+                        Name = role.Name,
+                        UnitInstanceID = role.UnitInstanceID,
+                    }),
                     Tick = game.CurrentTick,
                 },
             };
@@ -1461,6 +1498,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "BountyAttack")]
     public sealed class BountyAttackAction : GameAction
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
         /// <inheritdoc />
@@ -1480,188 +1518,12 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Starts independent rescue missions for all available content-authored rescuers.
-    /// </summary>
-    [PersistableObject(Name = "StartStoryRescue")]
-    public sealed class StartStoryRescueAction : GameAction
-    {
-        public string CaptiveOfficerInstanceID { get; set; }
-        public List<string> RescuerOfficerInstanceIDs { get; set; } = new List<string>();
-        public int DurationTicks { get; set; }
-        public int DurationRandomTicks { get; set; }
-        public int RatingDivisor { get; set; } = 1;
-        public int SuccessCombatBonus { get; set; }
-        public int SuccessEspionageBonus { get; set; }
-        public bool CaptureRescuerOnFailure { get; set; }
-        public bool FailedRescuerCanEscape { get; set; }
-        public string DisplayName { get; set; }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game)
-        {
-            Officer captive = game.GetSceneNodeByInstanceID<Officer>(CaptiveOfficerInstanceID);
-            if (captive == null)
-                throw new InvalidOperationException(
-                    $"StartStoryRescue could not resolve captive officer '{CaptiveOfficerInstanceID}'."
-                );
-
-            List<Officer> rescuers = new List<Officer>();
-            foreach (string rescuerId in RescuerOfficerInstanceIDs)
-            {
-                Officer rescuer = game.GetSceneNodeByInstanceID<Officer>(rescuerId);
-                if (rescuer == null)
-                    throw new InvalidOperationException(
-                        $"StartStoryRescue could not resolve rescuer officer '{rescuerId}'."
-                    );
-                rescuers.Add(rescuer);
-            }
-
-            return new List<GameResult>
-            {
-                new StoryRescueRequestedResult
-                {
-                    Captive = captive,
-                    Rescuers = rescuers,
-                    DurationTicks = DurationTicks,
-                    DurationRandomTicks = DurationRandomTicks,
-                    RatingDivisor = RatingDivisor,
-                    SuccessCombatBonus = SuccessCombatBonus,
-                    SuccessEspionageBonus = SuccessEspionageBonus,
-                    CaptureRescuerOnFailure = CaptureRescuerOnFailure,
-                    FailedRescuerCanEscape = FailedRescuerCanEscape,
-                    DisplayName = DisplayName,
-                    Tick = game.CurrentTick,
-                },
-            };
-        }
-    }
-
-    /// <summary>
-    /// Sends a content-selected collector to retrieve all matching prisoners at a story location.
-    /// </summary>
-    [PersistableObject(Name = "StartStoryPickup")]
-    public sealed class StartStoryPickupAction : GameAction
-    {
-        public string CollectorOfficerInstanceID { get; set; }
-        public string LocationOfficerInstanceID { get; set; }
-        public string CaptiveFactionInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public bool CaptivesCanEscapeAfterPickup { get; set; }
-        public string DisplayName { get; set; }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game)
-        {
-            Officer collector = game.GetSceneNodeByInstanceID<Officer>(CollectorOfficerInstanceID);
-            if (collector == null)
-                throw new InvalidOperationException(
-                    $"StartStoryPickup could not resolve collector officer '{CollectorOfficerInstanceID}'."
-                );
-
-            Officer locationOfficer = game.GetSceneNodeByInstanceID<Officer>(
-                LocationOfficerInstanceID
-            );
-            Planet location = locationOfficer?.GetParentOfType<Planet>();
-            if (location == null)
-                throw new InvalidOperationException(
-                    $"StartStoryPickup could not resolve a planet for officer '{LocationOfficerInstanceID}'."
-                );
-
-            return new List<GameResult>
-            {
-                new OfficerPickupResult
-                {
-                    Officer = collector,
-                    InProgress = true,
-                    Tick = game.CurrentTick,
-                },
-                new StoryPickupRequestedResult
-                {
-                    Collector = collector,
-                    Location = location,
-                    CaptiveFactionInstanceID = CaptiveFactionInstanceID,
-                    DurationTicks = DurationTicks,
-                    CaptivesCanEscapeAfterPickup = CaptivesCanEscapeAfterPickup,
-                    DisplayName = DisplayName,
-                    Tick = game.CurrentTick,
-                },
-            };
-        }
-    }
-
-    /// <summary>
-    /// Starts the persisted, two-leg journey that culminates in the scripted final battle.
-    /// </summary>
-    [PersistableObject(Name = "StartStoryFinalBattle")]
-    public sealed class StartStoryFinalBattleAction : GameAction
-    {
-        public string LukeOfficerInstanceID { get; set; }
-        public string VaderOfficerInstanceID { get; set; }
-        public string PalpatineOfficerInstanceID { get; set; }
-        public string CaptorFactionInstanceID { get; set; }
-        public int DurationTicks { get; set; }
-        public int VictoryForceRank { get; set; }
-        public int MinimumFailureInjury { get; set; }
-        public int MaximumFailureInjury { get; set; }
-        public bool CaptivesCanEscapeOnVictory { get; set; }
-        public string DisplayName { get; set; }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game)
-        {
-            Officer luke = ResolveOfficer(
-                game,
-                LukeOfficerInstanceID,
-                nameof(LukeOfficerInstanceID)
-            );
-            Officer vader = ResolveOfficer(
-                game,
-                VaderOfficerInstanceID,
-                nameof(VaderOfficerInstanceID)
-            );
-            Officer palpatine = ResolveOfficer(
-                game,
-                PalpatineOfficerInstanceID,
-                nameof(PalpatineOfficerInstanceID)
-            );
-
-            return new List<GameResult>
-            {
-                new StoryFinalBattleRequestedResult
-                {
-                    Luke = luke,
-                    Vader = vader,
-                    Palpatine = palpatine,
-                    CaptorFactionInstanceID = CaptorFactionInstanceID,
-                    DurationTicks = DurationTicks,
-                    VictoryForceRank = VictoryForceRank,
-                    MinimumFailureInjury = MinimumFailureInjury,
-                    MaximumFailureInjury = MaximumFailureInjury,
-                    CaptivesCanEscapeOnVictory = CaptivesCanEscapeOnVictory,
-                    DisplayName = DisplayName,
-                    Tick = game.CurrentTick,
-                },
-            };
-        }
-
-        /// <summary>
-        /// Resolves a required officer reference for a story action.
-        /// </summary>
-        private static Officer ResolveOfficer(GameRoot game, string instanceId, string memberName)
-        {
-            return game.GetSceneNodeByInstanceID<Officer>(instanceId)
-                ?? throw new InvalidOperationException(
-                    $"StartStoryFinalBattle could not resolve {memberName} '{instanceId}'."
-                );
-        }
-    }
-
-    /// <summary>
     /// Reveals an officer's authored Force potential and initializes its starting value.
     /// </summary>
     [PersistableObject(Name = "RevealOfficerForcePotential")]
     public sealed class RevealOfficerForcePotentialAction : GameAction
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
         public bool SuppressRankChangeMessage { get; set; } = true;
 
@@ -1722,6 +1584,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IncreaseOfficerForce")]
     public class IncreaseOfficerForceAction : GameAction
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
         public string ReferenceOfficerInstanceID { get; set; }
         public int MinimumIncrease { get; set; }
@@ -1781,6 +1644,7 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "ApplyOfficerInjury")]
     public class ApplyOfficerInjuryAction : GameAction
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
         public int MinimumInjury { get; set; }
         public int MaximumInjury { get; set; }

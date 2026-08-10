@@ -8,6 +8,16 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Messages
 {
     /// <summary>
+    /// Selects either a themed message background key or an explicit content path.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MessageBackgroundImage
+    {
+        public string Key { get; set; }
+        public string Path { get; set; }
+    }
+
+    /// <summary>
     /// Selects the game result category that can produce a message.
     /// </summary>
     public enum MessageResultType
@@ -148,14 +158,13 @@ namespace Rebellion.Game.Messages
         public PlanetStatType PlanetStat { get; set; }
         public bool HasDestroyedObjects { get; set; }
         public bool PlanetDestroyed { get; set; }
-        public string TitleTemplate { get; set; }
-        public string BodyTemplate { get; set; }
+        public string Subject { get; set; }
+        public string Body { get; set; }
         public string DetailListHeaderTemplate { get; set; }
         public string DetailListItemTemplate { get; set; }
         public SpaceBattleNarrativeTemplates SpaceBattleNarrative { get; set; }
         public bool ShowOfficerOverlay { get; set; }
-        public string DetailImageKey { get; set; }
-        public string ImagePath { get; set; }
+        public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();
         public string VoicePath { get; set; }

@@ -350,7 +350,7 @@ internal static class MessagesWindowProjector
         Message message = messages[selectedIndex];
         string imagePath = !string.IsNullOrEmpty(message.DisplayImagePath)
             ? message.DisplayImagePath
-            : theme?.GetDetailImagePath(GetDetailImageKey(message));
+            : theme?.GetDetailImagePath(GetBackgroundImageKey(message));
         return new MessagesDetailPanelRenderData(
             message.InstanceID,
             GetHeader(message),
@@ -368,10 +368,10 @@ internal static class MessagesWindowProjector
     /// </summary>
     /// <param name="message">The source message.</param>
     /// <returns>The explicit key or the category default key.</returns>
-    private static string GetDetailImageKey(Message message)
+    private static string GetBackgroundImageKey(Message message)
     {
-        if (!string.IsNullOrEmpty(message?.DetailImageKey))
-            return message.DetailImageKey;
+        if (!string.IsNullOrEmpty(message?.BackgroundImageKey))
+            return message.BackgroundImageKey;
 
         return message?.Type == MessageType.Advice ? "advice" : null;
     }

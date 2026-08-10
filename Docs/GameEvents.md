@@ -70,13 +70,12 @@ execution.
 `Random` selects an inclusive delay in the authored range. A repeatable event rolls a new delay
 after every successful execution. All event randomness uses the saved simulation random stream.
 
-`ScheduleEvent` can arm another pending event relative to the current tick:
+`After` schedules an event relative to the successful execution of another event:
 
 ```xml
-<ScheduleEvent>
-  <EventInstanceID>MOD_FOLLOW_UP</EventInstanceID>
-  <DelayTicks>20</DelayTicks>
-</ScheduleEvent>
+<Schedule>
+  <After EventInstanceID="MOD_PREDECESSOR" DelayTicks="20"/>
+</Schedule>
 ```
 
 ## Result-triggered events
@@ -117,9 +116,9 @@ Stable core triggers are:
 - `core:mission.completed`
 - `core:officer.capture-changed`
 - `core:officer.encountered`
-- `core:story-capture.resolved`
-- `core:story-final-battle.completed`
-- `core:story-pickup.completed`
+- `core:officer.capture-attempted`
+- `core:force-confrontation.completed`
+- `core:prisoner-pickup.completed`
 - `core:unit.arrived`
 
 `SuppressTriggerMessage` suppresses the automatic message for the exact activating result.
@@ -135,7 +134,7 @@ Sibling conditions are an implicit AND. Logical groups contain their own `Condit
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
   <Not>
     <Conditionals>
-      <IsOnMission Value="LEIA_ORGANA"/>
+      <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
     </Conditionals>
   </Not>
 </Conditionals>
@@ -148,8 +147,8 @@ General conditions include `And`, `Or`, `Not`, `Xor`, `AreOnSamePlanet`,
 `AreOnOpposingFactions`, `IsOnMission`, `IsMovable`, `AreOnPlanet`, `TickCount`,
 `IsEventComplete`, `EventVariable`, `IsAtLocation`, and `IsOwned`. Result-triggered events can also
 use `OfficerEncounterParticipants`, `OfficerPairArrival`, `UnitArrival`, `OfficerCaptureState`,
-`ResultSourceEvent`, `StoryCaptureOutcome`, `StoryPickupCollector`, and
-`StoryFinalBattleOutcome`. Officer checks include `OfficerState`, `OfficerCaptor`, and
+`ResultSourceEvent`, `OfficerCaptureOutcome`, `PrisonerPickupCollector`, and
+`ForceConfrontationOutcome`. Officer checks include `OfficerState`, `OfficerCaptor`, and
 `OfficerForceRank`.
 
 ## Planet scopes and targets
@@ -188,19 +187,41 @@ actions share the selected planet for the complete execution.
 Actions execute in authored order. Later actions observe state and results produced earlier in the
 same execution. Available actions are grouped below:
 
-- Flow: `Conditional`, `Chance`, `RandomChoice`, `RandomOutcome`, `TriggerEvent`, and
-  `ScheduleEvent`.
+- Flow: `Conditional`, `Chance`, `RandomChoice`, `RandomOutcome`, and `TriggerEvent`.
 - State: `SetEventVariable`, `RequestMovement`, `AddToVoid`, `SetStatus`, `ReturnFromVoid`,
-  `UpdateOfficerPresentation`, `RevealOfficerForcePotential`, `AddForceExperience`,
+  `SetOfficerImages`, `SetOfficerVoiceSet`, `RevealOfficerForcePotential`, `AddForceExperience`,
   `IncreaseOfficerForce`, and `ApplyOfficerInjury`.
 - Planet incidents: `InformantIntelligence`, `ChangeResources`, `ReduceResources`, and
   `DestroyUnits`.
-- Encounters and story sequences: `TriggerDuel`, `ReportForceDetection`, `StartStoryCapture`,
-  `BountyAttack`, `StartStoryRescue`, `StartStoryPickup`, and `StartStoryFinalBattle`.
+- Encounters and missions: `TriggerDuel`, `ReportForceDetection`, `BountyAttack`, and
+  `StartMission`.
 - Presentation: `AddMessage`.
 
 The schema is the authoritative list of fields and allowed nesting for each action. Prefer small,
 composable actions over embedding unrelated state changes in one action.
+
+## Definition-backed missions
+
+Reusable event missions live in the XML file referenced by `MissionDefinitionsPath` in
+`pack.xml`. A mission definition owns its duration, cancellation policy, participant roles, and
+resolution rules. Events start one by binding concrete unit instances to those semantic roles:
+
+```xml
+<StartMission MissionDefinitionID="MOD_OFFICER_CAPTURE">
+  <Roles>
+    <Role Name="Target" UnitInstanceID="HAN_SOLO"/>
+  </Roles>
+</StartMission>
+```
+
+The standard pack defines officer capture, officer rescue, prisoner pickup, and the two-stage
+final confrontation in `Shared/Data/mission-definitions.xml`. Mission instances persist only the
+definition ID and role bindings, then reconnect to the pack definition after loading. This keeps
+event chains small while preserving normal mission travel, timing, completion, and save behavior.
+
+Player-facing message templates live separately in the XML file referenced by
+`MessageDefinitionsPath`. They use `Subject` and `Body`; an optional `BackgroundImage` contains
+exactly one `Key` or `Path`.
 
 ## Recurring planet incident
 

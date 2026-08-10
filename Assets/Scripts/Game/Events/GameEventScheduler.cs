@@ -12,6 +12,7 @@ namespace Rebellion.Game.Events
         public AtTick At { get; set; }
         public EveryTicks Every { get; set; }
         public RandomTickRange Random { get; set; }
+        public AfterEvent After { get; set; }
 
         /// <summary>
         /// Gets the inclusive delay range for an event's first activation.
@@ -33,6 +34,12 @@ namespace Rebellion.Game.Events
                 return;
             }
 
+            if (After != null)
+            {
+                minimum = maximum = After.DelayTicks;
+                return;
+            }
+
             Random.GetRange(out minimum, out maximum);
         }
 
@@ -44,8 +51,8 @@ namespace Rebellion.Game.Events
         public void GetRepeatRange(out int minimum, out int maximum)
         {
             EnsureSingleMode();
-            if (At != null)
-                throw new InvalidOperationException("An At schedule cannot repeat.");
+            if (At != null || After != null)
+                throw new InvalidOperationException("At and After schedules cannot repeat.");
 
             if (Every != null)
             {
@@ -68,12 +75,28 @@ namespace Rebellion.Game.Events
         private void EnsureSingleMode()
         {
             int configuredModes =
-                (At == null ? 0 : 1) + (Every == null ? 0 : 1) + (Random == null ? 0 : 1);
+                (At == null ? 0 : 1)
+                + (Every == null ? 0 : 1)
+                + (Random == null ? 0 : 1)
+                + (After == null ? 0 : 1);
             if (configuredModes != 1)
                 throw new InvalidOperationException(
-                    "Schedule requires exactly one of At, Every, or Random."
+                    "Schedule requires exactly one of At, Every, Random, or After."
                 );
         }
+    }
+
+    /// <summary>
+    /// Schedules a one-shot event relative to the most recent execution of another event.
+    /// </summary>
+    [PersistableObject]
+    public sealed class AfterEvent
+    {
+        [PersistableAttribute]
+        public string EventInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public int DelayTicks { get; set; }
     }
 
     /// <summary>

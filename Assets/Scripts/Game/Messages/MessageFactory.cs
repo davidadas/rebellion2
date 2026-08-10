@@ -964,10 +964,13 @@ namespace Rebellion.Game.Messages
                 MessageDefinition definition = new MessageDefinition
                 {
                     MessageType = result.MessageType,
-                    TitleTemplate = result.TitleTemplate,
-                    BodyTemplate = result.BodyTemplate,
-                    DetailImageKey = result.DetailImageKey,
-                    ImagePath = result.ImagePath,
+                    Subject = result.TitleTemplate,
+                    Body = result.BodyTemplate,
+                    BackgroundImage = new MessageBackgroundImage
+                    {
+                        Key = result.BackgroundImageKey,
+                        Path = result.BackgroundImagePath,
+                    },
                     VoicePath = result.VoicePath,
                 };
                 Message message = _templateBuilder.Build(

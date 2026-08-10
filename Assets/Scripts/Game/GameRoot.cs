@@ -399,7 +399,8 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="node">The unit already retained by a void pool.</param>
         /// <param name="status">The reason the unit is outside active play.</param>
-        public void SetVoidStatus(ISceneNode node, VoidStatus status)
+        /// <param name="displayText">The optional player-facing status text.</param>
+        public void SetVoidStatus(ISceneNode node, VoidStatus status, string displayText = null)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
@@ -407,7 +408,11 @@ namespace Rebellion.Game
                 throw new InvalidOperationException(
                     $"{node.GetDisplayName()} is not in a void pool."
                 );
-            ((BaseSceneNode)node).VoidState = new VoidState { Status = status };
+            ((BaseSceneNode)node).VoidState = new VoidState
+            {
+                Status = status,
+                DisplayText = displayText,
+            };
         }
 
         /// <summary>

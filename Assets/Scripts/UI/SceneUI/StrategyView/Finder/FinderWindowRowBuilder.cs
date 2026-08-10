@@ -467,6 +467,13 @@ public sealed class FinderWindowRowBuilder
     /// <returns>The displayed status or an empty string.</returns>
     private static string GetPersonnelStatusText(ISceneNode personnel)
     {
+        if (personnel is BaseSceneNode { VoidState: not null } voidUnit)
+            return string.IsNullOrWhiteSpace(voidUnit.VoidState.DisplayText)
+                ? voidUnit.VoidState.Status == VoidStatus.OnMission
+                    ? "On Mission"
+                    : voidUnit.VoidState.Status.ToString()
+                : voidUnit.VoidState.DisplayText;
+
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)
             return "Enroute";
 

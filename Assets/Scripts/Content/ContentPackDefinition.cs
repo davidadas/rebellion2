@@ -48,6 +48,9 @@ public sealed class ContentPackDefinition
     public string MessageDefinitionsPath { get; set; }
 
     [XmlElement]
+    public string MissionDefinitionsPath { get; set; }
+
+    [XmlElement]
     public string EncyclopediaEntriesPath { get; set; }
 
     [XmlElement]

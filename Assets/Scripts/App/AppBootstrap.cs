@@ -51,8 +51,6 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentPreloadManifest _saveMenuApplicationPreload;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
-    private bool _isInitialized;
-    private bool _isInitializing;
 
     /// <summary>
     /// Ensures AppBootstrap exists. Creates minimal bootstrap if missing (for scene testing).
@@ -86,35 +84,15 @@ public sealed class AppBootstrap : MonoBehaviour
 
         DontDestroyOnLoad(gameObject);
 
-        EnsureRuntimeInitialized();
-    }
-
-    /// <summary>
-    /// Creates and connects the runtime services required by application-level systems.
-    /// </summary>
-    private void EnsureRuntimeInitialized()
-    {
-        if (_isInitialized)
-            return;
-        if (_isInitializing)
-            throw new InvalidOperationException(
-                "AppBootstrap runtime initialization is already in progress."
-            );
-
-        _isInitializing = true;
         try
         {
             InitializeRuntimeCore();
-            _isInitialized = true;
         }
         catch
         {
             ReleaseRuntimeServices();
+            Instance = null;
             throw;
-        }
-        finally
-        {
-            _isInitializing = false;
         }
     }
 
@@ -186,7 +164,6 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The shared main-menu preload task.</returns>
     internal Task InitializeMainMenuContentAsync()
     {
-        EnsureRuntimeInitialized();
         _mainMenuContentTask ??= PreloadMainMenuContentAsync();
         return _mainMenuContentTask;
     }
@@ -206,7 +183,6 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The shared save-menu preload task.</returns>
     internal Task InitializeSaveMenuContentAsync()
     {
-        EnsureRuntimeInitialized();
         _saveMenuContentTask ??= Task.WhenAll(
             _contentAssets.PreloadAsync(_saveMenuApplicationPreload),
             _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_saveMenuPreloadID))
@@ -220,7 +196,6 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>The shared strategy preload task.</returns>
     internal Task InitializeStrategyContentAsync()
     {
-        EnsureRuntimeInitialized();
         StartStrategyContentPreload();
         return _strategyContentTask;
     }
@@ -314,7 +289,6 @@ public sealed class AppBootstrap : MonoBehaviour
         _mainMenuContentTask = null;
         _saveMenuContentTask = null;
         _strategyContentTask = null;
-        _isInitialized = false;
     }
 
     /// <summary>

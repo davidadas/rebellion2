@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
@@ -230,15 +231,17 @@ namespace Rebellion.Tests.Util.Serialization
                     new TickCountConditional
                     {
                         InstanceID = "TICK_CONDITION",
-                        ConditionalValue = "30",
-                        ConditionalType = "GreaterThan",
+                        Ticks = 30,
+                        Comparison = EventVariableComparison.GreaterThan,
                     },
                 },
             };
 
             string serializedXml = SerializeToString(serializer, gameEvent);
 
-            Assert.IsTrue(serializedXml.Contains("<TickCount Value=\"30\" Type=\"GreaterThan\">"));
+            Assert.IsTrue(
+                serializedXml.Contains("<TickCount Comparison=\"GreaterThan\" Ticks=\"30\">")
+            );
             Assert.IsFalse(serializedXml.Contains("<TickCountConditional"));
         }
 
@@ -252,7 +255,7 @@ namespace Rebellion.Tests.Util.Serialization
   <InstanceID>EVENT_TEST</InstanceID>
   <IsRepeatable>false</IsRepeatable>
   <Conditionals>
-    <TickCount Value=""30"" Type=""GreaterThan"">
+    <TickCount Comparison=""GreaterThan"" Ticks=""30"">
       <InstanceID>TICK_CONDITION</InstanceID>
     </TickCount>
   </Conditionals>
@@ -264,8 +267,8 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(1, deserialized.Conditionals.Count);
             TickCountConditional conditional = deserialized.Conditionals[0] as TickCountConditional;
             Assert.IsNotNull(conditional);
-            Assert.AreEqual("30", conditional.ConditionalValue);
-            Assert.AreEqual("GreaterThan", conditional.ConditionalType);
+            Assert.AreEqual(30, conditional.Ticks);
+            Assert.AreEqual(EventVariableComparison.GreaterThan, conditional.Comparison);
         }
 
         [Test]
@@ -357,7 +360,7 @@ namespace Rebellion.Tests.Util.Serialization
                             {
                                 Key = "luke.stage",
                                 Comparison = EventVariableComparison.Equal,
-                                Value = 1,
+                                ExpectedValue = 1,
                             },
                         },
                         Actions = new List<GameAction>
@@ -366,7 +369,7 @@ namespace Rebellion.Tests.Util.Serialization
                             {
                                 Key = "luke.stage",
                                 Operation = EventVariableOperation.Add,
-                                Value = 1,
+                                Operand = 1,
                             },
                         },
                     },
@@ -386,48 +389,17 @@ namespace Rebellion.Tests.Util.Serialization
                         MaximumInjury = 100,
                     },
                     new BountyAttackAction { OfficerInstanceID = "HAN_SOLO" },
-                    new StartStoryCaptureAction
+                    new StartMissionAction
                     {
-                        TargetOfficerInstanceID = "HAN_SOLO",
-                        DurationTicks = 1,
-                        CanEscape = false,
-                        DisplayName = "Bounty Hunters",
-                    },
-                    new StartStoryRescueAction
-                    {
-                        CaptiveOfficerInstanceID = "HAN_SOLO",
-                        RescuerOfficerInstanceIDs = new List<string>
+                        MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
+                        Roles = new List<MissionRoleAssignment>
                         {
-                            "LUKE_SKYWALKER",
-                            "LEIA_ORGANA",
-                            "CHEWBACCA",
+                            new MissionRoleAssignment
+                            {
+                                Name = "Target",
+                                UnitInstanceID = "HAN_SOLO",
+                            },
                         },
-                        DurationTicks = 5,
-                        DurationRandomTicks = 10,
-                        RatingDivisor = 3,
-                        SuccessCombatBonus = 1,
-                        SuccessEspionageBonus = 1,
-                        CaptureRescuerOnFailure = true,
-                    },
-                    new StartStoryPickupAction
-                    {
-                        CollectorOfficerInstanceID = "DARTH_VADER",
-                        LocationOfficerInstanceID = "HAN_SOLO",
-                        CaptiveFactionInstanceID = "FNALL1",
-                        DurationTicks = 1,
-                        CaptivesCanEscapeAfterPickup = true,
-                    },
-                    new StartStoryFinalBattleAction
-                    {
-                        LukeOfficerInstanceID = "LUKE_SKYWALKER",
-                        VaderOfficerInstanceID = "DARTH_VADER",
-                        PalpatineOfficerInstanceID = "EMPEROR_PALPATINE",
-                        CaptorFactionInstanceID = "FNEMP1",
-                        DurationTicks = 1,
-                        VictoryForceRank = 100,
-                        MinimumFailureInjury = 1,
-                        MaximumFailureInjury = 200,
-                        CaptivesCanEscapeOnVictory = true,
                     },
                     new ReportForceDetectionAction
                     {
@@ -435,11 +407,19 @@ namespace Rebellion.Tests.Util.Serialization
                         MessageType = MessageType.Mission,
                         Title = "{subject} Detects Enemy",
                         Body = "{subject} detected {relatedSubject}",
-                        DetailImageKey = "mission_report",
-                        VoicePaths = new Dictionary<string, string>
+                        BackgroundImage = new MessageBackgroundImage { Key = "mission_report" },
+                        VoicePaths = new List<RecipientVoicePath>
                         {
-                            { "FNALL1", "Alliance/report" },
-                            { "FNEMP1", "Empire/report" },
+                            new RecipientVoicePath
+                            {
+                                RecipientFactionInstanceID = "FNALL1",
+                                Path = "Alliance/report",
+                            },
+                            new RecipientVoicePath
+                            {
+                                RecipientFactionInstanceID = "FNEMP1",
+                                Path = "Empire/report",
+                            },
                         },
                         AdvisorCue = AdvisorCue.SubjectReport,
                         ExcludedPairs = new List<OfficerPairReference>
@@ -457,7 +437,7 @@ namespace Rebellion.Tests.Util.Serialization
             string serializedXml = SerializeToString(serializer, gameEvent);
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
-            StringAssert.Contains("<RandomOutcome Value=\"0.75\">", serializedXml);
+            StringAssert.Contains("<RandomOutcome Probability=\"0.75\">", serializedXml);
             StringAssert.Contains("<AddMessage>", serializedXml);
             StringAssert.Contains("<AddToVoid UnitInstanceID=\"LUKE_SKYWALKER\"", serializedXml);
             RandomOutcomeAction random = deserialized.Actions[0] as RandomOutcomeAction;
@@ -501,42 +481,19 @@ namespace Rebellion.Tests.Util.Serialization
             BountyAttackAction bounty = deserialized.Actions[5] as BountyAttackAction;
             Assert.IsNotNull(bounty);
             Assert.AreEqual("HAN_SOLO", bounty.OfficerInstanceID);
-            StartStoryCaptureAction capture = deserialized.Actions[6] as StartStoryCaptureAction;
-            Assert.IsNotNull(capture);
-            Assert.AreEqual("HAN_SOLO", capture.TargetOfficerInstanceID);
-            Assert.AreEqual(1, capture.DurationTicks);
-            Assert.IsFalse(capture.CanEscape);
-            StartStoryRescueAction rescue = deserialized.Actions[7] as StartStoryRescueAction;
-            Assert.IsNotNull(rescue);
-            CollectionAssert.AreEqual(
-                new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" },
-                rescue.RescuerOfficerInstanceIDs
-            );
-            Assert.AreEqual(5, rescue.DurationTicks);
-            Assert.AreEqual(10, rescue.DurationRandomTicks);
-            Assert.AreEqual(3, rescue.RatingDivisor);
-            Assert.IsTrue(rescue.CaptureRescuerOnFailure);
-            StartStoryPickupAction pickup = deserialized.Actions[8] as StartStoryPickupAction;
-            Assert.IsNotNull(pickup);
-            Assert.AreEqual("DARTH_VADER", pickup.CollectorOfficerInstanceID);
-            Assert.AreEqual("HAN_SOLO", pickup.LocationOfficerInstanceID);
-            Assert.IsTrue(pickup.CaptivesCanEscapeAfterPickup);
-            StartStoryFinalBattleAction finalBattle =
-                deserialized.Actions[9] as StartStoryFinalBattleAction;
-            Assert.IsNotNull(finalBattle);
-            Assert.AreEqual("LUKE_SKYWALKER", finalBattle.LukeOfficerInstanceID);
-            Assert.AreEqual("DARTH_VADER", finalBattle.VaderOfficerInstanceID);
-            Assert.AreEqual("EMPEROR_PALPATINE", finalBattle.PalpatineOfficerInstanceID);
-            Assert.AreEqual(100, finalBattle.VictoryForceRank);
-            Assert.AreEqual(200, finalBattle.MaximumFailureInjury);
+            StartMissionAction startMission = deserialized.Actions[6] as StartMissionAction;
+            Assert.IsNotNull(startMission);
+            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", startMission.MissionDefinitionID);
+            Assert.AreEqual("Target", startMission.Roles.Single().Name);
+            Assert.AreEqual("HAN_SOLO", startMission.Roles.Single().UnitInstanceID);
             ReportForceDetectionAction forceDetection =
-                deserialized.Actions[10] as ReportForceDetectionAction;
+                deserialized.Actions[7] as ReportForceDetectionAction;
             Assert.IsNotNull(forceDetection);
             Assert.IsTrue(forceDetection.RequireForceEligible);
             Assert.AreEqual(MessageType.Mission, forceDetection.MessageType);
             Assert.AreEqual("{subject} Detects Enemy", forceDetection.Title);
-            Assert.AreEqual("Alliance/report", forceDetection.VoicePaths["FNALL1"]);
-            Assert.AreEqual("Empire/report", forceDetection.VoicePaths["FNEMP1"]);
+            Assert.AreEqual("Alliance/report", forceDetection.VoicePaths[0].Path);
+            Assert.AreEqual("Empire/report", forceDetection.VoicePaths[1].Path);
             Assert.AreEqual(AdvisorCue.SubjectReport, forceDetection.AdvisorCue);
             Assert.AreEqual(1, forceDetection.ExcludedPairs.Count);
             Assert.AreEqual(
@@ -586,22 +543,18 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_RoundTripStoryFinalBattleMission_PreservesStoryState()
+        public void Serialize_RoundTripCustomMission_PreservesDefinitionAndRoles()
         {
-            GameSerializer serializer = new GameSerializer(typeof(StoryFinalBattleMission));
-            StoryFinalBattleMission mission = new StoryFinalBattleMission
+            GameSerializer serializer = new GameSerializer(typeof(CustomMission));
+            CustomMission mission = new CustomMission
             {
                 InstanceID = "final-battle-mission",
-                Phase = StoryFinalBattlePhase.EscortToPalpatine,
-                LukeOfficerInstanceID = "luke",
-                VaderOfficerInstanceID = "vader",
-                PalpatineOfficerInstanceID = "palpatine",
-                CaptorFactionInstanceID = "empire",
-                DurationTicks = 3,
-                VictoryForceRank = 100,
-                MinimumFailureInjury = 1,
-                MaximumFailureInjury = 200,
-                CaptivesCanEscapeOnVictory = true,
+                MissionDefinitionID = "ESCORT_LUKE_TO_FINAL_BATTLE",
+                Roles = new List<MissionRoleAssignment>
+                {
+                    new MissionRoleAssignment { Name = "Subject", UnitInstanceID = "luke" },
+                    new MissionRoleAssignment { Name = "Opponent", UnitInstanceID = "vader" },
+                },
                 SourceEventInstanceID = "FINAL_BATTLE",
                 MaxProgress = 3,
                 CurrentProgress = 2,
@@ -609,21 +562,14 @@ namespace Rebellion.Tests.Util.Serialization
             };
 
             string serializedXml = SerializeToString(serializer, mission);
-            StoryFinalBattleMission deserialized = (StoryFinalBattleMission)DeserializeFromString(
+            CustomMission deserialized = (CustomMission)DeserializeFromString(
                 serializer,
                 serializedXml
             );
 
-            Assert.AreEqual(StoryFinalBattlePhase.EscortToPalpatine, deserialized.Phase);
-            Assert.AreEqual("luke", deserialized.LukeOfficerInstanceID);
-            Assert.AreEqual("vader", deserialized.VaderOfficerInstanceID);
-            Assert.AreEqual("palpatine", deserialized.PalpatineOfficerInstanceID);
-            Assert.AreEqual("empire", deserialized.CaptorFactionInstanceID);
-            Assert.AreEqual(3, deserialized.DurationTicks);
-            Assert.AreEqual(100, deserialized.VictoryForceRank);
-            Assert.AreEqual(1, deserialized.MinimumFailureInjury);
-            Assert.AreEqual(200, deserialized.MaximumFailureInjury);
-            Assert.IsTrue(deserialized.CaptivesCanEscapeOnVictory);
+            Assert.AreEqual("ESCORT_LUKE_TO_FINAL_BATTLE", deserialized.MissionDefinitionID);
+            Assert.AreEqual("luke", deserialized.Roles[0].UnitInstanceID);
+            Assert.AreEqual("vader", deserialized.Roles[1].UnitInstanceID);
             Assert.AreEqual("FINAL_BATTLE", deserialized.SourceEventInstanceID);
             Assert.AreEqual(3, deserialized.MaxProgress);
             Assert.AreEqual(2, deserialized.CurrentProgress);

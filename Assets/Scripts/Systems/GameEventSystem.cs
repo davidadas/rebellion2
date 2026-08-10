@@ -135,7 +135,11 @@ namespace Rebellion.Systems
                 scopeTarget == null
                     ? _game.GetEventState(gameEvent.InstanceID)
                     : _game.GetEventState(gameEvent.InstanceID, scopeTarget.InstanceID);
-            InitializeSchedule(gameEvent, state, scopeTarget != null);
+            if (!InitializeSchedule(gameEvent, state, scopeTarget != null))
+            {
+                results = new List<GameResult>();
+                return false;
+            }
             if (_game.CurrentTick < state.NextEligibleTick)
             {
                 results = new List<GameResult>();
@@ -235,19 +239,36 @@ namespace Rebellion.Systems
         /// <param name="relativeToCurrentTick">
         /// Whether the first delay begins at the current tick instead of campaign tick zero.
         /// </param>
-        private void InitializeSchedule(
+        private bool InitializeSchedule(
             GameEvent gameEvent,
             GameEventState state,
             bool relativeToCurrentTick
         )
         {
             if (state.IsInitialized)
-                return;
+                return true;
+
+            AfterEvent after = gameEvent.Schedule?.After;
+            if (after != null)
+            {
+                if (string.IsNullOrWhiteSpace(after.EventInstanceID))
+                    throw new InvalidOperationException("After.EventInstanceID is required.");
+                if (after.DelayTicks < 0)
+                    throw new InvalidOperationException("After.DelayTicks cannot be negative.");
+                GameEventState predecessor = _game.GetEventState(after.EventInstanceID);
+                if (predecessor.ExecutionCount == 0)
+                    return false;
+
+                state.NextEligibleTick = checked(predecessor.LastExecutionTick + after.DelayTicks);
+                state.IsInitialized = true;
+                return true;
+            }
 
             GetInitialRange(gameEvent, out int minimum, out int maximum);
             state.NextEligibleTick =
                 (relativeToCurrentTick ? _game.CurrentTick : 0) + RollRange(minimum, maximum);
             state.IsInitialized = true;
+            return true;
         }
 
         /// <summary>

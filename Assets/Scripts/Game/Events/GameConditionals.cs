@@ -272,8 +272,8 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IsOnMission")]
     public class IsOnMissionConditional : GameConditional
     {
-        public IsOnMissionConditional()
-            : base() { }
+        [PersistableAttribute]
+        public string UnitInstanceID { get; set; }
 
         /// <summary>
         /// Checks whether the referenced unit is parented to a <see cref="Mission"/> node.
@@ -282,8 +282,7 @@ namespace Rebellion.Game.Events
         /// <returns>True if the unit exists and its direct parent is a mission; otherwise false.</returns>
         public override bool IsMet(GameRoot game)
         {
-            string instanceId = this.GetConditionalValue();
-            ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
+            ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
             // Check if the unit is on a mission.
             return sceneNode?.GetParent() is Mission;
         }
@@ -295,8 +294,8 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IsMovable")]
     public class IsMovableConditional : GameConditional
     {
-        public IsMovableConditional()
-            : base() { }
+        [PersistableAttribute]
+        public string UnitInstanceID { get; set; }
 
         /// <summary>
         /// Checks whether the referenced unit implements <see cref="IMovable"/> and is currently free to move.
@@ -305,8 +304,7 @@ namespace Rebellion.Game.Events
         /// <returns>True if the unit is resolvable, movable, and not currently in transit; otherwise false.</returns>
         public override bool IsMet(GameRoot game)
         {
-            string instanceId = this.GetConditionalValue();
-            ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(instanceId);
+            ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
 
             // Check if the ISceneNode implements IMovable and is movable.
             if (sceneNode is IMovable movable)
@@ -350,44 +348,29 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "TickCount")]
     public class TickCountConditional : GameConditional
     {
-        private enum ComparisonType
-        {
-            EqualTo,
-            GreaterThan,
-            LessThan,
-        }
+        [PersistableAttribute]
+        public EventVariableComparison Comparison { get; set; }
+
+        [PersistableAttribute]
+        public int Ticks { get; set; }
 
         /// <summary>
-        /// Creates an empty tick condition for content deserialization.
-        /// </summary>
-        public TickCountConditional()
-            : base() { }
-
-        /// <summary>
-        /// Compares the current tick against the stored target value using the comparison
-        /// type selected by <see cref="GameConditional.GetConditionalType"/>. Unknown types fall back to EqualTo.
+        /// Compares the current tick against the authored tick count.
         /// </summary>
         /// <param name="game">The game state providing the current tick.</param>
         /// <returns>True when the tick comparison holds; otherwise false.</returns>
         public override bool IsMet(GameRoot game)
         {
-            ComparisonType comparison = Enum.TryParse(
-                this.GetConditionalType(),
-                out ComparisonType result
-            )
-                ? result
-                : ComparisonType.EqualTo;
-
-            return comparison switch
+            return Comparison switch
             {
-                ComparisonType.EqualTo => game.CurrentTick
-                    == Convert.ToInt32(this.GetConditionalValue()),
-                ComparisonType.GreaterThan => game.CurrentTick
-                    > Convert.ToInt32(this.GetConditionalValue()),
-                ComparisonType.LessThan => game.CurrentTick
-                    < Convert.ToInt32(this.GetConditionalValue()),
+                EventVariableComparison.Equal => game.CurrentTick == Ticks,
+                EventVariableComparison.NotEqual => game.CurrentTick != Ticks,
+                EventVariableComparison.GreaterThan => game.CurrentTick > Ticks,
+                EventVariableComparison.GreaterThanOrEqual => game.CurrentTick >= Ticks,
+                EventVariableComparison.LessThan => game.CurrentTick < Ticks,
+                EventVariableComparison.LessThanOrEqual => game.CurrentTick <= Ticks,
                 _ => throw new InvalidOperationException(
-                    $"Invalid comparison type \"{comparison}\" for TickCountConditional."
+                    $"Invalid comparison type \"{Comparison}\" for TickCountConditional."
                 ),
             };
         }
@@ -399,8 +382,8 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "IsEventComplete")]
     public class IsEventCompleteConditional : GameConditional
     {
-        public IsEventCompleteConditional()
-            : base() { }
+        [PersistableAttribute]
+        public string EventInstanceID { get; set; }
 
         /// <summary>
         /// Checks whether the event with the configured instance ID has been marked complete.
@@ -409,10 +392,7 @@ namespace Rebellion.Game.Events
         /// <returns>True if the event is complete; otherwise false.</returns>
         public override bool IsMet(GameRoot game)
         {
-            string eventInstanceId = this.GetConditionalValue();
-
-            // Check if the event is complete.
-            return game.IsEventComplete(eventInstanceId);
+            return game.IsEventComplete(EventInstanceID);
         }
     }
 
@@ -424,7 +404,7 @@ namespace Rebellion.Game.Events
     {
         public string Key { get; set; }
         public EventVariableComparison Comparison { get; set; }
-        public int Value { get; set; }
+        public int ExpectedValue { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameRoot game)
@@ -432,12 +412,12 @@ namespace Rebellion.Game.Events
             int current = game.GetEventVariable(Key);
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
+                EventVariableComparison.Equal => current == ExpectedValue,
+                EventVariableComparison.NotEqual => current != ExpectedValue,
+                EventVariableComparison.GreaterThan => current > ExpectedValue,
+                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedValue,
+                EventVariableComparison.LessThan => current < ExpectedValue,
+                EventVariableComparison.LessThanOrEqual => current <= ExpectedValue,
                 _ => throw new InvalidOperationException(
                     $"Unsupported event variable comparison '{Comparison}'."
                 ),
@@ -600,8 +580,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Matches the target and outcome of a content-authored capture attempt.
     /// </summary>
-    [PersistableObject(Name = "StoryCaptureOutcome")]
-    public sealed class StoryCaptureOutcomeConditional : GameConditional
+    [PersistableObject(Name = "OfficerCaptureOutcome")]
+    public sealed class OfficerCaptureOutcomeConditional : GameConditional
     {
         public string TargetOfficerInstanceID { get; set; }
         public bool WasCaptured { get; set; }
@@ -612,7 +592,7 @@ namespace Rebellion.Game.Events
         /// <inheritdoc />
         public override bool IsMet(GameRoot game, GameResult triggerResult)
         {
-            return triggerResult is StoryCaptureResolvedResult capture
+            return triggerResult is OfficerCaptureAttemptResult capture
                 && capture.Target?.InstanceID == TargetOfficerInstanceID
                 && capture.WasCaptured == WasCaptured;
         }
@@ -621,8 +601,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Matches the collector that completed a story prisoner pickup.
     /// </summary>
-    [PersistableObject(Name = "StoryPickupCollector")]
-    public sealed class StoryPickupCollectorConditional : GameConditional
+    [PersistableObject(Name = "PrisonerPickupCollector")]
+    public sealed class PrisonerPickupCollectorConditional : GameConditional
     {
         public string CollectorOfficerInstanceID { get; set; }
 
@@ -632,7 +612,7 @@ namespace Rebellion.Game.Events
         /// <inheritdoc />
         public override bool IsMet(GameRoot game, GameResult triggerResult)
         {
-            return triggerResult is StoryPickupCompletedResult pickup
+            return triggerResult is PrisonerPickupCompletedResult pickup
                 && pickup.Collector?.InstanceID == CollectorOfficerInstanceID;
         }
     }
@@ -640,8 +620,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Matches the authored outcome of the scripted final battle.
     /// </summary>
-    [PersistableObject(Name = "StoryFinalBattleOutcome")]
-    public sealed class StoryFinalBattleOutcomeConditional : GameConditional
+    [PersistableObject(Name = "ForceConfrontationOutcome")]
+    public sealed class ForceConfrontationOutcomeConditional : GameConditional
     {
         public bool LukeVictorious { get; set; }
 
@@ -650,7 +630,7 @@ namespace Rebellion.Game.Events
 
         /// <inheritdoc />
         public override bool IsMet(GameRoot game, GameResult triggerResult) =>
-            triggerResult is StoryFinalBattleCompletedResult finalBattle
+            triggerResult is ForceConfrontationCompletedResult finalBattle
             && finalBattle.LukeVictorious == LukeVictorious;
     }
 
@@ -709,7 +689,7 @@ namespace Rebellion.Game.Events
     {
         public string OfficerInstanceID { get; set; }
         public EventVariableComparison Comparison { get; set; }
-        public int Value { get; set; }
+        public int ForceRank { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameRoot game)
@@ -721,12 +701,12 @@ namespace Rebellion.Game.Events
             int current = officer.ForceRank;
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
+                EventVariableComparison.Equal => current == ForceRank,
+                EventVariableComparison.NotEqual => current != ForceRank,
+                EventVariableComparison.GreaterThan => current > ForceRank,
+                EventVariableComparison.GreaterThanOrEqual => current >= ForceRank,
+                EventVariableComparison.LessThan => current < ForceRank,
+                EventVariableComparison.LessThanOrEqual => current <= ForceRank,
                 _ => throw new InvalidOperationException(
                     $"Unsupported Force-rank comparison '{Comparison}'."
                 ),

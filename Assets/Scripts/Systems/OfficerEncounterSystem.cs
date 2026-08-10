@@ -28,7 +28,7 @@ namespace Rebellion.Systems
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _random = random ?? throw new ArgumentNullException(nameof(random));
             _captureAvoidance = new ProbabilityTable(
-                _game.Config.OfficerEncounter.CaptureAvoidanceTable
+                _game.Config.DuelResolution.CaptureAvoidanceTable
             );
         }
 
@@ -83,7 +83,7 @@ namespace Rebellion.Systems
             Planet location = encountered.GetParentOfType<Planet>();
             int encounteredCombat = encountered.GetEffectiveRating(OfficerRating.Combat);
             int opposingCombat = opposing.GetEffectiveRating(OfficerRating.Combat);
-            GameConfig.OfficerEncounterConfig config = _game.Config.OfficerEncounter;
+            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
 
             int avoidanceChance = _captureAvoidance.Lookup(encounteredCombat - opposingCombat);
             bool avoidedCapture = RollPercent(avoidanceChance);
@@ -163,7 +163,7 @@ namespace Rebellion.Systems
             if (!RollPercent(chance))
                 return 0;
 
-            GameConfig.OfficerEncounterConfig config = _game.Config.OfficerEncounter;
+            GameConfig.DuelResolutionConfig config = _game.Config.DuelResolution;
             return config.InjuryBase
                 + _random.NextInt(0, chance + 1)
                 + _random.NextInt(0, config.InjurySecondaryRollMaximum + 1);
@@ -201,7 +201,7 @@ namespace Rebellion.Systems
             injured.ApplyInjury(injury, _game.Config.Recovery.MaxInjuryPoints);
             beneficiary.IncrementBaseRating(
                 OfficerRating.Combat,
-                _game.Config.OfficerEncounter.CombatReward
+                _game.Config.DuelResolution.CombatReward
             );
             reactions.Add(
                 Stamp(

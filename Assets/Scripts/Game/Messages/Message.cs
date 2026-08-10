@@ -83,7 +83,7 @@ namespace Rebellion.Game.Messages
         public string Title;
         public string Text;
         public string Body;
-        public string DetailImageKey;
+        public string BackgroundImageKey;
         public string OverlayImagePath;
         public string MessageVoicePath;
         public string OfficerVoicePath;

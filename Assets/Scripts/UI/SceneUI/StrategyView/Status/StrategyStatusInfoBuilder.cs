@@ -814,7 +814,11 @@ internal sealed class StrategyStatusInfoBuilder
     private static string GetOfficerStatusText(Officer officer)
     {
         if (officer.VoidState != null)
-            return officer.VoidState.Status.ToString();
+            return string.IsNullOrWhiteSpace(officer.VoidState.DisplayText)
+                ? officer.VoidState.Status == VoidStatus.OnMission
+                    ? "On Mission"
+                    : officer.VoidState.Status.ToString()
+                : officer.VoidState.DisplayText;
         if (officer.GetTransitMovement() != null)
             return "Enroute";
         if (officer.IsCaptured)

@@ -196,11 +196,19 @@ namespace Rebellion.Tests.Game.Events
             {
                 Title = "{subject} Detects Enemy",
                 Body = "{subject} detected {relatedSubject}.",
-                DetailImageKey = "mission_report",
-                VoicePaths = new Dictionary<string, string>
+                BackgroundImage = new MessageBackgroundImage { Key = "mission_report" },
+                VoicePaths = new List<RecipientVoicePath>
                 {
-                    { "rebels", "rebel-report" },
-                    { "empire", "empire-report" },
+                    new RecipientVoicePath
+                    {
+                        RecipientFactionInstanceID = "rebels",
+                        Path = "rebel-report",
+                    },
+                    new RecipientVoicePath
+                    {
+                        RecipientFactionInstanceID = "empire",
+                        Path = "empire-report",
+                    },
                 },
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
@@ -480,7 +488,7 @@ namespace Rebellion.Tests.Game.Events
                     {
                         Key = "luke.stage",
                         Comparison = EventVariableComparison.GreaterThanOrEqual,
-                        Value = 2,
+                        ExpectedValue = 2,
                     },
                 },
                 Actions = new List<GameAction>
@@ -489,12 +497,12 @@ namespace Rebellion.Tests.Game.Events
                     {
                         Key = "luke.stage",
                         Operation = EventVariableOperation.Add,
-                        Value = 1,
+                        Operand = 1,
                     },
                 },
                 ElseActions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "wrong", Value = 1 },
+                    new SetEventVariableAction { Key = "wrong", Operand = 1 },
                 },
             };
 
@@ -575,18 +583,17 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void UpdateOfficerPresentation_ConfiguredValues_UpdatesOfficer()
+        public void SetOfficerImages_ConfiguredValues_UpdatesOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
-            UpdateOfficerPresentationAction action = new UpdateOfficerPresentationAction
+            SetOfficerImagesAction action = new SetOfficerImagesAction
             {
                 OfficerInstanceID = luke.InstanceID,
                 DisplayImagePath = "jedi-display",
                 SmallDisplayImagePath = "jedi-small-display",
                 EncyclopediaImagePath = "jedi-encyclopedia",
-                UsesAdvancedVoiceLines = true,
             };
 
             Assert.IsEmpty(action.Execute(game));
@@ -594,38 +601,24 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("jedi-display", luke.DisplayImagePath);
             Assert.AreEqual("jedi-small-display", luke.SmallDisplayImagePath);
             Assert.AreEqual("jedi-encyclopedia", luke.EncyclopediaImagePath);
-            Assert.IsTrue(luke.UsesAdvancedVoiceLines);
         }
 
         [Test]
-        public void StartStoryCapture_ValidTarget_EmitsConfiguredRequest()
+        public void SetOfficerVoiceSet_ConfiguredValues_ReplacesSelectedVoicePools()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
-            Officer han = EntityFactory.CreateOfficer("han", "rebels");
-            game.AttachNode(han, rebelPlanet);
-            StartStoryCaptureAction action = new StartStoryCaptureAction
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.PersonnelArrivedVoicePaths.Add("old");
+            game.AttachNode(luke, rebelPlanet);
+            SetOfficerVoiceSetAction action = new SetOfficerVoiceSetAction
             {
-                TargetOfficerInstanceID = han.InstanceID,
-                DurationTicks = 1,
-                CanEscape = false,
-                AttackRating = 12,
-                ResistanceRating = OfficerRating.Combat,
-                ProbabilityTableKey = AbductionMission.MissionTypeID,
-                DisplayName = "Bounty Hunters",
+                OfficerInstanceID = luke.InstanceID,
+                PersonnelArrivedVoicePaths = new List<string> { "jedi-arrived" },
             };
 
-            StoryCaptureRequestedResult result = action
-                .Execute(game)
-                .OfType<StoryCaptureRequestedResult>()
-                .Single();
+            Assert.IsEmpty(action.Execute(game));
 
-            Assert.AreSame(han, result.Target);
-            Assert.AreEqual(12, result.AttackRating);
-            Assert.AreEqual(OfficerRating.Combat, result.ResistanceRating);
-            Assert.AreEqual(AbductionMission.MissionTypeID, result.ProbabilityTableKey);
-            Assert.AreEqual(1, result.DurationTicks);
-            Assert.IsFalse(result.CanEscape);
-            Assert.AreEqual("Bounty Hunters", result.DisplayName);
+            CollectionAssert.AreEqual(new[] { "jedi-arrived" }, luke.PersonnelArrivedVoicePaths);
         }
 
         [Test]
@@ -647,97 +640,28 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void StartStoryRescue_ValidReferences_ResolvesAuthoredOfficers()
+        public void StartMission_ValidRoles_EmitsDefinitionRequest()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(han, rebelPlanet);
-            game.AttachNode(luke, rebelPlanet);
-
-            StoryRescueRequestedResult result = new StartStoryRescueAction
+            StartMissionAction action = new StartMissionAction
             {
-                CaptiveOfficerInstanceID = han.InstanceID,
-                RescuerOfficerInstanceIDs = new List<string> { luke.InstanceID },
-                DurationTicks = 5,
-                DurationRandomTicks = 10,
-                RatingDivisor = 3,
-                SuccessCombatBonus = 1,
-                SuccessEspionageBonus = 1,
-                CaptureRescuerOnFailure = true,
-            }
+                MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
+                Roles = new List<MissionRoleAssignment>
+                {
+                    new MissionRoleAssignment { Name = "Target", UnitInstanceID = han.InstanceID },
+                },
+            };
+
+            CustomMissionRequestedResult result = action
                 .Execute(game)
-                .OfType<StoryRescueRequestedResult>()
+                .OfType<CustomMissionRequestedResult>()
                 .Single();
 
-            Assert.AreSame(han, result.Captive);
-            Assert.AreSame(luke, result.Rescuers.Single());
-            Assert.AreEqual(5, result.DurationTicks);
-            Assert.AreEqual(10, result.DurationRandomTicks);
-            Assert.AreEqual(3, result.RatingDivisor);
-            Assert.IsTrue(result.CaptureRescuerOnFailure);
-        }
-
-        [Test]
-        public void StartStoryPickup_ValidReferences_ResolvesCollectorAndPrisonerLocation()
-        {
-            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
-            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
-            Officer han = EntityFactory.CreateOfficer("han", "rebels");
-            game.AttachNode(vader, empirePlanet);
-            game.AttachNode(han, rebelPlanet);
-
-            List<GameResult> results = new StartStoryPickupAction
-            {
-                CollectorOfficerInstanceID = vader.InstanceID,
-                LocationOfficerInstanceID = han.InstanceID,
-                CaptiveFactionInstanceID = "rebels",
-                DurationTicks = 1,
-                CaptivesCanEscapeAfterPickup = true,
-            }.Execute(game);
-
-            StoryPickupRequestedResult request = results
-                .OfType<StoryPickupRequestedResult>()
-                .Single();
-            Assert.AreSame(vader, request.Collector);
-            Assert.AreSame(rebelPlanet, request.Location);
-            Assert.IsTrue(request.CaptivesCanEscapeAfterPickup);
-            Assert.IsTrue(results.OfType<OfficerPickupResult>().Single().InProgress);
-        }
-
-        [Test]
-        public void StartStoryFinalBattle_ValidReferences_ResolvesParticipantsAndRules()
-        {
-            GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            Officer vader = EntityFactory.CreateOfficer("vader", "empire");
-            Officer palpatine = EntityFactory.CreateOfficer("palpatine", "empire");
-            game.AttachNode(luke, rebelPlanet);
-            game.AttachNode(vader, empirePlanet);
-            game.AttachNode(palpatine, empirePlanet);
-
-            StoryFinalBattleRequestedResult request = new StartStoryFinalBattleAction
-            {
-                LukeOfficerInstanceID = luke.InstanceID,
-                VaderOfficerInstanceID = vader.InstanceID,
-                PalpatineOfficerInstanceID = palpatine.InstanceID,
-                CaptorFactionInstanceID = "empire",
-                DurationTicks = 1,
-                VictoryForceRank = 100,
-                MinimumFailureInjury = 1,
-                MaximumFailureInjury = 200,
-                CaptivesCanEscapeOnVictory = true,
-            }
-                .Execute(game)
-                .OfType<StoryFinalBattleRequestedResult>()
-                .Single();
-
-            Assert.AreSame(luke, request.Luke);
-            Assert.AreSame(vader, request.Vader);
-            Assert.AreSame(palpatine, request.Palpatine);
-            Assert.AreEqual(100, request.VictoryForceRank);
-            Assert.AreEqual(1, request.MinimumFailureInjury);
-            Assert.AreEqual(200, request.MaximumFailureInjury);
+            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", result.MissionDefinitionID);
+            Assert.AreEqual("Target", result.Roles.Single().Name);
+            Assert.AreEqual(han.InstanceID, result.Roles.Single().UnitInstanceID);
         }
 
         [Test]
@@ -963,8 +887,8 @@ namespace Rebellion.Tests.Game.Events
                 Probability = 1,
                 Actions = new List<GameAction>
                 {
-                    new SetEventVariableAction { Key = "first", Value = 1 },
-                    new SetEventVariableAction { Key = "second", Value = 2 },
+                    new SetEventVariableAction { Key = "first", Operand = 1 },
+                    new SetEventVariableAction { Key = "second", Operand = 2 },
                 },
             };
 
@@ -987,7 +911,7 @@ namespace Rebellion.Tests.Game.Events
                         Weight = 1,
                         Actions = new List<GameAction>
                         {
-                            new SetEventVariableAction { Key = "wrong", Value = 1 },
+                            new SetEventVariableAction { Key = "wrong", Operand = 1 },
                         },
                     },
                     new RandomChoice
@@ -995,8 +919,8 @@ namespace Rebellion.Tests.Game.Events
                         Weight = 3,
                         Actions = new List<GameAction>
                         {
-                            new SetEventVariableAction { Key = "first", Value = 1 },
-                            new SetEventVariableAction { Key = "second", Value = 2 },
+                            new SetEventVariableAction { Key = "first", Operand = 1 },
+                            new SetEventVariableAction { Key = "second", Operand = 2 },
                         },
                     },
                 },

@@ -55,7 +55,7 @@ public sealed class GameManager
 
     // Strategic Systems.
     private ResearchSystem _researchSystem;
-    private BetrayalSystem _betrayalSystem;
+    private OfficerLoyaltySystem _officerLoyaltySystem;
     private VictorySystem _victorySystem;
     private AISystem _aiSystem;
 
@@ -326,13 +326,14 @@ public sealed class GameManager
         );
         _uprisingSystem = new UprisingSystem(_game, _randomProvider, _planetaryControlSystem);
         _jediSystem = new JediSystem(_game, _randomProvider);
-        _betrayalSystem = new BetrayalSystem(_game, _randomProvider);
+        _officerLoyaltySystem = new OfficerLoyaltySystem(_game, _randomProvider);
         _missionSystem = new MissionSystem(
             _game,
             _randomProvider,
             _movementSystem,
             _uprisingSystem,
-            _betrayalSystem
+            new MissionDefectionSystem(_game),
+            _gameData.MissionDefinitions
         );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
         _bombardmentSystem = new BombardmentSystem(
@@ -373,16 +374,12 @@ public sealed class GameManager
         _resultProcessor.Subscribe<OfficerEncounterRequestedResult>(_officerEncounterSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
-        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_betrayalSystem);
+        _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
+        _resultProcessor.Subscribe<CustomMissionRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<HeadquartersDestroyedResult>(_victorySystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_planetaryControlSystem);
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);
-        _resultProcessor.Subscribe<StoryCaptureRequestedResult>(_missionSystem);
-        _resultProcessor.Subscribe<StoryRescueRequestedResult>(_missionSystem);
-        _resultProcessor.Subscribe<StoryPickupRequestedResult>(_missionSystem);
-        _resultProcessor.Subscribe<StoryFinalBattleRequestedResult>(_missionSystem);
-        _resultProcessor.Subscribe<StoryFinalBattleEscortRequestedResult>(_missionSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
         _resultProcessor.Subscribe<PlanetIntelligenceResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);

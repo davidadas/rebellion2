@@ -39,8 +39,8 @@ namespace Rebellion.Tests.Game.Messages
                         MessageType = MessageType.Advice,
                         TitleTemplate = "{subject} at {location}",
                         BodyTemplate = "{subject} confronts {relatedSubject} for {faction}",
-                        DetailImageKey = "mission_report",
-                        ImagePath = "Story/image",
+                        BackgroundImageKey = "mission_report",
+                        BackgroundImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
                         VoicePath = "Story/dialogue",
                         OfficerVoicePath = "Officers/luke/dialogue",
@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Luke Skywalker at Yavin", message.Title);
             Assert.AreEqual("Luke Skywalker confronts Darth Vader for Alliance", message.Body);
             Assert.AreEqual("Story/image", message.DisplayImagePath);
-            Assert.AreEqual("mission_report", message.DetailImageKey);
+            Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);
             Assert.AreEqual("Story/dialogue", message.MessageVoicePath);
             Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
@@ -414,7 +414,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Mission, message.Type);
             Assert.AreEqual("personnel:Yavin", message.Title);
             Assert.AreEqual("body:Luke Skywalker\nHan Solo", message.Body);
-            Assert.AreEqual("mission_report", message.DetailImageKey);
+            Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("luke-card", message.OverlayImagePath);
         }
 
@@ -775,7 +775,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Fleet, message.Type);
             Assert.AreEqual("repaired", message.Title);
             Assert.AreEqual("body:Corellian Corvette:Fleet 1", message.Body);
-            Assert.AreEqual("capital_ship_repaired", message.DetailImageKey);
+            Assert.AreEqual("capital_ship_repaired", message.BackgroundImageKey);
             Assert.IsNull(message.DisplayImagePath);
             Assert.IsNull(message.OverlayImagePath);
         }
@@ -887,7 +887,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageType.Fleet, message.Type);
             Assert.AreEqual("full", message.Title);
             Assert.AreEqual("body:X-Wing Squadron:Carrier", message.Body);
-            Assert.AreEqual("starfighter_repaired", message.DetailImageKey);
+            Assert.AreEqual("starfighter_repaired", message.BackgroundImageKey);
             Assert.IsNull(message.DisplayImagePath);
             Assert.IsNull(message.OverlayImagePath);
         }
@@ -1909,7 +1909,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("mission_report", message.DetailImageKey);
+            Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
         }
 
@@ -1972,7 +1972,7 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("report:Trainer", message.Title);
             Assert.AreEqual("body:Trainer", message.Body);
-            Assert.AreEqual("mission_report", message.DetailImageKey);
+            Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("trainer-card", message.OverlayImagePath);
             Assert.AreEqual("trainer-success", message.OfficerVoicePath);
         }
@@ -3944,11 +3944,10 @@ namespace Rebellion.Tests.Game.Messages
                 MissionCompletionReason = missionCompletionReason,
                 BuildingType = buildingType,
                 ManufacturingType = manufacturingType,
-                TitleTemplate = titleTemplate,
-                BodyTemplate = bodyTemplate,
+                Subject = titleTemplate,
+                Body = bodyTemplate,
                 ShowOfficerOverlay = showOfficerOverlay,
-                DetailImageKey = imageKey,
-                ImagePath = imagePath,
+                BackgroundImage = new MessageBackgroundImage { Key = imageKey, Path = imagePath },
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),
                 VoicePath = voicePath,
                 VoicePaths = voicePaths ?? new Dictionary<string, string>(),

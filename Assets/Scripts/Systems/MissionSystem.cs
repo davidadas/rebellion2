@@ -19,18 +19,15 @@ namespace Rebellion.Systems
     /// </summary>
     public class MissionSystem
         : IGameResultHandler<PlanetUprisingStartedResult>,
-            IGameResultHandler<StoryCaptureRequestedResult>,
-            IGameResultHandler<StoryRescueRequestedResult>,
-            IGameResultHandler<StoryPickupRequestedResult>,
-            IGameResultHandler<StoryFinalBattleRequestedResult>,
-            IGameResultHandler<StoryFinalBattleEscortRequestedResult>
+            IGameResultHandler<CustomMissionRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementManager;
         private readonly UprisingSystem _uprisingSystem;
-        private readonly BetrayalSystem _betrayalSystem;
+        private readonly MissionDefectionSystem _defectionSystem;
         private readonly MissionFactory _missionFactory;
+        private readonly Dictionary<string, CustomMissionDefinition> _customMissionDefinitions;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -40,13 +37,15 @@ namespace Rebellion.Systems
         /// <param name="provider">The random number provider for mission resolution.</param>
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
-        /// <param name="betrayalSystem">The character betrayal resolver.</param>
+        /// <param name="defectionSystem">The mission participant defection resolver.</param>
+        /// <param name="customMissionDefinitions">The content-authored mission definitions.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movementManager,
             UprisingSystem uprisingSystem,
-            BetrayalSystem betrayalSystem = null
+            MissionDefectionSystem defectionSystem = null,
+            IEnumerable<CustomMissionDefinition> customMissionDefinitions = null
         )
         {
             _game = game;
@@ -54,8 +53,94 @@ namespace Rebellion.Systems
             _movementManager = movementManager;
             _uprisingSystem =
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
-            _betrayalSystem = betrayalSystem ?? new BetrayalSystem(game);
+            _defectionSystem = defectionSystem ?? new MissionDefectionSystem(game);
             _missionFactory = new MissionFactory(game);
+            _customMissionDefinitions = (
+                customMissionDefinitions ?? Array.Empty<CustomMissionDefinition>()
+            ).ToDictionary(definition => definition.InstanceID, StringComparer.Ordinal);
+        }
+
+        /// <summary>
+        /// Creates a persisted mission from a content definition and explicit role bindings.
+        /// </summary>
+        public List<GameResult> HandleResults(IReadOnlyList<CustomMissionRequestedResult> results)
+        {
+            if (results == null)
+                return new List<GameResult>();
+
+            foreach (CustomMissionRequestedResult result in results)
+            {
+                if (
+                    result == null
+                    || !_customMissionDefinitions.TryGetValue(
+                        result.MissionDefinitionID,
+                        out CustomMissionDefinition definition
+                    )
+                )
+                    continue;
+
+                CustomMission mission = new CustomMission(
+                    definition,
+                    result.Roles,
+                    result.SourceEventInstanceID,
+                    _game
+                );
+                Planet location = _game.GetSceneNodeByInstanceID<Planet>(
+                    mission.LocationInstanceID
+                );
+                if (location == null || !CanStartCustomMission(mission, definition))
+                    continue;
+
+                _game.AttachNode(mission, location);
+                BeginMission(mission);
+            }
+
+            return new List<GameResult>();
+        }
+
+        private bool CanStartCustomMission(
+            CustomMission mission,
+            CustomMissionDefinition definition
+        )
+        {
+            Officer allowedCaptive =
+                definition.Resolution == CustomMissionResolution.ForceConfrontation
+                && definition.Phase == CustomMissionPhase.EscortToDestination
+                    ? mission.GetRole<Officer>(_game, definition.SubjectRole)
+                    : null;
+            if (
+                mission
+                    .GetAllParticipants()
+                    .Any(participant =>
+                        participant is Officer { IsKilled: true }
+                        || (
+                            participant is Officer { IsCaptured: true }
+                            && participant != allowedCaptive
+                        )
+                        || (!participant.IsMovable() && participant != allowedCaptive)
+                        || participant.IsOnMission()
+                    )
+            )
+                return false;
+
+            if (definition.Resolution == CustomMissionResolution.OfficerCapture)
+            {
+                Officer target = mission.GetRole<Officer>(_game, definition.TargetRole);
+                return target is { IsCaptured: false, IsKilled: false };
+            }
+            if (definition.Resolution == CustomMissionResolution.OfficerRescue)
+                return mission.GetRole<Officer>(_game, definition.CaptiveRole)?.IsCaptured == true;
+            if (definition.Resolution == CustomMissionResolution.PrisonerPickup)
+                return true;
+            if (definition.Resolution == CustomMissionResolution.ForceConfrontation)
+            {
+                Officer subject = mission.GetRole<Officer>(_game, definition.SubjectRole);
+                Officer authority = mission.GetRole<Officer>(_game, definition.AuthorityRole);
+                return subject?.IsCaptured == true
+                    && subject.CaptorInstanceID == definition.CaptorFactionInstanceID
+                    && authority is { IsCaptured: false, IsKilled: false };
+            }
+            return false;
         }
 
         /// <summary>
@@ -99,233 +184,6 @@ namespace Rebellion.Systems
                 .Distinct();
             foreach (Planet planet in affectedPlanets)
                 missionResults.AddRange(AbortInvalidMissions(planet));
-
-            return missionResults;
-        }
-
-        /// <summary>
-        /// Creates content-authored capture missions without bypassing mission persistence or teardown.
-        /// </summary>
-        /// <param name="results">The capture requests to start.</param>
-        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<StoryCaptureRequestedResult> results)
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            foreach (StoryCaptureRequestedResult result in results)
-            {
-                Officer target = _game.GetSceneNodeByInstanceID<Officer>(
-                    result?.Target?.InstanceID
-                );
-                Planet location = target?.GetParentOfType<Planet>();
-                if (
-                    target == null
-                    || location == null
-                    || target.IsCaptured
-                    || target.IsKilled
-                    || !target.IsMovable()
-                    || target.IsOnMission()
-                )
-                    continue;
-
-                StoryCaptureMission mission = new StoryCaptureMission(
-                    target,
-                    result.DurationTicks,
-                    result.CaptorFactionInstanceID,
-                    result.CanEscape,
-                    result.AttackRating,
-                    result.ResistanceRating,
-                    result.ProbabilityTableKey,
-                    result.DisplayName,
-                    result.SourceEventInstanceID
-                );
-                _game.AttachNode(mission, location);
-                BeginMission(mission);
-            }
-
-            return missionResults;
-        }
-
-        /// <summary>
-        /// Creates one independent content-authored rescue mission per available rescuer.
-        /// </summary>
-        /// <param name="results">The rescue requests to start.</param>
-        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<StoryRescueRequestedResult> results)
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            foreach (StoryRescueRequestedResult result in results)
-            {
-                Officer captive = _game.GetSceneNodeByInstanceID<Officer>(
-                    result?.Captive?.InstanceID
-                );
-                Planet location = captive?.GetParentOfType<Planet>();
-                if (captive?.IsCaptured != true || location == null)
-                    continue;
-
-                foreach (Officer rescuerReference in result.Rescuers ?? new List<Officer>())
-                {
-                    Officer rescuer = _game.GetSceneNodeByInstanceID<Officer>(
-                        rescuerReference?.InstanceID
-                    );
-                    if (
-                        rescuer?.IsCaptured != false
-                        || rescuer?.IsKilled != false
-                        || rescuer?.IsMovable() != true
-                        || rescuer?.IsOnMission() != false
-                        || rescuer?.OwnerInstanceID != captive.OwnerInstanceID
-                    )
-                        continue;
-
-                    StoryRescueMission mission = new StoryRescueMission(
-                        captive,
-                        rescuer,
-                        result.DurationTicks,
-                        result.DurationRandomTicks,
-                        result.RatingDivisor,
-                        result.SuccessCombatBonus,
-                        result.SuccessEspionageBonus,
-                        result.CaptureRescuerOnFailure,
-                        result.FailedRescuerCanEscape,
-                        result.DisplayName,
-                        result.SourceEventInstanceID
-                    );
-                    _game.AttachNode(mission, location);
-                    BeginMission(mission);
-                }
-            }
-
-            return missionResults;
-        }
-
-        /// <summary>
-        /// Creates content-authored prisoner pickup missions for available collectors.
-        /// </summary>
-        /// <param name="results">The prisoner-pickup requests to start.</param>
-        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<StoryPickupRequestedResult> results)
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            foreach (StoryPickupRequestedResult result in results)
-            {
-                Officer collector = _game.GetSceneNodeByInstanceID<Officer>(
-                    result?.Collector?.InstanceID
-                );
-                Planet location = _game.GetSceneNodeByInstanceID<Planet>(
-                    result?.Location?.InstanceID
-                );
-                if (
-                    collector?.IsCaptured != false
-                    || collector?.IsKilled != false
-                    || collector?.IsMovable() != true
-                    || collector?.IsOnMission() != false
-                    || location == null
-                )
-                    continue;
-
-                StoryPickupMission mission = new StoryPickupMission(
-                    collector,
-                    location,
-                    result.CaptiveFactionInstanceID,
-                    result.DurationTicks,
-                    result.CaptivesCanEscapeAfterPickup,
-                    result.DisplayName,
-                    result.SourceEventInstanceID
-                );
-                _game.AttachNode(mission, location);
-                BeginMission(mission);
-            }
-
-            return missionResults;
-        }
-
-        /// <summary>
-        /// Starts Vader's journey to a captured Luke.
-        /// </summary>
-        /// <param name="results">The final-battle requests to start.</param>
-        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
-        public List<GameResult> HandleResults(
-            IReadOnlyList<StoryFinalBattleRequestedResult> results
-        ) => StartFinalBattleMissions(results, StoryFinalBattlePhase.GatherLuke);
-
-        /// <summary>
-        /// Starts Vader and Luke's escorted journey to Palpatine.
-        /// </summary>
-        /// <param name="results">The escort requests emitted by the first travel leg.</param>
-        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
-        public List<GameResult> HandleResults(
-            IReadOnlyList<StoryFinalBattleEscortRequestedResult> results
-        ) => StartFinalBattleMissions(results, StoryFinalBattlePhase.EscortToPalpatine);
-
-        /// <summary>
-        /// Starts one validated travel leg in the final-battle story chain.
-        /// </summary>
-        /// <typeparam name="T">The final-battle request result type.</typeparam>
-        /// <param name="results">The requests to validate.</param>
-        /// <param name="phase">The travel leg to create.</param>
-        /// <returns>No immediate results; accepted requests create persisted missions.</returns>
-        private List<GameResult> StartFinalBattleMissions<T>(
-            IReadOnlyList<T> results,
-            StoryFinalBattlePhase phase
-        )
-            where T : GameResult, IStoryFinalBattleRequest
-        {
-            List<GameResult> missionResults = new List<GameResult>();
-            if (results == null)
-                return missionResults;
-
-            foreach (T result in results)
-            {
-                Officer luke = _game.GetSceneNodeByInstanceID<Officer>(result?.Luke?.InstanceID);
-                Officer vader = _game.GetSceneNodeByInstanceID<Officer>(result?.Vader?.InstanceID);
-                Officer palpatine = _game.GetSceneNodeByInstanceID<Officer>(
-                    result?.Palpatine?.InstanceID
-                );
-                Planet location =
-                    phase == StoryFinalBattlePhase.GatherLuke
-                        ? luke?.GetParentOfType<Planet>()
-                        : palpatine?.GetParentOfType<Planet>();
-                if (
-                    luke?.IsCaptured != true
-                    || luke.CaptorInstanceID != result.CaptorFactionInstanceID
-                    || vader?.IsKilled != false
-                    || vader?.IsCaptured != false
-                    || vader?.IsMovable() != true
-                    || vader?.IsOnMission() != false
-                    || palpatine?.IsKilled != false
-                    || palpatine?.IsCaptured != false
-                    || palpatine?.IsMovable() != true
-                    || palpatine?.IsOnMission() != false
-                    || location == null
-                )
-                    continue;
-
-                StoryFinalBattleMission mission = new StoryFinalBattleMission(
-                    phase,
-                    luke,
-                    vader,
-                    palpatine,
-                    location,
-                    result.CaptorFactionInstanceID,
-                    result.DurationTicks,
-                    result.VictoryForceRank,
-                    result.MinimumFailureInjury,
-                    result.MaximumFailureInjury,
-                    result.CaptivesCanEscapeOnVictory,
-                    result.DisplayName,
-                    result.SourceEventInstanceID
-                );
-                _game.AttachNode(mission, location);
-                BeginMission(mission);
-            }
 
             return missionResults;
         }
@@ -654,10 +512,20 @@ namespace Rebellion.Systems
         {
             List<GameResult> results = new List<GameResult>();
 
-            if (mission is StoryFinalBattleMission finalBattle)
+            if (mission is CustomMission customMission)
             {
-                finalBattle.RefreshTravelTarget(_game);
-                MissionCompletionReason? storyAbortReason = finalBattle.GetAbortReason(_game);
+                customMission.SetDefinition(GetCustomMissionDefinition(customMission));
+                customMission.RefreshTrackedLocation(_game);
+            }
+
+            if (
+                mission is CustomMission
+                {
+                    Definition.Resolution: CustomMissionResolution.ForceConfrontation
+                } forceMission
+            )
+            {
+                MissionCompletionReason? storyAbortReason = forceMission.GetAbortReason(_game);
                 if (storyAbortReason.HasValue)
                 {
                     results.Add(
@@ -676,8 +544,13 @@ namespace Rebellion.Systems
             if (mission.IsWaitingForParticipants())
                 return results;
 
-            MissionCompletionReason? abortReason =
-                mission is StoryFinalBattleMission ? null : mission.GetAbortReason(_game);
+            MissionCompletionReason? abortReason = mission
+                is CustomMission
+                {
+                    Definition.Resolution: CustomMissionResolution.ForceConfrontation
+                }
+                ? null
+                : mission.GetAbortReason(_game);
             if (abortReason.HasValue)
             {
                 AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
@@ -738,7 +611,7 @@ namespace Rebellion.Systems
         private List<GameResult> ExecuteMission(Mission mission)
         {
             if (
-                _betrayalSystem.TryResolveMissionBetrayal(
+                _defectionSystem.TryResolveDefection(
                     mission,
                     _provider,
                     out List<GameResult> betrayalResults
@@ -1209,25 +1082,25 @@ namespace Rebellion.Systems
         private void BeginMission(Mission mission)
         {
             if (
-                mission is StoryFinalBattleMission
+                mission is CustomMission
                 {
-                    Phase: StoryFinalBattlePhase.EscortToPalpatine
-                } finalBattle
+                    Definition.Phase: CustomMissionPhase.EscortToDestination
+                } escortMission
             )
             {
-                List<IMovable> escortGroup = finalBattle
+                List<IMovable> escortGroup = escortMission
                     .GetAllParticipants()
                     .Cast<IMovable>()
                     .ToList();
-                foreach (IMissionParticipant participant in finalBattle.GetAllParticipants())
+                foreach (IMissionParticipant participant in escortMission.GetAllParticipants())
                 {
                     participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
                     participant.MissionReturnLocationInstanceID = participant
                         .GetParentOfType<Planet>()
                         ?.InstanceID;
                 }
-                _movementManager.RequestMove(escortGroup, finalBattle);
-                finalBattle.Initiate(RollMissionDuration(finalBattle));
+                _movementManager.RequestMove(escortGroup, escortMission);
+                escortMission.Initiate(RollMissionDuration(escortMission));
                 return;
             }
 
@@ -1251,15 +1124,8 @@ namespace Rebellion.Systems
         /// <returns>The mission duration in ticks.</returns>
         private int RollMissionDuration(Mission mission)
         {
-            if (mission is StoryCaptureMission capture)
-                return capture.DurationTicks;
-            if (mission is StoryRescueMission rescue)
-                return rescue.DurationTicks + _provider.NextInt(0, rescue.DurationRandomTicks + 1);
-            if (mission is StoryPickupMission pickup)
-                return pickup.DurationTicks;
-            if (mission is StoryFinalBattleMission finalBattle)
-                return finalBattle.DurationTicks;
-
+            if (mission is CustomMission customMission)
+                return customMission.RollDuration(_provider);
             GameConfig.MissionTickConfig tickConfig =
                 _game.Config?.ProbabilityTables?.Mission?.TickRanges?.GetTickConfig(
                     mission.ConfigKey
@@ -1267,6 +1133,21 @@ namespace Rebellion.Systems
             int baseTicks = tickConfig?.Base ?? 0;
             int spreadTicks = tickConfig?.Spread ?? 0;
             return baseTicks + _provider.NextInt(0, spreadTicks + 1);
+        }
+
+        private CustomMissionDefinition GetCustomMissionDefinition(CustomMission mission)
+        {
+            if (
+                mission == null
+                || !_customMissionDefinitions.TryGetValue(
+                    mission.MissionDefinitionID,
+                    out CustomMissionDefinition definition
+                )
+            )
+                throw new InvalidOperationException(
+                    $"Mission definition '{mission?.MissionDefinitionID}' is unavailable."
+                );
+            return definition;
         }
 
         /// <summary>

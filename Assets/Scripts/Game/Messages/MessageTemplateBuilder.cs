@@ -32,18 +32,18 @@ namespace Rebellion.Game.Messages
             if (definition == null)
                 return null;
 
-            string title = Interpolate(definition.TitleTemplate, values);
-            string body = Interpolate(definition.BodyTemplate, values);
+            string title = Interpolate(definition.Subject, values);
+            string body = Interpolate(definition.Body, values);
 
             return new Message(definition.MessageType, title, body)
             {
                 ResultType = definition.ResultType,
                 DisplayName = title,
-                DetailImageKey = definition.DetailImageKey,
+                BackgroundImageKey = definition.BackgroundImage?.Key,
                 DisplayImagePath =
                     imageOverride
                     ?? GetAssetPath(
-                        definition.ImagePath,
+                        definition.BackgroundImage?.Path,
                         definition.ImagePaths,
                         (imageFaction ?? faction)?.InstanceID
                     ),

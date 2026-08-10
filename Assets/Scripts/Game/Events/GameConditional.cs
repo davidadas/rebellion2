@@ -15,44 +15,6 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public abstract class GameConditional : BaseGameEntity
     {
-        [PersistableAttribute(Name = "Value")]
-        public string ConditionalValue { get; set; }
-
-        [PersistableAttribute(Name = "Type")]
-        public string ConditionalType { get; set; }
-
-        /// <summary>
-        /// Default constructor used for deserialization.
-        /// </summary>
-        public GameConditional() { }
-
-        /// <summary>
-        /// Creates a new GameConditional with a specific value (as an XML attribute).
-        /// </summary>
-        /// <param name="conditionalValue">The value of the condition.</param>
-        public GameConditional(string conditionalValue)
-        {
-            ConditionalValue = conditionalValue;
-        }
-
-        /// <summary>
-        /// Returns the conditional value string.
-        /// </summary>
-        /// <returns>The conditional value.</returns>
-        public string GetConditionalValue()
-        {
-            return ConditionalValue;
-        }
-
-        /// <summary>
-        /// Returns the conditional type string.
-        /// </summary>
-        /// <returns>The conditional type.</returns>
-        public string GetConditionalType()
-        {
-            return ConditionalType;
-        }
-
         /// <summary>
         /// Determines whether the condition is met in the specified game.
         /// </summary>
