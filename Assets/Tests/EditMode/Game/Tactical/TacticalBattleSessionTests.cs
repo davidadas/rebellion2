@@ -732,6 +732,64 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_WithdrawBehavior_UsesQuadraticExitCurve()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.SublightSpeed = 1;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(450, 0)),
+                }
+            );
+            TacticalUnitState unit = session.Units.Single(candidate =>
+                candidate.Unit == attackingShip
+            );
+            Vector3 origin = unit.Position;
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Withdraw);
+
+            session.Advance(0.5f);
+
+            Assert.AreEqual(origin - Vector3.UnitZ * 10f, unit.Position);
+            Assert.AreEqual(-Vector3.UnitZ, unit.Forward);
+            Assert.IsTrue(unit.IsWithdrawing);
+            Assert.IsFalse(unit.HasWithdrawn);
+        }
+
+        [Test]
+        public void Advance_WithdrawBehavior_UsesStaggeredExitDistances()
+        {
+            CapitalShip firstShip = CreateShip(600, 0);
+            CapitalShip secondShip = CreateShip(600, 0);
+            firstShip.SublightSpeed = 1;
+            secondShip.SublightSpeed = 100;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(firstShip, secondShip),
+                    DefenderFleet = CreateFleet(CreateShip(450, 0)),
+                }
+            );
+            TacticalUnitState firstUnit = session.Units.Single(unit => unit.Unit == firstShip);
+            TacticalUnitState secondUnit = session.Units.Single(unit => unit.Unit == secondShip);
+            Vector3 firstOrigin = firstUnit.Position;
+            Vector3 secondOrigin = secondUnit.Position;
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Withdraw);
+
+            session.Advance(0.5f);
+
+            Assert.AreEqual(firstOrigin - Vector3.UnitZ * 10f, firstUnit.Position);
+            Assert.AreEqual(secondOrigin - Vector3.UnitZ * 14.375f, secondUnit.Position);
+        }
+
+        [Test]
         public void DrainEvents_CompletedWithdrawal_ReturnsWithdrawalEvent()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

@@ -16,7 +16,8 @@ namespace Rebellion.Game.Tactical
         private const float _formationSpacing = 8f;
         private const float _navigationArrivalDistance = 1f;
         private const float _tacticalApproachDistance = 20f;
-        private const float _withdrawalDistance = BattlefieldScale * 2f;
+        private const float _withdrawalDuration = 1f;
+        private static readonly float[] WithdrawalDistances = { 40f, 57.5f, 65f, 32.5f };
         private static readonly Vector3[] SurroundDirections =
         {
             new Vector3(1f, -1f, 0f),
@@ -48,6 +49,44 @@ namespace Rebellion.Game.Tactical
             new Dictionary<TacticalUnitState, TacticalUnitState>();
         private readonly IRandomNumberProvider random;
         private readonly IReadOnlyList<TacticalUnitState> units;
+        private readonly Dictionary<TacticalUnitState, WithdrawalMotion> withdrawals =
+            new Dictionary<TacticalUnitState, WithdrawalMotion>();
+
+        private sealed class WithdrawalMotion
+        {
+            /// <summary>
+            /// Gets the position from which the unit begins leaving the battlefield.
+            /// </summary>
+            public Vector3 Origin { get; }
+
+            /// <summary>
+            /// Gets the fixed direction in which the unit leaves its side of the battlefield.
+            /// </summary>
+            public Vector3 Direction { get; }
+
+            /// <summary>
+            /// Gets the distance covered by this unit's exit curve.
+            /// </summary>
+            public float Distance { get; }
+
+            /// <summary>
+            /// Gets or sets the elapsed time along the exit curve.
+            /// </summary>
+            public float ElapsedTime { get; set; }
+
+            /// <summary>
+            /// Initializes one unit's fixed tactical withdrawal route.
+            /// </summary>
+            /// <param name="origin">The position at which withdrawal begins.</param>
+            /// <param name="direction">The normalized exit direction.</param>
+            /// <param name="distance">The route's total distance.</param>
+            public WithdrawalMotion(Vector3 origin, Vector3 direction, float distance)
+            {
+                Origin = origin;
+                Direction = direction;
+                Distance = distance;
+            }
+        }
 
         private readonly struct PendingAttack
         {
@@ -553,21 +592,53 @@ namespace Rebellion.Game.Tactical
             if (!unit.CanWithdraw)
                 return;
 
-            unit.BeginWithdrawal();
-            float direction = unit.Side == TacticalBattleSide.Attacker ? -1f : 1f;
-            unit.Forward = new Vector3(0f, 0f, direction);
-            MoveTowards(
-                unit,
-                new Vector3(unit.Position.X, unit.Position.Y, direction * _withdrawalDistance),
-                elapsedTime
+            if (!withdrawals.TryGetValue(unit, out WithdrawalMotion withdrawal))
+            {
+                int unitIndex = GetUnitIndex(unit);
+                Vector3 direction =
+                    unit.Side == TacticalBattleSide.Attacker ? -Vector3.UnitZ : Vector3.UnitZ;
+                withdrawal = new WithdrawalMotion(
+                    unit.Position,
+                    direction,
+                    WithdrawalDistances[unitIndex % WithdrawalDistances.Length]
+                );
+                withdrawals.Add(unit, withdrawal);
+                unit.BeginWithdrawal();
+            }
+
+            unit.Forward = withdrawal.Direction;
+            withdrawal.ElapsedTime = Math.Min(
+                _withdrawalDuration,
+                withdrawal.ElapsedTime + elapsedTime
             );
-            if (Math.Abs(unit.Position.Z) >= _withdrawalDistance - _navigationArrivalDistance)
+            float progress = withdrawal.ElapsedTime / _withdrawalDuration;
+            unit.Position =
+                withdrawal.Origin
+                + withdrawal.Direction * withdrawal.Distance * progress * progress;
+            if (withdrawal.ElapsedTime >= _withdrawalDuration)
             {
                 unit.CompleteWithdrawal();
                 events.Add(
                     TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitWithdrawn, unit)
                 );
+                withdrawals.Remove(unit);
             }
+        }
+
+        /// <summary>
+        /// Gets the stable battle-local index used to select a unit's presentation curve.
+        /// </summary>
+        /// <param name="unit">The tactical unit to locate.</param>
+        /// <returns>The unit's index in battle order.</returns>
+        private int GetUnitIndex(TacticalUnitState unit)
+        {
+            for (int index = 0; index < units.Count; index++)
+            {
+                if (ReferenceEquals(units[index], unit))
+                    return index;
+            }
+
+            throw new InvalidOperationException("The tactical unit does not belong to this battle.");
         }
 
         /// <summary>
