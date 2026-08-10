@@ -142,6 +142,25 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.Throws<ArgumentException>(() => session.CreateGroup(session.Units));
         }
 
+        [Test]
+        public void DeleteGroup_TrackedGroup_RemovesGroup()
+        {
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalShipGroup group = session.CreateGroup(
+                session.Units.Where(unit => unit.Side == TacticalBattleSide.Attacker)
+            );
+
+            bool removed = session.DeleteGroup(group);
+
+            Assert.IsTrue(removed);
+            Assert.IsEmpty(session.Groups);
+        }
+
         private static CapitalShip CreateShip(int hull, int shields, params Starfighter[] fighters)
         {
             CapitalShip ship = new CapitalShip

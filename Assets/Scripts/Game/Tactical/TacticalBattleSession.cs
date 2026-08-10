@@ -87,9 +87,19 @@ namespace Rebellion.Game.Tactical
                     nameof(selectedUnits)
                 );
 
-            TacticalShipGroup group = new TacticalShipGroup(side, groupUnits);
+            TacticalShipGroup group = new TacticalShipGroup(side, units, groupUnits);
             groups.Add(group);
             return group;
+        }
+
+        /// <summary>
+        /// Deletes a tactical command group from this battle.
+        /// </summary>
+        /// <param name="group">The group to delete.</param>
+        /// <returns>True when the group belonged to this battle.</returns>
+        public bool DeleteGroup(TacticalShipGroup group)
+        {
+            return groups.Remove(group);
         }
 
         /// <summary>
