@@ -22,6 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button cancelWithdrawalButton;
         private Button previousCapitalShipButton;
         private Button nextCapitalShipButton;
+        private Button capitalShipMissionsButton;
         private Button capitalShipManeuversButton;
 
         [SetUp]
@@ -53,11 +54,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Button[] taskForces = CreateButtons(8, "TaskForce");
             Button[] fighterGroups = CreateButtons(4, "FighterGroup");
             Button[] navigationSets = CreateButtons(4, "NavigationSet");
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             int selectedTaskForce = -1;
@@ -68,10 +69,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 taskForces,
                 fighterGroups,
                 navigationSets,
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,
@@ -100,21 +101,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         [Test]
         public void Awake_IncorrectTaskForceCount_ThrowsMissingReferenceException()
         {
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             view.Configure(
                 CreateButtons(7, "TaskForce"),
                 CreateButtons(4, "FighterGroup"),
                 CreateButtons(4, "NavigationSet"),
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,
@@ -134,21 +135,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         {
             Button[] taskForces = CreateButtons(8, "TaskForce");
             Button[] fighterGroups = CreateButtons(4, "FighterGroup");
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             view.Configure(
                 taskForces,
                 fighterGroups,
                 CreateButtons(4, "NavigationSet"),
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,
@@ -167,13 +168,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
-        public void Awake_FighterOrderSelection_RaisesPendingOrderBeforeAssignment()
+        public void Awake_MissionOrderSelection_RaisesPendingOrderBeforeAssignment()
         {
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             TacticalBehavior selectedOrder = TacticalBehavior.None;
@@ -182,10 +183,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 CreateButtons(8, "TaskForce"),
                 CreateButtons(4, "FighterGroup"),
                 CreateButtons(4, "NavigationSet"),
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,
@@ -194,36 +195,36 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 pauseButton,
                 pauseImage
             );
-            view.FighterOrderSelected += behavior => selectedOrder = behavior;
-            view.FighterOrderAssigned += () => assigned = true;
+            view.MissionOrderSelected += behavior => selectedOrder = behavior;
+            view.MissionOrderAssigned += () => assigned = true;
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
-            view.ShowFighterOrders(true, true);
+            view.ShowMissionOrders(true, true);
 
-            fighterOrders[2].onClick.Invoke();
+            missionOrders[2].onClick.Invoke();
 
             Assert.AreEqual(TacticalBehavior.AttackDeathStar, selectedOrder);
             Assert.IsFalse(assigned);
-            Assert.IsTrue(assignFighterOrder.interactable);
+            Assert.IsTrue(assignMissionOrder.interactable);
         }
 
         [Test]
-        public void ShowFighterOrders_UnavailableSpecialOrders_DisablesTheirButtons()
+        public void ShowMissionOrders_UnavailableSpecialOrders_DisablesTheirButtons()
         {
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             view.Configure(
                 CreateButtons(8, "TaskForce"),
                 CreateButtons(4, "FighterGroup"),
                 CreateButtons(4, "NavigationSet"),
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,
@@ -233,21 +234,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 pauseImage
             );
 
-            view.ShowFighterOrders(false, false);
+            view.ShowMissionOrders(false, false);
 
-            Assert.IsFalse(fighterOrders[1].interactable);
-            Assert.IsFalse(fighterOrders[2].interactable);
-            Assert.IsTrue(assignFighterOrder.interactable);
+            Assert.IsFalse(missionOrders[1].interactable);
+            Assert.IsFalse(missionOrders[2].interactable);
+            Assert.IsTrue(assignMissionOrder.interactable);
         }
 
         [Test]
         public void Awake_ManeuverSelection_RaisesPendingValuesBeforeAssignment()
         {
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             TacticalBehavior selectedManeuver = TacticalBehavior.None;
@@ -257,10 +258,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 CreateButtons(8, "TaskForce"),
                 CreateButtons(4, "FighterGroup"),
                 CreateButtons(4, "NavigationSet"),
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,
@@ -323,6 +324,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void Awake_CapitalShipMissionsButton_RaisesCapitalShipMissionsRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.CapitalShipMissionsRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            capitalShipMissionsButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
         public void Awake_CapitalShipManeuversButton_RaisesCapitalShipManeuversRequested()
         {
             ConfigureCompleteView();
@@ -366,7 +380,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         {
             ConfigureCompleteView();
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
-            view.ShowFighterOrders(true, true);
+            view.ShowMissionOrders(true, true);
             view.ShowManeuvers(TacticalFormation.StandOff);
 
             view.ShowWithdrawalConfirmation();
@@ -384,18 +398,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             return buttons;
         }
 
-        private void CreateFighterOrderControls(
+        private void CreateMissionOrderControls(
             out GameObject panel,
             out Button[] orders,
             out Button assign,
             out Button cancel
         )
         {
-            panel = new GameObject("FighterOrders", typeof(RectTransform));
+            panel = new GameObject("MissionOrders", typeof(RectTransform));
             panel.transform.SetParent(root.transform, false);
-            orders = CreateButtons(4, "FighterOrder");
-            CreateButton("AssignFighterOrder", out assign);
-            CreateButton("CancelFighterOrder", out cancel);
+            orders = CreateButtons(4, "MissionOrder");
+            CreateButton("AssignMissionOrder", out assign);
+            CreateButton("CancelMissionOrder", out cancel);
         }
 
         private void CreateManeuverControls()
@@ -423,6 +437,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             panel.transform.SetParent(root.transform, false);
             CreateButton("PreviousCapitalShip", out previousCapitalShipButton);
             CreateButton("NextCapitalShip", out nextCapitalShipButton);
+            CreateButton("CapitalShipMissions", out capitalShipMissionsButton);
             CreateButton("CapitalShipManeuvers", out capitalShipManeuversButton);
             GameObject hull = new GameObject("Hull", typeof(RectTransform), typeof(Image));
             hull.transform.SetParent(root.transform, false);
@@ -444,6 +459,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 panel,
                 previousCapitalShipButton,
                 nextCapitalShipButton,
+                capitalShipMissionsButton,
                 capitalShipManeuversButton,
                 hull.GetComponent<Image>(),
                 shields.GetComponent<Image>(),
@@ -453,21 +469,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
         private void ConfigureCompleteView()
         {
-            CreateFighterOrderControls(
-                out GameObject fighterOrderPanel,
-                out Button[] fighterOrders,
-                out Button assignFighterOrder,
-                out Button cancelFighterOrder
+            CreateMissionOrderControls(
+                out GameObject missionOrderPanel,
+                out Button[] missionOrders,
+                out Button assignMissionOrder,
+                out Button cancelMissionOrder
             );
             RawImage pauseImage = CreateButton("Pause", out Button pauseButton);
             view.Configure(
                 CreateButtons(8, "TaskForce"),
                 CreateButtons(4, "FighterGroup"),
                 CreateButtons(4, "NavigationSet"),
-                fighterOrderPanel,
-                fighterOrders,
-                assignFighterOrder,
-                cancelFighterOrder,
+                missionOrderPanel,
+                missionOrders,
+                assignMissionOrder,
+                cancelMissionOrder,
                 maneuverPanel,
                 maneuverButtons,
                 formationButton,

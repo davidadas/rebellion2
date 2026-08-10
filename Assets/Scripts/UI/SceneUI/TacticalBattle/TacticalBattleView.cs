@@ -19,18 +19,18 @@ public sealed class TacticalBattleView : MonoBehaviour
     private Button[] navigationSetButtons = Array.Empty<Button>();
 
     [SerializeField]
-    private GameObject fighterOrderPanel;
+    private GameObject missionOrderPanel;
 
     [SerializeField]
-    private Button[] fighterOrderButtons = Array.Empty<Button>();
+    private Button[] missionOrderButtons = Array.Empty<Button>();
 
     [SerializeField]
-    private Button assignFighterOrderButton;
+    private Button assignMissionOrderButton;
 
     [SerializeField]
-    private Button cancelFighterOrderButton;
+    private Button cancelMissionOrderButton;
 
-    private readonly string[] fighterOrderAddressStems = new string[4];
+    private readonly string[] missionOrderAddressStems = new string[4];
 
     [SerializeField]
     private GameObject maneuverPanel;
@@ -55,6 +55,9 @@ public sealed class TacticalBattleView : MonoBehaviour
 
     [SerializeField]
     private Button nextCapitalShipButton;
+
+    [SerializeField]
+    private Button capitalShipMissionsButton;
 
     [SerializeField]
     private Button capitalShipManeuversButton;
@@ -107,19 +110,19 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action<int> NavigationSetVisibilityToggled;
 
     /// <summary>
-    /// Raised when the player chooses a pending fighter-group order.
+    /// Raised when the player chooses a pending mission order for the selected tactical group.
     /// </summary>
-    public event Action<TacticalBehavior> FighterOrderSelected;
+    public event Action<TacticalBehavior> MissionOrderSelected;
 
     /// <summary>
-    /// Raised when the player assigns the pending fighter-group order.
+    /// Raised when the player assigns the pending mission order.
     /// </summary>
-    public event Action FighterOrderAssigned;
+    public event Action MissionOrderAssigned;
 
     /// <summary>
-    /// Raised when the player dismisses the fighter-order panel without assigning its pending order.
+    /// Raised when the player dismisses the mission-order panel without assigning its pending order.
     /// </summary>
-    public event Action FighterOrderCancelled;
+    public event Action MissionOrderCancelled;
 
     /// <summary>
     /// Raised when the player chooses a pending capital-ship maneuver.
@@ -152,6 +155,11 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action NextCapitalShipRequested;
 
     /// <summary>
+    /// Raised when the player opens mission orders for the selected capital ship's task force.
+    /// </summary>
+    public event Action CapitalShipMissionsRequested;
+
+    /// <summary>
     /// Raised when the player opens maneuvers for the selected capital ship's task force.
     /// </summary>
     public event Action CapitalShipManeuversRequested;
@@ -182,10 +190,10 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// <param name="taskForces">The eight task-force controls.</param>
     /// <param name="fighterGroups">The four fighter-group controls.</param>
     /// <param name="navigationSets">The four navigation-set controls.</param>
-    /// <param name="fighterOrders">The four fighter-order controls.</param>
-    /// <param name="fighterOrdersPanel">The fighter-order panel.</param>
-    /// <param name="assignFighterOrder">The pending-order assignment control.</param>
-    /// <param name="cancelFighterOrder">The pending-order cancellation control.</param>
+    /// <param name="missionOrders">The four mission-order controls.</param>
+    /// <param name="missionOrdersPanel">The mission-order panel.</param>
+    /// <param name="assignMissionOrder">The pending-order assignment control.</param>
+    /// <param name="cancelMissionOrder">The pending-order cancellation control.</param>
     /// <param name="maneuversPanel">The capital-ship maneuver panel.</param>
     /// <param name="maneuvers">The five capital-ship maneuver controls.</param>
     /// <param name="formation">The Stand Off/Surround formation control.</param>
@@ -197,10 +205,10 @@ public sealed class TacticalBattleView : MonoBehaviour
         Button[] taskForces,
         Button[] fighterGroups,
         Button[] navigationSets,
-        GameObject fighterOrdersPanel,
-        Button[] fighterOrders,
-        Button assignFighterOrder,
-        Button cancelFighterOrder,
+        GameObject missionOrdersPanel,
+        Button[] missionOrders,
+        Button assignMissionOrder,
+        Button cancelMissionOrder,
         GameObject maneuversPanel,
         Button[] maneuvers,
         Button formation,
@@ -215,14 +223,14 @@ public sealed class TacticalBattleView : MonoBehaviour
             fighterGroups ?? throw new ArgumentNullException(nameof(fighterGroups));
         navigationSetButtons =
             navigationSets ?? throw new ArgumentNullException(nameof(navigationSets));
-        fighterOrderPanel =
-            fighterOrdersPanel ?? throw new ArgumentNullException(nameof(fighterOrdersPanel));
-        fighterOrderButtons =
-            fighterOrders ?? throw new ArgumentNullException(nameof(fighterOrders));
-        assignFighterOrderButton =
-            assignFighterOrder ?? throw new ArgumentNullException(nameof(assignFighterOrder));
-        cancelFighterOrderButton =
-            cancelFighterOrder ?? throw new ArgumentNullException(nameof(cancelFighterOrder));
+        missionOrderPanel =
+            missionOrdersPanel ?? throw new ArgumentNullException(nameof(missionOrdersPanel));
+        missionOrderButtons =
+            missionOrders ?? throw new ArgumentNullException(nameof(missionOrders));
+        assignMissionOrderButton =
+            assignMissionOrder ?? throw new ArgumentNullException(nameof(assignMissionOrder));
+        cancelMissionOrderButton =
+            cancelMissionOrder ?? throw new ArgumentNullException(nameof(cancelMissionOrder));
         maneuverPanel = maneuversPanel ?? throw new ArgumentNullException(nameof(maneuversPanel));
         maneuverButtons = maneuvers ?? throw new ArgumentNullException(nameof(maneuvers));
         formationButton = formation ?? throw new ArgumentNullException(nameof(formation));
@@ -260,6 +268,7 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// <param name="panel">The selected-capital-ship status panel.</param>
     /// <param name="previous">The previous-ship control.</param>
     /// <param name="next">The next-ship control.</param>
+    /// <param name="missions">The control that opens task-force mission orders.</param>
     /// <param name="maneuvers">The control that opens task-force maneuvers.</param>
     /// <param name="hull">The hull-integrity status bar.</param>
     /// <param name="shields">The shield-strength status bar.</param>
@@ -268,6 +277,7 @@ public sealed class TacticalBattleView : MonoBehaviour
         GameObject panel,
         Button previous,
         Button next,
+        Button missions,
         Button maneuvers,
         Image hull,
         Image shields,
@@ -277,6 +287,7 @@ public sealed class TacticalBattleView : MonoBehaviour
         capitalShipStatusPanel = panel ?? throw new ArgumentNullException(nameof(panel));
         previousCapitalShipButton = previous ?? throw new ArgumentNullException(nameof(previous));
         nextCapitalShipButton = next ?? throw new ArgumentNullException(nameof(next));
+        capitalShipMissionsButton = missions ?? throw new ArgumentNullException(nameof(missions));
         capitalShipManeuversButton =
             maneuvers ?? throw new ArgumentNullException(nameof(maneuvers));
         hullStatusBar = hull ?? throw new ArgumentNullException(nameof(hull));
@@ -299,7 +310,7 @@ public sealed class TacticalBattleView : MonoBehaviour
 
         sharedUIRoot = theme.SharedUIRoot;
         ContentBindings.Apply(gameObject, contentAssets);
-        ApplyFighterOrderTextures(theme.FighterOrderVariant);
+        ApplyMissionOrderTextures(theme.FighterOrderVariant);
         SetPaused(false);
     }
 
@@ -328,24 +339,24 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
-    /// Opens the fighter-order panel and exposes only orders valid for the selected group.
+    /// Opens the mission-order panel and exposes only orders valid for the selected group.
     /// </summary>
     /// <param name="canRecover">Whether the selected fighters can return to their carrier.</param>
     /// <param name="canAttackDeathStar">Whether an opposing Death Star can be attacked.</param>
-    public void ShowFighterOrders(bool canRecover, bool canAttackDeathStar)
+    public void ShowMissionOrders(bool canRecover, bool canAttackDeathStar)
     {
-        SetFighterOrderAvailability(1, canRecover);
-        SetFighterOrderAvailability(2, canAttackDeathStar);
-        assignFighterOrderButton.interactable = true;
-        fighterOrderPanel.SetActive(true);
+        SetMissionOrderAvailability(1, canRecover);
+        SetMissionOrderAvailability(2, canAttackDeathStar);
+        assignMissionOrderButton.interactable = true;
+        missionOrderPanel.SetActive(true);
     }
 
     /// <summary>
-    /// Closes the fighter-order panel.
+    /// Closes the mission-order panel.
     /// </summary>
-    public void HideFighterOrders()
+    public void HideMissionOrders()
     {
-        fighterOrderPanel.SetActive(false);
+        missionOrderPanel.SetActive(false);
     }
 
     /// <summary>
@@ -402,7 +413,7 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// </summary>
     public void ShowWithdrawalConfirmation()
     {
-        HideFighterOrders();
+        HideMissionOrders();
         HideManeuvers();
         withdrawalPanel.SetActive(true);
     }
@@ -427,7 +438,7 @@ public sealed class TacticalBattleView : MonoBehaviour
             navigationSetButtons,
             index => NavigationSetVisibilityToggled?.Invoke(index)
         );
-        TacticalBehavior[] fighterOrders =
+        TacticalBehavior[] missionOrders =
         {
             TacticalBehavior.AttackCapitalShips,
             TacticalBehavior.Recover,
@@ -435,15 +446,15 @@ public sealed class TacticalBattleView : MonoBehaviour
             TacticalBehavior.AttackFighters,
         };
         BindIndexedButtons(
-            fighterOrderButtons,
+            missionOrderButtons,
             index =>
             {
-                assignFighterOrderButton.interactable = true;
-                FighterOrderSelected?.Invoke(fighterOrders[index]);
+                assignMissionOrderButton.interactable = true;
+                MissionOrderSelected?.Invoke(missionOrders[index]);
             }
         );
-        assignFighterOrderButton.onClick.AddListener(() => FighterOrderAssigned?.Invoke());
-        cancelFighterOrderButton.onClick.AddListener(() => FighterOrderCancelled?.Invoke());
+        assignMissionOrderButton.onClick.AddListener(() => MissionOrderAssigned?.Invoke());
+        cancelMissionOrderButton.onClick.AddListener(() => MissionOrderCancelled?.Invoke());
         TacticalBehavior[] maneuvers =
         {
             TacticalBehavior.LeftHook,
@@ -458,6 +469,7 @@ public sealed class TacticalBattleView : MonoBehaviour
         cancelManeuverButton.onClick.AddListener(() => ManeuverCancelled?.Invoke());
         previousCapitalShipButton.onClick.AddListener(() => PreviousCapitalShipRequested?.Invoke());
         nextCapitalShipButton.onClick.AddListener(() => NextCapitalShipRequested?.Invoke());
+        capitalShipMissionsButton.onClick.AddListener(() => CapitalShipMissionsRequested?.Invoke());
         capitalShipManeuversButton.onClick.AddListener(() =>
             CapitalShipManeuversRequested?.Invoke()
         );
@@ -465,7 +477,7 @@ public sealed class TacticalBattleView : MonoBehaviour
         withdrawalButton.onClick.AddListener(() => WithdrawalRequested?.Invoke());
         confirmWithdrawalButton.onClick.AddListener(() => WithdrawalConfirmed?.Invoke());
         cancelWithdrawalButton.onClick.AddListener(() => WithdrawalCancelled?.Invoke());
-        HideFighterOrders();
+        HideMissionOrders();
         HideManeuvers();
         HideCapitalShipStatus();
         HideWithdrawalConfirmation();
@@ -514,13 +526,13 @@ public sealed class TacticalBattleView : MonoBehaviour
             throw new MissingReferenceException(
                 "Tactical HUD requires four navigation-set buttons."
             );
-        if (fighterOrderPanel == null || fighterOrderButtons?.Length != 4)
+        if (missionOrderPanel == null || missionOrderButtons?.Length != 4)
             throw new MissingReferenceException(
-                "Tactical HUD fighter-order references are incomplete."
+                "Tactical HUD mission-order references are incomplete."
             );
-        if (assignFighterOrderButton == null || cancelFighterOrderButton == null)
+        if (assignMissionOrderButton == null || cancelMissionOrderButton == null)
             throw new MissingReferenceException(
-                "Tactical HUD fighter-order action references are incomplete."
+                "Tactical HUD mission-order action references are incomplete."
             );
         if (maneuverPanel == null || maneuverButtons?.Length != 5)
             throw new MissingReferenceException("Tactical HUD maneuver references are incomplete.");
@@ -532,6 +544,7 @@ public sealed class TacticalBattleView : MonoBehaviour
             capitalShipStatusPanel == null
             || previousCapitalShipButton == null
             || nextCapitalShipButton == null
+            || capitalShipMissionsButton == null
             || capitalShipManeuversButton == null
             || hullStatusBar == null
             || shieldStatusBar == null
@@ -559,33 +572,33 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
-    /// Resolves the faction-specific fighter-order artwork from external content.
+    /// Resolves the faction-specific mission-order artwork from external content.
     /// </summary>
-    /// <param name="variant">The configured fighter-order artwork variant.</param>
-    private void ApplyFighterOrderTextures(string variant)
+    /// <param name="variant">The configured mission-order artwork variant.</param>
+    private void ApplyMissionOrderTextures(string variant)
     {
         if (variant != "alliance" && variant != "empire")
             throw new InvalidOperationException(
-                $"Unsupported tactical fighter-order variant: '{variant}'."
+                $"Unsupported tactical mission-order variant: '{variant}'."
             );
 
         string root = $"{sharedUIRoot}/FighterOrders";
-        fighterOrderAddressStems[0] = $"{root}/{variant}-attack-capital-ships";
-        fighterOrderAddressStems[1] = $"{root}/{variant}-recover";
-        fighterOrderAddressStems[2] = $"{root}/attack-death-star";
-        fighterOrderAddressStems[3] = $"{root}/{variant}-attack-fighters";
-        for (int index = 0; index < fighterOrderAddressStems.Length; index++)
-            SetFighterOrderTextures(index, fighterOrderAddressStems[index]);
+        missionOrderAddressStems[0] = $"{root}/{variant}-attack-capital-ships";
+        missionOrderAddressStems[1] = $"{root}/{variant}-recover";
+        missionOrderAddressStems[2] = $"{root}/attack-death-star";
+        missionOrderAddressStems[3] = $"{root}/{variant}-attack-fighters";
+        for (int index = 0; index < missionOrderAddressStems.Length; index++)
+            SetMissionOrderTextures(index, missionOrderAddressStems[index]);
     }
 
     /// <summary>
-    /// Applies one released and pressed fighter-order texture pair.
+    /// Applies one released and pressed mission-order texture pair.
     /// </summary>
-    /// <param name="index">The fixed fighter-order slot.</param>
+    /// <param name="index">The fixed mission-order slot.</param>
     /// <param name="addressStem">The shared address without its state suffix.</param>
-    private void SetFighterOrderTextures(int index, string addressStem)
+    private void SetMissionOrderTextures(int index, string addressStem)
     {
-        fighterOrderButtons[index]
+        missionOrderButtons[index]
             .GetComponent<RawImagePressVisual>()
             .SetInteractiveTextures(
                 ContentBindings.RequireTexture(contentAssets, $"{addressStem}-up"),
@@ -594,19 +607,19 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies the normal pair or authored disabled artwork to one conditional fighter order.
+    /// Applies the normal pair or authored disabled artwork to one conditional mission order.
     /// </summary>
-    /// <param name="index">The fixed fighter-order slot.</param>
+    /// <param name="index">The fixed mission-order slot.</param>
     /// <param name="available">Whether the selected group can receive the order.</param>
-    private void SetFighterOrderAvailability(int index, bool available)
+    private void SetMissionOrderAvailability(int index, bool available)
     {
-        Button button = fighterOrderButtons[index];
+        Button button = missionOrderButtons[index];
         RawImagePressVisual visual = button.GetComponent<RawImagePressVisual>();
-        string addressStem = fighterOrderAddressStems[index];
+        string addressStem = missionOrderAddressStems[index];
         if (contentAssets != null && !string.IsNullOrWhiteSpace(addressStem))
         {
             if (available)
-                SetFighterOrderTextures(index, addressStem);
+                SetMissionOrderTextures(index, addressStem);
             else
                 visual.SetInteractiveTextures(
                     ContentBindings.RequireTexture(contentAssets, $"{addressStem}-disabled"),

@@ -208,8 +208,8 @@ public static class TacticalBattleSceneBuilder
             11,
             53
         );
-        Button capitalShipManeuversButton = CreateBoundButton(
-            "Maneuvers",
+        Button capitalShipMissionsButton = CreateBoundButton(
+            "Missions",
             capitalShipStatusPanel.transform,
             $"{root}/1105-1033-tactical-ui-maneuvers-tactics-unpressed",
             $"{root}/1106-1033-tactical-ui-maneuvers-tactics-pressed",
@@ -218,8 +218,8 @@ public static class TacticalBattleSceneBuilder
             58,
             22
         );
-        Button capitalShipMissionsButton = CreateBoundButton(
-            "Missions",
+        Button capitalShipManeuversButton = CreateBoundButton(
+            "Maneuvers",
             capitalShipStatusPanel.transform,
             $"{root}/1107-1033-tactical-ui-missions-unpressed",
             $"{root}/1108-1033-tactical-ui-missions-pressed",
@@ -228,7 +228,6 @@ public static class TacticalBattleSceneBuilder
             58,
             22
         );
-        capitalShipMissionsButton.interactable = false;
         Image hullStatusBar = CreateStatusBar(
             "HullIntegrity",
             capitalShipStatusPanel.transform,
@@ -269,35 +268,35 @@ public static class TacticalBattleSceneBuilder
             );
         }
 
-        GameObject fighterOrderPanel = new GameObject("FighterOrders", typeof(RectTransform));
-        fighterOrderPanel.transform.SetParent(canvasObject.transform, false);
-        RectTransform fighterOrderRect = fighterOrderPanel.GetComponent<RectTransform>();
-        fighterOrderRect.anchorMin = Vector2.zero;
-        fighterOrderRect.anchorMax = Vector2.one;
-        fighterOrderRect.offsetMin = Vector2.zero;
-        fighterOrderRect.offsetMax = Vector2.zero;
+        GameObject missionOrderPanel = new GameObject("MissionOrders", typeof(RectTransform));
+        missionOrderPanel.transform.SetParent(canvasObject.transform, false);
+        RectTransform missionOrderRect = missionOrderPanel.GetComponent<RectTransform>();
+        missionOrderRect.anchorMin = Vector2.zero;
+        missionOrderRect.anchorMax = Vector2.one;
+        missionOrderRect.offsetMin = Vector2.zero;
+        missionOrderRect.offsetMax = Vector2.zero;
         CreateBoundImage(
             "Background",
-            fighterOrderPanel.transform,
+            missionOrderPanel.transform,
             $"{root}/FighterOrders/panel",
             482,
             24,
             149,
             236
         );
-        string fighterOrderVariant = theme.FighterOrderVariant;
-        if (fighterOrderVariant != "alliance" && fighterOrderVariant != "empire")
+        string missionOrderVariant = theme.FighterOrderVariant;
+        if (missionOrderVariant != "alliance" && missionOrderVariant != "empire")
             throw new InvalidOperationException(
-                $"Unsupported tactical fighter-order variant: '{fighterOrderVariant}'."
+                $"Unsupported tactical mission-order variant: '{missionOrderVariant}'."
             );
 
-        Button[] fighterOrderButtons =
+        Button[] missionOrderButtons =
         {
             CreatePreviewButton(
                 "AttackCapitalShips",
-                fighterOrderPanel.transform,
-                $"{root}/FighterOrders/{fighterOrderVariant}-attack-capital-ships-up",
-                $"{root}/FighterOrders/{fighterOrderVariant}-attack-capital-ships-down",
+                missionOrderPanel.transform,
+                $"{root}/FighterOrders/{missionOrderVariant}-attack-capital-ships-up",
+                $"{root}/FighterOrders/{missionOrderVariant}-attack-capital-ships-down",
                 500,
                 153,
                 46,
@@ -305,9 +304,9 @@ public static class TacticalBattleSceneBuilder
             ),
             CreatePreviewButton(
                 "Recover",
-                fighterOrderPanel.transform,
-                $"{root}/FighterOrders/{fighterOrderVariant}-recover-up",
-                $"{root}/FighterOrders/{fighterOrderVariant}-recover-down",
+                missionOrderPanel.transform,
+                $"{root}/FighterOrders/{missionOrderVariant}-recover-up",
+                $"{root}/FighterOrders/{missionOrderVariant}-recover-down",
                 568,
                 153,
                 46,
@@ -315,7 +314,7 @@ public static class TacticalBattleSceneBuilder
             ),
             CreatePreviewButton(
                 "AttackDeathStar",
-                fighterOrderPanel.transform,
+                missionOrderPanel.transform,
                 $"{root}/FighterOrders/attack-death-star-up",
                 $"{root}/FighterOrders/attack-death-star-down",
                 568,
@@ -325,18 +324,18 @@ public static class TacticalBattleSceneBuilder
             ),
             CreatePreviewButton(
                 "AttackFighters",
-                fighterOrderPanel.transform,
-                $"{root}/FighterOrders/{fighterOrderVariant}-attack-fighters-up",
-                $"{root}/FighterOrders/{fighterOrderVariant}-attack-fighters-down",
+                missionOrderPanel.transform,
+                $"{root}/FighterOrders/{missionOrderVariant}-attack-fighters-up",
+                $"{root}/FighterOrders/{missionOrderVariant}-attack-fighters-down",
                 500,
                 183,
                 46,
                 26
             ),
         };
-        Button assignFighterOrderButton = CreateBoundButton(
+        Button assignMissionOrderButton = CreateBoundButton(
             "Assign",
-            fighterOrderPanel.transform,
+            missionOrderPanel.transform,
             $"{root}/Actions/assign-up",
             $"{root}/Actions/assign-down",
             548,
@@ -344,9 +343,9 @@ public static class TacticalBattleSceneBuilder
             27,
             25
         );
-        Button cancelFighterOrderButton = CreateBoundButton(
+        Button cancelMissionOrderButton = CreateBoundButton(
             "Cancel",
-            fighterOrderPanel.transform,
+            missionOrderPanel.transform,
             $"{root}/Actions/cancel-up",
             $"{root}/Actions/cancel-down",
             588,
@@ -548,10 +547,10 @@ public static class TacticalBattleSceneBuilder
             taskForceButtons,
             fighterGroupButtons,
             navigationButtons,
-            fighterOrderPanel,
-            fighterOrderButtons,
-            assignFighterOrderButton,
-            cancelFighterOrderButton,
+            missionOrderPanel,
+            missionOrderButtons,
+            assignMissionOrderButton,
+            cancelMissionOrderButton,
             maneuverPanel,
             maneuverButtons,
             formationButton,
@@ -570,13 +569,14 @@ public static class TacticalBattleSceneBuilder
             capitalShipStatusPanel,
             previousCapitalShipButton,
             nextCapitalShipButton,
+            capitalShipMissionsButton,
             capitalShipManeuversButton,
             hullStatusBar,
             shieldStatusBar,
             systemStatusImages
         );
         capitalShipStatusPanel.SetActive(false);
-        fighterOrderPanel.SetActive(false);
+        missionOrderPanel.SetActive(false);
         maneuverPanel.SetActive(false);
         withdrawalPanel.SetActive(false);
     }

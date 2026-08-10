@@ -16,7 +16,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private bool isReady;
     private bool playerPaused;
     private bool withdrawalConfirmationOpen;
-    private TacticalBehavior? pendingFighterOrder;
+    private TacticalBehavior? pendingMissionOrder;
     private TacticalBehavior? pendingManeuver;
     private TacticalFormation pendingFormation;
     private TacticalUnitState selectedCapitalShip;
@@ -106,15 +106,16 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.TaskForceSelected += SelectTaskForce;
         view.FighterGroupSelected += SelectFighterGroup;
         view.NavigationSetVisibilityToggled += ToggleNavigationSetVisibility;
-        view.FighterOrderSelected += SelectPendingFighterOrder;
-        view.FighterOrderAssigned += AssignPendingFighterOrder;
-        view.FighterOrderCancelled += CancelPendingFighterOrder;
+        view.MissionOrderSelected += SelectPendingMissionOrder;
+        view.MissionOrderAssigned += AssignPendingMissionOrder;
+        view.MissionOrderCancelled += CancelPendingMissionOrder;
         view.ManeuverSelected += SelectPendingManeuver;
         view.FormationSelected += SelectPendingFormation;
         view.ManeuverAssigned += AssignPendingManeuver;
         view.ManeuverCancelled += CancelPendingManeuver;
         view.PreviousCapitalShipRequested += SelectPreviousCapitalShip;
         view.NextCapitalShipRequested += SelectNextCapitalShip;
+        view.CapitalShipMissionsRequested += ShowSelectedTaskForceMissions;
         view.CapitalShipManeuversRequested += ShowSelectedTaskForceManeuvers;
         view.PauseToggled += TogglePlayerPause;
         view.WithdrawalRequested += RequestWithdrawal;
@@ -168,15 +169,16 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.TaskForceSelected -= SelectTaskForce;
             view.FighterGroupSelected -= SelectFighterGroup;
             view.NavigationSetVisibilityToggled -= ToggleNavigationSetVisibility;
-            view.FighterOrderSelected -= SelectPendingFighterOrder;
-            view.FighterOrderAssigned -= AssignPendingFighterOrder;
-            view.FighterOrderCancelled -= CancelPendingFighterOrder;
+            view.MissionOrderSelected -= SelectPendingMissionOrder;
+            view.MissionOrderAssigned -= AssignPendingMissionOrder;
+            view.MissionOrderCancelled -= CancelPendingMissionOrder;
             view.ManeuverSelected -= SelectPendingManeuver;
             view.FormationSelected -= SelectPendingFormation;
             view.ManeuverAssigned -= AssignPendingManeuver;
             view.ManeuverCancelled -= CancelPendingManeuver;
             view.PreviousCapitalShipRequested -= SelectPreviousCapitalShip;
             view.NextCapitalShipRequested -= SelectNextCapitalShip;
+            view.CapitalShipMissionsRequested -= ShowSelectedTaskForceMissions;
             view.CapitalShipManeuversRequested -= ShowSelectedTaskForceManeuvers;
             view.PauseToggled -= TogglePlayerPause;
             view.WithdrawalRequested -= RequestWithdrawal;
@@ -259,8 +261,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectTaskForce(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
-        pendingFighterOrder = null;
-        view.HideFighterOrders();
+        pendingMissionOrder = null;
+        view.HideMissionOrders();
         pendingManeuver = SelectedGroup.Behavior;
         pendingFormation = SelectedGroup.Formation;
         selectedCapitalShip = SelectedGroup.Units.FirstOrDefault(unit => unit.IsActive);
@@ -281,7 +283,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.HideManeuvers();
         selectedCapitalShip = null;
         view.HideCapitalShipStatus();
-        pendingFighterOrder = SelectedGroup.Behavior;
+        pendingMissionOrder = SelectedGroup.Behavior;
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
         SetCameraSubject(SelectedGroup);
         bool canRecover = SelectedGroup.Units.Any(unit => unit.RecoveryTarget?.IsActive == true);
@@ -290,7 +292,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             && unit.IsActive
             && unit.Unit is CapitalShip { IsDeathStar: true }
         );
-        view.ShowFighterOrders(canRecover, canAttackDeathStar);
+        view.ShowMissionOrders(canRecover, canAttackDeathStar);
     }
 
     /// <summary>
@@ -357,6 +359,18 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         view.ShowManeuvers(pendingFormation);
+    }
+
+    /// <summary>
+    /// Opens the mission-order controls for the selected capital ship's task force.
+    /// </summary>
+    private void ShowSelectedTaskForceMissions()
+    {
+        if (selectedCapitalShip == null || SelectedGroup == null)
+            return;
+
+        pendingMissionOrder = SelectedGroup.Behavior;
+        view.ShowMissionOrders(false, false);
     }
 
     /// <summary>
@@ -446,40 +460,43 @@ public sealed class TacticalBattleController : MonoBehaviour
     }
 
     /// <summary>
-    /// Stores a fighter order without changing the active group command before confirmation.
+    /// Stores a mission order without changing the active group command before confirmation.
     /// </summary>
-    /// <param name="behavior">The pending fighter order.</param>
-    private void SelectPendingFighterOrder(TacticalBehavior behavior)
+    /// <param name="behavior">The pending mission order.</param>
+    private void SelectPendingMissionOrder(TacticalBehavior behavior)
     {
         if (
             SelectedGroup is not { } selectedGroup
-            || selectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.Fighters)
+            || selectedGroup.Units.Count == 0
+            || selectedGroup.Units.Any(unit => unit.Kind != selectedGroup.Units[0].Kind)
+            || selectedGroup.Units[0].Kind
+                is not (TacticalUnitKind.CapitalShip or TacticalUnitKind.Fighters)
         )
             return;
 
-        pendingFighterOrder = behavior;
+        pendingMissionOrder = behavior;
     }
 
     /// <summary>
-    /// Applies the confirmed fighter order and closes its command panel.
+    /// Applies the confirmed mission order and closes its command panel.
     /// </summary>
-    private void AssignPendingFighterOrder()
+    private void AssignPendingMissionOrder()
     {
-        if (SelectedGroup == null || pendingFighterOrder == null)
+        if (SelectedGroup == null || pendingMissionOrder == null)
             return;
 
-        SelectedGroup.SetBehavior(pendingFighterOrder.Value);
-        pendingFighterOrder = null;
-        view.HideFighterOrders();
+        SelectedGroup.SetBehavior(pendingMissionOrder.Value);
+        pendingMissionOrder = null;
+        view.HideMissionOrders();
     }
 
     /// <summary>
-    /// Discards the pending fighter order and closes its command panel.
+    /// Discards the pending mission order and closes its command panel.
     /// </summary>
-    private void CancelPendingFighterOrder()
+    private void CancelPendingMissionOrder()
     {
-        pendingFighterOrder = null;
-        view.HideFighterOrders();
+        pendingMissionOrder = null;
+        view.HideMissionOrders();
     }
 
     /// <summary>
