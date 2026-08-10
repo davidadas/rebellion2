@@ -346,6 +346,30 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AttackDeathStarBehavior_DoesNotCommandCapitalShips()
+        {
+            CapitalShip attackingShip = CreateShip(100, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 6, 0, 0, 0, 200 };
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackDeathStar);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == deathStar).Hull);
+        }
+
+        [Test]
         public void Advance_RecoverBehavior_ReturnsFightersToTheirDeployingCapitalShip()
         {
             Starfighter fighters = CreateFighters(12, 0);

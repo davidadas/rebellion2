@@ -129,6 +129,15 @@ namespace Rebellion.Game.Tactical
             TacticalBehavior behavior
         )
         {
+            if (
+                behavior == TacticalBehavior.AttackDeathStar
+                && unit.Kind != TacticalUnitKind.Fighters
+            )
+            {
+                targets.Remove(unit);
+                return null;
+            }
+
             IEnumerable<TacticalUnitState> candidates =
                 group?.Targets.Count > 0
                     ? group.Targets
