@@ -46,7 +46,7 @@ public static class MainMenuPrefabBuilder
     // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
     private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
-    private const string _atmosphereShaderPath = "Assets/Shaders/AtmosphereRim.shader";
+    private const string _atmosphereShaderName = "Custom/AtmosphereRim";
     private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
@@ -1980,8 +1980,8 @@ public static class MainMenuPrefabBuilder
         clouds.transform.localScale = Vector3.one * 2.020f; // primitive radius 0.5 -> ~1.010
         clouds.layer = planetLayer;
         clouds
-            .AddComponent<ContentMaterialTextureBinding>()
-            .Configure(_cloudTextureAddress, "Unlit/Transparent");
+            .AddComponent<RuntimeMaterialBinding>()
+            .Configure("Unlit/Transparent", _cloudTextureAddress);
 
         // Atmosphere: a static shell just outside the clouds with a Fresnel rim glow, so the limb
         // reads as a lit atmosphere. Built from a primitive with the custom rim shader assigned here.
@@ -1991,9 +1991,7 @@ public static class MainMenuPrefabBuilder
         atmosphere.transform.SetParent(rig.transform, false);
         atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
         atmosphere.layer = planetLayer;
-        atmosphere.GetComponent<MeshRenderer>().sharedMaterial = new Material(
-            LoadRequiredAsset<Shader>(_atmosphereShaderPath)
-        );
+        atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
 
         // Dedicated sun for the planet, masked to their layer so it never touches the icons.
         // Gives the rocky surface real directional shading; the emission only lifts the night side.
