@@ -15,7 +15,33 @@ namespace Rebellion.Game.Tactical
         internal const float BattlefieldScale = 100f;
         private const float _formationSpacing = 8f;
         private const float _navigationArrivalDistance = 1f;
+        private const float _tacticalApproachDistance = 20f;
         private const float _withdrawalDistance = BattlefieldScale * 2f;
+        private static readonly Vector3[] SurroundDirections =
+        {
+            new Vector3(1f, -1f, 0f),
+            Vector3.UnitZ,
+            -Vector3.UnitZ,
+            Vector3.UnitX,
+            -Vector3.UnitX,
+            Vector3.UnitY,
+            -Vector3.UnitY,
+            new Vector3(1f, 1f, 1f),
+            new Vector3(-1f, -1f, -1f),
+            new Vector3(-1f, 1f, 1f),
+            new Vector3(1f, -1f, -1f),
+            new Vector3(1f, -1f, 1f),
+            new Vector3(-1f, 1f, -1f),
+            new Vector3(-1f, -1f, 1f),
+            new Vector3(1f, 1f, -1f),
+            new Vector3(0f, -1f, -1f),
+            new Vector3(0f, -1f, 1f),
+            new Vector3(-1f, 1f, 0f),
+            new Vector3(1f, 1f, 0f),
+            new Vector3(0f, -1f, -1f),
+            new Vector3(0f, 1f, 1f),
+            new Vector3(-1f, -1f, 0f),
+        };
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
@@ -111,7 +137,7 @@ namespace Rebellion.Game.Tactical
                 return Array.Empty<PendingAttack>();
 
             IReadOnlyList<PendingAttack> attacks = FireStrongestArc(unit, target);
-            Vector3 destination = GetApproachPosition(target, behavior);
+            Vector3 destination = GetApproachPosition(unit, target, group, behavior);
             MoveTowards(unit, destination, elapsedTime);
             return attacks;
         }
@@ -227,23 +253,81 @@ namespace Rebellion.Game.Tactical
         /// <summary>
         /// Produces the command-specific approach point around a target.
         /// </summary>
+        /// <param name="unit">The unit approaching the target.</param>
         /// <param name="target">The target being approached.</param>
+        /// <param name="group">The unit's controlling group.</param>
         /// <param name="behavior">The active approach behavior.</param>
         /// <returns>The desired tactical position.</returns>
         private static Vector3 GetApproachPosition(
+            TacticalUnitState unit,
             TacticalUnitState target,
+            TacticalShipGroup group,
             TacticalBehavior behavior
         )
         {
-            const float approachOffset = 20f;
-            return behavior switch
+            Vector3 approachDirection = NormalizeOrDefault(
+                target.Position - unit.Position,
+                unit.Forward
+            );
+            Vector3 right = NormalizeOrDefault(
+                Vector3.Cross(Vector3.UnitY, approachDirection),
+                Vector3.UnitX
+            );
+            Vector3 maneuverOffset = behavior switch
             {
-                TacticalBehavior.LeftHook => target.Position - Vector3.UnitX * approachOffset,
-                TacticalBehavior.RightHook => target.Position + Vector3.UnitX * approachOffset,
-                TacticalBehavior.Hammer => target.Position - Vector3.UnitY * approachOffset,
-                TacticalBehavior.Anvil => target.Position + Vector3.UnitY * approachOffset,
-                _ => target.Position,
+                TacticalBehavior.LeftHook => -right * _tacticalApproachDistance,
+                TacticalBehavior.RightHook => right * _tacticalApproachDistance,
+                TacticalBehavior.Hammer => -Vector3.UnitY * _tacticalApproachDistance,
+                TacticalBehavior.Anvil => Vector3.UnitY * _tacticalApproachDistance,
+                _ => -approachDirection * _tacticalApproachDistance,
             };
+            Vector3 groupCenter = target.Position + maneuverOffset;
+            return groupCenter + GetFormationOffset(unit, group, approachDirection, right);
+        }
+
+        /// <summary>
+        /// Computes a source-ordered member offset for the group's active formation.
+        /// </summary>
+        /// <param name="unit">The group member being positioned.</param>
+        /// <param name="group">The controlling group.</param>
+        /// <param name="forward">The group's approach direction.</param>
+        /// <param name="right">The group's horizontal right direction.</param>
+        /// <returns>The member's offset from the group center.</returns>
+        private static Vector3 GetFormationOffset(
+            TacticalUnitState unit,
+            TacticalShipGroup group,
+            Vector3 forward,
+            Vector3 right
+        )
+        {
+            if (group == null)
+                return Vector3.Zero;
+
+            int index = -1;
+            for (int i = 0; i < group.Units.Count; i++)
+            {
+                if (ReferenceEquals(group.Units[i], unit))
+                {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0)
+                return Vector3.Zero;
+            if (group.Formation == TacticalFormation.StandOff)
+            {
+                float centeredIndex = index - (group.Units.Count - 1) / 2f;
+                return right * centeredIndex * _formationSpacing;
+            }
+
+            Vector3 localDirection = Vector3.Normalize(
+                SurroundDirections[index % SurroundDirections.Length]
+            );
+            int shell = index / SurroundDirections.Length;
+            float radius = _formationSpacing * (shell + 1);
+            Vector3 up = Vector3.UnitY;
+            return (right * localDirection.X + up * localDirection.Y + forward * localDirection.Z)
+                * radius;
         }
 
         /// <summary>

@@ -376,6 +376,66 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_LeftHookBehavior_ApproachesRelativeToTargetBearing()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.Maneuverability = 10;
+            attackingShip.SublightSpeed = 10;
+            CapitalShip defendingShip = CreateShip(600, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            TacticalUnitState defendingUnit = session.Units.Single(unit =>
+                unit.Unit == defendingShip
+            );
+            attackingUnit.Position = Vector3.Zero;
+            attackingUnit.Forward = Vector3.UnitX;
+            defendingUnit.Position = new Vector3(100f, 0f, 0f);
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.LeftHook);
+
+            session.Advance(1f);
+
+            Assert.Greater(attackingUnit.Position.Z, 0f);
+        }
+
+        [Test]
+        public void Advance_SurroundFormation_DistributesMembersAcrossMultipleAxes()
+        {
+            CapitalShip firstShip = CreateShip(600, 0);
+            firstShip.Maneuverability = 10;
+            firstShip.SublightSpeed = 10;
+            CapitalShip secondShip = CreateShip(600, 0);
+            secondShip.Maneuverability = 10;
+            secondShip.SublightSpeed = 10;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(firstShip, secondShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            group.SetFormation(TacticalFormation.Surround);
+
+            session.Advance(1f);
+
+            TacticalUnitState firstUnit = session.Units.Single(unit => unit.Unit == firstShip);
+            TacticalUnitState secondUnit = session.Units.Single(unit => unit.Unit == secondShip);
+            Assert.Less(firstUnit.Position.Y, 0f);
+            Assert.AreEqual(0f, secondUnit.Position.Y, 0.001f);
+        }
+
+        [Test]
         public void Advance_AttackFightersBehavior_TargetsOnlyOpposingFighters()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
