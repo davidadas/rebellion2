@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Tactical
 {
@@ -10,11 +11,12 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     internal sealed class TacticalBattleSimulator
     {
-        private const float InitialSeparation = 100f;
-        private const float FormationSpacing = 8f;
-        private const float NavigationArrivalDistance = 1f;
-        private const float WithdrawalDistance = InitialSeparation * 2f;
+        private const float _initialSeparation = 100f;
+        private const float _formationSpacing = 8f;
+        private const float _navigationArrivalDistance = 1f;
+        private const float _withdrawalDistance = _initialSeparation * 2f;
         private readonly IReadOnlyList<TacticalShipGroup> groups;
+        private readonly IRandomNumberProvider random;
         private readonly IReadOnlyList<TacticalUnitState> units;
 
         private readonly struct PendingAttack
@@ -46,15 +48,18 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="units">The battle's tactical units.</param>
         /// <param name="groups">The battle's mutable command groups.</param>
+        /// <param name="random">The battle's deterministic random source.</param>
         public TacticalBattleSimulator(
             IReadOnlyList<TacticalUnitState> units,
-            IReadOnlyList<TacticalShipGroup> groups
+            IReadOnlyList<TacticalShipGroup> groups,
+            IRandomNumberProvider random
         )
         {
             this.units = units ?? throw new ArgumentNullException(nameof(units));
             this.groups = groups ?? throw new ArgumentNullException(nameof(groups));
-            PlaceFormation(TacticalBattleSide.Attacker, -InitialSeparation / 2f, Vector3.UnitZ);
-            PlaceFormation(TacticalBattleSide.Defender, InitialSeparation / 2f, -Vector3.UnitZ);
+            this.random = random ?? throw new ArgumentNullException(nameof(random));
+            PlaceFormation(TacticalBattleSide.Attacker, -_initialSeparation / 2f, Vector3.UnitZ);
+            PlaceFormation(TacticalBattleSide.Defender, _initialSeparation / 2f, -Vector3.UnitZ);
         }
 
         /// <summary>
@@ -68,7 +73,7 @@ namespace Rebellion.Game.Tactical
                 attacks.AddRange(AdvanceUnit(unit, elapsedTime));
 
             foreach (PendingAttack attack in attacks)
-                attack.Target.ApplyDamage(attack.Attack);
+                attack.Target.ApplyDamage(attack.Attack, random);
         }
 
         /// <summary>
@@ -240,7 +245,11 @@ namespace Rebellion.Game.Tactical
         {
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            if (distance <= NavigationArrivalDistance || unit.SublightSpeed == 0)
+            if (
+                distance <= _navigationArrivalDistance
+                || unit.SublightSpeed == 0
+                || unit.IsMovementDisabled
+            )
                 return;
 
             Vector3 desiredForward = displacement / distance;
@@ -282,7 +291,7 @@ namespace Rebellion.Game.Tactical
 
             TacticalNavPoint point = group.NavigationPoints[0];
             Vector3 destination = new Vector3(point.X, point.Y, point.Z);
-            if (Vector3.Distance(unit.Position, destination) <= NavigationArrivalDistance)
+            if (Vector3.Distance(unit.Position, destination) <= _navigationArrivalDistance)
                 group.RemoveNavigationPoint(point);
             else
                 MoveTowards(unit, destination, elapsedTime);
@@ -307,7 +316,7 @@ namespace Rebellion.Game.Tactical
                 .FirstOrDefault();
             if (carrier == null)
                 return;
-            if (Vector3.Distance(unit.Position, carrier.Position) <= NavigationArrivalDistance)
+            if (Vector3.Distance(unit.Position, carrier.Position) <= _navigationArrivalDistance)
             {
                 unit.BeginWithdrawal();
                 unit.CompleteWithdrawal();
@@ -329,10 +338,10 @@ namespace Rebellion.Game.Tactical
             unit.Forward = new Vector3(0f, 0f, direction);
             MoveTowards(
                 unit,
-                new Vector3(unit.Position.X, unit.Position.Y, direction * WithdrawalDistance),
+                new Vector3(unit.Position.X, unit.Position.Y, direction * _withdrawalDistance),
                 elapsedTime
             );
-            if (Math.Abs(unit.Position.Z) >= WithdrawalDistance - NavigationArrivalDistance)
+            if (Math.Abs(unit.Position.Z) >= _withdrawalDistance - _navigationArrivalDistance)
                 unit.CompleteWithdrawal();
         }
 
@@ -348,7 +357,7 @@ namespace Rebellion.Game.Tactical
             for (int i = 0; i < sideUnits.Length; i++)
             {
                 float centeredIndex = i - (sideUnits.Length - 1) / 2f;
-                sideUnits[i].Position = new Vector3(centeredIndex * FormationSpacing, 0f, z);
+                sideUnits[i].Position = new Vector3(centeredIndex * _formationSpacing, 0f, z);
                 sideUnits[i].Forward = forward;
             }
         }

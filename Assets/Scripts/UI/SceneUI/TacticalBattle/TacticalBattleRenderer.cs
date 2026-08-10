@@ -12,9 +12,9 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalBattleRenderer : MonoBehaviour
 {
-    private const float CapitalShipScale = 12f;
-    private const float CloseSpritePixelsPerUnit = 2f;
-    private const float FarSpritePixelsPerUnit = 1f;
+    private const float _capitalShipScale = 12f;
+    private const float _closeSpritePixelsPerUnit = 2f;
+    private const float _farSpritePixelsPerUnit = 1f;
     private static readonly string[] ModelLods = { "close", "medium", "far" };
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
     private static readonly string[] FighterGroupColors = { "red", "blue", "green", "gold" };
@@ -126,7 +126,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     {
         GameObject unitObject = new GameObject($"{ship.TypeID} Tactical Unit");
         unitObject.transform.SetParent(transform, false);
-        unitObject.transform.localScale = Vector3.one * CapitalShipScale;
+        unitObject.transform.localScale = Vector3.one * _capitalShipScale;
         TacticalUnitView unitView = unitObject.AddComponent<TacticalUnitView>();
         LOD[] lods = new LOD[ModelLods.Length];
         for (int index = 0; index < ModelLods.Length; index++)
@@ -215,7 +215,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             contentAssets,
             $"{fighters.TacticalSpritePath}/{color}-close",
             "close",
-            CloseSpritePixelsPerUnit,
+            _closeSpritePixelsPerUnit,
             0.08f
         );
         lods[1] = CreateFighterLod(
@@ -223,7 +223,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             contentAssets,
             $"{fighters.TacticalSpritePath}/{color}-far",
             "far",
-            FarSpritePixelsPerUnit,
+            _farSpritePixelsPerUnit,
             0.01f
         );
 

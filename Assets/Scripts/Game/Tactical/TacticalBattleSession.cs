@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Tactical
 {
@@ -55,21 +56,29 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         public bool IsPaused => pauseCount > 0;
 
-        private TacticalBattleSession(PendingCombatResult encounter, IList<TacticalUnitState> units)
+        private TacticalBattleSession(
+            PendingCombatResult encounter,
+            IList<TacticalUnitState> units,
+            IRandomNumberProvider random
+        )
         {
             Encounter = encounter;
             groupView = groups.AsReadOnly();
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
             BuildCommandGroups();
-            simulator = new TacticalBattleSimulator(this.units, groupView);
+            simulator = new TacticalBattleSimulator(this.units, groupView, random);
         }
 
         /// <summary>
         /// Creates an isolated tactical session from a pending fleet encounter.
         /// </summary>
         /// <param name="encounter">The pending strategic encounter.</param>
+        /// <param name="random">The game's deterministic random source.</param>
         /// <returns>The initialized tactical session.</returns>
-        public static TacticalBattleSession Create(PendingCombatResult encounter)
+        public static TacticalBattleSession Create(
+            PendingCombatResult encounter,
+            IRandomNumberProvider random
+        )
         {
             if (encounter == null)
                 throw new ArgumentNullException(nameof(encounter));
@@ -77,6 +86,8 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentException("Attacking fleet is required.", nameof(encounter));
             if (encounter.DefenderFleet == null)
                 throw new ArgumentException("Defending fleet is required.", nameof(encounter));
+            if (random == null)
+                throw new ArgumentNullException(nameof(random));
 
             List<TacticalUnitState> units = new List<TacticalUnitState>();
             AddFleet(units, encounter.AttackerFleet, TacticalBattleSide.Attacker);
@@ -93,7 +104,7 @@ namespace Rebellion.Game.Tactical
                 encounter.DefenderOwnerInstanceID,
                 TacticalBattleSide.Defender
             );
-            return new TacticalBattleSession(encounter, units);
+            return new TacticalBattleSession(encounter, units, random);
         }
 
         /// <summary>

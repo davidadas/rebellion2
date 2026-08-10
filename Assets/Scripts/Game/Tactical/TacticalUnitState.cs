@@ -5,6 +5,7 @@ using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Game.Tactical
 {
@@ -18,6 +19,8 @@ namespace Rebellion.Game.Tactical
         private readonly float[] arcChargeRequired = new float[4];
         private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
         private float shieldRechargeRemainder;
+        private float componentDisruptionTime;
+        private float movementDisruptionTime;
 
         /// <summary>
         /// Gets the strategic unit represented by this tactical unit.
@@ -103,6 +106,21 @@ namespace Rebellion.Game.Tactical
         /// Gets whether the unit has completed its withdrawal.
         /// </summary>
         public bool HasWithdrawn { get; private set; }
+
+        /// <summary>
+        /// Gets whether temporary tactical disruption prevents the unit from moving.
+        /// </summary>
+        public bool IsMovementDisabled => movementDisruptionTime > 0f;
+
+        /// <summary>
+        /// Gets the remaining temporary component disruption time.
+        /// </summary>
+        public float ComponentDisruptionTime => componentDisruptionTime;
+
+        /// <summary>
+        /// Gets the remaining temporary movement disruption time.
+        /// </summary>
+        public float MovementDisruptionTime => movementDisruptionTime;
 
         /// <summary>
         /// Initializes the mutable tactical state for one strategic unit.
@@ -281,9 +299,18 @@ namespace Rebellion.Game.Tactical
         /// Applies one independently resolved weapon-family attack.
         /// </summary>
         /// <param name="attack">The attack to apply.</param>
-        public void ApplyDamage(TacticalAttack attack)
+        /// <param name="random">The deterministic random source used for system disruption.</param>
+        public void ApplyDamage(TacticalAttack attack, IRandomNumberProvider random)
         {
-            ApplyDamage(attack.Strength);
+            if (random == null)
+                throw new ArgumentNullException(nameof(random));
+            if (attack.WeaponType != TacticalWeaponType.IonCannon)
+            {
+                ApplyDamage(attack.Strength);
+                return;
+            }
+
+            ApplyIonDamage(attack.Strength, random);
         }
 
         /// <summary>
@@ -294,6 +321,8 @@ namespace Rebellion.Game.Tactical
         {
             if (elapsedTime < 0f)
                 throw new ArgumentOutOfRangeException(nameof(elapsedTime));
+            componentDisruptionTime = Math.Max(0f, componentDisruptionTime - elapsedTime);
+            movementDisruptionTime = Math.Max(0f, movementDisruptionTime - elapsedTime);
             AdvanceWeaponRecharge(elapsedTime);
 
             if (!IsActive || Shields >= InitialShields || ShieldRechargeRate == 0)
@@ -335,6 +364,48 @@ namespace Rebellion.Game.Tactical
                     fighters.TorpedoRange
                 ),
             };
+        }
+
+        /// <summary>
+        /// Applies ion damage to shields and converts capital-ship overflow into temporary disruption.
+        /// </summary>
+        /// <param name="amount">The nonnegative ion damage amount.</param>
+        /// <param name="random">The deterministic random source used for each disruption roll.</param>
+        private void ApplyIonDamage(int amount, IRandomNumberProvider random)
+        {
+            if (amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount == 0 || !IsActive)
+                return;
+
+            int overflow = Math.Max(0, amount - Shields);
+            Shields = Math.Max(0, Shields - amount);
+            if (Kind != TacticalUnitKind.CapitalShip)
+                return;
+
+            for (int point = 0; point < overflow; point++)
+            {
+                int effect = random.NextInt(1, 11);
+                if (effect == 1)
+                    componentDisruptionTime += random.NextInt(30, 51);
+                else if (effect == 2)
+                    movementDisruptionTime += random.NextInt(30, 51);
+                else
+                    DisruptWeaponArc((TacticalWeaponArc)((effect - 3) / 2));
+            }
+        }
+
+        /// <summary>
+        /// Clears one arc's active charge so its weapons must recharge before firing again.
+        /// </summary>
+        /// <param name="arc">The disrupted weapon arc.</param>
+        private void DisruptWeaponArc(TacticalWeaponArc arc)
+        {
+            int index = (int)arc;
+            arcCharge[index] = 0f;
+            arcChargeRequired[index] = weaponBatteries.Sum(battery => battery.GetCount(arc));
+            if (arcChargeRequired[index] > 0f && !rechargingArcs.Contains(arc))
+                rechargingArcs.Enqueue(arc);
         }
 
         /// <summary>

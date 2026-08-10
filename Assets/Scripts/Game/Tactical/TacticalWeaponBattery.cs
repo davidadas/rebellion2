@@ -56,11 +56,11 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     public sealed class TacticalWeaponBattery
     {
-        private const int ForeIndex = 0;
-        private const int AftIndex = 1;
-        private const int PortIndex = 2;
-        private const int StarboardIndex = 3;
-        private const int RangeIndex = 4;
+        private const int _foreIndex = 0;
+        private const int _aftIndex = 1;
+        private const int _portIndex = 2;
+        private const int _starboardIndex = 3;
+        private const int _rangeIndex = 4;
         private readonly int[] arcCounts;
 
         /// <summary>
@@ -120,11 +120,11 @@ namespace Rebellion.Game.Tactical
 
             return new TacticalWeaponBattery(
                 (TacticalWeaponType)weaponType,
-                values[ForeIndex],
-                values[AftIndex],
-                values[PortIndex],
-                values[StarboardIndex],
-                values[RangeIndex]
+                values[_foreIndex],
+                values[_aftIndex],
+                values[_portIndex],
+                values[_starboardIndex],
+                values[_rangeIndex]
             );
         }
 
@@ -153,10 +153,10 @@ namespace Rebellion.Game.Tactical
         {
             return arc switch
             {
-                TacticalWeaponArc.Fore => arcCounts[ForeIndex],
-                TacticalWeaponArc.Aft => arcCounts[AftIndex],
-                TacticalWeaponArc.Port => arcCounts[PortIndex],
-                TacticalWeaponArc.Starboard => arcCounts[StarboardIndex],
+                TacticalWeaponArc.Fore => arcCounts[_foreIndex],
+                TacticalWeaponArc.Aft => arcCounts[_aftIndex],
+                TacticalWeaponArc.Port => arcCounts[_portIndex],
+                TacticalWeaponArc.Starboard => arcCounts[_starboardIndex],
                 _ => throw new ArgumentOutOfRangeException(nameof(arc)),
             };
         }

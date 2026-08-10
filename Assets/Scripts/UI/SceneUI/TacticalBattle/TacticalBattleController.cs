@@ -54,7 +54,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             );
         }
 
-        Session = TacticalBattleSession.Create(encounter);
+        Session = TacticalBattleSession.Create(encounter, gameManager.GetGame().Random);
         view = GetComponentInChildren<TacticalBattleView>(true);
         if (view == null)
             throw new MissingReferenceException("Tactical battle view is missing.");

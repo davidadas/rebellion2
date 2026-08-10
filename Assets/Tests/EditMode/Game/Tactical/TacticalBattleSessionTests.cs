@@ -5,6 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Tactical
 {
@@ -14,7 +15,7 @@ namespace Rebellion.Tests.Game.Tactical
         [Test]
         public void Create_NullEncounter_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => TacticalBattleSession.Create(null));
+            Assert.Throws<ArgumentNullException>(() => CreateTacticalSession(null));
         }
 
         [Test]
@@ -25,7 +26,7 @@ namespace Rebellion.Tests.Game.Tactical
                 AttackerFleet = CreateFleet(),
             };
 
-            Assert.Throws<ArgumentException>(() => TacticalBattleSession.Create(encounter));
+            Assert.Throws<ArgumentException>(() => CreateTacticalSession(encounter));
         }
 
         [Test]
@@ -40,7 +41,7 @@ namespace Rebellion.Tests.Game.Tactical
                 DefenderFleet = CreateFleet(defendingShip),
             };
 
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             Assert.AreEqual(3, session.Units.Count);
             Assert.AreEqual(
@@ -72,7 +73,7 @@ namespace Rebellion.Tests.Game.Tactical
                 DefenderFleet = CreateFleet(CreateShip(100, 100)),
             };
 
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             Assert.AreEqual(2, session.Units.Count);
             Assert.IsTrue(session.Units.All(unit => unit.Kind == TacticalUnitKind.CapitalShip));
@@ -97,7 +98,7 @@ namespace Rebellion.Tests.Game.Tactical
                 Planet = planet,
             };
 
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             Assert.AreEqual(4, session.Units.Count);
             Assert.AreEqual(
@@ -128,7 +129,7 @@ namespace Rebellion.Tests.Game.Tactical
                 DefenderFleet = CreateFleet(CreateShip(450, 175)),
             };
 
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             TacticalUnitState state = session.Units.Single(unit => unit.Unit == attackingShip);
             Assert.AreEqual(3, state.WeaponBatteries.Count);
@@ -152,7 +153,7 @@ namespace Rebellion.Tests.Game.Tactical
                 ),
                 DefenderFleet = CreateFleet(CreateShip(450, 175)),
             };
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             System.Collections.Generic.IReadOnlyList<TacticalShipGroup> groups =
                 session.GetTaskForces(TacticalBattleSide.Attacker);
@@ -173,7 +174,7 @@ namespace Rebellion.Tests.Game.Tactical
                 AttackerFleet = CreateFleet(CreateShip(600, 250, firstXWing, yWing, secondXWing)),
                 DefenderFleet = CreateFleet(CreateShip(450, 175)),
             };
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             System.Collections.Generic.IReadOnlyList<TacticalShipGroup> groups =
                 session.GetFighterGroups(TacticalBattleSide.Attacker);
@@ -254,7 +255,7 @@ namespace Rebellion.Tests.Game.Tactical
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
             CapitalShip defendingShip = CreateShip(100, 0);
-            TacticalBattleSession session = TacticalBattleSession.Create(
+            TacticalBattleSession session = CreateTacticalSession(
                 new PendingCombatResult
                 {
                     AttackerFleet = CreateFleet(attackingShip),
@@ -273,7 +274,7 @@ namespace Rebellion.Tests.Game.Tactical
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 6, 0, 0, 0, 200 };
             CapitalShip defendingShip = CreateShip(100, 0, CreateFighters(12, 0));
-            TacticalBattleSession session = TacticalBattleSession.Create(
+            TacticalBattleSession session = CreateTacticalSession(
                 new PendingCombatResult
                 {
                     AttackerFleet = CreateFleet(attackingShip),
@@ -299,7 +300,7 @@ namespace Rebellion.Tests.Game.Tactical
             CapitalShip defendingShip = CreateShip(30, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
             defendingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
-            TacticalBattleSession session = TacticalBattleSession.Create(
+            TacticalBattleSession session = CreateTacticalSession(
                 new PendingCombatResult
                 {
                     AttackerFleet = CreateFleet(attackingShip),
@@ -320,7 +321,7 @@ namespace Rebellion.Tests.Game.Tactical
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.SublightSpeed = 100;
-            TacticalBattleSession session = TacticalBattleSession.Create(
+            TacticalBattleSession session = CreateTacticalSession(
                 new PendingCombatResult
                 {
                     AttackerFleet = CreateFleet(attackingShip),
@@ -353,7 +354,7 @@ namespace Rebellion.Tests.Game.Tactical
                 DefenderOwnerInstanceID = "defender",
                 Tick = 42,
             };
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
             session.Units.Single(unit => unit.Unit == attackingShip).Hull = 500;
             session.Units.Single(unit => unit.Unit == attackingFighters).Hull = 6;
             session.Units.Single(unit => unit.Unit == defendingShip).Hull = 0;
@@ -386,7 +387,7 @@ namespace Rebellion.Tests.Game.Tactical
                 AttackerFleet = CreateFleet(CreateShip(600, 250)),
                 DefenderFleet = CreateFleet(CreateShip(450, 175)),
             };
-            TacticalBattleSession session = TacticalBattleSession.Create(encounter);
+            TacticalBattleSession session = CreateTacticalSession(encounter);
 
             Assert.Throws<InvalidOperationException>(() => session.BuildResult());
         }
@@ -406,13 +407,18 @@ namespace Rebellion.Tests.Game.Tactical
 
         private static TacticalBattleSession CreateSession(CapitalShip attackingShip = null)
         {
-            return TacticalBattleSession.Create(
+            return CreateTacticalSession(
                 new PendingCombatResult
                 {
                     AttackerFleet = CreateFleet(attackingShip ?? CreateShip(600, 250)),
                     DefenderFleet = CreateFleet(CreateShip(450, 175)),
                 }
             );
+        }
+
+        private static TacticalBattleSession CreateTacticalSession(PendingCombatResult encounter)
+        {
+            return TacticalBattleSession.Create(encounter, new FixedRandomProvider(new[] { 0d }));
         }
 
         private static Starfighter CreateFighters(

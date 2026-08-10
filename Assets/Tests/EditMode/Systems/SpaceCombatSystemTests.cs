@@ -1239,7 +1239,7 @@ namespace Rebellion.Tests.Systems
                 .ProcessTick()
                 .OfType<PendingCombatResult>()
                 .Single();
-            TacticalBattleSession session = TacticalBattleSession.Create(pending);
+            TacticalBattleSession session = TacticalBattleSession.Create(pending, new QueueRNG());
             Fleet defeatedFleet = pending.DefenderFleet;
             foreach (
                 TacticalUnitState unit in session.Units.Where(unit =>
