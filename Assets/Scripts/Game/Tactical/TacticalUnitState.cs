@@ -14,12 +14,18 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     public sealed class TacticalUnitState
     {
+        private const float _damageControlInterval = 50f;
+        private const int _maximumSystemDamage = 4;
+        private const float _systemDamagePenalty = 0.25f;
         private readonly ReadOnlyCollection<TacticalWeaponBattery> weaponBatteries;
         private readonly float[] arcCharge = new float[4];
         private readonly float[] arcChargeRequired = new float[4];
+        private readonly int[] systemDamage = new int[5];
         private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
+        private readonly int damageControl;
         private float shieldRechargeRemainder;
         private float componentDisruptionTime;
+        private float damageControlTime;
         private float movementDisruptionTime;
 
         /// <summary>
@@ -113,6 +119,28 @@ namespace Rebellion.Game.Tactical
         public bool IsMovementDisabled => movementDisruptionTime > 0f;
 
         /// <summary>
+        /// Gets the sublight movement available after persistent drive damage.
+        /// </summary>
+        public float EffectiveSublightSpeed =>
+            IsMovementDisabled
+                ? 0f
+                : Math.Max(
+                    0f,
+                    SublightSpeed
+                        * (
+                            1f
+                            - GetSystemDamage(TacticalDamageSystem.SublightDrive)
+                                * _systemDamagePenalty
+                        )
+                );
+
+        /// <summary>
+        /// Gets whether the hyperdrive remains capable of completing a tactical withdrawal.
+        /// </summary>
+        public bool CanWithdraw =>
+            GetSystemDamage(TacticalDamageSystem.Hyperdrive) < _maximumSystemDamage;
+
+        /// <summary>
         /// Gets the remaining temporary component disruption time.
         /// </summary>
         public float ComponentDisruptionTime => componentDisruptionTime;
@@ -134,6 +162,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="weaponRechargeRate">The weapon recharge rate.</param>
         /// <param name="sublightSpeed">The tactical movement rating.</param>
         /// <param name="maneuverability">The tactical turning rating.</param>
+        /// <param name="damageControl">The chance to repair subsystem damage.</param>
         /// <param name="weaponBatteries">The unit's tactical weapon batteries.</param>
         private TacticalUnitState(
             IGameEntity unit,
@@ -145,6 +174,7 @@ namespace Rebellion.Game.Tactical
             int weaponRechargeRate,
             int sublightSpeed,
             int maneuverability,
+            int damageControl,
             IList<TacticalWeaponBattery> weaponBatteries
         )
         {
@@ -159,6 +189,7 @@ namespace Rebellion.Game.Tactical
             WeaponRechargeRate = Math.Max(0, weaponRechargeRate);
             SublightSpeed = Math.Max(0, sublightSpeed);
             Maneuverability = Math.Max(0, maneuverability);
+            this.damageControl = Math.Max(0, damageControl);
             Forward = Vector3.UnitZ;
             this.weaponBatteries = new ReadOnlyCollection<TacticalWeaponBattery>(
                 weaponBatteries ?? Array.Empty<TacticalWeaponBattery>()
@@ -186,6 +217,7 @@ namespace Rebellion.Game.Tactical
                 ship.WeaponRecharge,
                 ship.SublightSpeed,
                 ship.Maneuverability,
+                ship.DamageControl,
                 ship.PrimaryWeapons.OrderBy(entry => entry.Key)
                     .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
                     .ToList()
@@ -213,6 +245,7 @@ namespace Rebellion.Game.Tactical
                 fighters.CurrentSquadronSize,
                 fighters.SublightSpeed,
                 fighters.Agility,
+                0,
                 CreateFighterBatteries(fighters)
             );
         }
@@ -306,7 +339,7 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentNullException(nameof(random));
             if (attack.WeaponType != TacticalWeaponType.IonCannon)
             {
-                ApplyDamage(attack.Strength);
+                ApplyConventionalDamage(attack.Strength, random);
                 return;
             }
 
@@ -314,28 +347,44 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Returns the persistent damage level for one capital-ship subsystem.
+        /// </summary>
+        /// <param name="system">The subsystem to inspect.</param>
+        /// <returns>The damage level from zero through four.</returns>
+        public int GetSystemDamage(TacticalDamageSystem system)
+        {
+            return systemDamage[(int)system];
+        }
+
+        /// <summary>
         /// Advances the unit's continuous tactical recharge state.
         /// </summary>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
-        internal void Advance(float elapsedTime)
+        /// <param name="random">The deterministic random source used for damage control.</param>
+        internal void Advance(float elapsedTime, IRandomNumberProvider random)
         {
             if (elapsedTime < 0f)
                 throw new ArgumentOutOfRangeException(nameof(elapsedTime));
+            if (random == null)
+                throw new ArgumentNullException(nameof(random));
             componentDisruptionTime = Math.Max(0f, componentDisruptionTime - elapsedTime);
             movementDisruptionTime = Math.Max(0f, movementDisruptionTime - elapsedTime);
-            AdvanceWeaponRecharge(elapsedTime);
+            AdvanceDamageControl(elapsedTime, random);
+            AdvanceWeaponRecharge(elapsedTime, GetEffectiveWeaponRechargeRate());
 
-            if (!IsActive || Shields >= InitialShields || ShieldRechargeRate == 0)
+            int maximumShields = GetCurrentMaximumShields();
+            float rechargeRate = GetEffectiveShieldRechargeRate();
+            if (!IsActive || Shields >= maximumShields || rechargeRate <= 0f)
             {
                 shieldRechargeRemainder = 0f;
                 return;
             }
 
-            float recharge = shieldRechargeRemainder + ShieldRechargeRate * elapsedTime;
+            float recharge = shieldRechargeRemainder + rechargeRate * elapsedTime;
             int wholeRecharge = (int)Math.Floor(recharge);
             shieldRechargeRemainder = recharge - wholeRecharge;
-            Shields = Math.Min(InitialShields, Shields + wholeRecharge);
-            if (Shields == InitialShields)
+            Shields = Math.Min(maximumShields, Shields + wholeRecharge);
+            if (Shields == maximumShields)
                 shieldRechargeRemainder = 0f;
         }
 
@@ -396,6 +445,145 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Applies conventional damage and rolls persistent capital-ship subsystem damage.
+        /// </summary>
+        /// <param name="amount">The nonnegative damage amount.</param>
+        /// <param name="random">The deterministic random source used for subsystem damage.</param>
+        private void ApplyConventionalDamage(int amount, IRandomNumberProvider random)
+        {
+            if (amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            if (amount == 0 || !IsActive)
+                return;
+
+            int shieldBefore = Shields;
+            int hullBefore = Hull;
+            ApplyDamage(Math.Max(1, amount));
+            if (Kind != TacticalUnitKind.CapitalShip)
+                return;
+
+            if (Shields > 0)
+            {
+                float shieldLossPercent = Math.Max(
+                    1f,
+                    100f * (shieldBefore - Shields) / shieldBefore
+                );
+                if (random.NextInt(0, 101) <= shieldLossPercent)
+                    AddSystemDamage(TacticalDamageSystem.ShieldGenerator);
+                return;
+            }
+
+            if (Hull <= 0 || Hull == hullBefore)
+                return;
+
+            float criticalRoll = random.NextInt(0, 101) - 100f * (hullBefore - Hull) / hullBefore;
+            if (criticalRoll <= 50f)
+                return;
+            if (criticalRoll <= 65f)
+                AddSystemDamage(TacticalDamageSystem.ShieldGenerator);
+            else if (criticalRoll <= 80f)
+                AddSystemDamage(TacticalDamageSystem.WeaponSystems);
+            else if (criticalRoll <= 90f)
+                AddSystemDamage(TacticalDamageSystem.TractorBeam);
+            else if (criticalRoll <= 95f)
+                AddSystemDamage(TacticalDamageSystem.SublightDrive);
+            else
+                AddSystemDamage(TacticalDamageSystem.Hyperdrive);
+        }
+
+        /// <summary>
+        /// Adds one persistent damage level to a subsystem, capped at four.
+        /// </summary>
+        /// <param name="system">The subsystem receiving damage.</param>
+        private void AddSystemDamage(TacticalDamageSystem system)
+        {
+            int index = (int)system;
+            systemDamage[index] = Math.Min(_maximumSystemDamage, systemDamage[index] + 1);
+        }
+
+        /// <summary>
+        /// Periodically attempts to repair one randomly selected subsystem damage level.
+        /// </summary>
+        /// <param name="elapsedTime">The elapsed tactical time.</param>
+        /// <param name="random">The deterministic random source used for repair rolls.</param>
+        private void AdvanceDamageControl(float elapsedTime, IRandomNumberProvider random)
+        {
+            if (Kind != TacticalUnitKind.CapitalShip || systemDamage.Sum() == 0)
+                return;
+
+            damageControlTime -= elapsedTime;
+            while (damageControlTime <= 0f)
+            {
+                damageControlTime += _damageControlInterval;
+                if (damageControl <= 0)
+                    continue;
+                if (random.NextInt(1, 101) > damageControl)
+                    continue;
+
+                int selectedDamage = random.NextInt(1, systemDamage.Sum() + 1);
+                for (int index = 0; index < systemDamage.Length; index++)
+                {
+                    if (selectedDamage <= systemDamage[index])
+                    {
+                        systemDamage[index]--;
+                        return;
+                    }
+
+                    selectedDamage -= systemDamage[index];
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the maximum fighter shield pool supported by the surviving squadron.
+        /// </summary>
+        /// <returns>The current maximum shield strength.</returns>
+        private int GetCurrentMaximumShields()
+        {
+            return Kind == TacticalUnitKind.Fighters && InitialHull > 0
+                ? InitialShields * Hull / InitialHull
+                : InitialShields;
+        }
+
+        /// <summary>
+        /// Computes shield recharge after hull condition and subsystem damage.
+        /// </summary>
+        /// <returns>The effective shield recharge rate.</returns>
+        private float GetEffectiveShieldRechargeRate()
+        {
+            if (InitialHull == 0)
+                return 0f;
+
+            float rate = ShieldRechargeRate * (float)Hull / InitialHull;
+            return Math.Max(
+                0f,
+                rate
+                    - ShieldRechargeRate
+                        * _systemDamagePenalty
+                        * GetSystemDamage(TacticalDamageSystem.ShieldGenerator)
+            );
+        }
+
+        /// <summary>
+        /// Computes weapon recharge after hull condition and subsystem damage.
+        /// </summary>
+        /// <returns>The effective weapon recharge rate.</returns>
+        private float GetEffectiveWeaponRechargeRate()
+        {
+            if (InitialHull == 0)
+                return 0f;
+
+            float rate = WeaponRechargeRate * (float)Hull / InitialHull;
+            return Math.Max(
+                0f,
+                rate
+                    - WeaponRechargeRate
+                        * _systemDamagePenalty
+                        * GetSystemDamage(TacticalDamageSystem.WeaponSystems)
+            );
+        }
+
+        /// <summary>
         /// Clears one arc's active charge so its weapons must recharge before firing again.
         /// </summary>
         /// <param name="arc">The disrupted weapon arc.</param>
@@ -423,12 +611,13 @@ namespace Rebellion.Game.Tactical
         /// Applies available weapon energy to discharged arcs in firing order.
         /// </summary>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
-        private void AdvanceWeaponRecharge(float elapsedTime)
+        /// <param name="rechargeRate">The effective recharge rate after tactical damage.</param>
+        private void AdvanceWeaponRecharge(float elapsedTime, float rechargeRate)
         {
-            if (!IsActive || WeaponRechargeRate == 0 || rechargingArcs.Count == 0)
+            if (!IsActive || rechargeRate <= 0f || rechargingArcs.Count == 0)
                 return;
 
-            float availableRecharge = WeaponRechargeRate * elapsedTime;
+            float availableRecharge = rechargeRate * elapsedTime;
             while (availableRecharge > 0f && rechargingArcs.Count > 0)
             {
                 TacticalWeaponArc arc = rechargingArcs.Peek();

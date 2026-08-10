@@ -25,6 +25,7 @@ namespace Rebellion.Game.Tactical
             TacticalBattleSide,
             IReadOnlyList<TacticalShipGroup>
         > taskForces = new Dictionary<TacticalBattleSide, IReadOnlyList<TacticalShipGroup>>();
+        private readonly IRandomNumberProvider random;
         private readonly ReadOnlyCollection<TacticalUnitState> units;
         private readonly TacticalBattleSimulator simulator;
         private int pauseCount;
@@ -64,6 +65,7 @@ namespace Rebellion.Game.Tactical
         {
             Encounter = encounter;
             groupView = groups.AsReadOnly();
+            this.random = random;
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
             BuildCommandGroups();
             simulator = new TacticalBattleSimulator(this.units, groupView, random);
@@ -214,7 +216,7 @@ namespace Rebellion.Game.Tactical
                 return;
 
             foreach (TacticalUnitState unit in units)
-                unit.Advance(elapsedTime);
+                unit.Advance(elapsedTime, random);
 
             foreach (TacticalShipGroup group in groups)
                 group.RemoveInactiveTargets();

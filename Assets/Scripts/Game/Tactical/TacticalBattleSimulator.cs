@@ -245,11 +245,7 @@ namespace Rebellion.Game.Tactical
         {
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            if (
-                distance <= _navigationArrivalDistance
-                || unit.SublightSpeed == 0
-                || unit.IsMovementDisabled
-            )
+            if (distance <= _navigationArrivalDistance || unit.EffectiveSublightSpeed <= 0f)
                 return;
 
             Vector3 desiredForward = displacement / distance;
@@ -258,7 +254,7 @@ namespace Rebellion.Game.Tactical
                 Vector3.Lerp(unit.Forward, desiredForward, turnAmount),
                 desiredForward
             );
-            float movement = Math.Min(distance, unit.SublightSpeed * elapsedTime);
+            float movement = Math.Min(distance, unit.EffectiveSublightSpeed * elapsedTime);
             unit.Position += unit.Forward * movement;
         }
 
@@ -333,6 +329,9 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         private static void AdvanceWithdrawal(TacticalUnitState unit, float elapsedTime)
         {
+            if (!unit.CanWithdraw)
+                return;
+
             unit.BeginWithdrawal();
             float direction = unit.Side == TacticalBattleSide.Attacker ? -1f : 1f;
             unit.Forward = new Vector3(0f, 0f, direction);

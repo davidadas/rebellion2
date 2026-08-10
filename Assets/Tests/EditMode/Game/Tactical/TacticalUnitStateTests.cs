@@ -80,12 +80,12 @@ namespace Rebellion.Tests.Game.Tactical
                 new TacticalAttack(TacticalWeaponType.IonCannon, 1),
                 CreateRandom(0.1d, 0d)
             );
-            unit.Advance(29f);
+            unit.Advance(29f, CreateRandom(1d));
 
             Assert.IsTrue(unit.IsMovementDisabled);
             Assert.AreEqual(1f, unit.MovementDisruptionTime);
 
-            unit.Advance(1f);
+            unit.Advance(1f, CreateRandom(1d));
 
             Assert.IsFalse(unit.IsMovementDisabled);
         }
@@ -107,7 +107,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             Assert.AreEqual(0, unit.GetAvailableAttackStrength(TacticalWeaponArc.Fore, 40f));
 
-            unit.Advance(1f);
+            unit.Advance(1f, CreateRandom(1d));
 
             Assert.AreEqual(10, unit.GetAvailableAttackStrength(TacticalWeaponArc.Fore, 40f));
         }
@@ -129,6 +129,107 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void ApplyDamage_ConventionalShieldHit_CanDamageShieldGenerator()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 50);
+
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 20),
+                CreateRandom(0d)
+            );
+
+            Assert.AreEqual(1, unit.GetSystemDamage(TacticalDamageSystem.ShieldGenerator));
+        }
+
+        [TestCase(0.60d, TacticalDamageSystem.ShieldGenerator)]
+        [TestCase(0.75d, TacticalDamageSystem.WeaponSystems)]
+        [TestCase(0.85d, TacticalDamageSystem.TractorBeam)]
+        [TestCase(0.93d, TacticalDamageSystem.SublightDrive)]
+        [TestCase(0.99d, TacticalDamageSystem.Hyperdrive)]
+        public void ApplyDamage_ConventionalHullCritical_DamagesSelectedSubsystem(
+            double roll,
+            TacticalDamageSystem expectedSystem
+        )
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
+
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                CreateRandom(roll)
+            );
+
+            Assert.AreEqual(1, unit.GetSystemDamage(expectedSystem));
+        }
+
+        [Test]
+        public void EffectiveSublightSpeed_MaximumDriveDamage_DisablesMovement()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
+
+            for (int hit = 0; hit < 4; hit++)
+            {
+                unit.ApplyDamage(
+                    new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                    CreateRandom(0.93d)
+                );
+            }
+
+            Assert.AreEqual(0f, unit.EffectiveSublightSpeed);
+        }
+
+        [Test]
+        public void CanWithdraw_MaximumHyperdriveDamage_ReturnsFalse()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
+
+            for (int hit = 0; hit < 4; hit++)
+            {
+                unit.ApplyDamage(
+                    new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                    CreateRandom(0.99d)
+                );
+            }
+
+            Assert.IsFalse(unit.CanWithdraw);
+        }
+
+        [Test]
+        public void Advance_DamagedSubsystemAndSuccessfulDamageControl_RepairsOneLevel()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(
+                hull: 100,
+                shields: 0,
+                damageControl: 100
+            );
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                CreateRandom(0.93d)
+            );
+
+            unit.Advance(0f, CreateRandom(0d, 0d));
+
+            Assert.AreEqual(0, unit.GetSystemDamage(TacticalDamageSystem.SublightDrive));
+        }
+
+        [Test]
+        public void Advance_ShieldGeneratorDamage_ReducesShieldRecharge()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(
+                hull: 100,
+                shields: 50,
+                shieldRechargeRate: 4
+            );
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 20),
+                CreateRandom(0d)
+            );
+
+            unit.Advance(1f, CreateRandom(1d));
+
+            Assert.AreEqual(33, unit.Shields);
+        }
+
+        [Test]
         public void Advance_DamagedShields_RechargesContinuouslyUpToInitialStrength()
         {
             TacticalUnitState unit = CreateCapitalShipState(
@@ -138,9 +239,9 @@ namespace Rebellion.Tests.Game.Tactical
             );
             unit.ApplyDamage(10);
 
-            unit.Advance(0.5f);
-            unit.Advance(0.5f);
-            unit.Advance(10f);
+            unit.Advance(0.5f, CreateRandom(1d));
+            unit.Advance(0.5f, CreateRandom(1d));
+            unit.Advance(10f, CreateRandom(1d));
 
             Assert.AreEqual(50, unit.Shields);
         }
@@ -180,7 +281,7 @@ namespace Rebellion.Tests.Game.Tactical
             unit.FireArc(TacticalWeaponArc.Fore, 40f);
             unit.FireArc(TacticalWeaponArc.Aft, 40f);
 
-            unit.Advance(2f);
+            unit.Advance(2f, CreateRandom(1d));
 
             Assert.AreEqual(20, unit.GetAvailableAttackStrength(TacticalWeaponArc.Fore, 40f));
             Assert.AreEqual(0, unit.GetAvailableAttackStrength(TacticalWeaponArc.Aft, 40f));
@@ -213,14 +314,16 @@ namespace Rebellion.Tests.Game.Tactical
             int hull,
             int shields,
             int shieldRechargeRate = 0,
-            int weaponRechargeRate = 0
+            int weaponRechargeRate = 0,
+            int damageControl = 0
         )
         {
             CapitalShip ship = CreateCapitalShip(
                 hull,
                 shields,
                 shieldRechargeRate,
-                weaponRechargeRate
+                weaponRechargeRate,
+                damageControl
             );
             return TacticalUnitState.FromCapitalShip(ship, TacticalBattleSide.Attacker);
         }
@@ -229,7 +332,8 @@ namespace Rebellion.Tests.Game.Tactical
             int hull,
             int shields,
             int shieldRechargeRate = 0,
-            int weaponRechargeRate = 0
+            int weaponRechargeRate = 0,
+            int damageControl = 0
         )
         {
             return new CapitalShip
@@ -239,6 +343,7 @@ namespace Rebellion.Tests.Game.Tactical
                 MaxShieldStrength = shields,
                 ShieldRechargeRate = shieldRechargeRate,
                 WeaponRecharge = weaponRechargeRate,
+                DamageControl = damageControl,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
