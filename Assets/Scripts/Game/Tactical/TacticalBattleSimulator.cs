@@ -425,11 +425,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="unit">The moving unit.</param>
         /// <param name="destination">The desired tactical position.</param>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
-        private void MoveTowards(
-            TacticalUnitState unit,
-            Vector3 destination,
-            float elapsedTime
-        )
+        private void MoveTowards(TacticalUnitState unit, Vector3 destination, float elapsedTime)
         {
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
@@ -463,10 +459,11 @@ namespace Rebellion.Game.Tactical
             );
             Vector3 firstClearance =
                 Math.Abs(upperPosition.Y - candidatePosition.Y)
-                    <= Math.Abs(lowerPosition.Y - candidatePosition.Y)
+                <= Math.Abs(lowerPosition.Y - candidatePosition.Y)
                     ? upperPosition
                     : lowerPosition;
-            Vector3 secondClearance = firstClearance == upperPosition ? lowerPosition : upperPosition;
+            Vector3 secondClearance =
+                firstClearance == upperPosition ? lowerPosition : upperPosition;
             if (!TryFindCollision(unit, firstClearance, out _))
                 unit.Position = firstClearance;
             else if (!TryFindCollision(unit, secondClearance, out _))
@@ -638,7 +635,9 @@ namespace Rebellion.Game.Tactical
                     return index;
             }
 
-            throw new InvalidOperationException("The tactical unit does not belong to this battle.");
+            throw new InvalidOperationException(
+                "The tactical unit does not belong to this battle."
+            );
         }
 
         /// <summary>

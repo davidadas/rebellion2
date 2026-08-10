@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Rebellion.Game.Tactical;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,6 +46,27 @@ public sealed class TacticalBattleView : MonoBehaviour
 
     [SerializeField]
     private Button cancelManeuverButton;
+
+    [SerializeField]
+    private GameObject capitalShipStatusPanel;
+
+    [SerializeField]
+    private Button previousCapitalShipButton;
+
+    [SerializeField]
+    private Button nextCapitalShipButton;
+
+    [SerializeField]
+    private Button capitalShipManeuversButton;
+
+    [SerializeField]
+    private Image hullStatusBar;
+
+    [SerializeField]
+    private Image shieldStatusBar;
+
+    [SerializeField]
+    private RawImage[] systemStatusImages = Array.Empty<RawImage>();
 
     private TacticalFormation pendingFormation;
 
@@ -118,6 +140,21 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// Raised when the player dismisses the maneuver panel without assigning its pending values.
     /// </summary>
     public event Action ManeuverCancelled;
+
+    /// <summary>
+    /// Raised when the player requests the previous capital ship in the selected task force.
+    /// </summary>
+    public event Action PreviousCapitalShipRequested;
+
+    /// <summary>
+    /// Raised when the player requests the next capital ship in the selected task force.
+    /// </summary>
+    public event Action NextCapitalShipRequested;
+
+    /// <summary>
+    /// Raised when the player opens maneuvers for the selected capital ship's task force.
+    /// </summary>
+    public event Action CapitalShipManeuversRequested;
 
     /// <summary>
     /// Raised when the player toggles tactical simulation pause.
@@ -218,6 +255,36 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Supplies the generated capital-ship status controls.
+    /// </summary>
+    /// <param name="panel">The selected-capital-ship status panel.</param>
+    /// <param name="previous">The previous-ship control.</param>
+    /// <param name="next">The next-ship control.</param>
+    /// <param name="maneuvers">The control that opens task-force maneuvers.</param>
+    /// <param name="hull">The hull-integrity status bar.</param>
+    /// <param name="shields">The shield-strength status bar.</param>
+    /// <param name="systems">The five subsystem status images in source order.</param>
+    public void ConfigureCapitalShipStatus(
+        GameObject panel,
+        Button previous,
+        Button next,
+        Button maneuvers,
+        Image hull,
+        Image shields,
+        RawImage[] systems
+    )
+    {
+        capitalShipStatusPanel = panel ?? throw new ArgumentNullException(nameof(panel));
+        previousCapitalShipButton = previous ?? throw new ArgumentNullException(nameof(previous));
+        nextCapitalShipButton = next ?? throw new ArgumentNullException(nameof(next));
+        capitalShipManeuversButton =
+            maneuvers ?? throw new ArgumentNullException(nameof(maneuvers));
+        hullStatusBar = hull ?? throw new ArgumentNullException(nameof(hull));
+        shieldStatusBar = shields ?? throw new ArgumentNullException(nameof(shields));
+        systemStatusImages = systems ?? throw new ArgumentNullException(nameof(systems));
+    }
+
+    /// <summary>
     /// Resolves every authored HUD texture from installation content.
     /// </summary>
     /// <param name="assets">The active content source.</param>
@@ -300,6 +367,37 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Displays the selected capital ship's hull, shields, and subsystem condition.
+    /// </summary>
+    /// <param name="unit">The selected capital ship.</param>
+    /// <param name="canCycle">Whether its task force contains another active capital ship.</param>
+    public void ShowCapitalShipStatus(TacticalUnitState unit, bool canCycle)
+    {
+        if (unit == null)
+            throw new ArgumentNullException(nameof(unit));
+        if (unit.Kind != TacticalUnitKind.CapitalShip)
+            throw new ArgumentException(
+                "Capital-ship status requires a capital ship.",
+                nameof(unit)
+            );
+
+        hullStatusBar.fillAmount = GetRatio(unit.Hull, unit.InitialHull);
+        shieldStatusBar.fillAmount = GetRatio(unit.Shields, unit.InitialShields);
+        previousCapitalShipButton.interactable = canCycle;
+        nextCapitalShipButton.interactable = canCycle;
+        ApplySystemStatus(unit);
+        capitalShipStatusPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Closes the selected capital-ship status panel.
+    /// </summary>
+    public void HideCapitalShipStatus()
+    {
+        capitalShipStatusPanel.SetActive(false);
+    }
+
+    /// <summary>
     /// Replaces the tactical command panel with the withdrawal confirmation panel.
     /// </summary>
     public void ShowWithdrawalConfirmation()
@@ -358,12 +456,18 @@ public sealed class TacticalBattleView : MonoBehaviour
         formationButton.onClick.AddListener(ToggleFormation);
         assignManeuverButton.onClick.AddListener(() => ManeuverAssigned?.Invoke());
         cancelManeuverButton.onClick.AddListener(() => ManeuverCancelled?.Invoke());
+        previousCapitalShipButton.onClick.AddListener(() => PreviousCapitalShipRequested?.Invoke());
+        nextCapitalShipButton.onClick.AddListener(() => NextCapitalShipRequested?.Invoke());
+        capitalShipManeuversButton.onClick.AddListener(() =>
+            CapitalShipManeuversRequested?.Invoke()
+        );
         pauseButton.onClick.AddListener(() => PauseToggled?.Invoke());
         withdrawalButton.onClick.AddListener(() => WithdrawalRequested?.Invoke());
         confirmWithdrawalButton.onClick.AddListener(() => WithdrawalConfirmed?.Invoke());
         cancelWithdrawalButton.onClick.AddListener(() => WithdrawalCancelled?.Invoke());
         HideFighterOrders();
         HideManeuvers();
+        HideCapitalShipStatus();
         HideWithdrawalConfirmation();
     }
 
@@ -424,6 +528,21 @@ public sealed class TacticalBattleView : MonoBehaviour
             throw new MissingReferenceException(
                 "Tactical HUD maneuver action references are incomplete."
             );
+        if (
+            capitalShipStatusPanel == null
+            || previousCapitalShipButton == null
+            || nextCapitalShipButton == null
+            || capitalShipManeuversButton == null
+            || hullStatusBar == null
+            || shieldStatusBar == null
+            || systemStatusImages?.Length != 5
+            || systemStatusImages.Any(image => image == null)
+        )
+        {
+            throw new MissingReferenceException(
+                "Tactical HUD capital-ship status references are incomplete."
+            );
+        }
         if (pauseButton == null || pauseImage == null)
             throw new MissingReferenceException("Tactical HUD pause references are incomplete.");
         if (
@@ -530,5 +649,56 @@ public sealed class TacticalBattleView : MonoBehaviour
                 : TacticalFormation.StandOff;
         SetFormation(formation);
         FormationSelected?.Invoke(formation);
+    }
+
+    /// <summary>
+    /// Resolves the five source-ordered subsystem condition images for one capital ship.
+    /// </summary>
+    /// <param name="unit">The selected capital ship.</param>
+    private void ApplySystemStatus(TacticalUnitState unit)
+    {
+        if (contentAssets == null)
+            return;
+
+        string[] names =
+        {
+            "shield-recharge",
+            "weapon-recharge",
+            "tractor-beam",
+            "engines",
+            "hyperspace-engines",
+        };
+        TacticalDamageSystem[] systems =
+        {
+            TacticalDamageSystem.ShieldGenerator,
+            TacticalDamageSystem.WeaponSystems,
+            TacticalDamageSystem.TractorBeam,
+            TacticalDamageSystem.SublightDrive,
+            TacticalDamageSystem.Hyperdrive,
+        };
+        int[] resourceBases = { 1201, 1206, 1211, 1216, 1221 };
+        for (int index = 0; index < systemStatusImages.Length; index++)
+        {
+            int condition = Math.Max(0, 4 - unit.GetSystemDamage(systems[index]));
+            int percentage = condition * 25;
+            int resource = resourceBases[index] + condition;
+            string address =
+                $"{sharedUIRoot}/{resource}-1033-tactical-ui-{names[index]}-{percentage}%";
+            systemStatusImages[index].texture = ContentBindings.RequireTexture(
+                contentAssets,
+                address
+            );
+        }
+    }
+
+    /// <summary>
+    /// Converts a current and maximum value to a clamped fill ratio.
+    /// </summary>
+    /// <param name="current">The current value.</param>
+    /// <param name="maximum">The maximum value.</param>
+    /// <returns>The value from zero through one.</returns>
+    private static float GetRatio(int current, int maximum)
+    {
+        return maximum > 0 ? Mathf.Clamp01((float)current / maximum) : 0f;
     }
 }

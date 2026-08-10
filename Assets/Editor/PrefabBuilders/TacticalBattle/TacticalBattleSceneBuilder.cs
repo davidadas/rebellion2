@@ -173,6 +173,102 @@ public static class TacticalBattleSceneBuilder
             );
         }
 
+        GameObject capitalShipStatusPanel = new GameObject(
+            "CapitalShipStatus",
+            typeof(RectTransform)
+        );
+        capitalShipStatusPanel.transform.SetParent(canvasObject.transform, false);
+        SetSourceRect(capitalShipStatusPanel.GetComponent<RectTransform>(), 482, 24, 149, 236);
+        CreateBoundImage(
+            "Background",
+            capitalShipStatusPanel.transform,
+            $"{root}/1302-1033-tactical-ui-right-panel-hull-integrity-shield-strength",
+            0,
+            0,
+            149,
+            236
+        );
+        Button previousCapitalShipButton = CreateBoundButton(
+            "PreviousCapitalShip",
+            capitalShipStatusPanel.transform,
+            $"{root}/1101-1033-tactical-ui-previous-capital-ship-in-task-force-unpressed",
+            $"{root}/1102-1033-tactical-ui-previous-capital-ship-in-task-force-pressed",
+            7,
+            10,
+            11,
+            53
+        );
+        Button nextCapitalShipButton = CreateBoundButton(
+            "NextCapitalShip",
+            capitalShipStatusPanel.transform,
+            $"{root}/1103-1033-tactical-ui-next-capital-ship-in-task-force-unpressed",
+            $"{root}/1104-1033-tactical-ui-next-capital-ship-in-task-force-pressed",
+            132,
+            10,
+            11,
+            53
+        );
+        Button capitalShipManeuversButton = CreateBoundButton(
+            "Maneuvers",
+            capitalShipStatusPanel.transform,
+            $"{root}/1105-1033-tactical-ui-maneuvers-tactics-unpressed",
+            $"{root}/1106-1033-tactical-ui-maneuvers-tactics-pressed",
+            80,
+            210,
+            58,
+            22
+        );
+        Button capitalShipMissionsButton = CreateBoundButton(
+            "Missions",
+            capitalShipStatusPanel.transform,
+            $"{root}/1107-1033-tactical-ui-missions-unpressed",
+            $"{root}/1108-1033-tactical-ui-missions-pressed",
+            12,
+            210,
+            58,
+            22
+        );
+        capitalShipMissionsButton.interactable = false;
+        Image hullStatusBar = CreateStatusBar(
+            "HullIntegrity",
+            capitalShipStatusPanel.transform,
+            new Color32(255, 0, 0, 255),
+            34,
+            81,
+            37,
+            10
+        );
+        Image shieldStatusBar = CreateStatusBar(
+            "ShieldStrength",
+            capitalShipStatusPanel.transform,
+            new Color32(0, 128, 255, 255),
+            103,
+            81,
+            37,
+            10
+        );
+        string[] initialSystemImages =
+        {
+            "1205-1033-tactical-ui-shield-recharge-100%",
+            "1210-1033-tactical-ui-weapon-recharge-100%",
+            "1215-1033-tactical-ui-tractor-beam-100%",
+            "1220-1033-tactical-ui-engines-100%",
+            "1225-1033-tactical-ui-hyperspace-engines-100%",
+        };
+        RawImage[] systemStatusImages = new RawImage[initialSystemImages.Length];
+        for (int index = 0; index < systemStatusImages.Length; index++)
+        {
+            systemStatusImages[index] = CreateBoundImage(
+                $"SystemStatus{index + 1}",
+                capitalShipStatusPanel.transform,
+                $"{root}/{initialSystemImages[index]}",
+                10 + index * 27,
+                103,
+                22,
+                15
+            );
+        }
+
         GameObject fighterOrderPanel = new GameObject("FighterOrders", typeof(RectTransform));
         fighterOrderPanel.transform.SetParent(canvasObject.transform, false);
         RectTransform fighterOrderRect = fighterOrderPanel.GetComponent<RectTransform>();
@@ -470,6 +566,16 @@ public static class TacticalBattleSceneBuilder
             confirmWithdrawalButton,
             cancelWithdrawalButton
         );
+        view.ConfigureCapitalShipStatus(
+            capitalShipStatusPanel,
+            previousCapitalShipButton,
+            nextCapitalShipButton,
+            capitalShipManeuversButton,
+            hullStatusBar,
+            shieldStatusBar,
+            systemStatusImages
+        );
+        capitalShipStatusPanel.SetActive(false);
         fighterOrderPanel.SetActive(false);
         maneuverPanel.SetActive(false);
         withdrawalPanel.SetActive(false);
@@ -660,6 +766,41 @@ public static class TacticalBattleSceneBuilder
         button.targetGraphic = image;
         button.transition = Selectable.Transition.None;
         return button;
+    }
+
+    /// <summary>
+    /// Creates one left-to-right status bar in source coordinates.
+    /// </summary>
+    /// <param name="name">The hierarchy name.</param>
+    /// <param name="parent">The parent status panel.</param>
+    /// <param name="color">The filled bar color.</param>
+    /// <param name="x">The source-space left edge.</param>
+    /// <param name="y">The source-space top edge.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <returns>The generated filled image.</returns>
+    private static Image CreateStatusBar(
+        string name,
+        Transform parent,
+        Color color,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        GameObject target = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer));
+        target.transform.SetParent(parent, false);
+        Image image = target.AddComponent<Image>();
+        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        image.color = color;
+        image.type = Image.Type.Filled;
+        image.fillMethod = Image.FillMethod.Horizontal;
+        image.fillOrigin = 0;
+        image.fillAmount = 1f;
+        image.raycastTarget = false;
+        SetSourceRect(image.rectTransform, x, y, width, height);
+        return image;
     }
 
     /// <summary>

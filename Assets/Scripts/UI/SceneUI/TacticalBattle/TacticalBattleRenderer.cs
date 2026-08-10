@@ -531,7 +531,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     )
     {
         if (renderers == null || renderers.Count == 0)
-            throw new InvalidOperationException("A tactical unit has no close presentation bounds.");
+            throw new InvalidOperationException(
+                "A tactical unit has no close presentation bounds."
+            );
 
         Bounds bounds = renderers[0].bounds;
         for (int index = 1; index < renderers.Count; index++)

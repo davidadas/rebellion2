@@ -20,6 +20,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button withdrawalButton;
         private Button confirmWithdrawalButton;
         private Button cancelWithdrawalButton;
+        private Button previousCapitalShipButton;
+        private Button nextCapitalShipButton;
+        private Button capitalShipManeuversButton;
 
         [SetUp]
         public void SetUp()
@@ -29,6 +32,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             view = root.AddComponent<TacticalBattleView>();
             CreateManeuverControls();
             CreateWithdrawalControls();
+            CreateCapitalShipStatusControls();
             view.ConfigureWithdrawal(
                 withdrawalButton,
                 withdrawalPanel,
@@ -293,6 +297,45 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void Awake_PreviousCapitalShipButton_RaisesPreviousCapitalShipRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.PreviousCapitalShipRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            previousCapitalShipButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
+        public void Awake_NextCapitalShipButton_RaisesNextCapitalShipRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.NextCapitalShipRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            nextCapitalShipButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
+        public void Awake_CapitalShipManeuversButton_RaisesCapitalShipManeuversRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.CapitalShipManeuversRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            capitalShipManeuversButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
         public void Awake_ConfirmWithdrawalButton_RaisesWithdrawalConfirmed()
         {
             ConfigureCompleteView();
@@ -372,6 +415,40 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CreateButton("Withdraw", out withdrawalButton);
             CreateButton("ConfirmWithdrawal", out confirmWithdrawalButton);
             CreateButton("CancelWithdrawal", out cancelWithdrawalButton);
+        }
+
+        private void CreateCapitalShipStatusControls()
+        {
+            GameObject panel = new GameObject("CapitalShipStatus", typeof(RectTransform));
+            panel.transform.SetParent(root.transform, false);
+            CreateButton("PreviousCapitalShip", out previousCapitalShipButton);
+            CreateButton("NextCapitalShip", out nextCapitalShipButton);
+            CreateButton("CapitalShipManeuvers", out capitalShipManeuversButton);
+            GameObject hull = new GameObject("Hull", typeof(RectTransform), typeof(Image));
+            hull.transform.SetParent(root.transform, false);
+            GameObject shields = new GameObject("Shields", typeof(RectTransform), typeof(Image));
+            shields.transform.SetParent(root.transform, false);
+            RawImage[] systems = new RawImage[5];
+            for (int index = 0; index < systems.Length; index++)
+            {
+                GameObject system = new GameObject(
+                    $"System{index + 1}",
+                    typeof(RectTransform),
+                    typeof(RawImage)
+                );
+                system.transform.SetParent(root.transform, false);
+                systems[index] = system.GetComponent<RawImage>();
+            }
+
+            view.ConfigureCapitalShipStatus(
+                panel,
+                previousCapitalShipButton,
+                nextCapitalShipButton,
+                capitalShipManeuversButton,
+                hull.GetComponent<Image>(),
+                shields.GetComponent<Image>(),
+                systems
+            );
         }
 
         private void ConfigureCompleteView()

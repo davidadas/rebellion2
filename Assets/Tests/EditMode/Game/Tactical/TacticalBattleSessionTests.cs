@@ -396,17 +396,20 @@ namespace Rebellion.Tests.Game.Tactical
                     DefenderFleet = CreateFleet(firstDefendingShip, lastDefendingShip),
                 }
             );
-            session.Units.Single(unit => unit.Unit == firstDefendingShip).Position =
-                new Vector3(0f, 0f, 10f);
-            session.Units.Single(unit => unit.Unit == lastDefendingShip).Position =
-                new Vector3(0f, 0f, 40f);
+            session.Units.Single(unit => unit.Unit == firstDefendingShip).Position = new Vector3(
+                0f,
+                0f,
+                10f
+            );
+            session.Units.Single(unit => unit.Unit == lastDefendingShip).Position = new Vector3(
+                0f,
+                0f,
+                40f
+            );
 
             session.Advance(0.1f);
 
-            Assert.AreEqual(
-                70,
-                session.Units.Single(unit => unit.Unit == firstDefendingShip).Hull
-            );
+            Assert.AreEqual(70, session.Units.Single(unit => unit.Unit == firstDefendingShip).Hull);
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull);
         }
 

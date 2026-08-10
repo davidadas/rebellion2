@@ -19,6 +19,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private TacticalBehavior? pendingFighterOrder;
     private TacticalBehavior? pendingManeuver;
     private TacticalFormation pendingFormation;
+    private TacticalUnitState selectedCapitalShip;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
@@ -91,10 +92,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             ?? throw new InvalidOperationException(
                 $"Faction '{theme.FactionInstanceID}' requires a tactical battle theme."
             );
-        view.InitializeContent(
-            bootstrap.GetContentAssets(),
-            tacticalTheme
-        );
+        view.InitializeContent(bootstrap.GetContentAssets(), tacticalTheme);
         cameraRig.Initialize(tacticalTheme.InitialCameraYaw);
         string playerFactionId = gameManager.GetPlayerFaction().InstanceID;
         playerSide =
@@ -115,6 +113,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.FormationSelected += SelectPendingFormation;
         view.ManeuverAssigned += AssignPendingManeuver;
         view.ManeuverCancelled += CancelPendingManeuver;
+        view.PreviousCapitalShipRequested += SelectPreviousCapitalShip;
+        view.NextCapitalShipRequested += SelectNextCapitalShip;
+        view.CapitalShipManeuversRequested += ShowSelectedTaskForceManeuvers;
         view.PauseToggled += TogglePlayerPause;
         view.WithdrawalRequested += RequestWithdrawal;
         view.WithdrawalConfirmed += ConfirmWithdrawal;
@@ -138,7 +139,18 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         Session.Advance(Time.deltaTime);
-        battleRenderer.PresentEvents(Session.DrainEvents());
+        IReadOnlyList<TacticalCombatEvent> combatEvents = Session.DrainEvents();
+        battleRenderer.PresentEvents(combatEvents);
+        if (
+            selectedCapitalShip != null
+            && combatEvents.Any(combatEvent =>
+                combatEvent.Source == selectedCapitalShip
+                || combatEvent.Target == selectedCapitalShip
+            )
+        )
+        {
+            RefreshCapitalShipStatus();
+        }
         battleRenderer.Synchronize();
         if (Session.IsComplete)
             CompleteBattle();
@@ -163,6 +175,9 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.FormationSelected -= SelectPendingFormation;
             view.ManeuverAssigned -= AssignPendingManeuver;
             view.ManeuverCancelled -= CancelPendingManeuver;
+            view.PreviousCapitalShipRequested -= SelectPreviousCapitalShip;
+            view.NextCapitalShipRequested -= SelectNextCapitalShip;
+            view.CapitalShipManeuversRequested -= ShowSelectedTaskForceManeuvers;
             view.PauseToggled -= TogglePlayerPause;
             view.WithdrawalRequested -= RequestWithdrawal;
             view.WithdrawalConfirmed -= ConfirmWithdrawal;
@@ -248,9 +263,11 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.HideFighterOrders();
         pendingManeuver = SelectedGroup.Behavior;
         pendingFormation = SelectedGroup.Formation;
+        selectedCapitalShip = SelectedGroup.Units.FirstOrDefault(unit => unit.IsActive);
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
-        SetCameraSubject(SelectedGroup);
-        view.ShowManeuvers(pendingFormation);
+        SetSelectedCapitalShipSubject();
+        RefreshCapitalShipStatus();
+        view.HideManeuvers();
     }
 
     /// <summary>
@@ -262,6 +279,8 @@ public sealed class TacticalBattleController : MonoBehaviour
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
         pendingManeuver = null;
         view.HideManeuvers();
+        selectedCapitalShip = null;
+        view.HideCapitalShipStatus();
         pendingFighterOrder = SelectedGroup.Behavior;
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
         SetCameraSubject(SelectedGroup);
@@ -289,6 +308,94 @@ public sealed class TacticalBattleController : MonoBehaviour
             subject += ToUnityVector(Session.GetPresentationPosition(unit));
 
         cameraRig.SetSelectedSubject(subject / activeUnits.Length);
+    }
+
+    /// <summary>
+    /// Selects the previous active capital ship in the current task force.
+    /// </summary>
+    private void SelectPreviousCapitalShip()
+    {
+        CycleSelectedCapitalShip(-1);
+    }
+
+    /// <summary>
+    /// Selects the next active capital ship in the current task force.
+    /// </summary>
+    private void SelectNextCapitalShip()
+    {
+        CycleSelectedCapitalShip(1);
+    }
+
+    /// <summary>
+    /// Cycles the selected capital ship within the current task force.
+    /// </summary>
+    /// <param name="offset">The signed source-order selection offset.</param>
+    private void CycleSelectedCapitalShip(int offset)
+    {
+        if (SelectedGroup == null || selectedCapitalShip == null)
+            return;
+
+        TacticalUnitState[] activeShips = SelectedGroup
+            .Units.Where(unit => unit.IsActive && unit.Kind == TacticalUnitKind.CapitalShip)
+            .ToArray();
+        if (activeShips.Length < 2)
+            return;
+
+        int currentIndex = Array.IndexOf(activeShips, selectedCapitalShip);
+        int nextIndex = (currentIndex + offset + activeShips.Length) % activeShips.Length;
+        selectedCapitalShip = activeShips[nextIndex];
+        SetSelectedCapitalShipSubject();
+        RefreshCapitalShipStatus();
+    }
+
+    /// <summary>
+    /// Opens the maneuver controls for the selected capital ship's task force.
+    /// </summary>
+    private void ShowSelectedTaskForceManeuvers()
+    {
+        if (selectedCapitalShip == null || SelectedGroup == null)
+            return;
+
+        view.ShowManeuvers(pendingFormation);
+    }
+
+    /// <summary>
+    /// Refreshes the selected capital ship's source-resolution status panel.
+    /// </summary>
+    private void RefreshCapitalShipStatus()
+    {
+        if (selectedCapitalShip == null || SelectedGroup == null)
+            return;
+
+        if (!selectedCapitalShip.IsActive)
+        {
+            selectedCapitalShip = SelectedGroup.Units.FirstOrDefault(unit =>
+                unit.IsActive && unit.Kind == TacticalUnitKind.CapitalShip
+            );
+            if (selectedCapitalShip == null)
+            {
+                view.HideCapitalShipStatus();
+                return;
+            }
+        }
+
+        int activeShipCount = SelectedGroup.Units.Count(unit =>
+            unit.IsActive && unit.Kind == TacticalUnitKind.CapitalShip
+        );
+        view.ShowCapitalShipStatus(selectedCapitalShip, activeShipCount > 1);
+    }
+
+    /// <summary>
+    /// Makes the selected capital ship the tactical camera's reset subject.
+    /// </summary>
+    private void SetSelectedCapitalShipSubject()
+    {
+        if (selectedCapitalShip == null)
+            return;
+
+        cameraRig.SetSelectedSubject(
+            ToUnityVector(Session.GetPresentationPosition(selectedCapitalShip))
+        );
     }
 
     /// <summary>
