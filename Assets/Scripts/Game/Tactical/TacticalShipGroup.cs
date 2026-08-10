@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Numerics;
 
 namespace Rebellion.Game.Tactical
 {
@@ -47,6 +48,11 @@ namespace Rebellion.Game.Tactical
         /// Gets the capital ships' current engagement formation.
         /// </summary>
         public TacticalFormation Formation { get; private set; } = TacticalFormation.StandOff;
+
+        /// <summary>
+        /// Gets the command marker around which the group's formation is arranged.
+        /// </summary>
+        internal Vector3 MarkerPosition { get; private set; }
 
         internal TacticalShipGroup(
             TacticalBattleSide side,
@@ -104,6 +110,15 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentOutOfRangeException(nameof(formation));
 
             Formation = formation;
+        }
+
+        /// <summary>
+        /// Moves the command marker that anchors the group's formation.
+        /// </summary>
+        /// <param name="position">The marker's tactical position.</param>
+        internal void SetMarkerPosition(Vector3 position)
+        {
+            MarkerPosition = position;
         }
 
         /// <summary>

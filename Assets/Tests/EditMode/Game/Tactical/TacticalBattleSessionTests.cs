@@ -645,6 +645,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_RecoverBehaviorWithDestroyedCarrier_ReturnsFightersToFormationMarker()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            fighters.Agility = 10;
+            fighters.SublightSpeed = 10;
+            CapitalShip deployingShip = CreateShip(600, 0, fighters);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(deployingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            TacticalUnitState carrierUnit = session.Units.Single(unit =>
+                unit.Unit == deployingShip
+            );
+            TacticalShipGroup group = session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single();
+            Vector3 marker = group.MarkerPosition;
+            fighterUnit.Position = marker + Vector3.UnitZ * 20f;
+            fighterUnit.Forward = -Vector3.UnitZ;
+            carrierUnit.Hull = 0;
+            group.SetBehavior(TacticalBehavior.Recover);
+
+            session.Advance(0.1f);
+
+            Assert.Less(Vector3.Distance(fighterUnit.Position, marker), 20f);
+            Assert.IsTrue(fighterUnit.IsActive);
+        }
+
+        [Test]
         public void Advance_RecoverBehavior_StoresFightersAtDeployingCapitalShip()
         {
             Starfighter fighters = CreateFighters(12, 0);

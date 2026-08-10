@@ -140,6 +140,7 @@ namespace Rebellion.Game.Tactical
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
             PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
+            PlaceGroupMarkers();
         }
 
         /// <summary>
@@ -205,7 +206,7 @@ namespace Rebellion.Game.Tactical
             }
             if (unit.Kind == TacticalUnitKind.Fighters && behavior == TacticalBehavior.Recover)
             {
-                AdvanceRecovery(unit, elapsedTime);
+                AdvanceRecovery(unit, group, elapsedTime);
                 return Array.Empty<PendingAttack>();
             }
             if (TryAdvanceNavigation(unit, group, elapsedTime))
@@ -219,7 +220,14 @@ namespace Rebellion.Game.Tactical
             if (behavior == TacticalBehavior.Hold)
                 return attacks;
 
-            Vector3 destination = GetApproachPosition(unit, target, group, behavior);
+            Vector3 destination = GetApproachPosition(
+                unit,
+                target,
+                group,
+                behavior,
+                out Vector3 markerPosition
+            );
+            group?.SetMarkerPosition(markerPosition);
             MoveTowards(unit, destination, elapsedTime);
             return attacks;
         }
@@ -346,12 +354,14 @@ namespace Rebellion.Game.Tactical
         /// <param name="target">The target being approached.</param>
         /// <param name="group">The unit's controlling group.</param>
         /// <param name="behavior">The active approach behavior.</param>
+        /// <param name="markerPosition">The resulting center of the commanded formation.</param>
         /// <returns>The desired tactical position.</returns>
         private static Vector3 GetApproachPosition(
             TacticalUnitState unit,
             TacticalUnitState target,
             TacticalShipGroup group,
-            TacticalBehavior behavior
+            TacticalBehavior behavior,
+            out Vector3 markerPosition
         )
         {
             Vector3 approachDirection = NormalizeOrDefault(
@@ -370,8 +380,8 @@ namespace Rebellion.Game.Tactical
                 TacticalBehavior.Anvil => Vector3.UnitY * _tacticalApproachDistance,
                 _ => -approachDirection * _tacticalApproachDistance,
             };
-            Vector3 groupCenter = target.Position + maneuverOffset;
-            return groupCenter + GetFormationOffset(unit, group, approachDirection, right);
+            markerPosition = target.Position + maneuverOffset;
+            return markerPosition + GetFormationOffset(unit, group, approachDirection, right);
         }
 
         /// <summary>
@@ -543,6 +553,7 @@ namespace Rebellion.Game.Tactical
 
             TacticalNavPoint point = group.NavigationPoints[0];
             Vector3 destination = new Vector3(point.X, point.Y, point.Z);
+            group.SetMarkerPosition(destination);
             if (Vector3.Distance(unit.Position, destination) <= _navigationArrivalDistance)
                 group.RemoveNavigationPoint(point);
             else
@@ -552,17 +563,33 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Returns a fighter group to the capital ship that deployed it.
+        /// Returns a fighter group to its deploying capital ship or formation marker.
         /// </summary>
         /// <param name="unit">The recovering fighter unit.</param>
+        /// <param name="group">The fighter's command group.</param>
         /// <param name="elapsedTime">The elapsed tactical time.</param>
-        private void AdvanceRecovery(TacticalUnitState unit, float elapsedTime)
+        private void AdvanceRecovery(
+            TacticalUnitState unit,
+            TacticalShipGroup group,
+            float elapsedTime
+        )
         {
             TacticalUnitState carrier = unit.RecoveryTarget;
-            if (carrier == null)
+            if (carrier?.IsActive != true)
+            {
+                if (group == null)
+                    return;
+
+                Vector3 forward = NormalizeOrDefault(unit.Forward, Vector3.UnitZ);
+                Vector3 right = NormalizeOrDefault(
+                    Vector3.Cross(Vector3.UnitY, forward),
+                    Vector3.UnitX
+                );
+                Vector3 destination =
+                    group.MarkerPosition + GetFormationOffset(unit, group, forward, right);
+                MoveTowards(unit, destination, elapsedTime);
                 return;
-            if (!carrier.IsActive)
-                return;
+            }
             if (Vector3.Distance(unit.Position, carrier.Position) <= _navigationArrivalDistance)
             {
                 unit.BeginWithdrawal();
@@ -654,6 +681,24 @@ namespace Rebellion.Game.Tactical
                 float centeredIndex = i - (sideUnits.Length - 1) / 2f;
                 sideUnits[i].Position = new Vector3(centeredIndex * _formationSpacing, 0f, z);
                 sideUnits[i].Forward = forward;
+            }
+        }
+
+        /// <summary>
+        /// Centers each command marker on the units initially assigned to its group.
+        /// </summary>
+        private void PlaceGroupMarkers()
+        {
+            foreach (TacticalShipGroup group in groups)
+            {
+                if (group.Units.Count == 0)
+                    continue;
+
+                Vector3 total = Vector3.Zero;
+                foreach (TacticalUnitState unit in group.Units)
+                    total += unit.Position;
+
+                group.SetMarkerPosition(total / group.Units.Count);
             }
         }
     }
