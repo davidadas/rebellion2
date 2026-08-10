@@ -552,7 +552,7 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Returns a fighter group to its closest active capital ship.
+        /// Returns a fighter group to the capital ship that deployed it.
         /// </summary>
         /// <param name="unit">The recovering fighter unit.</param>
         /// <param name="elapsedTime">The elapsed tactical time.</param>

@@ -645,6 +645,65 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_RecoverBehavior_StoresFightersAtDeployingCapitalShip()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            CapitalShip deployingShip = CreateShip(600, 0, fighters);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(deployingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState deployingUnit = session.Units.Single(unit =>
+                unit.Unit == deployingShip
+            );
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            fighterUnit.Position = deployingUnit.Position;
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Recover);
+
+            session.Advance(0.1f);
+
+            Assert.IsTrue(fighterUnit.HasWithdrawn);
+        }
+
+        [Test]
+        public void DrainEvents_RecoveredFighters_ReturnsRecoveryEvent()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            CapitalShip deployingShip = CreateShip(600, 0, fighters);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(deployingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState deployingUnit = session.Units.Single(unit =>
+                unit.Unit == deployingShip
+            );
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            fighterUnit.Position = deployingUnit.Position;
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Recover);
+
+            session.Advance(0.1f);
+            TacticalCombatEvent recovery = session
+                .DrainEvents()
+                .Single(combatEvent =>
+                    combatEvent.Kind == TacticalCombatEventKind.FightersRecovered
+                );
+
+            Assert.AreSame(fighterUnit, recovery.Source);
+        }
+
+        [Test]
         public void Advance_OpposingLethalAttacks_ResolvesBothAttacksBeforeCompletingBattle()
         {
             CapitalShip attackingShip = CreateShip(30, 0);
