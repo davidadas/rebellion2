@@ -172,6 +172,92 @@ public static class TacticalBattleSceneBuilder
             );
         }
 
+        GameObject fighterOrderPanel = new GameObject("FighterOrders", typeof(RectTransform));
+        fighterOrderPanel.transform.SetParent(canvasObject.transform, false);
+        RectTransform fighterOrderRect = fighterOrderPanel.GetComponent<RectTransform>();
+        fighterOrderRect.anchorMin = Vector2.zero;
+        fighterOrderRect.anchorMax = Vector2.one;
+        fighterOrderRect.offsetMin = Vector2.zero;
+        fighterOrderRect.offsetMax = Vector2.zero;
+        CreateBoundImage(
+            "Background",
+            fighterOrderPanel.transform,
+            $"{root}/FighterOrders/panel",
+            482,
+            24,
+            149,
+            236
+        );
+        string fighterOrderVariant = theme.FighterOrderVariant;
+        if (fighterOrderVariant != "alliance" && fighterOrderVariant != "empire")
+            throw new InvalidOperationException(
+                $"Unsupported tactical fighter-order variant: '{fighterOrderVariant}'."
+            );
+
+        Button[] fighterOrderButtons =
+        {
+            CreatePreviewButton(
+                "AttackCapitalShips",
+                fighterOrderPanel.transform,
+                $"{root}/FighterOrders/{fighterOrderVariant}-attack-capital-ships-up",
+                $"{root}/FighterOrders/{fighterOrderVariant}-attack-capital-ships-down",
+                500,
+                153,
+                46,
+                26
+            ),
+            CreatePreviewButton(
+                "Recover",
+                fighterOrderPanel.transform,
+                $"{root}/FighterOrders/{fighterOrderVariant}-recover-up",
+                $"{root}/FighterOrders/{fighterOrderVariant}-recover-down",
+                568,
+                153,
+                46,
+                26
+            ),
+            CreatePreviewButton(
+                "AttackDeathStar",
+                fighterOrderPanel.transform,
+                $"{root}/FighterOrders/attack-death-star-up",
+                $"{root}/FighterOrders/attack-death-star-down",
+                568,
+                183,
+                46,
+                26
+            ),
+            CreatePreviewButton(
+                "AttackFighters",
+                fighterOrderPanel.transform,
+                $"{root}/FighterOrders/{fighterOrderVariant}-attack-fighters-up",
+                $"{root}/FighterOrders/{fighterOrderVariant}-attack-fighters-down",
+                500,
+                183,
+                46,
+                26
+            ),
+        };
+        Button assignFighterOrderButton = CreateBoundButton(
+            "Assign",
+            fighterOrderPanel.transform,
+            $"{root}/FighterOrders/assign-up",
+            $"{root}/FighterOrders/assign-down",
+            548,
+            226,
+            27,
+            25
+        );
+        Button cancelFighterOrderButton = CreateBoundButton(
+            "Cancel",
+            fighterOrderPanel.transform,
+            $"{root}/FighterOrders/cancel-up",
+            $"{root}/FighterOrders/cancel-down",
+            588,
+            226,
+            27,
+            25
+        );
+
         CreateBoundButton(
             "EmpireShipHighlights",
             canvasObject.transform,
@@ -218,9 +304,14 @@ public static class TacticalBattleSceneBuilder
             taskForceButtons,
             fighterGroupButtons,
             navigationButtons,
+            fighterOrderPanel,
+            fighterOrderButtons,
+            assignFighterOrderButton,
+            cancelFighterOrderButton,
             pauseButton,
             pauseImage
         );
+        fighterOrderPanel.SetActive(false);
     }
 
     /// <summary>
@@ -354,6 +445,34 @@ public static class TacticalBattleSceneBuilder
         image
             .gameObject.AddComponent<ContentPressVisualBinding>()
             .SetAddresses(upAddress, downAddress);
+        return button;
+    }
+
+    /// <summary>
+    /// Creates a faction-specific tactical button whose runtime artwork is resolved by the view.
+    /// </summary>
+    private static Button CreatePreviewButton(
+        string name,
+        Transform parent,
+        string upAddress,
+        string downAddress,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        GameObject target = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer));
+        target.transform.SetParent(parent, false);
+        RawImage image = target.AddComponent<RawImage>();
+        image.texture = ContentPackEditor.Assets.GetTexture(upAddress);
+        image.raycastTarget = true;
+        SetSourceRect(image.rectTransform, x, y, width, height);
+        Button button = CreateButton(image);
+        RawImagePressVisual visual = target.AddComponent<RawImagePressVisual>();
+        AssignReference(visual, "image", image);
+        AssignReference(visual, "button", button);
+        visual.SetTextures(image.texture, ContentPackEditor.Assets.GetTexture(downAddress));
         return button;
     }
 

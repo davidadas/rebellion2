@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
@@ -13,6 +15,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private bool isCompleting;
     private bool isReady;
     private bool playerPaused;
+    private TacticalBehavior? pendingFighterOrder;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
@@ -94,6 +97,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         );
         view.TaskForceSelected += SelectTaskForce;
         view.FighterGroupSelected += SelectFighterGroup;
+        view.FighterOrderSelected += SelectPendingFighterOrder;
+        view.FighterOrderAssigned += AssignPendingFighterOrder;
+        view.FighterOrderCancelled += CancelPendingFighterOrder;
         view.PauseToggled += TogglePlayerPause;
         await battleRenderer.InitializeAsync(
             Session,
@@ -129,6 +135,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         {
             view.TaskForceSelected -= SelectTaskForce;
             view.FighterGroupSelected -= SelectFighterGroup;
+            view.FighterOrderSelected -= SelectPendingFighterOrder;
+            view.FighterOrderAssigned -= AssignPendingFighterOrder;
+            view.FighterOrderCancelled -= CancelPendingFighterOrder;
             view.PauseToggled -= TogglePlayerPause;
         }
         if (playerPaused)
@@ -156,6 +165,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectTaskForce(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
+        pendingFighterOrder = null;
+        view.HideFighterOrders();
     }
 
     /// <summary>
@@ -165,6 +176,51 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectFighterGroup(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
+        pendingFighterOrder = SelectedGroup.Behavior;
+        bool canRecover = SelectedGroup.Units.Any(unit => unit.RecoveryTarget?.IsActive == true);
+        bool canAttackDeathStar = Session.Units.Any(unit =>
+            unit.Side != playerSide
+            && unit.IsActive
+            && unit.Unit is CapitalShip { IsDeathStar: true }
+        );
+        view.ShowFighterOrders(canRecover, canAttackDeathStar);
+    }
+
+    /// <summary>
+    /// Stores a fighter order without changing the active group command before confirmation.
+    /// </summary>
+    /// <param name="behavior">The pending fighter order.</param>
+    private void SelectPendingFighterOrder(TacticalBehavior behavior)
+    {
+        if (
+            SelectedGroup == null
+            || SelectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.Fighters)
+        )
+            return;
+
+        pendingFighterOrder = behavior;
+    }
+
+    /// <summary>
+    /// Applies the confirmed fighter order and closes its command panel.
+    /// </summary>
+    private void AssignPendingFighterOrder()
+    {
+        if (SelectedGroup == null || pendingFighterOrder == null)
+            return;
+
+        SelectedGroup.SetBehavior(pendingFighterOrder.Value);
+        pendingFighterOrder = null;
+        view.HideFighterOrders();
+    }
+
+    /// <summary>
+    /// Discards the pending fighter order and closes its command panel.
+    /// </summary>
+    private void CancelPendingFighterOrder()
+    {
+        pendingFighterOrder = null;
+        view.HideFighterOrders();
     }
 
     /// <summary>

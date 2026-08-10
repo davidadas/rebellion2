@@ -11,4 +11,6 @@ public sealed class TacticalBattleTheme
     public string TaskForceHeaderImagePath { get; set; }
 
     public string FighterGroupHeaderImagePath { get; set; }
+
+    public string FighterOrderVariant { get; set; }
 }
