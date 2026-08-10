@@ -42,6 +42,7 @@ namespace Rebellion.Game.Tactical
             new Vector3(0f, 1f, 1f),
             new Vector3(-1f, -1f, 0f),
         };
+        private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
@@ -50,6 +51,11 @@ namespace Rebellion.Game.Tactical
 
         private readonly struct PendingAttack
         {
+            /// <summary>
+            /// Gets the unit producing the attack.
+            /// </summary>
+            public TacticalUnitState Source { get; }
+
             /// <summary>
             /// Gets the unit receiving the attack.
             /// </summary>
@@ -63,10 +69,16 @@ namespace Rebellion.Game.Tactical
             /// <summary>
             /// Initializes an attack that resolves after every unit has acted.
             /// </summary>
+            /// <param name="source">The unit producing the attack.</param>
             /// <param name="target">The unit receiving the attack.</param>
             /// <param name="attack">The weapon-family attack.</param>
-            public PendingAttack(TacticalUnitState target, TacticalAttack attack)
+            public PendingAttack(
+                TacticalUnitState source,
+                TacticalUnitState target,
+                TacticalAttack attack
+            )
             {
+                Source = source;
                 Target = target;
                 Attack = attack;
             }
@@ -102,7 +114,37 @@ namespace Rebellion.Game.Tactical
                 attacks.AddRange(AdvanceUnit(unit, elapsedTime));
 
             foreach (PendingAttack attack in attacks)
+            {
+                bool targetWasActive = attack.Target.IsActive;
                 attack.Target.ApplyDamage(attack.Attack, random);
+                events.Add(
+                    TacticalCombatEvent.WeaponImpact(
+                        attack.Source,
+                        attack.Target,
+                        attack.Attack.WeaponType
+                    )
+                );
+                if (targetWasActive && !attack.Target.IsActive)
+                {
+                    events.Add(
+                        TacticalCombatEvent.UnitLifecycle(
+                            TacticalCombatEventKind.UnitDestroyed,
+                            attack.Target
+                        )
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Removes and returns every presentation event produced since the previous drain.
+        /// </summary>
+        /// <returns>The events in simulation order.</returns>
+        public IReadOnlyList<TacticalCombatEvent> DrainEvents()
+        {
+            TacticalCombatEvent[] result = events.ToArray();
+            events.Clear();
+            return result;
         }
 
         /// <summary>
@@ -226,7 +268,7 @@ namespace Rebellion.Game.Tactical
 
             return attacker
                 .FireArc(arc, distance)
-                .Select(attack => new PendingAttack(target, attack))
+                .Select(attack => new PendingAttack(attacker, target, attack))
                 .ToArray();
         }
 
@@ -489,6 +531,12 @@ namespace Rebellion.Game.Tactical
             {
                 unit.BeginWithdrawal();
                 unit.CompleteWithdrawal();
+                events.Add(
+                    TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.FightersRecovered,
+                        unit
+                    )
+                );
                 return;
             }
 
@@ -514,7 +562,12 @@ namespace Rebellion.Game.Tactical
                 elapsedTime
             );
             if (Math.Abs(unit.Position.Z) >= _withdrawalDistance - _navigationArrivalDistance)
+            {
                 unit.CompleteWithdrawal();
+                events.Add(
+                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitWithdrawn, unit)
+                );
+            }
         }
 
         /// <summary>

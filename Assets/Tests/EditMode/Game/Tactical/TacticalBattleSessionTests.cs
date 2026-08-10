@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
@@ -664,6 +665,50 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void DrainEvents_LethalWeaponAttack_ReturnsImpactBeforeDestruction()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(30, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+            IReadOnlyList<TacticalCombatEvent> events = session.DrainEvents();
+
+            Assert.AreEqual(TacticalCombatEventKind.WeaponImpact, events[0].Kind);
+            Assert.AreEqual(TacticalCombatEventKind.UnitDestroyed, events[1].Kind);
+            Assert.AreSame(attackingShip, events[0].Source.Unit);
+            Assert.AreSame(defendingShip, events[0].Target.Unit);
+            Assert.AreEqual(TacticalWeaponType.Turbolaser, events[0].WeaponType);
+        }
+
+        [Test]
+        public void DrainEvents_PreviouslyDrainedEvents_ReturnsEmptyCollection()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(30, 0)),
+                }
+            );
+            session.Advance(0.1f);
+            session.DrainEvents();
+
+            IReadOnlyList<TacticalCombatEvent> events = session.DrainEvents();
+
+            Assert.IsEmpty(events);
+        }
+
+        [Test]
         public void Advance_WithdrawBehavior_WithdrawsGroupAndCompletesSideOutcome()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
@@ -684,6 +729,31 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
             Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
             Assert.AreEqual(CombatSide.Defender, result.Winner);
+        }
+
+        [Test]
+        public void DrainEvents_CompletedWithdrawal_ReturnsWithdrawalEvent()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.SublightSpeed = 100;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(450, 0)),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Withdraw);
+
+            session.Advance(2f);
+            TacticalCombatEvent withdrawal = session
+                .DrainEvents()
+                .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.UnitWithdrawn);
+
+            Assert.AreSame(attackingShip, withdrawal.Source.Unit);
         }
 
         [Test]

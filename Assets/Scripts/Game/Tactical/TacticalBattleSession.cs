@@ -243,6 +243,15 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Removes and returns tactical presentation events produced since the previous drain.
+        /// </summary>
+        /// <returns>The events in simulation order.</returns>
+        public IReadOnlyList<TacticalCombatEvent> DrainEvents()
+        {
+            return simulator.DrainEvents();
+        }
+
+        /// <summary>
         /// Advances every active tactical unit when the simulation is running.
         /// </summary>
         /// <param name="elapsedTime">The elapsed tactical time.</param>

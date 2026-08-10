@@ -14,7 +14,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 {
     private const float _capitalShipScale = 12f;
     private const float _closeSpritePixelsPerUnit = 2f;
+    private const float _destructionEffectDuration = 0.65f;
     private const float _farSpritePixelsPerUnit = 1f;
+    private const float _weaponEffectDuration = 0.18f;
     private static readonly string[] ModelLods = { "close", "medium", "far" };
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
     private static readonly string[] FighterGroupColors = { "red", "blue", "green", "gold" };
@@ -106,6 +108,24 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Creates transient weapon and destruction effects for completed simulation events.
+    /// </summary>
+    /// <param name="events">The tactical events in simulation order.</param>
+    public void PresentEvents(IReadOnlyList<TacticalCombatEvent> events)
+    {
+        if (events == null)
+            throw new ArgumentNullException(nameof(events));
+
+        foreach (TacticalCombatEvent combatEvent in events)
+        {
+            if (combatEvent.Kind == TacticalCombatEventKind.WeaponImpact)
+                CreateWeaponEffect(combatEvent);
+            else if (combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
+                CreateDestructionEffect(combatEvent.TargetPosition);
+        }
+    }
+
+    /// <summary>
     /// Shows or hides one concentric tactical waypoint-marker set.
     /// </summary>
     /// <param name="setIndex">The zero-based internal shell index.</param>
@@ -161,6 +181,87 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         navigationMaterials.Clear();
         navigationSets.Clear();
         unitViews.Clear();
+    }
+
+    /// <summary>
+    /// Creates one short source-to-target beam for a resolved weapon-family attack.
+    /// </summary>
+    /// <param name="combatEvent">The resolved weapon event.</param>
+    private void CreateWeaponEffect(TacticalCombatEvent combatEvent)
+    {
+        GameObject effect = new GameObject($"{combatEvent.WeaponType} Effect");
+        effect.transform.SetParent(transform, false);
+        LineRenderer line = effect.AddComponent<LineRenderer>();
+        Material material = CreateEffectMaterial(GetWeaponColor(combatEvent));
+        line.sharedMaterial = material;
+        line.useWorldSpace = false;
+        line.positionCount = 2;
+        line.startWidth = 0.25f;
+        line.endWidth = 0.08f;
+        line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
+        line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
+        effect
+            .AddComponent<TacticalCombatEffectView>()
+            .Initialize(material, _weaponEffectDuration, false);
+    }
+
+    /// <summary>
+    /// Creates the expanding pyrotechnic effect used when a tactical unit is destroyed.
+    /// </summary>
+    /// <param name="position">The captured destruction position.</param>
+    private void CreateDestructionEffect(System.Numerics.Vector3 position)
+    {
+        GameObject effect = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        effect.name = "Destruction Effect";
+        effect.transform.SetParent(transform, false);
+        effect.transform.localPosition = ToUnityVector(position);
+        effect.transform.localScale = Vector3.one * 2f;
+        effect.layer = LayerMask.NameToLayer("Ignore Raycast");
+
+        Material material = CreateEffectMaterial(new Color(1f, 0.35f, 0.05f));
+        effect.GetComponent<MeshRenderer>().sharedMaterial = material;
+        effect
+            .AddComponent<TacticalCombatEffectView>()
+            .Initialize(material, _destructionEffectDuration, true);
+    }
+
+    /// <summary>
+    /// Creates one transparent unlit material owned by a transient tactical effect.
+    /// </summary>
+    /// <param name="color">The effect color.</param>
+    /// <returns>The owned effect material.</returns>
+    private static Material CreateEffectMaterial(Color color)
+    {
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+            throw new InvalidOperationException("The tactical effect shader is unavailable.");
+
+        return new Material(shader) { color = color };
+    }
+
+    /// <summary>
+    /// Selects the tactical effect color for one weapon family and firing side.
+    /// </summary>
+    /// <param name="combatEvent">The weapon-impact event.</param>
+    /// <returns>The corresponding effect color.</returns>
+    private static Color GetWeaponColor(TacticalCombatEvent combatEvent)
+    {
+        return combatEvent.WeaponType switch
+        {
+            TacticalWeaponType.IonCannon => new Color(0.2f, 0.55f, 1f),
+            TacticalWeaponType.Torpedo => new Color(1f, 0.65f, 0.15f),
+            _ => combatEvent.Source.Side == TacticalBattleSide.Attacker ? Color.red : Color.green,
+        };
+    }
+
+    /// <summary>
+    /// Converts a simulation vector without coupling tactical state to Unity.
+    /// </summary>
+    /// <param name="value">The simulation vector.</param>
+    /// <returns>The equivalent Unity vector.</returns>
+    private static Vector3 ToUnityVector(System.Numerics.Vector3 value)
+    {
+        return new Vector3(value.X, value.Y, value.Z);
     }
 
     /// <summary>

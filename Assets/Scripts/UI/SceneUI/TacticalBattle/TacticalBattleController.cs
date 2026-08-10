@@ -138,6 +138,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         Session.Advance(Time.deltaTime);
+        battleRenderer.PresentEvents(Session.DrainEvents());
         battleRenderer.Synchronize();
         if (Session.IsComplete)
             CompleteBattle();
