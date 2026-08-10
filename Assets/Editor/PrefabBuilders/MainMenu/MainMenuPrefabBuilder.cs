@@ -43,13 +43,19 @@ public static class MainMenuPrefabBuilder
     // Icon turntable speed: one full revolution per second (matched the original 2D flipbook loop).
     private const float _iconTurnDegreesPerSecond = 360f;
 
-    // Space backdrop.
+    // Spinning-planet backdrop.
     private const string _starfieldAddress = "Application/MainMenu/UI/starfield";
+    private const string _cloudTextureAddress = "Application/MainMenu/UI/clouds";
+    private const string _atmosphereShaderName = "Custom/AtmosphereRim";
+    private const string _renderTexturePath = "Assets/Art/Models/MainMenu/Planet.renderTexture";
     private const string _citadelModelAddress = "Application/MainMenu/Models/citadel";
     private const string _citadelRenderTexturePath =
         "Assets/Art/Models/MainMenu/HqCitadel.renderTexture";
+    private const string _rigName = "PlanetRig";
     private const string _backdropName = "SpaceBackdrop";
     private const string _foregroundName = "Cockpit";
+    private const float _cloudSpinDegreesPerSecond = 0.25f; // cloud drift; planet turns at half this
+    private static readonly Vector3 _planetRigOrigin = new Vector3(12000f, 12000f, 12000f);
 
     // Spinning 3D icon rigs.
     private const string _iconRigsName = "IconRigs"; // container for the lights and all icon rigs
@@ -157,7 +163,7 @@ public static class MainMenuPrefabBuilder
         {
             BuildBaseHierarchy(root);
             RebuildViewBindings(root);
-            InstallSpaceBackdrop(root);
+            InstallPlanet(root);
             InstallSpinning3DIcons(root);
             InstallHqCitadel(root);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
@@ -842,19 +848,7 @@ public static class MainMenuPrefabBuilder
     /// <param name="address">The stable content address of the texture.</param>
     private static void SetBoundTexture(RawImage image, string address)
     {
-        // The editor-display texture is best-effort: content is stripped from player builds and can be
-        // absent where the full media set is not present (e.g. CI). The runtime binding below restores
-        // it from installed content regardless, so a missing asset must not fail prefab generation.
-        try
-        {
-            image.texture = LoadTexture(address);
-        }
-        catch (System.IO.FileNotFoundException)
-        {
-            Debug.LogWarning(
-                $"Content texture '{address}' unavailable for editor display; runtime binding will restore it."
-            );
-        }
+        image.texture = LoadTexture(address);
         ContentTextureBinding binding = image.gameObject.AddComponent<ContentTextureBinding>();
         binding.SetAddress(address);
     }
@@ -1865,16 +1859,21 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Redraws the cockpit as a child image and inserts the starfield backdrop behind it.
+    /// Builds the Planet rig and inserts the spinning-planet backdrop behind the cockpit
+    /// windshield.
     /// </summary>
     /// <param name="root">The prefab root.</param>
-    private static void InstallSpaceBackdrop(GameObject root)
+    private static void InstallPlanet(GameObject root)
     {
+        RenderTexture rt = LoadOrCreateRenderTexture();
+
+        BuildPlanetRig(root, rt);
+
         // The cockpit image is on the root Canvas GameObject itself -> the backmost layer of
         // that canvas, so nothing under it can render behind it (and a separate canvas did not
         // sort reliably behind it). So disable the root's own image and redraw the cockpit as a
-        // CHILD image; the starfield can then sit as an EARLIER sibling (behind the cockpit) in
-        // the same canvas -- deterministic hierarchy order, no cross-canvas sorting.
+        // CHILD image; the planet can then sit as an EARLIER sibling (behind the cockpit) in the
+        // same canvas -- deterministic hierarchy order, no cross-canvas sorting.
         Image rootImage = FindBackgroundImage(root);
         Transform canvasT = rootImage.transform;
         // The current root image is the alpha-windowed cockpit; reuse its sprite as-is.
@@ -1906,14 +1905,146 @@ public static class MainMenuPrefabBuilder
         backdropRect.SetParent(canvasT, false);
         FillParent(backdropRect);
 
-        // Render order within the canvas: starfield (behind) -> cockpit -> controls. The soft glow
-        // at the top of the windshield comes from the starfield texture itself.
+        // Render order within the canvas: space backdrop (behind) -> cockpit -> controls.
         backdrop.transform.SetSiblingIndex(0);
         foreground.transform.SetSiblingIndex(1);
 
         RawImage stars = NewRawImage(backdrop.transform, "Starfield", null);
         SetBoundTexture(stars, _starfieldAddress);
         FillParent(stars.rectTransform);
+
+        RawImage planet = NewRawImage(backdrop.transform, "Planet", rt);
+        // Tilted and positioned in the windshield canopy; values tuned in the editor.
+        ApplyPlanetBackdropRect(planet.rectTransform);
+    }
+
+    /// <summary>
+    /// Applies the shared placement of the planet backdrop layer (globe and its atmosphere) so both
+    /// overlay the same region and stay aligned.
+    /// </summary>
+    /// <param name="rect">The RectTransform to place.</param>
+    private static void ApplyPlanetBackdropRect(RectTransform rect)
+    {
+        rect.anchorMin = new Vector2(0.5f, 0.63f);
+        rect.anchorMax = new Vector2(0.5f, 0.63f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(3770.957f, 3526.246f);
+        rect.anchoredPosition = new Vector2(74f, -734f);
+        rect.localRotation = Quaternion.identity;
+    }
+
+    /// <summary>
+    /// Builds the off-screen planet model, lighting, and camera rig. The model is normalized and
+    /// recentered before spinning because its exported scale and origin are arbitrary.
+    /// </summary>
+    /// <param name="root">The prefab root to parent the rig under.</param>
+    /// <param name="renderTexture">The texture the rig camera renders into.</param>
+    private static void BuildPlanetRig(GameObject root, RenderTexture renderTexture)
+    {
+        GameObject rig = new GameObject(_rigName);
+        rig.transform.SetParent(root.transform, false);
+        rig.transform.position = _planetRigOrigin;
+
+        GameObject pivot = new GameObject("Pivot");
+        pivot.transform.SetParent(rig.transform, false);
+        // The planet stays still; only the cloud layer drifts.
+
+        // The planet ships as a pre-skinned GLB in the content pack. Load it at runtime and apply
+        // the same pole-forward rotation, unit normalization, centering, and render layer the baked
+        // model used. Posing stays here in code; only the model travels inside the GLB.
+        const int planetLayer = 31;
+        GameObject planetModelNode = new GameObject("Model");
+        planetModelNode.transform.SetParent(pivot.transform, false);
+        planetModelNode
+            .AddComponent<ContentModelBinding>()
+            .SetModel(
+                "Application/MainMenu/Models/planet",
+                1f,
+                new Vector3(0f, 180f, 0f),
+                overwrite: true,
+                normalize: true,
+                center: true,
+                layer: planetLayer
+            );
+
+        // Cloud layer: a slightly larger sphere on its own pivot so the clouds drift in the
+        // planet's spin direction while the planet itself stays still.
+        GameObject cloudPivot = new GameObject("CloudPivot");
+        cloudPivot.transform.SetParent(rig.transform, false);
+        cloudPivot.AddComponent<AutoRotate>().Configure(-_cloudSpinDegreesPerSecond, Vector3.up);
+        GameObject clouds = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        clouds.name = "Clouds";
+        UnityEngine.Object.DestroyImmediate(clouds.GetComponent<Collider>());
+        clouds.transform.SetParent(cloudPivot.transform, false);
+        clouds.transform.localScale = Vector3.one * 2.020f; // primitive radius 0.5 -> ~1.010
+        clouds.layer = planetLayer;
+        clouds
+            .AddComponent<RuntimeMaterialBinding>()
+            .Configure("Unlit/Transparent", _cloudTextureAddress);
+
+        // Atmosphere: a static shell just outside the clouds with a Fresnel rim glow, so the limb
+        // reads as a lit atmosphere. Built from a primitive with the custom rim shader assigned here.
+        GameObject atmosphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        atmosphere.name = "Atmosphere";
+        UnityEngine.Object.DestroyImmediate(atmosphere.GetComponent<Collider>());
+        atmosphere.transform.SetParent(rig.transform, false);
+        atmosphere.transform.localScale = Vector3.one * 2.025f; // primitive radius 0.5 -> ~1.0125
+        atmosphere.layer = planetLayer;
+        atmosphere.AddComponent<RuntimeMaterialBinding>().Configure(_atmosphereShaderName);
+
+        // Dedicated sun for the planet, masked to their layer so it never touches the icons.
+        // Gives the rocky surface real directional shading; the emission only lifts the night side.
+        GameObject sunObject = new GameObject("PlanetSun", typeof(Light));
+        sunObject.transform.SetParent(rig.transform, false);
+        sunObject.transform.localRotation = Quaternion.Euler(45.63f, 122.25f, 0f);
+        Light sun = sunObject.GetComponent<Light>();
+        sun.type = LightType.Directional;
+        sun.intensity = 0.6f;
+        sun.color = new Color(1f, 0.94f, 0.88f);
+        sun.cullingMask = 1 << planetLayer;
+        sun.shadows = LightShadows.None;
+
+        GameObject cameraObject = new GameObject("Camera", typeof(Camera));
+        cameraObject.transform.SetParent(rig.transform, false);
+        cameraObject.transform.localPosition = new Vector3(0f, 0f, -6f);
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        camera.orthographic = true;
+        camera.orthographicSize = 1.75f; // frame the globe (radius 1) with margin
+        camera.nearClipPlane = 0.1f;
+        camera.farClipPlane = 50f;
+        camera.cullingMask = 1 << planetLayer;
+        camera.targetTexture = renderTexture;
+    }
+
+    /// <summary>
+    /// Loads the planet RenderTexture asset, creating it if it does not yet exist.
+    /// </summary>
+    /// <returns>The planet RenderTexture asset.</returns>
+    private static RenderTexture LoadOrCreateRenderTexture()
+    {
+        const int size = 2048; // matches the ~1965px on-screen planet so the HD texture reads crisp
+        RenderTexture existing = AssetDatabase.LoadAssetAtPath<RenderTexture>(_renderTexturePath);
+        if (existing != null)
+        {
+            if (existing.width != size || existing.height != size)
+            {
+                existing.Release();
+                existing.width = size;
+                existing.height = size;
+                EditorUtility.SetDirty(existing);
+            }
+            return existing;
+        }
+
+        RenderTexture created = new RenderTexture(size, size, 16, RenderTextureFormat.ARGB32)
+        {
+            name = "Planet",
+            antiAliasing = 4,
+        };
+        AssetDatabase.CreateAsset(created, _renderTexturePath);
+        return created;
     }
 
     /// <summary>
@@ -2412,8 +2543,8 @@ public static class MainMenuPrefabBuilder
         light.intensity = intensity;
         light.color = color;
         light.shadows = shadows;
-        // Exclude layer 31 (kept reserved for isolated backdrop rigs) so this shared cool fill set
-        // never tints anything parked there.
+        // Skip the planet's isolated layer -- it has its own warm sun, and this set's cool fill
+        // light would wash out the planet's colors. (Layer 31 = planetLayer in BuildPlanetRig.)
         light.cullingMask = ~(1 << 31);
     }
 
