@@ -8,6 +8,8 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalBattleController : MonoBehaviour
 {
+    private bool isCompleting;
+
     /// <summary>
     /// Gets the active tactical session.
     /// </summary>
@@ -40,5 +42,26 @@ public sealed class TacticalBattleController : MonoBehaviour
         }
 
         Session = TacticalBattleSession.Create(encounter);
+    }
+
+    /// <summary>
+    /// Commits a finished tactical battle and returns to the strategy scene.
+    /// </summary>
+    public void CompleteBattle()
+    {
+        if (isCompleting)
+            return;
+        if (Session?.IsComplete != true)
+            throw new InvalidOperationException("Tactical combat is still active.");
+
+        AppBootstrap bootstrap = AppBootstrap.Instance;
+        GameManager gameManager = bootstrap.GetRuntime()?.GetActiveGameManager();
+        if (gameManager == null)
+            throw new InvalidOperationException("Tactical combat requires an active game.");
+
+        isCompleting = true;
+        gameManager.ResolveTacticalCombat(Session);
+        TacticalBattleLaunchContext.Clear();
+        bootstrap.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
     }
 }

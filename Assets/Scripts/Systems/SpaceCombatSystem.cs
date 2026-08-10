@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -187,6 +188,42 @@ namespace Rebellion.Systems
             List<GameResult> results = Resolve(decision, autoResolve);
             _pendingDecision = null;
             return results;
+        }
+
+        /// <summary>
+        /// Applies a completed tactical battle to the strategic game and clears its pending decision.
+        /// </summary>
+        /// <param name="session">The completed tactical battle.</param>
+        /// <returns>The applied space-combat result.</returns>
+        public List<GameResult> ResolvePendingTactical(TacticalBattleSession session)
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+            if (_pendingDecision == null)
+                throw new InvalidOperationException("No pending combat to resolve.");
+            if (!MatchesPendingDecision(session.Encounter, _pendingDecision))
+                throw new InvalidOperationException(
+                    "The tactical battle does not match the pending encounter."
+                );
+
+            SpaceCombatDecision decision = _pendingDecision;
+            SpaceCombatResult result = session.BuildResult();
+            result.Events = ApplyCombatResult(result);
+            ClearCombatFlags(decision);
+            _pendingDecision = null;
+            return new List<GameResult> { result };
+        }
+
+        private static bool MatchesPendingDecision(
+            PendingCombatResult encounter,
+            SpaceCombatDecision decision
+        )
+        {
+            return encounter != null
+                && encounter.AttackerFleet?.GetInstanceID() == decision.AttackerFleetInstanceID
+                && encounter.DefenderFleet?.GetInstanceID() == decision.DefenderFleetInstanceID
+                && encounter.AttackerOwnerInstanceID == decision.AttackerOwnerInstanceID
+                && encounter.DefenderOwnerInstanceID == decision.DefenderOwnerInstanceID;
         }
 
         /// <summary>

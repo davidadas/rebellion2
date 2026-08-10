@@ -7,6 +7,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
+using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -1226,6 +1227,41 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePendingTactical_CompletedSession_AppliesLossesAndClearsDecision()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet planet, _) = CreatePlanet(game, "combat");
+            CreateFleet(game, "ef1", "empire", planet, 1, 500, 10);
+            CreateFleet(game, "af1", "alliance", planet, 1, 500, 10);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+            TacticalBattleSession session = TacticalBattleSession.Create(pending);
+            Fleet defeatedFleet = pending.DefenderFleet;
+            foreach (
+                TacticalUnitState unit in session.Units.Where(unit =>
+                    unit.Side == TacticalBattleSide.Defender
+                )
+            )
+            {
+                unit.Hull = 0;
+            }
+
+            SpaceCombatResult result = manager
+                .ResolvePendingTactical(session)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.IsFalse(manager.HasPendingDecision);
+            Assert.IsFalse(pending.AttackerFleet.IsInCombat);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(defeatedFleet.InstanceID));
+        }
+
+        [Test]
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
             GameRoot game = CreateGame();
@@ -1604,6 +1640,7 @@ namespace Rebellion.Tests.Systems
                         weaponPower,
                         weaponPower,
                         weaponPower,
+                        0,
                     };
                 }
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Results;
+using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using Rebellion.Systems;
 using Rebellion.Util.Common;
@@ -271,6 +272,17 @@ public sealed class GameManager
         if (combatResults == null)
             return null;
 
+        return CompleteCombatResolution(combatResults);
+    }
+
+    /// <summary>
+    /// Applies a completed tactical battle and resumes strategic ticking.
+    /// </summary>
+    /// <param name="session">The completed tactical battle session.</param>
+    /// <returns>The resulting strategic combat summary.</returns>
+    public SpaceCombatResult ResolveTacticalCombat(TacticalBattleSession session)
+    {
+        List<GameResult> combatResults = _spaceCombatSystem.ResolvePendingTactical(session);
         return CompleteCombatResolution(combatResults);
     }
 
