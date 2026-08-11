@@ -220,17 +220,27 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void GetEffectiveSublightSpeed_CommandBudgetAndDriveDamage_AppliesDamageToCombinedBudget()
+        public void EffectiveSublightSpeed_PartialHullDamage_ScalesBaseMovement()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
+            unit.Hull = 50;
+
+            Assert.AreEqual(unit.SublightSpeed * 0.5f, unit.EffectiveSublightSpeed, 0.001f);
+        }
+
+        [Test]
+        public void GetEffectiveSublightSpeed_CommandBudgetAndDriveDamage_PreservesCommandBudget()
         {
             TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
             unit.ApplyDamage(
                 new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
                 CreateRandom(0.85d)
             );
+            unit.Hull = unit.InitialHull;
 
             float movement = unit.GetEffectiveSublightSpeed(6f);
 
-            Assert.AreEqual((unit.SublightSpeed + 6f) * 0.75f, movement, 0.001f);
+            Assert.AreEqual(unit.SublightSpeed * 0.75f + 6f, movement, 0.001f);
         }
 
         [Test]

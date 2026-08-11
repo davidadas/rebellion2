@@ -186,13 +186,15 @@ namespace Rebellion.Game.Tactical
             if (IsMovementDisabled)
                 return 0f;
 
+            float hullCondition =
+                InitialHull > 0 ? Math.Min(Hull, InitialHull) / (float)InitialHull : 0f;
             return Math.Max(
                 0f,
-                (SublightSpeed + Math.Max(0f, commandBudget))
-                    * (
-                        1f
-                        - GetSystemDamage(TacticalDamageSystem.SublightDrive) * _systemDamagePenalty
-                    )
+                SublightSpeed * hullCondition
+                    - SublightSpeed
+                        * GetSystemDamage(TacticalDamageSystem.SublightDrive)
+                        * _systemDamagePenalty
+                    + Math.Max(0f, commandBudget)
             );
         }
 
