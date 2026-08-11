@@ -15,6 +15,7 @@ using UnityEngine.Rendering;
 public sealed class TacticalBattleRenderer : MonoBehaviour
 {
     private const float _capitalShipScale = 12f;
+    private const float _deathStarScale = 30f;
     private const float _closeSpritePixelsPerUnit = 2f;
     private const float _destructionEffectDiameter = 7.5f;
     private const float _farSpritePixelsPerUnit = 1f;
@@ -125,11 +126,18 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         CapitalShip[] capitalShips = session
             .Units.Select(unit => unit.Unit)
             .OfType<CapitalShip>()
-            .Where(ship => !string.IsNullOrWhiteSpace(ship.TacticalModelPath))
+            .Where(ship => !ship.IsDeathStar && !string.IsNullOrWhiteSpace(ship.TacticalModelPath))
+            .Distinct()
+            .ToArray();
+        CapitalShip[] deathStars = session
+            .Units.Select(unit => unit.Unit)
+            .OfType<CapitalShip>()
+            .Where(ship => ship.IsDeathStar && !string.IsNullOrWhiteSpace(ship.TacticalModelPath))
             .Distinct()
             .ToArray();
         string[] addresses = capitalShips
             .SelectMany(GetModelAddresses)
+            .Concat(deathStars.Select(ship => ship.TacticalModelPath))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         await modelCache.PreloadAsync(addresses);
@@ -143,7 +151,10 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             )
                 continue;
 
-            await CreateCapitalShipAsync(unit, ship, modelCache, cancellationToken);
+            if (ship.IsDeathStar)
+                await CreateDeathStarAsync(unit, ship, modelCache, cancellationToken);
+            else
+                await CreateCapitalShipAsync(unit, ship, modelCache, cancellationToken);
         }
 
         CreateFighterGroups(session, contentAssets);
@@ -837,6 +848,40 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         SetCollisionExtents(unit, lods[0].renderers);
         unitView.Initialize(unit);
         ConfigureUnitSelection(unitView, lods[0].renderers);
+        unitViews.Add(unitView);
+        unitViewsByState.Add(unit, unitView);
+    }
+
+    /// <summary>
+    /// Creates the stationary model used by one dedicated Death Star tactical object.
+    /// </summary>
+    /// <param name="unit">The Death Star tactical state being presented.</param>
+    /// <param name="ship">The strategic Death Star definition.</param>
+    /// <param name="modelCache">The application-owned model cache.</param>
+    /// <param name="cancellationToken">Token that cancels scene initialization.</param>
+    private async Task CreateDeathStarAsync(
+        TacticalUnitState unit,
+        CapitalShip ship,
+        ContentModelCache modelCache,
+        CancellationToken cancellationToken
+    )
+    {
+        GameObject unitObject = new GameObject($"{ship.TypeID} Tactical Unit");
+        unitObject.transform.SetParent(transform, false);
+        unitObject.transform.localScale = Vector3.one * _deathStarScale;
+        TacticalUnitView unitView = unitObject.AddComponent<TacticalUnitView>();
+        ContentModelInstance instance = await modelCache.InstantiateAsync(
+            ship.TacticalModelPath,
+            unitObject.transform,
+            cancellationToken
+        );
+        instance.ModelRoot.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+        instance.ModelRoot.localScale = Vector3.one;
+        modelInstances.Add(instance);
+        Renderer[] renderers = unitObject.GetComponentsInChildren<Renderer>(true);
+        SetCollisionExtents(unit, renderers);
+        unitView.Initialize(unit);
+        ConfigureUnitSelection(unitView, renderers);
         unitViews.Add(unitView);
         unitViewsByState.Add(unit, unitView);
     }

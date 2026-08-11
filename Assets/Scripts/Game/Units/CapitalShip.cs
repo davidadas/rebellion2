@@ -34,7 +34,7 @@ namespace Rebellion.Game.Units
         public string BattleResultDamagedImagePath { get; set; }
 
         /// <summary>
-        /// Gets or sets the content-address prefix for this ship's tactical model LODs.
+        /// Gets or sets the content address or LOD prefix for this ship's tactical model.
         /// </summary>
         public string TacticalModelPath { get; set; }
 

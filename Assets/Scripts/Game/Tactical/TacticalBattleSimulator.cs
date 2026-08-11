@@ -14,6 +14,7 @@ namespace Rebellion.Game.Tactical
     {
         internal const float BattlefieldScale = 100f;
         private const float _capitalFormationDepth = BattlefieldScale / 2f;
+        private const float _deathStarFormationDepth = BattlefieldScale * 0.9f;
         private const float _fighterFormationDepth = BattlefieldScale * 0.65f;
         private const float _fighterRecoveryDistance = 2f;
         private const float _formationSpacing = 8f;
@@ -1483,6 +1484,15 @@ namespace Rebellion.Game.Tactical
         /// <param name="forward">The formation's facing direction.</param>
         private void PlaceFormation(TacticalBattleSide side, float depthDirection, Vector3 forward)
         {
+            TacticalUnitState deathStar = units.FirstOrDefault(unit =>
+                unit.Side == side && unit.IsDeathStar
+            );
+            if (deathStar != null)
+            {
+                deathStar.Position = new Vector3(0f, 0f, depthDirection * _deathStarFormationDepth);
+                deathStar.Forward = forward;
+            }
+
             PlaceFormationRank(
                 side,
                 TacticalUnitKind.CapitalShip,

@@ -553,7 +553,7 @@ namespace Rebellion.Game.Tactical
                     "The unit does not belong to this battle.",
                     nameof(unit)
                 );
-            if (Phase != TacticalBattlePhase.Arrival)
+            if (Phase != TacticalBattlePhase.Arrival || unit.IsDeathStar)
                 return unit.Position;
 
             float distance = TacticalFlightCurve.GetArrivalDistance(index, arrivalElapsedTime);

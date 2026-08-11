@@ -130,6 +130,28 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Create_DeathStar_StartsAtStationarySideAnchor()
+        {
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                DefenderFleet = CreateFleet(deathStar, CreateShip(500, 200)),
+            };
+
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                encounter,
+                new FixedRandomProvider(new[] { 0d })
+            );
+
+            TacticalUnitState state = session.Units.Single(unit => unit.Unit == deathStar);
+
+            Assert.AreEqual(new Vector3(0f, 0f, 90f), state.Position);
+            Assert.AreEqual(-Vector3.UnitZ, state.Forward);
+        }
+
+        [Test]
         public void Create_DeployedStarfighters_StartBehindCapitalShipRanks()
         {
             Planet planet = new Planet();
@@ -279,6 +301,28 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreEqual(TacticalBattlePhase.Arrival, session.Phase);
             Assert.AreEqual(simulationPosition, attacker.Position);
             Assert.Less(presentationPosition.Z, simulationPosition.Z);
+        }
+
+        [Test]
+        public void GetPresentationPosition_ArrivingDeathStar_RemainsAtStationarySideAnchor()
+        {
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(deathStar),
+                DefenderFleet = CreateFleet(CreateShip(500, 250)),
+            };
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                encounter,
+                new FixedRandomProvider(new[] { 0d })
+            );
+            TacticalUnitState deathStarUnit = session.Units.Single(unit => unit.Unit == deathStar);
+
+            Vector3 presentationPosition = session.GetPresentationPosition(deathStarUnit);
+
+            Assert.AreEqual(TacticalBattlePhase.Arrival, session.Phase);
+            Assert.AreEqual(deathStarUnit.Position, presentationPosition);
         }
 
         [Test]
