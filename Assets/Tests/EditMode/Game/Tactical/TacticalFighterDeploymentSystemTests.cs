@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Tactical
                 0.99d
             );
 
-            system.Advance(7.99f);
+            system.Advance(12.99f);
 
             Assert.IsFalse(fighters.IsDeployed);
 
@@ -45,12 +45,12 @@ namespace Rebellion.Tests.Game.Tactical
                 0.99d
             );
 
-            system.Advance(0f);
+            system.Advance(5f);
 
             Assert.IsTrue(firstFighters.IsDeployed);
             Assert.IsFalse(secondFighters.IsDeployed);
 
-            system.Advance(8f);
+            system.Advance(13f);
 
             Assert.IsTrue(secondFighters.IsDeployed);
         }
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Game.Tactical
             TacticalUnitState carrier = CreateCarrier();
             TacticalUnitState fighters = CreateHeldFighters(carrier);
             TacticalFighterDeploymentSystem system = CreateSystem(carrier, new[] { fighters }, 0d);
-            system.Advance(0f);
+            system.Advance(5f);
 
             TacticalCombatEvent combatEvent = system.DrainEvents().Single();
 

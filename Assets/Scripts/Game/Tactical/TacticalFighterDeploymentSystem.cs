@@ -10,6 +10,7 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     internal sealed class TacticalFighterDeploymentSystem
     {
+        private const float _baseLaunchDelay = 5f;
         private const int _maximumLaunchDelay = 8;
         private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
         private readonly Dictionary<TacticalUnitState, Queue<TacticalUnitState>> launchQueues;
@@ -138,7 +139,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="carrier">The carrier launching the squadron.</param>
         private void ScheduleNextLaunch(TacticalUnitState carrier)
         {
-            nextLaunchTimes[carrier] = elapsedTime + random.NextInt(0, _maximumLaunchDelay + 1);
+            nextLaunchTimes[carrier] =
+                elapsedTime + _baseLaunchDelay + random.NextInt(0, _maximumLaunchDelay + 1);
         }
     }
 }

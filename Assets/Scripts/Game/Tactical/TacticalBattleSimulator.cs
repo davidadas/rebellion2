@@ -15,6 +15,7 @@ namespace Rebellion.Game.Tactical
         internal const float BattlefieldScale = 100f;
         private const float _capitalFormationDepth = BattlefieldScale / 2f;
         private const float _fighterFormationDepth = BattlefieldScale * 0.65f;
+        private const float _fighterRecoveryDistance = 2f;
         private const float _formationSpacing = 8f;
         private const float _navigationArrivalDistance = 1f;
         private const float _tacticalApproachDistance = 20f;
@@ -875,7 +876,7 @@ namespace Rebellion.Game.Tactical
                 MoveTowards(unit, destination, elapsedTime);
                 return;
             }
-            if (Vector3.Distance(unit.Position, carrier.Position) <= _navigationArrivalDistance)
+            if (Vector3.Distance(unit.Position, carrier.Position) < _fighterRecoveryDistance)
             {
                 unit.BeginWithdrawal();
                 unit.CompleteWithdrawal();

@@ -1655,7 +1655,7 @@ namespace Rebellion.Tests.Game.Tactical
                 unit.Unit == deployingShip
             );
             TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
-            fighterUnit.Position = deployingUnit.Position;
+            fighterUnit.Position = deployingUnit.Position + Vector3.UnitX * 1.99f;
             session
                 .GetFighterGroups(TacticalBattleSide.Attacker)
                 .Single()
@@ -1664,6 +1664,34 @@ namespace Rebellion.Tests.Game.Tactical
             session.Advance(0.1f);
 
             Assert.IsTrue(fighterUnit.HasWithdrawn);
+        }
+
+        [Test]
+        public void Advance_RecoverBehaviorAtRecoveryBoundary_KeepsFightersDeployed()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            CapitalShip deployingShip = CreateShip(600, 0, fighters);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(deployingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState deployingUnit = session.Units.Single(unit =>
+                unit.Unit == deployingShip
+            );
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            fighterUnit.Position = deployingUnit.Position + Vector3.UnitX * 2f;
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Recover);
+
+            session.Advance(0.1f);
+
+            Assert.IsFalse(fighterUnit.HasWithdrawn);
+            Assert.IsTrue(fighterUnit.IsDeployed);
         }
 
         [Test]
@@ -1908,6 +1936,7 @@ namespace Rebellion.Tests.Game.Tactical
                 }
             );
             TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            fighterUnit.Deploy(fighterUnit.Position);
             session.DrainEvents();
             session
                 .GetFighterGroups(TacticalBattleSide.Attacker)
