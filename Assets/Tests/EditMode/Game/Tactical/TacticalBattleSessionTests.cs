@@ -545,6 +545,37 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_ComputerControlledFightersWithAttackWindow_BeginDeathStarAttack()
+        {
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(500, 250, CreateFighters(12, 10))),
+                    DefenderFleet = CreateFleet(deathStar),
+                },
+                new FixedRandomProvider(new[] { 0d })
+            );
+            session.SetComputerControlled(TacticalBattleSide.Attacker, true);
+            AdvanceArrival(session);
+
+            session.Advance(0.1f);
+
+            TacticalShipGroup group = session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single();
+            Assert.AreEqual(TacticalBehavior.AttackDeathStar, group.Behavior);
+            Assert.IsTrue(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.DeathStarAttackStarted
+                    )
+            );
+        }
+
+        [Test]
         public void Advance_DischargedDeathStarReachesMaximum_EmitsSuperlaserReadyEvent()
         {
             CapitalShip firstTarget = CreateShip(500, 200);
@@ -682,6 +713,28 @@ namespace Rebellion.Tests.Game.Tactical
                 SpaceCombatSideOutcome.Withdrawn,
                 session.BuildResult().AttackerOutcome
             );
+        }
+
+        [Test]
+        public void ResolveImmediately_PlayerControlledDeathStar_CompletesExistingBattle()
+        {
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(deathStar),
+                    DefenderFleet = CreateFleet(CreateShip(500, 250)),
+                },
+                new FixedRandomProvider(new[] { 0d })
+            );
+            session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+
+            session.ResolveImmediately();
+
+            Assert.IsTrue(session.IsComplete);
+            Assert.IsTrue(session.IsComputerControlled(TacticalBattleSide.Attacker));
+            Assert.IsTrue(session.IsComputerControlled(TacticalBattleSide.Defender));
         }
 
         [Test]

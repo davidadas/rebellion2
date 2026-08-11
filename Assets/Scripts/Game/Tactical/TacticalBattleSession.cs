@@ -393,6 +393,9 @@ namespace Rebellion.Game.Tactical
         public void ResolveImmediately()
         {
             pauseCount = 0;
+            foreach (TacticalBattleSide side in Enum.GetValues(typeof(TacticalBattleSide)))
+                commandControl.SetComputerControlled(side, true);
+
             int remainingSteps = _maximumImmediateResultSteps;
             while (!IsComplete && remainingSteps-- > 0)
                 Advance(_immediateResultStep);
@@ -444,8 +447,26 @@ namespace Rebellion.Game.Tactical
             foreach (TacticalShipGroup group in groups)
                 group.RemoveInactiveTargets();
 
+            AssignComputerControlledDeathStarAttacks();
             simulator.Advance(elapsedTime);
             FireComputerControlledSuperlasers();
+        }
+
+        /// <summary>
+        /// Assigns the first eligible fighter group to attack an exposed opposing Death Star.
+        /// </summary>
+        private void AssignComputerControlledDeathStarAttacks()
+        {
+            foreach (TacticalBattleSide side in Enum.GetValues(typeof(TacticalBattleSide)))
+            {
+                if (!commandControl.IsComputerControlled(side))
+                    continue;
+
+                TacticalShipGroup group = fighterGroups[side]
+                    .FirstOrDefault(CanOrderDeathStarAttack);
+                if (group != null)
+                    TryOrderDeathStarAttack(group);
+            }
         }
 
         /// <summary>
