@@ -116,11 +116,11 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("Pack/Shared/Tactical/Effects", empire.SharedEffectsRoot);
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13028-1033-tactical-blast",
-                alliance.ArrivalAudioPath
+                alliance.CapitalShipArrivalAudioPath
             );
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13029-1033-tactical-blast",
-                alliance.WithdrawalAudioPath
+                alliance.CapitalShipWithdrawalAudioPath
             );
             Assert.IsNull(alliance.SuperlaserAudioPath);
             Assert.AreEqual(
@@ -133,12 +133,17 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
-                empire.ArrivalAudioPath
+                alliance.FighterArrivalAudioPath
             );
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13031-1033-tactical-blast",
-                empire.WithdrawalAudioPath
+                alliance.FighterWithdrawalAudioPath
             );
+            Assert.AreEqual(
+                alliance.CapitalShipArrivalAudioPath,
+                empire.CapitalShipArrivalAudioPath
+            );
+            Assert.AreEqual(alliance.FighterWithdrawalAudioPath, empire.FighterWithdrawalAudioPath);
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13020-1033-tactical-blast",
                 empire.SuperlaserAudioPath

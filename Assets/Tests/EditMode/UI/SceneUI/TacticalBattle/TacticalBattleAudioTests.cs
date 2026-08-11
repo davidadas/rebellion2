@@ -8,9 +8,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
     [TestFixture]
     public sealed class TacticalBattleAudioTests
     {
-        private const string _attackerArrival = "attacker-arrival";
-        private const string _attackerWithdrawal = "attacker-withdrawal";
-        private const string _defenderArrival = "defender-arrival";
+        private const string _attackerCapitalShipArrival = "attacker-capital-arrival";
+        private const string _attackerCapitalShipWithdrawal = "attacker-capital-withdrawal";
+        private const string _attackerFighterArrival = "attacker-fighter-arrival";
+        private const string _attackerFighterWithdrawal = "attacker-fighter-withdrawal";
+        private const string _defenderCapitalShipArrival = "defender-capital-arrival";
+        private const string _defenderFighterArrival = "defender-fighter-arrival";
         private const string _defenderEnergyPenetration = "defender-energy-penetration";
         private const string _defenderEnergyHit = "defender-energy-hit";
         private const string _defenderIonPenetration = "defender-ion-penetration";
@@ -30,12 +33,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 {
                     [TacticalBattleSide.Attacker] = new TacticalBattleTheme
                     {
-                        ArrivalAudioPath = _attackerArrival,
-                        WithdrawalAudioPath = _attackerWithdrawal,
+                        CapitalShipArrivalAudioPath = _attackerCapitalShipArrival,
+                        CapitalShipWithdrawalAudioPath = _attackerCapitalShipWithdrawal,
+                        FighterArrivalAudioPath = _attackerFighterArrival,
+                        FighterWithdrawalAudioPath = _attackerFighterWithdrawal,
                     },
                     [TacticalBattleSide.Defender] = new TacticalBattleTheme
                     {
-                        ArrivalAudioPath = _defenderArrival,
+                        CapitalShipArrivalAudioPath = _defenderCapitalShipArrival,
+                        FighterArrivalAudioPath = _defenderFighterArrival,
                         EnergyShieldPenetrationAudioPath = _defenderEnergyPenetration,
                         EnergyShieldHitAudioPath = _defenderEnergyHit,
                         IonShieldPenetrationAudioPath = _defenderIonPenetration,
@@ -53,28 +59,31 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         [Test]
         public void Advance_QueuedArrivals_StartsFirstCueImmediately()
         {
-            audio.QueueArrival(TacticalBattleSide.Attacker);
-            audio.QueueArrival(TacticalBattleSide.Defender);
+            audio.QueueArrival(CreateUnit(TacticalBattleSide.Attacker));
+            audio.QueueArrival(CreateUnit(TacticalBattleSide.Defender, TacticalUnitKind.Fighters));
 
             audio.Advance(0f);
 
-            CollectionAssert.AreEqual(new[] { _attackerArrival }, played);
+            CollectionAssert.AreEqual(new[] { _attackerCapitalShipArrival }, played);
         }
 
         [Test]
         public void Advance_ActiveCueCompletes_StartsNextQueuedCue()
         {
-            audio.QueueArrival(TacticalBattleSide.Attacker);
-            audio.QueueArrival(TacticalBattleSide.Defender);
+            audio.QueueArrival(CreateUnit(TacticalBattleSide.Attacker));
+            audio.QueueArrival(CreateUnit(TacticalBattleSide.Defender, TacticalUnitKind.Fighters));
             audio.Advance(0f);
 
             audio.Advance(1f);
 
-            CollectionAssert.AreEqual(new[] { _attackerArrival, _defenderArrival }, played);
+            CollectionAssert.AreEqual(
+                new[] { _attackerCapitalShipArrival, _defenderFighterArrival },
+                played
+            );
         }
 
         [Test]
-        public void QueueEvents_Withdrawal_QueuesSourceFactionCue()
+        public void QueueEvents_CapitalShipWithdrawal_QueuesCapitalShipCue()
         {
             TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
             audio.QueueEvents(
@@ -89,7 +98,29 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             audio.Advance(0f);
 
-            CollectionAssert.AreEqual(new[] { _attackerWithdrawal }, played);
+            CollectionAssert.AreEqual(new[] { _attackerCapitalShipWithdrawal }, played);
+        }
+
+        [Test]
+        public void QueueEvents_FighterWithdrawal_QueuesFighterCue()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            audio.QueueEvents(
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.UnitWithdrawn,
+                        attacker
+                    ),
+                }
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { _attackerFighterWithdrawal }, played);
         }
 
         [Test]
@@ -136,12 +167,24 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         /// <summary>
-        /// Creates one minimal capital-ship state on the requested tactical side.
+        /// Creates one minimal tactical unit of the requested class and side.
         /// </summary>
         /// <param name="side">The tactical side assigned to the state.</param>
+        /// <param name="kind">The tactical unit class to create.</param>
         /// <returns>The initialized tactical state.</returns>
-        private static TacticalUnitState CreateUnit(TacticalBattleSide side)
+        private static TacticalUnitState CreateUnit(
+            TacticalBattleSide side,
+            TacticalUnitKind kind = TacticalUnitKind.CapitalShip
+        )
         {
+            if (kind == TacticalUnitKind.Fighters)
+            {
+                return TacticalUnitState.FromFighters(
+                    new Starfighter { CurrentSquadronSize = 1 },
+                    side
+                );
+            }
+
             return TacticalUnitState.FromCapitalShip(
                 new CapitalShip { CurrentHullStrength = 1, MaxHullStrength = 1 },
                 side

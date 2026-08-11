@@ -16,9 +16,13 @@ public sealed class TacticalBattleTheme
 
     public string FighterOrderVariant { get; set; }
 
-    public string ArrivalAudioPath { get; set; }
+    public string CapitalShipArrivalAudioPath { get; set; }
 
-    public string WithdrawalAudioPath { get; set; }
+    public string CapitalShipWithdrawalAudioPath { get; set; }
+
+    public string FighterArrivalAudioPath { get; set; }
+
+    public string FighterWithdrawalAudioPath { get; set; }
 
     public string SuperlaserAudioPath { get; set; }
 

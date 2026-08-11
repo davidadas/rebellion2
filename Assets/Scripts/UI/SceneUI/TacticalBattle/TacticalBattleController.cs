@@ -181,7 +181,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (Session.Phase == TacticalBattlePhase.Arrival)
         {
             foreach (TacticalUnitState unit in Session.Units.Where(unit => unit.IsActive))
-                battleAudio.QueueArrival(unit.Side);
+                battleAudio.QueueArrival(unit);
             battleAudio.Advance(0f);
         }
         playerDeathStar = Session.Units.FirstOrDefault(unit =>
@@ -248,8 +248,10 @@ public sealed class TacticalBattleController : MonoBehaviour
     {
         return new[]
         {
-            theme.ArrivalAudioPath,
-            theme.WithdrawalAudioPath,
+            theme.CapitalShipArrivalAudioPath,
+            theme.CapitalShipWithdrawalAudioPath,
+            theme.FighterArrivalAudioPath,
+            theme.FighterWithdrawalAudioPath,
             theme.SuperlaserAudioPath,
             theme.EnergyShieldHitAudioPath,
             theme.EnergyShieldPenetrationAudioPath,

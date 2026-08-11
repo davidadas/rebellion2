@@ -31,12 +31,15 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
-    /// Queues the arrival cue for one tactical unit.
+    /// Queues the unit-class arrival cue for one tactical unit.
     /// </summary>
-    /// <param name="side">The arriving unit's tactical side.</param>
-    internal void QueueArrival(TacticalBattleSide side)
+    /// <param name="unit">The arriving tactical unit.</param>
+    internal void QueueArrival(TacticalUnitState unit)
     {
-        Enqueue(GetTheme(side).ArrivalAudioPath);
+        if (unit == null)
+            throw new ArgumentNullException(nameof(unit));
+
+        Enqueue(GetArrivalPath(unit));
     }
 
     /// <summary>
@@ -53,9 +56,7 @@ internal sealed class TacticalBattleAudio
             string path = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => GetImpactPath(combatEvent),
-                TacticalCombatEventKind.UnitWithdrawn => GetTheme(
-                    combatEvent.Source.Side
-                ).WithdrawalAudioPath,
+                TacticalCombatEventKind.UnitWithdrawn => GetWithdrawalPath(combatEvent.Source),
                 TacticalCombatEventKind.SuperlaserFired => GetTheme(
                     combatEvent.Source.Side
                 ).SuperlaserAudioPath,
@@ -63,6 +64,38 @@ internal sealed class TacticalBattleAudio
             };
             Enqueue(path);
         }
+    }
+
+    /// <summary>
+    /// Resolves the arrival cue for the arriving unit class.
+    /// </summary>
+    /// <param name="unit">The arriving tactical unit.</param>
+    /// <returns>The configured arrival cue.</returns>
+    private string GetArrivalPath(TacticalUnitState unit)
+    {
+        TacticalBattleTheme theme = GetTheme(unit.Side);
+        return unit.Kind switch
+        {
+            TacticalUnitKind.CapitalShip => theme.CapitalShipArrivalAudioPath,
+            TacticalUnitKind.Fighters => theme.FighterArrivalAudioPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(unit)),
+        };
+    }
+
+    /// <summary>
+    /// Resolves the withdrawal cue for the departing unit class.
+    /// </summary>
+    /// <param name="unit">The departing tactical unit.</param>
+    /// <returns>The configured withdrawal cue.</returns>
+    private string GetWithdrawalPath(TacticalUnitState unit)
+    {
+        TacticalBattleTheme theme = GetTheme(unit.Side);
+        return unit.Kind switch
+        {
+            TacticalUnitKind.CapitalShip => theme.CapitalShipWithdrawalAudioPath,
+            TacticalUnitKind.Fighters => theme.FighterWithdrawalAudioPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(unit)),
+        };
     }
 
     /// <summary>
