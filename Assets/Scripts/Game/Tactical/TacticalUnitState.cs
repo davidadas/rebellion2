@@ -24,6 +24,7 @@ namespace Rebellion.Game.Tactical
         private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
         private readonly int damageControl;
         private readonly bool hasHyperdrive;
+        private readonly int torpedoStrengthPerFighter;
         private readonly int tractorBeamPower;
         private float shieldRechargeRemainder;
         private float componentDisruptionTime;
@@ -89,6 +90,11 @@ namespace Rebellion.Game.Tactical
         /// Gets the maximum range at which the unit can establish a tractor lock.
         /// </summary>
         public int TractorBeamRange { get; }
+
+        /// <summary>
+        /// Gets the maximum range of the fighter squadron's capital-ship torpedo attack.
+        /// </summary>
+        public int TorpedoRange { get; }
 
         /// <summary>
         /// Gets the tractor-beam strength available after persistent subsystem damage.
@@ -207,6 +213,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="hasHyperdrive">Whether the unit can leave tactical space independently.</param>
         /// <param name="tractorBeamPower">The unit's undamaged tractor-beam strength.</param>
         /// <param name="tractorBeamRange">The unit's maximum tractor-lock range.</param>
+        /// <param name="torpedoStrengthPerFighter">The torpedo strength of each fighter.</param>
+        /// <param name="torpedoRange">The maximum range of the fighter squadron's torpedo attack.</param>
         /// <param name="weaponBatteries">The unit's tactical weapon batteries.</param>
         /// <param name="recoveryTarget">The capital ship that deployed this unit.</param>
         /// <param name="isDeployed">Whether the unit begins in tactical space.</param>
@@ -224,6 +232,8 @@ namespace Rebellion.Game.Tactical
             bool hasHyperdrive,
             int tractorBeamPower,
             int tractorBeamRange,
+            int torpedoStrengthPerFighter,
+            int torpedoRange,
             IList<TacticalWeaponBattery> weaponBatteries,
             TacticalUnitState recoveryTarget = null,
             bool isDeployed = true
@@ -244,6 +254,8 @@ namespace Rebellion.Game.Tactical
             this.hasHyperdrive = hasHyperdrive;
             this.tractorBeamPower = Math.Max(0, tractorBeamPower);
             TractorBeamRange = Math.Max(0, tractorBeamRange);
+            this.torpedoStrengthPerFighter = Math.Max(0, torpedoStrengthPerFighter);
+            TorpedoRange = Math.Max(0, torpedoRange);
             Forward = Vector3.UnitZ;
             RecoveryTarget = recoveryTarget;
             IsDeployed = isDeployed;
@@ -277,6 +289,8 @@ namespace Rebellion.Game.Tactical
                 ship.Hyperdrive > 0,
                 ship.TractorBeamPower,
                 ship.TractorBeamnRange,
+                0,
+                0,
                 ship.PrimaryWeapons.OrderBy(entry => entry.Key)
                     .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
                     .ToList()
@@ -313,6 +327,8 @@ namespace Rebellion.Game.Tactical
                 fighters.Hyperdrive > 0,
                 0,
                 0,
+                fighters.Torpedoes,
+                fighters.TorpedoRange,
                 CreateFighterBatteries(fighters),
                 recoveryTarget,
                 recoveryTarget == null || fighters.Hyperdrive > 0
@@ -464,6 +480,18 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Gets the torpedo strength available from the surviving fighter squadron.
+        /// </summary>
+        /// <returns>The current torpedo attack strength.</returns>
+        internal int GetTorpedoAttackStrength()
+        {
+            if (Kind != TacticalUnitKind.Fighters || torpedoStrengthPerFighter <= 0 || Hull <= 0)
+                return 0;
+
+            return torpedoStrengthPerFighter * Hull;
+        }
+
+        /// <summary>
         /// Returns the persistent damage level for one capital-ship subsystem.
         /// </summary>
         /// <param name="system">The subsystem to inspect.</param>
@@ -516,18 +544,13 @@ namespace Rebellion.Game.Tactical
             {
                 TacticalWeaponBattery.CreateFighter(
                     TacticalWeaponType.LaserCannon,
-                    fighters.LaserCannon,
+                    fighters.LaserCannon * fighters.CurrentSquadronSize,
                     fighters.LaserRange
                 ),
                 TacticalWeaponBattery.CreateFighter(
                     TacticalWeaponType.IonCannon,
-                    fighters.IonCannon,
+                    fighters.IonCannon * fighters.CurrentSquadronSize,
                     fighters.IonRange
-                ),
-                TacticalWeaponBattery.CreateFighter(
-                    TacticalWeaponType.Torpedo,
-                    fighters.Torpedoes,
-                    fighters.TorpedoRange
                 ),
             };
         }

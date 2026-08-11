@@ -894,6 +894,72 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_FighterLaserAttackAgainstUnshieldedCapitalShip_FiresTorpedoes()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            attackingFighters.LaserCannon = 5;
+            attackingFighters.LaserRange = 200;
+            attackingFighters.Torpedoes = 7;
+            attackingFighters.TorpedoRange = 200;
+            CapitalShip defendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+            IReadOnlyList<TacticalCombatEvent> impacts = session
+                .DrainEvents()
+                .Where(combatEvent =>
+                    combatEvent.Kind == TacticalCombatEventKind.WeaponImpact
+                    && combatEvent.Source.Unit == attackingFighters
+                    && combatEvent.Target.Unit == defendingShip
+                )
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { TacticalWeaponType.LaserCannon, TacticalWeaponType.Torpedo },
+                impacts.Select(combatEvent => combatEvent.WeaponType)
+            );
+        }
+
+        [Test]
+        public void Advance_FighterLaserAttackAgainstShieldedCapitalShip_DoesNotFireTorpedoes()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            attackingFighters.LaserCannon = 5;
+            attackingFighters.LaserRange = 200;
+            attackingFighters.Torpedoes = 7;
+            attackingFighters.TorpedoRange = 200;
+            CapitalShip defendingShip = CreateShip(100, 100);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+            IReadOnlyList<TacticalCombatEvent> impacts = session
+                .DrainEvents()
+                .Where(combatEvent =>
+                    combatEvent.Kind == TacticalCombatEventKind.WeaponImpact
+                    && combatEvent.Source.Unit == attackingFighters
+                    && combatEvent.Target.Unit == defendingShip
+                )
+                .ToArray();
+
+            CollectionAssert.AreEqual(
+                new[] { TacticalWeaponType.LaserCannon },
+                impacts.Select(combatEvent => combatEvent.WeaponType)
+            );
+        }
+
+        [Test]
         public void Advance_AttackDeathStarBehavior_UsesDedicatedAttackRun()
         {
             Starfighter attackingFighters = CreateFighters(12, 0);

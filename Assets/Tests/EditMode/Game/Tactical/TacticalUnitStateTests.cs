@@ -432,8 +432,25 @@ namespace Rebellion.Tests.Game.Tactical
                 TacticalBattleSide.Attacker
             );
 
-            Assert.AreEqual(10, unit.GetAvailableAttackStrength(TacticalWeaponArc.Fore, 10f));
+            Assert.AreEqual(96, unit.GetAvailableAttackStrength(TacticalWeaponArc.Fore, 10f));
             Assert.AreEqual(0, unit.GetAvailableAttackStrength(TacticalWeaponArc.Aft, 10f));
+            Assert.AreEqual(24, unit.GetTorpedoAttackStrength());
+            Assert.AreEqual(10, unit.TorpedoRange);
+        }
+
+        [Test]
+        public void GetTorpedoAttackStrength_PartiallyDestroyedSquadron_ScalesSurvivingStrength()
+        {
+            Starfighter fighters = new Starfighter { CurrentSquadronSize = 12, Torpedoes = 2 };
+            TacticalUnitState unit = TacticalUnitState.FromFighters(
+                fighters,
+                TacticalBattleSide.Attacker
+            );
+            unit.ApplyDamage(6);
+
+            int strength = unit.GetTorpedoAttackStrength();
+
+            Assert.AreEqual(12, strength);
         }
 
         private static TacticalUnitState CreateCapitalShipState(

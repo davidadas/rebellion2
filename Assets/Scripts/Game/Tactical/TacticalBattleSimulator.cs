@@ -477,10 +477,32 @@ namespace Rebellion.Game.Tactical
             if (attacker.GetAvailableAttackStrength(arc, distance) <= 0)
                 return Array.Empty<PendingAttack>();
 
-            return attacker
+            List<PendingAttack> attacks = attacker
                 .FireArc(arc, distance)
                 .Select(attack => new PendingAttack(attacker, target, attack))
-                .ToArray();
+                .ToList();
+            if (
+                attacker.Kind == TacticalUnitKind.Fighters
+                && target.Kind == TacticalUnitKind.CapitalShip
+                && target.Shields == 0
+                && distance <= attacker.TorpedoRange
+                && attacks.Any(attack => attack.Attack.WeaponType == TacticalWeaponType.LaserCannon)
+            )
+            {
+                int torpedoStrength = attacker.GetTorpedoAttackStrength();
+                if (torpedoStrength > 0)
+                {
+                    attacks.Add(
+                        new PendingAttack(
+                            attacker,
+                            target,
+                            new TacticalAttack(TacticalWeaponType.Torpedo, torpedoStrength)
+                        )
+                    );
+                }
+            }
+
+            return attacks;
         }
 
         /// <summary>
