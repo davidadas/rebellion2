@@ -173,6 +173,15 @@ namespace Rebellion.Game.Tactical
                 shot.Target.Hull = 0;
                 events.Add(TacticalCombatEvent.UnitDestroyed(shot.Source, shot.Target));
             }
+            foreach (TacticalUnitState deathStar in superlaserSystem.DrainReadyDeathStars())
+            {
+                events.Add(
+                    TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.SuperlaserReady,
+                        deathStar
+                    )
+                );
+            }
             fighterDeploymentSystem.ResolveCarrierStateChanges();
             fighterDeploymentSystem.Advance(elapsedTime);
             events.AddRange(fighterDeploymentSystem.DrainEvents());

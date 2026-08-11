@@ -221,6 +221,71 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the played faction's report that its Death Star has fired.
+    /// </summary>
+    /// <param name="side">The side operating the Death Star.</param>
+    private void QueueSuperlaserFiring(TacticalBattleSide side)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        Enqueue(voice?.GetAudioPath(voice.DeathStar?.SuperlaserFiring), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
+    /// Queues the played faction's warning that an opposing Death Star has fired.
+    /// </summary>
+    /// <param name="side">The side receiving the warning.</param>
+    private void QueueSuperlaserWarning(TacticalBattleSide side)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        Enqueue(
+            voice?.GetAudioPath(voice.DeathStar?.SuperlaserWarning),
+            TacticalAudioChannel.Voice
+        );
+    }
+
+    /// <summary>
+    /// Queues the played faction's report that its superlaser has recharged.
+    /// </summary>
+    /// <param name="side">The side operating the Death Star.</param>
+    private void QueueSuperlaserReady(TacticalBattleSide side)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        Enqueue(voice?.GetAudioPath(voice.DeathStar?.SuperlaserReady), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
+    /// Queues superlaser reports visible to the played tactical side.
+    /// </summary>
+    /// <param name="playedSide">The side controlled or observed by the local player.</param>
+    /// <param name="events">The simulation events produced by the current frame.</param>
+    internal void QueueSuperlaserReports(
+        TacticalBattleSide playedSide,
+        IReadOnlyList<TacticalCombatEvent> events
+    )
+    {
+        if (events == null)
+            throw new ArgumentNullException(nameof(events));
+
+        foreach (TacticalCombatEvent combatEvent in events)
+        {
+            if (combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired)
+            {
+                if (combatEvent.Source.Side == playedSide)
+                    QueueSuperlaserFiring(playedSide);
+                else
+                    QueueSuperlaserWarning(playedSide);
+            }
+            else if (
+                combatEvent.Kind == TacticalCombatEventKind.SuperlaserReady
+                && combatEvent.Source.Side == playedSide
+            )
+            {
+                QueueSuperlaserReady(playedSide);
+            }
+        }
+    }
+
+    /// <summary>
     /// Queues the final report heard by the played side when combat ends.
     /// </summary>
     /// <param name="side">The side receiving the report.</param>

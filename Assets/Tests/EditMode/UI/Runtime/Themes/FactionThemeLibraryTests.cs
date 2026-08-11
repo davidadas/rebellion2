@@ -210,6 +210,9 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 "fighter-group-red-mission-acknowledged",
                 empire.MissionAcknowledged.FighterGroups[0]
             );
+            Assert.AreEqual("death-star-firing-warning", alliance.DeathStar.SuperlaserWarning);
+            Assert.AreEqual("superlaser-firing", empire.DeathStar.SuperlaserFiring);
+            Assert.AreEqual("superlaser-ready", empire.DeathStar.SuperlaserReady);
         }
     }
 }

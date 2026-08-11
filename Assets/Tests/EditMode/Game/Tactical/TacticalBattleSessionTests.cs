@@ -453,6 +453,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_DischargedDeathStarReachesMaximum_EmitsSuperlaserReadyEvent()
+        {
+            CapitalShip firstTarget = CreateShip(500, 200);
+            CapitalShip secondTarget = CreateShip(500, 200);
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(firstTarget, secondTarget),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            session.SetComputerControlled(TacticalBattleSide.Attacker, false);
+            session.SetComputerControlled(TacticalBattleSide.Defender, false);
+            TacticalUnitState targetState = session.Units.Single(unit => unit.Unit == firstTarget);
+            TacticalUnitState deathStarState = session.Units.Single(unit => unit.Unit == deathStar);
+            session.TryFireSuperlaser(deathStarState, targetState);
+            session.DrainEvents();
+
+            session.Advance(300f);
+
+            Assert.IsTrue(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.SuperlaserReady
+                        && combatEvent.Source == deathStarState
+                    )
+            );
+        }
+
+        [Test]
         public void TryFireSuperlaser_CarrierIsDestroyed_DestroysHeldFighters()
         {
             Starfighter fighters = CreateFighters(12, 0);

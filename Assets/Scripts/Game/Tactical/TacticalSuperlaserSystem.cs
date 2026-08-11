@@ -16,6 +16,7 @@ namespace Rebellion.Game.Tactical
         private readonly HashSet<TacticalUnitState> participants;
         private readonly Dictionary<TacticalUnitState, float> chargeByDeathStar;
         private readonly List<PendingShot> pendingShots = new List<PendingShot>();
+        private readonly List<TacticalUnitState> readyDeathStars = new List<TacticalUnitState>();
         private readonly List<ResolvedShot> resolvedShots = new List<ResolvedShot>();
 
         /// <summary>
@@ -114,10 +115,15 @@ namespace Rebellion.Game.Tactical
                 if (!CanOperate(deathStar))
                     continue;
 
+                float previousCharge = chargeByDeathStar[deathStar];
                 chargeByDeathStar[deathStar] = Math.Min(
                     MaximumCharge,
-                    chargeByDeathStar[deathStar] + elapsedTime * _chargePerTacticalSecond
+                    previousCharge + elapsedTime * _chargePerTacticalSecond
                 );
+                if (previousCharge < MaximumCharge && chargeByDeathStar[deathStar] >= MaximumCharge)
+                {
+                    readyDeathStars.Add(deathStar);
+                }
             }
 
             foreach (PendingShot shot in pendingShots.ToArray())
@@ -165,6 +171,17 @@ namespace Rebellion.Game.Tactical
         {
             ResolvedShot[] result = resolvedShots.ToArray();
             resolvedShots.Clear();
+            return result;
+        }
+
+        /// <summary>
+        /// Removes and returns Death Stars that finished recharging during advancement.
+        /// </summary>
+        /// <returns>The newly ready Death Stars in simulation order.</returns>
+        public IReadOnlyList<TacticalUnitState> DrainReadyDeathStars()
+        {
+            TacticalUnitState[] result = readyDeathStars.ToArray();
+            readyDeathStars.Clear();
             return result;
         }
 

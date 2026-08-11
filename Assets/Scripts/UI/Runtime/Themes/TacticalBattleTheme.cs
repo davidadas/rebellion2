@@ -58,6 +58,33 @@ public sealed class TacticalGroupVoiceTheme
 }
 
 /// <summary>
+/// Defines faction-specific Death Star tactical reports.
+/// </summary>
+[PersistableObject]
+public sealed class TacticalDeathStarVoiceTheme
+{
+    public string SuperlaserFiring { get; set; }
+
+    public string SuperlaserReady { get; set; }
+
+    public string SuperlaserWarning { get; set; }
+
+    /// <summary>
+    /// Enumerates every non-empty Death Star response configured for preloading.
+    /// </summary>
+    /// <returns>The configured audio names.</returns>
+    public IEnumerable<string> GetAudioNames()
+    {
+        if (!string.IsNullOrWhiteSpace(SuperlaserFiring))
+            yield return SuperlaserFiring;
+        if (!string.IsNullOrWhiteSpace(SuperlaserReady))
+            yield return SuperlaserReady;
+        if (!string.IsNullOrWhiteSpace(SuperlaserWarning))
+            yield return SuperlaserWarning;
+    }
+}
+
+/// <summary>
 /// Defines faction-specific spoken responses for tactical command and battle reports.
 /// </summary>
 [PersistableObject]
@@ -88,6 +115,8 @@ public sealed class TacticalVoiceTheme
     public TacticalGroupVoiceTheme UnitLost { get; set; }
 
     public TacticalGroupVoiceTheme TargetDestroyed { get; set; }
+
+    public TacticalDeathStarVoiceTheme DeathStar { get; set; }
 
     public TacticalOutcomeVoiceTheme Outcome { get; set; }
 
@@ -151,6 +180,12 @@ public sealed class TacticalVoiceTheme
             if (group == null)
                 continue;
             foreach (string audio in group.GetAudioNames())
+                yield return audio;
+        }
+
+        if (DeathStar != null)
+        {
+            foreach (string audio in DeathStar.GetAudioNames())
                 yield return audio;
         }
 

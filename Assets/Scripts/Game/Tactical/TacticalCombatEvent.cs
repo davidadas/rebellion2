@@ -31,6 +31,9 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>A tactical unit releases its tractor lock.</summary>
         TractorRelease = 7,
+
+        /// <summary>A Death Star finishes recharging its superlaser.</summary>
+        SuperlaserReady = 8,
     }
 
     /// <summary>
@@ -206,6 +209,7 @@ namespace Rebellion.Game.Tactical
                 && kind != TacticalCombatEventKind.UnitWithdrawn
                 && kind != TacticalCombatEventKind.FightersRecovered
                 && kind != TacticalCombatEventKind.FightersDeployed
+                && kind != TacticalCombatEventKind.SuperlaserReady
             )
             {
                 throw new ArgumentOutOfRangeException(nameof(kind));

@@ -116,6 +116,24 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_DischargedDeathStarReachesMaximum_ReportsReadyOnce()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            TacticalSuperlaserSystem system = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            system.TryFire(deathStar, target);
+
+            system.Advance(1000f);
+            TacticalUnitState readyDeathStar = system.DrainReadyDeathStars().Single();
+            system.Advance(1000f);
+
+            Assert.AreSame(deathStar, readyDeathStar);
+            Assert.IsEmpty(system.DrainReadyDeathStars());
+        }
+
+        [Test]
         public void Advance_DischargedOperationalDeathStar_RechargesAtExpectedRate()
         {
             TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);

@@ -62,6 +62,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             FleetReady = "fleet-ready",
                             WithdrawalPreparing = "withdrawal-preparing",
                             WithdrawalBlocked = "withdrawal-blocked",
+                            DeathStar = new TacticalDeathStarVoiceTheme
+                            {
+                                SuperlaserFiring = "superlaser-firing",
+                                SuperlaserReady = "superlaser-ready",
+                                SuperlaserWarning = "superlaser-warning",
+                            },
                             OrdersRequested = CreateGroupVoice("orders-requested"),
                             ManeuverAcknowledged = CreateGroupVoice("maneuver"),
                             AttackAcknowledged = CreateGroupVoice("attack"),
@@ -314,6 +320,56 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             audio.Advance(0f);
 
             CollectionAssert.AreEqual(new[] { "attacker-voice/withdrawal-preparing" }, played);
+        }
+
+        [Test]
+        public void QueueSuperlaserReports_PlayedSideFires_QueuesFiringReport()
+        {
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueSuperlaserReports(
+                TacticalBattleSide.Attacker,
+                new[] { TacticalCombatEvent.SuperlaserFired(source, target) }
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/superlaser-firing" }, played);
+        }
+
+        [Test]
+        public void QueueSuperlaserReports_OpposingSideFires_QueuesWarningReport()
+        {
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Defender);
+            TacticalUnitState target = CreateUnit(TacticalBattleSide.Attacker);
+
+            audio.QueueSuperlaserReports(
+                TacticalBattleSide.Attacker,
+                new[] { TacticalCombatEvent.SuperlaserFired(source, target) }
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/superlaser-warning" }, played);
+        }
+
+        [Test]
+        public void QueueSuperlaserReports_PlayedSideBecomesReady_QueuesReadinessReport()
+        {
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker);
+
+            audio.QueueSuperlaserReports(
+                TacticalBattleSide.Attacker,
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.SuperlaserReady,
+                        source
+                    ),
+                }
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/superlaser-ready" }, played);
         }
 
         [Test]

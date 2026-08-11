@@ -208,6 +208,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         IReadOnlyList<TacticalCombatEvent> combatEvents = Session.DrainEvents();
         battleRenderer.PresentEvents(combatEvents);
         battleAudio.QueueEvents(combatEvents);
+        battleAudio.QueueSuperlaserReports(playerSide, combatEvents);
         QueueFighterLifecycleReports(combatEvents);
         QueueDestructionReports(combatEvents);
         battleAudio.Advance(Time.unscaledDeltaTime);
