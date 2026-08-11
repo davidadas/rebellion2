@@ -51,6 +51,7 @@ namespace Rebellion.Game.Tactical
         private readonly Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid;
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets;
+        private readonly IReadOnlyDictionary<TacticalBattleSide, float> capitalCommandBudgets;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
         private readonly IRandomNumberProvider random;
@@ -135,12 +136,14 @@ namespace Rebellion.Game.Tactical
         /// <param name="units">The battle's tactical units.</param>
         /// <param name="groups">The battle's mutable command groups.</param>
         /// <param name="fighterCommandBudgets">The normalized fighter-command contribution for each side.</param>
+        /// <param name="capitalCommandBudgets">The normalized capital-command contribution for each side.</param>
         /// <param name="isDeathStarAttackOrderValid">Tests whether an assigned Death Star attack remains valid.</param>
         /// <param name="random">The battle's deterministic random source.</param>
         public TacticalBattleSimulator(
             IReadOnlyList<TacticalUnitState> units,
             IReadOnlyList<TacticalShipGroup> groups,
             IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets,
+            IReadOnlyDictionary<TacticalBattleSide, float> capitalCommandBudgets,
             Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid,
             IRandomNumberProvider random
         )
@@ -150,6 +153,9 @@ namespace Rebellion.Game.Tactical
             this.fighterCommandBudgets =
                 fighterCommandBudgets
                 ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
+            this.capitalCommandBudgets =
+                capitalCommandBudgets
+                ?? throw new ArgumentNullException(nameof(capitalCommandBudgets));
             this.isDeathStarAttackOrderValid =
                 isDeathStarAttackOrderValid
                 ?? throw new ArgumentNullException(nameof(isDeathStarAttackOrderValid));
@@ -700,12 +706,15 @@ namespace Rebellion.Game.Tactical
         {
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit);
+            float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit, GetCommandBudget(unit));
             if (distance <= _navigationArrivalDistance || movementSpeed <= 0f)
                 return;
 
             Vector3 desiredForward = displacement / distance;
-            float turnAmount = Math.Min(1f, unit.Maneuverability * elapsedTime);
+            float turnBudget = unit.Maneuverability;
+            if (unit.Kind == TacticalUnitKind.CapitalShip)
+                turnBudget += GetCommandBudget(unit);
+            float turnAmount = Math.Min(1f, turnBudget * elapsedTime);
             unit.Forward = NormalizeOrDefault(
                 Vector3.Lerp(unit.Forward, desiredForward, turnAmount),
                 desiredForward
@@ -740,6 +749,20 @@ namespace Rebellion.Game.Tactical
                 unit.Position = firstClearance;
             else if (!TryFindCollision(unit, secondClearance, out _))
                 unit.Position = secondClearance;
+        }
+
+        /// <summary>
+        /// Gets the active tactical commander's movement contribution for one unit.
+        /// </summary>
+        /// <param name="unit">The unit receiving command support.</param>
+        /// <returns>The command contribution for the unit's kind and side.</returns>
+        private float GetCommandBudget(TacticalUnitState unit)
+        {
+            IReadOnlyDictionary<TacticalBattleSide, float> budgets =
+                unit.Kind == TacticalUnitKind.Fighters
+                    ? fighterCommandBudgets
+                    : capitalCommandBudgets;
+            return budgets.TryGetValue(unit.Side, out float budget) ? budget : 1f;
         }
 
         /// <summary>

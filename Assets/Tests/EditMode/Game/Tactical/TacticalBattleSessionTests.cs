@@ -782,6 +782,62 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AssignedCommander_AddsCombatBudgetToFighterMovement()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            fighters.SublightSpeed = 10;
+            CapitalShip carrier = CreateShip(600, 0, fighters);
+            Officer commander = new Officer { CurrentRank = OfficerRank.Commander };
+            commander.SetBaseRating(OfficerRating.Combat, 100);
+            carrier.Officers.Add(commander);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(carrier),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            AdvanceArrival(session);
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            fighterUnit.Position = Vector3.Zero;
+            fighterUnit.Forward = Vector3.UnitZ;
+
+            session.Advance(1f);
+
+            Assert.AreEqual(16f, fighterUnit.Position.Z, 0.001f);
+        }
+
+        [Test]
+        public void Advance_MultipleAssignedAdmirals_UsesStrongestLeadershipBudget()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.SublightSpeed = 10;
+            attackingShip.Maneuverability = 10;
+            Officer juniorAdmiral = new Officer { CurrentRank = OfficerRank.Admiral };
+            juniorAdmiral.SetBaseRating(OfficerRating.Leadership, 0);
+            Officer seniorAdmiral = new Officer { CurrentRank = OfficerRank.Admiral };
+            seniorAdmiral.SetBaseRating(OfficerRating.Leadership, 100);
+            attackingShip.Officers.AddRange(new[] { juniorAdmiral, seniorAdmiral });
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            AdvanceArrival(session);
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            attackingUnit.Position = Vector3.Zero;
+            attackingUnit.Forward = Vector3.UnitZ;
+
+            session.Advance(1f);
+
+            Assert.AreEqual(11f, attackingUnit.Position.Z, 0.001f);
+        }
+
+        [Test]
         public void Advance_DefaultTargetWithoutAssignment_TargetsNearestOpposingUnit()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
@@ -881,7 +937,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(initialPosition - Vector3.UnitZ * 2f, movingUnit.Position);
+            Assert.AreEqual(initialPosition - Vector3.UnitZ * 2.5f, movingUnit.Position);
             Assert.IsTrue(
                 session
                     .DrainEvents()
@@ -1049,7 +1105,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(new Vector3(0f, 2f, 5f), movingUnit.Position);
+            Assert.AreEqual(new Vector3(0f, 2f, 5.5f), movingUnit.Position);
         }
 
         [Test]

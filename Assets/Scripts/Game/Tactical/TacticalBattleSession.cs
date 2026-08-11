@@ -122,6 +122,7 @@ namespace Rebellion.Game.Tactical
                 this.units,
                 groupView,
                 BuildFighterCommandBudgets(encounter),
+                BuildCapitalCommandBudgets(encounter),
                 IsDeathStarAttackOrderValid,
                 random
             );
@@ -628,6 +629,45 @@ namespace Rebellion.Game.Tactical
                 .FirstOrDefault();
             return Math.Clamp(
                 (commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0) / 20f + 1f,
+                1f,
+                9f
+            );
+        }
+
+        /// <summary>
+        /// Builds each side's capital-command contribution from its strongest assigned admiral.
+        /// </summary>
+        /// <param name="encounter">The strategic encounter supplying both fleets.</param>
+        /// <returns>The capital-command contribution indexed by tactical side.</returns>
+        private static IReadOnlyDictionary<TacticalBattleSide, float> BuildCapitalCommandBudgets(
+            PendingCombatResult encounter
+        )
+        {
+            return new Dictionary<TacticalBattleSide, float>
+            {
+                [TacticalBattleSide.Attacker] = GetCapitalCommandBudget(encounter.AttackerFleet),
+                [TacticalBattleSide.Defender] = GetCapitalCommandBudget(encounter.DefenderFleet),
+            };
+        }
+
+        /// <summary>
+        /// Normalizes the strongest participating admiral's Leadership rating into the tactical
+        /// capital budget.
+        /// </summary>
+        /// <param name="fleet">The fleet whose admiral supports its capital ships.</param>
+        /// <returns>A value from one through nine, with one used when no admiral is assigned.</returns>
+        private static float GetCapitalCommandBudget(Fleet fleet)
+        {
+            Officer admiral = fleet
+                ?.GetOfficers()
+                .Where(officer => officer.CurrentRank == OfficerRank.Admiral)
+                .OrderByDescending(officer => officer.GetEffectiveRating(OfficerRating.Leadership))
+                .FirstOrDefault();
+            if (admiral == null)
+                return 1f;
+
+            return Math.Clamp(
+                9f - admiral.GetEffectiveRating(OfficerRating.Leadership) / 10f,
                 1f,
                 9f
             );

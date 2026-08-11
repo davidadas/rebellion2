@@ -60,8 +60,9 @@ namespace Rebellion.Game.Tactical
         /// Gets the movement remaining after every active tractor lock is applied.
         /// </summary>
         /// <param name="unit">The unit whose movement is requested.</param>
+        /// <param name="commandBudget">The movement supplied by the unit's tactical commander.</param>
         /// <returns>The nonnegative tactical movement budget.</returns>
-        public float GetMovementSpeed(TacticalUnitState unit)
+        public float GetMovementSpeed(TacticalUnitState unit, float commandBudget = 0f)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
@@ -69,7 +70,7 @@ namespace Rebellion.Game.Tactical
             float tractorStrength = locks
                 .Where(tractorLock => ReferenceEquals(tractorLock.Value, unit))
                 .Sum(tractorLock => tractorLock.Key.EffectiveTractorBeamPower);
-            return Math.Max(0f, unit.EffectiveSublightSpeed - tractorStrength);
+            return Math.Max(0f, unit.GetEffectiveSublightSpeed(commandBudget) - tractorStrength);
         }
 
         /// <summary>

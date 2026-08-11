@@ -47,6 +47,21 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void GetMovementSpeed_CommandBudgetAndTractorLock_AppliesTractorToCombinedBudget()
+        {
+            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+            source.Position = Vector3.Zero;
+            target.Position = new Vector3(0f, 0f, 10f);
+            system.UpdateLock(source, target);
+
+            float movement = system.GetMovementSpeed(target, 4f);
+
+            Assert.AreEqual(target.EffectiveSublightSpeed + 4f - 6f, movement);
+        }
+
+        [Test]
         public void UpdateLock_FourExistingSources_RejectsFifthSource()
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
