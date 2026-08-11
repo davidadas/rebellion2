@@ -1460,6 +1460,37 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void Construction_GameHasPendingCombat_RestoresPendingDecision()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction empire = new Faction { InstanceID = "empire", PlayerID = "player1" };
+            Faction alliance = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(empire);
+            game.Factions.Add(alliance);
+
+            PlanetSystem system = new PlanetSystem { InstanceID = "sys1" };
+            Planet planet = new Planet { InstanceID = "p1" };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", planet, 1, 1000, 10);
+            Fleet allianceFleet = CreateFleet(game, "af1", "alliance", planet, 1, 1000, 10);
+            SpaceCombatSystem original = MakeSpaceCombat(game, new QueueRNG());
+            original.ProcessTick();
+
+            SpaceCombatSystem restored = MakeSpaceCombat(game, new QueueRNG());
+            bool hasPendingCombat = restored.TryGetPendingCombat(
+                out PendingCombatResult pendingCombat
+            );
+
+            Assert.IsTrue(hasPendingCombat);
+            CollectionAssert.AreEquivalent(
+                new[] { empireFleet, allianceFleet },
+                new[] { pendingCombat.AttackerFleet, pendingCombat.DefenderFleet }
+            );
+            Assert.AreSame(planet, pendingCombat.Planet);
+        }
+
+        [Test]
         public void Resolve_DefenderWinsOnOwnPlanet_DoesNotChangeOwnership()
         {
             GameRoot game = new GameRoot(TestConfig.Create());

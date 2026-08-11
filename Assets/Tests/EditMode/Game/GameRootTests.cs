@@ -6,6 +6,7 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -87,6 +88,35 @@ namespace Rebellion.Tests.Game
                 _game.CompletedEventIDs,
                 "Completed event IDs should be empty initially"
             );
+        }
+
+        [Test]
+        public void Serialization_PendingSpaceCombat_RoundTripsEncounterIdentifiers()
+        {
+            _game.PendingSpaceCombat = new SpaceCombatDecision
+            {
+                AttackerFleetInstanceID = "FLEET-ATTACKER",
+                DefenderFleetInstanceID = "FLEET-DEFENDER",
+                AttackerOwnerInstanceID = "FACTION1",
+                DefenderOwnerInstanceID = "FACTION2",
+                PlanetInstanceID = "PLANET1",
+            };
+
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            Assert.IsNotNull(restored.PendingSpaceCombat);
+            Assert.AreEqual(
+                "FLEET-ATTACKER",
+                restored.PendingSpaceCombat.AttackerFleetInstanceID
+            );
+            Assert.AreEqual(
+                "FLEET-DEFENDER",
+                restored.PendingSpaceCombat.DefenderFleetInstanceID
+            );
+            Assert.AreEqual("FACTION1", restored.PendingSpaceCombat.AttackerOwnerInstanceID);
+            Assert.AreEqual("FACTION2", restored.PendingSpaceCombat.DefenderOwnerInstanceID);
+            Assert.AreEqual("PLANET1", restored.PendingSpaceCombat.PlanetInstanceID);
         }
 
         [Test]

@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -69,6 +70,11 @@ namespace Rebellion.Game
         // Game state.
         public int CurrentTick;
         public TickSpeed GameSpeed = TickSpeed.Slow;
+
+        /// <summary>
+        /// Gets or sets the unresolved fleet encounter that currently pauses strategic time.
+        /// </summary>
+        public SpaceCombatDecision PendingSpaceCombat { get; set; }
 
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();
