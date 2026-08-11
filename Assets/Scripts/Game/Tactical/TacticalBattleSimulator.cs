@@ -203,12 +203,7 @@ namespace Rebellion.Game.Tactical
                 );
                 if (targetWasActive && !attack.Target.IsActive)
                 {
-                    events.Add(
-                        TacticalCombatEvent.UnitLifecycle(
-                            TacticalCombatEventKind.UnitDestroyed,
-                            attack.Target
-                        )
-                    );
+                    events.Add(TacticalCombatEvent.UnitDestroyed(attack.Source, attack.Target));
                 }
             }
 
@@ -446,12 +441,7 @@ namespace Rebellion.Game.Tactical
             {
                 if (activeBefore[participant] && !participant.IsActive)
                 {
-                    events.Add(
-                        TacticalCombatEvent.UnitLifecycle(
-                            TacticalCombatEventKind.UnitDestroyed,
-                            participant
-                        )
-                    );
+                    events.Add(TacticalCombatEvent.UnitDestroyed(deathStar, participant));
                 }
             }
 
@@ -459,8 +449,14 @@ namespace Rebellion.Game.Tactical
                 return;
 
             deathStar.Hull = 0;
+            TacticalUnitState attackLeader = participants.FirstOrDefault();
             events.Add(
-                TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, deathStar)
+                attackLeader == null
+                    ? TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.UnitDestroyed,
+                        deathStar
+                    )
+                    : TacticalCombatEvent.UnitDestroyed(attackLeader, deathStar)
             );
         }
 

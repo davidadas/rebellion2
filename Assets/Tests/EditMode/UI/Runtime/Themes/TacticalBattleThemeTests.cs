@@ -116,6 +116,19 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("defeat", audio);
         }
 
+        [Test]
+        public void GetAudio_WithdrawnAgainstActive_ReturnsWithdrawalComplete()
+        {
+            TacticalOutcomeVoiceTheme theme = CreateOutcomeTheme();
+
+            string audio = theme.GetAudio(
+                SpaceCombatSideOutcome.Withdrawn,
+                SpaceCombatSideOutcome.Active
+            );
+
+            Assert.AreEqual("withdrawal-complete", audio);
+        }
+
         /// <summary>
         /// Creates a minimal command-group response set for resolution tests.
         /// </summary>
@@ -138,6 +151,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         {
             return new TacticalOutcomeVoiceTheme
             {
+                WithdrawalComplete = "withdrawal-complete",
                 EnemyWithdrew = "victory-withdrawal",
                 EnemyDestroyed = "victory-destruction",
                 FleetDestroyed = "defeat",

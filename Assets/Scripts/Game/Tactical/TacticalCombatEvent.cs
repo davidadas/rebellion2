@@ -62,6 +62,10 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets the affected unit when the event has a separate target.</summary>
         public TacticalUnitState Target { get; }
 
+        /// <summary>Gets the unit destroyed by a unit-destruction event.</summary>
+        public TacticalUnitState DestroyedUnit =>
+            Kind == TacticalCombatEventKind.UnitDestroyed ? Target ?? Source : null;
+
         /// <summary>Gets the weapon family used by a weapon-impact event.</summary>
         public TacticalWeaponType? WeaponType { get; }
 
@@ -208,6 +212,32 @@ namespace Rebellion.Game.Tactical
             }
 
             return new TacticalCombatEvent(kind, unit, null, null);
+        }
+
+        /// <summary>
+        /// Creates a destruction event that preserves both the attacker and destroyed unit.
+        /// </summary>
+        /// <param name="source">The unit responsible for the destruction.</param>
+        /// <param name="target">The destroyed opposing unit.</param>
+        /// <returns>The immutable destruction event.</returns>
+        public static TacticalCombatEvent UnitDestroyed(
+            TacticalUnitState source,
+            TacticalUnitState target
+        )
+        {
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (ReferenceEquals(source, target) || source.Side == target.Side)
+                throw new ArgumentException("A destruction source must oppose its target.");
+
+            return new TacticalCombatEvent(
+                TacticalCombatEventKind.UnitDestroyed,
+                source,
+                target,
+                null
+            );
         }
     }
 }

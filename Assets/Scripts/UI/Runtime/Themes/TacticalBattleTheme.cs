@@ -67,6 +67,10 @@ public sealed class TacticalVoiceTheme
 
     public string FleetReady { get; set; }
 
+    public string WithdrawalPreparing { get; set; }
+
+    public string WithdrawalBlocked { get; set; }
+
     public TacticalGroupVoiceTheme ManeuverAcknowledged { get; set; }
 
     public TacticalGroupVoiceTheme AttackAcknowledged { get; set; }
@@ -76,6 +80,8 @@ public sealed class TacticalVoiceTheme
     public TacticalGroupVoiceTheme MissionAcknowledged { get; set; }
 
     public TacticalGroupVoiceTheme UnitLost { get; set; }
+
+    public TacticalGroupVoiceTheme TargetDestroyed { get; set; }
 
     public TacticalOutcomeVoiceTheme Outcome { get; set; }
 
@@ -117,6 +123,10 @@ public sealed class TacticalVoiceTheme
     {
         if (!string.IsNullOrWhiteSpace(FleetReady))
             yield return FleetReady;
+        if (!string.IsNullOrWhiteSpace(WithdrawalPreparing))
+            yield return WithdrawalPreparing;
+        if (!string.IsNullOrWhiteSpace(WithdrawalBlocked))
+            yield return WithdrawalBlocked;
 
         TacticalGroupVoiceTheme[] groups =
         {
@@ -125,6 +135,7 @@ public sealed class TacticalVoiceTheme
             FormationAcknowledged,
             MissionAcknowledged,
             UnitLost,
+            TargetDestroyed,
         };
         foreach (TacticalGroupVoiceTheme group in groups)
         {
@@ -147,6 +158,8 @@ public sealed class TacticalVoiceTheme
 [PersistableObject]
 public sealed class TacticalOutcomeVoiceTheme
 {
+    public string WithdrawalComplete { get; set; }
+
     public string EnemyWithdrew { get; set; }
 
     public string EnemyDestroyed { get; set; }
@@ -164,6 +177,8 @@ public sealed class TacticalOutcomeVoiceTheme
         SpaceCombatSideOutcome opposingOutcome
     )
     {
+        if (playedOutcome == SpaceCombatSideOutcome.Withdrawn)
+            return WithdrawalComplete;
         if (playedOutcome != SpaceCombatSideOutcome.Active)
             return FleetDestroyed;
 
@@ -181,6 +196,8 @@ public sealed class TacticalOutcomeVoiceTheme
     /// <returns>The configured audio names.</returns>
     public IEnumerable<string> GetAudioNames()
     {
+        if (!string.IsNullOrWhiteSpace(WithdrawalComplete))
+            yield return WithdrawalComplete;
         if (!string.IsNullOrWhiteSpace(EnemyWithdrew))
             yield return EnemyWithdrew;
         if (!string.IsNullOrWhiteSpace(EnemyDestroyed))

@@ -141,6 +141,41 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the played faction's target-destroyed report for one numbered command group.
+    /// </summary>
+    /// <param name="side">The side that destroyed the target.</param>
+    /// <param name="kind">The kind of command group that destroyed the target.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    internal void QueueTargetDestroyed(
+        TacticalBattleSide side,
+        TacticalUnitKind kind,
+        int groupIndex
+    )
+    {
+        QueueGroupVoice(side, GetTheme(side).Voice?.TargetDestroyed, kind, groupIndex);
+    }
+
+    /// <summary>
+    /// Queues the report that the played fleet is preparing to withdraw.
+    /// </summary>
+    /// <param name="side">The side preparing to withdraw.</param>
+    internal void QueueWithdrawalPreparing(TacticalBattleSide side)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        Enqueue(voice?.GetAudioPath(voice.WithdrawalPreparing), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
+    /// Queues the report that opposing gravity wells prevent withdrawal.
+    /// </summary>
+    /// <param name="side">The side whose withdrawal is blocked.</param>
+    internal void QueueWithdrawalBlocked(TacticalBattleSide side)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        Enqueue(voice?.GetAudioPath(voice.WithdrawalBlocked), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
     /// Queues the final report heard by the played side when combat ends.
     /// </summary>
     /// <param name="side">The side receiving the report.</param>
@@ -184,7 +219,9 @@ internal sealed class TacticalBattleAudio
             string path = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => GetImpactPath(combatEvent),
-                TacticalCombatEventKind.UnitDestroyed => GetDestructionPath(combatEvent.Source),
+                TacticalCombatEventKind.UnitDestroyed => GetDestructionPath(
+                    combatEvent.DestroyedUnit
+                ),
                 TacticalCombatEventKind.TractorLock => GetTheme(
                     combatEvent.Target.Side
                 ).TractorLockAudioPath,

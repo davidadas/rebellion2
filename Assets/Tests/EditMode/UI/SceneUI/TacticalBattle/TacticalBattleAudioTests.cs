@@ -60,13 +60,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         {
                             AudioRoot = _attackerVoiceRoot,
                             FleetReady = "fleet-ready",
+                            WithdrawalPreparing = "withdrawal-preparing",
+                            WithdrawalBlocked = "withdrawal-blocked",
                             ManeuverAcknowledged = CreateGroupVoice("maneuver"),
                             AttackAcknowledged = CreateGroupVoice("attack"),
                             FormationAcknowledged = CreateGroupVoice("formation"),
                             MissionAcknowledged = CreateGroupVoice("mission"),
                             UnitLost = CreateGroupVoice("unit-lost"),
+                            TargetDestroyed = CreateGroupVoice("target-destroyed"),
                             Outcome = new TacticalOutcomeVoiceTheme
                             {
+                                WithdrawalComplete = "withdrawal-complete",
                                 EnemyWithdrew = "victory-withdrawal",
                                 EnemyDestroyed = "victory-destruction",
                                 FleetDestroyed = "defeat",
@@ -241,6 +245,57 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 new[] { "attacker-voice/fighter-group-blue-unit-lost" },
                 played
             );
+        }
+
+        [Test]
+        public void QueueTargetDestroyed_TaskForce_QueuesNumberedDestructionReport()
+        {
+            audio.QueueTargetDestroyed(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.CapitalShip,
+                2
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/task-force-3-target-destroyed" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueWithdrawalPreparing_ConfiguredFactionVoice_QueuesPreparingReport()
+        {
+            audio.QueueWithdrawalPreparing(TacticalBattleSide.Attacker);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/withdrawal-preparing" }, played);
+        }
+
+        [Test]
+        public void QueueWithdrawalBlocked_ConfiguredFactionVoice_QueuesBlockedReport()
+        {
+            audio.QueueWithdrawalBlocked(TacticalBattleSide.Attacker);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/withdrawal-blocked" }, played);
+        }
+
+        [Test]
+        public void QueueOutcome_PlayedFleetWithdrew_QueuesWithdrawalCompleteCue()
+        {
+            audio.QueueOutcome(
+                TacticalBattleSide.Attacker,
+                SpaceCombatSideOutcome.Withdrawn,
+                SpaceCombatSideOutcome.Active
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/withdrawal-complete" }, played);
         }
 
         [Test]
@@ -546,6 +601,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 {
                     $"task-force-1-{category}",
                     $"task-force-2-{category}",
+                    $"task-force-3-{category}",
+                    $"task-force-4-{category}",
+                    $"task-force-5-{category}",
+                    $"task-force-6-{category}",
+                    $"task-force-7-{category}",
+                    $"task-force-8-{category}",
                 },
                 FighterGroups = new List<string>
                 {

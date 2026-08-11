@@ -196,12 +196,13 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <param name="combatEvent">The unit-destruction event to present.</param>
     private void CreateDestructionEffect(TacticalCombatEvent combatEvent)
     {
-        if (combatEvent.Source.Kind == TacticalUnitKind.Fighters)
+        TacticalUnitState destroyedUnit = combatEvent.DestroyedUnit;
+        if (destroyedUnit.Kind == TacticalUnitKind.Fighters)
             return;
 
         GameObject effect = new GameObject("Destruction Effect");
         effect.transform.SetParent(transform, false);
-        effect.transform.localPosition = ToUnityVector(combatEvent.SourcePosition);
+        effect.transform.localPosition = ToUnityVector(combatEvent.TargetPosition);
         effect
             .AddComponent<TacticalOneShotEffectView>()
             .Initialize(destructionEffectFrames, _destructionEffectDiameter);

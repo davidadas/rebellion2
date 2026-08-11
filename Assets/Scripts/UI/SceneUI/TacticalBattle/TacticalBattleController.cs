@@ -579,8 +579,13 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void RequestWithdrawal()
     {
-        if (withdrawalConfirmationOpen || Session.IsWithdrawalBlocked(playerSide))
+        if (withdrawalConfirmationOpen)
             return;
+        if (Session.IsWithdrawalBlocked(playerSide))
+        {
+            battleAudio.QueueWithdrawalBlocked(playerSide);
+            return;
+        }
 
         withdrawalConfirmationOpen = true;
         Session.Pause();
@@ -596,7 +601,10 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         if (Session.OrderWithdrawal(playerSide))
+        {
+            battleAudio.QueueWithdrawalPreparing(playerSide);
             CloseWithdrawalConfirmation();
+        }
     }
 
     /// <summary>
@@ -1027,19 +1035,29 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void QueueDestructionReports(IReadOnlyList<TacticalCombatEvent> combatEvents)
     {
         foreach (
-            TacticalUnitState unit in combatEvents
-                .Where(combatEvent => combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
-                .Select(combatEvent => combatEvent.Source)
-                .Where(unit => unit.Side == playerSide)
+            TacticalCombatEvent combatEvent in combatEvents.Where(combatEvent =>
+                combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed
+            )
         )
         {
+            TacticalUnitState unit = combatEvent.DestroyedUnit;
+            bool playedUnitLost = unit.Side == playerSide;
+            TacticalUnitState reportingUnit = playedUnitLost ? unit : combatEvent.Source;
+            if (reportingUnit.Side != playerSide)
+                continue;
+
             IReadOnlyList<TacticalShipGroup> groups =
-                unit.Kind == TacticalUnitKind.CapitalShip
+                reportingUnit.Kind == TacticalUnitKind.CapitalShip
                     ? Session.GetTaskForces(playerSide)
                     : Session.GetFighterGroups(playerSide);
-            int groupIndex = FindGroupIndex(groups, unit);
+            int groupIndex = FindGroupIndex(groups, reportingUnit);
             if (groupIndex >= 0)
-                battleAudio.QueueUnitLost(playerSide, unit.Kind, groupIndex);
+            {
+                if (playedUnitLost)
+                    battleAudio.QueueUnitLost(playerSide, reportingUnit.Kind, groupIndex);
+                else
+                    battleAudio.QueueTargetDestroyed(playerSide, reportingUnit.Kind, groupIndex);
+            }
         }
     }
 
