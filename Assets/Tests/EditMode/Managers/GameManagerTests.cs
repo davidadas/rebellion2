@@ -369,7 +369,7 @@ namespace Rebellion.Tests.Managers
 
             manager.ProcessTick();
 
-            Assert.IsTrue(game.IsInVoid(arrivingFleet));
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(arrivingFleet));
             List<Message> fleetMessages = alliance.Messages.TryGetValue(
                 MessageType.Fleet,
                 out List<Message> messages
@@ -736,7 +736,7 @@ namespace Rebellion.Tests.Managers
 
             Assert.IsTrue(scrapped);
             Assert.IsNull(planet.GetOwnerInstanceID());
-            Assert.IsTrue(game.IsInVoid(regiment));
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(regiment));
         }
 
         private static Fleet CreateCombatFleet(

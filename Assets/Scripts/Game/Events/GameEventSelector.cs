@@ -72,6 +72,8 @@ namespace Rebellion.Game.Events
 
             return game.GetRegisteredSceneNodesByType<ISceneNode>()
                 .Where(IsUnit)
+                .Where(node => node.GetParent() != null)
+                .Where(node => !game.UnitLifecycle.IsInVoid(node))
                 .Where(node =>
                     string.IsNullOrWhiteSpace(InstanceID) || node.InstanceID == InstanceID
                 )
@@ -151,22 +153,35 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
+            if (ChancePercent < 0 || ChancePercent > 100)
+                throw new InvalidOperationException(
+                    "SelectRandomUnits.ChancePercent must be between 0 and 100."
+                );
+            if (MinimumCount < 0)
+                throw new InvalidOperationException(
+                    "SelectRandomUnits.MinimumCount cannot be negative."
+                );
+            if (MaximumCount < MinimumCount)
+                throw new InvalidOperationException(
+                    "SelectRandomUnits.MaximumCount cannot be less than MinimumCount."
+                );
+
             List<ISceneNode> candidates = Queries
                 .SelectMany(query => query.Select(game, provider, context))
                 .Distinct()
                 .OrderBy(unit => unit.InstanceID, StringComparer.Ordinal)
                 .ToList();
             List<ISceneNode> selected = candidates
-                .Where(_ => provider.NextInt(0, 100) < Math.Clamp(ChancePercent, 0, 100))
+                .Where(_ => provider.NextInt(0, 100) < ChancePercent)
                 .ToList();
             List<ISceneNode> remaining = candidates.Except(selected).ToList();
-            while (selected.Count < Math.Min(Math.Max(0, MinimumCount), candidates.Count))
+            while (selected.Count < Math.Min(MinimumCount, candidates.Count))
             {
                 int index = provider.NextInt(0, remaining.Count);
                 selected.Add(remaining[index]);
                 remaining.RemoveAt(index);
             }
-            while (selected.Count > Math.Max(0, MaximumCount))
+            while (selected.Count > MaximumCount)
                 selected.RemoveAt(provider.NextInt(0, selected.Count));
             return selected;
         }

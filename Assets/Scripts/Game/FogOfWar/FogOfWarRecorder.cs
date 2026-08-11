@@ -94,9 +94,11 @@ namespace Rebellion.Game.FogOfWar
             }
 
             snapshot.TickCaptured = currentTick;
+            PlanetIntelligenceCategory accumulatedCategories =
+                snapshot.RevealedCategories | categories;
             if (categories.HasFlag(PlanetIntelligenceCategory.System))
                 UpdatePlanetState(snapshot, planet, currentTick);
-            snapshot.RevealedCategories |= categories;
+            snapshot.RevealedCategories = accumulatedCategories;
             if (categories.HasFlag(PlanetIntelligenceCategory.Officers))
             {
                 snapshot.Officers.Clear();
@@ -107,11 +109,19 @@ namespace Rebellion.Game.FogOfWar
                         .Select(CopyOfficerForSnapshot)
                 );
             }
-            if (categories.HasFlag(PlanetIntelligenceCategory.CapitalShips))
+            PlanetIntelligenceCategory fleetCategories =
+                PlanetIntelligenceCategory.CapitalShips
+                | PlanetIntelligenceCategory.Officers
+                | PlanetIntelligenceCategory.GroundForces
+                | PlanetIntelligenceCategory.Starfighters;
+            if (
+                accumulatedCategories.HasFlag(PlanetIntelligenceCategory.CapitalShips)
+                && (categories & fleetCategories) != PlanetIntelligenceCategory.None
+            )
             {
                 snapshot.Fleets.Clear();
                 AddFleetsToSnapshot(faction, planet, snapshot, true);
-                FilterFleetIntelligence(snapshot.Fleets, PlanetIntelligenceCategory.CapitalShips);
+                FilterFleetIntelligence(snapshot.Fleets, accumulatedCategories);
             }
             if (categories.HasFlag(PlanetIntelligenceCategory.GroundForces))
             {
@@ -142,6 +152,11 @@ namespace Rebellion.Game.FogOfWar
             {
                 snapshot.Buildings.Clear();
                 AddEntityCopiesToSnapshot(planet.Buildings, snapshot.Buildings, faction, true);
+            }
+            if (categories.HasFlag(PlanetIntelligenceCategory.Missions))
+            {
+                snapshot.Missions.Clear();
+                AddEnemyMissionsToSnapshot(faction, planet, snapshot);
             }
 
             ReconcileEntityLocations(faction, planet.InstanceID, snapshot);
@@ -325,7 +340,10 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot snapshot
         )
         {
-            if (previousSnapshot?.RevealedCategories != PlanetIntelligenceCategory.All)
+            if (
+                previousSnapshot?.RevealedCategories.HasFlag(PlanetIntelligenceCategory.Missions)
+                != true
+            )
                 return;
 
             snapshot.Missions.AddRange(

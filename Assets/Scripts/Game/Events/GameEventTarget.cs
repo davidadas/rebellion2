@@ -15,7 +15,7 @@ namespace Rebellion.Game.Events
     public sealed class GameEventTarget
     {
         public PlanetTarget Planet { get; set; }
-        public RandomPlanetsTarget RandomPlanets { get; set; }
+        public RandomPlanetTarget RandomPlanet { get; set; }
         public EachPlanetTarget EachPlanet { get; set; }
 
         public bool MaintainsStatePerTarget => EachPlanet != null;
@@ -32,7 +32,7 @@ namespace Rebellion.Game.Events
                 throw new ArgumentNullException(nameof(game));
             int configuredSelectors =
                 (Planet == null ? 0 : 1)
-                + (RandomPlanets == null ? 0 : 1)
+                + (RandomPlanet == null ? 0 : 1)
                 + (EachPlanet == null ? 0 : 1);
             if (configuredSelectors != 1)
                 throw new InvalidOperationException(
@@ -41,8 +41,8 @@ namespace Rebellion.Game.Events
 
             if (Planet != null)
                 return One(Planet.Resolve(game));
-            if (RandomPlanets != null)
-                return One(RandomPlanets.Resolve(game, provider));
+            if (RandomPlanet != null)
+                return One(RandomPlanet.Resolve(game, provider));
             return EachPlanet.Resolve(game);
         }
 
@@ -78,11 +78,8 @@ namespace Rebellion.Game.Events
     /// Selects random eligible planets from one type of planetary system.
     /// </summary>
     [PersistableObject]
-    public sealed class RandomPlanetsTarget
+    public sealed class RandomPlanetTarget
     {
-        [PersistableAttribute]
-        public int Count { get; set; } = 1;
-
         [PersistableAttribute]
         public PlanetSystemType SystemType { get; set; } = PlanetSystemType.CoreSystem;
 
@@ -98,10 +95,6 @@ namespace Rebellion.Game.Events
                 throw new ArgumentNullException(nameof(game));
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
-            if (Count != 1)
-                throw new InvalidOperationException(
-                    "RandomPlanets currently supports Count=\"1\"."
-                );
             Planet[] candidates = game.GetGalaxyMap()
                 .PlanetSystems.Where(system => system.SystemType == SystemType)
                 .SelectMany(system => system.Planets)

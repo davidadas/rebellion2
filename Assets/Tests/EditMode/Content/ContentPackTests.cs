@@ -115,8 +115,8 @@ namespace Rebellion.Tests.Content
                     .Single();
                 Assert.AreEqual(MessageResultType.OfficerCaptured, suppression.MessageType);
                 Assert.AreEqual("FNALL1", suppression.RecipientFactionInstanceID);
-                Assert.AreEqual(sourceEventId, source.Value);
-                Assert.AreEqual("Failed", outcome.Value);
+                Assert.AreEqual(sourceEventId, source.ExpectedValue);
+                Assert.AreEqual("Failed", outcome.ExpectedValue);
                 Assert.AreEqual(officerId, capture.OfficerInstanceID);
                 Assert.AreEqual(officerId, message.SubjectInstanceID);
                 Assert.AreEqual("Jabba Captures {subject}", message.Subject);
@@ -141,7 +141,7 @@ namespace Rebellion.Tests.Content
                 hanCapture
                     .Conditionals.OfType<EvaluateBindingConditional>()
                     .Single(binding => binding.Name == "sourceEvent")
-                    .Value
+                    .ExpectedValue
             );
 
             GameEvent reportPolicy = pack.GameData.GameEvents.Single(candidate =>
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Content
                     .Conditionals.OfType<AnyConditional>()
                     .Single()
                     .Conditionals.OfType<EvaluateBindingConditional>()
-                    .Select(source => source.Value)
+                    .Select(source => source.ExpectedValue)
             );
         }
 
@@ -225,16 +225,16 @@ namespace Rebellion.Tests.Content
                     .ToArray();
                 Assert.AreEqual(
                     sourceEventId,
-                    bindings.Single(binding => binding.Name == "sourceEvent").Value,
+                    bindings.Single(binding => binding.Name == "sourceEvent").ExpectedValue,
                     effectsEventId
                 );
                 Assert.AreEqual(
                     subjectId,
-                    bindings.Single(binding => binding.Name == "officer").Value
+                    bindings.Single(binding => binding.Name == "officer").ExpectedValue
                 );
                 Assert.AreEqual(
                     opponentId,
-                    bindings.Single(binding => binding.Name == "opponent").Value
+                    bindings.Single(binding => binding.Name == "opponent").ExpectedValue
                 );
                 SendMessageAction report = gameEvent.Actions.OfType<SendMessageAction>().Single();
                 Assert.AreEqual(subjectId, report.SubjectInstanceID);
@@ -290,11 +290,11 @@ namespace Rebellion.Tests.Content
             Assert.IsInstanceOf<UnitArrivedTrigger>(gameEvent.Triggers.Single());
             Assert.AreEqual(
                 "EMPEROR_PALPATINE",
-                arrival.Single(binding => binding.Name == "unit").Value
+                arrival.Single(binding => binding.Name == "unit").ExpectedValue
             );
             Assert.AreEqual(
                 "CORUSCANT",
-                arrival.Single(binding => binding.Name == "destination").Value
+                arrival.Single(binding => binding.Name == "destination").ExpectedValue
             );
             Assert.AreEqual("Emperor Arrives at Coruscant", message.Subject);
             Assert.AreEqual("I have returned to the Seat of Power at Coruscant.", message.Body);

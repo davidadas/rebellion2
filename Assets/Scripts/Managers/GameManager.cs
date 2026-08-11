@@ -72,6 +72,7 @@ public sealed class GameManager
     public event Action TickCompleted;
     public event Action<GameRoot> GameReplaced;
     public event Action<VictoryResult> VictoryDeclared;
+    public event Action<MessageDeliveredResult> MessageDelivered;
 
     // Exposed Game Systems.
     internal MessageSystem MessageSystem => _messageSystem;
@@ -232,7 +233,7 @@ public sealed class GameManager
             return;
         }
 
-        _messageSystem.ProcessResults(messageResults);
+        ProcessMessageReactions(messageResults);
 
         ProcessResults(_missionSystem.ProcessTick());
         ProcessResults(_eventSystem.ProcessEvents(_game.GetEventPool()));
@@ -287,7 +288,7 @@ public sealed class GameManager
         _game = game;
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
-        _game.InitializeVoidPools();
+        _game.UnitLifecycle.Initialize();
 
         _randomProvider = _game.Random;
         InitializeSystems();
@@ -387,7 +388,6 @@ public sealed class GameManager
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;
-        _messageSystem.ResultsProduced += HandleSystemResultsProduced;
         _maintenanceSystem.ResultsProduced += HandleSystemResultsProduced;
         _bombardmentSystem.ResultsProduced += HandleSystemResultsProduced;
         _planetaryAssaultSystem.ResultsProduced += HandleSystemResultsProduced;
@@ -444,12 +444,43 @@ public sealed class GameManager
     {
         List<GameResult> resolvedResults = _resultProcessor.Process(results);
         if (processMessages)
-            _messageSystem.ProcessResults(resolvedResults);
+            ProcessMessageReactions(resolvedResults);
 
         foreach (VictoryResult victory in resolvedResults.OfType<VictoryResult>())
             VictoryDeclared?.Invoke(victory);
-
         return resolvedResults;
+    }
+
+    /// <summary>
+    /// Delivers messages and drains any result reactions that request additional messages.
+    /// </summary>
+    /// <param name="resolvedResults">The already-processed results to extend in place.</param>
+    private void ProcessMessageReactions(List<GameResult> resolvedResults)
+    {
+        const int maximumDeliveryResults = 10000;
+        int deliveredResultCount = 0;
+        List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
+        while (pendingMessageResults.Count > 0)
+        {
+            List<GameResult> deliveredResults = _messageSystem.ProcessResults(
+                pendingMessageResults
+            );
+            if (deliveredResults.Count == 0)
+                return;
+            deliveredResultCount += deliveredResults.Count;
+            if (deliveredResultCount > maximumDeliveryResults)
+                throw new InvalidOperationException(
+                    $"Message delivery reactions exceeded the {maximumDeliveryResults}-result safety limit."
+                );
+
+            List<GameResult> deliveryReactions = _resultProcessor.Process(deliveredResults);
+            resolvedResults.AddRange(deliveryReactions);
+            foreach (
+                MessageDeliveredResult delivery in deliveredResults.OfType<MessageDeliveredResult>()
+            )
+                MessageDelivered?.Invoke(delivery);
+            pendingMessageResults = deliveryReactions;
+        }
     }
 
     /// <summary>

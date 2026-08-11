@@ -16,6 +16,7 @@ namespace Rebellion.Game.Units
     public interface IMovable : ISceneNode
     {
         MovementState Movement { get; set; }
+        VoidState VoidState { get; set; }
 
         bool IsMovable();
 

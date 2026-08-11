@@ -1330,7 +1330,14 @@ namespace Rebellion.Tests.Systems
                 "CORUSCANT"
             ];
             Assert.AreEqual("TIE_SQUADRON", updatedSnapshot.Starfighters.Single().InstanceID);
-            Assert.IsEmpty(updatedSnapshot.Fleets.Single().CapitalShips.Single().Starfighters);
+            Assert.AreEqual(
+                "TIE_SQUADRON",
+                updatedSnapshot
+                    .Fleets.Single()
+                    .CapitalShips.Single()
+                    .Starfighters.Single()
+                    .InstanceID
+            );
         }
 
         [Test]

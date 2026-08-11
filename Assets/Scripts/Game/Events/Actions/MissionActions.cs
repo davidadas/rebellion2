@@ -17,6 +17,7 @@ namespace Rebellion.Game.Events
         public string MissionDefinitionID { get; set; }
 
         public MissionUnitReference Target { get; set; }
+        public PlanetTarget Location { get; set; }
         public List<MissionUnitReference> Participants { get; set; } =
             new List<MissionUnitReference>();
         public List<MissionUnitReference> Decoys { get; set; } = new List<MissionUnitReference>();
@@ -27,6 +28,10 @@ namespace Rebellion.Game.Events
             if (Target == null || string.IsNullOrWhiteSpace(Target.UnitInstanceID))
                 throw new InvalidOperationException("CreateMission requires a target unit.");
             ResolveUnit(game, Target);
+            if (Location != null && Location.Resolve(game) == null)
+                throw new InvalidOperationException(
+                    $"CreateMission could not resolve location '{Location.InstanceID}'."
+                );
             foreach (MissionUnitReference participant in Participants)
                 ResolveUnit(game, participant);
             foreach (MissionUnitReference participant in Decoys)
@@ -38,6 +43,7 @@ namespace Rebellion.Game.Events
                 {
                     MissionDefinitionID = MissionDefinitionID,
                     TargetInstanceID = Target.UnitInstanceID,
+                    LocationInstanceID = Location?.InstanceID,
                     MainParticipantInstanceIDs = Participants.ConvertAll(participant =>
                         participant.UnitInstanceID
                     ),

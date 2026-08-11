@@ -23,18 +23,23 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             if (Selectors.Count == 0)
                 throw new InvalidOperationException("DestroyUnits requires at least one selector.");
-            List<ISceneNode> destroyed = Selectors
+            HashSet<ISceneNode> selected = Selectors
                 .SelectMany(selector => selector.Select(game, context.Random, context.Activation))
-                .Distinct()
+                .ToHashSet();
+            List<ISceneNode> destroyedRoots = selected
+                .Where(unit => !HasSelectedAncestor(unit, selected))
                 .ToList();
+            List<ISceneNode> destroyed = new List<ISceneNode>();
 
-            foreach (ISceneNode unit in destroyed)
+            foreach (ISceneNode root in destroyedRoots)
             {
-                game.AddToVoid(unit);
-                game.SetVoidStatus(unit, VoidStatus.Destroyed);
+                root.Traverse(unit => destroyed.Add(unit));
+                game.UnitLifecycle.AddToVoid(root);
             }
+            foreach (IMovable unit in destroyed.OfType<IMovable>())
+                game.UnitLifecycle.SetStatus(unit, VoidStatus.Destroyed);
 
-            Planet planet = context.Activation?.GetScopeTarget<Planet>();
+            Planet planet = context.Activation?.GetTarget<Planet>();
             PlanetIncidentResult incident = context
                 .Activation?.Results.OfType<PlanetIncidentResult>()
                 .LastOrDefault(result =>
@@ -52,6 +57,16 @@ namespace Rebellion.Game.Events
                 Context = planet,
                 Tick = game.CurrentTick,
             });
+        }
+
+        private static bool HasSelectedAncestor(ISceneNode unit, HashSet<ISceneNode> selected)
+        {
+            for (ISceneNode parent = unit.GetParent(); parent != null; parent = parent.GetParent())
+            {
+                if (selected.Contains(parent))
+                    return true;
+            }
+            return false;
         }
     }
 
@@ -178,7 +193,7 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"AddToVoid could not resolve unit '{UnitInstanceID}'."
                 );
-            game.AddToVoid(unit);
+            game.UnitLifecycle.AddToVoid(unit);
             return new List<GameResult>();
         }
     }
@@ -236,7 +251,7 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"SetStatus could not resolve unit '{UnitInstanceID}'."
                 );
-            game.SetVoidStatus(unit, Status, DisplayText);
+            game.UnitLifecycle.SetStatus(unit, Status, DisplayText);
             return new List<GameResult>();
         }
     }

@@ -31,7 +31,7 @@ namespace Rebellion.Game.Events
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Planet planet = context.Activation?.GetScopeTarget<Planet>();
+            Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 throw new InvalidOperationException(
                     "AdjustPlanetResource requires a planet target."
@@ -109,7 +109,7 @@ namespace Rebellion.Game.Events
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Planet planet = context.Activation?.GetScopeTarget<Planet>();
+            Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 throw new InvalidOperationException("ReduceResources requires a planet target.");
 
@@ -120,24 +120,23 @@ namespace Rebellion.Game.Events
 
             int rawLoss = 0;
             int energyLoss = 0;
-            int iterations = Math.Max(oldRaw, oldEnergy);
-            for (int iteration = 0; iteration < iterations; iteration++)
+            if (LossProbabilityPerResource < 0 || LossProbabilityPerResource > 1)
+                throw new InvalidOperationException(
+                    "ReduceResources.LossProbabilityPerResource must be between zero and one."
+                );
+            if (MinimumTotalLoss < 0)
+                throw new InvalidOperationException(
+                    "ReduceResources.MinimumTotalLoss cannot be negative."
+                );
+
+            for (int iteration = 0; iteration < oldRaw; iteration++)
             {
-                if (
-                    iteration < oldRaw
-                    && RollProbability(
-                        context.Random,
-                        ((oldEnergy - rawLoss - energyLoss) + oldRaw) * LossProbabilityPerResource
-                    )
-                )
+                if (RollProbability(context.Random, LossProbabilityPerResource))
                     rawLoss++;
-                if (
-                    iteration < oldEnergy
-                    && RollProbability(
-                        context.Random,
-                        ((oldRaw - rawLoss - energyLoss) + oldEnergy) * LossProbabilityPerResource
-                    )
-                )
+            }
+            for (int iteration = 0; iteration < oldEnergy; iteration++)
+            {
+                if (RollProbability(context.Random, LossProbabilityPerResource))
                     energyLoss++;
             }
 
@@ -153,7 +152,7 @@ namespace Rebellion.Game.Events
             }
 
             planet.EnergyCapacity = oldEnergy - energyLoss;
-            planet.NumRawResourceNodes = Math.Min(oldRaw - rawLoss, planet.EnergyCapacity);
+            planet.NumRawResourceNodes = oldRaw - rawLoss;
 
             List<GameResult> results = new List<GameResult>();
             AddStatChange(
@@ -177,7 +176,8 @@ namespace Rebellion.Game.Events
                 {
                     Planet = planet,
                     IncidentType = IncidentType.Disaster,
-                    Severity = rawLoss + energyLoss,
+                    Severity =
+                        oldRaw + oldEnergy - planet.NumRawResourceNodes - planet.EnergyCapacity,
                     OldValue = oldRaw + oldEnergy,
                     NewValue = planet.NumRawResourceNodes + planet.EnergyCapacity,
                     Tick = game.CurrentTick,

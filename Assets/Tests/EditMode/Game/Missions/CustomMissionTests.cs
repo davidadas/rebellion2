@@ -60,6 +60,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "chance",
                 DisplayName = "Chance",
+                Duration = new MissionDuration { Fixed = new FixedMissionDuration { Ticks = 0 } },
                 Success = new MissionSuccessRule
                 {
                     Chance = new ChanceMissionSuccess
@@ -105,6 +106,7 @@ namespace Rebellion.Tests.Game.Missions
             {
                 InstanceID = "automatic",
                 DisplayName = "Automatic",
+                Duration = new MissionDuration { Fixed = new FixedMissionDuration { Ticks = 0 } },
                 Success = new MissionSuccessRule { Automatic = new AutomaticMissionSuccess() },
             };
             CustomMission mission = CreateMission(
@@ -189,6 +191,7 @@ namespace Rebellion.Tests.Game.Missions
             CustomMission mission = new CustomMission(
                 definition,
                 target.InstanceID,
+                null,
                 participants.Select(participant => participant.InstanceID),
                 new List<string>(),
                 "event",

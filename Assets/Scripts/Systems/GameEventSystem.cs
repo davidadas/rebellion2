@@ -40,6 +40,7 @@ namespace Rebellion.Systems
 
             foreach (GameEvent gameEvent in gameEvents.ToArray())
             {
+                EnsureExecutionMode(gameEvent);
                 if (HasResultTrigger(gameEvent))
                     continue;
 
@@ -92,34 +93,71 @@ namespace Rebellion.Systems
             if (results == null)
                 return eventResults;
 
+            Dictionary<Type, List<(GameEvent Event, GameEventTrigger Trigger)>> triggerIndex =
+                BuildTriggerIndex();
+
             foreach (GameResult triggerResult in results)
             {
-                foreach (GameEvent gameEvent in _game.GetEventPool().ToArray())
+                List<(GameEvent Event, GameEventTrigger Trigger)> candidates = triggerIndex
+                    .Where(entry => entry.Key.IsInstanceOfType(triggerResult))
+                    .SelectMany(entry => entry.Value)
+                    .ToList();
+                HashSet<GameEvent> processedEvents = new HashSet<GameEvent>();
+                foreach ((GameEvent gameEvent, GameEventTrigger trigger) in candidates)
                 {
-                    foreach (GameEventTrigger trigger in gameEvent.Triggers.ToArray())
-                    {
-                        if (
-                            !trigger.Matches(triggerResult)
-                            || !TryProcessEvent(
-                                gameEvent,
-                                trigger,
-                                triggerResult,
-                                null,
-                                false,
-                                out List<GameResult> reactions
-                            )
+                    if (
+                        processedEvents.Contains(gameEvent)
+                        || !_game.GetEventPool().Contains(gameEvent)
+                        || !trigger.Matches(triggerResult)
+                    )
+                        continue;
+                    EnsureExecutionMode(gameEvent);
+                    processedEvents.Add(gameEvent);
+                    if (
+                        !TryProcessEvent(
+                            gameEvent,
+                            trigger,
+                            triggerResult,
+                            null,
+                            false,
+                            out List<GameResult> reactions
                         )
-                            continue;
+                    )
+                        continue;
 
-                        eventResults.AddRange(reactions);
-                        if (!gameEvent.Repeats)
-                            _game.RemoveEvent(gameEvent);
-                        break;
-                    }
+                    eventResults.AddRange(reactions);
+                    if (!gameEvent.Repeats)
+                        _game.RemoveEvent(gameEvent);
                 }
             }
 
             return eventResults;
+        }
+
+        private Dictionary<
+            Type,
+            List<(GameEvent Event, GameEventTrigger Trigger)>
+        > BuildTriggerIndex()
+        {
+            Dictionary<Type, List<(GameEvent Event, GameEventTrigger Trigger)>> index = new();
+            foreach (GameEvent gameEvent in _game.GetEventPool())
+            {
+                foreach (GameEventTrigger trigger in gameEvent.Triggers)
+                {
+                    if (
+                        !index.TryGetValue(
+                            trigger.ResultType,
+                            out List<(GameEvent, GameEventTrigger)> entries
+                        )
+                    )
+                    {
+                        entries = new List<(GameEvent, GameEventTrigger)>();
+                        index.Add(trigger.ResultType, entries);
+                    }
+                    entries.Add((gameEvent, trigger));
+                }
+            }
+            return index;
         }
 
         /// <summary>
@@ -145,35 +183,36 @@ namespace Rebellion.Systems
                 scopeTarget == null
                     ? _game.EventRuntime.GetState(gameEvent.InstanceID)
                     : _game.EventRuntime.GetState(gameEvent.InstanceID, scopeTarget.InstanceID);
+            if (!gameEvent.Repeats && state.IsComplete)
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
             ISceneNode executionTarget = scopeTarget;
-            if (executionTarget == null && gameEvent.Target != null)
-                executionTarget = gameEvent.Target.Resolve(_game, _provider).SingleOrDefault();
-            if (gameEvent.Target != null && executionTarget == null)
+            GameEventExecutionContext context = null;
+            if (maintainsStatePerTarget)
             {
-                results = new List<GameResult>();
-                return false;
-            }
-
-            GameEventExecutionContext context = new GameEventExecutionContext(
-                gameEvent,
-                state,
-                executionTarget,
-                triggerResult,
-                trigger
-            );
-            if (!gameEvent.AreConditionsMet(_game, context))
-            {
-                if (maintainsStatePerTarget)
+                context = new GameEventExecutionContext(
+                    gameEvent,
+                    state,
+                    executionTarget,
+                    triggerResult,
+                    trigger
+                );
+                if (!gameEvent.AreConditionsMet(_game, context))
                 {
-                    state.IsScopeActive = false;
+                    state.IsTargetActive = false;
                     state.IsInitialized = false;
+                    results = new List<GameResult>();
+                    return false;
                 }
-                results = new List<GameResult>();
-                return false;
+                state.IsTargetActive = true;
             }
-
-            state.IsScopeActive = maintainsStatePerTarget;
-            if (!InitializeSchedule(gameEvent, state, maintainsStatePerTarget))
+            ScheduleAnchor scheduleAnchor = maintainsStatePerTarget
+                ? ScheduleAnchor.TargetEligibility
+                : ScheduleAnchor.CampaignStart;
+            if (!InitializeSchedule(gameEvent, state, scheduleAnchor))
             {
                 results = new List<GameResult>();
                 return false;
@@ -184,14 +223,44 @@ namespace Rebellion.Systems
                 return false;
             }
 
+            if (executionTarget == null && gameEvent.Target != null)
+            {
+                executionTarget = string.IsNullOrWhiteSpace(state.SelectedTargetInstanceID)
+                    ? gameEvent.Target.Resolve(_game, _provider).SingleOrDefault()
+                    : _game.GetSceneNodeByInstanceID<ISceneNode>(state.SelectedTargetInstanceID);
+                if (executionTarget != null)
+                    state.SelectedTargetInstanceID = executionTarget.InstanceID;
+            }
+            if (gameEvent.Target != null && executionTarget == null)
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
+            context ??= new GameEventExecutionContext(
+                gameEvent,
+                state,
+                executionTarget,
+                triggerResult,
+                trigger
+            );
+            if (!maintainsStatePerTarget && !gameEvent.AreConditionsMet(_game, context))
+            {
+                results = new List<GameResult>();
+                return false;
+            }
+
+            state.IsTargetActive = maintainsStatePerTarget;
             GameLogger.Log($"Executing game event: {gameEvent.GetDisplayName()}");
             results = gameEvent.Execute(_game, _provider, context);
             state.ExecutionCount++;
+            state.IsComplete = !gameEvent.Repeats;
             state.LastExecutionTick = _game.CurrentTick;
             if (gameEvent.Repeats)
             {
                 GetRepeatRange(gameEvent, out int minimum, out int maximum);
                 state.NextEligibleTick = _game.CurrentTick + RollRange(minimum, maximum);
+                state.SelectedTargetInstanceID = null;
             }
             _game.EventRuntime.Complete(gameEvent.InstanceID);
             return true;
@@ -204,18 +273,37 @@ namespace Rebellion.Systems
         /// <returns>True when a stable or legacy trigger is configured.</returns>
         private static bool HasResultTrigger(GameEvent gameEvent) => gameEvent.Triggers.Count > 0;
 
+        private static void EnsureExecutionMode(GameEvent gameEvent)
+        {
+            if (gameEvent.Triggers.Count > 0 && gameEvent.Schedule != null)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' cannot combine result triggers with a tick schedule."
+                );
+            if (gameEvent.Triggers.Count > 0 && gameEvent.Target?.MaintainsStatePerTarget == true)
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' cannot combine result triggers with an EachPlanet target."
+                );
+            if (
+                !gameEvent.RunsOnce
+                && (gameEvent.Schedule?.At != null || gameEvent.Schedule?.After != null)
+            )
+                throw new InvalidOperationException(
+                    $"Event '{gameEvent.InstanceID}' must set RunsOnce when using At or After."
+                );
+        }
+
         /// <summary>
         /// Initializes an event's absolute first eligible tick from its authored schedule.
         /// </summary>
         /// <param name="gameEvent">The event definition.</param>
         /// <param name="state">The persistent runtime state to initialize.</param>
-        /// <param name="relativeToCurrentTick">
-        /// Whether the first delay begins at the current tick instead of campaign tick zero.
+        /// <param name="anchor">
+        /// The explicit origin used for relative first-execution delays.
         /// </param>
         private bool InitializeSchedule(
             GameEvent gameEvent,
             GameEventState state,
-            bool relativeToCurrentTick
+            ScheduleAnchor anchor
         )
         {
             if (state.IsInitialized)
@@ -238,8 +326,8 @@ namespace Rebellion.Systems
             }
 
             GetInitialRange(gameEvent, out int minimum, out int maximum);
-            state.NextEligibleTick =
-                (relativeToCurrentTick ? _game.CurrentTick : 0) + RollRange(minimum, maximum);
+            int anchorTick = anchor == ScheduleAnchor.TargetEligibility ? _game.CurrentTick : 0;
+            state.NextEligibleTick = checked(anchorTick + RollRange(minimum, maximum));
             state.IsInitialized = true;
             return true;
         }
@@ -285,6 +373,12 @@ namespace Rebellion.Systems
         private int RollRange(int minimum, int maximum)
         {
             return minimum == maximum ? minimum : _provider.NextInt(minimum, maximum + 1);
+        }
+
+        private enum ScheduleAnchor
+        {
+            CampaignStart,
+            TargetEligibility,
         }
     }
 }

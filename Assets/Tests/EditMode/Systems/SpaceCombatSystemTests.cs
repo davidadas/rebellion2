@@ -499,7 +499,7 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.IsTrue(game.IsInVoid(allianceFleet), "Defender fleet destroyed");
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(allianceFleet), "Defender fleet destroyed");
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f1"), "Attacker survives");
         }
 
@@ -525,7 +525,7 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.IsTrue(game.IsInVoid(empireFleet), "Attacker fleet destroyed");
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(empireFleet), "Attacker fleet destroyed");
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("f2"), "Defender survives");
         }
 
@@ -569,7 +569,9 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            bool anyDestroyed = game.IsInVoid(empireFleet) || game.IsInVoid(allianceFleet);
+            bool anyDestroyed =
+                game.UnitLifecycle.IsInVoid(empireFleet)
+                || game.UnitLifecycle.IsInVoid(allianceFleet);
             Assert.IsTrue(
                 anyDestroyed,
                 "At least one fleet should be destroyed in evenly-matched combat"
@@ -722,7 +724,7 @@ namespace Rebellion.Tests.Systems
 
             RunCombat(manager);
 
-            Assert.IsTrue(game.IsInVoid(allianceFleet));
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(allianceFleet));
             bool foundFleet = false;
             foreach (Fleet fleet in planet.GetChildren<Fleet>(null, recurse: false))
             {
@@ -1064,7 +1066,7 @@ namespace Rebellion.Tests.Systems
 
             manager.ProcessTick();
 
-            Assert.IsTrue(game.IsInVoid(empireFleet));
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(empireFleet));
             Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
@@ -1197,7 +1199,7 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual(CombatSide.Defender, result.Winner);
             Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
             Assert.AreSame(planet, defender.GetParentOfType<Planet>());
-            Assert.IsTrue(game.IsInVoid(fleet));
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(fleet));
         }
 
         [Test]
@@ -1237,7 +1239,7 @@ namespace Rebellion.Tests.Systems
 
             Assert.AreEqual(CombatSide.Attacker, result.Winner);
             Assert.AreEqual(500, corvette.CurrentHullStrength);
-            Assert.IsTrue(game.IsInVoid(tie));
+            Assert.IsTrue(game.UnitLifecycle.IsInVoid(tie));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
         }
 

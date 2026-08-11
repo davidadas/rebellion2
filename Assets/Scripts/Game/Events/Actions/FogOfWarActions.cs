@@ -46,7 +46,7 @@ namespace Rebellion.Game.Events
         {
             GameRoot game = context.Game;
             IRandomNumberProvider provider = context.Random;
-            Planet planet = context.Activation?.GetScopeTarget<Planet>();
+            Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 throw new InvalidOperationException(
                     "GatherInformantIntelligence must execute from a planet-scoped game event."

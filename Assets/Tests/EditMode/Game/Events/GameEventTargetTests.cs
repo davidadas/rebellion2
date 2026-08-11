@@ -40,7 +40,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Resolve_RandomPlanetsTarget_SelectsEligibleSystemType()
+        public void Resolve_RandomPlanetTarget_SelectsEligibleSystemType()
         {
             GameRoot game = BuildGame(out Planet corePlanet);
             PlanetSystem rimSystem = new PlanetSystem
@@ -53,11 +53,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(rimPlanet, rimSystem);
             GameEventTarget target = new GameEventTarget
             {
-                RandomPlanets = new RandomPlanetsTarget
-                {
-                    Count = 1,
-                    SystemType = PlanetSystemType.OuterRim,
-                },
+                RandomPlanet = new RandomPlanetTarget { SystemType = PlanetSystemType.OuterRim },
             };
 
             Planet resolved = target.Resolve(game, new StubRNG()).Cast<Planet>().Single();
@@ -73,7 +69,7 @@ namespace Rebellion.Tests.Game.Events
             GameEventTarget target = new GameEventTarget
             {
                 Planet = new PlanetTarget { InstanceID = planet.InstanceID },
-                RandomPlanets = new RandomPlanetsTarget(),
+                RandomPlanet = new RandomPlanetTarget(),
             };
 
             TestDelegate resolve = () => target.Resolve(game, new StubRNG());

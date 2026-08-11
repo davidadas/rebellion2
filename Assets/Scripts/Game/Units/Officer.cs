@@ -135,6 +135,7 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
+        public VoidState VoidState { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();

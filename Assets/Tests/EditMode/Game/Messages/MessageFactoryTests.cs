@@ -82,6 +82,12 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(luke, origin);
 
+            OfficerCaptureStateResult suppressedCapture = new OfficerCaptureStateResult
+            {
+                TargetOfficer = luke,
+                IsCaptured = true,
+                Context = origin,
+            };
             List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
@@ -93,12 +99,7 @@ namespace Rebellion.Tests.Game.Messages
                         "Generic capture"
                     ),
                 },
-                new OfficerCaptureStateResult
-                {
-                    TargetOfficer = luke,
-                    IsCaptured = true,
-                    Context = origin,
-                },
+                suppressedCapture,
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = luke,
@@ -109,6 +110,7 @@ namespace Rebellion.Tests.Game.Messages
                 {
                     MessageType = MessageResultType.OfficerCaptured,
                     Recipient = alliance,
+                    TargetResult = suppressedCapture,
                 },
                 new MessageRequestedResult
                 {

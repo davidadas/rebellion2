@@ -19,6 +19,9 @@ namespace Rebellion.Game.Messages
 
         [PersistableAttribute]
         public string Path { get; set; }
+
+        [PersistableAttribute]
+        public string Binding { get; set; }
     }
 
     /// <summary>
@@ -29,6 +32,9 @@ namespace Rebellion.Game.Messages
     {
         [PersistableAttribute]
         public string Path { get; set; }
+
+        [PersistableAttribute]
+        public string Binding { get; set; }
     }
 
     [PersistableObject]
@@ -53,6 +59,10 @@ namespace Rebellion.Game.Messages
         public string Resolve(Officer officer, IRandomNumberProvider provider)
         {
             bool hasPath = !string.IsNullOrWhiteSpace(Path);
+            if (hasPath && Preset.HasValue)
+                throw new System.InvalidOperationException(
+                    "OfficerVoice requires exactly one of Path or Preset."
+                );
             if (hasPath)
                 return Path;
             return Preset.HasValue ? officer?.GetVoicePath(Preset.Value, provider) : null;

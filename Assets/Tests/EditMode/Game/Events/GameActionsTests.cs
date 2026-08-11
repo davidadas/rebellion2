@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SendMessage_EncounterVoice_UsesTriggerResultPath()
+        public void SendMessage_AudioBinding_UsesTriggerBindingPath()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -278,6 +278,7 @@ namespace Rebellion.Tests.Game.Events
             SendMessageAction action = new SendMessageAction
             {
                 SubjectInstanceID = luke.InstanceID,
+                AmbientAudio = new MessageAudio { Binding = "audioPath" },
             };
             DuelResult encounter = new DuelResult
             {
@@ -288,7 +289,8 @@ namespace Rebellion.Tests.Game.Events
                 new GameEvent(),
                 new GameEventState(),
                 null,
-                encounter
+                encounter,
+                new DuelCompletedTrigger { AudioPath = "audioPath" }
             );
 
             MessageRequestedResult result = action
@@ -324,6 +326,25 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
+        public void SendMessage_MultipleBackgroundSources_ThrowsException()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            game.AttachNode(officer, rebelPlanet);
+            SendMessageAction action = new SendMessageAction
+            {
+                SubjectInstanceID = officer.InstanceID,
+                BackgroundImage = new MessageBackgroundImage
+                {
+                    Key = "advice",
+                    Path = "custom-background",
+                },
+            };
+
+            Assert.Throws<InvalidOperationException>(() => action.Execute(game));
+        }
+
+        [Test]
         public void IfAction_EventVariable_SelectsBranchAndPersistsMutation()
         {
             GameRoot game = BuildGame(out _, out _);
@@ -336,7 +357,7 @@ namespace Rebellion.Tests.Game.Events
                     {
                         Key = "luke.stage",
                         Comparison = EventVariableComparison.GreaterThanOrEqual,
-                        Value = 2,
+                        ExpectedValue = 2,
                     },
                 },
                 Actions = new List<GameAction>
@@ -822,6 +843,50 @@ namespace Rebellion.Tests.Game.Events
             Faction owner = game.GetFactions()
                 .Single(faction => faction.InstanceID == planet.OwnerInstanceID);
             Assert.Contains(regiment, owner.VoidPool);
+        }
+
+        [Test]
+        public void DestroyUnits_ParentAndChildSelected_DestroysSubtreeOnce()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectUnits { InstanceID = fleet.InstanceID },
+                    new SelectUnits { InstanceID = ship.InstanceID },
+                },
+            };
+
+            List<GameResult> results = action.Execute(game);
+
+            Assert.Contains(fleet, game.GetFactionByOwnerInstanceID("empire").VoidPool);
+            Assert.AreEqual(VoidStatus.Destroyed, fleet.VoidState.Status);
+            Assert.AreEqual(VoidStatus.Destroyed, ship.VoidState.Status);
+            CollectionAssert.AreEquivalent(
+                new ISceneNode[] { fleet, ship },
+                results.OfType<GameObjectDestroyedResult>().Select(result => result.DestroyedObject)
+            );
+        }
+
+        [Test]
+        public void SelectUnits_ChildOfVoidUnit_ExcludesRetainedSubtree()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
+            CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.UnitLifecycle.AddToVoid(fleet);
+            SelectUnits selector = new SelectUnits { InstanceID = ship.InstanceID };
+
+            List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();
+
+            Assert.IsEmpty(selected);
         }
 
         [Test]

@@ -584,6 +584,7 @@ namespace Rebellion.Game.Results
     {
         public MessageResultType MessageType { get; set; }
         public Faction Recipient { get; set; }
+        public GameResult TargetResult { get; set; }
     }
 
     /// <summary>
@@ -633,8 +634,28 @@ namespace Rebellion.Game.Results
     {
         public string MissionDefinitionID { get; set; }
         public string TargetInstanceID { get; set; }
+        public string LocationInstanceID { get; set; }
         public List<string> MainParticipantInstanceIDs { get; set; } = new List<string>();
         public List<string> DecoyParticipantInstanceIDs { get; set; } = new List<string>();
+    }
+
+    /// <summary>
+    /// A content-defined mission request could not be created from the current simulation state.
+    /// </summary>
+    public sealed class CustomMissionRejectedResult : GameResult
+    {
+        public CustomMissionRequestedResult Request { get; set; }
+        public string Reason { get; set; }
+    }
+
+    /// <summary>
+    /// A requested duel could not be resolved against the current simulation state.
+    /// </summary>
+    public sealed class DuelRejectedResult : GameResult
+    {
+        public Officer EncounteredOfficer { get; set; }
+        public Officer OpposingOfficer { get; set; }
+        public string Reason { get; set; }
     }
 
     /// <summary>

@@ -5,23 +5,6 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
 {
-    public enum VoidStatus
-    {
-        OnMission,
-        Captured,
-        Destroyed,
-        Retired,
-        Unavailable,
-        Training,
-    }
-
-    [PersistableObject]
-    public sealed class VoidState
-    {
-        public VoidStatus? Status { get; set; }
-        public string DisplayText { get; set; }
-    }
-
     /// <summary>
     /// Base implementation of the <see cref="ISceneNode"/> interface.
     /// </summary>
@@ -52,7 +35,6 @@ namespace Rebellion.SceneGraph
             set => SetOwnerInstanceID(value);
         }
         public List<string> AllowedOwnerInstanceIDs { get; set; }
-        public VoidState VoidState { get; set; }
 
         /// <summary>
         /// Default constructor.

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Rebellion.Game.Factions;
 
 namespace Rebellion.Game.Messages
@@ -8,6 +10,11 @@ namespace Rebellion.Game.Messages
     /// </summary>
     internal sealed class MessageTemplateBuilder
     {
+        private static readonly Regex _tokenPattern = new Regex(
+            "\\{(?<name>[^{}]+)\\}",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant
+        );
+
         /// <summary>
         /// Builds a concrete message from a message definition and template values.
         /// </summary>
@@ -31,6 +38,19 @@ namespace Rebellion.Game.Messages
         {
             if (definition == null)
                 return null;
+
+            MessageBackgroundImage background = definition.BackgroundImage;
+            if (background != null)
+            {
+                int sourceCount =
+                    (string.IsNullOrWhiteSpace(background.Key) ? 0 : 1)
+                    + (string.IsNullOrWhiteSpace(background.Path) ? 0 : 1)
+                    + (string.IsNullOrWhiteSpace(background.Binding) ? 0 : 1);
+                if (sourceCount != 1 || !string.IsNullOrWhiteSpace(background.Binding))
+                    throw new InvalidOperationException(
+                        "A message definition background requires exactly one Key or Path."
+                    );
+            }
 
             string title = Interpolate(definition.Subject, values);
             string body = Interpolate(definition.Body, values);
@@ -89,14 +109,19 @@ namespace Rebellion.Game.Messages
         /// <returns>The interpolated text.</returns>
         internal static string Interpolate(string template, Dictionary<string, string> values)
         {
-            string result = template ?? string.Empty;
-            if (values == null)
-                return result;
-
-            foreach (KeyValuePair<string, string> value in values)
-                result = result.Replace("{" + value.Key + "}", value.Value ?? string.Empty);
-
-            return result;
+            string source = template ?? string.Empty;
+            return _tokenPattern.Replace(
+                source,
+                match =>
+                {
+                    string name = match.Groups["name"].Value;
+                    if (values == null || !values.TryGetValue(name, out string value))
+                        throw new InvalidOperationException(
+                            $"Message template references unknown value '{name}'."
+                        );
+                    return value ?? string.Empty;
+                }
+            );
         }
     }
 }

@@ -158,7 +158,7 @@ namespace Rebellion.Systems
                 )
                     destination = ResolveReturnDestination(participant);
                 if (destination != null)
-                    _game.ActivateFromVoid(result.Unit, destination);
+                    _game.UnitLifecycle.Activate(result.Unit, destination);
             }
 
             return new List<GameResult>();
@@ -1281,8 +1281,8 @@ namespace Rebellion.Systems
             if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
 
-            _game.AddToVoid(movable);
-            _game.SetVoidStatus(movable, VoidStatus.Destroyed);
+            _game.UnitLifecycle.AddToVoid(movable);
+            _game.UnitLifecycle.SetStatus(movable, VoidStatus.Destroyed);
             GameLogger.Log(
                 $"{movable.GetDisplayName()} destroyed on arrival at blockaded {destinationPlanet.GetDisplayName()}."
             );
@@ -1330,8 +1330,8 @@ namespace Rebellion.Systems
                 return;
             }
 
-            _game.AddToVoid(movable);
-            _game.SetVoidStatus(movable, VoidStatus.Destroyed);
+            _game.UnitLifecycle.AddToVoid(movable);
+            _game.UnitLifecycle.SetStatus(movable, VoidStatus.Destroyed);
             GameLogger.Log(
                 $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
             );
@@ -1576,8 +1576,8 @@ namespace Rebellion.Systems
             ICollection<GameResult> reactions
         )
         {
-            _game.AddToVoid(unit);
-            _game.SetVoidStatus(unit, VoidStatus.Destroyed);
+            _game.UnitLifecycle.AddToVoid(unit);
+            _game.UnitLifecycle.SetStatus(unit, VoidStatus.Destroyed);
             reactions.Add(
                 new GameObjectDestroyedResult
                 {
@@ -2067,7 +2067,7 @@ namespace Rebellion.Systems
             if (faction == null)
                 return;
 
-            _game.ChangeUnitOwnership(destinationPlanet, ownerInstanceId);
+            _game.UnitLifecycle.ChangeOwnership(destinationPlanet, ownerInstanceId);
             destinationPlanet.PopularSupport.Clear();
 
             foreach (Faction supportFaction in _game.GetFactions())

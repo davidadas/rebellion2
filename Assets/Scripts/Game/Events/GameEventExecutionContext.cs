@@ -14,7 +14,7 @@ namespace Rebellion.Game.Events
 
         public GameEvent Event { get; }
         public GameEventState State { get; }
-        public ISceneNode ScopeTarget { get; }
+        public ISceneNode Target { get; }
         public GameResult TriggerResult { get; }
         public GameEventBindings Bindings { get; }
         public IReadOnlyList<GameResult> Results => _results;
@@ -24,23 +24,23 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <param name="gameEvent">The event definition being executed.</param>
         /// <param name="state">Persistent scheduling state for this activation scope.</param>
-        /// <param name="scopeTarget">The selected planet or other scoped scene node.</param>
+        /// <param name="target">The selected planet or other targeted scene node.</param>
         /// <param name="triggerResult">The result that activated this event, if any.</param>
         /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         public GameEventExecutionContext(
             GameEvent gameEvent,
             GameEventState state,
-            ISceneNode scopeTarget,
+            ISceneNode target,
             GameResult triggerResult = null,
             GameEventTrigger trigger = null
         )
         {
             Event = gameEvent;
             State = state;
-            ScopeTarget = scopeTarget;
+            Target = target;
             TriggerResult = triggerResult;
             Bindings = new GameEventBindings();
-            Bind("scope", scopeTarget);
+            Bind("target", target);
             Bind("trigger", triggerResult);
             trigger?.Bind(this, triggerResult);
         }
@@ -50,8 +50,8 @@ namespace Rebellion.Game.Events
         /// </summary>
         /// <typeparam name="T">The expected scene-node type.</typeparam>
         /// <returns>The typed target, or null when the target has another type.</returns>
-        public T GetScopeTarget<T>()
-            where T : class, ISceneNode => ScopeTarget as T;
+        public T GetTarget<T>()
+            where T : class, ISceneNode => Target as T;
 
         /// <summary>
         /// Stores a named value for subsequent actions in this activation.
@@ -98,37 +98,5 @@ namespace Rebellion.Game.Events
             if (result != null)
                 _results.Add(result);
         }
-    }
-
-    /// <summary>
-    /// Holds the named values exposed by a matched trigger during one event activation.
-    /// </summary>
-    public sealed class GameEventBindings
-    {
-        private readonly Dictionary<string, object> _values = new Dictionary<string, object>(
-            System.StringComparer.Ordinal
-        );
-
-        public void Set(string name, object value)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new System.ArgumentException("A binding name is required.", nameof(name));
-            if (value != null)
-                _values[name] = value;
-        }
-
-        public bool TryGet<T>(string name, out T value)
-        {
-            if (_values.TryGetValue(name, out object binding) && binding is T typed)
-            {
-                value = typed;
-                return true;
-            }
-
-            value = default;
-            return false;
-        }
-
-        public bool TryGet(string name, out object value) => _values.TryGetValue(name, out value);
     }
 }

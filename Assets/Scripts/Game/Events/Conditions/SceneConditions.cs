@@ -9,8 +9,8 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    [PersistableObject(Name = "PlanetResourceValue")]
-    public sealed class PlanetResourceValueConditional : GameConditional
+    [PersistableObject(Name = "EvaluatePlanetResource")]
+    public sealed class EvaluatePlanetResourceConditional : GameConditional
     {
         [PersistableAttribute]
         public PlanetResource Resource { get; set; }
@@ -19,11 +19,11 @@ namespace Rebellion.Game.Events
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public int Value { get; set; }
+        public int ExpectedAmount { get; set; }
 
         public override bool IsMet(GameConditionContext context)
         {
-            Planet planet = context.Activation?.GetScopeTarget<Planet>();
+            Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 return false;
             int current =
@@ -32,12 +32,12 @@ namespace Rebellion.Game.Events
                     : planet.EnergyCapacity;
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
+                EventVariableComparison.Equal => current == ExpectedAmount,
+                EventVariableComparison.NotEqual => current != ExpectedAmount,
+                EventVariableComparison.GreaterThan => current > ExpectedAmount,
+                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedAmount,
+                EventVariableComparison.LessThan => current < ExpectedAmount,
+                EventVariableComparison.LessThanOrEqual => current <= ExpectedAmount,
                 _ => false,
             };
         }
@@ -51,7 +51,7 @@ namespace Rebellion.Game.Events
 
         public override bool IsMet(GameConditionContext context) =>
             context
-                .Activation?.GetScopeTarget<Planet>()
+                .Activation?.GetTarget<Planet>()
                 ?.Buildings.Any(building =>
                     building.BuildingType == Type
                     && building.ManufacturingStatus == ManufacturingStatus.Complete

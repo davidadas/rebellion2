@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -14,9 +13,6 @@ namespace Rebellion.Systems
     {
         private readonly GameRoot _game;
         private readonly MessageFactory _messageFactory;
-
-        public event Action<MessageDeliveredResult> MessageDelivered;
-        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>
         /// Initializes a message system for the supplied game state and message definitions.
@@ -54,11 +50,7 @@ namespace Rebellion.Systems
                     Tick = _game.CurrentTick,
                 };
                 deliveredResults.Add(delivered);
-                MessageDelivered?.Invoke(delivered);
             }
-
-            if (deliveredResults.Count > 0)
-                ResultsProduced?.Invoke(deliveredResults);
             return deliveredResults;
         }
 

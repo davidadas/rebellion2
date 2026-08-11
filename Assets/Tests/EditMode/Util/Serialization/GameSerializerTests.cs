@@ -280,7 +280,7 @@ namespace Rebellion.Tests.Util.Serialization
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new OfficerCaptureChangedTrigger { SourceEventInstanceID = "sourceEvent" },
+                    new OfficerCaptureChangedTrigger { SourceEvent = "sourceEvent" },
                 },
                 Conditionals = new List<GameConditional>
                 {
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Util.Serialization
                     {
                         Name = "sourceEvent",
                         Comparison = EventVariableComparison.Equal,
-                        Value = "LUKE_RESCUES_HAN_FROM_JABBA",
+                        ExpectedValue = "LUKE_RESCUES_HAN_FROM_JABBA",
                     },
                 },
                 Actions = new List<GameAction>
@@ -309,7 +309,7 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml
             );
             StringAssert.Contains(
-                "<EvaluateBinding Name=\"sourceEvent\" Comparison=\"Equal\" Value=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
+                "<EvaluateBinding Name=\"sourceEvent\" Comparison=\"Equal\" ExpectedValue=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
                 serializedXml
             );
             SuppressNextAutomaticMessageAction action =
@@ -320,7 +320,7 @@ namespace Rebellion.Tests.Util.Serialization
             EvaluateBindingConditional source =
                 deserialized.Conditionals[0] as EvaluateBindingConditional;
             Assert.IsNotNull(source);
-            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.Value);
+            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.ExpectedValue);
         }
 
         [Test]
@@ -387,7 +387,7 @@ namespace Rebellion.Tests.Util.Serialization
                             {
                                 Key = "luke.stage",
                                 Comparison = EventVariableComparison.Equal,
-                                Value = 1,
+                                ExpectedValue = 1,
                             },
                         },
                         Actions = new List<GameAction>

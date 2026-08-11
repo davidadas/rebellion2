@@ -52,8 +52,8 @@ namespace Rebellion.Systems
 
             foreach (ISceneNode person in live)
             {
-                _game.AddToVoid(person);
-                _game.SetVoidStatus(person, VoidStatus.Retired);
+                _game.UnitLifecycle.AddToVoid(person);
+                _game.UnitLifecycle.SetStatus(person, VoidStatus.Retired);
             }
 
             return true;

@@ -208,7 +208,7 @@ namespace Rebellion.Tests.Systems
                     {
                         Officer = "officer",
                         IsCaptured = "isCaptured",
-                        SourceEventInstanceID = "sourceEvent",
+                        SourceEvent = "sourceEvent",
                     },
                 },
                 Conditionals = new List<GameConditional>
@@ -362,7 +362,7 @@ namespace Rebellion.Tests.Systems
                 Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "scope" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -416,7 +416,7 @@ namespace Rebellion.Tests.Systems
                 Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "scope" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -460,7 +460,7 @@ namespace Rebellion.Tests.Systems
                 Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
                 Conditionals = new List<GameConditional>
                 {
-                    new IsOwnedConditional { PlanetBinding = "scope" },
+                    new IsOwnedConditional { PlanetBinding = "target" },
                 },
                 Schedule = new GameEventScheduler
                 {
@@ -483,9 +483,92 @@ namespace Rebellion.Tests.Systems
                 gameEvent.InstanceID,
                 planet.InstanceID
             );
-            Assert.IsTrue(state.IsScopeActive);
+            Assert.IsTrue(state.IsTargetActive);
             Assert.AreEqual(150, state.NextEligibleTick);
             Assert.Zero(state.ExecutionCount);
+        }
+
+        [Test]
+        public void ProcessEvents_OneShotEachPlanetTarget_ExecutesOncePerPlanet()
+        {
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            Planet planet = new Planet { InstanceID = "planet" };
+            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(planet, system);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "ONE_SHOT_PER_PLANET",
+                RunsOnce = true,
+                Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
+                Actions = new List<GameAction> { new RecordScopedPlanetAction() },
+            };
+            _game.EventPool.Add(gameEvent);
+
+            _system.ProcessEvents(_game.EventPool);
+            _system.ProcessEvents(_game.EventPool);
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.planet"));
+        }
+
+        [Test]
+        public void ProcessEvents_RandomTargetBeforeScheduledTick_DoesNotSelectTarget()
+        {
+            PlanetSystem system = new PlanetSystem
+            {
+                InstanceID = "system",
+                SystemType = PlanetSystemType.CoreSystem,
+            };
+            _game.AttachNode(system, _game.Galaxy);
+            _game.AttachNode(new Planet { InstanceID = "planet" }, system);
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "DELAYED_RANDOM_TARGET",
+                RunsOnce = true,
+                Schedule = new GameEventScheduler { At = new AtTick { Tick = 10 } },
+                Target = new GameEventTarget
+                {
+                    RandomPlanet = new RandomPlanetTarget
+                    {
+                        SystemType = PlanetSystemType.CoreSystem,
+                    },
+                },
+            };
+            _game.EventPool.Add(gameEvent);
+            _game.CurrentTick = 9;
+
+            _system.ProcessEvents(_game.EventPool);
+
+            Assert.IsNull(
+                _game.EventRuntime.GetState(gameEvent.InstanceID).SelectedTargetInstanceID
+            );
+        }
+
+        [Test]
+        public void Execute_NestedActions_LaterActionObservesEarlierResult()
+        {
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "COMPOSITE_RESULTS",
+                Actions = new List<GameAction>
+                {
+                    new IfAction
+                    {
+                        Actions = new List<GameAction>
+                        {
+                            new EmitTestResultAction(),
+                            new ObserveTestResultAction(),
+                        },
+                    },
+                },
+            };
+
+            gameEvent.Execute(
+                _game,
+                _game.Random,
+                new GameEventExecutionContext(gameEvent, new GameEventState(), null)
+            );
+
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("result.observed"));
         }
 
         private static GameEvent CreateTickEvent(string instanceId, int targetTick, bool repeatable)
@@ -516,7 +599,7 @@ namespace Rebellion.Tests.Systems
             {
                 Name = name,
                 Comparison = EventVariableComparison.Equal,
-                Value = value,
+                ExpectedValue = value,
             };
 
         private sealed class RecordScopedPlanetAction : GameAction
@@ -524,7 +607,7 @@ namespace Rebellion.Tests.Systems
             public override List<GameResult> Execute(GameActionContext context)
             {
                 GameRoot game = context.Game;
-                Planet planet = context.Activation.GetScopeTarget<Planet>();
+                Planet planet = context.Activation.GetTarget<Planet>();
                 game.EventRuntime.SetVariable(
                     $"scope.{planet.InstanceID}",
                     game.EventRuntime.GetVariable($"scope.{planet.InstanceID}") + 1
@@ -538,6 +621,22 @@ namespace Rebellion.Tests.Systems
             public override bool IsMet(GameConditionContext context) =>
                 context.Activation?.GetBinding<Officer>("unit") != null
                 && context.Activation.GetBinding<Planet>("destination") != null;
+        }
+
+        private sealed class EmitTestResultAction : GameAction
+        {
+            public override List<GameResult> Execute(GameActionContext context) =>
+                new List<GameResult> { new PlanetStatChangedResult() };
+        }
+
+        private sealed class ObserveTestResultAction : GameAction
+        {
+            public override List<GameResult> Execute(GameActionContext context)
+            {
+                if (context.Activation.Results.Any())
+                    context.Game.EventRuntime.SetVariable("result.observed", 1);
+                return new List<GameResult>();
+            }
         }
     }
 }

@@ -427,11 +427,11 @@ namespace Rebellion.Systems
                 _movement.EvacuateDestroyedCapitalShip(ship);
                 foreach (Regiment regiment in ship.Regiments.ToList())
                 {
-                    _game.AddToVoid(regiment);
-                    _game.SetVoidStatus(regiment, VoidStatus.Destroyed);
+                    _game.UnitLifecycle.AddToVoid(regiment);
+                    _game.UnitLifecycle.SetStatus(regiment, VoidStatus.Destroyed);
                 }
-                _game.AddToVoid(ship);
-                _game.SetVoidStatus(ship, VoidStatus.Destroyed);
+                _game.UnitLifecycle.AddToVoid(ship);
+                _game.UnitLifecycle.SetStatus(ship, VoidStatus.Destroyed);
                 GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
             }
         }
@@ -674,8 +674,8 @@ namespace Rebellion.Systems
                 case BombardmentTargetType.Regiment:
                     Regiment regiment = (Regiment)target.Entity;
                     result.DestroyedRegiments.Add(regiment);
-                    _game.AddToVoid(regiment);
-                    _game.SetVoidStatus(regiment, VoidStatus.Destroyed);
+                    _game.UnitLifecycle.AddToVoid(regiment);
+                    _game.UnitLifecycle.SetStatus(regiment, VoidStatus.Destroyed);
                     break;
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
@@ -686,8 +686,8 @@ namespace Rebellion.Systems
                     }
                     else
                     {
-                        _game.AddToVoid(building);
-                        _game.SetVoidStatus(building, VoidStatus.Destroyed);
+                        _game.UnitLifecycle.AddToVoid(building);
+                        _game.UnitLifecycle.SetStatus(building, VoidStatus.Destroyed);
                     }
                     break;
                 case BombardmentTargetType.Headquarters:
@@ -821,8 +821,8 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-                _game.AddToVoid(officer);
-                _game.SetVoidStatus(officer, null);
+                _game.UnitLifecycle.AddToVoid(officer);
+                _game.UnitLifecycle.SetStatus(officer, null);
             }
         }
 

@@ -1,3 +1,4 @@
+using System;
 using Rebellion.Game.Results;
 using Rebellion.Util.Serialization;
 
@@ -9,6 +10,8 @@ namespace Rebellion.Game.Events
     [PersistableObject]
     public abstract class GameEventTrigger
     {
+        internal abstract Type ResultType { get; }
+
         internal abstract bool Matches(GameResult result);
 
         internal abstract void Bind(GameEventExecutionContext context, GameResult result);
@@ -27,6 +30,8 @@ namespace Rebellion.Game.Events
     [PersistableObject(Name = "UnitArrived")]
     public sealed class UnitArrivedTrigger : GameEventTrigger
     {
+        internal override Type ResultType => typeof(UnitArrivedResult);
+
         [PersistableAttribute]
         public string Unit { get; set; }
 
@@ -34,7 +39,7 @@ namespace Rebellion.Game.Events
         public string Destination { get; set; }
 
         [PersistableAttribute]
-        public string SourceEventInstanceID { get; set; }
+        public string SourceEvent { get; set; }
 
         internal override bool Matches(GameResult result) => result is UnitArrivedResult;
 
@@ -43,13 +48,15 @@ namespace Rebellion.Game.Events
             UnitArrivedResult arrival = (UnitArrivedResult)result;
             BindValue(context, Unit, arrival.Unit);
             BindValue(context, Destination, arrival.Destination);
-            BindValue(context, SourceEventInstanceID, arrival.SourceEventInstanceID);
+            BindValue(context, SourceEvent, arrival.SourceEventInstanceID);
         }
     }
 
     [PersistableObject(Name = "DuelCompleted")]
     public sealed class DuelCompletedTrigger : GameEventTrigger
     {
+        internal override Type ResultType => typeof(DuelResult);
+
         [PersistableAttribute]
         public string Officer { get; set; }
 
@@ -69,7 +76,13 @@ namespace Rebellion.Game.Events
         public string OpponentInjury { get; set; }
 
         [PersistableAttribute]
-        public string SourceEventInstanceID { get; set; }
+        public string ImagePath { get; set; }
+
+        [PersistableAttribute]
+        public string AudioPath { get; set; }
+
+        [PersistableAttribute]
+        public string SourceEvent { get; set; }
 
         internal override bool Matches(GameResult result) => result is DuelResult;
 
@@ -82,13 +95,17 @@ namespace Rebellion.Game.Events
             BindValue(context, OfficerCaptured, duel.EncounteredOfficerCaptured);
             BindValue(context, OfficerInjury, duel.EncounteredOfficerInjury);
             BindValue(context, OpponentInjury, duel.OpposingOfficerInjury);
-            BindValue(context, SourceEventInstanceID, duel.SourceEventInstanceID);
+            BindValue(context, ImagePath, duel.ImagePath);
+            BindValue(context, AudioPath, duel.AudioPath);
+            BindValue(context, SourceEvent, duel.SourceEventInstanceID);
         }
     }
 
     [PersistableObject(Name = "OfficerCaptureChanged")]
     public sealed class OfficerCaptureChangedTrigger : GameEventTrigger
     {
+        internal override Type ResultType => typeof(OfficerCaptureStateResult);
+
         [PersistableAttribute]
         public string Officer { get; set; }
 
@@ -102,7 +119,7 @@ namespace Rebellion.Game.Events
         public string IsCaptured { get; set; }
 
         [PersistableAttribute]
-        public string SourceEventInstanceID { get; set; }
+        public string SourceEvent { get; set; }
 
         internal override bool Matches(GameResult result) => result is OfficerCaptureStateResult;
 
@@ -113,13 +130,15 @@ namespace Rebellion.Game.Events
             BindValue(context, LinkedOfficer, capture.LinkedOfficer);
             BindValue(context, Context, capture.Context);
             BindValue(context, IsCaptured, capture.IsCaptured);
-            BindValue(context, SourceEventInstanceID, capture.SourceEventInstanceID);
+            BindValue(context, SourceEvent, capture.SourceEventInstanceID);
         }
     }
 
     [PersistableObject(Name = "MissionCompleted")]
     public sealed class MissionCompletedTrigger : GameEventTrigger
     {
+        internal override Type ResultType => typeof(MissionCompletedResult);
+
         [PersistableAttribute]
         public string Mission { get; set; }
 
@@ -139,7 +158,7 @@ namespace Rebellion.Game.Events
         public string ReturnDestination { get; set; }
 
         [PersistableAttribute]
-        public string SourceEventInstanceID { get; set; }
+        public string SourceEvent { get; set; }
 
         internal override bool Matches(GameResult result) => result is MissionCompletedResult;
 
@@ -152,13 +171,15 @@ namespace Rebellion.Game.Events
             BindValue(context, Participants, mission.Participants);
             BindValue(context, Location, mission.Location);
             BindValue(context, ReturnDestination, mission.ReturnDestination);
-            BindValue(context, SourceEventInstanceID, mission.SourceEventInstanceID);
+            BindValue(context, SourceEvent, mission.SourceEventInstanceID);
         }
     }
 
     [PersistableObject(Name = "ForceDiscovered")]
     public sealed class ForceDiscoveredTrigger : GameEventTrigger
     {
+        internal override Type ResultType => typeof(ForceDiscoveryResult);
+
         [PersistableAttribute]
         public string Officer { get; set; }
 
@@ -169,7 +190,7 @@ namespace Rebellion.Game.Events
         public string ForceRank { get; set; }
 
         [PersistableAttribute]
-        public string SourceEventInstanceID { get; set; }
+        public string SourceEvent { get; set; }
 
         internal override bool Matches(GameResult result) => result is ForceDiscoveryResult;
 
@@ -179,7 +200,7 @@ namespace Rebellion.Game.Events
             BindValue(context, Officer, discovery.Officer);
             BindValue(context, Discoverer, discovery.Discoverer);
             BindValue(context, ForceRank, discovery.ForceRank);
-            BindValue(context, SourceEventInstanceID, discovery.SourceEventInstanceID);
+            BindValue(context, SourceEvent, discovery.SourceEventInstanceID);
         }
     }
 }

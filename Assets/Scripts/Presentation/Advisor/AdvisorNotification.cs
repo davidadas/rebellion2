@@ -1,3 +1,4 @@
+using Rebellion.Game.Messages;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Presentation.Advisor
@@ -35,28 +36,92 @@ namespace Rebellion.Presentation.Advisor
 
     public enum AdvisorNotificationPreset
     {
-        None = AdvisorNotificationType.None,
-        PositivePopularSupport = AdvisorNotificationType.PositivePopularSupport,
-        NegativePopularSupport = AdvisorNotificationType.NegativePopularSupport,
-        Manufacturing = AdvisorNotificationType.Manufacturing,
-        Research = AdvisorNotificationType.Research,
-        FleetArrived = AdvisorNotificationType.FleetArrived,
-        UnitsArrived = AdvisorNotificationType.UnitsArrived,
-        CapitalShipRepaired = AdvisorNotificationType.CapitalShipRepaired,
-        StarfighterRepaired = AdvisorNotificationType.StarfighterRepaired,
-        Maintenance = AdvisorNotificationType.Maintenance,
-        BlockadeInitiated = AdvisorNotificationType.BlockadeInitiated,
-        BlockadeDetected = AdvisorNotificationType.BlockadeDetected,
-        FieldPersonnel = AdvisorNotificationType.FieldPersonnel,
-        AgentReport = AdvisorNotificationType.AgentReport,
-        PlanetaryStatus = AdvisorNotificationType.PlanetaryStatus,
-        PrisonerEscaped = AdvisorNotificationType.PrisonerEscaped,
-        InterceptedCommunication = AdvisorNotificationType.InterceptedCommunication,
-        Bombardment = AdvisorNotificationType.Bombardment,
-        PlanetaryAssault = AdvisorNotificationType.PlanetaryAssault,
+        None,
+        PositivePopularSupport,
+        NegativePopularSupport,
+        Manufacturing,
+        Research,
+        FleetArrived,
+        UnitsArrived,
+        CapitalShipRepaired,
+        StarfighterRepaired,
+        Maintenance,
+        BlockadeInitiated,
+        BlockadeDetected,
+        FieldPersonnel,
+        AgentReport,
+        PlanetaryStatus,
+        PrisonerEscaped,
+        InterceptedCommunication,
+        Bombardment,
+        PlanetaryAssault,
         SubjectReport,
         SubjectCaptured,
         SubjectReleased,
+    }
+
+    public static class AdvisorNotificationPresetExtensions
+    {
+        public static AdvisorNotificationType ToNotificationType(
+            this AdvisorNotificationPreset preset
+        ) =>
+            preset switch
+            {
+                AdvisorNotificationPreset.PositivePopularSupport =>
+                    AdvisorNotificationType.PositivePopularSupport,
+                AdvisorNotificationPreset.NegativePopularSupport =>
+                    AdvisorNotificationType.NegativePopularSupport,
+                AdvisorNotificationPreset.Manufacturing => AdvisorNotificationType.Manufacturing,
+                AdvisorNotificationPreset.Research => AdvisorNotificationType.Research,
+                AdvisorNotificationPreset.FleetArrived => AdvisorNotificationType.FleetArrived,
+                AdvisorNotificationPreset.UnitsArrived => AdvisorNotificationType.UnitsArrived,
+                AdvisorNotificationPreset.CapitalShipRepaired =>
+                    AdvisorNotificationType.CapitalShipRepaired,
+                AdvisorNotificationPreset.StarfighterRepaired =>
+                    AdvisorNotificationType.StarfighterRepaired,
+                AdvisorNotificationPreset.Maintenance => AdvisorNotificationType.Maintenance,
+                AdvisorNotificationPreset.BlockadeInitiated =>
+                    AdvisorNotificationType.BlockadeInitiated,
+                AdvisorNotificationPreset.BlockadeDetected =>
+                    AdvisorNotificationType.BlockadeDetected,
+                AdvisorNotificationPreset.FieldPersonnel => AdvisorNotificationType.FieldPersonnel,
+                AdvisorNotificationPreset.AgentReport => AdvisorNotificationType.AgentReport,
+                AdvisorNotificationPreset.PlanetaryStatus =>
+                    AdvisorNotificationType.PlanetaryStatus,
+                AdvisorNotificationPreset.PrisonerEscaped =>
+                    AdvisorNotificationType.PrisonerEscaped,
+                AdvisorNotificationPreset.InterceptedCommunication =>
+                    AdvisorNotificationType.InterceptedCommunication,
+                AdvisorNotificationPreset.Bombardment => AdvisorNotificationType.Bombardment,
+                AdvisorNotificationPreset.PlanetaryAssault =>
+                    AdvisorNotificationType.PlanetaryAssault,
+                _ => AdvisorNotificationType.None,
+            };
+    }
+
+    public static class AdvisorNotificationPolicy
+    {
+        public static AdvisorNotificationType GetDefault(MessageResultType? resultType) =>
+            resultType switch
+            {
+                MessageResultType.FleetArrived => AdvisorNotificationType.FleetArrived,
+                MessageResultType.ShipsArrived => AdvisorNotificationType.UnitsArrived,
+                MessageResultType.ManufacturingIdle => AdvisorNotificationType.Manufacturing,
+                MessageResultType.CapitalShipRepaired =>
+                    AdvisorNotificationType.CapitalShipRepaired,
+                MessageResultType.StarfighterRepaired =>
+                    AdvisorNotificationType.StarfighterRepaired,
+                MessageResultType.SabotageStrike => AdvisorNotificationType.Maintenance,
+                MessageResultType.FacilityLost => AdvisorNotificationType.Maintenance,
+                MessageResultType.ResearchComplete => AdvisorNotificationType.Research,
+                MessageResultType.ResearchExhausted => AdvisorNotificationType.Research,
+                MessageResultType.BlockadeInitiated => AdvisorNotificationType.BlockadeInitiated,
+                MessageResultType.BlockadeDetected => AdvisorNotificationType.BlockadeDetected,
+                MessageResultType.MaintenanceAutoscrap => AdvisorNotificationType.Maintenance,
+                MessageResultType.Bombardment => AdvisorNotificationType.Bombardment,
+                MessageResultType.PlanetaryAssault => AdvisorNotificationType.PlanetaryAssault,
+                _ => AdvisorNotificationType.None,
+            };
     }
 
     [PersistableObject]

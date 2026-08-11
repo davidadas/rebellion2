@@ -254,45 +254,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void AddToVoid_OwnedNode_PreservesRegistrationWithoutSceneParent()
-        {
-            _game.AttachNode(_planetSystem, _game.Galaxy);
-            _game.AttachNode(_planet, _planetSystem);
-            Officer officer = new Officer
-            {
-                InstanceID = "OFFICER1",
-                OwnerInstanceID = _faction1.InstanceID,
-            };
-            _game.AttachNode(officer, _planet);
-
-            _game.AddToVoid(officer);
-
-            Assert.IsNull(officer.GetParent());
-            Assert.IsTrue(_faction1.VoidPool.Contains(officer));
-            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
-            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
-            Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
-        }
-
-        [Test]
-        public void SetVoidStatus_NodeInVoid_SetsStatus()
-        {
-            _game.AttachNode(_planetSystem, _game.Galaxy);
-            _game.AttachNode(_planet, _planetSystem);
-            Officer officer = new Officer
-            {
-                InstanceID = "OFFICER1",
-                OwnerInstanceID = _faction1.InstanceID,
-            };
-            _game.AttachNode(officer, _planet);
-            _game.AddToVoid(officer);
-
-            _game.SetVoidStatus(officer, VoidStatus.Captured);
-
-            Assert.AreEqual(VoidStatus.Captured, officer.VoidState.Status);
-        }
-
-        [Test]
         public void AddSceneNodeByInstanceID_ValidNode_AddsToRegistry()
         {
             // Add node and verify that it is added to the _game.
@@ -643,54 +604,6 @@ namespace Rebellion.Tests.Game
         {
             TickSpeed speed = _game.GetGameSpeed();
             Assert.AreEqual(TickSpeed.Slow, speed, "Default game speed should be Slow");
-        }
-
-        [Test]
-        public void ChangeUnitOwnership_PlanetOwnedByFaction_ChangesOwnershipCorrectly()
-        {
-            // Register planet to _faction1.
-            _game.RegisterOwnedUnit(_planet);
-
-            // Verify planet is owned by _faction1.
-            Assert.IsTrue(
-                _faction1.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction1 should initially own the planet"
-            );
-            Assert.IsFalse(
-                _faction2.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction2 should not initially own the planet"
-            );
-
-            // Change ownership to _faction2.
-            _game.ChangeUnitOwnership(_planet, "FACTION2");
-
-            // Verify planet is now owned by _faction2.
-            Assert.IsFalse(
-                _faction1.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction1 should no longer own the planet"
-            );
-            Assert.IsTrue(
-                _faction2.GetOwnedUnitsByType<Planet>().Contains(_planet),
-                "Faction2 should now own the planet"
-            );
-            Assert.AreEqual(
-                "FACTION2",
-                _planet.OwnerInstanceID,
-                "Planet.OwnerInstanceID should reflect the new owner"
-            );
-        }
-
-        [Test]
-        public void ChangeUnitOwnership_ThrowsException_WhenNewOwnerNotFound()
-        {
-            // Register planet to _faction1.
-            _game.RegisterOwnedUnit(_planet);
-
-            // Attempt to change ownership to non-existent faction.
-            Assert.Throws<SceneNodeNotFoundException>(
-                () => _game.ChangeUnitOwnership(_planet, "NONEXISTENT"),
-                "Should throw exception when new owner faction does not exist"
-            );
         }
 
         [Test]

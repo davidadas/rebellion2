@@ -12,7 +12,9 @@ namespace Rebellion.Game.Events
     public sealed class GameEventState
     {
         public bool IsInitialized { get; set; }
-        public bool IsScopeActive { get; set; }
+        public bool IsTargetActive { get; set; }
+        public bool IsComplete { get; set; }
+        public string SelectedTargetInstanceID { get; set; }
         public int NextEligibleTick { get; set; }
         public int ExecutionCount { get; set; }
         public int LastExecutionTick { get; set; } = -1;

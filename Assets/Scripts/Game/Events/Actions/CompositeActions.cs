@@ -48,18 +48,7 @@ namespace Rebellion.Game.Events
                 }
             }
 
-            return ExecuteActions(selected.Actions, context);
-        }
-
-        private static List<GameResult> ExecuteActions(
-            IEnumerable<GameAction> actions,
-            GameActionContext context
-        )
-        {
-            List<GameResult> results = new List<GameResult>();
-            foreach (GameAction action in actions)
-                results.AddRange(action.Execute(context));
-            return results;
+            return GameAction.ExecuteAll(selected.Actions, context);
         }
     }
 
@@ -77,10 +66,7 @@ namespace Rebellion.Game.Events
             )
                 ? Actions
                 : Else;
-            List<GameResult> results = new List<GameResult>();
-            foreach (GameAction action in selected)
-                results.AddRange(action.Execute(context));
-            return results;
+            return GameAction.ExecuteAll(selected, context);
         }
     }
 }

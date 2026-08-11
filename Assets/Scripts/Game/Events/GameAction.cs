@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Results;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -38,6 +39,31 @@ namespace Rebellion.Game.Events
             IRandomNumberProvider provider,
             GameEventExecutionContext context
         ) => Execute(new GameActionContext(game, provider, context));
+
+        internal static List<GameResult> ExecuteAll(
+            IEnumerable<GameAction> actions,
+            GameActionContext context
+        )
+        {
+            List<GameResult> results = new List<GameResult>();
+            foreach (GameAction action in actions ?? Enumerable.Empty<GameAction>())
+            {
+                foreach (GameResult result in action.Execute(context))
+                {
+                    if (result == null)
+                        continue;
+
+                    if (
+                        string.IsNullOrEmpty(result.SourceEventInstanceID)
+                        && context.Activation?.Event != null
+                    )
+                        result.SourceEventInstanceID = context.Activation.Event.InstanceID;
+                    context.Activation?.AddResult(result);
+                    results.Add(result);
+                }
+            }
+            return results;
+        }
     }
 
     /// <summary>

@@ -41,8 +41,22 @@ namespace Rebellion.Systems
 
             foreach (DuelRequestedResult request in results)
             {
-                if (CanResolve(request))
+                string rejectionReason = GetRejectionReason(request);
+                if (rejectionReason == null)
                     Resolve(request, reactions);
+                else
+                    reactions.Add(
+                        Stamp(
+                            new DuelRejectedResult
+                            {
+                                EncounteredOfficer = request?.EncounteredOfficer,
+                                OpposingOfficer = request?.OpposingOfficer,
+                                Reason = rejectionReason,
+                                Tick = _game.CurrentTick,
+                            },
+                            request
+                        )
+                    );
             }
 
             return reactions;
@@ -53,20 +67,24 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The encounter request to validate.</param>
         /// <returns>True when authoritative resolution may proceed.</returns>
-        private bool CanResolve(DuelRequestedResult request)
+        private static string GetRejectionReason(DuelRequestedResult request)
         {
             Officer encountered = request?.EncounteredOfficer;
             Officer opposing = request?.OpposingOfficer;
-            return encountered != null
-                && opposing != null
-                && encountered != opposing
-                && !encountered.IsKilled
-                && !opposing.IsKilled
-                && !encountered.IsCaptured
-                && !opposing.IsCaptured
-                && encountered.OwnerInstanceID != opposing.OwnerInstanceID
-                && encountered.GetParentOfType<Planet>() is Planet location
-                && opposing.GetParentOfType<Planet>() == location;
+            if (encountered == null || opposing == null)
+                return "Both officers are required.";
+            if (encountered == opposing)
+                return "An officer cannot duel itself.";
+            if (encountered.IsKilled || opposing.IsKilled)
+                return "A killed officer cannot duel.";
+            if (encountered.IsCaptured || opposing.IsCaptured)
+                return "A captured officer cannot duel.";
+            if (encountered.OwnerInstanceID == opposing.OwnerInstanceID)
+                return "Officers from the same faction cannot duel.";
+            Planet location = encountered.GetParentOfType<Planet>();
+            if (location == null || opposing.GetParentOfType<Planet>() != location)
+                return "The officers are not at the same planet.";
+            return null;
         }
 
         /// <summary>
@@ -131,8 +149,6 @@ namespace Rebellion.Systems
 
             ApplyInjury(encountered, encounteredInjury, opposing, request, reactions);
             ApplyInjury(opposing, opposingInjury, encountered, request, reactions);
-            ApplyForceAdvancement(encountered, opposing, request, reactions);
-
             reactions.Add(
                 Stamp(
                     new DuelResult
@@ -145,43 +161,6 @@ namespace Rebellion.Systems
                         OpposingOfficerInjury = opposingInjury,
                         ImagePath = request.ImagePath,
                         AudioPath = request.AudioPath,
-                        Tick = _game.CurrentTick,
-                    },
-                    request
-                )
-            );
-        }
-
-        private void ApplyForceAdvancement(
-            Officer officer,
-            Officer opponent,
-            DuelRequestedResult request,
-            List<GameResult> reactions
-        )
-        {
-            GameConfig.DuelForceAdvancementRule rule =
-                _game.Config.DuelResolution.ForceAdvancementRules.Find(candidate =>
-                    candidate.OfficerInstanceID == officer.InstanceID
-                    && candidate.OpponentInstanceID == opponent.InstanceID
-                );
-            if (rule == null || !officer.IsForceEligible)
-                return;
-
-            int previousRank = officer.ForceRank;
-            int positiveGap = Math.Max(0, opponent.ForceRank - previousRank);
-            int amount = Math.Max(
-                rule.MinimumAmount,
-                positiveGap * rule.PositiveRankGapPercent / 100
-            );
-            officer.ForceValue += amount;
-            reactions.Add(
-                Stamp(
-                    new ForceExperienceResult
-                    {
-                        Officer = officer,
-                        ExperienceGained = amount,
-                        PreviousForceRank = previousRank,
-                        CurrentForceRank = officer.ForceRank,
                         Tick = _game.CurrentTick,
                     },
                     request
@@ -262,7 +241,7 @@ namespace Rebellion.Systems
         private static T Stamp<T>(T reaction, DuelRequestedResult request)
             where T : GameResult
         {
-            reaction.SourceEventInstanceID = request.SourceEventInstanceID;
+            reaction.SourceEventInstanceID = request?.SourceEventInstanceID;
             return reaction;
         }
     }

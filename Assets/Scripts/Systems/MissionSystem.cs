@@ -66,59 +66,93 @@ namespace Rebellion.Systems
         /// </summary>
         public List<GameResult> HandleResults(IReadOnlyList<CustomMissionRequestedResult> results)
         {
+            List<GameResult> reactions = new List<GameResult>();
             if (results == null)
-                return new List<GameResult>();
+                return reactions;
 
             foreach (CustomMissionRequestedResult result in results)
             {
+                if (result == null)
+                    continue;
                 if (
-                    result == null
-                    || !_customMissionDefinitions.TryGetValue(
+                    !_customMissionDefinitions.TryGetValue(
                         result.MissionDefinitionID,
                         out CustomMissionDefinition definition
                     )
                 )
+                    throw new InvalidOperationException(
+                        $"Custom mission definition '{result.MissionDefinitionID}' is unavailable."
+                    );
+                definition.EnsureValid();
+
+                string rejectionReason = GetCustomMissionRejectionReason(
+                    result,
+                    out Planet location
+                );
+                if (rejectionReason != null)
+                {
+                    reactions.Add(
+                        new CustomMissionRejectedResult
+                        {
+                            Request = result,
+                            Reason = rejectionReason,
+                            SourceEventInstanceID = result.SourceEventInstanceID,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                     continue;
+                }
 
                 CustomMission mission = new CustomMission(
                     definition,
                     result.TargetInstanceID,
+                    location.InstanceID,
                     result.MainParticipantInstanceIDs,
                     result.DecoyParticipantInstanceIDs,
                     result.SourceEventInstanceID,
                     _game
                 );
-                Planet location = _game.GetSceneNodeByInstanceID<Planet>(
-                    mission.LocationInstanceID
-                );
-                if (location == null || !CanStartCustomMission(mission, definition))
-                    continue;
 
                 _game.AttachNode(mission, location);
                 BeginMission(mission);
             }
 
-            return new List<GameResult>();
+            return reactions;
         }
 
-        private bool CanStartCustomMission(
-            CustomMission mission,
-            CustomMissionDefinition definition
+        private string GetCustomMissionRejectionReason(
+            CustomMissionRequestedResult request,
+            out Planet location
         )
         {
-            if (
-                mission
-                    .GetAllParticipants()
-                    .Any(participant =>
-                        participant is Officer { IsKilled: true }
-                        || participant is Officer { IsCaptured: true }
-                        || !participant.IsMovable()
-                        || participant.IsOnMission()
-                    )
-            )
-                return false;
+            ISceneNode target = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                request.TargetInstanceID
+            );
+            location =
+                _game.GetSceneNodeByInstanceID<Planet>(request.LocationInstanceID)
+                ?? target as Planet
+                ?? target?.GetParentOfType<Planet>();
+            if (location == null)
+                return $"Mission location '{request.LocationInstanceID}' is unavailable.";
 
-            return mission.GetTarget<ISceneNode>(_game) != null && definition.Success != null;
+            List<IMissionParticipant> participants = request
+                .MainParticipantInstanceIDs.Concat(request.DecoyParticipantInstanceIDs)
+                .Select(_game.GetSceneNodeByInstanceID<IMissionParticipant>)
+                .ToList();
+            if (
+                participants.Any(participant =>
+                    participant == null
+                    || participant is Officer { IsKilled: true }
+                    || participant is Officer { IsCaptured: true }
+                    || !participant.IsMovable()
+                    || participant.IsOnMission()
+                )
+            )
+                return "One or more mission participants are unavailable.";
+
+            if (target == null || target.GetParent() == null)
+                return $"Mission target '{request.TargetInstanceID}' is unavailable.";
+            return null;
         }
 
         /// <summary>
@@ -933,8 +967,8 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            _game.AddToVoid(specialForces);
-            _game.SetVoidStatus(specialForces, VoidStatus.Destroyed);
+            _game.UnitLifecycle.AddToVoid(specialForces);
+            _game.UnitLifecycle.SetStatus(specialForces, VoidStatus.Destroyed);
             results.Add(
                 new GameObjectDestroyedResult
                 {
@@ -970,8 +1004,8 @@ namespace Rebellion.Systems
             else
             {
                 officer.IsKilled = true;
-                _game.AddToVoid(officer);
-                _game.SetVoidStatus(officer, null);
+                _game.UnitLifecycle.AddToVoid(officer);
+                _game.UnitLifecycle.SetStatus(officer, null);
                 results.Add(
                     new OfficerKilledResult
                     {

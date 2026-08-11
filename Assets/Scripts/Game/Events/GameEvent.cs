@@ -107,21 +107,8 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
-            List<GameResult> results = new List<GameResult>();
             GameActionContext actionContext = new GameActionContext(game, provider, context);
-
-            foreach (GameAction action in Actions)
-            {
-                foreach (GameResult result in action.Execute(actionContext))
-                {
-                    if (result != null && string.IsNullOrEmpty(result.SourceEventInstanceID))
-                        result.SourceEventInstanceID = InstanceID;
-                    context?.AddResult(result);
-                    results.Add(result);
-                }
-            }
-
-            return results;
+            return GameAction.ExecuteAll(Actions, actionContext);
         }
     }
 }

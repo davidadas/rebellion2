@@ -21,6 +21,7 @@ namespace Rebellion.Game.Missions
         public CustomMissionDefinition Definition { get; private set; }
 
         public string MissionDefinitionID { get; set; }
+        public int MissionDefinitionRevision { get; set; }
         public string TargetInstanceID { get; set; }
 
         public CustomMission()
@@ -32,6 +33,7 @@ namespace Rebellion.Game.Missions
         public CustomMission(
             CustomMissionDefinition definition,
             string targetInstanceId,
+            string locationInstanceId,
             IEnumerable<string> participantInstanceIds,
             IEnumerable<string> decoyInstanceIds,
             string sourceEventInstanceId,
@@ -40,15 +42,21 @@ namespace Rebellion.Game.Missions
             : base(
                 definition?.InstanceID ?? throw new ArgumentNullException(nameof(definition)),
                 ResolveOwner(definition, targetInstanceId, participantInstanceIds, game),
-                ResolveLocation(definition, targetInstanceId, game).InstanceID,
+                ResolveLocation(definition, targetInstanceId, locationInstanceId, game).InstanceID,
                 ResolveParticipants(participantInstanceIds, game),
                 ResolveParticipants(decoyInstanceIds, game),
                 OfficerRating.None,
                 definition.DisplayName
             )
         {
+            definition.EnsureValid();
+            if (MainParticipants.Intersect(DecoyParticipants).Any())
+                throw new InvalidOperationException(
+                    "A custom mission participant cannot also be assigned as a decoy."
+                );
             Definition = definition;
             MissionDefinitionID = definition.InstanceID;
+            MissionDefinitionRevision = definition.Revision;
             TargetInstanceID = targetInstanceId;
             CanCancel = definition.CanCancel;
             SourceEventInstanceID = sourceEventInstanceId;
@@ -56,10 +64,14 @@ namespace Rebellion.Game.Missions
 
         public void SetDefinition(CustomMissionDefinition definition)
         {
-            if (definition?.InstanceID != MissionDefinitionID)
+            if (
+                definition?.InstanceID != MissionDefinitionID
+                || definition.Revision != MissionDefinitionRevision
+            )
                 throw new InvalidOperationException(
-                    $"Mission definition '{MissionDefinitionID}' is unavailable."
+                    $"Mission definition '{MissionDefinitionID}' revision {MissionDefinitionRevision} is unavailable."
                 );
+            definition.EnsureValid();
             Definition = definition;
         }
 
@@ -106,7 +118,11 @@ namespace Rebellion.Game.Missions
         }
 
         internal T GetTarget<T>(GameRoot game)
-            where T : class => game.GetSceneNodeByInstanceID<T>(TargetInstanceID);
+            where T : class
+        {
+            T target = game.GetSceneNodeByInstanceID<T>(TargetInstanceID);
+            return target is ISceneNode node && node.GetParent() == null ? null : target;
+        }
 
         private bool EvaluateSuccess(GameRoot game, IRandomNumberProvider provider)
         {
@@ -169,12 +185,23 @@ namespace Rebellion.Game.Missions
         private static List<IMissionParticipant> ResolveParticipants(
             IEnumerable<string> instanceIds,
             GameRoot game
-        ) =>
-            instanceIds
-                ?.Select(game.GetSceneNodeByInstanceID<IMissionParticipant>)
-                .Where(participant => participant != null)
-                .ToList()
-            ?? new List<IMissionParticipant>();
+        )
+        {
+            List<string> ids = instanceIds?.ToList() ?? new List<string>();
+            if (ids.Count != ids.Distinct(StringComparer.Ordinal).Count())
+                throw new InvalidOperationException(
+                    "A custom mission cannot assign the same participant more than once."
+                );
+            List<IMissionParticipant> participants = ids.ConvertAll(
+                game.GetSceneNodeByInstanceID<IMissionParticipant>
+            );
+            int missingIndex = participants.FindIndex(participant => participant == null);
+            if (missingIndex >= 0)
+                throw new InvalidOperationException(
+                    $"Custom mission participant '{ids[missingIndex]}' is unavailable."
+                );
+            return participants;
+        }
 
         private static string ResolveOwner(
             CustomMissionDefinition definition,
@@ -198,10 +225,15 @@ namespace Rebellion.Game.Missions
         private static Planet ResolveLocation(
             CustomMissionDefinition definition,
             string targetInstanceId,
+            string locationInstanceId,
             GameRoot game
         )
         {
-            ISceneNode source = game.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId);
+            ISceneNode source = game.GetSceneNodeByInstanceID<ISceneNode>(
+                string.IsNullOrWhiteSpace(locationInstanceId)
+                    ? targetInstanceId
+                    : locationInstanceId
+            );
             return source as Planet
                 ?? source?.GetParentOfType<Planet>()
                 ?? throw new InvalidOperationException(

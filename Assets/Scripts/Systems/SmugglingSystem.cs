@@ -26,6 +26,7 @@ namespace Rebellion.Systems
         {
             public int Percent { get; set; }
             public string ControllerInstanceID { get; set; }
+            public string BeneficiaryInstanceID { get; set; }
         }
 
         /// <summary>
@@ -35,7 +36,40 @@ namespace Rebellion.Systems
         public SmugglingSystem(GameRoot game)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
+            EnsureConfigIsValid(_game.Config?.Smuggling);
             InitializeStates();
+        }
+
+        private static void EnsureConfigIsValid(GameConfig.SmugglingConfig config)
+        {
+            if (config == null)
+                throw new InvalidOperationException("Smuggling configuration is required.");
+            if (
+                config.SevereSupportMaximum < 0
+                || config.SevereSupportMaximum > config.MajorSupportMaximum
+                || config.MajorSupportMaximum > config.MaximumSupport
+                || config.MaximumSupport > _percentScale
+            )
+                throw new InvalidOperationException(
+                    "Smuggling support thresholds must be ordered between zero and 100."
+                );
+            if (
+                config.SevereLossPercent is < 0 or > _percentScale
+                || config.MajorLossPercent is < 0 or > _percentScale
+                || config.MinorLossPercent is < 0 or > _percentScale
+            )
+                throw new InvalidOperationException(
+                    "Smuggling loss percentages must be between zero and 100."
+                );
+            if (
+                config.CapitalShipSuppression < 0
+                || config.StarfighterSuppression < 0
+                || config.RegimentSuppression < 0
+            )
+                throw new InvalidOperationException(
+                    "Smuggling suppression values cannot be negative."
+                );
+            config.FullySuppressingCapitalShipTypeIDs ??= new List<string>();
         }
 
         /// <summary>
@@ -59,6 +93,7 @@ namespace Rebellion.Systems
                 {
                     Percent = percent,
                     ControllerInstanceID = controller.InstanceID,
+                    BeneficiaryInstanceID = beneficiary.InstanceID,
                 };
             }
         }
@@ -100,7 +135,7 @@ namespace Rebellion.Systems
             )
                 return controller;
 
-            return FindBeneficiary(planet, controller) ?? controller;
+            return FindFaction(state.BeneficiaryInstanceID) ?? controller;
         }
 
         /// <summary>
@@ -114,27 +149,37 @@ namespace Rebellion.Systems
             _states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state);
             int oldPercent = state?.Percent ?? 0;
             Faction oldController = FindFaction(state?.ControllerInstanceID);
+            Faction oldBeneficiary = FindFaction(state?.BeneficiaryInstanceID);
             if (oldController == null && oldPercent > 0)
                 oldController = controller;
 
             if (oldPercent > 0 && oldController != controller)
             {
-                AddChange(
-                    results,
-                    planet,
-                    oldController,
-                    FindBeneficiary(planet, oldController),
-                    oldPercent,
-                    0
-                );
+                AddChange(results, planet, oldController, oldBeneficiary, oldPercent, 0);
                 oldPercent = 0;
+                oldController = controller;
+                oldBeneficiary = null;
             }
 
             Faction beneficiary = FindBeneficiary(planet, controller);
             int newPercent = CalculatePercent(planet, controller, beneficiary);
-            if (oldPercent != newPercent)
+            if (
+                oldPercent != newPercent
+                || oldController != controller
+                || oldBeneficiary != beneficiary
+            )
             {
-                AddChange(results, planet, controller, beneficiary, oldPercent, newPercent);
+                bool beneficiaryChanged = oldPercent > 0 && oldBeneficiary != beneficiary;
+                if (beneficiaryChanged)
+                    AddChange(results, planet, oldController, oldBeneficiary, oldPercent, 0);
+                AddChange(
+                    results,
+                    planet,
+                    controller,
+                    beneficiary,
+                    beneficiaryChanged ? 0 : oldPercent,
+                    newPercent
+                );
             }
 
             if (newPercent <= 0)
@@ -147,6 +192,7 @@ namespace Rebellion.Systems
                 {
                     Percent = newPercent,
                     ControllerInstanceID = controller?.InstanceID,
+                    BeneficiaryInstanceID = beneficiary?.InstanceID,
                 };
             }
         }

@@ -78,7 +78,7 @@ namespace Rebellion.Game.Events
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public int Value { get; set; }
+        public int ExpectedRank { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameConditionContext context)
@@ -90,12 +90,12 @@ namespace Rebellion.Game.Events
             int current = officer.ForceRank;
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
+                EventVariableComparison.Equal => current == ExpectedRank,
+                EventVariableComparison.NotEqual => current != ExpectedRank,
+                EventVariableComparison.GreaterThan => current > ExpectedRank,
+                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedRank,
+                EventVariableComparison.LessThan => current < ExpectedRank,
+                EventVariableComparison.LessThanOrEqual => current <= ExpectedRank,
                 _ => throw new InvalidOperationException(
                     $"Unsupported Force-rank comparison '{Comparison}'."
                 ),

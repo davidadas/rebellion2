@@ -478,7 +478,7 @@ public sealed class FinderWindowRowBuilder
         if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())
             return "On Mission";
 
-        if (personnel is BaseSceneNode { VoidState: not null } voidUnit)
+        if (personnel is IMovable { VoidState: not null } voidUnit)
             return string.IsNullOrWhiteSpace(voidUnit.VoidState.DisplayText)
                 ? voidUnit.VoidState.Status == VoidStatus.OnMission
                     ? "On Mission"

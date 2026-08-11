@@ -87,6 +87,9 @@ namespace Rebellion.Game.Events
         public int? PercentOfBaseRating { get; set; }
         public int? PercentOfCurrentRating { get; set; }
         public int? PercentOfCurrentRank { get; set; }
+        public int? PercentOfPositiveRatingGap { get; set; }
+        public string ReferenceOfficerInstanceID { get; set; }
+        public int MinimumAmount { get; set; }
 
         public override List<GameResult> Execute(GameActionContext context)
         {
@@ -106,6 +109,7 @@ namespace Rebellion.Game.Events
                 PercentOfBaseRating,
                 PercentOfCurrentRating,
                 PercentOfCurrentRank,
+                PercentOfPositiveRatingGap,
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
@@ -115,6 +119,21 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "PercentOfCurrentRank is only valid for the Force rating."
                 );
+            Officer referenceOfficer = null;
+            if (PercentOfPositiveRatingGap.HasValue)
+            {
+                referenceOfficer = game.GetSceneNodeByInstanceID<Officer>(
+                    ReferenceOfficerInstanceID
+                );
+                if (referenceOfficer == null)
+                    throw new InvalidOperationException(
+                        $"AdjustOfficerRating could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                    );
+                if (PercentOfPositiveRatingGap.Value < 0 || MinimumAmount < 0)
+                    throw new InvalidOperationException(
+                        "Rating-gap adjustments require non-negative percentage and minimum values."
+                    );
+            }
 
             int baseRating = officer.GetBaseRating(Rating);
             int adjustment =
@@ -126,7 +145,20 @@ namespace Rebellion.Game.Events
                         ? checked(
                             officer.GetEffectiveRating(Rating) * PercentOfCurrentRating.Value / 100
                         )
-                    : checked(officer.ForceRank * PercentOfCurrentRank.Value / 100)
+                    : PercentOfCurrentRank.HasValue
+                        ? checked(officer.ForceRank * PercentOfCurrentRank.Value / 100)
+                    : Math.Max(
+                        MinimumAmount,
+                        checked(
+                            Math.Max(
+                                0,
+                                referenceOfficer.GetEffectiveRating(Rating)
+                                    - officer.GetEffectiveRating(Rating)
+                            )
+                            * PercentOfPositiveRatingGap.Value
+                            / 100
+                        )
+                    )
                 );
             officer.SetBaseRating(Rating, checked(baseRating + adjustment));
             if (Rating != OfficerRating.Force)
@@ -315,14 +347,18 @@ namespace Rebellion.Game.Events
             Officer first = game.GetSceneNodeByInstanceID<Officer>(FirstOfficerInstanceID);
             Officer second = game.GetSceneNodeByInstanceID<Officer>(SecondOfficerInstanceID);
             if (first == null || second == null)
-                return new List<GameResult>();
+                throw new InvalidOperationException(
+                    $"TriggerDuel could not resolve officers '{FirstOfficerInstanceID}' and '{SecondOfficerInstanceID}'."
+                );
 
             if (context.Activation?.TriggerResult is MissionCompletedResult completion)
             {
                 bool firstParticipated = completion.Participants.Contains(first);
                 bool secondParticipated = completion.Participants.Contains(second);
                 if (firstParticipated == secondParticipated)
-                    return new List<GameResult>();
+                    throw new InvalidOperationException(
+                        "TriggerDuel requires exactly one configured officer to participate in the triggering mission."
+                    );
                 if (secondParticipated)
                     (first, second) = (second, first);
             }

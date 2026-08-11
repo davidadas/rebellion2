@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
@@ -5,7 +6,7 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.FogOfWar
 {
-    [System.Flags]
+    [Flags]
     public enum PlanetIntelligenceCategory
     {
         None = 0,
@@ -15,7 +16,8 @@ namespace Rebellion.Game.FogOfWar
         GroundForces = 1 << 3,
         Buildings = 1 << 4,
         Officers = 1 << 5,
-        All = System | CapitalShips | Starfighters | GroundForces | Buildings | Officers,
+        Missions = 1 << 6,
+        All = System | CapitalShips | Starfighters | GroundForces | Buildings | Officers | Missions,
     }
 
     /// <summary>

@@ -86,7 +86,7 @@ namespace Rebellion.Game.Events
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public int Value { get; set; }
+        public int ExpectedValue { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameConditionContext context)
@@ -94,12 +94,12 @@ namespace Rebellion.Game.Events
             int current = context.Game.EventRuntime.GetVariable(Key);
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == Value,
-                EventVariableComparison.NotEqual => current != Value,
-                EventVariableComparison.GreaterThan => current > Value,
-                EventVariableComparison.GreaterThanOrEqual => current >= Value,
-                EventVariableComparison.LessThan => current < Value,
-                EventVariableComparison.LessThanOrEqual => current <= Value,
+                EventVariableComparison.Equal => current == ExpectedValue,
+                EventVariableComparison.NotEqual => current != ExpectedValue,
+                EventVariableComparison.GreaterThan => current > ExpectedValue,
+                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedValue,
+                EventVariableComparison.LessThan => current < ExpectedValue,
+                EventVariableComparison.LessThanOrEqual => current <= ExpectedValue,
                 _ => throw new InvalidOperationException(
                     $"Unsupported event variable comparison '{Comparison}'."
                 ),
@@ -120,7 +120,7 @@ namespace Rebellion.Game.Events
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public string Value { get; set; }
+        public string ExpectedValue { get; set; }
 
         public override bool IsMet(GameConditionContext context)
         {
@@ -134,7 +134,7 @@ namespace Rebellion.Game.Events
             {
                 bool contains = false;
                 foreach (object value in values)
-                    contains |= Compare(value, Value) == 0;
+                    contains |= Compare(value, ExpectedValue) == 0;
                 return Comparison switch
                 {
                     EventVariableComparison.Equal => contains,
@@ -145,7 +145,19 @@ namespace Rebellion.Game.Events
                 };
             }
 
-            int comparison = Compare(actual, Value);
+            if (
+                Comparison
+                    is EventVariableComparison.GreaterThan
+                        or EventVariableComparison.GreaterThanOrEqual
+                        or EventVariableComparison.LessThan
+                        or EventVariableComparison.LessThanOrEqual
+                && actual is not int
+            )
+                throw new InvalidOperationException(
+                    $"Binding '{Name}' supports ordered comparisons only when it contains an integer."
+                );
+
+            int comparison = Compare(actual, ExpectedValue);
             return Comparison switch
             {
                 EventVariableComparison.Equal => comparison == 0,
@@ -168,11 +180,21 @@ namespace Rebellion.Game.Events
             }
             if (actual is bool boolean && bool.TryParse(expected, out bool expectedBoolean))
                 return boolean.CompareTo(expectedBoolean);
-            if (actual is int integer && int.TryParse(expected, out int expectedInteger))
+            if (actual is bool)
+                throw new InvalidOperationException($"'{expected}' is not a Boolean value.");
+            if (actual is int integer)
+            {
+                if (!int.TryParse(expected, out int expectedInteger))
+                    throw new InvalidOperationException($"'{expected}' is not an integer value.");
                 return integer.CompareTo(expectedInteger);
+            }
             if (actual is Enum)
                 return string.Compare(actual.ToString(), expected, StringComparison.Ordinal);
-            return string.Compare(actual?.ToString(), expected, StringComparison.Ordinal);
+            if (actual is string text)
+                return string.Compare(text, expected, StringComparison.Ordinal);
+            throw new InvalidOperationException(
+                $"Binding values of type '{actual?.GetType().Name ?? "null"}' cannot be compared."
+            );
         }
     }
 }

@@ -31,6 +31,11 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "SuppressNextAutomaticMessage requires a concrete message result type."
                 );
+            GameResult targetResult = context.Activation?.TriggerResult;
+            if (targetResult == null)
+                throw new InvalidOperationException(
+                    "SuppressNextAutomaticMessage requires a triggering result."
+                );
 
             Faction recipient = string.IsNullOrWhiteSpace(RecipientFactionInstanceID)
                 ? null
@@ -46,6 +51,7 @@ namespace Rebellion.Game.Events
                 {
                     MessageType = MessageType,
                     Recipient = recipient,
+                    TargetResult = targetResult,
                     Tick = game.CurrentTick,
                 },
             };
@@ -65,14 +71,11 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Selects the primary or fallback body from the current conditions.
         /// </summary>
-        /// <param name="game">The current game state.</param>
-        /// <param name="triggerResult">The result that activated the containing event.</param>
+        /// <param name="context">The current condition context and event bindings.</param>
         /// <returns>The body selected by the condition results.</returns>
-        public string Resolve(GameRoot game, GameResult triggerResult = null)
+        public string Resolve(GameConditionContext context)
         {
-            return Conditions.TrueForAll(condition => condition.IsMet(game, triggerResult))
-                ? Body
-                : ElseBody;
+            return Conditions.TrueForAll(condition => condition.IsMet(context)) ? Body : ElseBody;
         }
     }
 
@@ -116,18 +119,17 @@ namespace Rebellion.Game.Events
         /// <returns>A single narrative message result.</returns>
         public override List<GameResult> Execute(GameActionContext context)
         {
-            return ExecuteCore(context.Game, context.Activation?.TriggerResult, context.Random);
+            return ExecuteCore(context);
         }
 
         /// <summary>
         /// Builds the configured narrative result from the optional triggering result.
         /// </summary>
-        private List<GameResult> ExecuteCore(
-            GameRoot game,
-            GameResult triggerResult,
-            IRandomNumberProvider provider
-        )
+        private List<GameResult> ExecuteCore(GameActionContext context)
         {
+            GameRoot game = context.Game;
+            GameResult triggerResult = context.Activation?.TriggerResult;
+            IRandomNumberProvider provider = context.Random;
             ISceneNode subject = game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
             ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
                 RelatedSubjectInstanceID
@@ -150,11 +152,25 @@ namespace Rebellion.Game.Events
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
             string bodyTemplate = Body ?? string.Empty;
+            GameConditionContext conditionContext = new GameConditionContext(
+                game,
+                context.Activation
+            );
             foreach (ConditionalMessageBody segment in ConditionalBodies)
-                bodyTemplate += segment.Resolve(game, triggerResult) ?? string.Empty;
-            DuelResult encounter = triggerResult as DuelResult;
-            string voicePath = AmbientAudio?.Path ?? encounter?.AudioPath;
-            string imagePath = BackgroundImage?.Path ?? encounter?.ImagePath;
+                bodyTemplate += segment.Resolve(conditionContext) ?? string.Empty;
+            EnsureSingleBackgroundSource(BackgroundImage);
+            if (AmbientAudio != null)
+                EnsureSingleMediaSource(AmbientAudio.Path, AmbientAudio.Binding, "AmbientAudio");
+            string ambientAudioPath = ResolveMediaPath(
+                AmbientAudio?.Path,
+                AmbientAudio?.Binding,
+                context
+            );
+            string imagePath = ResolveMediaPath(
+                BackgroundImage?.Path,
+                BackgroundImage?.Binding,
+                context
+            );
 
             return new List<GameResult>
             {
@@ -170,12 +186,54 @@ namespace Rebellion.Game.Events
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
-                    AmbientAudioPath = voicePath,
+                    AmbientAudioPath = ambientAudioPath,
                     OfficerVoicePath = OfficerVoice?.Resolve(subject as Officer, provider),
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },
             };
+        }
+
+        private static string ResolveMediaPath(
+            string path,
+            string binding,
+            GameActionContext context
+        )
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                return path;
+            if (string.IsNullOrWhiteSpace(binding))
+                return null;
+            if (context.Activation?.TryGetBinding(binding, out string boundPath) == true)
+                return boundPath;
+            throw new InvalidOperationException(
+                $"SendMessage could not resolve media binding '{binding}'."
+            );
+        }
+
+        private static void EnsureSingleBackgroundSource(MessageBackgroundImage image)
+        {
+            if (image == null)
+                return;
+            int sourceCount =
+                (string.IsNullOrWhiteSpace(image.Key) ? 0 : 1)
+                + (string.IsNullOrWhiteSpace(image.Path) ? 0 : 1)
+                + (string.IsNullOrWhiteSpace(image.Binding) ? 0 : 1);
+            if (sourceCount != 1)
+                throw new InvalidOperationException(
+                    "BackgroundImage requires exactly one of Key, Path, or Binding."
+                );
+        }
+
+        private static void EnsureSingleMediaSource(string path, string binding, string name)
+        {
+            int sourceCount =
+                (string.IsNullOrWhiteSpace(path) ? 0 : 1)
+                + (string.IsNullOrWhiteSpace(binding) ? 0 : 1);
+            if (sourceCount != 1)
+                throw new InvalidOperationException(
+                    $"{name} requires exactly one of Path or Binding."
+                );
         }
     }
 }

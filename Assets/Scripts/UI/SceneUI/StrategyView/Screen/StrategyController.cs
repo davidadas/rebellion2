@@ -8,7 +8,6 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -79,7 +78,6 @@ public sealed class StrategyController
 
     private CancelStack cancelStack;
     private GameManager gameManager;
-    private MessageSystem messageSystem;
     private StrategyBriefingController briefingController;
     private bool briefingActive;
     private EventSystem briefingEventSystem;
@@ -155,7 +153,7 @@ public sealed class StrategyController
         gameManager.GameSpeedChanged += MarkDirty;
         gameManager.GameReplaced += HandleGameReplaced;
         gameManager.TickCompleted += RefreshStrategyState;
-        BindMessageSystem(gameManager.MessageSystem);
+        gameManager.MessageDelivered += HandleMessageDelivered;
 
         InitializeScreenControllers();
         InitializeWindowControllers();
@@ -668,8 +666,8 @@ public sealed class StrategyController
             gameManager.GameSpeedChanged -= MarkDirty;
             gameManager.GameReplaced -= HandleGameReplaced;
             gameManager.TickCompleted -= RefreshStrategyState;
+            gameManager.MessageDelivered -= HandleMessageDelivered;
         }
-        BindMessageSystem(null);
     }
 
     /// <summary>
@@ -1421,7 +1419,6 @@ public sealed class StrategyController
         ResetStrategyPresentation();
         uiContext.ReplaceGame(game);
         PreloadStrategySfx();
-        BindMessageSystem(gameManager.MessageSystem);
         strategyMusicController.Resume();
         RefreshStrategyState();
         PlayStrategyReadySound();
@@ -1465,20 +1462,6 @@ public sealed class StrategyController
     {
         FactionTheme playerTheme = uiContext?.GetPlayerFactionTheme();
         AudioManager.EnsureExists().PreloadSfx(StrategyUISoundPaths.GetPreloadPaths(playerTheme));
-    }
-
-    /// <summary>
-    /// Connects advisor notifications to the active message system.
-    /// </summary>
-    /// <param name="system">The message system to observe, or null while disposing.</param>
-    private void BindMessageSystem(MessageSystem system)
-    {
-        if (messageSystem != null)
-            messageSystem.MessageDelivered -= HandleMessageDelivered;
-
-        messageSystem = system;
-        if (messageSystem != null)
-            messageSystem.MessageDelivered += HandleMessageDelivered;
     }
 
     /// <summary>

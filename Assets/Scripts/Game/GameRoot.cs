@@ -31,6 +31,12 @@ namespace Rebellion.Game
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
+        private UnitLifecycleService _unitLifecycle;
+
+        [PersistableIgnore]
+        public UnitLifecycleService UnitLifecycle =>
+            _unitLifecycle ??= new UnitLifecycleService(this);
+
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -336,7 +342,8 @@ namespace Rebellion.Game
             try
             {
                 AttachNode(node, newParent);
-                ((BaseSceneNode)node).VoidState = null;
+                if (node is IMovable movable)
+                    movable.VoidState = null;
             }
             catch
             {
@@ -344,152 +351,6 @@ namespace Rebellion.Game
                 throw;
             }
         }
-
-        /// <summary>
-        /// Removes an owned unit from active play while retaining it in faction-owned storage.
-        /// </summary>
-        /// <param name="node">The attached faction-owned unit to retain.</param>
-        public void AddToVoid(ISceneNode node)
-        {
-            if (node == null)
-                throw new ArgumentNullException(nameof(node));
-            if (string.IsNullOrEmpty(node.OwnerInstanceID))
-                throw new InvalidOperationException(
-                    "Only faction-owned entities can enter a void pool."
-                );
-            if (node.GetParent() == null)
-                throw new InvalidOperationException(
-                    $"{node.GetDisplayName()} is not attached to the scene graph."
-                );
-
-            Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
-            List<ISceneNode> pool = faction.VoidPool ??= new List<ISceneNode>();
-            if (pool.Contains(node))
-                return;
-            if (!IsVoidUnit(node))
-                throw new InvalidOperationException(
-                    $"{node.GetType().Name} cannot enter a void pool."
-                );
-
-            ISceneNode previousParent = node.GetParent();
-            DetachNode(node);
-            try
-            {
-                pool.Add(node);
-                node.Traverse(AddSceneNodeByInstanceID);
-            }
-            catch
-            {
-                pool.Remove(node);
-                node.Traverse(RemoveSceneNodeByInstanceID);
-                AttachNode(node, previousParent);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Sets the persisted reason that an off-map unit is unavailable.
-        /// </summary>
-        /// <param name="node">The unit already retained by a void pool.</param>
-        /// <param name="status">The reason the unit is outside active play.</param>
-        /// <param name="displayText">The optional player-facing status text.</param>
-        public void SetVoidStatus(ISceneNode node, VoidStatus? status, string displayText = null)
-        {
-            if (node == null)
-                throw new ArgumentNullException(nameof(node));
-            if (!IsInVoid(node))
-                throw new InvalidOperationException(
-                    $"{node.GetDisplayName()} is not in a void pool."
-                );
-            ((BaseSceneNode)node).VoidState = new VoidState
-            {
-                Status = status,
-                DisplayText = displayText,
-            };
-        }
-
-        /// <summary>
-        /// Registers retained off-map units after save-game deserialization.
-        /// </summary>
-        public void InitializeVoidPools()
-        {
-            foreach (Faction faction in Factions)
-            {
-                faction.VoidPool ??= new List<ISceneNode>();
-                foreach (ISceneNode node in faction.VoidPool)
-                {
-                    node.SetParent(null);
-                    node.Traverse(child =>
-                    {
-                        if (!NodesByInstanceID.ContainsKey(child.InstanceID))
-                            AddSceneNodeByInstanceID(child);
-                    });
-                }
-            }
-        }
-
-        /// <summary>
-        /// Atomically restores an off-map unit to an explicitly selected destination.
-        /// </summary>
-        /// <param name="node">The retained unit to return.</param>
-        /// <param name="destination">The scene container receiving the unit.</param>
-        public void ActivateFromVoid(ISceneNode node, ContainerNode destination)
-        {
-            if (node == null)
-                throw new ArgumentNullException(nameof(node));
-            if (destination == null)
-                throw new ArgumentNullException(nameof(destination));
-            Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
-            List<ISceneNode> pool = faction.VoidPool ??= new List<ISceneNode>();
-            if (!pool.Contains(node))
-                throw new InvalidOperationException(
-                    $"{node.GetDisplayName()} is not in a void pool."
-                );
-
-            if (!destination.CanAcceptChild(node))
-                throw new InvalidOperationException(
-                    $"{destination.GetDisplayName()} cannot accept {node.GetDisplayName()}."
-                );
-
-            pool.Remove(node);
-            node.Traverse(RemoveSceneNodeByInstanceID);
-            try
-            {
-                AttachNode(node, destination);
-                ((BaseSceneNode)node).VoidState = null;
-            }
-            catch
-            {
-                pool.Add(node);
-                node.Traverse(AddSceneNodeByInstanceID);
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Returns whether a unit or one of its retained ancestors is stored in a faction void pool.
-        /// </summary>
-        /// <param name="node">The unit to inspect.</param>
-        /// <returns>True when the unit is outside active play in a void pool.</returns>
-        public bool IsInVoid(ISceneNode node)
-        {
-            for (ISceneNode current = node; current != null; current = current.GetParent())
-            {
-                if (Factions.Any(faction => faction.VoidPool?.Contains(current) == true))
-                    return true;
-            }
-            return false;
-        }
-
-        private static bool IsVoidUnit(ISceneNode node) =>
-            node
-                is Building
-                    or CapitalShip
-                    or Fleet
-                    or Officer
-                    or Regiment
-                    or SpecialForces
-                    or Starfighter;
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.
@@ -610,23 +471,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Transfers ownership of a node to a different faction. Deregisters the node from
-        /// its current owner's index (if any), updates the owner ID on the node, and adds
-        /// it to the new owner's index.
-        /// </summary>
-        /// <param name="node">The node to transfer.</param>
-        /// <param name="ownerInstanceId">The new owner's faction instance ID.</param>
-        public void ChangeUnitOwnership(ISceneNode node, string ownerInstanceId)
-        {
-            Faction faction = GetFactionByOwnerInstanceID(ownerInstanceId);
-
-            DeregsiterOwnedUnit(node);
-
-            node.SetOwnerInstanceID(ownerInstanceId);
-            faction.AddOwnedUnit(node);
-        }
-
-        /// <summary>
         /// Returns the full pool of active game events.
         /// </summary>
         /// <returns>The list backing <see cref="EventPool"/>.</returns>
@@ -729,7 +573,7 @@ namespace Rebellion.Game
                 }
             );
 
-            InitializeVoidPools();
+            UnitLifecycle.Initialize();
 
             return galaxy;
         }
