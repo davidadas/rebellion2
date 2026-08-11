@@ -1,3 +1,4 @@
+using Rebellion.Game.Tactical;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Results
@@ -22,5 +23,8 @@ namespace Rebellion.Game.Results
 
         /// <summary>Gets or sets the combat planet identifier.</summary>
         public string PlanetInstanceID { get; set; }
+
+        /// <summary>Gets or sets the resumable tactical state for this encounter.</summary>
+        public TacticalBattleSnapshot TacticalBattle { get; set; }
     }
 }

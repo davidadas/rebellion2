@@ -261,7 +261,9 @@ namespace Rebellion.Systems
             string retreatingFleetInstanceId = null;
             if (_game.PendingSpaceCombat.AttackerOwnerInstanceID == retreatingFactionInstanceId)
                 retreatingFleetInstanceId = attacker?.GetInstanceID();
-            else if (_game.PendingSpaceCombat.DefenderOwnerInstanceID == retreatingFactionInstanceId)
+            else if (
+                _game.PendingSpaceCombat.DefenderOwnerInstanceID == retreatingFactionInstanceId
+            )
                 retreatingFleetInstanceId = defender?.GetInstanceID();
 
             if (

@@ -61,6 +61,28 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Restores both tactical sides' control modes without repeating initial configuration.
+        /// </summary>
+        /// <param name="attackerComputerControlled">Whether the attacker uses computer commands.</param>
+        /// <param name="defenderComputerControlled">Whether the defender uses computer commands.</param>
+        /// <param name="configured">Whether initial player command assignment already occurred.</param>
+        internal void Restore(
+            bool attackerComputerControlled,
+            bool defenderComputerControlled,
+            bool configured
+        )
+        {
+            computerControlledSides[TacticalBattleSide.Attacker] = attackerComputerControlled;
+            computerControlledSides[TacticalBattleSide.Defender] = defenderComputerControlled;
+            playerControlConfigured = configured;
+        }
+
+        /// <summary>
+        /// Gets whether initial player command assignment already occurred.
+        /// </summary>
+        internal bool IsPlayerControlConfigured => playerControlConfigured;
+
+        /// <summary>
         /// Returns the opposing member of the two-sided tactical battle.
         /// </summary>
         /// <param name="side">The known side.</param>

@@ -166,6 +166,136 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Recreates a tactical battle and restores its saved mutable state.
+        /// </summary>
+        /// <param name="encounter">The pending strategic encounter.</param>
+        /// <param name="random">The game's deterministic random source.</param>
+        /// <param name="snapshot">The tactical state to restore.</param>
+        /// <returns>The restored tactical battle session.</returns>
+        public static TacticalBattleSession Restore(
+            PendingCombatResult encounter,
+            IRandomNumberProvider random,
+            TacticalBattleSnapshot snapshot
+        )
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+
+            TacticalBattleSession session = Create(encounter, random);
+            session.RestoreState(snapshot);
+            return session;
+        }
+
+        /// <summary>
+        /// Captures the session-owned state required to resume this tactical battle.
+        /// </summary>
+        /// <returns>The resumable tactical state.</returns>
+        public TacticalBattleSnapshot CaptureState()
+        {
+            return new TacticalBattleSnapshot
+            {
+                Phase = Phase,
+                ArrivalElapsedTime = arrivalElapsedTime,
+                PauseCount = pauseCount,
+                AttackerComputerControlled = commandControl.IsComputerControlled(
+                    TacticalBattleSide.Attacker
+                ),
+                DefenderComputerControlled = commandControl.IsComputerControlled(
+                    TacticalBattleSide.Defender
+                ),
+                PlayerControlConfigured = commandControl.IsPlayerControlConfigured,
+                NavigationVisibility = Enumerable
+                    .Range(0, NavigationGrid.SetCount)
+                    .Select(NavigationGrid.IsVisible)
+                    .ToList(),
+                Units = units.Select(unit => unit.CaptureState()).ToList(),
+                Groups = groups
+                    .Select((group, groupIndex) => group.CaptureState(groupIndex))
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Restores session, unit, command-group, and waypoint state from a saved battle.
+        /// </summary>
+        /// <param name="snapshot">The saved tactical state.</param>
+        private void RestoreState(TacticalBattleSnapshot snapshot)
+        {
+            if (snapshot.Units == null || snapshot.Units.Count != units.Count)
+                throw new ArgumentException(
+                    "The tactical unit snapshot is incomplete.",
+                    nameof(snapshot)
+                );
+            if (snapshot.Groups == null || snapshot.Groups.Count != groups.Count)
+                throw new ArgumentException(
+                    "The tactical group snapshot is incomplete.",
+                    nameof(snapshot)
+                );
+            if (
+                snapshot.NavigationVisibility == null
+                || snapshot.NavigationVisibility.Count != NavigationGrid.SetCount
+            )
+            {
+                throw new ArgumentException(
+                    "The tactical navigation snapshot is incomplete.",
+                    nameof(snapshot)
+                );
+            }
+
+            Dictionary<string, TacticalUnitState> unitsById = units.ToDictionary(unit =>
+                unit.Unit.GetInstanceID()
+            );
+            foreach (TacticalUnitStateSnapshot unitSnapshot in snapshot.Units)
+            {
+                if (
+                    unitSnapshot == null
+                    || string.IsNullOrEmpty(unitSnapshot.UnitInstanceID)
+                    || !unitsById.TryGetValue(
+                        unitSnapshot.UnitInstanceID,
+                        out TacticalUnitState unit
+                    )
+                )
+                {
+                    throw new ArgumentException(
+                        "The tactical snapshot references an unknown unit.",
+                        nameof(snapshot)
+                    );
+                }
+
+                unit.RestoreState(unitSnapshot);
+            }
+
+            foreach (TacticalShipGroupSnapshot groupSnapshot in snapshot.Groups)
+            {
+                if (
+                    groupSnapshot == null
+                    || groupSnapshot.GroupIndex < 0
+                    || groupSnapshot.GroupIndex >= groups.Count
+                )
+                {
+                    throw new ArgumentException(
+                        "The tactical snapshot references an unknown command group.",
+                        nameof(snapshot)
+                    );
+                }
+
+                groups[groupSnapshot.GroupIndex].RestoreState(groupSnapshot, unitsById);
+            }
+
+            for (int setIndex = 0; setIndex < NavigationGrid.SetCount; setIndex++)
+                NavigationGrid.SetVisibility(setIndex, snapshot.NavigationVisibility[setIndex]);
+
+            Phase = snapshot.Phase;
+            arrivalElapsedTime = snapshot.ArrivalElapsedTime;
+            pauseCount = Math.Max(0, snapshot.PauseCount);
+            commandControl.Restore(
+                snapshot.AttackerComputerControlled,
+                snapshot.DefenderComputerControlled,
+                snapshot.PlayerControlConfigured
+            );
+        }
+
+        /// <summary>
         /// Builds the strategic combat result after one side can no longer fight.
         /// </summary>
         /// <returns>The completed result without applying it to the strategic game.</returns>

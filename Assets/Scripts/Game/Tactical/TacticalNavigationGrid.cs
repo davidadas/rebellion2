@@ -68,6 +68,17 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Restores one waypoint-marker set's visibility without toggling it.
+        /// </summary>
+        /// <param name="setIndex">The zero-based internal shell index.</param>
+        /// <param name="visible">Whether the marker set should be visible.</param>
+        internal void SetVisibility(int setIndex, bool visible)
+        {
+            ValidateSetIndex(setIndex);
+            visibility[setIndex] = visible;
+        }
+
+        /// <summary>
         /// Maps the left-to-right HUD button order to the outer-to-inner marker shells.
         /// </summary>
         /// <param name="buttonIndex">The zero-based HUD button index.</param>

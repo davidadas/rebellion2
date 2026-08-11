@@ -223,6 +223,129 @@ namespace Rebellion.Game.Tactical
         public float MovementDisruptionTime => movementDisruptionTime;
 
         /// <summary>
+        /// Captures every mutable value owned by this tactical unit.
+        /// </summary>
+        /// <returns>The resumable unit state.</returns>
+        internal TacticalUnitStateSnapshot CaptureState()
+        {
+            return new TacticalUnitStateSnapshot
+            {
+                UnitInstanceID = Unit.GetInstanceID(),
+                Hull = Hull,
+                Shields = Shields,
+                Position = CaptureVector(Position),
+                Forward = CaptureVector(Forward),
+                IsDeployed = IsDeployed,
+                IsWithdrawing = IsWithdrawing,
+                HasWithdrawn = HasWithdrawn,
+                ComponentDisruptionTime = componentDisruptionTime,
+                MovementDisruptionTime = movementDisruptionTime,
+                ShieldRechargeRemainder = shieldRechargeRemainder,
+                DamageControlTime = damageControlTime,
+                ArcCharge = arcCharge.ToList(),
+                ArcChargeRequired = arcChargeRequired.ToList(),
+                SystemDamage = systemDamage.ToList(),
+                RechargingArcs = rechargingArcs.ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Restores mutable state previously captured for this tactical unit.
+        /// </summary>
+        /// <param name="snapshot">The saved state to restore.</param>
+        internal void RestoreState(TacticalUnitStateSnapshot snapshot)
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+            if (
+                !string.Equals(
+                    snapshot.UnitInstanceID,
+                    Unit.GetInstanceID(),
+                    StringComparison.Ordinal
+                )
+            )
+                throw new ArgumentException(
+                    "The tactical snapshot belongs to another unit.",
+                    nameof(snapshot)
+                );
+
+            CopyValues(snapshot.ArcCharge, arcCharge, nameof(snapshot.ArcCharge));
+            CopyValues(
+                snapshot.ArcChargeRequired,
+                arcChargeRequired,
+                nameof(snapshot.ArcChargeRequired)
+            );
+            CopyValues(snapshot.SystemDamage, systemDamage, nameof(snapshot.SystemDamage));
+
+            Hull = snapshot.Hull;
+            Shields = snapshot.Shields;
+            Position = RestoreVector(snapshot.Position, nameof(snapshot.Position));
+            Forward = RestoreVector(snapshot.Forward, nameof(snapshot.Forward));
+            IsDeployed = snapshot.IsDeployed;
+            IsWithdrawing = snapshot.IsWithdrawing;
+            HasWithdrawn = snapshot.HasWithdrawn;
+            componentDisruptionTime = snapshot.ComponentDisruptionTime;
+            movementDisruptionTime = snapshot.MovementDisruptionTime;
+            shieldRechargeRemainder = snapshot.ShieldRechargeRemainder;
+            damageControlTime = snapshot.DamageControlTime;
+            rechargingArcs.Clear();
+            foreach (TacticalWeaponArc arc in snapshot.RechargingArcs)
+                rechargingArcs.Enqueue(arc);
+        }
+
+        /// <summary>
+        /// Converts a runtime vector to its persisted representation.
+        /// </summary>
+        /// <param name="value">The vector to capture.</param>
+        /// <returns>The persisted vector components.</returns>
+        private static TacticalVectorSnapshot CaptureVector(Vector3 value)
+        {
+            return new TacticalVectorSnapshot
+            {
+                X = value.X,
+                Y = value.Y,
+                Z = value.Z,
+            };
+        }
+
+        /// <summary>
+        /// Converts persisted vector components to a runtime vector.
+        /// </summary>
+        /// <param name="snapshot">The persisted vector.</param>
+        /// <param name="parameterName">The owning argument name used by validation.</param>
+        /// <returns>The restored runtime vector.</returns>
+        private static Vector3 RestoreVector(TacticalVectorSnapshot snapshot, string parameterName)
+        {
+            if (snapshot == null)
+                throw new ArgumentException("The tactical vector is missing.", parameterName);
+
+            return new Vector3(snapshot.X, snapshot.Y, snapshot.Z);
+        }
+
+        /// <summary>
+        /// Copies a fixed-size persisted list into its runtime state array.
+        /// </summary>
+        /// <typeparam name="T">The stored value type.</typeparam>
+        /// <param name="source">The persisted values.</param>
+        /// <param name="destination">The fixed-size runtime array.</param>
+        /// <param name="parameterName">The owning argument name used by validation.</param>
+        private static void CopyValues<T>(
+            IReadOnlyList<T> source,
+            T[] destination,
+            string parameterName
+        )
+        {
+            if (source == null || source.Count != destination.Length)
+                throw new ArgumentException(
+                    "The tactical state has an invalid value count.",
+                    parameterName
+                );
+
+            for (int index = 0; index < destination.Length; index++)
+                destination[index] = source[index];
+        }
+
+        /// <summary>
         /// Initializes the mutable tactical state for one strategic unit.
         /// </summary>
         /// <param name="unit">The represented strategic unit.</param>

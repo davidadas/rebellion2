@@ -7,6 +7,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -100,23 +101,51 @@ namespace Rebellion.Tests.Game
                 AttackerOwnerInstanceID = "FACTION1",
                 DefenderOwnerInstanceID = "FACTION2",
                 PlanetInstanceID = "PLANET1",
+                TacticalBattle = new TacticalBattleSnapshot
+                {
+                    Phase = TacticalBattlePhase.Engagement,
+                    ArrivalElapsedTime = 1.5f,
+                    PauseCount = 1,
+                    Units = new List<TacticalUnitStateSnapshot>
+                    {
+                        new TacticalUnitStateSnapshot
+                        {
+                            UnitInstanceID = "SHIP1",
+                            Hull = 75,
+                            Shields = 20,
+                            Position = new TacticalVectorSnapshot
+                            {
+                                X = 1f,
+                                Y = 2f,
+                                Z = 3f,
+                            },
+                            Forward = new TacticalVectorSnapshot { Z = 1f },
+                            ArcCharge = new List<float> { 1f, 2f, 3f, 4f },
+                            ArcChargeRequired = new List<float> { 4f, 3f, 2f, 1f },
+                            SystemDamage = new List<int> { 0, 1, 2, 3, 4 },
+                        },
+                    },
+                },
             };
 
             string xml = SerializationHelper.Serialize(_game);
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
 
             Assert.IsNotNull(restored.PendingSpaceCombat);
-            Assert.AreEqual(
-                "FLEET-ATTACKER",
-                restored.PendingSpaceCombat.AttackerFleetInstanceID
-            );
-            Assert.AreEqual(
-                "FLEET-DEFENDER",
-                restored.PendingSpaceCombat.DefenderFleetInstanceID
-            );
+            Assert.AreEqual("FLEET-ATTACKER", restored.PendingSpaceCombat.AttackerFleetInstanceID);
+            Assert.AreEqual("FLEET-DEFENDER", restored.PendingSpaceCombat.DefenderFleetInstanceID);
             Assert.AreEqual("FACTION1", restored.PendingSpaceCombat.AttackerOwnerInstanceID);
             Assert.AreEqual("FACTION2", restored.PendingSpaceCombat.DefenderOwnerInstanceID);
             Assert.AreEqual("PLANET1", restored.PendingSpaceCombat.PlanetInstanceID);
+            Assert.AreEqual(
+                TacticalBattlePhase.Engagement,
+                restored.PendingSpaceCombat.TacticalBattle.Phase
+            );
+            Assert.AreEqual(75, restored.PendingSpaceCombat.TacticalBattle.Units.Single().Hull);
+            CollectionAssert.AreEqual(
+                new[] { 0, 1, 2, 3, 4 },
+                restored.PendingSpaceCombat.TacticalBattle.Units.Single().SystemDamage
+            );
         }
 
         [Test]

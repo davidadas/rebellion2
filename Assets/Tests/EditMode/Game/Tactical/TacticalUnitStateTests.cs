@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
@@ -555,6 +556,49 @@ namespace Rebellion.Tests.Game.Tactical
             int strength = unit.GetTorpedoAttackStrength();
 
             Assert.AreEqual(12, strength);
+        }
+
+        [Test]
+        public void RestoreState_MutatedUnit_RestoresCompleteMutableState()
+        {
+            CapitalShip ship = CreateCapitalShip(hull: 100, shields: 20, weaponRechargeRate: 10);
+            ship.InstanceID = "SHIP1";
+            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 10, 0, 0, 0, 50 };
+            TacticalUnitState unit = TacticalUnitState.FromCapitalShip(
+                ship,
+                TacticalBattleSide.Attacker
+            );
+            unit.Position = new Vector3(4f, 5f, 6f);
+            unit.Forward = Vector3.UnitX;
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 5),
+                CreateRandom(0d)
+            );
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.IonCannon, 16),
+                CreateRandom(0d, 0d)
+            );
+            unit.FireArc(TacticalWeaponArc.Fore, 40f);
+            unit.BeginWithdrawal();
+            TacticalUnitStateSnapshot snapshot = unit.CaptureState();
+
+            unit.Hull = 1;
+            unit.Shields = 1;
+            unit.Position = Vector3.Zero;
+            unit.Forward = Vector3.UnitZ;
+            unit.CompleteWithdrawal();
+            unit.Advance(100f, CreateRandom(1d));
+            unit.RestoreState(snapshot);
+
+            Assert.AreEqual(100, unit.Hull);
+            Assert.AreEqual(0, unit.Shields);
+            Assert.AreEqual(new Vector3(4f, 5f, 6f), unit.Position);
+            Assert.AreEqual(Vector3.UnitX, unit.Forward);
+            Assert.IsTrue(unit.IsWithdrawing);
+            Assert.IsFalse(unit.HasWithdrawn);
+            Assert.AreEqual(30f, unit.ComponentDisruptionTime);
+            Assert.AreEqual(1, unit.GetSystemDamage(TacticalDamageSystem.ShieldGenerator));
+            Assert.AreEqual(0, unit.GetAvailableAttackStrength(TacticalWeaponArc.Fore, 40f));
         }
 
         private static TacticalUnitState CreateCapitalShipState(

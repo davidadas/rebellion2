@@ -738,6 +738,68 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Restore_SavedSession_RestoresSessionUnitAndGroupState()
+        {
+            CapitalShip attackingShip = CreateShip(600, 250);
+            attackingShip.InstanceID = "ATTACKER1";
+            CapitalShip defendingShip = CreateShip(450, 175);
+            defendingShip.InstanceID = "DEFENDER1";
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(attackingShip),
+                DefenderFleet = CreateFleet(defendingShip),
+            };
+            TacticalBattleSession original = CreateTacticalSession(encounter);
+            original.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+            original.SetComputerControlled(TacticalBattleSide.Attacker, true);
+            original.NavigationGrid.ToggleVisibility(2);
+            TacticalUnitState attackingUnit = original.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            TacticalUnitState defendingUnit = original.Units.Single(unit =>
+                unit.Unit == defendingShip
+            );
+            attackingUnit.Position = new Vector3(12f, 3f, -4f);
+            attackingUnit.ApplyDamage(300);
+            TacticalShipGroup attackingGroup = original
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single();
+            attackingGroup.SetFormation(TacticalFormation.Surround);
+            attackingGroup.SetBehavior(TacticalBehavior.AttackCapitalShips);
+            attackingGroup.AssignPrimaryTarget(defendingUnit);
+            attackingGroup.ReplaceNavigationPoints(new[] { new TacticalNavPoint(10f, 20f, 30f) });
+            original.Pause();
+            TacticalBattleSnapshot snapshot = original.CaptureState();
+
+            TacticalBattleSession restored = TacticalBattleSession.Restore(
+                encounter,
+                new FixedRandomProvider(new[] { 0d }),
+                snapshot
+            );
+            restored.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+
+            TacticalUnitState restoredAttacker = restored.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            TacticalShipGroup restoredGroup = restored
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single();
+            Assert.AreEqual(TacticalBattlePhase.Engagement, restored.Phase);
+            Assert.IsTrue(restored.IsPaused);
+            Assert.IsTrue(restored.IsComputerControlled(TacticalBattleSide.Attacker));
+            Assert.IsTrue(restored.IsComputerControlled(TacticalBattleSide.Defender));
+            Assert.IsTrue(restored.NavigationGrid.IsVisible(2));
+            Assert.AreEqual(new Vector3(12f, 3f, -4f), restoredAttacker.Position);
+            Assert.AreEqual(550, restoredAttacker.Hull);
+            Assert.AreEqual(TacticalFormation.Surround, restoredGroup.Formation);
+            Assert.AreEqual(TacticalBehavior.AttackCapitalShips, restoredGroup.Behavior);
+            Assert.AreSame(defendingShip, restoredGroup.Targets.Single().Unit);
+            Assert.AreEqual(10f, restoredGroup.NavigationPoints.Single().X);
+            Assert.AreEqual(20f, restoredGroup.NavigationPoints.Single().Y);
+            Assert.AreEqual(30f, restoredGroup.NavigationPoints.Single().Z);
+        }
+
+        [Test]
         public void OrderWithdrawal_ActiveSide_AssignsEveryCommandGroup()
         {
             Starfighter fighters = CreateFighters(12, 10);

@@ -169,6 +169,146 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Captures the group's mutable command state in stable battle order.
+        /// </summary>
+        /// <param name="groupIndex">The group's index in the battle group list.</param>
+        /// <returns>The resumable group state.</returns>
+        internal TacticalShipGroupSnapshot CaptureState(int groupIndex)
+        {
+            return new TacticalShipGroupSnapshot
+            {
+                GroupIndex = groupIndex,
+                UnitInstanceIDs = units.Select(unit => unit.Unit.GetInstanceID()).ToList(),
+                Behavior = Behavior,
+                Formation = Formation,
+                MarkerPosition = CaptureVector(MarkerPosition),
+                CommandRevision = CommandRevision,
+                TargetInstanceIDs = targets.Select(target => target.Unit.GetInstanceID()).ToList(),
+                EscortTargetInstanceID = EscortTarget?.Unit.GetInstanceID(),
+                NavigationPoints = navigationPoints
+                    .Select(point => new TacticalVectorSnapshot
+                    {
+                        X = point.X,
+                        Y = point.Y,
+                        Z = point.Z,
+                    })
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Restores this group's membership and active command state.
+        /// </summary>
+        /// <param name="snapshot">The saved group state.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        internal void RestoreState(
+            TacticalShipGroupSnapshot snapshot,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+            if (unitsById == null)
+                throw new ArgumentNullException(nameof(unitsById));
+
+            units.Clear();
+            units.AddRange(ResolveUnits(snapshot.UnitInstanceIDs, unitsById));
+            targets.Clear();
+            targets.AddRange(ResolveUnits(snapshot.TargetInstanceIDs, unitsById));
+            navigationPoints.Clear();
+            navigationPoints.AddRange(
+                snapshot.NavigationPoints.Select(point => new TacticalNavPoint(
+                    point.X,
+                    point.Y,
+                    point.Z
+                ))
+            );
+            Behavior = snapshot.Behavior;
+            Formation = snapshot.Formation;
+            MarkerPosition = RestoreVector(snapshot.MarkerPosition);
+            CommandRevision = snapshot.CommandRevision;
+            EscortTarget = string.IsNullOrEmpty(snapshot.EscortTargetInstanceID)
+                ? null
+                : ResolveUnit(snapshot.EscortTargetInstanceID, unitsById);
+        }
+
+        /// <summary>
+        /// Resolves an ordered identifier list to participating tactical units.
+        /// </summary>
+        /// <param name="unitInstanceIDs">The ordered strategic unit identifiers.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        /// <returns>The resolved tactical units in the saved order.</returns>
+        private static IEnumerable<TacticalUnitState> ResolveUnits(
+            IEnumerable<string> unitInstanceIDs,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (unitInstanceIDs == null)
+                throw new ArgumentException(
+                    "The tactical unit identifiers are missing.",
+                    nameof(unitInstanceIDs)
+                );
+
+            return unitInstanceIDs.Select(unitInstanceID => ResolveUnit(unitInstanceID, unitsById));
+        }
+
+        /// <summary>
+        /// Resolves one saved strategic unit identifier to its tactical state.
+        /// </summary>
+        /// <param name="unitInstanceID">The saved strategic unit identifier.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        /// <returns>The matching tactical unit.</returns>
+        private static TacticalUnitState ResolveUnit(
+            string unitInstanceID,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (
+                string.IsNullOrEmpty(unitInstanceID)
+                || !unitsById.TryGetValue(unitInstanceID, out TacticalUnitState unit)
+            )
+            {
+                throw new ArgumentException(
+                    $"Tactical unit '{unitInstanceID}' is not part of this battle.",
+                    nameof(unitInstanceID)
+                );
+            }
+
+            return unit;
+        }
+
+        /// <summary>
+        /// Converts a runtime vector to persisted components.
+        /// </summary>
+        /// <param name="value">The vector to capture.</param>
+        /// <returns>The persisted vector.</returns>
+        private static TacticalVectorSnapshot CaptureVector(Vector3 value)
+        {
+            return new TacticalVectorSnapshot
+            {
+                X = value.X,
+                Y = value.Y,
+                Z = value.Z,
+            };
+        }
+
+        /// <summary>
+        /// Converts persisted components to a runtime vector.
+        /// </summary>
+        /// <param name="snapshot">The persisted vector.</param>
+        /// <returns>The restored runtime vector.</returns>
+        private static Vector3 RestoreVector(TacticalVectorSnapshot snapshot)
+        {
+            if (snapshot == null)
+                throw new ArgumentException(
+                    "The tactical marker position is missing.",
+                    nameof(snapshot)
+                );
+
+            return new Vector3(snapshot.X, snapshot.Y, snapshot.Z);
+        }
+
+        /// <summary>
         /// Adds an opposing active unit to the group's target list.
         /// </summary>
         /// <param name="target">The target to add.</param>
