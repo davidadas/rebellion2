@@ -752,6 +752,27 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AutomaticCapitalTargetScanFails_DoesNotFire()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(100, 0);
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                },
+                new FixedRandomProvider(new[] { 0.5d })
+            );
+            AdvanceArrival(session);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == defendingShip).Hull);
+        }
+
+        [Test]
         public void Advance_MultipleTargetsInDifferentCapitalArcs_FiresStrongestArc()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

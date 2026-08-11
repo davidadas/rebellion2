@@ -759,11 +759,14 @@ namespace Rebellion.Game.Tactical
         /// <param name="attacker">The capital ship selecting its firing arc.</param>
         /// <param name="candidates">The active opposing targets to consider.</param>
         /// <returns>The attacks produced by the selected arc.</returns>
-        private static IReadOnlyList<PendingAttack> FireStrongestCapitalArc(
+        private IReadOnlyList<PendingAttack> FireStrongestCapitalArc(
             TacticalUnitState attacker,
             IEnumerable<TacticalUnitState> candidates
         )
         {
+            if (random.NextInt(0, 3) != 0)
+                return Array.Empty<PendingAttack>();
+
             CapitalArcAttackPlan[] plans = Enum.GetValues(typeof(TacticalWeaponArc))
                 .Cast<TacticalWeaponArc>()
                 .Select(arc => new CapitalArcAttackPlan(arc))
