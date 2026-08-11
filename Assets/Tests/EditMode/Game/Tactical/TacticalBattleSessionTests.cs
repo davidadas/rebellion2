@@ -372,6 +372,33 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void TryFireSuperlaser_CarrierIsDestroyed_DestroysHeldFighters()
+        {
+            Starfighter fighters = CreateFighters(12, 0);
+            fighters.Hyperdrive = 0;
+            CapitalShip carrier = CreateShip(600, 0, fighters);
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(carrier),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            TacticalUnitState carrierState = session.Units.Single(unit => unit.Unit == carrier);
+            TacticalUnitState fighterState = session.Units.Single(unit => unit.Unit == fighters);
+            TacticalUnitState deathStarState = session.Units.Single(unit => unit.Unit == deathStar);
+
+            bool fired = session.TryFireSuperlaser(deathStarState, carrierState);
+
+            Assert.IsTrue(fired);
+            Assert.AreEqual(0, carrierState.Hull);
+            Assert.AreEqual(0, fighterState.Hull);
+            Assert.IsTrue(session.IsComplete);
+        }
+
+        [Test]
         public void SetAutomated_DisabledSide_PreservesExistingOrders()
         {
             TacticalBattleSession session = CreateSession();

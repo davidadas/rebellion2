@@ -222,6 +222,7 @@ namespace Rebellion.Game.Tactical
             events.Add(
                 TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, target)
             );
+            fighterDeploymentSystem.ResolveCarrierStateChanges();
             return true;
         }
 
