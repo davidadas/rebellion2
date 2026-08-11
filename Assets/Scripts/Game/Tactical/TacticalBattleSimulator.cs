@@ -470,14 +470,25 @@ namespace Rebellion.Game.Tactical
                 return currentTarget;
             }
 
-            TacticalUnitState selectedTarget =
-                group?.Targets.Count > 0
-                    ? eligibleTargets.FirstOrDefault()
-                    : eligibleTargets
-                        .OrderBy(candidate =>
-                            Vector3.DistanceSquared(unit.Position, candidate.Position)
-                        )
-                        .FirstOrDefault();
+            TacticalUnitState selectedTarget;
+            if (group?.Targets.Count > 0)
+            {
+                selectedTarget = eligibleTargets.FirstOrDefault();
+            }
+            else if (
+                behavior is TacticalBehavior.AttackFighters or TacticalBehavior.AttackCapitalShips
+            )
+            {
+                selectedTarget = eligibleTargets.LastOrDefault();
+            }
+            else
+            {
+                selectedTarget = eligibleTargets
+                    .OrderBy(candidate =>
+                        Vector3.DistanceSquared(unit.Position, candidate.Position)
+                    )
+                    .FirstOrDefault();
+            }
             if (selectedTarget == null)
                 targets.Remove(unit);
             else

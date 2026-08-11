@@ -916,6 +916,43 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AttackCapitalShipsBehavior_TargetsLastEligibleCapitalShip()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 6, 0, 0, 0, 200 };
+            CapitalShip firstTarget = CreateShip(100, 0);
+            CapitalShip lastTarget = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(firstTarget, lastTarget),
+                }
+            );
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            TacticalUnitState firstTargetUnit = session.Units.Single(unit =>
+                unit.Unit == firstTarget
+            );
+            TacticalUnitState lastTargetUnit = session.Units.Single(unit =>
+                unit.Unit == lastTarget
+            );
+            attackingUnit.Position = Vector3.Zero;
+            firstTargetUnit.Position = new Vector3(0f, 0f, 10f);
+            lastTargetUnit.Position = new Vector3(0f, 0f, 20f);
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackCapitalShips);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(firstTargetUnit.InitialHull, firstTargetUnit.Hull);
+            Assert.Less(lastTargetUnit.Hull, lastTargetUnit.InitialHull);
+        }
+
+        [Test]
         public void Advance_OrdinaryAttackAgainstMoreAgileFighters_ReducesDamage()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
