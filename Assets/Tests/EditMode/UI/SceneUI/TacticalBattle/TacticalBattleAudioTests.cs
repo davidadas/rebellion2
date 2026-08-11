@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 
@@ -63,6 +64,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             AttackAcknowledged = CreateGroupVoice("attack"),
                             FormationAcknowledged = CreateGroupVoice("formation"),
                             MissionAcknowledged = CreateGroupVoice("mission"),
+                            Outcome = new TacticalOutcomeVoiceTheme
+                            {
+                                EnemyWithdrew = "victory-withdrawal",
+                                EnemyDestroyed = "victory-destruction",
+                                FleetDestroyed = "defeat",
+                            },
                         },
                     },
                     [TacticalBattleSide.Defender] = new TacticalBattleTheme
@@ -206,6 +213,65 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 new[] { "attacker-voice/fighter-group-gold-mission" },
                 played
             );
+        }
+
+        [Test]
+        public void QueueOutcome_EnemyWithdrew_QueuesWithdrawalVictoryCue()
+        {
+            audio.QueueOutcome(
+                TacticalBattleSide.Attacker,
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Withdrawn
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/victory-withdrawal" }, played);
+        }
+
+        [Test]
+        public void QueueOutcome_EnemyDestroyed_QueuesDestructionVictoryCue()
+        {
+            audio.QueueOutcome(
+                TacticalBattleSide.Attacker,
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Destroyed
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/victory-destruction" }, played);
+        }
+
+        [Test]
+        public void QueueOutcome_PlayedFleetDestroyed_QueuesDefeatCue()
+        {
+            audio.QueueOutcome(
+                TacticalBattleSide.Attacker,
+                SpaceCombatSideOutcome.Destroyed,
+                SpaceCombatSideOutcome.Active
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/defeat" }, played);
+        }
+
+        [Test]
+        public void IsVoiceIdle_ActiveOutcomeCue_ReturnsFalseUntilCueCompletes()
+        {
+            audio.QueueOutcome(
+                TacticalBattleSide.Attacker,
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Destroyed
+            );
+            audio.Advance(0f);
+
+            bool active = audio.IsVoiceIdle;
+            audio.Advance(1f);
+
+            Assert.IsFalse(active);
+            Assert.IsTrue(audio.IsVoiceIdle);
         }
 
         [Test]

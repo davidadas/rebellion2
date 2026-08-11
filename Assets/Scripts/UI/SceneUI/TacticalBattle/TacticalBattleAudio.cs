@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 
@@ -23,6 +24,11 @@ internal sealed class TacticalBattleAudio
     private float elapsedTime;
     private float unitCueRemainingDuration;
     private float voiceCueRemainingDuration;
+
+    /// <summary>
+    /// Gets whether every queued spoken report has finished.
+    /// </summary>
+    internal bool IsVoiceIdle => voiceCues.Count == 0 && voiceCueRemainingDuration <= 0f;
 
     /// <summary>
     /// Creates a tactical cue presenter using resident content audio.
@@ -121,6 +127,23 @@ internal sealed class TacticalBattleAudio
     )
     {
         QueueGroupVoice(side, GetTheme(side).Voice?.MissionAcknowledged, kind, groupIndex);
+    }
+
+    /// <summary>
+    /// Queues the final report heard by the played side when combat ends.
+    /// </summary>
+    /// <param name="side">The side receiving the report.</param>
+    /// <param name="playedOutcome">The played side's final outcome.</param>
+    /// <param name="opposingOutcome">The opposing side's final outcome.</param>
+    internal void QueueOutcome(
+        TacticalBattleSide side,
+        SpaceCombatSideOutcome playedOutcome,
+        SpaceCombatSideOutcome opposingOutcome
+    )
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        string audio = voice?.Outcome?.GetAudio(playedOutcome, opposingOutcome);
+        Enqueue(voice?.GetAudioPath(audio), TacticalAudioChannel.Voice);
     }
 
     /// <summary>

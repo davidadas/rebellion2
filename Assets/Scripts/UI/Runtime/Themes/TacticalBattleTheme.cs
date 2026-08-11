@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Util.Serialization;
 
@@ -74,6 +75,8 @@ public sealed class TacticalVoiceTheme
 
     public TacticalGroupVoiceTheme MissionAcknowledged { get; set; }
 
+    public TacticalOutcomeVoiceTheme Outcome { get; set; }
+
     /// <summary>
     /// Builds the content address for one configured tactical voice clip.
     /// </summary>
@@ -127,6 +130,60 @@ public sealed class TacticalVoiceTheme
             foreach (string audio in group.GetAudioNames())
                 yield return audio;
         }
+
+        if (Outcome == null)
+            yield break;
+        foreach (string audio in Outcome.GetAudioNames())
+            yield return audio;
+    }
+}
+
+/// <summary>
+/// Defines the final spoken report for each tactical battle outcome.
+/// </summary>
+[PersistableObject]
+public sealed class TacticalOutcomeVoiceTheme
+{
+    public string EnemyWithdrew { get; set; }
+
+    public string EnemyDestroyed { get; set; }
+
+    public string FleetDestroyed { get; set; }
+
+    /// <summary>
+    /// Resolves the report heard by the played side when tactical combat ends.
+    /// </summary>
+    /// <param name="playedOutcome">The played side's final outcome.</param>
+    /// <param name="opposingOutcome">The opposing side's final outcome.</param>
+    /// <returns>The configured outcome report.</returns>
+    public string GetAudio(
+        SpaceCombatSideOutcome playedOutcome,
+        SpaceCombatSideOutcome opposingOutcome
+    )
+    {
+        if (playedOutcome != SpaceCombatSideOutcome.Active)
+            return FleetDestroyed;
+
+        return opposingOutcome switch
+        {
+            SpaceCombatSideOutcome.Withdrawn => EnemyWithdrew,
+            SpaceCombatSideOutcome.Destroyed => EnemyDestroyed,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Enumerates every configured outcome report for preloading.
+    /// </summary>
+    /// <returns>The configured audio names.</returns>
+    public IEnumerable<string> GetAudioNames()
+    {
+        if (!string.IsNullOrWhiteSpace(EnemyWithdrew))
+            yield return EnemyWithdrew;
+        if (!string.IsNullOrWhiteSpace(EnemyDestroyed))
+            yield return EnemyDestroyed;
+        if (!string.IsNullOrWhiteSpace(FleetDestroyed))
+            yield return FleetDestroyed;
     }
 }
 

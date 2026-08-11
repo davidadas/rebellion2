@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 
 namespace Rebellion.Tests.UI.Runtime.Themes
@@ -76,6 +77,45 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
         }
 
+        [Test]
+        public void GetAudio_ActiveAgainstWithdrawn_ReturnsWithdrawalVictory()
+        {
+            TacticalOutcomeVoiceTheme theme = CreateOutcomeTheme();
+
+            string audio = theme.GetAudio(
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Withdrawn
+            );
+
+            Assert.AreEqual("victory-withdrawal", audio);
+        }
+
+        [Test]
+        public void GetAudio_ActiveAgainstDestroyed_ReturnsDestructionVictory()
+        {
+            TacticalOutcomeVoiceTheme theme = CreateOutcomeTheme();
+
+            string audio = theme.GetAudio(
+                SpaceCombatSideOutcome.Active,
+                SpaceCombatSideOutcome.Destroyed
+            );
+
+            Assert.AreEqual("victory-destruction", audio);
+        }
+
+        [Test]
+        public void GetAudio_DestroyedAgainstActive_ReturnsFleetDefeat()
+        {
+            TacticalOutcomeVoiceTheme theme = CreateOutcomeTheme();
+
+            string audio = theme.GetAudio(
+                SpaceCombatSideOutcome.Destroyed,
+                SpaceCombatSideOutcome.Active
+            );
+
+            Assert.AreEqual("defeat", audio);
+        }
+
         /// <summary>
         /// Creates a minimal command-group response set for resolution tests.
         /// </summary>
@@ -87,6 +127,20 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 Ship = "ship",
                 TaskForces = new List<string> { "task-force-1", "task-force-2" },
                 FighterGroups = new List<string> { "fighter-group-red" },
+            };
+        }
+
+        /// <summary>
+        /// Creates the three original terminal tactical reports.
+        /// </summary>
+        /// <returns>The configured outcome reports.</returns>
+        private static TacticalOutcomeVoiceTheme CreateOutcomeTheme()
+        {
+            return new TacticalOutcomeVoiceTheme
+            {
+                EnemyWithdrew = "victory-withdrawal",
+                EnemyDestroyed = "victory-destruction",
+                FleetDestroyed = "defeat",
             };
         }
     }

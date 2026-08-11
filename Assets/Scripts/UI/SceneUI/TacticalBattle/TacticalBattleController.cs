@@ -13,6 +13,7 @@ using UnityEngine;
 public sealed class TacticalBattleController : MonoBehaviour
 {
     private bool isCompleting;
+    private bool completionReportQueued;
     private bool isReady;
     private bool observing;
     private bool playerPaused;
@@ -222,7 +223,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         RefreshWithdrawalAvailability();
         RefreshSuperlaser();
         if (Session.IsComplete && !battleRenderer.HasActiveCombatEffects)
-            CompleteBattle();
+            AdvanceCompletionReport();
     }
 
     /// <summary>
@@ -545,7 +546,31 @@ public sealed class TacticalBattleController : MonoBehaviour
         Session.ResolveImmediately();
         Session.DrainEvents();
         battleRenderer.Synchronize();
-        CompleteBattle();
+    }
+
+    /// <summary>
+    /// Presents the played faction's final report before leaving tactical combat.
+    /// </summary>
+    private void AdvanceCompletionReport()
+    {
+        if (!completionReportQueued)
+        {
+            SpaceCombatResult result = Session.BuildResult();
+            SpaceCombatSideOutcome playedOutcome =
+                playerSide == TacticalBattleSide.Attacker
+                    ? result.AttackerOutcome
+                    : result.DefenderOutcome;
+            SpaceCombatSideOutcome opposingOutcome =
+                playerSide == TacticalBattleSide.Attacker
+                    ? result.DefenderOutcome
+                    : result.AttackerOutcome;
+            battleAudio.QueueOutcome(playerSide, playedOutcome, opposingOutcome);
+            battleAudio.Advance(0f);
+            completionReportQueued = true;
+        }
+
+        if (battleAudio.IsVoiceIdle)
+            CompleteBattle();
     }
 
     /// <summary>
