@@ -57,7 +57,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// </summary>
     public bool HasActiveCombatEffects =>
         GetComponentInChildren<TacticalCombatEffectView>(true) != null
-        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null;
+        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null
+        || GetComponentInChildren<TacticalDestructionEffectView>(true) != null;
 
     /// <summary>
     /// Loads and creates all model-backed tactical units.
@@ -171,6 +172,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         {
             if (combatEvent.Kind == TacticalCombatEventKind.WeaponImpact)
                 CreateWeaponEffect(combatEvent);
+            else if (combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
+                CreateDestructionEffect(combatEvent);
             else if (combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired)
                 CreateSuperlaserEffect(combatEvent);
             else if (combatEvent.Kind == TacticalCombatEventKind.TractorLock)
@@ -178,6 +181,24 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             else if (combatEvent.Kind == TacticalCombatEventKind.TractorRelease)
                 SetTractorLockEffect(combatEvent.Target, false);
         }
+    }
+
+    /// <summary>
+    /// Creates one object-scaled pyrotechnic burst at a destroyed unit's final position.
+    /// </summary>
+    /// <param name="combatEvent">The unit-destruction event to present.</param>
+    private void CreateDestructionEffect(TacticalCombatEvent combatEvent)
+    {
+        const float fallbackDiameter = 4f;
+        float diameter =
+            unitViewsByState.TryGetValue(combatEvent.Source, out TacticalUnitView unitView)
+            && unitView.PresentationDiameter > 0f
+                ? unitView.PresentationDiameter
+                : fallbackDiameter;
+        GameObject effect = new GameObject("Destruction Effect");
+        effect.transform.SetParent(transform, false);
+        effect.transform.localPosition = ToUnityVector(combatEvent.SourcePosition);
+        effect.AddComponent<TacticalDestructionEffectView>().Initialize(diameter);
     }
 
     /// <summary>

@@ -123,6 +123,13 @@
       <Private>false</Private>
     </Reference>
     <Reference
+      Include="UnityEngine.ParticleSystemModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.ParticleSystemModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
       Include="UnityEngine.AnimationModule"
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll')"
     >

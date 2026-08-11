@@ -150,7 +150,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
-        public void PresentEvents_UnitDestroyed_DoesNotCreateAnAdditionalEffect()
+        public void PresentEvents_UnitDestroyed_CreatesPyrotechnicEffect()
         {
             TacticalUnitState unit = CreateCapitalShip(TacticalBattleSide.Attacker);
 
@@ -161,7 +161,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 }
             );
 
-            Assert.IsFalse(renderer.HasActiveCombatEffects);
+            Assert.IsTrue(renderer.HasActiveCombatEffects);
+            Assert.IsNotNull(root.GetComponentInChildren<TacticalDestructionEffectView>());
         }
 
         [TestCase(

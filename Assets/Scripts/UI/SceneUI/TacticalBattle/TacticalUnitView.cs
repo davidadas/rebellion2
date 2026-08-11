@@ -26,6 +26,12 @@ public sealed class TacticalUnitView : MonoBehaviour
     internal TacticalUnitState Unit => unit;
 
     /// <summary>
+    /// Gets the largest presentation dimension used to scale object-bound effects.
+    /// </summary>
+    internal float PresentationDiameter =>
+        Mathf.Max(presentationBounds.size.x, presentationBounds.size.y, presentationBounds.size.z);
+
+    /// <summary>
     /// Connects this presentation object to its tactical unit.
     /// </summary>
     /// <param name="state">The tactical unit to present.</param>
