@@ -28,6 +28,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
+    private TacticalBattleAudio battleAudio;
     private TacticalCameraRig cameraRig;
     private TacticalBattleTheme tacticalTheme;
     private TacticalBattleView view;
@@ -92,9 +93,10 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (gameManager == null)
             throw new InvalidOperationException("Tactical combat requires an active game.");
 
-        FactionTheme theme = new FactionThemeLibrary(
+        FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
             bootstrap.GetContentPack().GameData.FactionThemes
-        ).GetTheme(gameManager.GetPlayerFaction().InstanceID);
+        );
+        FactionTheme theme = themeLibrary.GetTheme(gameManager.GetPlayerFaction().InstanceID);
         tacticalTheme =
             theme.TacticalBattle
             ?? throw new InvalidOperationException(
@@ -107,6 +109,29 @@ public sealed class TacticalBattleController : MonoBehaviour
             Session.Encounter.AttackerOwnerInstanceID == playerFactionId
                 ? TacticalBattleSide.Attacker
                 : TacticalBattleSide.Defender;
+        IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> tacticalThemes =
+            new Dictionary<TacticalBattleSide, TacticalBattleTheme>
+            {
+                [TacticalBattleSide.Attacker] = GetTacticalTheme(
+                    themeLibrary,
+                    Session.Encounter.AttackerOwnerInstanceID
+                ),
+                [TacticalBattleSide.Defender] = GetTacticalTheme(
+                    themeLibrary,
+                    Session.Encounter.DefenderOwnerInstanceID
+                ),
+            };
+        AudioManager audioManager = bootstrap.GetAudioManager();
+        IEnumerable<string> tacticalAudioPaths = tacticalThemes
+            .Values.SelectMany(GetAudioPaths)
+            .Distinct(StringComparer.Ordinal);
+        audioManager.PreloadSfx(tacticalAudioPaths);
+        ContentAssets contentAssets = bootstrap.GetContentAssets();
+        battleAudio = new TacticalBattleAudio(
+            tacticalThemes,
+            audioManager.PlaySfx,
+            path => contentAssets.GetPreloadedAudio(path).length
+        );
         Session.ConfigurePlayerControl(playerSide);
         observing = Session.IsAutomated(playerSide);
         view.SetObserving(observing);
@@ -151,6 +176,12 @@ public sealed class TacticalBattleController : MonoBehaviour
             bootstrap.GetContentAssets(),
             shutdown.Token
         );
+        if (Session.Phase == TacticalBattlePhase.Arrival)
+        {
+            foreach (TacticalUnitState unit in Session.Units.Where(unit => unit.IsActive))
+                battleAudio.QueueArrival(unit.Side);
+            battleAudio.Advance(0f);
+        }
         playerDeathStar = Session.Units.FirstOrDefault(unit =>
             unit.Side == playerSide && unit.Unit is CapitalShip { IsDeathStar: true }
         );
@@ -170,6 +201,8 @@ public sealed class TacticalBattleController : MonoBehaviour
         Session.Advance(Time.deltaTime);
         IReadOnlyList<TacticalCombatEvent> combatEvents = Session.DrainEvents();
         battleRenderer.PresentEvents(combatEvents);
+        battleAudio.QueueEvents(combatEvents);
+        battleAudio.Advance(Time.unscaledDeltaTime);
         if (
             selectedCapitalShip != null
             && combatEvents.Any(combatEvent =>
@@ -185,6 +218,38 @@ public sealed class TacticalBattleController : MonoBehaviour
         RefreshSuperlaser();
         if (Session.IsComplete && !battleRenderer.HasActiveCombatEffects)
             CompleteBattle();
+    }
+
+    /// <summary>
+    /// Gets the required tactical presentation for one encounter faction.
+    /// </summary>
+    /// <param name="themeLibrary">The loaded faction presentation library.</param>
+    /// <param name="factionInstanceID">The encounter faction identifier.</param>
+    /// <returns>The faction's tactical presentation.</returns>
+    private static TacticalBattleTheme GetTacticalTheme(
+        FactionThemeLibrary themeLibrary,
+        string factionInstanceID
+    )
+    {
+        return themeLibrary.GetTheme(factionInstanceID).TacticalBattle
+            ?? throw new InvalidOperationException(
+                $"Faction '{factionInstanceID}' requires a tactical battle theme."
+            );
+    }
+
+    /// <summary>
+    /// Enumerates every configured tactical cue for preloading.
+    /// </summary>
+    /// <param name="theme">The tactical presentation to inspect.</param>
+    /// <returns>The configured non-empty cue paths.</returns>
+    private static IEnumerable<string> GetAudioPaths(TacticalBattleTheme theme)
+    {
+        return new[]
+        {
+            theme.ArrivalAudioPath,
+            theme.WithdrawalAudioPath,
+            theme.SuperlaserAudioPath,
+        }.Where(path => !string.IsNullOrWhiteSpace(path));
     }
 
     /// <summary>

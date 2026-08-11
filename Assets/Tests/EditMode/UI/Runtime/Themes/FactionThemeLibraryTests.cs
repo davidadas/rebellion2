@@ -105,5 +105,34 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual(200, allianceMusic.AdvantageMinimumRatio);
             Assert.AreEqual(50, allianceMusic.DisadvantageMaximumRatio);
         }
+
+        [Test]
+        public void GetTheme_TacticalBattleContainsFactionAudioMappings()
+        {
+            TacticalBattleTheme alliance = _library.GetTheme("FNALL1").TacticalBattle;
+            TacticalBattleTheme empire = _library.GetTheme("FNEMP1").TacticalBattle;
+
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13028-1033-tactical-blast",
+                alliance.ArrivalAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13029-1033-tactical-blast",
+                alliance.WithdrawalAudioPath
+            );
+            Assert.IsNull(alliance.SuperlaserAudioPath);
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
+                empire.ArrivalAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13031-1033-tactical-blast",
+                empire.WithdrawalAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13020-1033-tactical-blast",
+                empire.SuperlaserAudioPath
+            );
+        }
     }
 }
