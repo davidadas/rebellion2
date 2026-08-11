@@ -209,9 +209,34 @@ namespace Rebellion.Systems
             SpaceCombatDecision decision = _pendingDecision;
             SpaceCombatResult result = session.BuildResult();
             result.Events = ApplyCombatResult(result);
+            ApplyTacticalWithdrawals(decision, result);
             ClearCombatFlags(decision);
             _pendingDecision = null;
             return new List<GameResult> { result };
+        }
+
+        /// <summary>
+        /// Moves surviving fleets that left the tactical battlefield to their strategic retreat
+        /// destinations.
+        /// </summary>
+        /// <param name="decision">The encounter identifying both fleets.</param>
+        /// <param name="result">The completed tactical result.</param>
+        private void ApplyTacticalWithdrawals(
+            SpaceCombatDecision decision,
+            SpaceCombatResult result
+        )
+        {
+            Fleet attacker = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.AttackerFleetInstanceID
+            );
+            Fleet defender = _game.GetSceneNodeByInstanceID<Fleet>(
+                decision.DefenderFleetInstanceID
+            );
+
+            if (result.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn)
+                TryRetreatFleet(attacker, defender, ignoreGravityWell: false);
+            if (result.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn)
+                TryRetreatFleet(defender, attacker, ignoreGravityWell: false);
         }
 
         private static bool MatchesPendingDecision(

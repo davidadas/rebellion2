@@ -1262,6 +1262,39 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePendingTactical_WithdrawnFleet_MovesToFriendlyPlanet()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet combatPlanet, _) = CreatePlanet(game, "combat");
+            (Planet empireHome, _) = CreatePlanet(game, "empireHome", owner: "empire");
+            empireHome.PositionX = 100;
+            Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 500, 10);
+            CreateFleet(game, "af1", "alliance", combatPlanet, 1, 500, 10);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+            TacticalBattleSession session = TacticalBattleSession.Create(pending, new QueueRNG());
+            TacticalBattleSide empireSide =
+                pending.AttackerOwnerInstanceID == "empire"
+                    ? TacticalBattleSide.Attacker
+                    : TacticalBattleSide.Defender;
+            foreach (TacticalUnitState unit in session.Units.Where(unit => unit.Side == empireSide))
+            {
+                unit.BeginWithdrawal();
+                unit.CompleteWithdrawal();
+            }
+
+            manager.ResolvePendingTactical(session);
+
+            Assert.AreSame(empireHome, empireFleet.GetParentOfType<Planet>());
+            Assert.IsNotNull(empireFleet.Movement);
+            Assert.IsFalse(manager.HasPendingDecision);
+        }
+
+        [Test]
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
             GameRoot game = CreateGame();
