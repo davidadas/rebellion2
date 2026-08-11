@@ -894,6 +894,31 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_OrdinaryAttackAgainstMoreAgileFighters_ReducesDamage()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.Maneuverability = 2;
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 8, 0, 0, 0, 200 };
+            Starfighter defendingFighters = CreateFighters(12, 0);
+            defendingFighters.Agility = 8;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(100, 0, defendingFighters)),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackFighters);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(10, session.Units.Single(unit => unit.Unit == defendingFighters).Hull);
+        }
+
+        [Test]
         public void Advance_FighterLaserAttackAgainstUnshieldedCapitalShip_FiresTorpedoes()
         {
             Starfighter attackingFighters = CreateFighters(12, 0);

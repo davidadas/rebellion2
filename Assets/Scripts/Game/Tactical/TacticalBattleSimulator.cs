@@ -184,10 +184,11 @@ namespace Rebellion.Game.Tactical
             {
                 bool targetWasActive = attack.Target.IsActive;
                 int shieldsBeforeImpact = attack.Target.Shields;
-                attack.Target.ApplyDamage(attack.Attack, random);
+                TacticalAttack resolvedAttack = AdjustAttackForFighterEvasion(attack);
+                attack.Target.ApplyDamage(resolvedAttack, random);
                 TacticalImpactState impactState =
                     !attack.Target.IsActive ? TacticalImpactState.Destroyed
-                    : attack.Attack.Strength > shieldsBeforeImpact ? TacticalImpactState.Hull
+                    : resolvedAttack.Strength > shieldsBeforeImpact ? TacticalImpactState.Hull
                     : TacticalImpactState.Shield;
                 events.Add(
                     TacticalCombatEvent.WeaponImpact(
@@ -211,6 +212,30 @@ namespace Rebellion.Game.Tactical
             fighterDeploymentSystem.ResolveCarrierStateChanges();
             tractorBeamSystem.ReleaseInvalidLocks();
             events.AddRange(tractorBeamSystem.DrainEvents());
+        }
+
+        /// <summary>
+        /// Scales ordinary weapon damage by the target fighter's turn rate relative to its attacker.
+        /// </summary>
+        /// <param name="pendingAttack">The unresolved attack and its participating units.</param>
+        /// <returns>The attack strength after fighter evasion is applied.</returns>
+        private static TacticalAttack AdjustAttackForFighterEvasion(PendingAttack pendingAttack)
+        {
+            TacticalAttack attack = pendingAttack.Attack;
+            if (
+                pendingAttack.Target.Kind != TacticalUnitKind.Fighters
+                || attack.WeaponType == TacticalWeaponType.Torpedo
+                || attack.Strength == 0
+            )
+            {
+                return attack;
+            }
+
+            float attackerTurnRate = Math.Max(0.1f, pendingAttack.Source.Maneuverability);
+            float targetTurnRate = Math.Max(0.1f, pendingAttack.Target.Maneuverability);
+            float relativeTurnRate = Math.Max(0.1f, targetTurnRate / attackerTurnRate);
+            int adjustedStrength = Math.Max(1, (int)(attack.Strength / relativeTurnRate));
+            return new TacticalAttack(attack.WeaponType, adjustedStrength);
         }
 
         /// <summary>
