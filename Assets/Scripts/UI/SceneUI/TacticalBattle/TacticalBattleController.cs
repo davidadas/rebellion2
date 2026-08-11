@@ -994,8 +994,8 @@ public sealed class TacticalBattleController : MonoBehaviour
             throw new InvalidOperationException("Tactical combat requires an active game.");
 
         isCompleting = true;
-        gameManager.ResolveTacticalCombat(Session);
-        TacticalBattleLaunchContext.Clear();
+        SpaceCombatResult result = gameManager.ResolveTacticalCombat(Session);
+        TacticalBattleLaunchContext.Complete(result);
         bootstrap.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
     }
 }

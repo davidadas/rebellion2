@@ -23,6 +23,7 @@ public static class TacticalBattleLaunchContext
     public static bool HasRetainedSession => retainedSession != null;
 
     private static TacticalBattleSession retainedSession;
+    private static SpaceCombatResult completedResult;
 
     /// <summary>
     /// Stores a pending encounter for the tactical scene.
@@ -32,6 +33,7 @@ public static class TacticalBattleLaunchContext
     {
         Encounter = encounter ?? throw new ArgumentNullException(nameof(encounter));
         retainedSession = null;
+        completedResult = null;
     }
 
     /// <summary>
@@ -65,11 +67,34 @@ public static class TacticalBattleLaunchContext
     }
 
     /// <summary>
+    /// Stores the completed tactical result for presentation after returning to strategy.
+    /// </summary>
+    /// <param name="result">The completed tactical combat result.</param>
+    public static void Complete(SpaceCombatResult result)
+    {
+        completedResult = result ?? throw new ArgumentNullException(nameof(result));
+        Encounter = null;
+        retainedSession = null;
+    }
+
+    /// <summary>
+    /// Takes the completed tactical result when the strategy scene resumes.
+    /// </summary>
+    /// <returns>The completed result, or null when no result is waiting.</returns>
+    public static SpaceCombatResult TakeCompletedResult()
+    {
+        SpaceCombatResult result = completedResult;
+        completedResult = null;
+        return result;
+    }
+
+    /// <summary>
     /// Clears the encounter after tactical combat has completed or been abandoned.
     /// </summary>
     public static void Clear()
     {
         Encounter = null;
         retainedSession = null;
+        completedResult = null;
     }
 }

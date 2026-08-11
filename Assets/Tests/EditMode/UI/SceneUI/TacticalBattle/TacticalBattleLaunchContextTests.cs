@@ -81,6 +81,40 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsFalse(TacticalBattleLaunchContext.HasRetainedSession);
         }
 
+        [Test]
+        public void Complete_ActiveEncounter_StoresResultAndClearsBattleState()
+        {
+            PendingCombatResult encounter = CreateEncounter();
+            SpaceCombatResult result = new SpaceCombatResult();
+            TacticalBattleLaunchContext.Open(encounter);
+            TacticalBattleLaunchContext.RetainSession(CreateSession(encounter));
+
+            TacticalBattleLaunchContext.Complete(result);
+
+            Assert.IsNull(TacticalBattleLaunchContext.Encounter);
+            Assert.IsFalse(TacticalBattleLaunchContext.HasRetainedSession);
+            Assert.AreSame(result, TacticalBattleLaunchContext.TakeCompletedResult());
+        }
+
+        [Test]
+        public void TakeCompletedResult_StoredResult_ReturnsResultOnlyOnce()
+        {
+            SpaceCombatResult result = new SpaceCombatResult();
+            TacticalBattleLaunchContext.Complete(result);
+
+            SpaceCombatResult first = TacticalBattleLaunchContext.TakeCompletedResult();
+            SpaceCombatResult second = TacticalBattleLaunchContext.TakeCompletedResult();
+
+            Assert.AreSame(result, first);
+            Assert.IsNull(second);
+        }
+
+        [Test]
+        public void Complete_NullResult_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => TacticalBattleLaunchContext.Complete(null));
+        }
+
         private static PendingCombatResult CreateEncounter()
         {
             return new PendingCombatResult

@@ -169,7 +169,18 @@ public sealed class StrategyController
         initialized = true;
         RegisterCancelHandlers();
         OnGameReady();
+        PresentCompletedTacticalBattle();
         LoadInitialContent();
+    }
+
+    /// <summary>
+    /// Restores the completed tactical battle result after returning to strategy.
+    /// </summary>
+    private void PresentCompletedTacticalBattle()
+    {
+        SpaceCombatResult result = TacticalBattleLaunchContext.TakeCompletedResult();
+        if (result != null)
+            battleAlertWindowController.OpenResult(result);
     }
 
     /// <summary>
