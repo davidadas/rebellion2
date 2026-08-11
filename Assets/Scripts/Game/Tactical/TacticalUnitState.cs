@@ -579,7 +579,7 @@ namespace Rebellion.Game.Tactical
             if (Kind != TacticalUnitKind.CapitalShip)
                 return;
 
-            if (Shields > 0)
+            if (amount <= shieldBefore)
             {
                 float shieldLossPercent = Math.Max(
                     1f,

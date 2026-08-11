@@ -168,6 +168,21 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreEqual(1, unit.GetSystemDamage(TacticalDamageSystem.ShieldGenerator));
         }
 
+        [Test]
+        public void ApplyDamage_ConventionalHitExactlyExhaustsShields_CanDamageShieldGenerator()
+        {
+            TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 50);
+
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 50),
+                CreateRandom(0.99d)
+            );
+
+            Assert.AreEqual(0, unit.Shields);
+            Assert.AreEqual(100, unit.Hull);
+            Assert.AreEqual(1, unit.GetSystemDamage(TacticalDamageSystem.ShieldGenerator));
+        }
+
         [TestCase(0.60d, TacticalDamageSystem.ShieldGenerator)]
         [TestCase(0.75d, TacticalDamageSystem.WeaponSystems)]
         [TestCase(0.85d, TacticalDamageSystem.TractorBeam)]
