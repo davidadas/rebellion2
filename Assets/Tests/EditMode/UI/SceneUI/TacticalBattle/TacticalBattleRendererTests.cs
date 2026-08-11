@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game.Tactical;
@@ -128,6 +129,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void PresentEvents_WeaponImpactWithMappedTarget_CreatesImpactAnimation()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+            RegisterUnitView(target);
+            typeof(TacticalBattleRenderer)
+                .GetField("orangeSplitImpactFrames", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, new Sprite[1]);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.LaserCannon
+                    ),
+                }
+            );
+
+            Assert.IsNotNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
+        }
+
+        [Test]
         public void PresentEvents_FighterTorpedoImpact_UsesWhiteBeam()
         {
             TacticalUnitState source = TacticalUnitState.FromFighters(
@@ -147,6 +172,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 Color.white,
                 root.GetComponentInChildren<LineRenderer>().sharedMaterial.color
             );
+        }
+
+        [Test]
+        public void PresentEvents_SuperlaserFired_CreatesDedicatedBeamEffect()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(new[] { TacticalCombatEvent.SuperlaserFired(source, target) });
+
+            LineRenderer line = root.GetComponentInChildren<LineRenderer>();
+            Assert.IsNotNull(line);
+            Assert.AreEqual(0.9f, line.startWidth);
+            Assert.AreEqual(0.5f, line.endWidth);
+            Assert.IsTrue(renderer.HasActiveCombatEffects);
         }
 
         [Test]
@@ -247,6 +287,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             typeof(TacticalBattleRenderer)
                 .GetMethod("CreateNavigationGrid", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.Invoke(renderer, new object[] { grid });
+        }
+
+        /// <summary>
+        /// Creates and registers one target presentation for event-projection tests.
+        /// </summary>
+        /// <param name="state">The tactical unit represented by the view.</param>
+        private void RegisterUnitView(TacticalUnitState state)
+        {
+            GameObject unitObject = new GameObject("Tactical Unit");
+            unitObject.transform.SetParent(root.transform, false);
+            TacticalUnitView unitView = unitObject.AddComponent<TacticalUnitView>();
+            unitView.Initialize(state);
+            typeof(TacticalUnitView)
+                .GetField("presentationBounds", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(unitView, new Bounds(Vector3.zero, Vector3.one));
+            Dictionary<TacticalUnitState, TacticalUnitView> views =
+                (Dictionary<TacticalUnitState, TacticalUnitView>)
+                    typeof(TacticalBattleRenderer)
+                        .GetField(
+                            "unitViewsByState",
+                            BindingFlags.Instance | BindingFlags.NonPublic
+                        )
+                        ?.GetValue(renderer);
+            views.Add(state, unitView);
         }
 
         /// <summary>

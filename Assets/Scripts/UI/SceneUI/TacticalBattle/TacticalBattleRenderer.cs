@@ -219,18 +219,6 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
         line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
         effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
-
-        Sprite[] impactFrames = GetWeaponImpactFrames(combatEvent);
-        if (
-            impactFrames.Length > 0
-            && unitViewsByState.TryGetValue(combatEvent.Target, out TacticalUnitView targetView)
-        )
-        {
-            targetView.ShowWeaponImpact(
-                impactFrames,
-                transform.TransformPoint(ToUnityVector(combatEvent.SourcePosition))
-            );
-        }
     }
 
     /// <summary>
@@ -383,6 +371,18 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
         line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
         effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
+
+        Sprite[] impactFrames = GetWeaponImpactFrames(combatEvent);
+        if (
+            impactFrames.Length > 0
+            && unitViewsByState.TryGetValue(combatEvent.Target, out TacticalUnitView targetView)
+        )
+        {
+            targetView.ShowWeaponImpact(
+                impactFrames,
+                transform.TransformPoint(ToUnityVector(combatEvent.SourcePosition))
+            );
+        }
     }
 
     /// <summary>
