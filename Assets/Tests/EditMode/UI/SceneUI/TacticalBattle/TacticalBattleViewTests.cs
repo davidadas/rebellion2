@@ -516,6 +516,29 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             );
         }
 
+        [Test]
+        public void SetWithdrawalAvailable_GravityLock_DisablesWithdrawalButton()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            view.SetWithdrawalAvailable(false);
+
+            Assert.IsFalse(withdrawalButton.interactable);
+        }
+
+        [Test]
+        public void SetWithdrawalAvailable_ObservingBattle_PreservesDisabledWithdrawalButton()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+            view.SetObserving(true);
+
+            view.SetWithdrawalAvailable(true);
+
+            Assert.IsFalse(withdrawalButton.interactable);
+        }
+
         private Button[] CreateButtons(int count, string name)
         {
             Button[] buttons = new Button[count];

@@ -146,6 +146,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         playerDeathStar = Session.Units.FirstOrDefault(unit =>
             unit.Side == playerSide && unit.Unit is CapitalShip { IsDeathStar: true }
         );
+        RefreshWithdrawalAvailability();
         RefreshSuperlaser();
         isReady = true;
     }
@@ -172,6 +173,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             RefreshCapitalShipStatus();
         }
         battleRenderer.Synchronize();
+        RefreshWithdrawalAvailability();
         RefreshSuperlaser();
         if (Session.IsComplete && !battleRenderer.HasActiveCombatEffects)
             CompleteBattle();
@@ -270,6 +272,14 @@ public sealed class TacticalBattleController : MonoBehaviour
     }
 
     /// <summary>
+    /// Synchronizes withdrawal availability with active opposing gravity-well ships.
+    /// </summary>
+    private void RefreshWithdrawalAvailability()
+    {
+        view.SetWithdrawalAvailable(!Session.IsWithdrawalBlocked(playerSide));
+    }
+
+    /// <summary>
     /// Toggles the player's independently nested tactical pause hold.
     /// </summary>
     private void TogglePlayerPause()
@@ -354,7 +364,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void RequestWithdrawal()
     {
-        if (withdrawalConfirmationOpen)
+        if (withdrawalConfirmationOpen || Session.IsWithdrawalBlocked(playerSide))
             return;
 
         withdrawalConfirmationOpen = true;
@@ -370,8 +380,8 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (!withdrawalConfirmationOpen)
             return;
 
-        Session.OrderWithdrawal(playerSide);
-        CloseWithdrawalConfirmation();
+        if (Session.OrderWithdrawal(playerSide))
+            CloseWithdrawalConfirmation();
     }
 
     /// <summary>

@@ -277,15 +277,36 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Orders every command group on one side to leave the tactical battlefield.
-        /// Units with disabled drives remain in combat until they can move or are destroyed.
+        /// Orders every command group on one side to leave the tactical battlefield when no
+        /// opposing gravity well holds it in combat. Units with disabled drives remain until they
+        /// can move or are destroyed.
         /// </summary>
         /// <param name="side">The side withdrawing from combat.</param>
-        public void OrderWithdrawal(TacticalBattleSide side)
+        /// <returns>True when withdrawal orders are assigned.</returns>
+        public bool OrderWithdrawal(TacticalBattleSide side)
         {
             ValidateSide(side);
+            if (IsWithdrawalBlocked(side))
+                return false;
+
             foreach (TacticalShipGroup group in groups.Where(group => group.Side == side))
                 group.SetBehavior(TacticalBehavior.Withdraw);
+            return true;
+        }
+
+        /// <summary>
+        /// Tests whether an active opposing capital ship projects a tactical gravity well.
+        /// </summary>
+        /// <param name="side">The side attempting to withdraw.</param>
+        /// <returns>True while an opposing gravity-well ship remains active.</returns>
+        public bool IsWithdrawalBlocked(TacticalBattleSide side)
+        {
+            ValidateSide(side);
+            return units.Any(unit =>
+                unit.IsActive
+                && unit.Side != side
+                && unit.Unit is CapitalShip { HasGravityWell: true }
+            );
         }
 
         /// <summary>

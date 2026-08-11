@@ -408,6 +408,83 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void OrderWithdrawal_ActiveOpposingGravityWell_ReturnsFalse()
+        {
+            CapitalShip interdictor = CreateShip(450, 175);
+            interdictor.HasGravityWell = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                    DefenderFleet = CreateFleet(interdictor),
+                }
+            );
+
+            bool ordered = session.OrderWithdrawal(TacticalBattleSide.Attacker);
+
+            Assert.IsFalse(ordered);
+        }
+
+        [Test]
+        public void OrderWithdrawal_ActiveOpposingGravityWell_PreservesCurrentOrders()
+        {
+            CapitalShip interdictor = CreateShip(450, 175);
+            interdictor.HasGravityWell = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                    DefenderFleet = CreateFleet(interdictor),
+                }
+            );
+
+            session.OrderWithdrawal(TacticalBattleSide.Attacker);
+
+            Assert.IsTrue(
+                session
+                    .Groups.Where(group => group.Side == TacticalBattleSide.Attacker)
+                    .All(group => group.Behavior != TacticalBehavior.Withdraw)
+            );
+        }
+
+        [Test]
+        public void IsWithdrawalBlocked_ActiveOpposingGravityWell_ReturnsTrue()
+        {
+            CapitalShip interdictor = CreateShip(450, 175);
+            interdictor.HasGravityWell = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                    DefenderFleet = CreateFleet(interdictor),
+                }
+            );
+
+            bool blocked = session.IsWithdrawalBlocked(TacticalBattleSide.Attacker);
+
+            Assert.IsTrue(blocked);
+        }
+
+        [Test]
+        public void IsWithdrawalBlocked_DestroyedOpposingGravityWell_ReturnsFalse()
+        {
+            CapitalShip interdictor = CreateShip(450, 175);
+            interdictor.HasGravityWell = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                    DefenderFleet = CreateFleet(interdictor),
+                }
+            );
+            session.Units.Single(unit => unit.Unit == interdictor).Hull = 0;
+
+            bool blocked = session.IsWithdrawalBlocked(TacticalBattleSide.Attacker);
+
+            Assert.IsFalse(blocked);
+        }
+
+        [Test]
         public void OrderWithdrawal_UndefinedSide_ThrowsArgumentOutOfRangeException()
         {
             TacticalBattleSession session = CreateSession();

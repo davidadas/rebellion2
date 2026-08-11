@@ -129,6 +129,7 @@ public sealed class TacticalBattleView : MonoBehaviour
     private int availableTaskForceCount;
     private int availableFighterGroupCount;
     private bool observing;
+    private bool withdrawalAvailable = true;
 
     /// <summary>
     /// Raised when the player selects one of the eight capital-ship task forces.
@@ -466,6 +467,7 @@ public sealed class TacticalBattleView : MonoBehaviour
             button.interactable = commandsEnabled;
         capitalShipMissionsButton.interactable = commandsEnabled;
         capitalShipManeuversButton.interactable = commandsEnabled;
+        withdrawalButton.interactable = commandsEnabled && withdrawalAvailable;
         if (observing)
         {
             HideMissionOrders();
@@ -505,6 +507,16 @@ public sealed class TacticalBattleView : MonoBehaviour
         availableFighterGroupCount = fighterGroupCount;
         SetAvailableButtons(taskForceButtons, observing ? 0 : taskForceCount);
         SetAvailableButtons(fighterGroupButtons, observing ? 0 : fighterGroupCount);
+    }
+
+    /// <summary>
+    /// Enables tactical withdrawal only while no opposing gravity well prevents it.
+    /// </summary>
+    /// <param name="available">Whether the played side may request withdrawal.</param>
+    public void SetWithdrawalAvailable(bool available)
+    {
+        withdrawalAvailable = available;
+        withdrawalButton.interactable = available && !observing;
     }
 
     /// <summary>
