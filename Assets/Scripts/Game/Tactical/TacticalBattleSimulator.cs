@@ -626,8 +626,12 @@ namespace Rebellion.Game.Tactical
                 return Vector3.Zero;
             if (group.Formation == TacticalFormation.StandOff)
             {
-                float centeredIndex = index - (group.Units.Count - 1) / 2f;
-                return right * centeredIndex * _formationSpacing;
+                if (index == 0)
+                    return Vector3.Zero;
+
+                int lane = (index + 1) / 2;
+                float direction = index % 2 == 0 ? 1f : -1f;
+                return right * direction * lane * _formationSpacing;
             }
 
             Vector3 localDirection = Vector3.Normalize(

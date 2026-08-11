@@ -809,6 +809,43 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_StandOffFormation_AlternatesMembersAroundLeadShip()
+        {
+            CapitalShip leadShip = CreateShip(600, 0);
+            CapitalShip leftShip = CreateShip(600, 0);
+            CapitalShip rightShip = CreateShip(600, 0);
+            foreach (CapitalShip ship in new[] { leadShip, leftShip, rightShip })
+            {
+                ship.Maneuverability = 10;
+                ship.SublightSpeed = 10;
+            }
+
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(leadShip, leftShip, rightShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState leadUnit = session.Units.Single(unit => unit.Unit == leadShip);
+            TacticalUnitState leftUnit = session.Units.Single(unit => unit.Unit == leftShip);
+            TacticalUnitState rightUnit = session.Units.Single(unit => unit.Unit == rightShip);
+            TacticalUnitState target = session.Units.Single(unit =>
+                unit.Side == TacticalBattleSide.Defender
+            );
+            leadUnit.Position = Vector3.Zero;
+            leftUnit.Position = new Vector3(0f, 10f, 0f);
+            rightUnit.Position = new Vector3(0f, -10f, 0f);
+            target.Position = new Vector3(100f, 0f, 0f);
+
+            session.Advance(1f);
+
+            Assert.AreEqual(0f, leadUnit.Position.Z, 0.001f);
+            Assert.Greater(leftUnit.Position.Z, 0f);
+            Assert.Less(rightUnit.Position.Z, 0f);
+        }
+
+        [Test]
         public void Advance_SurroundFormation_DistributesMembersAcrossMultipleAxes()
         {
             CapitalShip firstShip = CreateShip(600, 0);
