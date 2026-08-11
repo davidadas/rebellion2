@@ -393,10 +393,13 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
         }
 
-        if (SelectedGroup == null || target?.IsActive != true || target.Side == playerSide)
+        if (SelectedGroup == null || target?.IsActive != true)
             return;
 
-        SelectedGroup.AssignPrimaryTarget(target);
+        if (target.Side == playerSide)
+            SelectedGroup.AssignEscortTarget(target);
+        else
+            SelectedGroup.AssignPrimaryTarget(target);
         if (SelectedGroup.Units.Any(unit => unit.Unit is Starfighter))
             pendingMissionOrder = SelectedGroup.Behavior;
         else

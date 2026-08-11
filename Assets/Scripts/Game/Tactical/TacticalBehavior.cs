@@ -8,8 +8,8 @@ namespace Rebellion.Game.Tactical
         /// <summary>No tactical behavior is active.</summary>
         None = 0,
 
-        /// <summary>The group is choosing or pursuing its primary target.</summary>
-        PrimaryTarget = 1,
+        /// <summary>The group is escorting a friendly tactical object.</summary>
+        Escort = 1,
 
         /// <summary>The fighter group is returning to its carrier.</summary>
         Recover = 2,

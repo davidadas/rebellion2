@@ -249,7 +249,7 @@ namespace Rebellion.Game.Tactical
                 TacticalShipGroup group = groups.LastOrDefault(candidate =>
                     candidate.Units.Contains(unit)
                 );
-                TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.PrimaryTarget;
+                TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.None;
                 TacticalUnitState target =
                     behavior == TacticalBehavior.Withdraw
                     || behavior == TacticalBehavior.Recover
@@ -307,7 +307,7 @@ namespace Rebellion.Game.Tactical
             TacticalShipGroup group = groups.LastOrDefault(candidate =>
                 candidate.Units.Contains(unit)
             );
-            TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.PrimaryTarget;
+            TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.None;
             if (behavior == TacticalBehavior.Withdraw)
             {
                 AdvanceWithdrawal(unit, elapsedTime);
@@ -326,6 +326,9 @@ namespace Rebellion.Game.Tactical
             if (TryAdvanceNavigation(unit, group, elapsedTime))
                 return Array.Empty<PendingAttack>();
 
+            if (behavior == TacticalBehavior.Escort)
+                return AdvanceEscort(unit, group, elapsedTime);
+
             TacticalUnitState target = GetTarget(unit, group, behavior);
             if (target == null)
                 return Array.Empty<PendingAttack>();
@@ -342,6 +345,43 @@ namespace Rebellion.Game.Tactical
                 out Vector3 markerPosition
             );
             group?.SetMarkerPosition(markerPosition);
+            MoveTowards(unit, destination, elapsedTime);
+            return attacks;
+        }
+
+        /// <summary>
+        /// Keeps one group with its friendly escort target while allowing defensive fire.
+        /// </summary>
+        /// <param name="unit">The escorting unit.</param>
+        /// <param name="group">The escorting unit's command group.</param>
+        /// <param name="elapsedTime">The elapsed tactical time.</param>
+        /// <returns>The defensive attacks to resolve after every unit has acted.</returns>
+        private IReadOnlyList<PendingAttack> AdvanceEscort(
+            TacticalUnitState unit,
+            TacticalShipGroup group,
+            float elapsedTime
+        )
+        {
+            TacticalUnitState escortTarget = group?.EscortTarget;
+            if (escortTarget?.IsActive != true)
+                return Array.Empty<PendingAttack>();
+
+            TacticalUnitState attackTarget = GetTarget(unit, null, TacticalBehavior.None);
+            IReadOnlyList<PendingAttack> attacks =
+                attackTarget == null
+                    ? Array.Empty<PendingAttack>()
+                    : FireStrongestArc(unit, attackTarget);
+            Vector3 approachDirection = NormalizeOrDefault(
+                escortTarget.Position - unit.Position,
+                unit.Forward
+            );
+            Vector3 right = NormalizeOrDefault(
+                Vector3.Cross(Vector3.UnitY, approachDirection),
+                Vector3.UnitX
+            );
+            group.SetMarkerPosition(escortTarget.Position);
+            Vector3 destination =
+                escortTarget.Position + GetFormationOffset(unit, group, approachDirection, right);
             MoveTowards(unit, destination, elapsedTime);
             return attacks;
         }

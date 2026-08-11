@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void AssignPrimaryTarget_OpposingActiveUnit_ReplacesTargetsAndBehavior()
+        public void AssignPrimaryTarget_OpposingActiveUnit_ReplacesTargetsAndPreservesBehavior()
         {
             TacticalUnitState unit = CreateUnit(TacticalBattleSide.Attacker);
             TacticalUnitState discarded = CreateUnit(TacticalBattleSide.Defender);
@@ -32,7 +32,38 @@ namespace Rebellion.Tests.Game.Tactical
             group.AssignPrimaryTarget(target);
 
             CollectionAssert.AreEqual(new[] { target }, group.Targets);
-            Assert.AreEqual(TacticalBehavior.PrimaryTarget, group.Behavior);
+            Assert.AreEqual(TacticalBehavior.Hammer, group.Behavior);
+        }
+
+        [Test]
+        public void AssignEscortTarget_FriendlyActiveUnit_ReplacesTargetAndBehavior()
+        {
+            TacticalUnitState unit = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState escortTarget = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState discarded = CreateUnit(TacticalBattleSide.Defender);
+            TacticalShipGroup group = CreateGroup(unit, escortTarget, discarded);
+            group.AddTarget(discarded);
+            group.SetBehavior(TacticalBehavior.Hammer);
+
+            group.AssignEscortTarget(escortTarget);
+
+            Assert.IsEmpty(group.Targets);
+            Assert.AreSame(escortTarget, group.EscortTarget);
+            Assert.AreEqual(TacticalBehavior.Escort, group.Behavior);
+        }
+
+        [Test]
+        public void SetBehavior_EscortingGroupStopsEscorting_ClearsEscortTarget()
+        {
+            TacticalUnitState unit = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState escortTarget = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalShipGroup group = CreateGroup(unit, escortTarget);
+            group.AssignEscortTarget(escortTarget);
+
+            group.SetBehavior(TacticalBehavior.Hold);
+
+            Assert.IsNull(group.EscortTarget);
+            Assert.AreEqual(TacticalBehavior.Hold, group.Behavior);
         }
 
         [Test]

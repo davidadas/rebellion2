@@ -40,6 +40,11 @@ namespace Rebellion.Game.Tactical
         public IReadOnlyList<TacticalUnitState> Targets => targetView;
 
         /// <summary>
+        /// Gets the friendly tactical object currently being escorted.
+        /// </summary>
+        public TacticalUnitState EscortTarget { get; private set; }
+
+        /// <summary>
         /// Gets the behavior currently assigned to the group.
         /// </summary>
         public TacticalBehavior Behavior { get; private set; }
@@ -98,10 +103,12 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentOutOfRangeException(nameof(behavior));
 
             Behavior = behavior;
+            if (behavior != TacticalBehavior.Escort)
+                EscortTarget = null;
         }
 
         /// <summary>
-        /// Replaces the group's target list with one opposing unit and directs the group to engage it.
+        /// Replaces the group's target list with one opposing unit without changing its active order.
         /// </summary>
         /// <param name="target">The opposing tactical unit to engage.</param>
         public void AssignPrimaryTarget(TacticalUnitState target)
@@ -112,7 +119,24 @@ namespace Rebellion.Game.Tactical
 
             targets.Clear();
             targets.Add(target);
-            Behavior = TacticalBehavior.PrimaryTarget;
+            EscortTarget = null;
+            if (Behavior == TacticalBehavior.Escort)
+                Behavior = TacticalBehavior.None;
+        }
+
+        /// <summary>
+        /// Directs the group to escort one active friendly tactical object.
+        /// </summary>
+        /// <param name="target">The friendly tactical object to escort.</param>
+        public void AssignEscortTarget(TacticalUnitState target)
+        {
+            ValidateBattleUnit(target);
+            if (!target.IsActive || units.Contains(target))
+                return;
+
+            targets.Clear();
+            EscortTarget = target;
+            Behavior = TacticalBehavior.Escort;
         }
 
         /// <summary>
@@ -164,6 +188,8 @@ namespace Rebellion.Game.Tactical
         public void RemoveInactiveTargets()
         {
             targets.RemoveAll(target => !target.IsActive);
+            if (EscortTarget?.IsActive != true)
+                EscortTarget = null;
         }
 
         /// <summary>

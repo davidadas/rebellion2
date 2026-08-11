@@ -619,7 +619,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_PrimaryTargetInWeaponRange_FiresStrongestEligibleArc()
+        public void Advance_DefaultTargetInWeaponRange_FiresStrongestEligibleArc()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
@@ -668,7 +668,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_PrimaryTargetWithoutAssignment_TargetsNearestOpposingUnit()
+        public void Advance_DefaultTargetWithoutAssignment_TargetsNearestOpposingUnit()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
@@ -696,6 +696,54 @@ namespace Rebellion.Tests.Game.Tactical
 
             Assert.AreEqual(70, session.Units.Single(unit => unit.Unit == firstDefendingShip).Hull);
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == lastDefendingShip).Hull);
+        }
+
+        [Test]
+        public void Advance_EscortBehavior_MovesGroupTowardFriendlyTarget()
+        {
+            CapitalShip firstEscortShip = CreateShip(600, 0);
+            CapitalShip secondEscortShip = CreateShip(600, 0);
+            CapitalShip escortedShip = CreateShip(600, 0);
+            CapitalShip remainingShip = CreateShip(600, 0);
+            firstEscortShip.Maneuverability = 10;
+            firstEscortShip.SublightSpeed = 10;
+            secondEscortShip.Maneuverability = 10;
+            secondEscortShip.SublightSpeed = 10;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(
+                        firstEscortShip,
+                        secondEscortShip,
+                        escortedShip,
+                        remainingShip
+                    ),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState firstEscortUnit = session.Units.Single(unit =>
+                unit.Unit == firstEscortShip
+            );
+            TacticalUnitState escortedUnit = session.Units.Single(unit =>
+                unit.Unit == escortedShip
+            );
+            firstEscortUnit.Position = Vector3.Zero;
+            escortedUnit.Position = new Vector3(0f, 0f, 50f);
+            TacticalShipGroup escortGroup = session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .First();
+            escortGroup.AssignEscortTarget(escortedUnit);
+            float initialDistance = Vector3.Distance(
+                firstEscortUnit.Position,
+                escortedUnit.Position
+            );
+
+            session.Advance(0.5f);
+
+            Assert.Less(
+                Vector3.Distance(firstEscortUnit.Position, escortedUnit.Position),
+                initialDistance
+            );
         }
 
         [Test]
