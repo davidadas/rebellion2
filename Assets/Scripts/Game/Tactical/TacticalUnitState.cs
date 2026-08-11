@@ -392,13 +392,45 @@ namespace Rebellion.Game.Tactical
         /// <returns>The available attack strength.</returns>
         public int GetAvailableAttackStrength(TacticalWeaponArc arc, float distance)
         {
+            return GetAvailableAttackStrength(arc, distance, null);
+        }
+
+        /// <summary>
+        /// Returns the charged weapon strength eligible against one tactical target kind.
+        /// </summary>
+        /// <param name="arc">The firing arc to inspect.</param>
+        /// <param name="distance">The distance to the prospective target.</param>
+        /// <param name="targetKind">The prospective target's tactical kind.</param>
+        /// <returns>The eligible attack strength.</returns>
+        internal int GetAvailableAttackStrength(
+            TacticalWeaponArc arc,
+            float distance,
+            TacticalUnitKind targetKind
+        )
+        {
+            return GetAvailableAttackStrength(arc, distance, (TacticalUnitKind?)targetKind);
+        }
+
+        /// <summary>
+        /// Returns charged weapon strength after range and target-kind restrictions.
+        /// </summary>
+        /// <param name="arc">The firing arc to inspect.</param>
+        /// <param name="distance">The distance to the prospective target.</param>
+        /// <param name="targetKind">The optional prospective target kind.</param>
+        /// <returns>The eligible attack strength.</returns>
+        private int GetAvailableAttackStrength(
+            TacticalWeaponArc arc,
+            float distance,
+            TacticalUnitKind? targetKind
+        )
+        {
             if (distance < 0f)
                 throw new ArgumentOutOfRangeException(nameof(distance));
             if (!IsArcReady(arc))
                 return 0;
 
             return weaponBatteries
-                .Where(battery => distance <= battery.Range)
+                .Where(battery => distance <= battery.Range && CanEngageTarget(battery, targetKind))
                 .Sum(battery => battery.GetCount(arc));
         }
 
@@ -410,11 +442,47 @@ namespace Rebellion.Game.Tactical
         /// <returns>The independently resolved attacks fired from the arc.</returns>
         public IReadOnlyList<TacticalAttack> FireArc(TacticalWeaponArc arc, float distance)
         {
+            return FireArc(arc, distance, null);
+        }
+
+        /// <summary>
+        /// Fires every charged weapon family in one arc eligible against a target kind.
+        /// </summary>
+        /// <param name="arc">The firing arc to discharge.</param>
+        /// <param name="distance">The distance to the target.</param>
+        /// <param name="targetKind">The target's tactical kind.</param>
+        /// <returns>The independently resolved attacks fired from the arc.</returns>
+        internal IReadOnlyList<TacticalAttack> FireArc(
+            TacticalWeaponArc arc,
+            float distance,
+            TacticalUnitKind targetKind
+        )
+        {
+            return FireArc(arc, distance, (TacticalUnitKind?)targetKind);
+        }
+
+        /// <summary>
+        /// Fires charged weapon families after range and target-kind restrictions.
+        /// </summary>
+        /// <param name="arc">The firing arc to discharge.</param>
+        /// <param name="distance">The distance to the target.</param>
+        /// <param name="targetKind">The optional target kind.</param>
+        /// <returns>The independently resolved attacks fired from the arc.</returns>
+        private IReadOnlyList<TacticalAttack> FireArc(
+            TacticalWeaponArc arc,
+            float distance,
+            TacticalUnitKind? targetKind
+        )
+        {
             if (!IsArcReady(arc))
                 return Array.Empty<TacticalAttack>();
 
             TacticalAttack[] attacks = weaponBatteries
-                .Where(battery => distance <= battery.Range && battery.GetCount(arc) > 0)
+                .Where(battery =>
+                    distance <= battery.Range
+                    && battery.GetCount(arc) > 0
+                    && CanEngageTarget(battery, targetKind)
+                )
                 .Select(battery => new TacticalAttack(battery.WeaponType, battery.GetCount(arc)))
                 .ToArray();
             if (attacks.Length == 0)
@@ -426,6 +494,21 @@ namespace Rebellion.Game.Tactical
             if (!rechargingArcs.Contains(arc))
                 rechargingArcs.Enqueue(arc);
             return attacks;
+        }
+
+        /// <summary>
+        /// Determines whether one weapon family may engage the requested target kind.
+        /// </summary>
+        /// <param name="battery">The weapon battery to inspect.</param>
+        /// <param name="targetKind">The optional target kind.</param>
+        /// <returns>True when the weapon family may engage the target.</returns>
+        private static bool CanEngageTarget(
+            TacticalWeaponBattery battery,
+            TacticalUnitKind? targetKind
+        )
+        {
+            return targetKind != TacticalUnitKind.Fighters
+                || battery.WeaponType != TacticalWeaponType.Turbolaser;
         }
 
         /// <summary>

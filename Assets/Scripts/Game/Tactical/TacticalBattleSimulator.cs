@@ -679,7 +679,7 @@ namespace Rebellion.Game.Tactical
             {
                 float distance = Vector3.Distance(attacker.Position, candidate.Position);
                 TacticalWeaponArc arc = GetFiringArc(attacker, candidate.Position);
-                int strength = attacker.GetAvailableAttackStrength(arc, distance);
+                int strength = attacker.GetAvailableAttackStrength(arc, distance, candidate.Kind);
                 if (strength <= strongestArc)
                     continue;
 
@@ -706,11 +706,11 @@ namespace Rebellion.Game.Tactical
 
             float distance = Vector3.Distance(attacker.Position, target.Position);
             TacticalWeaponArc arc = GetFiringArc(attacker, target.Position);
-            if (attacker.GetAvailableAttackStrength(arc, distance) <= 0)
+            if (attacker.GetAvailableAttackStrength(arc, distance, target.Kind) <= 0)
                 return Array.Empty<PendingAttack>();
 
             List<PendingAttack> attacks = attacker
-                .FireArc(arc, distance)
+                .FireArc(arc, distance, target.Kind)
                 .Select(attack => new PendingAttack(attacker, target, attack))
                 .ToList();
             if (

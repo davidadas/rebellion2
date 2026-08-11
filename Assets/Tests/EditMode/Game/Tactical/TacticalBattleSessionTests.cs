@@ -1287,7 +1287,7 @@ namespace Rebellion.Tests.Game.Tactical
         public void Advance_AttackFightersBehavior_TargetsOnlyOpposingFighters()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
-            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 6, 0, 0, 0, 200 };
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 6, 0, 0, 0, 200 };
             CapitalShip defendingShip = CreateShip(100, 0, CreateFighters(12, 0));
             TacticalBattleSession session = CreateTacticalSession(
                 new PendingCombatResult
@@ -1306,6 +1306,29 @@ namespace Rebellion.Tests.Game.Tactical
                 session.Units.Single(unit => unit.Kind == TacticalUnitKind.Fighters).Hull
             );
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == defendingShip).Hull);
+        }
+
+        [Test]
+        public void Advance_TurbolaserOnlyCapitalShipEngagesFighters_DoesNotFire()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 20, 0, 0, 0, 200 };
+            Starfighter defendingFighters = CreateFighters(12, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(100, 0, defendingFighters)),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackFighters);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(12, session.Units.Single(unit => unit.Unit == defendingFighters).Hull);
         }
 
         [Test]
@@ -1350,7 +1373,7 @@ namespace Rebellion.Tests.Game.Tactical
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.Maneuverability = 2;
-            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 8, 0, 0, 0, 200 };
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 8, 0, 0, 0, 200 };
             Starfighter defendingFighters = CreateFighters(12, 0);
             defendingFighters.Agility = 8;
             TacticalBattleSession session = CreateTacticalSession(
