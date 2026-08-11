@@ -2,14 +2,16 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Owns the short lifetime and fade of one tactical weapon effect.
+/// Owns the lifetime and optional travel of one tactical weapon effect.
 /// </summary>
 public sealed class TacticalCombatEffectView : MonoBehaviour
 {
-    private Color initialColor;
     private float elapsedTime;
     private float lifetime;
+    private LineRenderer line;
     private Material material;
+    private Vector3 sourcePosition;
+    private Vector3 targetPosition;
 
     /// <summary>
     /// Configures the effect's owned material and lifetime.
@@ -23,7 +25,30 @@ public sealed class TacticalCombatEffectView : MonoBehaviour
             throw new ArgumentOutOfRangeException(nameof(duration));
 
         lifetime = duration;
-        initialColor = material.color;
+    }
+
+    /// <summary>
+    /// Configures a beam that advances from its source to its target over its lifetime.
+    /// </summary>
+    /// <param name="ownedMaterial">The effect material destroyed with this view.</param>
+    /// <param name="beam">The line renderer used to draw the beam.</param>
+    /// <param name="source">The beam origin in the line renderer's coordinate space.</param>
+    /// <param name="target">The beam destination in the line renderer's coordinate space.</param>
+    /// <param name="duration">The beam travel time in seconds.</param>
+    public void InitializeTravelingBeam(
+        Material ownedMaterial,
+        LineRenderer beam,
+        Vector3 source,
+        Vector3 target,
+        float duration
+    )
+    {
+        Initialize(ownedMaterial, duration);
+        line = beam ?? throw new ArgumentNullException(nameof(beam));
+        sourcePosition = source;
+        targetPosition = target;
+        line.SetPosition(0, sourcePosition);
+        line.SetPosition(1, sourcePosition);
     }
 
     /// <summary>
@@ -36,7 +61,9 @@ public sealed class TacticalCombatEffectView : MonoBehaviour
 
         elapsedTime += Time.deltaTime;
         float progress = Mathf.Clamp01(elapsedTime / lifetime);
-        material.color = new Color(initialColor.r, initialColor.g, initialColor.b, 1f - progress);
+        if (line != null)
+            line.SetPosition(1, Vector3.Lerp(sourcePosition, targetPosition, progress));
+
         if (elapsedTime >= lifetime)
             Destroy(gameObject);
     }

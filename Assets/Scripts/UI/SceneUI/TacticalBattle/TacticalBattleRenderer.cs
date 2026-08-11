@@ -15,7 +15,13 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private const float _capitalShipScale = 12f;
     private const float _closeSpritePixelsPerUnit = 2f;
     private const float _farSpritePixelsPerUnit = 1f;
-    private const float _weaponEffectDuration = 0.18f;
+    private const float _superlaserEffectDuration = 0.18f;
+    private const float _standardBeamDuration = 1f;
+    private const float _heavyBeamDuration = 2f;
+    private const float _laserHeavyThreshold = 28.8f;
+    private const float _turbolaserHeavyThreshold = 34.666667f;
+    private const float _ionHeavyThreshold = 32f;
+    private const float _torpedoHeavyThreshold = 12.8f;
     private const int _persistentEffectFrameCount = 8;
     private static readonly string[] ModelLods = { "close", "medium", "far" };
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
@@ -222,7 +228,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         line.endWidth = 0.5f;
         line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
         line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
-        effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
+        effect
+            .AddComponent<TacticalCombatEffectView>()
+            .Initialize(material, _superlaserEffectDuration);
     }
 
     /// <summary>
@@ -365,19 +373,25 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <param name="combatEvent">The resolved weapon event.</param>
     private void CreateWeaponEffect(TacticalCombatEvent combatEvent)
     {
+        WeaponEffectPresentation presentation = GetWeaponPresentation(combatEvent);
         GameObject effect = new GameObject($"{combatEvent.WeaponType} Effect");
         effect.transform.SetParent(transform, false);
         LineRenderer line = effect.AddComponent<LineRenderer>();
-        Material material = CreateEffectMaterial(GetWeaponColor(combatEvent));
+        Material material = CreateEffectMaterial(presentation.Color);
         line.sharedMaterial = material;
         line.useWorldSpace = false;
         line.positionCount = 2;
-        float width = GetWeaponWidth(combatEvent.WeaponType.Value);
-        line.startWidth = width;
-        line.endWidth = width;
-        line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
-        line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
-        effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
+        line.startWidth = presentation.Width;
+        line.endWidth = presentation.Width;
+        effect
+            .AddComponent<TacticalCombatEffectView>()
+            .InitializeTravelingBeam(
+                material,
+                line,
+                ToUnityVector(combatEvent.SourcePosition),
+                ToUnityVector(combatEvent.TargetPosition),
+                presentation.Duration
+            );
 
         Sprite[] impactFrames = GetWeaponImpactFrames(combatEvent);
         if (
@@ -411,36 +425,85 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// </summary>
     /// <param name="combatEvent">The weapon-impact event.</param>
     /// <returns>The corresponding effect color.</returns>
-    private static Color GetWeaponColor(TacticalCombatEvent combatEvent)
+    private static Color GetFactionBeamColor(TacticalCombatEvent combatEvent)
     {
-        if (combatEvent.WeaponType == TacticalWeaponType.IonCannon)
-            return Color.blue;
-        if (
-            combatEvent.WeaponType == TacticalWeaponType.Torpedo
-            && combatEvent.Source.Kind == TacticalUnitKind.Fighters
-        )
-        {
-            return Color.white;
-        }
-
         return combatEvent.Source.Side == TacticalBattleSide.Attacker ? Color.red : Color.green;
     }
 
     /// <summary>
-    /// Selects the base beam width used by one tactical weapon family.
+    /// Selects the beam appearance produced by one resolved weapon attack.
     /// </summary>
-    /// <param name="weaponType">The weapon family being presented.</param>
-    /// <returns>The beam width in tactical world units.</returns>
-    private static float GetWeaponWidth(TacticalWeaponType weaponType)
+    /// <param name="combatEvent">The resolved weapon event.</param>
+    /// <returns>The beam color, width, and lifetime.</returns>
+    private static WeaponEffectPresentation GetWeaponPresentation(TacticalCombatEvent combatEvent)
     {
-        return weaponType switch
+        Color factionColor = GetFactionBeamColor(combatEvent);
+        return combatEvent.WeaponType switch
         {
-            TacticalWeaponType.LaserCannon => 0.5f,
-            TacticalWeaponType.Turbolaser => 0.65f,
-            TacticalWeaponType.IonCannon => 0.4f,
-            TacticalWeaponType.Torpedo => 0.2f,
-            _ => throw new ArgumentOutOfRangeException(nameof(weaponType)),
+            TacticalWeaponType.LaserCannon
+                when combatEvent.AttackStrength >= _laserHeavyThreshold =>
+                new WeaponEffectPresentation(Color.blue, 0.5f, _standardBeamDuration),
+            TacticalWeaponType.LaserCannon => new WeaponEffectPresentation(
+                factionColor,
+                0.5f,
+                _standardBeamDuration
+            ),
+            TacticalWeaponType.Turbolaser
+                when combatEvent.AttackStrength >= _turbolaserHeavyThreshold
+                    && combatEvent.Source.Kind == TacticalUnitKind.Fighters =>
+                new WeaponEffectPresentation(Color.blue, 0.75f, _standardBeamDuration),
+            TacticalWeaponType.Turbolaser
+                when combatEvent.AttackStrength >= _turbolaserHeavyThreshold =>
+                new WeaponEffectPresentation(Color.white, 1f, _heavyBeamDuration),
+            TacticalWeaponType.Turbolaser => new WeaponEffectPresentation(
+                factionColor,
+                0.65f,
+                _standardBeamDuration
+            ),
+            TacticalWeaponType.IonCannon when combatEvent.AttackStrength >= _ionHeavyThreshold =>
+                new WeaponEffectPresentation(Color.white, 1f, _heavyBeamDuration),
+            TacticalWeaponType.IonCannon => new WeaponEffectPresentation(
+                factionColor,
+                0.4f,
+                _standardBeamDuration
+            ),
+            TacticalWeaponType.Torpedo when combatEvent.AttackStrength >= _torpedoHeavyThreshold =>
+                new WeaponEffectPresentation(Color.white, 0.2f, _heavyBeamDuration),
+            TacticalWeaponType.Torpedo => new WeaponEffectPresentation(
+                factionColor,
+                0.2f,
+                _standardBeamDuration
+            ),
+            _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
         };
+    }
+
+    /// <summary>
+    /// Holds the render values for one tactical weapon beam.
+    /// </summary>
+    private readonly struct WeaponEffectPresentation
+    {
+        /// <summary>
+        /// Initializes one immutable beam presentation.
+        /// </summary>
+        /// <param name="color">The beam color.</param>
+        /// <param name="width">The beam width in tactical world units.</param>
+        /// <param name="duration">The beam travel time in seconds.</param>
+        public WeaponEffectPresentation(Color color, float width, float duration)
+        {
+            Color = color;
+            Width = width;
+            Duration = duration;
+        }
+
+        /// <summary>Gets the beam color.</summary>
+        public Color Color { get; }
+
+        /// <summary>Gets the beam width in tactical world units.</summary>
+        public float Width { get; }
+
+        /// <summary>Gets the beam travel time in seconds.</summary>
+        public float Duration { get; }
     }
 
     /// <summary>

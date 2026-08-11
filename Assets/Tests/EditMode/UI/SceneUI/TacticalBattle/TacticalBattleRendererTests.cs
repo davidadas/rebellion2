@@ -104,7 +104,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
         [TestCase(TacticalBattleSide.Attacker, TacticalWeaponType.LaserCannon, 1f, 0f, 0f)]
         [TestCase(TacticalBattleSide.Defender, TacticalWeaponType.Turbolaser, 0f, 1f, 0f)]
-        [TestCase(TacticalBattleSide.Attacker, TacticalWeaponType.IonCannon, 0f, 0f, 1f)]
+        [TestCase(TacticalBattleSide.Attacker, TacticalWeaponType.IonCannon, 1f, 0f, 0f)]
         public void PresentEvents_CapitalShipWeaponImpact_UsesWeaponBeamColor(
             TacticalBattleSide side,
             TacticalWeaponType weaponType,
@@ -164,7 +164,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             renderer.PresentEvents(
                 new[]
                 {
-                    TacticalCombatEvent.WeaponImpact(source, target, TacticalWeaponType.Torpedo),
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.Torpedo,
+                        attackStrength: 13
+                    ),
                 }
             );
 
@@ -172,6 +177,148 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 Color.white,
                 root.GetComponentInChildren<LineRenderer>().sharedMaterial.color
             );
+        }
+
+        [TestCase(TacticalWeaponType.LaserCannon, 29, 0.5f)]
+        [TestCase(TacticalWeaponType.Turbolaser, 35, 1f)]
+        [TestCase(TacticalWeaponType.IonCannon, 32, 1f)]
+        [TestCase(TacticalWeaponType.Torpedo, 13, 0.2f)]
+        public void PresentEvents_HeavyWeaponImpact_UsesTierBeamWidth(
+            TacticalWeaponType weaponType,
+            int attackStrength,
+            float expectedWidth
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        weaponType,
+                        attackStrength: attackStrength
+                    ),
+                }
+            );
+
+            Assert.AreEqual(expectedWidth, root.GetComponentInChildren<LineRenderer>().startWidth);
+        }
+
+        [TestCase(TacticalWeaponType.LaserCannon, 29, 0f, 0f, 1f)]
+        [TestCase(TacticalWeaponType.Turbolaser, 35, 1f, 1f, 1f)]
+        [TestCase(TacticalWeaponType.IonCannon, 32, 1f, 1f, 1f)]
+        [TestCase(TacticalWeaponType.Torpedo, 13, 1f, 1f, 1f)]
+        public void PresentEvents_HeavyWeaponImpact_UsesTierBeamColor(
+            TacticalWeaponType weaponType,
+            int attackStrength,
+            float red,
+            float green,
+            float blue
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        weaponType,
+                        attackStrength: attackStrength
+                    ),
+                }
+            );
+
+            Assert.AreEqual(
+                new Color(red, green, blue),
+                root.GetComponentInChildren<LineRenderer>().sharedMaterial.color
+            );
+        }
+
+        [TestCase(TacticalWeaponType.LaserCannon, 29, 1f)]
+        [TestCase(TacticalWeaponType.Turbolaser, 35, 2f)]
+        [TestCase(TacticalWeaponType.IonCannon, 32, 2f)]
+        [TestCase(TacticalWeaponType.Torpedo, 13, 2f)]
+        public void PresentEvents_HeavyWeaponImpact_UsesTierBeamLifetime(
+            TacticalWeaponType weaponType,
+            int attackStrength,
+            float expectedLifetime
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        weaponType,
+                        attackStrength: attackStrength
+                    ),
+                }
+            );
+
+            TacticalCombatEffectView effect =
+                root.GetComponentInChildren<TacticalCombatEffectView>();
+            float lifetime = (float)
+                typeof(TacticalCombatEffectView)
+                    .GetField("lifetime", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(effect);
+            Assert.AreEqual(expectedLifetime, lifetime);
+        }
+
+        [Test]
+        public void PresentEvents_HeavyFighterTurbolaserImpact_UsesMediumBeamWidth()
+        {
+            TacticalUnitState source = TacticalUnitState.FromFighters(
+                new Starfighter { CurrentSquadronSize = 1 },
+                TacticalBattleSide.Attacker
+            );
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.Turbolaser,
+                        attackStrength: 35
+                    ),
+                }
+            );
+
+            Assert.AreEqual(0.75f, root.GetComponentInChildren<LineRenderer>().startWidth);
+        }
+
+        [Test]
+        public void PresentEvents_WeaponImpact_StartsBeamAtSource()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+            source.Position = new System.Numerics.Vector3(1f, 2f, 3f);
+            target.Position = new System.Numerics.Vector3(4f, 5f, 6f);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.LaserCannon
+                    ),
+                }
+            );
+
+            LineRenderer line = root.GetComponentInChildren<LineRenderer>();
+            Assert.AreEqual(line.GetPosition(0), line.GetPosition(1));
         }
 
         [Test]
