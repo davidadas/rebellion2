@@ -142,10 +142,6 @@ namespace Rebellion.Game.Tactical
         {
             if (encounter == null)
                 throw new ArgumentNullException(nameof(encounter));
-            if (encounter.AttackerFleet == null)
-                throw new ArgumentException("Attacking fleet is required.", nameof(encounter));
-            if (encounter.DefenderFleet == null)
-                throw new ArgumentException("Defending fleet is required.", nameof(encounter));
             if (random == null)
                 throw new ArgumentNullException(nameof(random));
 
@@ -164,6 +160,8 @@ namespace Rebellion.Game.Tactical
                 encounter.DefenderOwnerInstanceID,
                 TacticalBattleSide.Defender
             );
+            EnsureSideCanFight(units, TacticalBattleSide.Attacker, nameof(encounter));
+            EnsureSideCanFight(units, TacticalBattleSide.Defender, nameof(encounter));
             return new TacticalBattleSession(encounter, units, random);
         }
 
@@ -835,6 +833,9 @@ namespace Rebellion.Game.Tactical
             TacticalBattleSide side
         )
         {
+            if (fleet == null)
+                return;
+
             foreach (CapitalShip ship in fleet.CapitalShips)
             {
                 if (
@@ -887,6 +888,28 @@ namespace Rebellion.Game.Tactical
 
                 units.Add(TacticalUnitState.FromFighters(fighters, side));
             }
+        }
+
+        /// <summary>
+        /// Rejects an encounter side that supplies neither an operational fleet unit nor an
+        /// operational planetary fighter squadron.
+        /// </summary>
+        /// <param name="units">The tactical units assembled for the encounter.</param>
+        /// <param name="side">The side that must be able to fight.</param>
+        /// <param name="parameterName">The encounter parameter reported on failure.</param>
+        private static void EnsureSideCanFight(
+            IEnumerable<TacticalUnitState> units,
+            TacticalBattleSide side,
+            string parameterName
+        )
+        {
+            if (units.Any(unit => unit.Side == side && unit.IsActive))
+                return;
+
+            throw new ArgumentException(
+                $"The tactical {side.ToString().ToLowerInvariant()} side has no operational units.",
+                parameterName
+            );
         }
     }
 }

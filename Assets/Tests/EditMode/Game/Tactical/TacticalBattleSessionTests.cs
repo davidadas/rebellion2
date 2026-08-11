@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Create_MissingFleet_ThrowsArgumentException()
+        public void Create_SideWithoutOperationalUnits_ThrowsArgumentException()
         {
             PendingCombatResult encounter = new PendingCombatResult
             {
@@ -30,6 +30,33 @@ namespace Rebellion.Tests.Game.Tactical
             };
 
             Assert.Throws<ArgumentException>(() => CreateTacticalSession(encounter));
+        }
+
+        [Test]
+        public void Create_FleetAgainstPlanetaryFighters_CreatesTacticalUnitsForBothSides()
+        {
+            Planet planet = new Planet();
+            Starfighter defendingFighters = CreateFighters(12, 8);
+            defendingFighters.OwnerInstanceID = "defender";
+            planet.Starfighters.Add(defendingFighters);
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                DefenderFleet = null,
+                AttackerOwnerInstanceID = "attacker",
+                DefenderOwnerInstanceID = "defender",
+                Planet = planet,
+            };
+
+            TacticalBattleSession session = CreateTacticalSession(encounter);
+
+            Assert.AreEqual(2, session.Units.Count);
+            Assert.AreEqual(
+                TacticalBattleSide.Defender,
+                session.Units.Single(unit => unit.Unit == defendingFighters).Side
+            );
+            Assert.IsEmpty(session.GetTaskForces(TacticalBattleSide.Defender));
+            Assert.AreEqual(1, session.GetFighterGroups(TacticalBattleSide.Defender).Count);
         }
 
         [Test]
