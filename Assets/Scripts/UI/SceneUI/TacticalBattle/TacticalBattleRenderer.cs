@@ -30,10 +30,16 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private readonly Dictionary<TacticalUnitState, TacticalUnitView> unitViewsByState =
         new Dictionary<TacticalUnitState, TacticalUnitView>();
     private Sprite[] gravityWellEffectFrames = Array.Empty<Sprite>();
+    private Sprite[] blueBlastImpactFrames = Array.Empty<Sprite>();
+    private Sprite[] blueNetImpactFrames = Array.Empty<Sprite>();
+    private Sprite[] blueSpreadImpactFrames = Array.Empty<Sprite>();
     private Material navigationSelectedMaterial;
     private bool initialized;
     private bool unitSelectionEnabled;
     private TacticalBattleSession session;
+    private Sprite[] orangeBlastImpactFrames = Array.Empty<Sprite>();
+    private Sprite[] orangeDoubleBlastImpactFrames = Array.Empty<Sprite>();
+    private Sprite[] orangeSplitImpactFrames = Array.Empty<Sprite>();
     private Sprite[] tractorLockEffectFrames = Array.Empty<Sprite>();
 
     /// <summary>
@@ -50,7 +56,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// Gets whether a weapon or destruction effect still requires presentation time.
     /// </summary>
     public bool HasActiveCombatEffects =>
-        GetComponentInChildren<TacticalCombatEffectView>(true) != null;
+        GetComponentInChildren<TacticalCombatEffectView>(true) != null
+        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null;
 
     /// <summary>
     /// Loads and creates all model-backed tactical units.
@@ -82,13 +89,26 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             throw new InvalidOperationException("Tactical presentation is already initialized.");
 
         this.session = session;
-        tractorLockEffectFrames = LoadEffectFrames(
-            contentAssets,
-            $"{theme.SharedEffectsRoot}/TractorLock"
-        );
         gravityWellEffectFrames = LoadEffectFrames(
             contentAssets,
-            $"{theme.SharedEffectsRoot}/GravityWell"
+            $"{theme.SharedEffectsRoot}/GravityWell",
+            _persistentEffectFrameCount
+        );
+        tractorLockEffectFrames = LoadEffectFrames(
+            contentAssets,
+            $"{theme.SharedEffectsRoot}/TractorLock",
+            _persistentEffectFrameCount
+        );
+        string impactRoot = $"{theme.SharedEffectsRoot}/WeaponImpact";
+        orangeSplitImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/OrangeSplit", 6);
+        orangeBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/OrangeBlast", 7);
+        blueSpreadImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueSpread", 6);
+        blueNetImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueNet", 16);
+        blueBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueBlast", 7);
+        orangeDoubleBlastImpactFrames = LoadEffectFrames(
+            contentAssets,
+            $"{impactRoot}/OrangeDoubleBlast",
+            16
         );
 
         CapitalShip[] capitalShips = session
@@ -178,6 +198,47 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
         line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
         effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
+
+        Sprite[] impactFrames = GetWeaponImpactFrames(combatEvent);
+        if (
+            impactFrames.Length > 0
+            && unitViewsByState.TryGetValue(combatEvent.Target, out TacticalUnitView targetView)
+        )
+        {
+            targetView.ShowWeaponImpact(
+                impactFrames,
+                transform.TransformPoint(ToUnityVector(combatEvent.SourcePosition))
+            );
+        }
+    }
+
+    /// <summary>
+    /// Selects the target animation for one resolved weapon impact.
+    /// </summary>
+    /// <param name="combatEvent">The resolved weapon-impact event.</param>
+    /// <returns>The ordered impact frames, or an empty sequence when none is shown.</returns>
+    private Sprite[] GetWeaponImpactFrames(TacticalCombatEvent combatEvent)
+    {
+        switch (combatEvent.WeaponType)
+        {
+            case TacticalWeaponType.LaserCannon:
+                return combatEvent.ImpactState == TacticalImpactState.Destroyed
+                    ? blueSpreadImpactFrames
+                    : orangeSplitImpactFrames;
+            case TacticalWeaponType.Turbolaser:
+                if (combatEvent.Target.Kind == TacticalUnitKind.Fighters)
+                    return blueBlastImpactFrames;
+
+                return combatEvent.ImpactState == TacticalImpactState.Destroyed
+                    ? blueNetImpactFrames
+                    : orangeBlastImpactFrames;
+            case TacticalWeaponType.IonCannon:
+                return orangeDoubleBlastImpactFrames;
+            case TacticalWeaponType.Torpedo:
+                return Array.Empty<Sprite>();
+            default:
+                throw new ArgumentOutOfRangeException(nameof(combatEvent));
+        }
     }
 
     /// <summary>
@@ -681,14 +742,19 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads one ordered eight-frame persistent tactical effect.
+    /// Loads one ordered tactical effect sequence.
     /// </summary>
     /// <param name="contentAssets">The active external content assets.</param>
     /// <param name="rootAddress">The effect's content directory.</param>
+    /// <param name="frameCount">The number of sequential frames to load.</param>
     /// <returns>The runtime sprites in playback order.</returns>
-    private Sprite[] LoadEffectFrames(IContentAssetSource contentAssets, string rootAddress)
+    private Sprite[] LoadEffectFrames(
+        IContentAssetSource contentAssets,
+        string rootAddress,
+        int frameCount
+    )
     {
-        Sprite[] frames = new Sprite[_persistentEffectFrameCount];
+        Sprite[] frames = new Sprite[frameCount];
         for (int index = 0; index < frames.Length; index++)
         {
             string address = $"{rootAddress}/frame-{index + 1}";

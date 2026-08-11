@@ -1115,6 +1115,7 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreSame(attackingShip, events[0].Source.Unit);
             Assert.AreSame(defendingShip, events[0].Target.Unit);
             Assert.AreEqual(TacticalWeaponType.Turbolaser, events[0].WeaponType);
+            Assert.AreEqual(TacticalImpactState.Destroyed, events[0].ImpactState);
             Assert.IsTrue(events[0].PenetratedShields);
         }
 
@@ -1138,6 +1139,7 @@ namespace Rebellion.Tests.Game.Tactical
                 .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.WeaponImpact);
 
             Assert.IsFalse(impact.PenetratedShields);
+            Assert.AreEqual(TacticalImpactState.Shield, impact.ImpactState);
         }
 
         [Test]

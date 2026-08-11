@@ -164,6 +164,79 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsFalse(renderer.HasActiveCombatEffects);
         }
 
+        [TestCase(
+            TacticalWeaponType.LaserCannon,
+            TacticalImpactState.Shield,
+            TacticalUnitKind.CapitalShip,
+            "orangeSplitImpactFrames"
+        )]
+        [TestCase(
+            TacticalWeaponType.LaserCannon,
+            TacticalImpactState.Destroyed,
+            TacticalUnitKind.CapitalShip,
+            "blueSpreadImpactFrames"
+        )]
+        [TestCase(
+            TacticalWeaponType.Turbolaser,
+            TacticalImpactState.Hull,
+            TacticalUnitKind.CapitalShip,
+            "orangeBlastImpactFrames"
+        )]
+        [TestCase(
+            TacticalWeaponType.Turbolaser,
+            TacticalImpactState.Destroyed,
+            TacticalUnitKind.CapitalShip,
+            "blueNetImpactFrames"
+        )]
+        [TestCase(
+            TacticalWeaponType.Turbolaser,
+            TacticalImpactState.Shield,
+            TacticalUnitKind.Fighters,
+            "blueBlastImpactFrames"
+        )]
+        [TestCase(
+            TacticalWeaponType.IonCannon,
+            TacticalImpactState.Shield,
+            TacticalUnitKind.CapitalShip,
+            "orangeDoubleBlastImpactFrames"
+        )]
+        public void GetWeaponImpactFrames_ResolvedImpact_ReturnsMappedAnimation(
+            TacticalWeaponType weaponType,
+            TacticalImpactState impactState,
+            TacticalUnitKind targetKind,
+            string expectedFieldName
+        )
+        {
+            Sprite[] expectedFrames = new Sprite[1];
+            typeof(TacticalBattleRenderer)
+                .GetField(expectedFieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, expectedFrames);
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target =
+                targetKind == TacticalUnitKind.Fighters
+                    ? TacticalUnitState.FromFighters(
+                        new Starfighter { CurrentSquadronSize = 1 },
+                        TacticalBattleSide.Defender
+                    )
+                    : CreateCapitalShip(TacticalBattleSide.Defender);
+            TacticalCombatEvent combatEvent = TacticalCombatEvent.WeaponImpact(
+                source,
+                target,
+                weaponType,
+                impactState
+            );
+
+            Sprite[] actualFrames = (Sprite[])
+                typeof(TacticalBattleRenderer)
+                    .GetMethod(
+                        "GetWeaponImpactFrames",
+                        BindingFlags.Instance | BindingFlags.NonPublic
+                    )
+                    ?.Invoke(renderer, new object[] { combatEvent });
+
+            Assert.AreSame(expectedFrames, actualFrames);
+        }
+
         /// <summary>
         /// Builds the runtime-only marker hierarchy through the renderer's initialization helper.
         /// </summary>

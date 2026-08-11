@@ -126,7 +126,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         attacker,
                         defender,
                         weaponType,
-                        penetratedShields
+                        penetratedShields ? TacticalImpactState.Hull : TacticalImpactState.Shield
                     ),
                 }
             );

@@ -10,6 +10,7 @@ public sealed class TacticalUnitView : MonoBehaviour
     private TacticalPersistentEffectView gravityWellEffect;
     private GameObject highlightObject;
     private Mesh highlightMesh;
+    private Bounds presentationBounds;
     private TacticalPersistentEffectView tractorLockEffect;
     private int tractorLockCount;
     private TacticalUnitState unit;
@@ -61,6 +62,7 @@ public sealed class TacticalUnitView : MonoBehaviour
         Bounds bounds
     )
     {
+        presentationBounds = bounds;
         float diameter = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) * 1.15f;
         tractorLockEffect = CreatePersistentEffect("Tractor Lock Effect", tractorFrames, diameter);
         gravityWellEffect = CreatePersistentEffect(
@@ -69,6 +71,32 @@ public sealed class TacticalUnitView : MonoBehaviour
             diameter
         );
         RefreshPersistentEffects();
+    }
+
+    /// <summary>
+    /// Plays one damage animation on the surface facing the incoming attack.
+    /// </summary>
+    /// <param name="frames">The damage animation frames.</param>
+    /// <param name="sourcePosition">The attack origin in world space.</param>
+    public void ShowWeaponImpact(Sprite[] frames, Vector3 sourcePosition)
+    {
+        if (frames == null)
+            throw new System.ArgumentNullException(nameof(frames));
+        if (frames.Length == 0)
+            return;
+
+        GameObject effectObject = new GameObject("Weapon Impact Effect");
+        effectObject.transform.SetParent(transform, false);
+        Vector3 incomingDirection = transform.InverseTransformDirection(
+            sourcePosition - transform.position
+        );
+        effectObject.transform.localPosition = GetSurfacePoint(incomingDirection);
+        float diameter = Mathf.Max(
+            presentationBounds.size.x,
+            presentationBounds.size.y,
+            presentationBounds.size.z
+        );
+        effectObject.AddComponent<TacticalOneShotEffectView>().Initialize(frames, diameter);
     }
 
     /// <summary>
@@ -166,6 +194,33 @@ public sealed class TacticalUnitView : MonoBehaviour
         bool hasGravityWell = unit.Unit is CapitalShip { HasGravityWell: true };
         gravityWellEffect.SetVisible(hasGravityWell);
         tractorLockEffect.SetVisible(!hasGravityWell && tractorLockCount > 0);
+    }
+
+    /// <summary>
+    /// Finds the presentation-bounds surface point along one local direction.
+    /// </summary>
+    /// <param name="direction">The direction from the unit toward the attacker.</param>
+    /// <returns>The corresponding local surface point.</returns>
+    private Vector3 GetSurfacePoint(Vector3 direction)
+    {
+        if (direction.sqrMagnitude <= Mathf.Epsilon)
+            return presentationBounds.center;
+
+        direction.Normalize();
+        Vector3 extents = presentationBounds.extents;
+        float xScale =
+            Mathf.Abs(direction.x) <= Mathf.Epsilon
+                ? float.PositiveInfinity
+                : extents.x / Mathf.Abs(direction.x);
+        float yScale =
+            Mathf.Abs(direction.y) <= Mathf.Epsilon
+                ? float.PositiveInfinity
+                : extents.y / Mathf.Abs(direction.y);
+        float zScale =
+            Mathf.Abs(direction.z) <= Mathf.Epsilon
+                ? float.PositiveInfinity
+                : extents.z / Mathf.Abs(direction.z);
+        return presentationBounds.center + direction * Mathf.Min(xScale, yScale, zScale);
     }
 
     /// <summary>
