@@ -128,7 +128,12 @@ namespace Rebellion.Systems
 
             foreach (UnitMovementRequestedResult result in results)
             {
-                if (result?.Unit != null && result.Destination != null)
+                if (result?.Destination == null)
+                    continue;
+
+                if (result.Units?.Count > 0)
+                    RequestMove(result.Units, result.Destination);
+                else if (result.Unit != null)
                     RequestMove(result.Unit, result.Destination);
             }
 
@@ -409,7 +414,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="participant">The participant whose return destination is required.</param>
         /// <returns>The first valid return container, or null when none can receive the participant.</returns>
-        private ContainerNode ResolveMissionReturnDestination(IMissionParticipant participant)
+        internal ContainerNode ResolveMissionReturnDestination(IMissionParticipant participant)
         {
             Planet returnLocation = _game.GetSceneNodeByInstanceID<Planet>(
                 participant.MissionReturnLocationInstanceID

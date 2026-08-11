@@ -29,11 +29,11 @@ namespace Rebellion.Game.Events
     public sealed class InformantIntelligenceAction : GameAction
     {
         public int MaximumPopularSupport { get; set; } = 100;
-        public string Title { get; set; }
+        public string Subject { get; set; }
         public string Body { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public MessageBackgroundImage BackgroundImage { get; set; }
-        public string AudioPath { get; set; }
+        public MessageAudio AmbientAudio { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
         public List<InformantFactionRoute> FactionRoutes { get; set; } =
             new List<InformantFactionRoute>();
@@ -57,6 +57,7 @@ namespace Rebellion.Game.Events
         {
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
+            BackgroundImage?.Validate();
             AdvisorNotification?.Validate();
             Planet planet = context?.GetScopeTarget<Planet>();
             if (planet == null)
@@ -94,11 +95,11 @@ namespace Rebellion.Game.Events
                     SubjectNode = planet,
                     Location = planet,
                     MessageType = MessageType,
-                    Subject = Title,
+                    Subject = Subject,
                     Body = Body,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = BackgroundImage?.Path,
-                    AudioPath = AudioPath,
+                    AudioPath = AmbientAudio?.Path,
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },

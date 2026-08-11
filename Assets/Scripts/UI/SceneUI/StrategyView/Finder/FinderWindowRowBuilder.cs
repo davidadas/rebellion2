@@ -471,7 +471,7 @@ public sealed class FinderWindowRowBuilder
             return string.IsNullOrWhiteSpace(voidUnit.VoidState.DisplayText)
                 ? voidUnit.VoidState.Status == VoidStatus.OnMission
                     ? "On Mission"
-                    : voidUnit.VoidState.Status.ToString()
+                    : voidUnit.VoidState.Status?.ToString() ?? "Unavailable"
                 : voidUnit.VoidState.DisplayText;
 
         if (personnel is IMovable movable && movable.GetTransitMovement() != null)

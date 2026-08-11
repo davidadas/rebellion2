@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -9,7 +11,74 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Adjusts one stored officer rating by a fixed amount or by a percentage of its base value.
+    /// Sets one officer's captivity state and emits the standard state-change result.
+    /// </summary>
+    [PersistableObject(Name = "SetCaptivity")]
+    public sealed class SetCaptivityAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public bool IsCaptured { get; set; }
+
+        [PersistableAttribute]
+        public string CaptorFactionInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public bool CanEscape { get; set; } = true;
+
+        [PersistableInlineCollection]
+        public List<UnitSelector> Selectors { get; set; } = new List<UnitSelector>();
+
+        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random, null);
+
+        public override List<GameResult> Execute(
+            GameRoot game,
+            IRandomNumberProvider provider,
+            GameEventExecutionContext context
+        )
+        {
+            IEnumerable<Officer> officers = Selectors
+                .SelectMany(selector => selector.Select(game, provider, context))
+                .Cast<Officer>();
+            if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
+            {
+                Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                if (officer == null)
+                    throw new InvalidOperationException(
+                        $"SetCaptivity could not resolve officer '{OfficerInstanceID}'."
+                    );
+                officers = new[] { officer }.Concat(officers);
+            }
+            List<Officer> selected = officers.Distinct().ToList();
+            if (selected.Count == 0)
+                throw new InvalidOperationException(
+                    "SetCaptivity requires an officer or at least one matching selector."
+                );
+
+            List<GameResult> results = new List<GameResult>();
+            foreach (Officer officer in selected)
+            {
+                officer.IsCaptured = IsCaptured;
+                officer.CaptorInstanceID = IsCaptured ? CaptorFactionInstanceID : null;
+                officer.CanEscape = CanEscape;
+                results.Add(
+                    new OfficerCaptureStateResult
+                    {
+                        TargetOfficer = officer,
+                        IsCaptured = IsCaptured,
+                        Context = officer.GetParentOfType<Planet>(),
+                        Tick = game.CurrentTick,
+                    }
+                );
+            }
+            return results;
+        }
+    }
+
+    /// <summary>
+    /// Adjusts one stored officer rating by a fixed amount or a percentage of its current base value.
     /// </summary>
     [PersistableObject(Name = "AdjustOfficerRating")]
     public sealed class AdjustOfficerRatingAction : GameAction
@@ -21,7 +90,7 @@ namespace Rebellion.Game.Events
         public OfficerRating Rating { get; set; }
 
         public int? Amount { get; set; }
-        public int? PercentOfBaseRating { get; set; }
+        public int? Percent { get; set; }
 
         public override List<GameResult> Execute(GameRoot game)
         {
@@ -34,50 +103,51 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "AdjustOfficerRating requires a concrete officer rating."
                 );
-            if (Amount.HasValue == PercentOfBaseRating.HasValue)
+            if (Amount.HasValue == Percent.HasValue)
                 throw new InvalidOperationException(
-                    "AdjustOfficerRating requires exactly one of Amount or PercentOfBaseRating."
+                    "AdjustOfficerRating requires exactly one of Amount or Percent."
                 );
 
             int baseRating = officer.GetBaseRating(Rating);
-            int adjustment = Amount ?? checked(baseRating * PercentOfBaseRating.Value / 100);
+            int adjustment = Amount ?? checked(baseRating * Percent.Value / 100);
             officer.SetBaseRating(Rating, checked(baseRating + adjustment));
             return new List<GameResult>();
         }
     }
 
     /// <summary>
-    /// Adds Force experience calculated as a percentage of the officer's current rank.
+    /// Adjusts an officer's Force value by a signed amount or percentage of current rank.
     /// </summary>
-    [PersistableObject(Name = "AddForceExperience")]
-    public sealed class AddForceExperienceAction : GameAction
+    [PersistableObject(Name = "AdjustOfficerForce")]
+    public sealed class AdjustOfficerForceAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
-        public int PercentOfCurrentRank { get; set; }
+        public int? Amount { get; set; }
+        public int? Percent { get; set; }
 
         public override List<GameResult> Execute(GameRoot game)
         {
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 throw new InvalidOperationException(
-                    $"AddForceExperience could not resolve officer '{OfficerInstanceID}'."
+                    $"AdjustOfficerForce could not resolve officer '{OfficerInstanceID}'."
                 );
-            if (PercentOfCurrentRank < 0)
+            if (Amount.HasValue == Percent.HasValue)
                 throw new InvalidOperationException(
-                    "AddForceExperience percentage cannot be negative."
+                    "AdjustOfficerForce requires exactly one of Amount or Percent."
                 );
 
             int previousRank = officer.ForceRank;
-            int gained = previousRank * PercentOfCurrentRank / 100;
-            officer.ForceValue += gained;
+            int adjustment = Amount ?? checked(previousRank * Percent.Value / 100);
+            officer.ForceValue = Math.Max(0, checked(officer.ForceValue + adjustment));
 
             return new List<GameResult>
             {
                 new ForceExperienceResult
                 {
                     Officer = officer,
-                    ExperienceGained = gained,
+                    ExperienceGained = adjustment,
                     PreviousForceRank = previousRank,
                     CurrentForceRank = officer.ForceRank,
                     SuppressRankChangeMessage = true,
@@ -88,14 +158,19 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Reveals an officer's authored Force potential and initializes its starting value.
+    /// Sets authored Force-state flags and initializes Force value on eligibility transition.
     /// </summary>
-    [PersistableObject(Name = "RevealOfficerForcePotential")]
-    public sealed class RevealOfficerForcePotentialAction : GameAction
+    [PersistableObject(Name = "SetOfficerForceState")]
+    public sealed class SetOfficerForceStateAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
-        public bool SuppressRankChangeMessage { get; set; } = true;
+
+        [PersistableAttribute]
+        public bool? IsJedi { get; set; }
+
+        [PersistableAttribute]
+        public bool? IsEligible { get; set; }
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
@@ -122,17 +197,21 @@ namespace Rebellion.Game.Events
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 throw new InvalidOperationException(
-                    $"RevealOfficerForcePotential could not resolve {nameof(OfficerInstanceID)} '{OfficerInstanceID}'."
+                    $"SetOfficerForceState could not resolve {nameof(OfficerInstanceID)} '{OfficerInstanceID}'."
                 );
-            if (officer.IsForceEligible)
-                return new List<GameResult>();
 
             int previousRank = officer.ForceRank;
-            officer.IsJedi = true;
-            officer.IsForceEligible = true;
-            int startingValue =
-                officer.JediLevel + provider.NextInt(0, officer.JediLevelVariance + 1);
-            officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
+            bool becameEligible = !officer.IsForceEligible && IsEligible == true;
+            if (IsJedi.HasValue)
+                officer.IsJedi = IsJedi.Value;
+            if (IsEligible.HasValue)
+                officer.IsForceEligible = IsEligible.Value;
+            if (becameEligible)
+            {
+                int startingValue =
+                    officer.JediLevel + provider.NextInt(0, officer.JediLevelVariance + 1);
+                officer.ForceValue = Math.Max(officer.ForceValue, startingValue);
+            }
             return new List<GameResult>
             {
                 new ForceExperienceResult
@@ -141,70 +220,10 @@ namespace Rebellion.Game.Events
                     ExperienceGained = Math.Max(0, officer.ForceRank - previousRank),
                     PreviousForceRank = previousRank,
                     CurrentForceRank = officer.ForceRank,
-                    SuppressRankChangeMessage = SuppressRankChangeMessage,
+                    SuppressRankChangeMessage = true,
                     Tick = game.CurrentTick,
                 },
             };
-        }
-    }
-
-    /// <summary>
-    /// Increases one officer's Force value using the greatest configured reward component.
-    /// </summary>
-    [PersistableObject(Name = "IncreaseOfficerForce")]
-    public class IncreaseOfficerForceAction : GameAction
-    {
-        [PersistableAttribute]
-        public string OfficerInstanceID { get; set; }
-        public string ReferenceOfficerInstanceID { get; set; }
-        public int MinimumIncrease { get; set; }
-        public int CurrentRankPercent { get; set; }
-        public int PositiveRankGapPercent { get; set; }
-        public bool SuppressRankChangeMessage { get; set; }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game)
-        {
-            Officer officer = ResolveOfficer(game, OfficerInstanceID, nameof(OfficerInstanceID));
-            Officer reference = string.IsNullOrWhiteSpace(ReferenceOfficerInstanceID)
-                ? null
-                : ResolveOfficer(
-                    game,
-                    ReferenceOfficerInstanceID,
-                    nameof(ReferenceOfficerInstanceID)
-                );
-            int previousRank = officer.ForceRank;
-            int increase = Math.Max(MinimumIncrease, previousRank * CurrentRankPercent / 100);
-            if (reference != null)
-            {
-                int positiveGap = Math.Max(0, reference.ForceRank - previousRank);
-                increase = Math.Max(increase, positiveGap * PositiveRankGapPercent / 100);
-            }
-
-            officer.ForceValue += increase;
-            return new List<GameResult>
-            {
-                new ForceExperienceResult
-                {
-                    Officer = officer,
-                    ExperienceGained = increase,
-                    PreviousForceRank = previousRank,
-                    CurrentForceRank = officer.ForceRank,
-                    SuppressRankChangeMessage = SuppressRankChangeMessage,
-                    Tick = game.CurrentTick,
-                },
-            };
-        }
-
-        /// <summary>
-        /// Resolves a required officer reference for a story action.
-        /// </summary>
-        private static Officer ResolveOfficer(GameRoot game, string instanceId, string memberName)
-        {
-            return game.GetSceneNodeByInstanceID<Officer>(instanceId)
-                ?? throw new InvalidOperationException(
-                    $"IncreaseOfficerForce could not resolve {memberName} '{instanceId}'."
-                );
         }
     }
 

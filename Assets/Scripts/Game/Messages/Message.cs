@@ -80,12 +80,25 @@ namespace Rebellion.Game.Messages
     [PersistableObject]
     public sealed class AdvisorAnimation
     {
+        [PersistableAttribute]
         public string Animation { get; set; }
+
+        [PersistableAttribute]
         public string AnimationPath { get; set; }
+
+        [PersistableAttribute]
         public int? FrameCount { get; set; }
+
+        [PersistableAttribute]
         public string Audio { get; set; }
+
+        [PersistableAttribute]
         public string AudioPath { get; set; }
+
+        [PersistableAttribute]
         public float? DelayBeforeSeconds { get; set; }
+
+        [PersistableAttribute]
         public bool? RequiresAnnouncementsEnabled { get; set; }
     }
 
@@ -98,6 +111,7 @@ namespace Rebellion.Game.Messages
         [PersistableAttribute]
         public AdvisorNotificationPreset? Preset { get; set; }
 
+        [PersistableAttribute]
         public int? LifetimeTicks { get; set; }
         public AdvisorAnimation Droid { get; set; }
         public AdvisorAnimation Protocol { get; set; }

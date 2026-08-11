@@ -97,14 +97,14 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute(Name = "Type")]
         public MessageType MessageType { get; set; } = MessageType.Advice;
-        public string Title { get; set; }
+        public string Subject { get; set; }
         public string Body { get; set; }
         public List<NarrativeBodySegment> BodySegments { get; set; } =
             new List<NarrativeBodySegment>();
         public MessageBackgroundImage BackgroundImage { get; set; }
-        public string OverlayImagePath { get; set; }
-        public string AudioPath { get; set; }
-        public string OfficerVoicePath { get; set; }
+        public MessageImage OverlayImage { get; set; }
+        public MessageAudio AmbientAudio { get; set; }
+        public MessageOfficerVoice OfficerVoice { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
 
         /// <summary>
@@ -114,7 +114,7 @@ namespace Rebellion.Game.Events
         /// <returns>A single narrative message result.</returns>
         public override List<GameResult> Execute(GameRoot game)
         {
-            return ExecuteCore(game, null);
+            return ExecuteCore(game, null, game.Random);
         }
 
         public override List<GameResult> Execute(
@@ -123,13 +123,17 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
-            return ExecuteCore(game, context?.TriggerResult);
+            return ExecuteCore(game, context?.TriggerResult, provider ?? game.Random);
         }
 
         /// <summary>
         /// Builds the configured narrative result from the optional triggering result.
         /// </summary>
-        private List<GameResult> ExecuteCore(GameRoot game, GameResult triggerResult)
+        private List<GameResult> ExecuteCore(
+            GameRoot game,
+            GameResult triggerResult,
+            IRandomNumberProvider provider
+        )
         {
             ISceneNode subject = game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
             ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
@@ -156,9 +160,10 @@ namespace Rebellion.Game.Events
             foreach (NarrativeBodySegment segment in BodySegments)
                 bodyTemplate += segment.Resolve(game, triggerResult) ?? string.Empty;
             OfficerEncounterResult encounter = triggerResult as OfficerEncounterResult;
-            string voicePath = AudioPath ?? encounter?.AudioPath;
+            string voicePath = AmbientAudio?.Path ?? encounter?.AudioPath;
             string imagePath = BackgroundImage?.Path ?? encounter?.ImagePath;
 
+            BackgroundImage?.Validate();
             ValidateAdvisorNotification();
             return new List<GameResult>
             {
@@ -169,13 +174,13 @@ namespace Rebellion.Game.Events
                     RelatedSubjectNode = relatedSubject,
                     Location = location,
                     MessageType = MessageType,
-                    Subject = Title,
+                    Subject = Subject,
                     Body = bodyTemplate,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
-                    OverlayImagePath = OverlayImagePath ?? (subject as Officer)?.MessageImagePath,
+                    OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
                     AudioPath = voicePath,
-                    OfficerVoicePath = OfficerVoicePath,
+                    OfficerVoicePath = OfficerVoice?.Resolve(subject as Officer, provider),
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },

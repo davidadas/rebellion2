@@ -372,6 +372,8 @@ namespace Rebellion.Game.Results
         public string MissionName { get; set; }
         public string MissionTypeID { get; set; }
         public string TargetName { get; set; }
+        public Planet Location { get; set; }
+        public ContainerNode ReturnDestination { get; set; }
         public List<IMissionParticipant> Participants { get; set; } =
             new List<IMissionParticipant>();
         public MissionOutcome Outcome { get; set; }
@@ -544,19 +546,9 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// Luke completed Dagobah training.
     /// </summary>
-    public class DagobahCompletedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-    }
-
     /// <summary>
     /// Luke learned about his heritage.
     /// </summary>
-    public class HeritageRevealedResult : GameResult
-    {
-        public Officer Officer { get; set; }
-    }
-
     /// <summary>
     /// A data-defined narrative event requested a faction message.
     /// </summary>
@@ -602,6 +594,7 @@ namespace Rebellion.Game.Results
     public class UnitMovementRequestedResult : GameResult
     {
         public IMovable Unit { get; set; }
+        public List<IMovable> Units { get; set; } = new List<IMovable>();
         public ContainerNode Destination { get; set; }
     }
 
@@ -614,46 +607,6 @@ namespace Rebellion.Game.Results
         public string TargetInstanceID { get; set; }
         public List<string> MainParticipantInstanceIDs { get; set; } = new List<string>();
         public List<string> DecoyParticipantInstanceIDs { get; set; } = new List<string>();
-    }
-
-    /// <summary>
-    /// A content-authored capture attempt resolved against its target.
-    /// </summary>
-    public class OfficerCaptureAttemptResult : GameResult
-    {
-        public Officer Target { get; set; }
-        public Planet Location { get; set; }
-        public bool WasCaptured { get; set; }
-    }
-
-    /// <summary>
-    /// A story collector completed a prisoner pickup.
-    /// </summary>
-    public class PrisonerPickupCompletedResult : GameResult
-    {
-        public Officer Collector { get; set; }
-        public Planet Location { get; set; }
-        public List<Officer> Prisoners { get; set; } = new List<Officer>();
-    }
-
-    /// <summary>
-    /// The Luke, Vader, and Palpatine confrontation resolved.
-    /// </summary>
-    public class ForceConfrontationCompletedResult : GameResult
-    {
-        public Officer Luke { get; set; }
-        public Officer Vader { get; set; }
-        public Officer Palpatine { get; set; }
-        public bool LukeVictorious { get; set; }
-    }
-
-    /// <summary>
-    /// Announces a bounty-hunter attack before its capture attempt resolves.
-    /// Retained as a general event action result for content packs that need an attack cue.
-    /// </summary>
-    public class BountyAttackResult : GameResult
-    {
-        public Officer Officer { get; set; }
     }
 
     /// <summary>

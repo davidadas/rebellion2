@@ -817,7 +817,7 @@ internal sealed class StrategyStatusInfoBuilder
             return string.IsNullOrWhiteSpace(officer.VoidState.DisplayText)
                 ? officer.VoidState.Status == VoidStatus.OnMission
                     ? "On Mission"
-                    : officer.VoidState.Status.ToString()
+                    : officer.VoidState.Status?.ToString() ?? "Unavailable"
                 : officer.VoidState.DisplayText;
         if (officer.GetTransitMovement() != null)
             return "Enroute";

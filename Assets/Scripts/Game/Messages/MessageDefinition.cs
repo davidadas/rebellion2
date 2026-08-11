@@ -3,6 +3,7 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Messages
@@ -13,8 +14,61 @@ namespace Rebellion.Game.Messages
     [PersistableObject]
     public sealed class MessageBackgroundImage
     {
+        [PersistableAttribute]
         public string Key { get; set; }
+
+        [PersistableAttribute]
         public string Path { get; set; }
+
+        public void Validate()
+        {
+            bool hasKey = !string.IsNullOrWhiteSpace(Key);
+            bool hasPath = !string.IsNullOrWhiteSpace(Path);
+            if (hasKey == hasPath)
+                throw new System.InvalidOperationException(
+                    "BackgroundImage requires exactly one of Key or Path."
+                );
+        }
+    }
+
+    /// <summary>
+    /// Selects an explicit audio asset used by an authored message.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MessageAudio
+    {
+        [PersistableAttribute]
+        public string Path { get; set; }
+    }
+
+    [PersistableObject]
+    public sealed class MessageImage
+    {
+        [PersistableAttribute]
+        public string Path { get; set; }
+    }
+
+    /// <summary>
+    /// Selects an explicit officer recording or one of the subject officer's authored voice sets.
+    /// </summary>
+    [PersistableObject]
+    public sealed class MessageOfficerVoice
+    {
+        [PersistableAttribute]
+        public string Path { get; set; }
+
+        [PersistableAttribute]
+        public OfficerVoiceLineType? Preset { get; set; }
+
+        public string Resolve(Officer officer, IRandomNumberProvider provider)
+        {
+            bool hasPath = !string.IsNullOrWhiteSpace(Path);
+            if (hasPath == Preset.HasValue)
+                throw new System.InvalidOperationException(
+                    "OfficerVoice requires exactly one of Path or Preset."
+                );
+            return hasPath ? Path : officer?.GetVoicePath(Preset.Value, provider);
+        }
     }
 
     /// <summary>
@@ -53,8 +107,6 @@ namespace Rebellion.Game.Messages
         ForceGrowth,
         ForceUserDiscovered,
         ForceUserDiscoveredByStudent,
-        DagobahCompleted,
-        HeritageRevealed,
         CapitalShipRepaired,
         StarfighterRepaired,
         SabotageStrike,

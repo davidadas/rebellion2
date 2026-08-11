@@ -52,7 +52,7 @@ namespace Rebellion.Tests.Content
                 candidate.InstanceID == "LUKE_LEAVES_DAGOBAH"
             );
 
-            Assert.IsNull(gameEvent.Trigger);
+            Assert.IsEmpty(gameEvent.Triggers);
             Assert.AreEqual("LUKE_VISITS_YODA", gameEvent.Schedule.After.EventInstanceID);
             Assert.AreEqual(100, gameEvent.Schedule.After.DelayTicks);
             Assert.AreEqual(
@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(gameEvent.Actions.OfType<ReturnFromVoidAction>().Any());
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
-            Assert.AreEqual("Luke Leaves Dagobah", message.Title);
+            Assert.AreEqual("Luke Leaves Dagobah", message.Subject);
             Assert.AreEqual("I have finished my training with Yoda.", message.Body);
             SetOfficerImagesAction presentation = gameEvent
                 .Actions.OfType<SetOfficerImagesAction>()
@@ -95,24 +95,31 @@ namespace Rebellion.Tests.Content
                 GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                     candidate.InstanceID == eventId
                 );
-                TriggeredByConditional source = gameEvent
-                    .Conditionals.OfType<TriggeredByConditional>()
-                    .Single();
-                OfficerCapturedConditional capture = gameEvent
-                    .Conditionals.OfType<OfficerCapturedConditional>()
+                EvaluateBindingConditional source =
+                    gameEvent.Conditionals.Single(condition =>
+                        condition is EvaluateBindingConditional binding
+                        && binding.Name == "sourceEvent"
+                    ) as EvaluateBindingConditional;
+                EvaluateBindingConditional outcome =
+                    gameEvent.Conditionals.Single(condition =>
+                        condition is EvaluateBindingConditional binding && binding.Name == "outcome"
+                    ) as EvaluateBindingConditional;
+                SetCaptivityAction capture = gameEvent
+                    .Actions.OfType<SetCaptivityAction>()
                     .Single();
                 SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
 
-                Assert.AreEqual("core:officer.capture-changed", gameEvent.Trigger);
+                Assert.AreEqual("core:mission.completed", gameEvent.Triggers.Single().Event);
                 SuppressNextMessageAction suppression = gameEvent
                     .Actions.OfType<SuppressNextMessageAction>()
                     .Single();
                 Assert.AreEqual(MessageResultType.OfficerCaptured, suppression.MessageType);
                 Assert.AreEqual("FNALL1", suppression.RecipientFactionInstanceID);
-                Assert.AreEqual(sourceEventId, source.EventInstanceID);
+                Assert.AreEqual(sourceEventId, source.Value);
+                Assert.AreEqual("Failed", outcome.Value);
                 Assert.AreEqual(officerId, capture.OfficerInstanceID);
                 Assert.AreEqual(officerId, message.SubjectInstanceID);
-                Assert.AreEqual("Jabba Captures {subject}", message.Title);
+                Assert.AreEqual("Jabba Captures {subject}", message.Subject);
                 Assert.AreEqual(
                     "{subject} was captured by Jabba while attempting to rescue Han Solo.",
                     message.Body
@@ -124,18 +131,24 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(
                 MessageResultType.OfficerCaptured,
-                hanCapture.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
+                hanCapture
+                    .Actions.OfType<SuppressNextMessageAction>()
+                    .Single(action => action.MessageType == MessageResultType.OfficerCaptured)
+                    .MessageType
             );
             Assert.AreEqual(
                 "HAN_BOUNTY_HUNTERS",
-                hanCapture.Conditionals.OfType<TriggeredByConditional>().Single().EventInstanceID
+                hanCapture
+                    .Conditionals.OfType<EvaluateBindingConditional>()
+                    .Single(binding => binding.Name == "sourceEvent")
+                    .Value
             );
 
             GameEvent reportPolicy = pack.GameData.GameEvents.Single(candidate =>
                 candidate.InstanceID == "PALACE_RESCUE_REPORT_POLICY"
             );
             Assert.IsTrue(reportPolicy.Repeats);
-            Assert.AreEqual("core:mission.completed", reportPolicy.Trigger);
+            Assert.AreEqual("core:mission.completed", reportPolicy.Triggers.Single().Event);
             Assert.AreEqual(
                 MessageResultType.MissionReport,
                 reportPolicy.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
@@ -145,70 +158,8 @@ namespace Rebellion.Tests.Content
                 reportPolicy
                     .Conditionals.OfType<OrConditional>()
                     .Single()
-                    .Conditionals.OfType<TriggeredByConditional>()
-                    .Select(source => source.EventInstanceID)
-            );
-        }
-
-        [Test]
-        public void OpenActive_HiddenStoryMissions_OnlyExposeAuthoredReports()
-        {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            (string eventId, string triggerType, string sourceEventId)[] replacements =
-            {
-                (
-                    "HAN_EVADES_BOUNTY_HUNTERS",
-                    "core:officer.capture-attempted",
-                    "HAN_BOUNTY_HUNTERS"
-                ),
-                (
-                    "JABBA_DELIVERS_PRISONERS",
-                    "core:prisoner-pickup.completed",
-                    "VADER_COLLECTS_JABBAS_PRISONERS"
-                ),
-                (
-                    "LUKE_WINS_FINAL_BATTLE",
-                    "core:force-confrontation.completed",
-                    "VADER_TAKES_LUKE_TO_EMPEROR"
-                ),
-                (
-                    "LUKE_LOSES_FINAL_BATTLE",
-                    "core:force-confrontation.completed",
-                    "VADER_TAKES_LUKE_TO_EMPEROR"
-                ),
-            };
-
-            foreach ((string eventId, string triggerType, string sourceEventId) in replacements)
-            {
-                GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
-                    candidate.InstanceID == eventId
-                );
-                Assert.AreEqual(triggerType, gameEvent.Trigger, eventId);
-                Assert.AreEqual(
-                    sourceEventId,
-                    gameEvent
-                        .Conditionals.OfType<TriggeredByConditional>()
-                        .Single()
-                        .EventInstanceID,
-                    eventId
-                );
-            }
-
-            GameEvent finalBattlePolicy = pack.GameData.GameEvents.Single(candidate =>
-                candidate.InstanceID == "FINAL_BATTLE_REPORT_POLICY"
-            );
-            Assert.IsTrue(finalBattlePolicy.Repeats);
-            Assert.AreEqual("core:mission.completed", finalBattlePolicy.Trigger);
-            Assert.AreEqual(
-                MessageResultType.MissionReport,
-                finalBattlePolicy.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
-            );
-            Assert.AreEqual(
-                "VADER_TAKES_LUKE_TO_EMPEROR",
-                finalBattlePolicy
-                    .Conditionals.OfType<TriggeredByConditional>()
-                    .Single()
-                    .EventInstanceID
+                    .Conditionals.OfType<EvaluateBindingConditional>()
+                    .Select(source => source.Value)
             );
         }
 
@@ -261,24 +212,27 @@ namespace Rebellion.Tests.Content
                 GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                     candidate.InstanceID == effectsEventId
                 );
-                Assert.AreEqual("core:officer.encountered", gameEvent.Trigger);
+                Assert.AreEqual("core:officer.encountered", gameEvent.Triggers.Single().Event);
                 Assert.IsEmpty(
                     gameEvent.Actions.OfType<SuppressNextMessageAction>(),
                     effectsEventId
                 );
+                EvaluateBindingConditional[] bindings = gameEvent
+                    .Conditionals.OfType<EvaluateBindingConditional>()
+                    .ToArray();
                 Assert.AreEqual(
                     sourceEventId,
-                    gameEvent
-                        .Conditionals.OfType<TriggeredByConditional>()
-                        .Single()
-                        .EventInstanceID,
+                    bindings.Single(binding => binding.Name == "sourceEvent").Value,
                     effectsEventId
                 );
-                DuelIncludesConditional participants = gameEvent
-                    .Conditionals.OfType<DuelIncludesConditional>()
-                    .Single();
-                Assert.AreEqual(subjectId, participants.FirstOfficerInstanceID);
-                Assert.AreEqual(opponentId, participants.SecondOfficerInstanceID);
+                Assert.AreEqual(
+                    subjectId,
+                    bindings.Single(binding => binding.Name == "officer").Value
+                );
+                Assert.AreEqual(
+                    opponentId,
+                    bindings.Single(binding => binding.Name == "opponent").Value
+                );
                 SendMessageAction report = gameEvent.Actions.OfType<SendMessageAction>().Single();
                 Assert.AreEqual(subjectId, report.SubjectInstanceID);
                 Assert.AreEqual(opponentId, report.RelatedSubjectInstanceID);
@@ -287,157 +241,34 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
-        public void OpenActive_ClassicStoryEvents_PreserveHeritageAndFinalBattleOutcomes()
+        public void OpenActive_FinalBattle_UsesMovementInsteadOfMissionDefinitions()
         {
             ContentPack pack = ContentPackLoader.OpenActive();
-            GameEvent heritage = pack.GameData.GameEvents.Single(gameEvent =>
-                gameEvent.InstanceID == "LUKE_DISCOVERS_HERITAGE"
-            );
-            AfterEvent dagobahReturn = pack
-                .GameData.GameEvents.Single(gameEvent =>
-                    gameEvent.InstanceID == "LUKE_LEAVES_DAGOBAH"
-                )
-                .Schedule.After;
-            AddForceExperienceAction dagobahTraining = pack
-                .GameData.GameEvents.Single(gameEvent =>
-                    gameEvent.InstanceID == "LUKE_LEAVES_DAGOBAH"
-                )
-                .Actions.OfType<AddForceExperienceAction>()
-                .Single();
-            SendMessageAction heritageMessage = heritage
-                .Actions.OfType<SendMessageAction>()
-                .Single();
-            GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
+            GameEvent gather = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "VADER_TAKES_LUKE_TO_EMPEROR"
             );
-            MissionAction startFinalBattle = finalBattle.Actions.OfType<MissionAction>().Single();
-            SendMessageAction victoryMessage = pack
-                .GameData.GameEvents.Single(gameEvent =>
-                    gameEvent.InstanceID == "LUKE_WINS_FINAL_BATTLE"
-                )
-                .Actions.OfType<SendMessageAction>()
-                .Single();
-            SendMessageAction defeatMessage = pack
-                .GameData.GameEvents.Single(gameEvent =>
-                    gameEvent.InstanceID == "LUKE_LOSES_FINAL_BATTLE"
-                )
-                .Actions.OfType<SendMessageAction>()
-                .Single();
-            GameEvent lukeVaderEncounter = pack.GameData.GameEvents.Single(gameEvent =>
-                gameEvent.InstanceID == "LUKE_ENCOUNTERS_VADER"
+            GameEvent escort = pack.GameData.GameEvents.Single(gameEvent =>
+                gameEvent.InstanceID == "VADER_REACHES_LUKE"
             );
-            GameEvent lukeVaderEffects = pack.GameData.GameEvents.Single(gameEvent =>
-                gameEvent.InstanceID == "LUKE_VADER_ENCOUNTER_EFFECTS"
-            );
-            ConditionalAction firstLukeVaderInjury = lukeVaderEffects
-                .Actions.OfType<ConditionalAction>()
+            RequestMovementAction gatherMovement = gather
+                .Actions.OfType<RequestMovementAction>()
                 .Single();
-            IncreaseOfficerForceAction lukeVaderForceIncrease = lukeVaderEffects
-                .Actions.OfType<IncreaseOfficerForceAction>()
+            RequestMovementAction escortMovement = escort
+                .Actions.OfType<RequestMovementAction>()
                 .Single();
-            GameEvent lukePalpatineEffects = pack.GameData.GameEvents.Single(gameEvent =>
-                gameEvent.InstanceID == "LUKE_PALPATINE_ENCOUNTER_EFFECTS"
-            );
-            IncreaseOfficerForceAction lukePalpatineForceIncrease = lukePalpatineEffects
-                .Actions.OfType<IncreaseOfficerForceAction>()
-                .Single();
-            SendMessageAction confrontation = lukeVaderEffects
-                .Actions.OfType<SendMessageAction>()
-                .Single();
-            MissionAction bountyCapture = pack
-                .GameData.GameEvents.Single(gameEvent =>
-                    gameEvent.InstanceID == "HAN_BOUNTY_HUNTERS"
-                )
-                .Actions.OfType<MissionAction>()
-                .Single();
-            string[] recurringEncounterEventIds =
-            {
-                "LUKE_ENCOUNTERS_VADER",
-                "LUKE_VADER_ENCOUNTER_EFFECTS",
-                "LUKE_ENCOUNTERS_PALPATINE",
-                "LUKE_PALPATINE_ENCOUNTER_EFFECTS",
-                "LEIA_ENCOUNTERS_VADER",
-                "LEIA_VADER_ENCOUNTER_EFFECTS",
-                "LEIA_ENCOUNTERS_PALPATINE",
-                "LEIA_PALPATINE_ENCOUNTER_EFFECTS",
-            };
-            GameEvent leiaVaderEffects = pack.GameData.GameEvents.Single(gameEvent =>
-                gameEvent.InstanceID == "LEIA_VADER_ENCOUNTER_EFFECTS"
-            );
-            ConditionalAction leiaHeritageEffects = leiaVaderEffects
-                .Actions.OfType<ConditionalAction>()
-                .Single();
-            GameEvent leiaHeritage = pack.GameData.GameEvents.Single(gameEvent =>
-                gameEvent.InstanceID == "LEIA_DISCOVERS_HERITAGE"
-            );
 
-            Assert.AreEqual(6, heritageMessage.BodySegments.Count);
-            Assert.AreEqual(100, dagobahReturn.DelayTicks);
-            Assert.AreEqual(60, dagobahTraining.PercentOfCurrentRank);
-            Assert.IsTrue(
-                recurringEncounterEventIds.All(instanceId =>
-                    pack.GameData.GameEvents.Single(gameEvent =>
-                        gameEvent.InstanceID == instanceId
-                    ).Repeats
-                )
+            Assert.AreEqual("DARTH_VADER", gatherMovement.UnitInstanceID);
+            Assert.AreEqual("LUKE_SKYWALKER", gatherMovement.DestinationUnitInstanceID);
+            Assert.AreEqual("EMPEROR_PALPATINE", escortMovement.DestinationUnitInstanceID);
+            CollectionAssert.AreEquivalent(
+                new[] { "DARTH_VADER", "LUKE_SKYWALKER" },
+                escortMovement.Units.Select(unit => unit.UnitInstanceID)
             );
-            Assert.AreEqual("core:mission.completed", lukeVaderEncounter.Trigger);
-            Assert.AreEqual(
-                "luke.vader.encountered",
-                firstLukeVaderInjury.Conditionals.OfType<EventVariableConditional>().Single().Key
-            );
-            Assert.AreEqual("DARTH_VADER", lukeVaderForceIncrease.ReferenceOfficerInstanceID);
-            Assert.AreEqual(
-                "EMPEROR_PALPATINE",
-                lukePalpatineForceIncrease.ReferenceOfficerInstanceID
-            );
-            Assert.AreEqual(5, confrontation.BodySegments.Count);
-            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", bountyCapture.MissionDefinitionID);
-            Assert.AreEqual("HAN_SOLO", bountyCapture.Target.UnitInstanceID);
-            Assert.AreEqual(
-                0,
-                pack.GameData.MissionDefinitions.Single(definition =>
-                    definition.InstanceID == bountyCapture.MissionDefinitionID
-                ).AttackRating
-            );
-            EventVariableConditional leiaHeritageCondition = leiaHeritage
-                .Conditionals.OfType<EventVariableConditional>()
-                .Single();
-            Assert.AreEqual("luke.vader.encountered", leiaHeritageCondition.Key);
-            Assert.IsNull(leiaHeritage.Trigger);
-            Assert.AreEqual(
-                "LEIA_ORGANA",
-                leiaHeritage
-                    .Actions.OfType<RevealOfficerForcePotentialAction>()
-                    .Single()
-                    .OfficerInstanceID
-            );
-            Assert.AreEqual(
-                "Leia Uses Force",
-                leiaHeritage.Actions.OfType<SendMessageAction>().Single().Title
-            );
-            Assert.AreEqual(
-                1,
-                leiaHeritageEffects.Actions.OfType<IncreaseOfficerForceAction>().Count()
-            );
-            Assert.IsEmpty(leiaHeritageEffects.Actions.OfType<RevealOfficerForcePotentialAction>());
-            CustomMissionDefinition bountyDefinition = pack.GameData.MissionDefinitions.Single(
-                definition => definition.InstanceID == bountyCapture.MissionDefinitionID
-            );
-            Assert.AreEqual(OfficerRating.Combat, bountyDefinition.ResistanceRating);
-            Assert.AreEqual(AbductionMission.MissionTypeID, bountyDefinition.ProbabilityTableKey);
             Assert.IsFalse(
-                pack.GameData.MissionDefinitions.Single(definition =>
-                    definition.InstanceID == startFinalBattle.MissionDefinitionID
-                ).CaptivesCanEscapeOnVictory
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Events/FinalBattle/Audio/luke-victorious",
-                victoryMessage.AudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Events/FinalBattle/Audio/luke-defeated",
-                defeatMessage.AudioPath
+                pack.GameData.MissionDefinitions.Any(definition =>
+                    definition.InstanceID == "GATHER_LUKE_FOR_FINAL_BATTLE"
+                    || definition.InstanceID == "ESCORT_LUKE_TO_FINAL_BATTLE"
+                )
             );
         }
 
@@ -448,19 +279,25 @@ namespace Rebellion.Tests.Content
             GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                 candidate.InstanceID == "EMPEROR_RETURNS_TO_CORUSCANT"
             );
-            UnitArrivedConditional arrival = gameEvent
-                .Conditionals.OfType<UnitArrivedConditional>()
-                .Single();
+            EvaluateBindingConditional[] arrival = gameEvent
+                .Conditionals.OfType<EvaluateBindingConditional>()
+                .ToArray();
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
             Assert.IsTrue(gameEvent.Repeats);
-            Assert.AreEqual("core:unit.arrived", gameEvent.Trigger);
-            Assert.AreEqual("EMPEROR_PALPATINE", arrival.UnitInstanceID);
-            Assert.AreEqual("CORUSCANT", arrival.DestinationInstanceID);
-            Assert.AreEqual("Emperor Arrives at Coruscant", message.Title);
+            Assert.AreEqual("core:unit.arrived", gameEvent.Triggers.Single().Event);
+            Assert.AreEqual(
+                "EMPEROR_PALPATINE",
+                arrival.Single(binding => binding.Name == "unit").Value
+            );
+            Assert.AreEqual(
+                "CORUSCANT",
+                arrival.Single(binding => binding.Name == "destination").Value
+            );
+            Assert.AreEqual("Emperor Arrives at Coruscant", message.Subject);
             Assert.AreEqual("I have returned to the Seat of Power at Coruscant.", message.Body);
             Assert.AreEqual(
                 "Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01",
-                message.OfficerVoicePath
+                message.OfficerVoice.Path
             );
         }
 

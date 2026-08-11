@@ -105,46 +105,19 @@ namespace Rebellion.Systems
             CustomMissionDefinition definition
         )
         {
-            Officer allowedCaptive =
-                definition.Resolution == CustomMissionResolution.ForceConfrontation
-                && definition.Phase == CustomMissionPhase.EscortToDestination
-                    ? mission.GetTarget<Officer>(_game)
-                    : null;
             if (
                 mission
                     .GetAllParticipants()
                     .Any(participant =>
                         participant is Officer { IsKilled: true }
-                        || (
-                            participant is Officer { IsCaptured: true }
-                            && participant != allowedCaptive
-                        )
-                        || (!participant.IsMovable() && participant != allowedCaptive)
+                        || participant is Officer { IsCaptured: true }
+                        || !participant.IsMovable()
                         || participant.IsOnMission()
                     )
             )
                 return false;
 
-            if (definition.Resolution == CustomMissionResolution.OfficerCapture)
-            {
-                Officer target = mission.GetTarget<Officer>(_game);
-                return target is { IsCaptured: false, IsKilled: false };
-            }
-            if (definition.Resolution == CustomMissionResolution.OfficerRescue)
-                return mission.GetTarget<Officer>(_game)?.IsCaptured == true;
-            if (definition.Resolution == CustomMissionResolution.PrisonerPickup)
-                return true;
-            if (definition.Resolution == CustomMissionResolution.ForceConfrontation)
-            {
-                Officer subject = mission.GetTarget<Officer>(_game);
-                Officer authority = _game.GetSceneNodeByInstanceID<Officer>(
-                    definition.AuthorityUnitInstanceID
-                );
-                return subject?.IsCaptured == true
-                    && subject.CaptorInstanceID == definition.CaptorFactionInstanceID
-                    && authority is { IsCaptured: false, IsKilled: false };
-            }
-            return false;
+            return mission.GetTarget<ISceneNode>(_game) != null && definition.Success != null;
         }
 
         /// <summary>
@@ -517,44 +490,12 @@ namespace Rebellion.Systems
             List<GameResult> results = new List<GameResult>();
 
             if (mission is CustomMission customMission)
-            {
-                customMission.SetDefinition(GetCustomMissionDefinition(customMission), _game);
-                customMission.RefreshTrackedLocation(_game);
-            }
-
-            if (
-                mission is CustomMission
-                {
-                    Definition.Resolution: CustomMissionResolution.ForceConfrontation
-                } forceMission
-            )
-            {
-                MissionCompletionReason? storyAbortReason = forceMission.GetAbortReason(_game);
-                if (storyAbortReason.HasValue)
-                {
-                    results.Add(
-                        BuildTerminatingMissionResult(
-                            mission,
-                            MissionOutcome.Failed,
-                            storyAbortReason.Value,
-                            mission.GetAllParticipants()
-                        )
-                    );
-                    TearDownMission(mission, null, results);
-                    return results;
-                }
-            }
+                customMission.SetDefinition(GetCustomMissionDefinition(customMission));
 
             if (mission.IsWaitingForParticipants())
                 return results;
 
-            MissionCompletionReason? abortReason = mission
-                is CustomMission
-                {
-                    Definition.Resolution: CustomMissionResolution.ForceConfrontation
-                }
-                ? null
-                : mission.GetAbortReason(_game);
+            MissionCompletionReason? abortReason = mission.GetAbortReason(_game);
             if (abortReason.HasValue)
             {
                 AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
@@ -731,13 +672,10 @@ namespace Rebellion.Systems
             List<IMissionParticipant> freeParticipants = GetFreeMissionParticipants(mission)
                 .Distinct()
                 .ToList();
-            if (
-                mission is CustomMission customMission
-                && customMission.GetEscortedTarget(_game) is IMissionParticipant escortedTarget
-                && escortedTarget.GetParent() == mission
-                && !freeParticipants.Contains(escortedTarget)
-            )
-                freeParticipants.Add(escortedTarget);
+            if (completedResult != null)
+                completedResult.ReturnDestination = freeParticipants
+                    .Select(_movementManager.ResolveMissionReturnDestination)
+                    .FirstOrDefault(destination => destination != null);
             List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
                     mission,
                     completedResult
@@ -1092,34 +1030,6 @@ namespace Rebellion.Systems
         /// <param name="mission">The mission to begin.</param>
         private void BeginMission(Mission mission)
         {
-            if (
-                mission is CustomMission
-                {
-                    Definition.Phase: CustomMissionPhase.EscortToDestination
-                } escortMission
-            )
-            {
-                List<IMovable> escortGroup = escortMission
-                    .GetAllParticipants()
-                    .Cast<IMovable>()
-                    .ToList();
-                IMovable escortedTarget = escortMission.GetEscortedTarget(_game);
-                if (escortedTarget != null)
-                    escortGroup.Add(escortedTarget);
-                foreach (
-                    IMissionParticipant participant in escortGroup.OfType<IMissionParticipant>()
-                )
-                {
-                    participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
-                    participant.MissionReturnLocationInstanceID = participant
-                        .GetParentOfType<Planet>()
-                        ?.InstanceID;
-                }
-                _movementManager.RequestMove(escortGroup, escortMission);
-                escortMission.Initiate(RollMissionDuration(escortMission));
-                return;
-            }
-
             foreach (IMissionParticipant participant in mission.GetAllParticipants())
             {
                 if (participant.GetParent() != mission)

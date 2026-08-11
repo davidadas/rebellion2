@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Game.Events
                     new SendMessageAction
                     {
                         RecipientFactionInstanceID = "rebels",
-                        Title = "Child",
+                        Subject = "Child",
                     },
                 },
             };
@@ -35,12 +35,18 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "root",
                 Actions = new List<GameAction>
                 {
-                    new RandomOutcomeAction
+                    new RandomAction
                     {
-                        Probability = 1,
-                        Actions = new List<GameAction>
+                        Outcomes = new List<RandomOutcome>
                         {
-                            new TriggerEventAction { EventInstanceID = child.InstanceID },
+                            new RandomOutcome
+                            {
+                                Weight = 1,
+                                Actions = new List<GameAction>
+                                {
+                                    new TriggerEventAction { EventInstanceID = child.InstanceID },
+                                },
+                            },
                         },
                     },
                 },

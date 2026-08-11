@@ -9,6 +9,59 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    [PersistableObject(Name = "PlanetResourceValue")]
+    public sealed class PlanetResourceValueConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public PlanetResource Resource { get; set; }
+
+        [PersistableAttribute]
+        public EventVariableComparison Comparison { get; set; }
+
+        [PersistableAttribute]
+        public int Value { get; set; }
+
+        public override bool IsMet(GameRoot game) => false;
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context)
+        {
+            Planet planet = context?.GetScopeTarget<Planet>();
+            if (planet == null)
+                return false;
+            int current =
+                Resource == PlanetResource.RawMaterials
+                    ? planet.NumRawResourceNodes
+                    : planet.EnergyCapacity;
+            return Comparison switch
+            {
+                EventVariableComparison.Equal => current == Value,
+                EventVariableComparison.NotEqual => current != Value,
+                EventVariableComparison.GreaterThan => current > Value,
+                EventVariableComparison.GreaterThanOrEqual => current >= Value,
+                EventVariableComparison.LessThan => current < Value,
+                EventVariableComparison.LessThanOrEqual => current <= Value,
+                _ => false,
+            };
+        }
+    }
+
+    [PersistableObject(Name = "HasBuildingType")]
+    public sealed class HasBuildingTypeConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public BuildingType Type { get; set; }
+
+        public override bool IsMet(GameRoot game) => false;
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
+            context
+                ?.GetScopeTarget<Planet>()
+                ?.Buildings.Any(building =>
+                    building.BuildingType == Type
+                    && building.ManufacturingStatus == ManufacturingStatus.Complete
+                ) == true;
+    }
+
     /// <summary>
     /// Tests whether an authored planet has any owner or one specific faction owner.
     /// </summary>
@@ -134,31 +187,17 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// A <see cref="GameConditional"/> that is met when the specified unit implements <see cref="IMovable"/> and is currently movable.
+    /// Tests whether a movable unit currently has an active movement state.
     /// </summary>
-    [PersistableObject(Name = "IsMovable")]
-    public class IsMovableConditional : GameConditional
+    [PersistableObject(Name = "IsInTransit")]
+    public sealed class IsInTransitConditional : GameConditional
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
-        /// <summary>
-        /// Checks whether the referenced unit implements <see cref="IMovable"/> and is currently free to move.
-        /// </summary>
-        /// <param name="game">The game state used to resolve the unit.</param>
-        /// <returns>True if the unit is resolvable, movable, and not currently in transit; otherwise false.</returns>
-        public override bool IsMet(GameRoot game)
-        {
-            ISceneNode sceneNode = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-
-            // Check if the ISceneNode implements IMovable and is movable.
-            if (sceneNode is IMovable movable)
-            {
-                return movable.IsMovable();
-            }
-
-            return false;
-        }
+        public override bool IsMet(GameRoot game) =>
+            game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID)
+                is IMovable { Movement: not null };
     }
 
     /// <summary>

@@ -600,6 +600,25 @@ namespace Rebellion.Game
             public int InjurySecondaryRollMaximum { get; set; } = 29;
 
             public int CombatReward { get; set; } = 1;
+
+            public List<DuelForceAdvancementRule> ForceAdvancementRules { get; set; } =
+                new List<DuelForceAdvancementRule>();
+        }
+
+        [PersistableObject(Name = "Rule")]
+        public class DuelForceAdvancementRule
+        {
+            [PersistableAttribute]
+            public string OfficerInstanceID { get; set; }
+
+            [PersistableAttribute]
+            public string OpponentInstanceID { get; set; }
+
+            [PersistableAttribute]
+            public int MinimumAmount { get; set; }
+
+            [PersistableAttribute]
+            public int PositiveRankGapPercent { get; set; }
         }
 
         /// <summary>

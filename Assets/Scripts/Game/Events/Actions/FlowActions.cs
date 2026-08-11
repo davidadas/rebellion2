@@ -19,60 +19,6 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Executes one authored action list when its probability roll succeeds.
-    /// </summary>
-    [PersistableObject(Name = "RandomOutcome")]
-    public class RandomOutcomeAction : GameAction
-    {
-        [PersistableAttribute]
-        public double Probability { get; set; }
-
-        public List<GameAction> Actions { get; set; } = new List<GameAction>();
-
-        public RandomOutcomeAction()
-            : base() { }
-
-        /// <summary>
-        /// Rolls against the configured probability; on success, executes a uniformly-chosen
-        /// child action and returns its results. Otherwise returns no results.
-        /// </summary>
-        /// <param name="game">The game state passed to the chosen child action.</param>
-        /// <returns>The results produced by the chosen action, or an empty list if the roll failed.</returns>
-        public override List<GameResult> Execute(GameRoot game)
-        {
-            return Execute(game, game.Random);
-        }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
-        {
-            if (provider == null)
-                throw new ArgumentNullException(nameof(provider));
-
-            if (provider.NextDouble() < Probability)
-            {
-                return Actions[provider.NextInt(0, Actions.Count)].Execute(game, provider);
-            }
-
-            return new List<GameResult>();
-        }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            if (provider == null)
-                throw new ArgumentNullException(nameof(provider));
-            if (provider.NextDouble() >= Probability)
-                return new List<GameResult>();
-            return Actions[provider.NextInt(0, Actions.Count)].Execute(game, provider, context);
-        }
-    }
-
-    /// <summary>
     /// Executes every child action when one probability roll succeeds.
     /// </summary>
     [PersistableObject(Name = "Chance")]
@@ -110,22 +56,38 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Defines one weighted action list within a random choice.
+    /// Contains conditions nested beneath a weighted outcome.
     /// </summary>
-    [PersistableObject(Name = "Choice")]
-    public sealed class RandomChoice
+    [PersistableObject]
+    public sealed class GameConditionBlock
     {
+        [PersistableInlineCollection]
+        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+    }
+
+    /// <summary>
+    /// Defines one eligible weighted action outcome.
+    /// </summary>
+    [PersistableObject(Name = "Outcome")]
+    public sealed class RandomOutcome
+    {
+        [PersistableAttribute]
         public int Weight { get; set; } = 1;
+
+        public GameConditionBlock When { get; set; }
+
+        [PersistableInlineCollection]
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
     }
 
     /// <summary>
     /// Selects one weighted outcome and executes every action belonging to that outcome.
     /// </summary>
-    [PersistableObject(Name = "RandomChoice")]
-    public sealed class RandomChoiceAction : GameAction
+    [PersistableObject(Name = "Random")]
+    public sealed class RandomAction : GameAction
     {
-        public List<RandomChoice> Choices { get; set; } = new List<RandomChoice>();
+        [PersistableInlineCollection]
+        public List<RandomOutcome> Outcomes { get; set; } = new List<RandomOutcome>();
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random);
@@ -144,15 +106,25 @@ namespace Rebellion.Game.Events
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
 
-            int totalWeight = Choices.Sum(choice => choice.Weight);
+            List<RandomOutcome> eligible = Outcomes
+                .Where(outcome =>
+                    outcome.Weight > 0
+                    && outcome.When?.Conditionals.All(condition => condition.IsMet(game, context))
+                        != false
+                )
+                .ToList();
+            if (eligible.Count == 0)
+                return new List<GameResult>();
+
+            int totalWeight = eligible.Sum(outcome => outcome.Weight);
             int roll = provider.NextInt(0, totalWeight);
-            RandomChoice selected = null;
-            foreach (RandomChoice choice in Choices)
+            RandomOutcome selected = null;
+            foreach (RandomOutcome outcome in eligible)
             {
-                roll -= choice.Weight;
+                roll -= outcome.Weight;
                 if (roll < 0)
                 {
-                    selected = choice;
+                    selected = outcome;
                     break;
                 }
             }
@@ -215,14 +187,26 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
+    /// Contains actions nested beneath a control-flow branch.
+    /// </summary>
+    [PersistableObject]
+    public sealed class GameActionBlock
+    {
+        [PersistableInlineCollection]
+        public List<GameAction> Actions { get; set; } = new List<GameAction>();
+    }
+
+    /// <summary>
     /// Executes one of two authored action lists based on data-defined conditions.
     /// </summary>
-    [PersistableObject(Name = "Conditional")]
-    public class ConditionalAction : GameAction
+    [PersistableObject(Name = "If")]
+    public class IfAction : GameAction
     {
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public List<GameAction> Actions { get; set; } = new List<GameAction>();
-        public List<GameAction> ElseActions { get; set; } = new List<GameAction>();
+
+        public GameActionBlock Then { get; set; } = new GameActionBlock();
+        public GameActionBlock Else { get; set; }
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
@@ -234,8 +218,8 @@ namespace Rebellion.Game.Events
         public override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             List<GameAction> selected = Conditionals.TrueForAll(condition => condition.IsMet(game))
-                ? Actions
-                : ElseActions;
+                ? Then.Actions
+                : Else?.Actions ?? new List<GameAction>();
             List<GameResult> results = new List<GameResult>();
             foreach (GameAction action in selected)
                 results.AddRange(action.Execute(game, provider));
@@ -251,8 +235,8 @@ namespace Rebellion.Game.Events
             List<GameAction> selected = Conditionals.TrueForAll(condition =>
                 condition.IsMet(game, context)
             )
-                ? Actions
-                : ElseActions;
+                ? Then.Actions
+                : Else?.Actions ?? new List<GameAction>();
             List<GameResult> results = new List<GameResult>();
             foreach (GameAction action in selected)
                 results.AddRange(action.Execute(game, provider, context));

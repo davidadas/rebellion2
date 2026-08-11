@@ -10,23 +10,28 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    /// <summary>
-    /// Changes one resource capacity on the planet selected by the event target.
-    /// Limits and affected facility types are supplied by content.
-    /// </summary>
-    [PersistableObject(Name = "ChangeResources")]
-    public sealed class ChangeResourcesAction : GameAction
+    public enum PlanetResource
     {
-        public int MinimumRawMaterials { get; set; }
-        public int MaximumRawMaterials { get; set; } = 15;
-        public int MinimumEnergy { get; set; }
-        public int MaximumEnergy { get; set; } = 15;
-        public List<BuildingType> EnergyFacilityTypes { get; set; } = new List<BuildingType>();
+        RawMaterials,
+        Energy,
+    }
+
+    /// <summary>
+    /// Applies one explicit signed resource adjustment to the scoped planet.
+    /// </summary>
+    [PersistableObject(Name = "AdjustPlanetResource")]
+    public sealed class AdjustPlanetResourceAction : GameAction
+    {
+        [PersistableAttribute]
+        public PlanetResource Resource { get; set; }
+
+        [PersistableAttribute]
+        public int Amount { get; set; }
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameRoot game)
         {
-            throw new InvalidOperationException("ChangeResources requires a planet target.");
+            throw new InvalidOperationException("AdjustPlanetResource requires a planet target.");
         }
 
         /// <inheritdoc />
@@ -36,62 +41,31 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
-            if (provider == null)
-                throw new ArgumentNullException(nameof(provider));
             Planet planet = context?.GetScopeTarget<Planet>();
             if (planet == null)
                 return Execute(game);
 
-            return ApplyResourceChange(game, planet, provider);
-        }
-
-        /// <summary>
-        /// Applies one eligible resource change and reports the resulting planet state.
-        /// </summary>
-        private List<GameResult> ApplyResourceChange(
-            GameRoot game,
-            Planet planet,
-            IRandomNumberProvider provider
-        )
-        {
-            int oldRaw = planet.NumRawResourceNodes;
-            int oldEnergy = planet.EnergyCapacity;
-            PlanetStatType stat;
             int oldValue;
             int newValue;
-
-            switch (provider.NextInt(0, 4))
+            PlanetStatType stat;
+            switch (Resource)
             {
-                case 0
-                    when HasCompletedFacility(planet, BuildingType.Mine)
-                        && oldRaw > MinimumRawMaterials:
+                case PlanetResource.RawMaterials:
                     stat = PlanetStatType.RawMaterial;
-                    oldValue = oldRaw;
-                    newValue = oldRaw - 1;
+                    oldValue = planet.NumRawResourceNodes;
+                    newValue = Math.Max(0, checked(oldValue + Amount));
                     planet.NumRawResourceNodes = newValue;
                     break;
-                case 1
-                    when HasAnyCompletedFacility(planet, EnergyFacilityTypes)
-                        && oldEnergy > MinimumEnergy:
+                case PlanetResource.Energy:
                     stat = PlanetStatType.Energy;
-                    oldValue = oldEnergy;
-                    newValue = oldEnergy - 1;
-                    planet.EnergyCapacity = newValue;
-                    break;
-                case 2 when oldRaw < MaximumRawMaterials && oldRaw < oldEnergy:
-                    stat = PlanetStatType.RawMaterial;
-                    oldValue = oldRaw;
-                    newValue = oldRaw + 1;
-                    planet.NumRawResourceNodes = newValue;
-                    break;
-                case 3 when oldEnergy < MaximumEnergy:
-                    stat = PlanetStatType.Energy;
-                    oldValue = oldEnergy;
-                    newValue = oldEnergy + 1;
+                    oldValue = planet.EnergyCapacity;
+                    newValue = Math.Max(0, checked(oldValue + Amount));
                     planet.EnergyCapacity = newValue;
                     break;
                 default:
-                    return new List<GameResult>();
+                    throw new InvalidOperationException(
+                        $"Unsupported planet resource '{Resource}'."
+                    );
             }
 
             Faction faction = FindOwner(game, planet);
@@ -118,27 +92,6 @@ namespace Rebellion.Game.Events
                 },
             };
         }
-
-        /// <summary>
-        /// Returns whether the planet contains a completed facility of the requested type.
-        /// </summary>
-        private static bool HasCompletedFacility(Planet planet, BuildingType type) =>
-            planet.Buildings.Any(building =>
-                building.BuildingType == type
-                && building.ManufacturingStatus == ManufacturingStatus.Complete
-            );
-
-        /// <summary>
-        /// Returns whether the planet contains a completed facility of any requested type.
-        /// </summary>
-        private static bool HasAnyCompletedFacility(
-            Planet planet,
-            IReadOnlyCollection<BuildingType> types
-        ) =>
-            planet.Buildings.Any(building =>
-                types.Contains(building.BuildingType)
-                && building.ManufacturingStatus == ManufacturingStatus.Complete
-            );
 
         /// <summary>
         /// Resolves the faction that currently owns the planet.

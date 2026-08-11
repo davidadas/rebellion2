@@ -318,6 +318,25 @@ namespace Rebellion.Util.Serialization
 
                 if (value != null)
                 {
+                    if (
+                        Attribute.IsDefined(member, typeof(PersistableInlineCollectionAttribute))
+                        && value is IEnumerable inlineItems
+                    )
+                    {
+                        foreach (object item in inlineItems)
+                        {
+                            if (item != null)
+                            {
+                                WriteValue(
+                                    item,
+                                    writer,
+                                    ReflectionHelper.GetPersistableElementName(item.GetType())
+                                );
+                            }
+                        }
+                        continue;
+                    }
+
                     string elementName = GetElementName(member, value);
                     WriteValue(value, writer, elementName);
                 }
@@ -688,6 +707,10 @@ namespace Rebellion.Util.Serialization
                         object value = ReadMember(member, reader);
                         ReflectionHelper.SetMemberValue(member, obj, value);
                     }
+                    else if (TryReadInlineCollection(actualType, obj, elementName, reader))
+                    {
+                        continue;
+                    }
                     else if (attributes.TryGetValue(elementName, out MemberInfo attributeMember))
                     {
                         object value = ReadMember(attributeMember, reader);
@@ -707,6 +730,45 @@ namespace Rebellion.Util.Serialization
             }
             reader.ReadEndElement();
             return obj;
+        }
+
+        private static bool TryReadInlineCollection(
+            Type objectType,
+            object instance,
+            string elementName,
+            XmlReader reader
+        )
+        {
+            IDictionary<string, Type> persistableTypes = ReflectionHelper.GetPersistableObjectMap();
+            if (!persistableTypes.TryGetValue(elementName, out Type actualElementType))
+                return false;
+
+            foreach (
+                MemberInfo member in ReflectionHelper.GetPersistableMembers(
+                    objectType,
+                    ReflectionHelper.OperationType.Read
+                )
+            )
+            {
+                if (!Attribute.IsDefined(member, typeof(PersistableInlineCollectionAttribute)))
+                    continue;
+
+                Type collectionType = ReflectionHelper.GetMemberType(member);
+                Type elementType = collectionType.GetGenericArguments().FirstOrDefault();
+                if (elementType?.IsAssignableFrom(actualElementType) != true)
+                    continue;
+
+                IList collection = ReflectionHelper.GetMemberValue(member, instance) as IList;
+                if (collection == null)
+                {
+                    collection = (IList)Activator.CreateInstance(collectionType);
+                    ReflectionHelper.SetMemberValue(member, instance, collection);
+                }
+                collection.Add(ReadValue(actualElementType, reader));
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -1172,10 +1234,7 @@ namespace Rebellion.Util.Serialization
                             return e.Types.Where(t => t != null);
                         }
                     })
-                    .Where(type =>
-                        !type.IsAbstract
-                        && Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
-                    )
+                    .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
             )
             {
                 AddPersistableTypeName(persistableMap, GetPersistableElementName(type), type);

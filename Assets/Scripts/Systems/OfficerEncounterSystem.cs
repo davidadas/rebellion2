@@ -133,6 +133,7 @@ namespace Rebellion.Systems
 
             ApplyInjury(encountered, encounteredInjury, opposing, request, reactions);
             ApplyInjury(opposing, opposingInjury, encountered, request, reactions);
+            ApplyForceAdvancement(encountered, opposing, request, reactions);
 
             reactions.Add(
                 Stamp(
@@ -146,6 +147,43 @@ namespace Rebellion.Systems
                         OpposingOfficerInjury = opposingInjury,
                         ImagePath = request.ImagePath,
                         AudioPath = request.AudioPath,
+                        Tick = _game.CurrentTick,
+                    },
+                    request
+                )
+            );
+        }
+
+        private void ApplyForceAdvancement(
+            Officer officer,
+            Officer opponent,
+            OfficerEncounterRequestedResult request,
+            List<GameResult> reactions
+        )
+        {
+            GameConfig.DuelForceAdvancementRule rule =
+                _game.Config.DuelResolution.ForceAdvancementRules.Find(candidate =>
+                    candidate.OfficerInstanceID == officer.InstanceID
+                    && candidate.OpponentInstanceID == opponent.InstanceID
+                );
+            if (rule == null || !officer.IsForceEligible)
+                return;
+
+            int previousRank = officer.ForceRank;
+            int positiveGap = Math.Max(0, opponent.ForceRank - previousRank);
+            int amount = Math.Max(
+                rule.MinimumAmount,
+                positiveGap * rule.PositiveRankGapPercent / 100
+            );
+            officer.ForceValue += amount;
+            reactions.Add(
+                Stamp(
+                    new ForceExperienceResult
+                    {
+                        Officer = officer,
+                        ExperienceGained = amount,
+                        PreviousForceRank = previousRank,
+                        CurrentForceRank = officer.ForceRank,
                         Tick = _game.CurrentTick,
                     },
                     request

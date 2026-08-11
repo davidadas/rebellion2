@@ -59,6 +59,7 @@ namespace Rebellion.Systems
                             TryProcessEvent(
                                 gameEvent,
                                 null,
+                                null,
                                 planet,
                                 out List<GameResult> scopedResults
                             )
@@ -66,7 +67,9 @@ namespace Rebellion.Systems
                             allResults.AddRange(scopedResults);
                     }
                 }
-                else if (TryProcessEvent(gameEvent, null, null, out List<GameResult> globalResults))
+                else if (
+                    TryProcessEvent(gameEvent, null, null, null, out List<GameResult> globalResults)
+                )
                 {
                     allResults.AddRange(globalResults);
                     if (!gameEvent.Repeats)
@@ -93,20 +96,25 @@ namespace Rebellion.Systems
             {
                 foreach (GameEvent gameEvent in _game.GetEventPool().ToArray())
                 {
-                    if (
-                        !MatchesTrigger(gameEvent, triggerResult)
-                        || !TryProcessEvent(
-                            gameEvent,
-                            triggerResult,
-                            null,
-                            out List<GameResult> reactions
+                    foreach (GameEventTrigger trigger in gameEvent.Triggers.ToArray())
+                    {
+                        if (
+                            !GameEventTriggerRegistry.Matches(trigger.Event, triggerResult)
+                            || !TryProcessEvent(
+                                gameEvent,
+                                trigger,
+                                triggerResult,
+                                null,
+                                out List<GameResult> reactions
+                            )
                         )
-                    )
-                        continue;
+                            continue;
 
-                    eventResults.AddRange(reactions);
-                    if (!gameEvent.Repeats)
-                        _game.RemoveEvent(gameEvent);
+                        eventResults.AddRange(reactions);
+                        if (!gameEvent.Repeats)
+                            _game.RemoveEvent(gameEvent);
+                        break;
+                    }
                 }
             }
 
@@ -123,6 +131,7 @@ namespace Rebellion.Systems
         /// <returns>True when the event executed; otherwise false.</returns>
         private bool TryProcessEvent(
             GameEvent gameEvent,
+            GameEventTrigger trigger,
             GameResult triggerResult,
             Planet scopeTarget,
             out List<GameResult> results
@@ -154,7 +163,8 @@ namespace Rebellion.Systems
                 gameEvent,
                 state,
                 executionTarget,
-                triggerResult
+                triggerResult,
+                trigger
             );
             if (!gameEvent.AreConditionsMet(_game, context))
             {
@@ -180,23 +190,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="gameEvent">The event to inspect.</param>
         /// <returns>True when a stable or legacy trigger is configured.</returns>
-        private static bool HasResultTrigger(GameEvent gameEvent) =>
-            !string.IsNullOrWhiteSpace(gameEvent.Trigger)
-            || !string.IsNullOrWhiteSpace(gameEvent.TriggerResultType);
-
-        /// <summary>
-        /// Returns whether a simulation result matches an event's configured trigger.
-        /// </summary>
-        /// <param name="gameEvent">The triggered event definition.</param>
-        /// <param name="result">The simulation result to inspect.</param>
-        /// <returns>True when the trigger registry accepts the result.</returns>
-        private static bool MatchesTrigger(GameEvent gameEvent, GameResult result) =>
-            !string.IsNullOrWhiteSpace(gameEvent.Trigger)
-                ? GameEventTriggerRegistry.Matches(gameEvent.Trigger, result)
-                : GameEventTriggerRegistry.MatchesLegacyTypeName(
-                    gameEvent.TriggerResultType,
-                    result
-                );
+        private static bool HasResultTrigger(GameEvent gameEvent) => gameEvent.Triggers.Count > 0;
 
         /// <summary>
         /// Initializes an event's absolute first eligible tick from its authored schedule.

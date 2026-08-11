@@ -3,16 +3,15 @@ using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game.Events
 {
     [TestFixture]
-    public class TriggerResultConditionsTests
+    public class EventStateConditionsTests
     {
         [Test]
-        public void UnitArrived_OfficerInsideFleetAtDestination_MatchesArrival()
+        public void EvaluateBinding_OfficerInsideBoundFleet_MatchesInstanceID()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
@@ -21,36 +20,42 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(fleet, empirePlanet);
             game.AttachNode(ship, fleet);
             game.AttachNode(emperor, ship);
-            UnitArrivedConditional conditional = new UnitArrivedConditional
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                UnitInstanceID = emperor.InstanceID,
-                DestinationInstanceID = empirePlanet.InstanceID,
+                Name = "unit",
+                Comparison = EventVariableComparison.Equal,
+                Value = emperor.InstanceID,
             };
-
-            bool matches = conditional.IsMet(
-                game,
-                new UnitArrivedResult { Unit = fleet, Destination = empirePlanet }
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
             );
+            context.Bind("unit", fleet);
+
+            bool matches = conditional.IsMet(game, context);
 
             Assert.IsTrue(matches);
         }
 
         [Test]
-        public void UnitArrived_WrongDestination_DoesNotMatchArrival()
+        public void EvaluateBinding_DifferentEntity_DoesNotMatchInstanceID()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
-            Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
-            game.AttachNode(emperor, empirePlanet);
-            UnitArrivedConditional conditional = new UnitArrivedConditional
+            EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                UnitInstanceID = emperor.InstanceID,
-                DestinationInstanceID = empirePlanet.InstanceID,
+                Name = "destination",
+                Comparison = EventVariableComparison.Equal,
+                Value = empirePlanet.InstanceID,
             };
-
-            bool matches = conditional.IsMet(
-                game,
-                new UnitArrivedResult { Unit = emperor, Destination = rebelPlanet }
+            GameEventExecutionContext context = new GameEventExecutionContext(
+                new GameEvent(),
+                new GameEventState(),
+                null
             );
+            context.Bind("destination", rebelPlanet);
+
+            bool matches = conditional.IsMet(game, context);
 
             Assert.IsFalse(matches);
         }

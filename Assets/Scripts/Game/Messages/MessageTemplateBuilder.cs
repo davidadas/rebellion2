@@ -32,6 +32,7 @@ namespace Rebellion.Game.Messages
             if (definition == null)
                 return null;
 
+            definition.BackgroundImage?.Validate();
             string title = Interpolate(definition.Subject, values);
             string body = Interpolate(definition.Body, values);
 

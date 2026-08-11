@@ -108,12 +108,6 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
-            AddNarrativeMessages(
-                resultArray.OfType<DagobahCompletedResult>(),
-                resultArray.OfType<HeritageRevealedResult>(),
-                game,
-                deliveries
-            );
             AddSabotageMessages(sabotageResults, game, deliveries);
             AddResearchMessages(
                 resultArray.OfType<ResearchOrderedResult>(),
@@ -915,71 +909,6 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Creates the narrative report for completed Dagobah training.
-        /// </summary>
-        /// <param name="faction">The faction receiving the report.</param>
-        /// <param name="result">The completed narrative result.</param>
-        /// <param name="game">The game state used to select officer audio.</param>
-        /// <returns>The completed narrative message, or null when no officer is present.</returns>
-        private Message CreateDagobahCompleted(
-            Faction faction,
-            DagobahCompletedResult result,
-            GameRoot game
-        )
-        {
-            Officer officer = result?.Officer;
-            if (officer == null)
-                return null;
-
-            return WithAdvisorSubject(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.DagobahCompleted),
-                        faction,
-                        new Dictionary<string, string>(),
-                        overlayImagePath: GetMessageImagePath(officer),
-                        officerVoicePath: officer.GetVoicePath(
-                            OfficerVoiceLineType.DagobahCompleted,
-                            game?.Random
-                        )
-                    ),
-                    GetOfficerPlanet(officer),
-                    officer
-                ),
-                AdvisorSubjectNotification.Report,
-                officer
-            );
-        }
-
-        /// <summary>
-        /// Creates the narrative report for a revealed officer heritage.
-        /// </summary>
-        /// <param name="faction">The faction receiving the report.</param>
-        /// <param name="result">The revealed heritage result.</param>
-        /// <returns>The heritage message, or null when no officer is present.</returns>
-        private Message CreateHeritageRevealed(Faction faction, HeritageRevealedResult result)
-        {
-            Officer officer = result?.Officer;
-            if (officer == null)
-                return null;
-
-            return WithAdvisorSubject(
-                WithEventLocation(
-                    CreateMessage(
-                        GetDefinition(MessageResultType.HeritageRevealed),
-                        faction,
-                        new Dictionary<string, string>(),
-                        overlayImagePath: GetMessageImagePath(officer)
-                    ),
-                    GetOfficerPlanet(officer),
-                    officer
-                ),
-                AdvisorSubjectNotification.Report,
-                officer
-            );
-        }
-
-        /// <summary>
         /// Converts data-driven narrative results into faction message deliveries.
         /// </summary>
         private void AddNarrativeEventMessages(
@@ -1001,11 +930,15 @@ namespace Rebellion.Game.Messages
                     MessageType = result.MessageType,
                     Subject = result.Subject,
                     Body = result.Body,
-                    BackgroundImage = new MessageBackgroundImage
-                    {
-                        Key = result.BackgroundImageKey,
-                        Path = result.BackgroundImagePath,
-                    },
+                    BackgroundImage =
+                        string.IsNullOrWhiteSpace(result.BackgroundImageKey)
+                        && string.IsNullOrWhiteSpace(result.BackgroundImagePath)
+                            ? null
+                            : new MessageBackgroundImage
+                            {
+                                Key = result.BackgroundImageKey,
+                                Path = result.BackgroundImagePath,
+                            },
                     AudioPath = result.AudioPath,
                 };
                 Message message = _templateBuilder.Build(
@@ -2209,33 +2142,6 @@ namespace Rebellion.Game.Messages
 
                 Faction faction = GetOwnerFaction(game, result.Officer);
                 AddDelivery(deliveries, faction, CreateForceGrowth(faction, result, game));
-            }
-        }
-
-        /// <summary>
-        /// Adds narrative event reports to the pending message deliveries.
-        /// </summary>
-        /// <param name="dagobahResults">The completed Dagobah narrative results.</param>
-        /// <param name="heritageResults">The revealed heritage results.</param>
-        /// <param name="game">The game state used to resolve message recipients.</param>
-        /// <param name="deliveries">The delivery list to append messages to.</param>
-        private void AddNarrativeMessages(
-            IEnumerable<DagobahCompletedResult> dagobahResults,
-            IEnumerable<HeritageRevealedResult> heritageResults,
-            GameRoot game,
-            List<(Faction faction, Message message)> deliveries
-        )
-        {
-            foreach (DagobahCompletedResult result in dagobahResults)
-            {
-                Faction faction = GetOwnerFaction(game, result.Officer);
-                AddDelivery(deliveries, faction, CreateDagobahCompleted(faction, result, game));
-            }
-
-            foreach (HeritageRevealedResult result in heritageResults)
-            {
-                Faction faction = GetOwnerFaction(game, result.Officer);
-                AddDelivery(deliveries, faction, CreateHeritageRevealed(faction, result));
             }
         }
 

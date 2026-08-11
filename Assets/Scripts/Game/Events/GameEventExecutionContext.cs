@@ -33,7 +33,8 @@ namespace Rebellion.Game.Events
             GameEvent gameEvent,
             GameEventState state,
             ISceneNode scopeTarget,
-            GameResult triggerResult = null
+            GameResult triggerResult = null,
+            GameEventTrigger trigger = null
         )
         {
             Event = gameEvent;
@@ -42,7 +43,7 @@ namespace Rebellion.Game.Events
             TriggerResult = triggerResult;
             Bind("scope", scopeTarget);
             Bind("trigger", triggerResult);
-            GameEventTriggerBindings.Bind(this, triggerResult);
+            GameEventTriggerRegistry.Bind(this, trigger, triggerResult);
         }
 
         /// <summary>
@@ -74,7 +75,6 @@ namespace Rebellion.Game.Events
         /// <param name="value">Receives the typed binding when found.</param>
         /// <returns>True when a compatible binding exists.</returns>
         public bool TryGetBinding<T>(string name, out T value)
-            where T : class
         {
             if (_bindings.TryGetValue(name, out object binding) && binding is T typed)
             {
@@ -82,7 +82,7 @@ namespace Rebellion.Game.Events
                 return true;
             }
 
-            value = null;
+            value = default;
             return false;
         }
 
@@ -92,8 +92,13 @@ namespace Rebellion.Game.Events
         /// <typeparam name="T">The expected binding type.</typeparam>
         /// <param name="name">The binding name.</param>
         /// <returns>The typed binding, or null when it is absent or incompatible.</returns>
-        public T GetBinding<T>(string name)
-            where T : class => TryGetBinding(name, out T value) ? value : null;
+        public T GetBinding<T>(string name) => TryGetBinding(name, out T value) ? value : default;
+
+        /// <summary>
+        /// Attempts to read a binding without imposing a compile-time value type.
+        /// </summary>
+        public bool TryGetBinding(string name, out object value) =>
+            _bindings.TryGetValue(name, out value);
 
         /// <summary>
         /// Records a result emitted during this activation for later actions to inspect.

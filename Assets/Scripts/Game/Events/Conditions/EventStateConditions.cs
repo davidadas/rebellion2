@@ -1,4 +1,7 @@
 using System;
+using System.Collections;
+using System.Linq;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -73,12 +76,17 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Compares a persistent, data-defined event variable with an authored value.
     /// </summary>
-    [PersistableObject(Name = "EventVariable")]
-    public class EventVariableConditional : GameConditional
+    [PersistableObject(Name = "EvaluateEventVariable")]
+    public class EvaluateEventVariableConditional : GameConditional
     {
+        [PersistableAttribute]
         public string Key { get; set; }
+
+        [PersistableAttribute]
         public EventVariableComparison Comparison { get; set; }
-        public int ExpectedValue { get; set; }
+
+        [PersistableAttribute]
+        public int Value { get; set; }
 
         /// <inheritdoc />
         public override bool IsMet(GameRoot game)
@@ -86,16 +94,91 @@ namespace Rebellion.Game.Events
             int current = game.GetEventVariable(Key);
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == ExpectedValue,
-                EventVariableComparison.NotEqual => current != ExpectedValue,
-                EventVariableComparison.GreaterThan => current > ExpectedValue,
-                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedValue,
-                EventVariableComparison.LessThan => current < ExpectedValue,
-                EventVariableComparison.LessThanOrEqual => current <= ExpectedValue,
+                EventVariableComparison.Equal => current == Value,
+                EventVariableComparison.NotEqual => current != Value,
+                EventVariableComparison.GreaterThan => current > Value,
+                EventVariableComparison.GreaterThanOrEqual => current >= Value,
+                EventVariableComparison.LessThan => current < Value,
+                EventVariableComparison.LessThanOrEqual => current <= Value,
                 _ => throw new InvalidOperationException(
                     $"Unsupported event variable comparison '{Comparison}'."
                 ),
             };
+        }
+    }
+
+    /// <summary>
+    /// Compares one typed trigger binding with an authored scalar value.
+    /// </summary>
+    [PersistableObject(Name = "EvaluateBinding")]
+    public sealed class EvaluateBindingConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public string Name { get; set; }
+
+        [PersistableAttribute]
+        public EventVariableComparison Comparison { get; set; }
+
+        [PersistableAttribute]
+        public string Value { get; set; }
+
+        public override bool IsMet(GameRoot game) => false;
+
+        public override bool IsMet(GameRoot game, GameEventExecutionContext context)
+        {
+            if (context == null || !context.TryGetBinding(Name, out object actual))
+                return false;
+
+            if (actual is IEnumerable values && actual is not string)
+            {
+                bool contains = false;
+                foreach (object value in values)
+                    contains |= Compare(value, Value) == 0;
+                return Comparison switch
+                {
+                    EventVariableComparison.Equal => contains,
+                    EventVariableComparison.NotEqual => !contains,
+                    _ => throw new InvalidOperationException(
+                        "Collection bindings support only Equal and NotEqual."
+                    ),
+                };
+            }
+
+            int comparison = Compare(actual, Value);
+            return Comparison switch
+            {
+                EventVariableComparison.Equal => comparison == 0,
+                EventVariableComparison.NotEqual => comparison != 0,
+                EventVariableComparison.GreaterThan => comparison > 0,
+                EventVariableComparison.GreaterThanOrEqual => comparison >= 0,
+                EventVariableComparison.LessThan => comparison < 0,
+                EventVariableComparison.LessThanOrEqual => comparison <= 0,
+                _ => throw new InvalidOperationException(
+                    $"Unsupported binding comparison '{Comparison}'."
+                ),
+            };
+        }
+
+        private static int Compare(object actual, string expected)
+        {
+            if (actual is IGameEntity entity)
+            {
+                if (entity.InstanceID == expected)
+                    return 0;
+                if (
+                    actual is ISceneNode node
+                    && node.GetChildren<ISceneNode>(child => child.InstanceID == expected).Any()
+                )
+                    return 0;
+                return string.Compare(entity.InstanceID, expected, StringComparison.Ordinal);
+            }
+            if (actual is bool boolean && bool.TryParse(expected, out bool expectedBoolean))
+                return boolean.CompareTo(expectedBoolean);
+            if (actual is int integer && int.TryParse(expected, out int expectedInteger))
+                return integer.CompareTo(expectedInteger);
+            if (actual is Enum)
+                return string.Compare(actual.ToString(), expected, StringComparison.Ordinal);
+            return string.Compare(actual?.ToString(), expected, StringComparison.Ordinal);
         }
     }
 }

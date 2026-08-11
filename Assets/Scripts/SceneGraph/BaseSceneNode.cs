@@ -19,7 +19,7 @@ namespace Rebellion.SceneGraph
     [PersistableObject]
     public sealed class VoidState
     {
-        public VoidStatus Status { get; set; }
+        public VoidStatus? Status { get; set; }
         public string DisplayText { get; set; }
     }
 

@@ -277,10 +277,29 @@ namespace Rebellion.Tests.Util.Serialization
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "JABBA_CAPTURES_LUKE",
-                TriggerResultType = "OfficerCaptureStateResult",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger
+                    {
+                        Event = "core:officer.capture-changed",
+                        Bindings = new List<GameEventTriggerBinding>
+                        {
+                            new GameEventTriggerBinding
+                            {
+                                Argument = "SourceEventInstanceID",
+                                As = "sourceEvent",
+                            },
+                        },
+                    },
+                },
                 Conditionals = new List<GameConditional>
                 {
-                    new TriggeredByConditional { EventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA" },
+                    new EvaluateBindingConditional
+                    {
+                        Name = "sourceEvent",
+                        Comparison = EventVariableComparison.Equal,
+                        Value = "LUKE_RESCUES_HAN_FROM_JABBA",
+                    },
                 },
                 Actions = new List<GameAction>
                 {
@@ -300,7 +319,7 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml
             );
             StringAssert.Contains(
-                "<TriggeredBy EventInstanceID=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
+                "<EvaluateBinding Name=\"sourceEvent\" Comparison=\"Equal\" Value=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
                 serializedXml
             );
             SuppressNextMessageAction action =
@@ -308,9 +327,10 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.IsNotNull(action);
             Assert.AreEqual(MessageResultType.OfficerCaptured, action.MessageType);
             Assert.AreEqual("FNALL1", action.RecipientFactionInstanceID);
-            TriggeredByConditional source = deserialized.Conditionals[0] as TriggeredByConditional;
+            EvaluateBindingConditional source =
+                deserialized.Conditionals[0] as EvaluateBindingConditional;
             Assert.IsNotNull(source);
-            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.EventInstanceID);
+            Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.Value);
         }
 
         [Test]
@@ -322,77 +342,82 @@ namespace Rebellion.Tests.Util.Serialization
                 InstanceID = "EVENT_STORY",
                 Actions = new List<GameAction>
                 {
-                    new RandomOutcomeAction
+                    new RandomAction
                     {
-                        Probability = 0.75,
-                        Actions = new List<GameAction>
+                        Outcomes = new List<RandomOutcome>
                         {
-                            new SendMessageAction
+                            new RandomOutcome
                             {
-                                SubjectInstanceID = "LUKE",
-                                RelatedSubjectInstanceID = "VADER",
-                                MessageType = MessageType.Advice,
-                                Title = "{subject}",
-                                Body = "At {location}",
-                                BodySegments = new List<NarrativeBodySegment>
+                                Weight = 3,
+                                Actions = new List<GameAction>
                                 {
-                                    new NarrativeBodySegment
+                                    new SendMessageAction
                                     {
-                                        Conditionals = new List<GameConditional>
+                                        SubjectInstanceID = "LUKE",
+                                        RelatedSubjectInstanceID = "VADER",
+                                        MessageType = MessageType.Advice,
+                                        Subject = "{subject}",
+                                        Body = "At {location}",
+                                        BodySegments = new List<NarrativeBodySegment>
                                         {
-                                            new OfficerStateConditional
+                                            new NarrativeBodySegment
                                             {
-                                                OfficerInstanceID = "LUKE",
-                                                Is = OfficerStateKind.Injured,
+                                                Conditionals = new List<GameConditional>
+                                                {
+                                                    new IsInjuredConditional
+                                                    {
+                                                        OfficerInstanceID = "LUKE",
+                                                    },
+                                                },
+                                                Body = "Injured",
+                                                ElseBody = "Unharmed",
                                             },
                                         },
-                                        Body = "Injured",
-                                        ElseBody = "Unharmed",
-                                    },
-                                },
-                                AudioPath = "Story/dialogue",
-                                AdvisorNotification = new AdvisorNotification
-                                {
-                                    Preset = AdvisorNotificationPreset.SubjectReport,
-                                    Protocol = new AdvisorAnimation
-                                    {
-                                        AnimationPath = "Story/advisor",
-                                        FrameCount = 3,
-                                        AudioPath = "Story/advisor/audio",
+                                        AmbientAudio = new MessageAudio { Path = "Story/dialogue" },
+                                        AdvisorNotification = new AdvisorNotification
+                                        {
+                                            Preset = AdvisorNotificationPreset.SubjectReport,
+                                            Protocol = new AdvisorAnimation
+                                            {
+                                                AnimationPath = "Story/advisor",
+                                                FrameCount = 3,
+                                                AudioPath = "Story/advisor/audio",
+                                            },
+                                        },
                                     },
                                 },
                             },
                         },
                     },
-                    new ConditionalAction
+                    new IfAction
                     {
                         Conditionals = new List<GameConditional>
                         {
-                            new EventVariableConditional
+                            new EvaluateEventVariableConditional
                             {
                                 Key = "luke.stage",
                                 Comparison = EventVariableComparison.Equal,
-                                ExpectedValue = 1,
+                                Value = 1,
                             },
                         },
-                        Actions = new List<GameAction>
+                        Then = new GameActionBlock
                         {
-                            new SetEventVariableAction
+                            Actions = new List<GameAction>
                             {
-                                Key = "luke.stage",
-                                Operation = EventVariableOperation.Add,
-                                Operand = 1,
+                                new SetEventVariableAction
+                                {
+                                    Key = "luke.stage",
+                                    Operation = EventVariableOperation.Add,
+                                    Operand = 1,
+                                },
                             },
                         },
                     },
                     new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
-                    new IncreaseOfficerForceAction
+                    new AdjustOfficerForceAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
-                        ReferenceOfficerInstanceID = "DARTH_VADER",
-                        MinimumIncrease = 1,
-                        PositiveRankGapPercent = 25,
-                        SuppressRankChangeMessage = true,
+                        Amount = 5,
                     },
                     new ApplyOfficerInjuryAction
                     {
@@ -400,8 +425,7 @@ namespace Rebellion.Tests.Util.Serialization
                         MinimumInjury = 1,
                         MaximumInjury = 100,
                     },
-                    new BountyAttackAction { OfficerInstanceID = "HAN_SOLO" },
-                    new MissionAction
+                    new CreateMissionAction
                     {
                         MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
                         Target = new MissionUnitReference { UnitInstanceID = "HAN_SOLO" },
@@ -412,18 +436,19 @@ namespace Rebellion.Tests.Util.Serialization
             string serializedXml = SerializeToString(serializer, gameEvent);
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
-            StringAssert.Contains("<RandomOutcome Probability=\"0.75\">", serializedXml);
+            StringAssert.Contains("<Random>", serializedXml);
+            StringAssert.Contains("<Outcome Weight=\"3\">", serializedXml);
             StringAssert.Contains("<SendMessage ", serializedXml);
             StringAssert.Contains("<AddToVoid UnitInstanceID=\"LUKE_SKYWALKER\"", serializedXml);
-            RandomOutcomeAction random = deserialized.Actions[0] as RandomOutcomeAction;
+            RandomAction random = deserialized.Actions[0] as RandomAction;
             Assert.IsNotNull(random);
-            Assert.AreEqual(0.75, random.Probability);
-            SendMessageAction message = random.Actions[0] as SendMessageAction;
+            Assert.AreEqual(3, random.Outcomes[0].Weight);
+            SendMessageAction message = random.Outcomes[0].Actions[0] as SendMessageAction;
             Assert.IsNotNull(message);
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual(MessageType.Advice, message.MessageType);
-            Assert.AreEqual("Story/dialogue", message.AudioPath);
+            Assert.AreEqual("Story/dialogue", message.AmbientAudio.Path);
             Assert.AreEqual(
                 AdvisorNotificationPreset.SubjectReport,
                 message.AdvisorNotification.Preset
@@ -432,36 +457,32 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
             Assert.AreEqual(1, message.BodySegments.Count);
             Assert.AreEqual("Injured", message.BodySegments[0].Body);
-            OfficerStateConditional bodyCondition =
-                message.BodySegments[0].Conditionals[0] as OfficerStateConditional;
+            IsInjuredConditional bodyCondition =
+                message.BodySegments[0].Conditionals[0] as IsInjuredConditional;
             Assert.IsNotNull(bodyCondition);
-            Assert.AreEqual(OfficerStateKind.Injured, bodyCondition.Is);
-            ConditionalAction conditional = deserialized.Actions[1] as ConditionalAction;
+            IfAction conditional = deserialized.Actions[1] as IfAction;
             Assert.IsNotNull(conditional);
-            EventVariableConditional condition =
-                conditional.Conditionals[0] as EventVariableConditional;
+            EvaluateEventVariableConditional condition =
+                conditional.Conditionals[0] as EvaluateEventVariableConditional;
             Assert.IsNotNull(condition);
             Assert.AreEqual("luke.stage", condition.Key);
             Assert.AreEqual(EventVariableComparison.Equal, condition.Comparison);
-            SetEventVariableAction setVariable = conditional.Actions[0] as SetEventVariableAction;
+            SetEventVariableAction setVariable =
+                conditional.Then.Actions[0] as SetEventVariableAction;
             Assert.IsNotNull(setVariable);
             Assert.AreEqual(EventVariableOperation.Add, setVariable.Operation);
             AddToVoidAction addToVoid = deserialized.Actions[2] as AddToVoidAction;
             Assert.IsNotNull(addToVoid);
             Assert.AreEqual("LUKE_SKYWALKER", addToVoid.UnitInstanceID);
-            IncreaseOfficerForceAction increase =
-                deserialized.Actions[3] as IncreaseOfficerForceAction;
-            Assert.IsNotNull(increase);
-            Assert.AreEqual("DARTH_VADER", increase.ReferenceOfficerInstanceID);
-            Assert.AreEqual(25, increase.PositiveRankGapPercent);
+            AdjustOfficerForceAction forceAdjustment =
+                deserialized.Actions[3] as AdjustOfficerForceAction;
+            Assert.IsNotNull(forceAdjustment);
+            Assert.AreEqual(5, forceAdjustment.Amount);
             ApplyOfficerInjuryAction injury = deserialized.Actions[4] as ApplyOfficerInjuryAction;
             Assert.IsNotNull(injury);
             Assert.AreEqual(1, injury.MinimumInjury);
             Assert.AreEqual(100, injury.MaximumInjury);
-            BountyAttackAction bounty = deserialized.Actions[5] as BountyAttackAction;
-            Assert.IsNotNull(bounty);
-            Assert.AreEqual("HAN_SOLO", bounty.OfficerInstanceID);
-            MissionAction mission = deserialized.Actions[6] as MissionAction;
+            CreateMissionAction mission = deserialized.Actions[5] as CreateMissionAction;
             Assert.IsNotNull(mission);
             Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", mission.MissionDefinitionID);
             Assert.AreEqual("HAN_SOLO", mission.Target.UnitInstanceID);
@@ -512,10 +533,10 @@ namespace Rebellion.Tests.Util.Serialization
             GameSerializer serializer = new GameSerializer(typeof(CustomMission));
             CustomMission mission = new CustomMission
             {
-                InstanceID = "final-battle-mission",
-                MissionDefinitionID = "ESCORT_LUKE_TO_FINAL_BATTLE",
-                TargetInstanceID = "luke",
-                SourceEventInstanceID = "FINAL_BATTLE",
+                InstanceID = "custom-mission",
+                MissionDefinitionID = "CUSTOM_CAPTURE",
+                TargetInstanceID = "target",
+                SourceEventInstanceID = "CAPTURE_EVENT",
                 MaxProgress = 3,
                 CurrentProgress = 2,
                 HasInitiated = true,
@@ -527,9 +548,9 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml
             );
 
-            Assert.AreEqual("ESCORT_LUKE_TO_FINAL_BATTLE", deserialized.MissionDefinitionID);
-            Assert.AreEqual("luke", deserialized.TargetInstanceID);
-            Assert.AreEqual("FINAL_BATTLE", deserialized.SourceEventInstanceID);
+            Assert.AreEqual("CUSTOM_CAPTURE", deserialized.MissionDefinitionID);
+            Assert.AreEqual("target", deserialized.TargetInstanceID);
+            Assert.AreEqual("CAPTURE_EVENT", deserialized.SourceEventInstanceID);
             Assert.AreEqual(3, deserialized.MaxProgress);
             Assert.AreEqual(2, deserialized.CurrentProgress);
             Assert.IsTrue(deserialized.HasInitiated);

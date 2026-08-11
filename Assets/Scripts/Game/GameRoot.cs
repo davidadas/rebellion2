@@ -400,7 +400,7 @@ namespace Rebellion.Game
         /// <param name="node">The unit already retained by a void pool.</param>
         /// <param name="status">The reason the unit is outside active play.</param>
         /// <param name="displayText">The optional player-facing status text.</param>
-        public void SetVoidStatus(ISceneNode node, VoidStatus status, string displayText = null)
+        public void SetVoidStatus(ISceneNode node, VoidStatus? status, string displayText = null)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));

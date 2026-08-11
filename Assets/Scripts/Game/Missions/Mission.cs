@@ -752,6 +752,7 @@ namespace Rebellion.Game.Missions
                 MissionName = DisplayName,
                 MissionTypeID = TypeID,
                 TargetName = (GetParent() as Planet)?.GetDisplayName() ?? string.Empty,
+                Location = GetParent() as Planet,
                 Participants = participants ?? GetAllParticipants(),
                 Outcome = outcome,
                 CompletionReason = GetDefaultCompletionReason(outcome),

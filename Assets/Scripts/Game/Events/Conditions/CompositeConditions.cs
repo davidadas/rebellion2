@@ -12,6 +12,7 @@ namespace Rebellion.Game.Events
     public class AndConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public AndConditional()
@@ -44,6 +45,7 @@ namespace Rebellion.Game.Events
     public class OrConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public OrConditional()
@@ -76,6 +78,7 @@ namespace Rebellion.Game.Events
     public class NotConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public NotConditional()
@@ -108,6 +111,7 @@ namespace Rebellion.Game.Events
     public class XorConditional : GameConditional
     {
         [PersistableMember(Name = "Conditionals")]
+        [PersistableInlineCollection]
         public List<GameConditional> Conditionals = new List<GameConditional>();
 
         public XorConditional()

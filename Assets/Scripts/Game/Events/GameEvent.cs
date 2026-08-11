@@ -25,9 +25,8 @@ namespace Rebellion.Game.Events
         public PlanetSystemType PlanetScopeSystemType { get; set; }
         public bool FilterPlanetScopeSystemType { get; set; }
 
-        // Result Trigger.
-        public string TriggerResultType { get; set; }
-        public string Trigger { get; set; }
+        // Result Triggers.
+        public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
 
         // Schedule and Execution Pipeline.
         public GameEventScheduler Schedule { get; set; }

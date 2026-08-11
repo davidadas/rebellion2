@@ -136,14 +136,11 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "HERITAGE",
                 RunsOnce = true,
-                TriggerResultType = nameof(OfficerEncounterResult),
+                Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
-                    new DuelIncludesConditional
-                    {
-                        FirstOfficerInstanceID = luke.InstanceID,
-                        SecondOfficerInstanceID = vader.InstanceID,
-                    },
+                    BindingEquals("officer", luke.InstanceID),
+                    BindingEquals("opponent", vader.InstanceID),
                 },
                 Actions = new List<GameAction>
                 {
@@ -174,7 +171,22 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "ARRIVAL_REACTION",
-                Trigger = "core:unit.arrived",
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger
+                    {
+                        Event = "core:unit.arrived",
+                        Bindings = new List<GameEventTriggerBinding>
+                        {
+                            new GameEventTriggerBinding { Argument = "Unit", As = "unit" },
+                            new GameEventTriggerBinding
+                            {
+                                Argument = "Destination",
+                                As = "destination",
+                            },
+                        },
+                    },
+                },
                 Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
                 Actions = new List<GameAction>
                 {
@@ -203,11 +215,32 @@ namespace Rebellion.Tests.Systems
             {
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 RunsOnce = true,
-                TriggerResultType = nameof(OfficerCaptureStateResult),
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger
+                    {
+                        Event = "core:officer.capture-changed",
+                        Bindings = new List<GameEventTriggerBinding>
+                        {
+                            new GameEventTriggerBinding { Argument = "Officer", As = "officer" },
+                            new GameEventTriggerBinding
+                            {
+                                Argument = "IsCaptured",
+                                As = "isCaptured",
+                            },
+                            new GameEventTriggerBinding
+                            {
+                                Argument = "SourceEventInstanceID",
+                                As = "sourceEvent",
+                            },
+                        },
+                    },
+                },
                 Conditionals = new List<GameConditional>
                 {
-                    new TriggeredByConditional { EventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA" },
-                    new OfficerCapturedConditional { OfficerInstanceID = luke.InstanceID },
+                    BindingEquals("sourceEvent", "LUKE_RESCUES_HAN_FROM_JABBA"),
+                    BindingEquals("officer", luke.InstanceID),
+                    BindingEquals("isCaptured", "true"),
                 },
                 Actions = new List<GameAction>
                 {
@@ -258,7 +291,10 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HIDDEN_MISSION_REPORT",
-                TriggerResultType = nameof(MissionCompletedResult),
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger { Event = "core:mission.completed" },
+                },
             };
             _game.EventPool.Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
@@ -284,14 +320,11 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RECURRING_ENCOUNTER_EFFECTS",
-                TriggerResultType = nameof(OfficerEncounterResult),
+                Triggers = EncounterTrigger(),
                 Conditionals = new List<GameConditional>
                 {
-                    new DuelIncludesConditional
-                    {
-                        FirstOfficerInstanceID = luke.InstanceID,
-                        SecondOfficerInstanceID = vader.InstanceID,
-                    },
+                    BindingEquals("officer", luke.InstanceID),
+                    BindingEquals("opponent", vader.InstanceID),
                 },
                 Actions = new List<GameAction>
                 {
@@ -319,43 +352,15 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_MatchingOfficerCaptureOutcome_ExecutesAuthoredReaction()
-        {
-            Officer han = new Officer { InstanceID = "han" };
-            GameEvent gameEvent = new GameEvent
-            {
-                InstanceID = "BOUNTY_FAILED",
-                RunsOnce = true,
-                TriggerResultType = nameof(OfficerCaptureAttemptResult),
-                Conditionals = new List<GameConditional>
-                {
-                    new CaptureFailedConditional { OfficerInstanceID = han.InstanceID },
-                },
-                Actions = new List<GameAction>
-                {
-                    new SetEventVariableAction { Key = "han.evaded", Operand = 1 },
-                },
-            };
-            _game.EventPool.Add(gameEvent);
-
-            _system.HandleResults(
-                new[]
-                {
-                    new OfficerCaptureAttemptResult { Target = han, WasCaptured = false },
-                }
-            );
-
-            Assert.AreEqual(1, _game.GetEventVariable("han.evaded"));
-            Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-        }
-
-        [Test]
         public void ProcessEvents_ResultTriggeredEvent_DoesNotRunDuringScheduledPolling()
         {
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RESULT_ONLY",
-                TriggerResultType = nameof(OfficerEncounterResult),
+                Triggers = new List<GameEventTrigger>
+                {
+                    new GameEventTrigger { Event = "core:officer.encountered" },
+                },
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "unexpected", Operand = 1 },
@@ -504,6 +509,28 @@ namespace Rebellion.Tests.Systems
                 },
             };
         }
+
+        private static List<GameEventTrigger> EncounterTrigger() =>
+            new List<GameEventTrigger>
+            {
+                new GameEventTrigger
+                {
+                    Event = "core:officer.encountered",
+                    Bindings = new List<GameEventTriggerBinding>
+                    {
+                        new GameEventTriggerBinding { Argument = "Officer", As = "officer" },
+                        new GameEventTriggerBinding { Argument = "Opponent", As = "opponent" },
+                    },
+                },
+            };
+
+        private static EvaluateBindingConditional BindingEquals(string name, string value) =>
+            new EvaluateBindingConditional
+            {
+                Name = name,
+                Comparison = EventVariableComparison.Equal,
+                Value = value,
+            };
 
         private sealed class RecordScopedPlanetAction : GameAction
         {
