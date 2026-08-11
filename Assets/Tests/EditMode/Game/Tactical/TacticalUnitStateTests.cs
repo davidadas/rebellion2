@@ -378,6 +378,28 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void FromCapitalShip_DeathStar_UsesDedicatedStationaryCombatState()
+        {
+            CapitalShip deathStar = CreateCapitalShip(hull: 1000, shields: 1000);
+            deathStar.IsDeathStar = true;
+            deathStar.Maneuverability = 4;
+            deathStar.TractorBeamPower = 12;
+            deathStar.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 10, 10, 10, 10, 100 };
+
+            TacticalUnitState unit = TacticalUnitState.FromCapitalShip(
+                deathStar,
+                TacticalBattleSide.Attacker
+            );
+
+            Assert.IsTrue(unit.IsDeathStar);
+            Assert.AreEqual(0f, unit.EffectiveSublightSpeed);
+            Assert.AreEqual(0, unit.Maneuverability);
+            Assert.IsFalse(unit.CanWithdraw);
+            Assert.IsEmpty(unit.WeaponBatteries);
+            Assert.AreEqual(0f, unit.EffectiveTractorBeamPower);
+        }
+
+        [Test]
         public void Advance_DamagedSubsystemAndSuccessfulDamageControl_RepairsOneLevel()
         {
             TacticalUnitState unit = CreateCapitalShipState(

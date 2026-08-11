@@ -456,18 +456,12 @@ namespace Rebellion.Game.Tactical
             foreach (
                 TacticalUnitState deathStar in units.Where(unit =>
                     unit.IsActive
-                    && unit.Unit is CapitalShip { IsDeathStar: true }
+                    && unit.IsDeathStar
                     && commandControl.IsComputerControlled(unit.Side)
                 )
             )
             {
-                TacticalShipGroup group = groups.Last(candidate =>
-                    candidate.Units.Contains(deathStar)
-                );
-                TacticalUnitState target = group.Targets.FirstOrDefault(candidate =>
-                    candidate.IsActive && candidate.Side != deathStar.Side
-                );
-                target ??= units.FirstOrDefault(candidate =>
+                TacticalUnitState target = units.FirstOrDefault(candidate =>
                     candidate.IsActive && candidate.Side != deathStar.Side
                 );
                 if (target != null)
@@ -507,7 +501,7 @@ namespace Rebellion.Game.Tactical
         )
         {
             bool hasOpposingDeathStar = units.Any(unit =>
-                unit.IsActive && unit.Side != side && unit.Unit is CapitalShip { IsDeathStar: true }
+                unit.IsActive && unit.Side != side && unit.IsDeathStar
             );
             if (!hasOpposingDeathStar)
                 return TacticalDeathStarAttackAvailability.NoTarget;
@@ -679,7 +673,11 @@ namespace Rebellion.Game.Tactical
                 TacticalUnitState[] sideUnits = units.Where(unit => unit.Side == side).ToArray();
                 IReadOnlyList<TacticalShipGroup> sideTaskForces = BuildTaskForces(
                     side,
-                    sideUnits.Where(unit => unit.Kind == TacticalUnitKind.CapitalShip).ToArray()
+                    sideUnits
+                        .Where(unit =>
+                            unit.Kind == TacticalUnitKind.CapitalShip && !unit.IsDeathStar
+                        )
+                        .ToArray()
                 );
                 IReadOnlyList<TacticalShipGroup> sideFighterGroups = BuildFighterGroups(
                     side,

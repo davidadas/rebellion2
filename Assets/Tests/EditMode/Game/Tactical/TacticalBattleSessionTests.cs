@@ -387,6 +387,27 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void GetTaskForces_DeathStar_OmitsDedicatedTacticalRecord()
+        {
+            CapitalShip ordinaryShip = CreateShip(600, 250);
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(ordinaryShip, deathStar),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+
+            TacticalBattleSession session = CreateTacticalSession(encounter);
+
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            CollectionAssert.AreEqual(
+                new[] { ordinaryShip },
+                group.Units.Select(unit => unit.Unit)
+            );
+        }
+
+        [Test]
         public void GetFighterGroups_MultipleSquadronsOfSameType_GroupsByFighterType()
         {
             Starfighter firstXWing = CreateFighters(12, 10, "CSAL001");
@@ -1513,6 +1534,34 @@ namespace Rebellion.Tests.Game.Tactical
 
             Assert.AreEqual(firstTargetUnit.InitialHull, firstTargetUnit.Hull);
             Assert.Less(lastTargetUnit.Hull, lastTargetUnit.InitialHull);
+        }
+
+        [Test]
+        public void Advance_OrdinaryCapitalAttack_ExcludesDeathStarTarget()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+            {
+                100,
+                0,
+                0,
+                0,
+                200,
+            };
+            CapitalShip deathStar = CreateShip(1000, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            TacticalUnitState deathStarUnit = session.Units.Single(unit => unit.Unit == deathStar);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(deathStarUnit.InitialHull, deathStarUnit.Hull);
         }
 
         [Test]

@@ -741,17 +741,15 @@ namespace Rebellion.Game.Tactical
             if (behavior == TacticalBehavior.AttackCapitalShips)
             {
                 return candidates.Where(candidate =>
-                    candidate.Kind == TacticalUnitKind.CapitalShip
+                    candidate.Kind == TacticalUnitKind.CapitalShip && !candidate.IsDeathStar
                 );
             }
             if (behavior == TacticalBehavior.AttackDeathStar)
             {
-                return candidates.Where(candidate =>
-                    candidate.Unit is CapitalShip { IsDeathStar: true }
-                );
+                return candidates.Where(candidate => candidate.IsDeathStar);
             }
 
-            return candidates;
+            return candidates.Where(candidate => !candidate.IsDeathStar);
         }
 
         /// <summary>
@@ -1514,7 +1512,7 @@ namespace Rebellion.Game.Tactical
         )
         {
             TacticalUnitState[] rank = units
-                .Where(unit => unit.Side == side && unit.Kind == kind)
+                .Where(unit => unit.Side == side && unit.Kind == kind && !unit.IsDeathStar)
                 .ToArray();
             for (int index = 0; index < rank.Length; index++)
             {

@@ -55,6 +55,11 @@ namespace Rebellion.Game.Tactical
         public TacticalUnitKind Kind { get; }
 
         /// <summary>
+        /// Gets whether this unit uses the dedicated Death Star tactical record.
+        /// </summary>
+        public bool IsDeathStar => Unit is CapitalShip { IsDeathStar: true };
+
+        /// <summary>
         /// Gets the capital ship that deployed this fighter unit, when one participated.
         /// </summary>
         internal TacticalUnitState RecoveryTarget { get; }
@@ -178,7 +183,7 @@ namespace Rebellion.Game.Tactical
         {
             get
             {
-                if (IsMovementDisabled)
+                if (IsDeathStar || IsMovementDisabled)
                     return 0f;
 
                 float hullCondition =
@@ -197,7 +202,8 @@ namespace Rebellion.Game.Tactical
         /// Gets whether the unit can move and its hyperdrive can complete a tactical withdrawal.
         /// </summary>
         public bool CanWithdraw =>
-            hyperdriveCount > 0
+            !IsDeathStar
+            && hyperdriveCount > 0
             && EffectiveSublightSpeed > 0f
             && GetSystemDamage(TacticalDamageSystem.Hyperdrive) < hyperdriveCount;
 
@@ -289,6 +295,7 @@ namespace Rebellion.Game.Tactical
             if (ship == null)
                 throw new ArgumentNullException(nameof(ship));
 
+            bool isDeathStar = ship.IsDeathStar;
             return new TacticalUnitState(
                 ship,
                 side,
@@ -297,17 +304,22 @@ namespace Rebellion.Game.Tactical
                 ship.MaxShieldStrength,
                 ship.ShieldRechargeRate,
                 ship.WeaponRecharge,
-                ship.SublightSpeed,
-                ship.Maneuverability,
+                isDeathStar ? 0 : ship.SublightSpeed,
+                isDeathStar ? 0 : ship.Maneuverability,
                 ship.DamageControl,
-                (ship.Hyperdrive > 0 ? 1 : 0) + (ship.BackupHyperdrive > 0 ? 1 : 0),
-                ship.TractorBeamPower,
-                ship.TractorBeamnRange,
+                isDeathStar
+                    ? 0
+                    : (ship.Hyperdrive > 0 ? 1 : 0) + (ship.BackupHyperdrive > 0 ? 1 : 0),
+                isDeathStar ? 0 : ship.TractorBeamPower,
+                isDeathStar ? 0 : ship.TractorBeamnRange,
                 0,
                 0,
-                ship.PrimaryWeapons.OrderBy(entry => entry.Key)
-                    .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
-                    .ToList()
+                isDeathStar
+                    ? Array.Empty<TacticalWeaponBattery>()
+                    : ship
+                        .PrimaryWeapons.OrderBy(entry => entry.Key)
+                        .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
+                        .ToList()
             );
         }
 
