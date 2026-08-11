@@ -130,7 +130,7 @@ namespace Rebellion.Game.Tactical
         /// Creates a Death Star superlaser event between the firing station and its target.
         /// </summary>
         /// <param name="source">The firing Death Star.</param>
-        /// <param name="target">The destroyed opposing tactical object.</param>
+        /// <param name="target">The opposing tactical object struck by the beam.</param>
         /// <returns>The immutable superlaser event.</returns>
         public static TacticalCombatEvent SuperlaserFired(
             TacticalUnitState source,

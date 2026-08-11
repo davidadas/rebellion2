@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void TryFire_ChargedDeathStar_DestroysOpposingTargetAndResetsCharge()
+        public void TryFire_ChargedDeathStar_SchedulesOpposingTargetAndResetsCharge()
         {
             TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
             TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
@@ -30,8 +30,9 @@ namespace Rebellion.Tests.Game.Tactical
             bool fired = system.TryFire(deathStar, target);
 
             Assert.IsTrue(fired);
-            Assert.AreEqual(0, target.Hull);
+            Assert.AreEqual(target.InitialHull, target.Hull);
             Assert.AreEqual(0f, system.GetCharge(deathStar));
+            Assert.IsEmpty(system.DrainResolvedTargets());
         }
 
         [Test]
@@ -111,6 +112,83 @@ namespace Rebellion.Tests.Game.Tactical
             system.Advance(1000f);
 
             Assert.AreEqual(TacticalSuperlaserSystem.MaximumCharge, system.GetCharge(deathStar));
+        }
+
+        [Test]
+        public void Advance_DischargedOperationalDeathStar_RechargesAtExpectedRate()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            TacticalSuperlaserSystem system = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            system.TryFire(deathStar, target);
+
+            system.Advance(3f);
+
+            Assert.AreEqual(1f, system.GetCharge(deathStar), 0.0001f);
+        }
+
+        [Test]
+        public void Advance_PendingShotBeforeResolutionDelay_DoesNotResolveTarget()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            TacticalSuperlaserSystem system = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            system.TryFire(deathStar, target);
+
+            system.Advance(TacticalSuperlaserSystem.ResolutionDelay - 0.01f);
+
+            Assert.IsEmpty(system.DrainResolvedTargets());
+        }
+
+        [Test]
+        public void Advance_PendingShotReachesResolutionDelay_ResolvesTarget()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            TacticalSuperlaserSystem system = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            system.TryFire(deathStar, target);
+
+            system.Advance(TacticalSuperlaserSystem.ResolutionDelay);
+
+            CollectionAssert.AreEqual(new[] { target }, system.DrainResolvedTargets());
+        }
+
+        [Test]
+        public void Advance_InactivePendingTargetReachesResolutionDelay_DoesNotResolveTarget()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            TacticalSuperlaserSystem system = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            system.TryFire(deathStar, target);
+            target.Hull = 0;
+
+            system.Advance(TacticalSuperlaserSystem.ResolutionDelay);
+
+            Assert.IsEmpty(system.DrainResolvedTargets());
+        }
+
+        [Test]
+        public void Advance_DestroyedFiringDeathStarWithPendingShot_ResolvesActiveTarget()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            TacticalSuperlaserSystem system = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            system.TryFire(deathStar, target);
+            deathStar.Hull = 0;
+
+            system.Advance(TacticalSuperlaserSystem.ResolutionDelay);
+
+            CollectionAssert.AreEqual(new[] { target }, system.DrainResolvedTargets());
         }
 
         [Test]

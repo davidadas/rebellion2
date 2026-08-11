@@ -11,9 +11,34 @@ namespace Rebellion.Game.Tactical
     internal sealed class TacticalSuperlaserSystem
     {
         internal const float MaximumCharge = 100f;
-        private const float _chargePerTacticalSecond = 1f;
+        internal const float ResolutionDelay = 1f;
+        private const float _chargePerTacticalSecond = 1f / 3f;
         private readonly HashSet<TacticalUnitState> participants;
         private readonly Dictionary<TacticalUnitState, float> chargeByDeathStar;
+        private readonly List<PendingShot> pendingShots = new List<PendingShot>();
+        private readonly List<TacticalUnitState> resolvedTargets = new List<TacticalUnitState>();
+
+        private sealed class PendingShot
+        {
+            /// <summary>
+            /// Gets the opposing tactical object selected for destruction.
+            /// </summary>
+            public TacticalUnitState Target { get; }
+
+            /// <summary>
+            /// Gets or sets the tactical time remaining before the shot resolves.
+            /// </summary>
+            public float RemainingTime { get; set; } = ResolutionDelay;
+
+            /// <summary>
+            /// Initializes one delayed superlaser result.
+            /// </summary>
+            /// <param name="target">The opposing tactical object selected for destruction.</param>
+            public PendingShot(TacticalUnitState target)
+            {
+                Target = target;
+            }
+        }
 
         /// <summary>
         /// Initializes every participating Death Star with a fully charged superlaser.
@@ -60,6 +85,17 @@ namespace Rebellion.Game.Tactical
                     chargeByDeathStar[deathStar] + elapsedTime * _chargePerTacticalSecond
                 );
             }
+
+            foreach (PendingShot shot in pendingShots.ToArray())
+            {
+                shot.RemainingTime -= elapsedTime;
+                if (shot.RemainingTime > 0f)
+                    continue;
+
+                pendingShots.Remove(shot);
+                if (shot.Target.IsActive)
+                    resolvedTargets.Add(shot.Target);
+            }
         }
 
         /// <summary>
@@ -67,7 +103,7 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="deathStar">The firing Death Star.</param>
         /// <param name="target">The opposing tactical object selected as its target.</param>
-        /// <returns>True when the shot fires and destroys the target.</returns>
+        /// <returns>True when the shot fires and schedules the target's destruction.</returns>
         public bool TryFire(TacticalUnitState deathStar, TacticalUnitState target)
         {
             ValidateDeathStar(deathStar);
@@ -83,8 +119,19 @@ namespace Rebellion.Game.Tactical
             }
 
             chargeByDeathStar[deathStar] = 0f;
-            target.Hull = 0;
+            pendingShots.Add(new PendingShot(target));
             return true;
+        }
+
+        /// <summary>
+        /// Removes and returns targets reached by delayed superlaser shots.
+        /// </summary>
+        /// <returns>The active targets whose superlaser delay elapsed.</returns>
+        public IReadOnlyList<TacticalUnitState> DrainResolvedTargets()
+        {
+            TacticalUnitState[] result = resolvedTargets.ToArray();
+            resolvedTargets.Clear();
+            return result;
         }
 
         /// <summary>

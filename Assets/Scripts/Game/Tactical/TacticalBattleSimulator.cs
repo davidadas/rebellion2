@@ -163,9 +163,17 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         public void Advance(float elapsedTime)
         {
+            superlaserSystem.Advance(elapsedTime);
+            foreach (TacticalUnitState target in superlaserSystem.DrainResolvedTargets())
+            {
+                target.Hull = 0;
+                events.Add(
+                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, target)
+                );
+            }
+            fighterDeploymentSystem.ResolveCarrierStateChanges();
             fighterDeploymentSystem.Advance(elapsedTime);
             events.AddRange(fighterDeploymentSystem.DrainEvents());
-            superlaserSystem.Advance(elapsedTime);
             UpdateTractorLocks();
             events.AddRange(tractorBeamSystem.DrainEvents());
             List<PendingAttack> attacks = new List<PendingAttack>();
@@ -249,10 +257,6 @@ namespace Rebellion.Game.Tactical
                 return false;
 
             events.Add(TacticalCombatEvent.SuperlaserFired(deathStar, target));
-            events.Add(
-                TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, target)
-            );
-            fighterDeploymentSystem.ResolveCarrierStateChanges();
             return true;
         }
 

@@ -376,7 +376,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.1f);
 
-            Assert.AreEqual(0, strongerTargetState.Hull);
+            Assert.AreEqual(strongerTargetState.InitialHull, strongerTargetState.Hull);
             Assert.AreEqual(0f, session.GetSuperlaserCharge(deathStarState));
             Assert.IsTrue(
                 session
@@ -384,6 +384,18 @@ namespace Rebellion.Tests.Game.Tactical
                     .Any(combatEvent =>
                         combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired
                         && combatEvent.Target.Unit == strongerTarget
+                    )
+            );
+
+            session.Advance(TacticalSuperlaserSystem.ResolutionDelay);
+
+            Assert.AreEqual(0, strongerTargetState.Hull);
+            Assert.IsTrue(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed
+                        && combatEvent.Source.Unit == strongerTarget
                     )
             );
         }
@@ -410,6 +422,12 @@ namespace Rebellion.Tests.Game.Tactical
             bool fired = session.TryFireSuperlaser(deathStarState, carrierState);
 
             Assert.IsTrue(fired);
+            Assert.AreEqual(carrierState.InitialHull, carrierState.Hull);
+            Assert.AreEqual(fighterState.InitialHull, fighterState.Hull);
+            Assert.IsFalse(session.IsComplete);
+
+            session.Advance(TacticalSuperlaserSystem.ResolutionDelay);
+
             Assert.AreEqual(0, carrierState.Hull);
             Assert.AreEqual(0, fighterState.Hull);
             Assert.IsTrue(session.IsComplete);
