@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using UnityEngine;
@@ -17,11 +18,13 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private const float _destructionEffectDiameter = 7.5f;
     private const float _farSpritePixelsPerUnit = 1f;
     private const float _hullImpactEffectDiameter = 5f;
+    private const float _initialCameraPitch = 30f;
     private const float _standardBeamDuration = 1f;
     private const float _heavyBeamDuration = 2f;
     private const float _laserHeavyThreshold = 28.8f;
     private const float _turbolaserHeavyThreshold = 34.666667f;
     private const float _ionHeavyThreshold = 32f;
+    private const float _planetSpritePixelsPerUnit = 2f;
     private const float _torpedoHeavyThreshold = 12.8f;
     private const float _shieldImpactEffectDiameter = 2.5f;
     private const int _persistentEffectFrameCount = 8;
@@ -29,6 +32,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
     private static readonly string[] FighterGroupColors = { "red", "blue", "green", "gold" };
     private readonly List<Transform> fighterBillboards = new List<Transform>();
+    private readonly List<Transform> environmentBillboards = new List<Transform>();
+    private readonly List<Material> environmentMaterials = new List<Material>();
+    private readonly List<Mesh> environmentMeshes = new List<Mesh>();
     private readonly List<Material> navigationMaterials = new List<Material>();
     private readonly List<Material> shipHighlightMaterials = new List<Material>();
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
@@ -80,6 +86,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         ContentModelCache modelCache,
         IContentAssetSource contentAssets,
         TacticalBattleTheme theme,
+        UserVideoSettings videoSettings,
         CancellationToken cancellationToken
     )
     {
@@ -91,6 +98,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             throw new ArgumentNullException(nameof(contentAssets));
         if (theme == null)
             throw new ArgumentNullException(nameof(theme));
+        if (videoSettings == null)
+            throw new ArgumentNullException(nameof(videoSettings));
         if (string.IsNullOrWhiteSpace(theme.SharedEffectsRoot))
             throw new InvalidOperationException("A tactical shared-effects root is required.");
         if (initialized)
@@ -118,6 +127,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             $"{impactRoot}/OrangeDoubleBlast",
             16
         );
+        if (videoSettings.ShowPlanet)
+            CreatePlanetDecoration(session.Encounter.Planet, contentAssets, theme.InitialCameraYaw);
+        CreateHolocube(session.NavigationGrid, videoSettings.ShowHolocube);
 
         CapitalShip[] capitalShips = session
             .Units.Select(unit => unit.Unit)
@@ -163,6 +175,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             return;
 
         foreach (Transform billboard in fighterBillboards)
+            billboard.rotation = battleCamera.transform.rotation;
+
+        foreach (Transform billboard in environmentBillboards)
             billboard.rotation = battleCamera.transform.rotation;
     }
 
@@ -353,17 +368,116 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 
         sprites.Clear();
         fighterBillboards.Clear();
+        environmentBillboards.Clear();
         foreach (Material material in navigationMaterials)
             Destroy(material);
+
+        foreach (Material material in environmentMaterials)
+            Destroy(material);
+
+        foreach (Mesh mesh in environmentMeshes)
+            Destroy(mesh);
 
         foreach (Material material in shipHighlightMaterials)
             Destroy(material);
 
         navigationMaterials.Clear();
+        environmentMaterials.Clear();
+        environmentMeshes.Clear();
         shipHighlightMaterials.Clear();
         navigationSets.Clear();
         unitViews.Clear();
         unitViewsByState.Clear();
+    }
+
+    /// <summary>
+    /// Creates the encounter planet surface behind the tactical battlefield.
+    /// </summary>
+    /// <param name="planet">The planet represented by the battle.</param>
+    /// <param name="contentAssets">The active external content assets.</param>
+    /// <param name="initialCameraYaw">The faction-specific opening camera yaw.</param>
+    private void CreatePlanetDecoration(
+        Planet planet,
+        IContentAssetSource contentAssets,
+        float initialCameraYaw
+    )
+    {
+        string address = planet?.GetTacticalTexturePath();
+        if (string.IsNullOrWhiteSpace(address))
+            throw new InvalidOperationException("A tactical planet texture is required.");
+
+        Texture2D texture = contentAssets.GetTexture(address);
+        if (texture == null)
+            throw new InvalidOperationException($"Tactical planet texture is missing: {address}");
+
+        Sprite sprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, texture.width, texture.height),
+            new Vector2(0.5f, 0.5f),
+            _planetSpritePixelsPerUnit
+        );
+        sprite.name = "Tactical planet sprite";
+        sprites.Add(sprite);
+
+        GameObject decoration = new GameObject("Tactical Planet");
+        decoration.transform.SetParent(transform, false);
+        Quaternion openingView = Quaternion.Euler(_initialCameraPitch, initialCameraYaw, 0f);
+        decoration.transform.localPosition = openingView * new Vector3(55f, 15f, 80f);
+        decoration.transform.localRotation = openingView;
+        SpriteRenderer spriteRenderer = decoration.AddComponent<SpriteRenderer>();
+        spriteRenderer.sprite = sprite;
+        spriteRenderer.sortingOrder = -100;
+        environmentBillboards.Add(decoration.transform);
+    }
+
+    /// <summary>
+    /// Creates the optional wireframe boundary around the tactical volume.
+    /// </summary>
+    /// <param name="grid">The tactical lattice that defines the battlefield extent.</param>
+    /// <param name="visible">Whether the player enabled the holocube.</param>
+    private void CreateHolocube(TacticalNavigationGrid grid, bool visible)
+    {
+        if (!visible)
+            return;
+        if (grid == null)
+            throw new ArgumentNullException(nameof(grid));
+
+        float extent = grid.GetPoints(grid.SetCount - 1)
+            .SelectMany(point => new[] { Math.Abs(point.X), Math.Abs(point.Y), Math.Abs(point.Z) })
+            .Max();
+        Vector3[] vertices =
+        {
+            new Vector3(-extent, -extent, -extent),
+            new Vector3(extent, -extent, -extent),
+            new Vector3(extent, extent, -extent),
+            new Vector3(-extent, extent, -extent),
+            new Vector3(-extent, -extent, extent),
+            new Vector3(extent, -extent, extent),
+            new Vector3(extent, extent, extent),
+            new Vector3(-extent, extent, extent),
+        };
+        int[] edges = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 };
+
+        Mesh mesh = new Mesh { name = "Tactical holocube mesh", vertices = vertices };
+        mesh.SetIndices(edges, MeshTopology.Lines, 0);
+        mesh.RecalculateBounds();
+        environmentMeshes.Add(mesh);
+
+        Shader shader = Shader.Find("Unlit/Color");
+        if (shader == null)
+            throw new InvalidOperationException("The tactical holocube shader is unavailable.");
+
+        Material material = new Material(shader)
+        {
+            name = "Tactical holocube material",
+            color = new Color(0.8f, 0.8f, 0.8f, 1f),
+        };
+        environmentMaterials.Add(material);
+
+        GameObject holocube = new GameObject("Tactical Holocube");
+        holocube.transform.SetParent(transform, false);
+        holocube.AddComponent<MeshFilter>().sharedMesh = mesh;
+        holocube.AddComponent<MeshRenderer>().sharedMaterial = material;
     }
 
     /// <summary>

@@ -30,6 +30,7 @@ namespace Rebellion.Game.Galaxy
 
         // Planet Asset Info.
         public string PlanetIconPath { get; set; }
+        public string TacticalTexturePath { get; set; }
 
         // Planet Status.
         [PersistableIgnore]
@@ -409,6 +410,15 @@ namespace Rebellion.Game.Galaxy
         public string GetPlanetIconPath()
         {
             return PlanetIconPath;
+        }
+
+        /// <summary>
+        /// Returns the path to the planet artwork shown behind tactical battles.
+        /// </summary>
+        /// <returns>The tactical planet texture content address.</returns>
+        public string GetTacticalTexturePath()
+        {
+            return TacticalTexturePath;
         }
 
         /// <summary>

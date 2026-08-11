@@ -186,6 +186,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             bootstrap.GetContentModelCache(),
             bootstrap.GetContentAssets(),
             tacticalTheme,
+            bootstrap.GetUserSettings()?.Video ?? new UserVideoSettings(),
             shutdown.Token
         );
         if (Session.Phase == TacticalBattlePhase.Arrival)

@@ -636,6 +636,7 @@ namespace Rebellion.Systems
                 PositionX = masterPlanet.PositionX,
                 PositionY = masterPlanet.PositionY,
                 PlanetIconPath = masterPlanet.PlanetIconPath,
+                TacticalTexturePath = masterPlanet.TacticalTexturePath,
                 IsUnexploredView = true,
             };
 

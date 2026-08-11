@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using UnityEngine;
@@ -12,6 +13,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
     {
         private GameObject root;
         private TacticalBattleRenderer renderer;
+        private Texture2D texture;
 
         [SetUp]
         public void SetUp()
@@ -24,6 +26,49 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         public void TearDown()
         {
             Object.DestroyImmediate(root);
+            Object.DestroyImmediate(texture);
+        }
+
+        [Test]
+        public void CreatePlanetDecoration_ConfiguredPlanet_CreatesTacticalPlanetSprite()
+        {
+            const string address = "Pack/Shared/Tactical/Environment/Planets/temperate";
+            texture = new Texture2D(256, 256);
+            FakeContentAssetSource contentAssets = new FakeContentAssetSource(address, texture);
+            Planet planet = new Planet { TacticalTexturePath = address };
+
+            typeof(TacticalBattleRenderer)
+                .GetMethod("CreatePlanetDecoration", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.Invoke(renderer, new object[] { planet, contentAssets, 150f });
+
+            SpriteRenderer spriteRenderer = root.GetComponentInChildren<SpriteRenderer>();
+            Assert.AreEqual("Tactical Planet", spriteRenderer.gameObject.name);
+            Assert.AreSame(texture, spriteRenderer.sprite.texture);
+            Assert.AreEqual(address, contentAssets.RequestedAddress);
+        }
+
+        [Test]
+        public void CreateHolocube_Enabled_CreatesBattlefieldBoundary()
+        {
+            TacticalNavigationGrid grid = new TacticalNavigationGrid(100f);
+
+            InvokeCreateHolocube(grid, true);
+
+            MeshFilter meshFilter = root.GetComponentInChildren<MeshFilter>();
+            Assert.AreEqual("Tactical Holocube", meshFilter.gameObject.name);
+            Assert.AreEqual(8, meshFilter.sharedMesh.vertexCount);
+            Assert.AreEqual(24, meshFilter.sharedMesh.GetIndices(0).Length);
+            Assert.That(meshFilter.sharedMesh.bounds.extents, Is.EqualTo(Vector3.one * 100f));
+        }
+
+        [Test]
+        public void CreateHolocube_Disabled_DoesNotCreateBattlefieldBoundary()
+        {
+            TacticalNavigationGrid grid = new TacticalNavigationGrid(100f);
+
+            InvokeCreateHolocube(grid, false);
+
+            Assert.IsNull(root.GetComponentInChildren<MeshFilter>());
         }
 
         [Test]
@@ -564,6 +609,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         /// <summary>
+        /// Builds the optional tactical boundary through the renderer's initialization helper.
+        /// </summary>
+        /// <param name="grid">The navigation grid that defines the boundary.</param>
+        /// <param name="visible">Whether the boundary should be created.</param>
+        private void InvokeCreateHolocube(TacticalNavigationGrid grid, bool visible)
+        {
+            typeof(TacticalBattleRenderer)
+                .GetMethod("CreateHolocube", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.Invoke(renderer, new object[] { grid, visible });
+        }
+
+        /// <summary>
         /// Creates and registers one target presentation for event-projection tests.
         /// </summary>
         /// <param name="state">The tactical unit represented by the view.</param>
@@ -612,6 +669,31 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         )
         {
             return System.Array.Find(markers, marker => ReferenceEquals(marker.Point, point));
+        }
+
+        private sealed class FakeContentAssetSource : IContentAssetSource
+        {
+            private readonly string address;
+            private readonly Texture2D texture;
+
+            public FakeContentAssetSource(string address, Texture2D texture)
+            {
+                this.address = address;
+                this.texture = texture;
+            }
+
+            public string RequestedAddress { get; private set; }
+
+            public Texture2D GetTexture(string requestedAddress)
+            {
+                RequestedAddress = requestedAddress;
+                return requestedAddress == address ? texture : null;
+            }
+
+            public Sprite GetSprite(string requestedAddress)
+            {
+                return null;
+            }
         }
     }
 }
