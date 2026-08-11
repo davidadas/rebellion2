@@ -15,6 +15,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _attackerFighterWithdrawal = "attacker-fighter-withdrawal";
         private const string _attackerFighterIonFire = "attacker-fighter-ion-fire";
         private const string _attackerFighterLaserFire = "attacker-fighter-laser-fire";
+        private const string _attackerFighterSelection = "attacker-fighter-selection";
         private const string _attackerIonFire = "attacker-ion-fire";
         private const string _attackerLaserFire = "attacker-laser-fire";
         private const string _attackerTorpedoFire = "attacker-torpedo-fire";
@@ -32,15 +33,22 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _defenderSmallDestruction = "defender-small-destruction";
         private const string _defenderMediumDestruction = "defender-medium-destruction";
         private const string _defenderLargeDestruction = "defender-large-destruction";
+        private const string _defenderLargeReactor = "defender-large-reactor";
         private const string _defenderTractorLock = "defender-tractor-lock";
         private const string _defenderTractorRelease = "defender-tractor-release";
+        private const string _defenderMediumReactor = "defender-medium-reactor";
+        private const string _defenderSmallReactor = "defender-small-reactor";
+        private readonly List<string> ambiencePlayed = new List<string>();
         private readonly List<string> played = new List<string>();
+        private int ambienceStops;
         private TacticalBattleAudio audio;
 
         [SetUp]
         public void SetUp()
         {
             played.Clear();
+            ambiencePlayed.Clear();
+            ambienceStops = 0;
             audio = new TacticalBattleAudio(
                 new Dictionary<TacticalBattleSide, TacticalBattleTheme>
                 {
@@ -50,6 +58,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         CapitalShipWithdrawalAudio = Cue(_attackerCapitalShipWithdrawal),
                         FighterArrivalAudio = Cue(_attackerFighterArrival),
                         FighterWithdrawalAudio = Cue(_attackerFighterWithdrawal),
+                        FighterSelectionAudio = Cue(_attackerFighterSelection),
                         LaserCannonFireAudio = Cue(_attackerLaserFire),
                         FighterLaserCannonFireAudio = Cue(_attackerFighterLaserFire),
                         TurbolaserFireAudio = Cue(_attackerTurbolaserFire),
@@ -110,6 +119,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         SmallShipDestructionAudio = Cue(_defenderSmallDestruction),
                         MediumShipDestructionAudio = Cue(_defenderMediumDestruction),
                         LargeShipDestructionAudio = Cue(_defenderLargeDestruction),
+                        SmallShipReactorAudio = Cue(_defenderSmallReactor),
+                        MediumShipReactorAudio = Cue(_defenderMediumReactor),
+                        LargeShipReactorAudio = Cue(_defenderLargeReactor),
                         TractorLockAudio = Cue(_defenderTractorLock),
                         TractorReleaseAudio = Cue(_defenderTractorRelease),
                         Voice = new TacticalVoiceTheme
@@ -129,8 +141,54 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 },
                 played.Add,
                 _ => 1f,
-                _ => 0
+                _ => 0,
+                ambiencePlayed.Add,
+                () => ambienceStops++
             );
+        }
+
+        [Test]
+        public void SetSelectedUnit_Fighter_StartsFactionSelectionCue()
+        {
+            TacticalUnitState fighter = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+
+            audio.SetSelectedUnit(fighter);
+
+            CollectionAssert.AreEqual(new[] { _attackerFighterSelection }, ambiencePlayed);
+            Assert.AreEqual(1, ambienceStops);
+        }
+
+        [TestCase(1099, _defenderSmallReactor)]
+        [TestCase(1100, _defenderMediumReactor)]
+        [TestCase(2000, _defenderMediumReactor)]
+        [TestCase(2001, _defenderLargeReactor)]
+        public void SetSelectedUnit_CapitalShip_StartsHullClassReactorCue(
+            int maximumHull,
+            string expectedPath
+        )
+        {
+            TacticalUnitState ship = CreateUnit(
+                TacticalBattleSide.Defender,
+                TacticalUnitKind.CapitalShip,
+                maximumHull
+            );
+
+            audio.SetSelectedUnit(ship);
+
+            CollectionAssert.AreEqual(new[] { expectedPath }, ambiencePlayed);
+            Assert.AreEqual(1, ambienceStops);
+        }
+
+        [Test]
+        public void SetSelectedUnit_NoUnit_StopsSelectionCue()
+        {
+            audio.SetSelectedUnit(null);
+
+            CollectionAssert.IsEmpty(ambiencePlayed);
+            Assert.AreEqual(1, ambienceStops);
         }
 
         [Test]

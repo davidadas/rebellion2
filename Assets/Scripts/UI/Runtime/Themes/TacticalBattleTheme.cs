@@ -428,6 +428,14 @@ public sealed class TacticalBattleTheme
 
     public TacticalAudioCueTheme FighterLaunchAudio { get; set; }
 
+    public TacticalAudioCueTheme FighterSelectionAudio { get; set; }
+
+    public TacticalAudioCueTheme SmallShipReactorAudio { get; set; }
+
+    public TacticalAudioCueTheme MediumShipReactorAudio { get; set; }
+
+    public TacticalAudioCueTheme LargeShipReactorAudio { get; set; }
+
     public TacticalAudioCueTheme LaserCannonFireAudio { get; set; }
 
     public TacticalAudioCueTheme FighterLaserCannonFireAudio { get; set; }

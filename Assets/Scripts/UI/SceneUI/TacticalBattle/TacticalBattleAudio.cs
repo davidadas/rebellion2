@@ -15,6 +15,8 @@ internal sealed class TacticalBattleAudio
     private const float _unitCueLifetime = 8f;
     private const float _voiceCueLifetime = 8f;
     private readonly Action<string> play;
+    private readonly Action<string> playAmbience;
+    private readonly Action stopAmbience;
     private readonly Func<string, float> getDuration;
     private readonly Func<int, int> selectVariant;
     private readonly IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> themes;
@@ -38,17 +40,49 @@ internal sealed class TacticalBattleAudio
     /// <param name="play">The operation that starts one addressed cue.</param>
     /// <param name="getDuration">The operation that returns an addressed cue's duration.</param>
     /// <param name="selectVariant">The operation that selects an index below the supplied count.</param>
+    /// <param name="playAmbience">The operation that starts one looping selection cue.</param>
+    /// <param name="stopAmbience">The operation that stops the active selection cue.</param>
     internal TacticalBattleAudio(
         IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> themes,
         Action<string> play,
         Func<string, float> getDuration,
-        Func<int, int> selectVariant = null
+        Func<int, int> selectVariant = null,
+        Action<string> playAmbience = null,
+        Action stopAmbience = null
     )
     {
         this.themes = themes ?? throw new ArgumentNullException(nameof(themes));
         this.play = play ?? throw new ArgumentNullException(nameof(play));
         this.getDuration = getDuration ?? throw new ArgumentNullException(nameof(getDuration));
         this.selectVariant = selectVariant ?? (count => UnityEngine.Random.Range(0, count));
+        this.playAmbience = playAmbience;
+        this.stopAmbience = stopAmbience;
+    }
+
+    /// <summary>
+    /// Changes the persistent machinery cue to match the tactical unit currently displayed.
+    /// </summary>
+    /// <param name="unit">The displayed tactical unit, or null when no unit is displayed.</param>
+    internal void SetSelectedUnit(TacticalUnitState unit)
+    {
+        stopAmbience?.Invoke();
+        if (unit == null || playAmbience == null)
+            return;
+
+        TacticalBattleTheme theme = GetTheme(unit.Side);
+        TacticalAudioCueTheme cue;
+        if (unit.Kind == TacticalUnitKind.Fighters)
+            cue = theme.FighterSelectionAudio;
+        else if (unit.InitialHull < _mediumDestructionHullThreshold)
+            cue = theme.SmallShipReactorAudio;
+        else if (unit.InitialHull <= _largeDestructionHullThreshold)
+            cue = theme.MediumShipReactorAudio;
+        else
+            cue = theme.LargeShipReactorAudio;
+
+        string path = Select(cue);
+        if (!string.IsNullOrWhiteSpace(path))
+            playAmbience(path);
     }
 
     /// <summary>

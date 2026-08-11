@@ -245,6 +245,27 @@ public sealed class AudioManagerTests
     }
 
     [Test]
+    public void StopAmbience_ActiveClip_StopsAndReleasesClip()
+    {
+        AudioManager manager = AudioManager.EnsureExists();
+        AudioClip clip = AudioClip.Create("Ambience", 1, 1, 44100, false);
+        try
+        {
+            manager.PlayAmbience(clip, true);
+            AudioSource source = GetAudioSource(manager, "ambienceSource");
+
+            manager.StopAmbience();
+
+            Assert.IsFalse(source.isPlaying);
+            Assert.IsNull(source.clip);
+        }
+        finally
+        {
+            Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
     public void PlayDynamicPlaylist_NullProvider_ThrowsArgumentNullException()
     {
         AudioManager manager = AudioManager.EnsureExists();

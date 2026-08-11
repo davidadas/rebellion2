@@ -489,6 +489,16 @@ public sealed class AudioManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Stops ambience playback immediately and releases the active clip.
+    /// </summary>
+    public void StopAmbience()
+    {
+        EnsureAudioSources();
+        ambienceSource.Stop();
+        ambienceSource.clip = null;
+    }
+
+    /// <summary>
     /// Applies persisted audio settings to the active audio sources.
     /// </summary>
     /// <param name="settings">The settings to apply.</param>

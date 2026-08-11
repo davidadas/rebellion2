@@ -135,7 +135,10 @@ public sealed class TacticalBattleController : MonoBehaviour
         battleAudio = new TacticalBattleAudio(
             tacticalThemes,
             audioManager.PlaySfx,
-            path => contentAssets.GetPreloadedAudio(path).length
+            path => contentAssets.GetPreloadedAudio(path).length,
+            playAmbience: path =>
+                audioManager.PlayAmbience(contentAssets.GetPreloadedAudio(path), true),
+            stopAmbience: audioManager.StopAmbience
         );
         battleAudio.QueueFleetReady(playerSide);
         InitializeDeathStarAvailability();
@@ -270,6 +273,10 @@ public sealed class TacticalBattleController : MonoBehaviour
             theme.FighterArrivalAudio,
             theme.FighterWithdrawalAudio,
             theme.FighterLaunchAudio,
+            theme.FighterSelectionAudio,
+            theme.SmallShipReactorAudio,
+            theme.MediumShipReactorAudio,
+            theme.LargeShipReactorAudio,
             theme.LaserCannonFireAudio,
             theme.FighterLaserCannonFireAudio,
             theme.TurbolaserFireAudio,
@@ -300,6 +307,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
+        battleAudio?.SetSelectedUnit(null);
         shutdown.Cancel();
         shutdown.Dispose();
         if (view != null)
@@ -718,6 +726,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         pendingManeuver = SelectedGroup.Behavior;
         pendingFormation = SelectedGroup.Formation;
         selectedCapitalShip = SelectedGroup.Units.FirstOrDefault(unit => unit.IsActive);
+        battleAudio.SetSelectedUnit(selectedCapitalShip);
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
         SetSelectedCapitalShipSubject();
         RefreshCapitalShipStatus();
@@ -814,6 +823,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         pendingManeuver = null;
         view.HideManeuvers();
         selectedCapitalShip = null;
+        battleAudio.SetSelectedUnit(SelectedGroup.Units.FirstOrDefault(unit => unit.IsActive));
         view.HideCapitalShipStatus();
         pendingMissionOrder = SelectedGroup.Behavior;
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
@@ -875,6 +885,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         int currentIndex = Array.IndexOf(activeShips, selectedCapitalShip);
         int nextIndex = (currentIndex + offset + activeShips.Length) % activeShips.Length;
         selectedCapitalShip = activeShips[nextIndex];
+        battleAudio.SetSelectedUnit(selectedCapitalShip);
         SetSelectedCapitalShipSubject();
         RefreshCapitalShipStatus();
     }
@@ -917,9 +928,12 @@ public sealed class TacticalBattleController : MonoBehaviour
             );
             if (selectedCapitalShip == null)
             {
+                battleAudio.SetSelectedUnit(null);
                 view.HideCapitalShipStatus();
                 return;
             }
+
+            battleAudio.SetSelectedUnit(selectedCapitalShip);
         }
 
         int activeShipCount = SelectedGroup.Units.Count(unit =>
