@@ -63,6 +63,86 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Create_CapitalShips_StartInMirroredCenterOutRanks()
+        {
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(
+                    CreateShip(600, 250),
+                    CreateShip(500, 200),
+                    CreateShip(400, 150)
+                ),
+                DefenderFleet = CreateFleet(
+                    CreateShip(600, 250),
+                    CreateShip(500, 200),
+                    CreateShip(400, 150)
+                ),
+            };
+
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                encounter,
+                new FixedRandomProvider(new[] { 0d })
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { 0f, 8f, -8f },
+                session
+                    .Units.Where(unit => unit.Side == TacticalBattleSide.Attacker)
+                    .Select(unit => unit.Position.X)
+            );
+            Assert.IsTrue(
+                session
+                    .Units.Where(unit => unit.Side == TacticalBattleSide.Attacker)
+                    .All(unit => unit.Position.Z == -50f && unit.Forward == Vector3.UnitZ)
+            );
+            Assert.IsTrue(
+                session
+                    .Units.Where(unit => unit.Side == TacticalBattleSide.Defender)
+                    .All(unit => unit.Position.Z == 50f && unit.Forward == -Vector3.UnitZ)
+            );
+        }
+
+        [Test]
+        public void Create_DeployedStarfighters_StartBehindCapitalShipRanks()
+        {
+            Planet planet = new Planet();
+            Starfighter firstAttacker = CreateFighters(8, 12, "attacker-a");
+            firstAttacker.OwnerInstanceID = "attacker";
+            Starfighter secondAttacker = CreateFighters(8, 12, "attacker-b");
+            secondAttacker.OwnerInstanceID = "attacker";
+            Starfighter defender = CreateFighters(8, 12, "defender-a");
+            defender.OwnerInstanceID = "defender";
+            planet.Starfighters.AddRange(new[] { firstAttacker, secondAttacker, defender });
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250)),
+                DefenderFleet = CreateFleet(CreateShip(600, 250)),
+                AttackerOwnerInstanceID = "attacker",
+                DefenderOwnerInstanceID = "defender",
+                Planet = planet,
+            };
+
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                encounter,
+                new FixedRandomProvider(new[] { 0d })
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { new Vector3(0f, 0f, -65f), new Vector3(8f, 0f, -65f) },
+                session
+                    .Units.Where(unit =>
+                        unit.Side == TacticalBattleSide.Attacker
+                        && unit.Kind == TacticalUnitKind.Fighters
+                    )
+                    .Select(unit => unit.Position)
+            );
+            Assert.AreEqual(
+                new Vector3(0f, 0f, 65f),
+                session.Units.Single(unit => unit.Unit == defender).Position
+            );
+        }
+
+        [Test]
         public void Create_UnavailableUnits_ExcludesThemFromBattle()
         {
             CapitalShip destroyedShip = CreateShip(0, 100);

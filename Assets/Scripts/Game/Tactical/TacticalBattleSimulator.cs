@@ -13,6 +13,8 @@ namespace Rebellion.Game.Tactical
     internal sealed class TacticalBattleSimulator
     {
         internal const float BattlefieldScale = 100f;
+        private const float _capitalFormationDepth = BattlefieldScale / 2f;
+        private const float _fighterFormationDepth = BattlefieldScale * 0.65f;
         private const float _formationSpacing = 8f;
         private const float _navigationArrivalDistance = 1f;
         private const float _tacticalApproachDistance = 20f;
@@ -152,8 +154,8 @@ namespace Rebellion.Game.Tactical
             fighterDeploymentSystem = new TacticalFighterDeploymentSystem(units, random);
             superlaserSystem = new TacticalSuperlaserSystem(units);
             tractorBeamSystem = new TacticalTractorBeamSystem();
-            PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
-            PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
+            PlaceFormation(TacticalBattleSide.Attacker, -1f, Vector3.UnitZ);
+            PlaceFormation(TacticalBattleSide.Defender, 1f, -Vector3.UnitZ);
             PlaceGroupMarkers();
         }
 
@@ -938,20 +940,67 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Places one side into a centered line facing the opposing formation.
+        /// Places one side into separate, mirrored capital-ship and fighter ranks.
         /// </summary>
         /// <param name="side">The side to place.</param>
-        /// <param name="z">The formation's depth coordinate.</param>
+        /// <param name="depthDirection">The sign of the side's battlefield depth.</param>
         /// <param name="forward">The formation's facing direction.</param>
-        private void PlaceFormation(TacticalBattleSide side, float z, Vector3 forward)
+        private void PlaceFormation(TacticalBattleSide side, float depthDirection, Vector3 forward)
         {
-            TacticalUnitState[] sideUnits = units.Where(unit => unit.Side == side).ToArray();
-            for (int i = 0; i < sideUnits.Length; i++)
+            PlaceFormationRank(
+                side,
+                TacticalUnitKind.CapitalShip,
+                depthDirection * _capitalFormationDepth,
+                forward
+            );
+            PlaceFormationRank(
+                side,
+                TacticalUnitKind.Fighters,
+                depthDirection * _fighterFormationDepth,
+                forward
+            );
+        }
+
+        /// <summary>
+        /// Places one unit family from the center outward in alternating lateral lanes.
+        /// </summary>
+        /// <param name="side">The side whose units are placed.</param>
+        /// <param name="kind">The unit family occupying the rank.</param>
+        /// <param name="depth">The rank's battlefield depth.</param>
+        /// <param name="forward">The rank's facing direction.</param>
+        private void PlaceFormationRank(
+            TacticalBattleSide side,
+            TacticalUnitKind kind,
+            float depth,
+            Vector3 forward
+        )
+        {
+            TacticalUnitState[] rank = units
+                .Where(unit => unit.Side == side && unit.Kind == kind)
+                .ToArray();
+            for (int index = 0; index < rank.Length; index++)
             {
-                float centeredIndex = i - (sideUnits.Length - 1) / 2f;
-                sideUnits[i].Position = new Vector3(centeredIndex * _formationSpacing, 0f, z);
-                sideUnits[i].Forward = forward;
+                rank[index].Position = new Vector3(
+                    GetAlternatingLane(index) * _formationSpacing,
+                    0f,
+                    depth
+                );
+                rank[index].Forward = forward;
             }
+        }
+
+        /// <summary>
+        /// Converts a source-order index into center, right, left, and progressively wider lanes.
+        /// </summary>
+        /// <param name="index">The zero-based unit index within its rank.</param>
+        /// <returns>The signed lateral lane.</returns>
+        private static int GetAlternatingLane(int index)
+        {
+            if (index == 0)
+                return 0;
+
+            int magnitude = (index + 1) / 2;
+            return index % 2 == 1 ? magnitude : -magnitude;
         }
 
         /// <summary>
