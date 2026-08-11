@@ -480,7 +480,7 @@ namespace Rebellion.Game.Results
         public Officer EncounteredOfficer { get; set; }
         public Officer OpposingOfficer { get; set; }
         public string ImagePath { get; set; }
-        public string VoicePath { get; set; }
+        public string AudioPath { get; set; }
     }
 
     /// <summary>
@@ -495,7 +495,7 @@ namespace Rebellion.Game.Results
         public int EncounteredOfficerInjury { get; set; }
         public int OpposingOfficerInjury { get; set; }
         public string ImagePath { get; set; }
-        public string VoicePath { get; set; }
+        public string AudioPath { get; set; }
     }
 
     /// <summary>
@@ -563,18 +563,27 @@ namespace Rebellion.Game.Results
     public class NarrativeMessageResult : GameResult
     {
         public Faction Recipient { get; set; }
-        public ISceneNode Subject { get; set; }
-        public ISceneNode RelatedSubject { get; set; }
+        public ISceneNode SubjectNode { get; set; }
+        public ISceneNode RelatedSubjectNode { get; set; }
         public Planet Location { get; set; }
         public MessageType MessageType { get; set; }
-        public string TitleTemplate { get; set; }
-        public string BodyTemplate { get; set; }
+        public string Subject { get; set; }
+        public string Body { get; set; }
         public string BackgroundImageKey { get; set; }
         public string BackgroundImagePath { get; set; }
         public string OverlayImagePath { get; set; }
-        public string VoicePath { get; set; }
+        public string AudioPath { get; set; }
         public string OfficerVoicePath { get; set; }
-        public AdvisorCue AdvisorCue { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
+    }
+
+    /// <summary>
+    /// Suppresses one matching automatic message produced by the current result batch.
+    /// </summary>
+    public sealed class SuppressNextMessageResult : GameResult
+    {
+        public MessageResultType MessageType { get; set; }
+        public Faction Recipient { get; set; }
     }
 
     /// <summary>
@@ -597,12 +606,14 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// A game event requested a content-defined mission with concrete role bindings.
+    /// A game event requested a content-defined mission with a target and participant groups.
     /// </summary>
     public class CustomMissionRequestedResult : GameResult
     {
         public string MissionDefinitionID { get; set; }
-        public List<MissionRoleAssignment> Roles { get; set; } = new List<MissionRoleAssignment>();
+        public string TargetInstanceID { get; set; }
+        public List<string> MainParticipantInstanceIDs { get; set; } = new List<string>();
+        public List<string> DecoyParticipantInstanceIDs { get; set; } = new List<string>();
     }
 
     /// <summary>

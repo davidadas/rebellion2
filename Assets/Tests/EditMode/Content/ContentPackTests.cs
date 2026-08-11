@@ -104,7 +104,11 @@ namespace Rebellion.Tests.Content
                 SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
 
                 Assert.AreEqual("core:officer.capture-changed", gameEvent.Trigger);
-                Assert.IsTrue(gameEvent.SuppressSourceMessages);
+                SuppressNextMessageAction suppression = gameEvent
+                    .Actions.OfType<SuppressNextMessageAction>()
+                    .Single();
+                Assert.AreEqual(MessageResultType.OfficerCaptured, suppression.MessageType);
+                Assert.AreEqual("FNALL1", suppression.RecipientFactionInstanceID);
                 Assert.AreEqual(sourceEventId, source.EventInstanceID);
                 Assert.AreEqual(officerId, capture.OfficerInstanceID);
                 Assert.AreEqual(officerId, message.SubjectInstanceID);
@@ -118,7 +122,10 @@ namespace Rebellion.Tests.Content
             GameEvent hanCapture = pack.GameData.GameEvents.Single(candidate =>
                 candidate.InstanceID == "HAN_CAPTURED_BY_BOUNTY_HUNTERS"
             );
-            Assert.IsTrue(hanCapture.SuppressSourceMessages);
+            Assert.AreEqual(
+                MessageResultType.OfficerCaptured,
+                hanCapture.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
+            );
             Assert.AreEqual(
                 "HAN_BOUNTY_HUNTERS",
                 hanCapture.Conditionals.OfType<TriggeredByConditional>().Single().EventInstanceID
@@ -129,7 +136,10 @@ namespace Rebellion.Tests.Content
             );
             Assert.IsTrue(reportPolicy.Repeats);
             Assert.AreEqual("core:mission.completed", reportPolicy.Trigger);
-            Assert.IsTrue(reportPolicy.SuppressTriggerMessage);
+            Assert.AreEqual(
+                MessageResultType.MissionReport,
+                reportPolicy.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
+            );
             CollectionAssert.AreEquivalent(
                 expectedEvents.Select(expected => expected.sourceEventId),
                 reportPolicy
@@ -174,7 +184,6 @@ namespace Rebellion.Tests.Content
                     candidate.InstanceID == eventId
                 );
                 Assert.AreEqual(triggerType, gameEvent.Trigger, eventId);
-                Assert.IsTrue(gameEvent.SuppressSourceMessages, eventId);
                 Assert.AreEqual(
                     sourceEventId,
                     gameEvent
@@ -190,7 +199,10 @@ namespace Rebellion.Tests.Content
             );
             Assert.IsTrue(finalBattlePolicy.Repeats);
             Assert.AreEqual("core:mission.completed", finalBattlePolicy.Trigger);
-            Assert.IsTrue(finalBattlePolicy.SuppressTriggerMessage);
+            Assert.AreEqual(
+                MessageResultType.MissionReport,
+                finalBattlePolicy.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
+            );
             Assert.AreEqual(
                 "VADER_TAKES_LUKE_TO_EMPEROR",
                 finalBattlePolicy
@@ -250,7 +262,10 @@ namespace Rebellion.Tests.Content
                     candidate.InstanceID == effectsEventId
                 );
                 Assert.AreEqual("core:officer.encountered", gameEvent.Trigger);
-                Assert.IsTrue(gameEvent.SuppressSourceMessages, effectsEventId);
+                Assert.IsEmpty(
+                    gameEvent.Actions.OfType<SuppressNextMessageAction>(),
+                    effectsEventId
+                );
                 Assert.AreEqual(
                     sourceEventId,
                     gameEvent
@@ -295,9 +310,7 @@ namespace Rebellion.Tests.Content
             GameEvent finalBattle = pack.GameData.GameEvents.Single(gameEvent =>
                 gameEvent.InstanceID == "VADER_TAKES_LUKE_TO_EMPEROR"
             );
-            StartMissionAction startFinalBattle = finalBattle
-                .Actions.OfType<StartMissionAction>()
-                .Single();
+            MissionAction startFinalBattle = finalBattle.Actions.OfType<MissionAction>().Single();
             SendMessageAction victoryMessage = pack
                 .GameData.GameEvents.Single(gameEvent =>
                     gameEvent.InstanceID == "LUKE_WINS_FINAL_BATTLE"
@@ -331,11 +344,11 @@ namespace Rebellion.Tests.Content
             SendMessageAction confrontation = lukeVaderEffects
                 .Actions.OfType<SendMessageAction>()
                 .Single();
-            StartMissionAction bountyCapture = pack
+            MissionAction bountyCapture = pack
                 .GameData.GameEvents.Single(gameEvent =>
                     gameEvent.InstanceID == "HAN_BOUNTY_HUNTERS"
                 )
-                .Actions.OfType<StartMissionAction>()
+                .Actions.OfType<MissionAction>()
                 .Single();
             string[] recurringEncounterEventIds =
             {
@@ -380,6 +393,7 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(5, confrontation.BodySegments.Count);
             Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", bountyCapture.MissionDefinitionID);
+            Assert.AreEqual("HAN_SOLO", bountyCapture.Target.UnitInstanceID);
             Assert.AreEqual(
                 0,
                 pack.GameData.MissionDefinitions.Single(definition =>
@@ -419,11 +433,11 @@ namespace Rebellion.Tests.Content
             );
             Assert.AreEqual(
                 "Pack/Shared/Events/FinalBattle/Audio/luke-victorious",
-                victoryMessage.VoicePath
+                victoryMessage.AudioPath
             );
             Assert.AreEqual(
                 "Pack/Shared/Events/FinalBattle/Audio/luke-defeated",
-                defeatMessage.VoicePath
+                defeatMessage.AudioPath
             );
         }
 

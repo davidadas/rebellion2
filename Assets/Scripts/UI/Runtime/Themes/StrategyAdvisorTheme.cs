@@ -10,9 +10,13 @@ public class StrategyAdvisorAnimationTheme
 {
     public string Animation { get; set; }
 
+    public string AnimationPath { get; set; }
+
     public int FrameCount { get; set; }
 
     public string Audio { get; set; }
+
+    public string AudioPath { get; set; }
 
     public float DelayBeforeSeconds { get; set; }
 

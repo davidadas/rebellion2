@@ -271,18 +271,24 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_ResultTriggeredReplacement_RoundTripsSourceAndSuppression()
+        public void Serialize_SuppressNextMessage_RoundTripsExplicitAction()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 TriggerResultType = "OfficerCaptureStateResult",
-                SuppressTriggerMessage = true,
-                SuppressSourceMessages = true,
                 Conditionals = new List<GameConditional>
                 {
                     new TriggeredByConditional { EventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA" },
+                },
+                Actions = new List<GameAction>
+                {
+                    new SuppressNextMessageAction
+                    {
+                        MessageType = MessageResultType.OfficerCaptured,
+                        RecipientFactionInstanceID = "FNALL1",
+                    },
                 },
             };
 
@@ -290,19 +296,18 @@ namespace Rebellion.Tests.Util.Serialization
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
             StringAssert.Contains(
-                "<SuppressTriggerMessage>True</SuppressTriggerMessage>",
-                serializedXml
-            );
-            StringAssert.Contains(
-                "<SuppressSourceMessages>True</SuppressSourceMessages>",
+                "<SuppressNextMessage Type=\"OfficerCaptured\" RecipientFactionInstanceID=\"FNALL1\"",
                 serializedXml
             );
             StringAssert.Contains(
                 "<TriggeredBy EventInstanceID=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
                 serializedXml
             );
-            Assert.IsTrue(deserialized.SuppressTriggerMessage);
-            Assert.IsTrue(deserialized.SuppressSourceMessages);
+            SuppressNextMessageAction action =
+                deserialized.Actions.Single() as SuppressNextMessageAction;
+            Assert.IsNotNull(action);
+            Assert.AreEqual(MessageResultType.OfficerCaptured, action.MessageType);
+            Assert.AreEqual("FNALL1", action.RecipientFactionInstanceID);
             TriggeredByConditional source = deserialized.Conditionals[0] as TriggeredByConditional;
             Assert.IsNotNull(source);
             Assert.AreEqual("LUKE_RESCUES_HAN_FROM_JABBA", source.EventInstanceID);
@@ -345,7 +350,17 @@ namespace Rebellion.Tests.Util.Serialization
                                         ElseBody = "Unharmed",
                                     },
                                 },
-                                VoicePath = "Story/dialogue",
+                                AudioPath = "Story/dialogue",
+                                AdvisorNotification = new AdvisorNotification
+                                {
+                                    Preset = AdvisorNotificationPreset.SubjectReport,
+                                    Protocol = new AdvisorAnimation
+                                    {
+                                        AnimationPath = "Story/advisor",
+                                        FrameCount = 3,
+                                        AudioPath = "Story/advisor/audio",
+                                    },
+                                },
                             },
                         },
                     },
@@ -386,17 +401,10 @@ namespace Rebellion.Tests.Util.Serialization
                         MaximumInjury = 100,
                     },
                     new BountyAttackAction { OfficerInstanceID = "HAN_SOLO" },
-                    new StartMissionAction
+                    new MissionAction
                     {
                         MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
-                        Roles = new List<MissionRoleAssignment>
-                        {
-                            new MissionRoleAssignment
-                            {
-                                Name = "Target",
-                                UnitInstanceID = "HAN_SOLO",
-                            },
-                        },
+                        Target = new MissionUnitReference { UnitInstanceID = "HAN_SOLO" },
                     },
                 },
             };
@@ -415,7 +423,13 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual(MessageType.Advice, message.MessageType);
-            Assert.AreEqual("Story/dialogue", message.VoicePath);
+            Assert.AreEqual("Story/dialogue", message.AudioPath);
+            Assert.AreEqual(
+                AdvisorNotificationPreset.SubjectReport,
+                message.AdvisorNotification.Preset
+            );
+            Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
+            Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
             Assert.AreEqual(1, message.BodySegments.Count);
             Assert.AreEqual("Injured", message.BodySegments[0].Body);
             OfficerStateConditional bodyCondition =
@@ -447,11 +461,10 @@ namespace Rebellion.Tests.Util.Serialization
             BountyAttackAction bounty = deserialized.Actions[5] as BountyAttackAction;
             Assert.IsNotNull(bounty);
             Assert.AreEqual("HAN_SOLO", bounty.OfficerInstanceID);
-            StartMissionAction startMission = deserialized.Actions[6] as StartMissionAction;
-            Assert.IsNotNull(startMission);
-            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", startMission.MissionDefinitionID);
-            Assert.AreEqual("Target", startMission.Roles.Single().Name);
-            Assert.AreEqual("HAN_SOLO", startMission.Roles.Single().UnitInstanceID);
+            MissionAction mission = deserialized.Actions[6] as MissionAction;
+            Assert.IsNotNull(mission);
+            Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", mission.MissionDefinitionID);
+            Assert.AreEqual("HAN_SOLO", mission.Target.UnitInstanceID);
         }
 
         [Test]
@@ -494,18 +507,14 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_RoundTripCustomMission_PreservesDefinitionAndRoles()
+        public void Serialize_RoundTripCustomMission_PreservesDefinitionAndTarget()
         {
             GameSerializer serializer = new GameSerializer(typeof(CustomMission));
             CustomMission mission = new CustomMission
             {
                 InstanceID = "final-battle-mission",
                 MissionDefinitionID = "ESCORT_LUKE_TO_FINAL_BATTLE",
-                Roles = new List<MissionRoleAssignment>
-                {
-                    new MissionRoleAssignment { Name = "Subject", UnitInstanceID = "luke" },
-                    new MissionRoleAssignment { Name = "Opponent", UnitInstanceID = "vader" },
-                },
+                TargetInstanceID = "luke",
                 SourceEventInstanceID = "FINAL_BATTLE",
                 MaxProgress = 3,
                 CurrentProgress = 2,
@@ -519,8 +528,7 @@ namespace Rebellion.Tests.Util.Serialization
             );
 
             Assert.AreEqual("ESCORT_LUKE_TO_FINAL_BATTLE", deserialized.MissionDefinitionID);
-            Assert.AreEqual("luke", deserialized.Roles[0].UnitInstanceID);
-            Assert.AreEqual("vader", deserialized.Roles[1].UnitInstanceID);
+            Assert.AreEqual("luke", deserialized.TargetInstanceID);
             Assert.AreEqual("FINAL_BATTLE", deserialized.SourceEventInstanceID);
             Assert.AreEqual(3, deserialized.MaxProgress);
             Assert.AreEqual(2, deserialized.CurrentProgress);

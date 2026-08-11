@@ -29,16 +29,6 @@ namespace Rebellion.Game.Events
         public string TriggerResultType { get; set; }
         public string Trigger { get; set; }
 
-        /// <summary>
-        /// Gets or sets whether this reaction replaces its triggering result's automatic message.
-        /// </summary>
-        public bool SuppressTriggerMessage { get; set; }
-
-        /// <summary>
-        /// Gets or sets whether this reaction replaces automatic messages from its source event.
-        /// </summary>
-        public bool SuppressSourceMessages { get; set; }
-
         // Schedule and Execution Pipeline.
         public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();

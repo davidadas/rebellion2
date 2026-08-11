@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
@@ -7,6 +8,44 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
+    /// <summary>
+    /// Adjusts one stored officer rating by a fixed amount or by a percentage of its base value.
+    /// </summary>
+    [PersistableObject(Name = "AdjustOfficerRating")]
+    public sealed class AdjustOfficerRatingAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public OfficerRating Rating { get; set; }
+
+        public int? Amount { get; set; }
+        public int? PercentOfBaseRating { get; set; }
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"AdjustOfficerRating could not resolve officer '{OfficerInstanceID}'."
+                );
+            if (Rating == OfficerRating.None)
+                throw new InvalidOperationException(
+                    "AdjustOfficerRating requires a concrete officer rating."
+                );
+            if (Amount.HasValue == PercentOfBaseRating.HasValue)
+                throw new InvalidOperationException(
+                    "AdjustOfficerRating requires exactly one of Amount or PercentOfBaseRating."
+                );
+
+            int baseRating = officer.GetBaseRating(Rating);
+            int adjustment = Amount ?? checked(baseRating * PercentOfBaseRating.Value / 100);
+            officer.SetBaseRating(Rating, checked(baseRating + adjustment));
+            return new List<GameResult>();
+        }
+    }
+
     /// <summary>
     /// Adds Force experience calculated as a percentage of the officer's current rank.
     /// </summary>

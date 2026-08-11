@@ -81,7 +81,9 @@ namespace Rebellion.Systems
 
                 CustomMission mission = new CustomMission(
                     definition,
-                    result.Roles,
+                    result.TargetInstanceID,
+                    result.MainParticipantInstanceIDs,
+                    result.DecoyParticipantInstanceIDs,
                     result.SourceEventInstanceID,
                     _game
                 );
@@ -106,7 +108,7 @@ namespace Rebellion.Systems
             Officer allowedCaptive =
                 definition.Resolution == CustomMissionResolution.ForceConfrontation
                 && definition.Phase == CustomMissionPhase.EscortToDestination
-                    ? mission.GetRole<Officer>(_game, definition.SubjectRole)
+                    ? mission.GetTarget<Officer>(_game)
                     : null;
             if (
                 mission
@@ -125,17 +127,19 @@ namespace Rebellion.Systems
 
             if (definition.Resolution == CustomMissionResolution.OfficerCapture)
             {
-                Officer target = mission.GetRole<Officer>(_game, definition.TargetRole);
+                Officer target = mission.GetTarget<Officer>(_game);
                 return target is { IsCaptured: false, IsKilled: false };
             }
             if (definition.Resolution == CustomMissionResolution.OfficerRescue)
-                return mission.GetRole<Officer>(_game, definition.CaptiveRole)?.IsCaptured == true;
+                return mission.GetTarget<Officer>(_game)?.IsCaptured == true;
             if (definition.Resolution == CustomMissionResolution.PrisonerPickup)
                 return true;
             if (definition.Resolution == CustomMissionResolution.ForceConfrontation)
             {
-                Officer subject = mission.GetRole<Officer>(_game, definition.SubjectRole);
-                Officer authority = mission.GetRole<Officer>(_game, definition.AuthorityRole);
+                Officer subject = mission.GetTarget<Officer>(_game);
+                Officer authority = _game.GetSceneNodeByInstanceID<Officer>(
+                    definition.AuthorityUnitInstanceID
+                );
                 return subject?.IsCaptured == true
                     && subject.CaptorInstanceID == definition.CaptorFactionInstanceID
                     && authority is { IsCaptured: false, IsKilled: false };
@@ -514,7 +518,7 @@ namespace Rebellion.Systems
 
             if (mission is CustomMission customMission)
             {
-                customMission.SetDefinition(GetCustomMissionDefinition(customMission));
+                customMission.SetDefinition(GetCustomMissionDefinition(customMission), _game);
                 customMission.RefreshTrackedLocation(_game);
             }
 
@@ -727,6 +731,13 @@ namespace Rebellion.Systems
             List<IMissionParticipant> freeParticipants = GetFreeMissionParticipants(mission)
                 .Distinct()
                 .ToList();
+            if (
+                mission is CustomMission customMission
+                && customMission.GetEscortedTarget(_game) is IMissionParticipant escortedTarget
+                && escortedTarget.GetParent() == mission
+                && !freeParticipants.Contains(escortedTarget)
+            )
+                freeParticipants.Add(escortedTarget);
             List<IMovable> additionalPassengers = GetAdditionalReturnPassengers(
                     mission,
                     completedResult
@@ -1092,7 +1103,12 @@ namespace Rebellion.Systems
                     .GetAllParticipants()
                     .Cast<IMovable>()
                     .ToList();
-                foreach (IMissionParticipant participant in escortMission.GetAllParticipants())
+                IMovable escortedTarget = escortMission.GetEscortedTarget(_game);
+                if (escortedTarget != null)
+                    escortGroup.Add(escortedTarget);
+                foreach (
+                    IMissionParticipant participant in escortGroup.OfType<IMissionParticipant>()
+                )
                 {
                     participant.MissionReturnParentInstanceID = participant.GetParent()?.InstanceID;
                     participant.MissionReturnLocationInstanceID = participant

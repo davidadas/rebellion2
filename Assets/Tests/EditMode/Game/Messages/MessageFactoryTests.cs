@@ -33,18 +33,21 @@ namespace Rebellion.Tests.Game.Messages
                     new NarrativeMessageResult
                     {
                         Recipient = alliance,
-                        Subject = luke,
-                        RelatedSubject = vader,
+                        SubjectNode = luke,
+                        RelatedSubjectNode = vader,
                         Location = destination,
                         MessageType = MessageType.Advice,
-                        TitleTemplate = "{subject} at {location}",
-                        BodyTemplate = "{subject} confronts {relatedSubject} for {faction}",
+                        Subject = "{subject} at {location}",
+                        Body = "{subject} confronts {relatedSubject} for {faction}",
                         BackgroundImageKey = "mission_report",
                         BackgroundImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
-                        VoicePath = "Story/dialogue",
+                        AudioPath = "Story/dialogue",
                         OfficerVoicePath = "Officers/luke/dialogue",
-                        AdvisorCue = AdvisorCue.SubjectReport,
+                        AdvisorNotification = new AdvisorNotification
+                        {
+                            Preset = AdvisorNotificationPreset.SubjectReport,
+                        },
                     }
                 ),
                 alliance
@@ -55,7 +58,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Story/image", message.DisplayImagePath);
             Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);
-            Assert.AreEqual("Story/dialogue", message.MessageVoicePath);
+            Assert.AreEqual("Story/dialogue", message.AudioPath);
             Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
             Assert.AreEqual(luke.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
@@ -63,7 +66,7 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
-        public void CreateMessages_AuthoredReplacement_SkipsTriggerButDeliversNarrative()
+        public void CreateMessages_SuppressNextMessage_RemovesOneAutomaticMessageOnly()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer luke = new Officer
@@ -89,21 +92,39 @@ namespace Rebellion.Tests.Game.Messages
                     TargetOfficer = luke,
                     IsCaptured = true,
                     Context = origin,
-                    SuppressDefaultMessage = true,
+                },
+                new OfficerCaptureStateResult
+                {
+                    TargetOfficer = luke,
+                    IsCaptured = true,
+                    Context = origin,
+                },
+                new SuppressNextMessageResult
+                {
+                    MessageType = MessageResultType.OfficerCaptured,
+                    Recipient = alliance,
                 },
                 new NarrativeMessageResult
                 {
                     Recipient = alliance,
-                    Subject = luke,
+                    SubjectNode = luke,
                     MessageType = MessageType.Mission,
-                    TitleTemplate = "Jabba Captures {subject}",
-                    BodyTemplate =
-                        "{subject} was captured by Jabba while attempting to rescue Han Solo.",
+                    Subject = "Jabba Captures {subject}",
+                    Body = "{subject} was captured by Jabba while attempting to rescue Han Solo.",
                 }
             );
 
-            Assert.AreEqual(1, deliveries.Count);
-            Assert.AreEqual("Jabba Captures Luke Skywalker", deliveries[0].message.Title);
+            Assert.AreEqual(2, deliveries.Count);
+            Assert.AreEqual(
+                1,
+                deliveries.Count(delivery => delivery.message.Title == "Generic capture")
+            );
+            Assert.AreEqual(
+                1,
+                deliveries.Count(delivery =>
+                    delivery.message.Title == "Jabba Captures Luke Skywalker"
+                )
+            );
         }
 
         [Test]
@@ -172,7 +193,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("Audio/SFX/StrategyView/Messages/test_voice", message.MessageVoicePath);
+            Assert.AreEqual("Audio/SFX/StrategyView/Messages/test_voice", message.AudioPath);
         }
 
         [Test]
@@ -209,7 +230,7 @@ namespace Rebellion.Tests.Game.Messages
                 empire
             );
 
-            Assert.AreEqual("empire-voice", message.MessageVoicePath);
+            Assert.AreEqual("empire-voice", message.AudioPath);
         }
 
         [Test]
@@ -1101,7 +1122,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             Assert.AreEqual("death-star-encyclopedia-image", messages[1].DisplayImagePath);
             Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
-            Assert.AreEqual("fighter-voice", messages[2].MessageVoicePath);
+            Assert.AreEqual("fighter-voice", messages[2].AudioPath);
             Assert.AreEqual("fighter-encyclopedia-image", messages[2].DisplayImagePath);
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
@@ -1217,7 +1238,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Dissention among the population has allowed smugglers to begin operations on Yavin.  As a result, valuable resources are being lost.",
                 loss.Body
             );
-            Assert.AreEqual("empire-smuggling-voice", loss.MessageVoicePath);
+            Assert.AreEqual("empire-smuggling-voice", loss.AudioPath);
             Assert.AreEqual(target.InstanceID, loss.NavigationTargetInstanceID);
 
             Message benefit = FirstMessageFor(deliveries, alliance);
@@ -1226,7 +1247,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Smugglers from Yavin are providing us with additional resources.",
                 benefit.Body
             );
-            Assert.AreEqual("alliance-smuggling-voice", benefit.MessageVoicePath);
+            Assert.AreEqual("alliance-smuggling-voice", benefit.AudioPath);
             Assert.AreEqual(target.InstanceID, benefit.EventLocationInstanceID);
         }
 
@@ -1255,7 +1276,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Increasing support on Yavin has put an end to the smuggling losses there.",
                 lossEnd.Body
             );
-            Assert.IsNull(lossEnd.MessageVoicePath);
+            Assert.IsNull(lossEnd.AudioPath);
 
             Message benefitEnd = FirstMessageFor(deliveries, alliance);
             Assert.AreEqual("Smuggling Benefits End", benefitEnd.Title);
@@ -1263,7 +1284,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Popular opinion on Yavin has caused smugglers from that system to withdraw their support.",
                 benefitEnd.Body
             );
-            Assert.IsNull(benefitEnd.MessageVoicePath);
+            Assert.IsNull(benefitEnd.AudioPath);
         }
 
         [Test]
@@ -3047,7 +3068,7 @@ namespace Rebellion.Tests.Game.Messages
                 deliveries[0].message.Body
             );
             Assert.AreEqual("empire-image", deliveries[0].message.DisplayImagePath);
-            Assert.AreEqual("empire-unrest", deliveries[0].message.MessageVoicePath);
+            Assert.AreEqual("empire-unrest", deliveries[0].message.AudioPath);
             Assert.AreEqual(
                 (int)AdvisorNotificationCode.NegativePopularSupport,
                 deliveries[0].message.AdvisorNotificationCode
@@ -3245,7 +3266,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Yavin neutral", message.Title);
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
             Assert.AreEqual("support-image", message.DisplayImagePath);
-            Assert.AreEqual("neutral-audio", message.MessageVoicePath);
+            Assert.AreEqual("neutral-audio", message.AudioPath);
         }
 
         [Test]
@@ -3949,8 +3970,8 @@ namespace Rebellion.Tests.Game.Messages
                 ShowOfficerOverlay = showOfficerOverlay,
                 BackgroundImage = new MessageBackgroundImage { Key = imageKey, Path = imagePath },
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),
-                VoicePath = voicePath,
-                VoicePaths = voicePaths ?? new Dictionary<string, string>(),
+                AudioPath = voicePath,
+                AudioPaths = voicePaths ?? new Dictionary<string, string>(),
                 PlanetDestroyed = planetDestroyed,
             };
 

@@ -33,8 +33,8 @@ namespace Rebellion.Game.Events
         public string Body { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public MessageBackgroundImage BackgroundImage { get; set; }
-        public string VoicePath { get; set; }
-        public AdvisorCue AdvisorCue { get; set; }
+        public string AudioPath { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
         public List<InformantFactionRoute> FactionRoutes { get; set; } =
             new List<InformantFactionRoute>();
         public List<PlanetIntelligenceCategory> IntelligenceChoices { get; set; } =
@@ -57,6 +57,7 @@ namespace Rebellion.Game.Events
         {
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
+            AdvisorNotification?.Validate();
             Planet planet = context?.GetScopeTarget<Planet>();
             if (planet == null)
                 return Execute(game);
@@ -90,15 +91,15 @@ namespace Rebellion.Game.Events
                 new NarrativeMessageResult
                 {
                     Recipient = recipient,
-                    Subject = planet,
+                    SubjectNode = planet,
                     Location = planet,
                     MessageType = MessageType,
-                    TitleTemplate = Title,
-                    BodyTemplate = Body,
+                    Subject = Title,
+                    Body = Body,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = BackgroundImage?.Path,
-                    VoicePath = VoicePath,
-                    AdvisorCue = AdvisorCue,
+                    AudioPath = AudioPath,
+                    AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },
             };

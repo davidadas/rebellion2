@@ -18,6 +18,7 @@ namespace Rebellion.Util.Common
         /// <returns>True if the type is scalar, otherwise false.</returns>
         public static bool IsScalar(Type type)
         {
+            type = Nullable.GetUnderlyingType(type) ?? type;
             return type == typeof(string)
                 || type == typeof(bool)
                 || type == typeof(byte)

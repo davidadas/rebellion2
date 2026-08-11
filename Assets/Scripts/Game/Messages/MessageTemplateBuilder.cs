@@ -48,9 +48,9 @@ namespace Rebellion.Game.Messages
                         (imageFaction ?? faction)?.InstanceID
                     ),
                 OverlayImagePath = overlayImagePath,
-                MessageVoicePath = GetAssetPath(
-                    definition.VoicePath,
-                    definition.VoicePaths,
+                AudioPath = GetAssetPath(
+                    definition.AudioPath,
+                    definition.AudioPaths,
                     faction?.InstanceID
                 ),
                 OfficerVoicePath = officerVoicePath,

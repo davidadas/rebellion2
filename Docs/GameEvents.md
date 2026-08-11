@@ -23,20 +23,18 @@ This event runs once at campaign tick 100:
       <At Tick="100"/>
     </Schedule>
     <Actions>
-      <AddMessage>
-        <RecipientFactionInstanceID>FNALL1</RecipientFactionInstanceID>
-        <MessageType>Resource</MessageType>
+      <SendMessage RecipientFactionInstanceID="FNALL1" Type="Resource">
         <Title>Anniversary Supplies</Title>
         <Body>Additional supplies have arrived.</Body>
-      </AddMessage>
+      </SendMessage>
     </Actions>
   </GameEvent>
 </GameEvents>
 ```
 
-`DisplayName` is used for diagnostics and tooling; it is not a player-facing message title. An
-event without `IsRepeatable` is removed after its first successful execution. Failed conditions
-leave the event pending.
+`DisplayName` is used for diagnostics and tooling; it is not a player-facing message title.
+`At` and `After` schedules inherently run once. Other events repeat unless `RunsOnce="true"` is
+set. Failed conditions leave an event pending.
 
 ## Scheduling
 
@@ -51,7 +49,6 @@ leave the event pending.
 `At` supplies an absolute campaign tick and cannot repeat.
 
 ```xml
-<IsRepeatable>true</IsRepeatable>
 <Schedule>
   <Every Ticks="50" InitialDelayTicks="10"/>
 </Schedule>
@@ -61,14 +58,14 @@ leave the event pending.
 execution.
 
 ```xml
-<IsRepeatable>true</IsRepeatable>
 <Schedule>
   <Random MinimumTicks="25" MaximumTicks="75"/>
 </Schedule>
 ```
 
-`Random` selects an inclusive delay in the authored range. A repeatable event rolls a new delay
-after every successful execution. All event randomness uses the saved simulation random stream.
+`Random` selects an inclusive delay in the authored range and rolls a new delay after every
+successful execution. Set `RunsOnce="true"` on the `GameEvent` to prevent another roll. All event
+randomness uses the saved simulation random stream.
 
 `After` schedules an event relative to the successful execution of another event:
 
@@ -80,31 +77,23 @@ after every successful execution. All event randomness uses the saved simulation
 
 ## Result-triggered events
 
-Use `Trigger` instead of `Schedule` to react to a simulation result. Set `IsRepeatable` to `true`
-when the event must react to every match rather than only the first.
+Use `Trigger` instead of `Schedule` to react to a simulation result. Result-triggered events react
+to every match unless the `GameEvent` has `RunsOnce="true"`.
 
 ```xml
 <GameEvent>
   <DisplayName>Arrival Ceremony</DisplayName>
   <InstanceID>MOD_ARRIVAL_CEREMONY</InstanceID>
-  <IsRepeatable>true</IsRepeatable>
   <Trigger>core:unit.arrived</Trigger>
   <Conditionals>
-    <UnitArrival>
-      <UnitInstanceID>MON_MOTHMA</UnitInstanceID>
-      <DestinationInstanceID>CHANDRILA</DestinationInstanceID>
-    </UnitArrival>
+    <UnitArrived UnitInstanceID="MON_MOTHMA" DestinationInstanceID="CHANDRILA"/>
   </Conditionals>
   <Actions>
-    <AddMessage>
-      <RecipientFactionInstanceID>FNALL1</RecipientFactionInstanceID>
-      <SubjectInstanceID>MON_MOTHMA</SubjectInstanceID>
-      <LocationInstanceID>CHANDRILA</LocationInstanceID>
-      <MessageType>Mission</MessageType>
+    <SendMessage RecipientFactionInstanceID="FNALL1" SubjectInstanceID="MON_MOTHMA" LocationInstanceID="CHANDRILA" Type="Mission">
       <Title>Mon Mothma Arrives</Title>
       <Body>Mon Mothma has arrived on Chandrila.</Body>
-      <AdvisorCue>SubjectReport</AdvisorCue>
-    </AddMessage>
+      <AdvisorNotification Preset="SubjectReport"/>
+    </SendMessage>
   </Actions>
 </GameEvent>
 ```
@@ -121,9 +110,8 @@ Stable core triggers are:
 - `core:prisoner-pickup.completed`
 - `core:unit.arrived`
 
-`SuppressTriggerMessage` suppresses the automatic message for the exact activating result.
-`SuppressSourceMessages` suppresses all automatic messages emitted by the same source event. Use
-these only when the event supplies a deliberate replacement report.
+`SuppressNextMessage` suppresses one automatic message of the authored result type and optional
+recipient. Authored `SendMessage` actions are never suppressed.
 
 ## Conditions
 
@@ -146,10 +134,9 @@ specific faction must own it. Omitting the faction matches any non-neutral owner
 General conditions include `And`, `Or`, `Not`, `Xor`, `AreOnSamePlanet`,
 `AreOnOpposingFactions`, `IsOnMission`, `IsMovable`, `AreOnPlanet`, `TickCount`,
 `IsEventComplete`, `EventVariable`, `IsAtLocation`, and `IsOwned`. Result-triggered events can also
-use `OfficerEncounterParticipants`, `OfficerPairArrival`, `UnitArrival`, `OfficerCaptureState`,
-`ResultSourceEvent`, `OfficerCaptureOutcome`, `PrisonerPickupCollector`, and
-`ForceConfrontationOutcome`. Officer checks include `OfficerState`, `OfficerCaptor`, and
-`OfficerForceRank`.
+use `DuelIncludes`, `MissionIncludes`, `UnitArrived`, `OfficerCaptured`, `TriggeredBy`,
+`CaptureFailed`, `PrisonerPickupCollector`, and `ForceConfrontationOutcome`. Officer checks include
+`OfficerState`, `OfficerCaptor`, and `OfficerForceRank`.
 
 ## Planet scopes and targets
 
@@ -190,12 +177,11 @@ same execution. Available actions are grouped below:
 - Flow: `Conditional`, `Chance`, `RandomChoice`, `RandomOutcome`, and `TriggerEvent`.
 - State: `SetEventVariable`, `RequestMovement`, `AddToVoid`, `SetStatus`, `ReturnFromVoid`,
   `SetOfficerImages`, `SetOfficerVoiceSet`, `RevealOfficerForcePotential`, `AddForceExperience`,
-  `IncreaseOfficerForce`, and `ApplyOfficerInjury`.
+  `AdjustOfficerRating`, `IncreaseOfficerForce`, and `ApplyOfficerInjury`.
 - Planet incidents: `InformantIntelligence`, `ChangeResources`, `ReduceResources`, and
   `DestroyUnits`.
-- Encounters and missions: `TriggerDuel`, `ReportForceDetection`, `BountyAttack`, and
-  `StartMission`.
-- Presentation: `AddMessage`.
+- Encounters and missions: `TriggerDuel`, `BountyAttack`, and `Mission`.
+- Presentation: `SendMessage` and `SuppressNextMessage`.
 
 The schema is the authoritative list of fields and allowed nesting for each action. Prefer small,
 composable actions over embedding unrelated state changes in one action.
@@ -203,20 +189,21 @@ composable actions over embedding unrelated state changes in one action.
 ## Definition-backed missions
 
 Reusable event missions live in the XML file referenced by `MissionDefinitionsPath` in
-`pack.xml`. A mission definition owns its duration, cancellation policy, participant roles, and
-resolution rules. Events start one by binding concrete unit instances to those semantic roles:
+`pack.xml`. A mission definition owns its duration, cancellation policy, and resolution rules.
+Events start one with a concrete target and the normal main and decoy participant groups:
 
 ```xml
-<StartMission MissionDefinitionID="MOD_OFFICER_CAPTURE">
-  <Roles>
-    <Role Name="Target" UnitInstanceID="HAN_SOLO"/>
-  </Roles>
-</StartMission>
+<Mission MissionDefinitionID="MOD_OFFICER_CAPTURE">
+  <Target UnitInstanceID="HAN_SOLO"/>
+  <MainParticipants>
+    <Participant UnitInstanceID="BOBA_FETT"/>
+  </MainParticipants>
+</Mission>
 ```
 
 The standard pack defines officer capture, officer rescue, prisoner pickup, and the two-stage
 final confrontation in `Shared/Data/mission-definitions.xml`. Mission instances persist only the
-definition ID and role bindings, then reconnect to the pack definition after loading. This keeps
+definition ID, target, and participant IDs, then reconnect to the pack definition after loading. This keeps
 event chains small while preserving normal mission travel, timing, completion, and save behavior.
 
 Player-facing message templates live separately in the XML file referenced by
@@ -232,7 +219,6 @@ eligible defenses:
 <GameEvent>
   <DisplayName>Wildlife Attacks Planetary Defenses</DisplayName>
   <InstanceID>MOD_WILDLIFE_ATTACK</InstanceID>
-  <IsRepeatable>true</IsRepeatable>
   <Scope>EachPlanet</Scope>
   <PlanetScopeOwnership>Owned</PlanetScopeOwnership>
   <PlanetScopeSystemType>CoreSystem</PlanetScopeSystemType>

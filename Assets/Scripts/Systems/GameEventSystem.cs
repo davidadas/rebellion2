@@ -105,9 +105,6 @@ namespace Rebellion.Systems
                         continue;
 
                     eventResults.AddRange(reactions);
-                    if (gameEvent.SuppressTriggerMessage)
-                        triggerResult.SuppressDefaultMessage = true;
-                    SuppressSourceMessages(gameEvent, triggerResult, results);
                     if (!gameEvent.Repeats)
                         _game.RemoveEvent(gameEvent);
                 }
@@ -200,36 +197,6 @@ namespace Rebellion.Systems
                     gameEvent.TriggerResultType,
                     result
                 );
-
-        /// <summary>
-        /// Suppresses automatic reports emitted by the same source event as a triggering result.
-        /// </summary>
-        /// <param name="gameEvent">The event requesting suppression.</param>
-        /// <param name="triggerResult">The result that activated the event.</param>
-        /// <param name="sourceResults">The complete result batch being processed.</param>
-        private static void SuppressSourceMessages(
-            GameEvent gameEvent,
-            GameResult triggerResult,
-            IReadOnlyList<GameResult> sourceResults
-        )
-        {
-            if (!gameEvent.SuppressSourceMessages || triggerResult == null)
-                return;
-
-            string sourceEventId = triggerResult.SourceEventInstanceID;
-            foreach (GameResult result in sourceResults)
-            {
-                if (
-                    result != null
-                    && (
-                        string.IsNullOrWhiteSpace(sourceEventId)
-                            ? ReferenceEquals(result, triggerResult)
-                            : result.SourceEventInstanceID == sourceEventId
-                    )
-                )
-                    result.SuppressDefaultMessage = true;
-            }
-        }
 
         /// <summary>
         /// Initializes an event's absolute first eligible tick from its authored schedule.

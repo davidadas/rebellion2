@@ -20,10 +20,13 @@ namespace Rebellion.Game.Missions
         private readonly List<string> _returnPassengerInstanceIDs = new List<string>();
 
         [PersistableIgnore]
+        private ISceneNode _target;
+
+        [PersistableIgnore]
         public CustomMissionDefinition Definition { get; private set; }
 
         public string MissionDefinitionID { get; set; }
-        public List<MissionRoleAssignment> Roles { get; set; } = new List<MissionRoleAssignment>();
+        public string TargetInstanceID { get; set; }
 
         public CustomMission()
         {
@@ -33,40 +36,38 @@ namespace Rebellion.Game.Missions
 
         public CustomMission(
             CustomMissionDefinition definition,
-            IEnumerable<MissionRoleAssignment> roles,
+            string targetInstanceId,
+            IEnumerable<string> mainParticipantInstanceIds,
+            IEnumerable<string> decoyParticipantInstanceIds,
             string sourceEventInstanceId,
             GameRoot game
         )
             : base(
                 definition?.InstanceID ?? throw new ArgumentNullException(nameof(definition)),
-                ResolveRole<IMissionParticipant>(roles, definition.OwnerRole, game)?.OwnerInstanceID
-                    ?? throw new InvalidOperationException(
-                        $"Mission '{definition.InstanceID}' could not resolve owner role '{definition.OwnerRole}'."
-                    ),
-                ResolvePlanet(roles, definition.LocationRole, game)?.InstanceID
-                    ?? throw new InvalidOperationException(
-                        $"Mission '{definition.InstanceID}' could not resolve location role '{definition.LocationRole}'."
-                    ),
-                ResolveParticipants(definition, roles, game),
-                new List<IMissionParticipant>(),
+                ResolveOwner(definition, targetInstanceId, mainParticipantInstanceIds, game),
+                ResolveLocation(definition, targetInstanceId, game).InstanceID,
+                ResolveParticipants(mainParticipantInstanceIds, game),
+                ResolveParticipants(decoyParticipantInstanceIds, game),
                 OfficerRating.None,
                 definition.DisplayName
             )
         {
             Definition = definition;
             MissionDefinitionID = definition.InstanceID;
-            Roles = roles?.Select(CloneRole).ToList() ?? new List<MissionRoleAssignment>();
+            TargetInstanceID = targetInstanceId;
+            _target = game.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId);
             CanAbort = definition.CanAbort;
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
-        public void SetDefinition(CustomMissionDefinition definition)
+        public void SetDefinition(CustomMissionDefinition definition, GameRoot game)
         {
             if (definition?.InstanceID != MissionDefinitionID)
                 throw new InvalidOperationException(
                     $"Mission definition '{MissionDefinitionID}' is unavailable."
                 );
             Definition = definition;
+            _target = game.GetSceneNodeByInstanceID<ISceneNode>(TargetInstanceID);
         }
 
         public int RollDuration(IRandomNumberProvider provider)
@@ -85,10 +86,9 @@ namespace Rebellion.Game.Missions
         public void RefreshTrackedLocation(GameRoot game)
         {
             EnsureDefinition();
-            if (string.IsNullOrWhiteSpace(Definition.TrackedLocationRole))
+            if (Definition.Phase != CustomMissionPhase.GatherTarget)
                 return;
-            Planet tracked = GetRole<ISceneNode>(game, Definition.TrackedLocationRole)
-                ?.GetParentOfType<Planet>();
+            Planet tracked = GetTarget<ISceneNode>(game)?.GetParentOfType<Planet>();
             if (tracked != null && tracked != GetParent())
             {
                 game.MoveNode(this, tracked);
@@ -103,6 +103,35 @@ namespace Rebellion.Game.Missions
         internal override bool SuccessfulParticipantsRemainAtLocation =>
             Definition?.Resolution == CustomMissionResolution.ForceConfrontation;
 
+        /// <summary>
+        /// Returns mission children, including an escorted target that is not a participant.
+        /// </summary>
+        public override IEnumerable<ISceneNode> GetChildren()
+        {
+            IEnumerable<ISceneNode> participants = base.GetChildren();
+            return _target?.GetParent() == this ? participants.Append(_target) : participants;
+        }
+
+        public override void AddChild(ISceneNode child)
+        {
+            if (child?.InstanceID == TargetInstanceID)
+                _target = child;
+            else
+                base.AddChild(child);
+        }
+
+        public override void RemoveChild(ISceneNode child)
+        {
+            if (ReferenceEquals(child, _target))
+                _target = null;
+            base.RemoveChild(child);
+        }
+
+        internal IMovable GetEscortedTarget(GameRoot game) =>
+            Definition?.Phase == CustomMissionPhase.EscortToDestination
+                ? GetTarget<IMovable>(game)
+                : null;
+
         protected override double GetFoilProbability(double defenseScore, GameRoot game) => 0;
 
         public override MissionCompletionReason? GetAbortReason(GameRoot game)
@@ -114,10 +143,7 @@ namespace Rebellion.Game.Missions
 
             return Definition.Resolution switch
             {
-                CustomMissionResolution.OfficerRescue => IsCaptiveAtLocation(
-                    game,
-                    Definition.CaptiveRole
-                )
+                CustomMissionResolution.OfficerRescue => IsCaptiveAtLocation(game)
                     ? null
                     : MissionCompletionReason.TargetUnavailable,
                 CustomMissionResolution.PrisonerPickup => GetEligiblePrisoners().Any()
@@ -158,7 +184,7 @@ namespace Rebellion.Game.Missions
 
         private List<GameResult> ResolveCapture(GameRoot game, IRandomNumberProvider provider)
         {
-            Officer target = GetRole<Officer>(game, Definition.TargetRole);
+            Officer target = GetTarget<Officer>(game);
             Planet location = GetParent() as Planet;
             if (target?.IsKilled != false || target?.IsCaptured != false)
                 return CaptureResults(
@@ -227,8 +253,8 @@ namespace Rebellion.Game.Missions
 
         private List<GameResult> ResolveRescue(GameRoot game, IRandomNumberProvider provider)
         {
-            Officer rescuer = GetRole<Officer>(game, Definition.RescuerRole);
-            Officer captive = GetRole<Officer>(game, Definition.CaptiveRole);
+            Officer rescuer = GetMainParticipant<Officer>(0);
+            Officer captive = GetTarget<Officer>(game);
             if (rescuer == null || captive?.IsCaptured != true)
                 return new List<GameResult>
                 {
@@ -328,7 +354,7 @@ namespace Rebellion.Game.Missions
 
         private List<GameResult> ResolvePickup(GameRoot game)
         {
-            Officer collector = GetRole<Officer>(game, Definition.CollectorRole);
+            Officer collector = GetMainParticipant<Officer>(0);
             List<Officer> prisoners = GetEligiblePrisoners().ToList();
             if (collector == null || prisoners.Count == 0)
                 return new List<GameResult>
@@ -376,9 +402,11 @@ namespace Rebellion.Game.Missions
             IRandomNumberProvider provider
         )
         {
-            Officer subject = GetRole<Officer>(game, Definition.SubjectRole);
-            Officer opponent = GetRole<Officer>(game, Definition.OpponentRole);
-            Officer authority = GetRole<Officer>(game, Definition.AuthorityRole);
+            Officer subject = GetTarget<Officer>(game);
+            Officer opponent = GetMainParticipant<Officer>(0);
+            Officer authority = game.GetSceneNodeByInstanceID<Officer>(
+                Definition.AuthorityUnitInstanceID
+            );
             Planet location = GetParent() as Planet;
             if (Definition.Phase == CustomMissionPhase.GatherTarget)
             {
@@ -388,7 +416,8 @@ namespace Rebellion.Game.Missions
                         new CustomMissionRequestedResult
                         {
                             MissionDefinitionID = Definition.FollowUpMissionDefinitionID,
-                            Roles = Roles.ConvertAll(CloneRole),
+                            TargetInstanceID = TargetInstanceID,
+                            MainParticipantInstanceIDs = new List<string> { opponent.InstanceID },
                             Tick = game.CurrentTick,
                         }
                     ),
@@ -461,9 +490,11 @@ namespace Rebellion.Game.Missions
 
         private MissionCompletionReason? GetForceAbortReason(GameRoot game)
         {
-            Officer subject = GetRole<Officer>(game, Definition.SubjectRole);
-            Officer opponent = GetRole<Officer>(game, Definition.OpponentRole);
-            Officer authority = GetRole<Officer>(game, Definition.AuthorityRole);
+            Officer subject = GetTarget<Officer>(game);
+            Officer opponent = GetMainParticipant<Officer>(0);
+            Officer authority = game.GetSceneNodeByInstanceID<Officer>(
+                Definition.AuthorityUnitInstanceID
+            );
             return
                 subject?.IsKilled != false
                 || subject?.IsCaptured != true
@@ -478,9 +509,9 @@ namespace Rebellion.Game.Missions
                 : null;
         }
 
-        private bool IsCaptiveAtLocation(GameRoot game, string role)
+        private bool IsCaptiveAtLocation(GameRoot game)
         {
-            Officer captive = GetRole<Officer>(game, role);
+            Officer captive = GetTarget<Officer>(game);
             return captive?.IsCaptured == true && captive.GetParentOfType<Planet>() == GetParent();
         }
 
@@ -523,11 +554,12 @@ namespace Rebellion.Game.Missions
             );
         }
 
-        internal T GetRole<T>(GameRoot game, string role)
+        internal T GetTarget<T>(GameRoot game)
+            where T : class => game.GetSceneNodeByInstanceID<T>(TargetInstanceID);
+
+        internal T GetMainParticipant<T>(int index)
             where T : class =>
-            game.GetSceneNodeByInstanceID<T>(
-                Roles.FirstOrDefault(candidate => candidate.Name == role)?.UnitInstanceID
-            );
+            index >= 0 && index < MainParticipants.Count ? MainParticipants[index] as T : null;
 
         private T Stamp<T>(T result)
             where T : GameResult
@@ -545,38 +577,50 @@ namespace Rebellion.Game.Missions
         }
 
         private static List<IMissionParticipant> ResolveParticipants(
-            CustomMissionDefinition definition,
-            IEnumerable<MissionRoleAssignment> roles,
+            IEnumerable<string> instanceIds,
             GameRoot game
         ) =>
-            definition
-                .ParticipantRoles.Select(role =>
-                    ResolveRole<IMissionParticipant>(roles, role, game)
-                )
+            instanceIds
+                ?.Select(game.GetSceneNodeByInstanceID<IMissionParticipant>)
                 .Where(participant => participant != null)
-                .ToList();
+                .ToList()
+            ?? new List<IMissionParticipant>();
 
-        private static T ResolveRole<T>(
-            IEnumerable<MissionRoleAssignment> roles,
-            string role,
-            GameRoot game
-        )
-            where T : class =>
-            game.GetSceneNodeByInstanceID<T>(
-                roles?.FirstOrDefault(candidate => candidate.Name == role)?.UnitInstanceID
-            );
-
-        private static Planet ResolvePlanet(
-            IEnumerable<MissionRoleAssignment> roles,
-            string role,
+        private static string ResolveOwner(
+            CustomMissionDefinition definition,
+            string targetInstanceId,
+            IEnumerable<string> mainParticipantInstanceIds,
             GameRoot game
         )
         {
-            ISceneNode node = ResolveRole<ISceneNode>(roles, role, game);
-            return node as Planet ?? node?.GetParentOfType<Planet>();
+            if (!string.IsNullOrWhiteSpace(definition.OwnerFactionInstanceID))
+                return definition.OwnerFactionInstanceID;
+            IMissionParticipant participant = ResolveParticipants(mainParticipantInstanceIds, game)
+                .FirstOrDefault();
+            ISceneNode target = game.GetSceneNodeByInstanceID<ISceneNode>(targetInstanceId);
+            return participant?.OwnerInstanceID
+                ?? target?.OwnerInstanceID
+                ?? throw new InvalidOperationException(
+                    $"Mission '{definition.InstanceID}' could not resolve an owner."
+                );
         }
 
-        private static MissionRoleAssignment CloneRole(MissionRoleAssignment role) =>
-            new MissionRoleAssignment { Name = role.Name, UnitInstanceID = role.UnitInstanceID };
+        private static Planet ResolveLocation(
+            CustomMissionDefinition definition,
+            string targetInstanceId,
+            GameRoot game
+        )
+        {
+            string locationSourceId =
+                definition.Phase == CustomMissionPhase.EscortToDestination
+                    ? definition.AuthorityUnitInstanceID
+                    : targetInstanceId;
+            ISceneNode source = game.GetSceneNodeByInstanceID<ISceneNode>(locationSourceId);
+            return source as Planet
+                ?? source?.GetParentOfType<Planet>()
+                ?? throw new InvalidOperationException(
+                    $"Mission '{definition.InstanceID}' could not resolve its location."
+                );
+        }
     }
 }

@@ -23,7 +23,7 @@ namespace Rebellion.Tests.Game.Missions
             CustomMissionDefinition definition = CaptureDefinition();
             definition.DurationTicks = 5;
             definition.DurationRandomTicks = 11;
-            CustomMission mission = CreateMission(game, location, definition, ("Target", officer));
+            CustomMission mission = CreateMission(game, location, definition, officer);
 
             int duration = mission.RollDuration(new QueueRNG(0.5));
 
@@ -39,7 +39,7 @@ namespace Rebellion.Tests.Game.Missions
             CustomMissionDefinition definition = CaptureDefinition();
             definition.CaptorFactionInstanceID = "empire";
             definition.TargetCanEscape = false;
-            CustomMission mission = CreateMission(game, location, definition, ("Target", target));
+            CustomMission mission = CreateMission(game, location, definition, target);
 
             List<GameResult> results = mission.Execute(game, new FixedRNG(0));
 
@@ -52,6 +52,25 @@ namespace Rebellion.Tests.Game.Missions
                 MissionOutcome.Success,
                 results.OfType<MissionCompletedResult>().Single().Outcome
             );
+        }
+
+        [Test]
+        public void Execute_OfficerCapture_TargetCapturedElsewhere_EndsUnavailableWithoutOverwrite()
+        {
+            (GameRoot game, Planet _, Planet location, Officer _, _) = MissionSceneBuilder.Build();
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            game.AttachNode(target, location);
+            CustomMission mission = CreateMission(game, location, CaptureDefinition(), target);
+            target.IsCaptured = true;
+            target.CaptorInstanceID = "third-party";
+
+            List<GameResult> results = mission.Execute(game, new FixedRNG(0));
+
+            Assert.AreEqual("third-party", target.CaptorInstanceID);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+            MissionCompletedResult completion = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completion.Outcome);
+            Assert.AreEqual(MissionCompletionReason.TargetUnavailable, completion.CompletionReason);
         }
 
         [Test]
@@ -70,22 +89,11 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "rescue",
                 DisplayName = "Rescue",
                 Resolution = CustomMissionResolution.OfficerRescue,
-                OwnerRole = "Rescuer",
-                LocationRole = "Captive",
-                ParticipantRoles = new List<string> { "Rescuer" },
-                CaptiveRole = "Captive",
-                RescuerRole = "Rescuer",
                 RatingDivisor = 3,
                 SuccessCombatBonus = 1,
                 SuccessEspionageBonus = 1,
             };
-            CustomMission mission = CreateMission(
-                game,
-                location,
-                definition,
-                ("Captive", captive),
-                ("Rescuer", rescuer)
-            );
+            CustomMission mission = CreateMission(game, location, definition, captive, rescuer);
 
             List<GameResult> results = mission.Execute(game, new FixedRNG(0));
 
@@ -110,20 +118,10 @@ namespace Rebellion.Tests.Game.Missions
                 InstanceID = "pickup",
                 DisplayName = "Pickup",
                 Resolution = CustomMissionResolution.PrisonerPickup,
-                OwnerRole = "Collector",
-                LocationRole = "Location",
-                ParticipantRoles = new List<string> { "Collector" },
-                CollectorRole = "Collector",
                 CaptiveFactionInstanceID = "empire",
                 CaptivesCanEscapeAfterPickup = true,
             };
-            CustomMission mission = CreateMission(
-                game,
-                location,
-                definition,
-                ("Collector", collector),
-                ("Location", location)
-            );
+            CustomMission mission = CreateMission(game, location, definition, prisoner, collector);
 
             List<GameResult> results = mission.Execute(game, new FixedRNG(0));
 
@@ -136,7 +134,7 @@ namespace Rebellion.Tests.Game.Missions
         }
 
         [Test]
-        public void Execute_GatherPhase_RequestsAuthoredFollowUpWithSameRoles()
+        public void Execute_GatherPhase_RequestsFollowUpWithTargetAndParticipant()
         {
             (GameRoot game, Planet location, Planet _, Officer opponent, _) =
                 MissionSceneBuilder.Build();
@@ -152,22 +150,10 @@ namespace Rebellion.Tests.Game.Missions
                 DisplayName = "Gather",
                 Resolution = CustomMissionResolution.ForceConfrontation,
                 Phase = CustomMissionPhase.GatherTarget,
-                OwnerRole = "Opponent",
-                LocationRole = "Subject",
-                ParticipantRoles = new List<string> { "Opponent" },
-                SubjectRole = "Subject",
-                OpponentRole = "Opponent",
-                AuthorityRole = "Authority",
+                AuthorityUnitInstanceID = authority.InstanceID,
                 FollowUpMissionDefinitionID = "escort",
             };
-            CustomMission mission = CreateMission(
-                game,
-                location,
-                definition,
-                ("Subject", subject),
-                ("Opponent", opponent),
-                ("Authority", authority)
-            );
+            CustomMission mission = CreateMission(game, location, definition, subject, opponent);
 
             CustomMissionRequestedResult request = mission
                 .Execute(game, new FixedRNG(0))
@@ -175,9 +161,12 @@ namespace Rebellion.Tests.Game.Missions
                 .Single();
 
             Assert.AreEqual("escort", request.MissionDefinitionID);
-            Assert.AreEqual(subject.InstanceID, Role(request, "Subject").UnitInstanceID);
-            Assert.AreEqual(opponent.InstanceID, Role(request, "Opponent").UnitInstanceID);
-            Assert.AreEqual(authority.InstanceID, Role(request, "Authority").UnitInstanceID);
+            Assert.AreEqual(subject.InstanceID, request.TargetInstanceID);
+            CollectionAssert.AreEqual(
+                new[] { opponent.InstanceID },
+                request.MainParticipantInstanceIDs
+            );
+            Assert.IsEmpty(request.DecoyParticipantInstanceIDs);
         }
 
         [Test]
@@ -205,14 +194,7 @@ namespace Rebellion.Tests.Game.Missions
                     new CustomMissionRequestedResult
                     {
                         MissionDefinitionID = definition.InstanceID,
-                        Roles = new List<MissionRoleAssignment>
-                        {
-                            new MissionRoleAssignment
-                            {
-                                Name = "Target",
-                                UnitInstanceID = target.InstanceID,
-                            },
-                        },
+                        TargetInstanceID = target.InstanceID,
                     },
                 }
             );
@@ -224,16 +206,32 @@ namespace Rebellion.Tests.Game.Missions
             Assert.IsFalse(mission.CanAbort);
         }
 
+        [Test]
+        public void GetChildren_EscortedTarget_IsRetainedWithoutBecomingParticipant()
+        {
+            Officer target = EntityFactory.CreateOfficer("target", "rebels");
+            CustomMission mission = new CustomMission
+            {
+                InstanceID = "escort",
+                TargetInstanceID = target.InstanceID,
+                HasInitiated = true,
+            };
+
+            mission.AddChild(target);
+            target.SetParent(mission);
+
+            CollectionAssert.Contains(mission.GetChildren().ToList(), target);
+            Assert.IsEmpty(mission.MainParticipants);
+            Assert.IsEmpty(mission.DecoyParticipants);
+        }
+
         private static CustomMissionDefinition CaptureDefinition() =>
             new CustomMissionDefinition
             {
                 InstanceID = "capture",
                 DisplayName = "Capture",
                 Resolution = CustomMissionResolution.OfficerCapture,
-                OwnerRole = "Target",
-                LocationRole = "Target",
-                ParticipantRoles = new List<string> { "Target" },
-                TargetRole = "Target",
+                OwnerFactionInstanceID = "empire",
                 ResistanceRating = OfficerRating.None,
                 ProbabilityTableKey = AbductionMission.MissionTypeID,
             };
@@ -242,24 +240,20 @@ namespace Rebellion.Tests.Game.Missions
             GameRoot game,
             Planet location,
             CustomMissionDefinition definition,
-            params (string name, IGameEntity value)[] roles
+            IGameEntity target,
+            params IMissionParticipant[] mainParticipants
         )
         {
-            List<MissionRoleAssignment> assignments = roles
-                .Select(role => new MissionRoleAssignment
-                {
-                    Name = role.name,
-                    UnitInstanceID = role.value.InstanceID,
-                })
-                .ToList();
-            CustomMission mission = new CustomMission(definition, assignments, "event", game);
+            CustomMission mission = new CustomMission(
+                definition,
+                target.InstanceID,
+                mainParticipants.Select(participant => participant.InstanceID),
+                new List<string>(),
+                "event",
+                game
+            );
             game.AttachNode(mission, location);
             return mission;
         }
-
-        private static MissionRoleAssignment Role(
-            CustomMissionRequestedResult request,
-            string name
-        ) => request.Roles.Single(role => role.Name == name);
     }
 }

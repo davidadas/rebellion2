@@ -9,39 +9,53 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
-    /// Starts a mission definition with explicit semantic unit roles.
+    /// Starts a content-defined mission with its target and standard participant groups.
     /// </summary>
-    [PersistableObject(Name = "StartMission")]
-    public sealed class StartMissionAction : GameAction
+    [PersistableObject(Name = "Mission")]
+    public sealed class MissionAction : GameAction
     {
         [PersistableAttribute]
         public string MissionDefinitionID { get; set; }
 
-        public List<MissionRoleAssignment> Roles { get; set; } = new List<MissionRoleAssignment>();
+        public MissionUnitReference Target { get; set; }
+        public List<MissionUnitReference> MainParticipants { get; set; } =
+            new List<MissionUnitReference>();
+        public List<MissionUnitReference> DecoyParticipants { get; set; } =
+            new List<MissionUnitReference>();
 
         public override List<GameResult> Execute(GameRoot game)
         {
-            foreach (MissionRoleAssignment role in Roles)
-            {
-                if (game.GetSceneNodeByInstanceID<ISceneNode>(role.UnitInstanceID) == null)
-                    throw new InvalidOperationException(
-                        $"StartMission could not resolve role '{role.Name}' unit '{role.UnitInstanceID}'."
-                    );
-            }
+            if (Target == null || string.IsNullOrWhiteSpace(Target.UnitInstanceID))
+                throw new InvalidOperationException("Mission requires a target unit.");
+            ResolveUnit(game, Target);
+            foreach (MissionUnitReference participant in MainParticipants)
+                ResolveUnit(game, participant);
+            foreach (MissionUnitReference participant in DecoyParticipants)
+                ResolveUnit(game, participant);
 
             return new List<GameResult>
             {
                 new CustomMissionRequestedResult
                 {
                     MissionDefinitionID = MissionDefinitionID,
-                    Roles = Roles.ConvertAll(role => new MissionRoleAssignment
-                    {
-                        Name = role.Name,
-                        UnitInstanceID = role.UnitInstanceID,
-                    }),
+                    TargetInstanceID = Target.UnitInstanceID,
+                    MainParticipantInstanceIDs = MainParticipants.ConvertAll(participant =>
+                        participant.UnitInstanceID
+                    ),
+                    DecoyParticipantInstanceIDs = DecoyParticipants.ConvertAll(participant =>
+                        participant.UnitInstanceID
+                    ),
                     Tick = game.CurrentTick,
                 },
             };
+        }
+
+        private static void ResolveUnit(GameRoot game, MissionUnitReference reference)
+        {
+            if (game.GetSceneNodeByInstanceID<ISceneNode>(reference?.UnitInstanceID) == null)
+                throw new InvalidOperationException(
+                    $"Mission could not resolve unit '{reference?.UnitInstanceID}'."
+                );
         }
     }
 

@@ -55,7 +55,7 @@ namespace Rebellion.Game.Events
         public string SecondOfficerInstanceID { get; set; }
 
         public string ImagePath { get; set; }
-        public string VoicePath { get; set; }
+        public string AudioPath { get; set; }
 
         /// <summary>
         /// Creates an empty action for content deserialization.
@@ -112,7 +112,7 @@ namespace Rebellion.Game.Events
                     EncounteredOfficer = encountered,
                     OpposingOfficer = opposing,
                     ImagePath = ImagePath,
-                    VoicePath = VoicePath,
+                    AudioPath = AudioPath,
                     Tick = game.CurrentTick,
                 },
             };

@@ -12,6 +12,45 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Events
 {
     /// <summary>
+    /// Suppresses one matching automatically generated message in the current result batch.
+    /// </summary>
+    [PersistableObject(Name = "SuppressNextMessage")]
+    public sealed class SuppressNextMessageAction : GameAction
+    {
+        [PersistableAttribute(Name = "Type")]
+        public MessageResultType MessageType { get; set; }
+
+        [PersistableAttribute]
+        public string RecipientFactionInstanceID { get; set; }
+
+        public override List<GameResult> Execute(GameRoot game)
+        {
+            if (MessageType == MessageResultType.None)
+                throw new InvalidOperationException(
+                    "SuppressNextMessage requires a concrete message result type."
+                );
+
+            Faction recipient = string.IsNullOrWhiteSpace(RecipientFactionInstanceID)
+                ? null
+                : game.GetFactionByOwnerInstanceID(RecipientFactionInstanceID);
+            if (!string.IsNullOrWhiteSpace(RecipientFactionInstanceID) && recipient == null)
+                throw new InvalidOperationException(
+                    $"SuppressNextMessage could not resolve faction '{RecipientFactionInstanceID}'."
+                );
+
+            return new List<GameResult>
+            {
+                new SuppressNextMessageResult
+                {
+                    MessageType = MessageType,
+                    Recipient = recipient,
+                    Tick = game.CurrentTick,
+                },
+            };
+        }
+    }
+
+    /// <summary>
     /// Selects one authored narrative fragment from current simulation state.
     /// </summary>
     [PersistableObject(Name = "BodySegment")]
@@ -64,9 +103,9 @@ namespace Rebellion.Game.Events
             new List<NarrativeBodySegment>();
         public MessageBackgroundImage BackgroundImage { get; set; }
         public string OverlayImagePath { get; set; }
-        public string VoicePath { get; set; }
+        public string AudioPath { get; set; }
         public string OfficerVoicePath { get; set; }
-        public AdvisorCue AdvisorCue { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
 
         /// <summary>
         /// Resolves the authored references and emits presentation-neutral narrative data.
@@ -117,29 +156,35 @@ namespace Rebellion.Game.Events
             foreach (NarrativeBodySegment segment in BodySegments)
                 bodyTemplate += segment.Resolve(game, triggerResult) ?? string.Empty;
             OfficerEncounterResult encounter = triggerResult as OfficerEncounterResult;
-            string voicePath = VoicePath ?? encounter?.VoicePath;
+            string voicePath = AudioPath ?? encounter?.AudioPath;
             string imagePath = BackgroundImage?.Path ?? encounter?.ImagePath;
 
+            ValidateAdvisorNotification();
             return new List<GameResult>
             {
                 new NarrativeMessageResult
                 {
                     Recipient = recipient,
-                    Subject = subject,
-                    RelatedSubject = relatedSubject,
+                    SubjectNode = subject,
+                    RelatedSubjectNode = relatedSubject,
                     Location = location,
                     MessageType = MessageType,
-                    TitleTemplate = Title,
-                    BodyTemplate = bodyTemplate,
+                    Subject = Title,
+                    Body = bodyTemplate,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImagePath ?? (subject as Officer)?.MessageImagePath,
-                    VoicePath = voicePath,
+                    AudioPath = voicePath,
                     OfficerVoicePath = OfficerVoicePath,
-                    AdvisorCue = AdvisorCue,
+                    AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },
             };
+        }
+
+        private void ValidateAdvisorNotification()
+        {
+            AdvisorNotification?.Validate();
         }
     }
 }

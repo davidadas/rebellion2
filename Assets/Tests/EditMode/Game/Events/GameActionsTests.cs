@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -114,7 +115,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 FirstOfficerInstanceID = "luke",
                 SecondOfficerInstanceID = "vader",
-                VoicePath = "encounter-voice",
+                AudioPath = "encounter-voice",
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
@@ -130,7 +131,7 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreSame(vader, request.EncounteredOfficer);
             Assert.AreSame(luke, request.OpposingOfficer);
-            Assert.AreEqual("encounter-voice", request.VoicePath);
+            Assert.AreEqual("encounter-voice", request.AudioPath);
         }
 
         [Test]
@@ -227,7 +228,7 @@ namespace Rebellion.Tests.Game.Events
                 MessageType = MessageType.Advice,
                 Title = "A message for {subject}",
                 Body = "Report from {location}",
-                VoicePath = "Audio/Luke/dialogue",
+                AudioPath = "Audio/Luke/dialogue",
             };
 
             NarrativeMessageResult result = action
@@ -236,9 +237,9 @@ namespace Rebellion.Tests.Game.Events
                 .Single();
 
             Assert.AreEqual("rebels", result.Recipient.InstanceID);
-            Assert.AreSame(luke, result.Subject);
+            Assert.AreSame(luke, result.SubjectNode);
             Assert.AreSame(rebelPlanet, result.Location);
-            Assert.AreEqual("Audio/Luke/dialogue", result.VoicePath);
+            Assert.AreEqual("Audio/Luke/dialogue", result.AudioPath);
         }
 
         [Test]
@@ -275,7 +276,7 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<NarrativeMessageResult>()
                 .Single();
 
-            Assert.AreEqual("Luke learned the truth. Luke was injured.", result.BodyTemplate);
+            Assert.AreEqual("Luke learned the truth. Luke was injured.", result.Body);
         }
 
         [Test]
@@ -291,7 +292,7 @@ namespace Rebellion.Tests.Game.Events
             OfficerEncounterResult encounter = new OfficerEncounterResult
             {
                 EncounteredOfficer = luke,
-                VoicePath = "selected-encounter-voice",
+                AudioPath = "selected-encounter-voice",
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent(),
@@ -305,7 +306,7 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<NarrativeMessageResult>()
                 .Single();
 
-            Assert.AreEqual("selected-encounter-voice", result.VoicePath);
+            Assert.AreEqual("selected-encounter-voice", result.AudioPath);
         }
 
         [Test]
@@ -473,17 +474,26 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void StartMission_ValidRoles_EmitsDefinitionRequest()
+        public void Mission_ValidTargetAndParticipants_EmitsDefinitionRequest()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer han = EntityFactory.CreateOfficer("han", "rebels");
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            Officer leia = EntityFactory.CreateOfficer("leia", "rebels");
             game.AttachNode(han, rebelPlanet);
-            StartMissionAction action = new StartMissionAction
+            game.AttachNode(luke, rebelPlanet);
+            game.AttachNode(leia, rebelPlanet);
+            MissionAction action = new MissionAction
             {
                 MissionDefinitionID = "BOUNTY_HUNTER_CAPTURE",
-                Roles = new List<MissionRoleAssignment>
+                Target = new MissionUnitReference { UnitInstanceID = han.InstanceID },
+                MainParticipants = new List<MissionUnitReference>
                 {
-                    new MissionRoleAssignment { Name = "Target", UnitInstanceID = han.InstanceID },
+                    new MissionUnitReference { UnitInstanceID = luke.InstanceID },
+                },
+                DecoyParticipants = new List<MissionUnitReference>
+                {
+                    new MissionUnitReference { UnitInstanceID = leia.InstanceID },
                 },
             };
 
@@ -493,8 +503,12 @@ namespace Rebellion.Tests.Game.Events
                 .Single();
 
             Assert.AreEqual("BOUNTY_HUNTER_CAPTURE", result.MissionDefinitionID);
-            Assert.AreEqual("Target", result.Roles.Single().Name);
-            Assert.AreEqual(han.InstanceID, result.Roles.Single().UnitInstanceID);
+            Assert.AreEqual(han.InstanceID, result.TargetInstanceID);
+            CollectionAssert.AreEqual(new[] { luke.InstanceID }, result.MainParticipantInstanceIDs);
+            CollectionAssert.AreEqual(
+                new[] { leia.InstanceID },
+                result.DecoyParticipantInstanceIDs
+            );
         }
 
         [Test]
@@ -524,6 +538,62 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(15, result.ExperienceGained);
             Assert.AreEqual(55, luke.ForceValue);
             Assert.IsTrue(result.SuppressRankChangeMessage);
+        }
+
+        [Test]
+        public void AdjustOfficerRating_Amount_AdjustsStoredRating()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.SetBaseRating(OfficerRating.Diplomacy, 40);
+            game.AttachNode(luke, rebelPlanet);
+
+            Assert.IsEmpty(
+                new AdjustOfficerRatingAction
+                {
+                    OfficerInstanceID = luke.InstanceID,
+                    Rating = OfficerRating.Diplomacy,
+                    Amount = 5,
+                }.Execute(game)
+            );
+
+            Assert.AreEqual(45, luke.GetBaseRating(OfficerRating.Diplomacy));
+        }
+
+        [Test]
+        public void AdjustOfficerRating_PercentOfBaseRating_AdjustsStoredRating()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            luke.SetBaseRating(OfficerRating.ShipResearch, 40);
+            game.AttachNode(luke, rebelPlanet);
+
+            new AdjustOfficerRatingAction
+            {
+                OfficerInstanceID = luke.InstanceID,
+                Rating = OfficerRating.ShipResearch,
+                PercentOfBaseRating = -25,
+            }.Execute(game);
+
+            Assert.AreEqual(30, luke.GetBaseRating(OfficerRating.ShipResearch));
+        }
+
+        [Test]
+        public void AdjustOfficerRating_MultipleAdjustmentModes_Throws()
+        {
+            GameRoot game = BuildGame(out _, out Planet rebelPlanet);
+            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
+            game.AttachNode(luke, rebelPlanet);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                new AdjustOfficerRatingAction
+                {
+                    OfficerInstanceID = luke.InstanceID,
+                    Rating = OfficerRating.Combat,
+                    Amount = 5,
+                    PercentOfBaseRating = 10,
+                }.Execute(game)
+            );
         }
 
         [Test]

@@ -1172,7 +1172,10 @@ namespace Rebellion.Util.Serialization
                             return e.Types.Where(t => t != null);
                         }
                     })
-                    .Where(type => Attribute.IsDefined(type, typeof(PersistableObjectAttribute)))
+                    .Where(type =>
+                        !type.IsAbstract
+                        && Attribute.IsDefined(type, typeof(PersistableObjectAttribute))
+                    )
             )
             {
                 AddPersistableTypeName(persistableMap, GetPersistableElementName(type), type);

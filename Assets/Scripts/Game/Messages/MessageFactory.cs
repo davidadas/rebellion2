@@ -39,9 +39,21 @@ namespace Rebellion.Game.Messages
             GameRoot game
         )
         {
-            GameResult[] resultArray =
-                results?.Where(result => result?.SuppressDefaultMessage != true).ToArray()
-                ?? Array.Empty<GameResult>();
+            GameResult[] completeResultArray =
+                results?.Where(result => result != null).ToArray() ?? Array.Empty<GameResult>();
+            SuppressNextMessageResult[] suppressions = completeResultArray
+                .OfType<SuppressNextMessageResult>()
+                .ToArray();
+            NarrativeMessageResult[] narrativeResults = completeResultArray
+                .OfType<NarrativeMessageResult>()
+                .ToArray();
+            GameResult[] resultArray = completeResultArray
+                .Where(result =>
+                    result.SuppressDefaultMessage != true
+                    && result is not NarrativeMessageResult
+                    && result is not SuppressNextMessageResult
+                )
+                .ToArray();
             MissionCompletedResult[] missionResults = resultArray
                 .OfType<MissionCompletedResult>()
                 .ToArray();
@@ -102,7 +114,6 @@ namespace Rebellion.Game.Messages
                 game,
                 deliveries
             );
-            AddNarrativeEventMessages(resultArray.OfType<NarrativeMessageResult>(), deliveries);
             AddSabotageMessages(sabotageResults, game, deliveries);
             AddResearchMessages(
                 resultArray.OfType<ResearchOrderedResult>(),
@@ -160,7 +171,30 @@ namespace Rebellion.Game.Messages
                 deliveries
             );
 
+            ApplyMessageSuppressions(deliveries, suppressions);
+            AddNarrativeEventMessages(narrativeResults, deliveries);
+
             return deliveries;
+        }
+
+        /// <summary>
+        /// Consumes each suppression by removing the first matching automatic delivery.
+        /// Authored narrative messages are appended only after this method runs.
+        /// </summary>
+        private static void ApplyMessageSuppressions(
+            List<(Faction faction, Message message)> deliveries,
+            IEnumerable<SuppressNextMessageResult> suppressions
+        )
+        {
+            foreach (SuppressNextMessageResult suppression in suppressions)
+            {
+                int index = deliveries.FindIndex(delivery =>
+                    delivery.message?.ResultType == suppression.MessageType
+                    && (suppression.Recipient == null || delivery.faction == suppression.Recipient)
+                );
+                if (index >= 0)
+                    deliveries.RemoveAt(index);
+            }
         }
 
         /// <summary>
@@ -958,20 +992,21 @@ namespace Rebellion.Game.Messages
                 if (result?.Recipient == null)
                     continue;
 
-                string subjectName = result.Subject?.GetDisplayName() ?? string.Empty;
-                string relatedSubjectName = result.RelatedSubject?.GetDisplayName() ?? string.Empty;
+                string subjectName = result.SubjectNode?.GetDisplayName() ?? string.Empty;
+                string relatedSubjectName =
+                    result.RelatedSubjectNode?.GetDisplayName() ?? string.Empty;
                 string locationName = result.Location?.GetDisplayName() ?? string.Empty;
                 MessageDefinition definition = new MessageDefinition
                 {
                     MessageType = result.MessageType,
-                    Subject = result.TitleTemplate,
-                    Body = result.BodyTemplate,
+                    Subject = result.Subject,
+                    Body = result.Body,
                     BackgroundImage = new MessageBackgroundImage
                     {
                         Key = result.BackgroundImageKey,
                         Path = result.BackgroundImagePath,
                     },
-                    VoicePath = result.VoicePath,
+                    AudioPath = result.AudioPath,
                 };
                 Message message = _templateBuilder.Build(
                     definition,
@@ -989,32 +1024,39 @@ namespace Rebellion.Game.Messages
                 if (message == null)
                     continue;
 
-                ApplyAdvisorCue(message, result.AdvisorCue);
-                message.AdvisorSubjectTypeID = result.Subject?.TypeID;
+                ApplyAdvisorNotification(message, result.AdvisorNotification);
+                message.AdvisorSubjectTypeID = result.SubjectNode?.TypeID;
                 message.EventLocationInstanceID = result.Location?.InstanceID;
-                message.NavigationTargetInstanceID = result.Subject?.InstanceID;
+                message.NavigationTargetInstanceID = result.SubjectNode?.InstanceID;
                 AddDelivery(deliveries, result.Recipient, message);
             }
         }
 
         /// <summary>
-        /// Applies a content-authored advisor cue to a narrative message.
+        /// Applies a content-authored advisor notification to a narrative message.
         /// </summary>
-        private static void ApplyAdvisorCue(Message message, AdvisorCue cue)
+        private static void ApplyAdvisorNotification(
+            Message message,
+            AdvisorNotification notification
+        )
         {
-            switch (cue)
+            message.AdvisorNotification = notification;
+            if (notification?.Preset.HasValue != true)
+                return;
+
+            switch (notification.Preset.Value)
             {
-                case AdvisorCue.SubjectReport:
+                case AdvisorNotificationPreset.SubjectReport:
                     message.AdvisorSubjectNotification = AdvisorSubjectNotification.Report;
                     break;
-                case AdvisorCue.SubjectCaptured:
+                case AdvisorNotificationPreset.SubjectCaptured:
                     message.AdvisorSubjectNotification = AdvisorSubjectNotification.Captured;
                     break;
-                case AdvisorCue.SubjectReleased:
+                case AdvisorNotificationPreset.SubjectReleased:
                     message.AdvisorSubjectNotification = AdvisorSubjectNotification.Released;
                     break;
                 default:
-                    message.AdvisorNotificationCode = (int)cue;
+                    message.AdvisorNotificationCode = (int)notification.Preset.Value;
                     break;
             }
         }

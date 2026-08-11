@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -194,7 +196,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_AuthoredReplacement_SuppressesMatchingSourceMessages()
+        public void HandleResults_SuppressNextMessage_EmitsExplicitInstruction()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             GameEvent gameEvent = new GameEvent
@@ -202,7 +204,6 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 RunsOnce = true,
                 TriggerResultType = nameof(OfficerCaptureStateResult),
-                SuppressSourceMessages = true,
                 Conditionals = new List<GameConditional>
                 {
                     new TriggeredByConditional { EventInstanceID = "LUKE_RESCUES_HAN_FROM_JABBA" },
@@ -211,6 +212,10 @@ namespace Rebellion.Tests.Systems
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "jabba.captured.luke", Operand = 1 },
+                    new SuppressNextMessageAction
+                    {
+                        MessageType = MessageResultType.OfficerCaptured,
+                    },
                 },
             };
             _game.EventPool.Add(gameEvent);
@@ -232,23 +237,28 @@ namespace Rebellion.Tests.Systems
             };
 
             _system.HandleResults(new[] { unrelatedCapture });
-            _system.HandleResults(new GameResult[] { palaceCapture, palaceMission });
+            List<GameResult> reactions = _system.HandleResults(
+                new GameResult[] { palaceCapture, palaceMission }
+            );
 
             Assert.IsFalse(unrelatedCapture.SuppressDefaultMessage);
-            Assert.IsTrue(palaceCapture.SuppressDefaultMessage);
-            Assert.IsTrue(palaceMission.SuppressDefaultMessage);
+            Assert.IsFalse(palaceCapture.SuppressDefaultMessage);
+            Assert.IsFalse(palaceMission.SuppressDefaultMessage);
+            Assert.AreEqual(
+                MessageResultType.OfficerCaptured,
+                reactions.OfType<SuppressNextMessageResult>().Single().MessageType
+            );
             Assert.AreEqual(1, _game.GetEventVariable("jabba.captured.luke"));
             Assert.IsFalse(_game.EventPool.Contains(gameEvent));
         }
 
         [Test]
-        public void HandleResults_TriggerReplacement_PreservesSiblingSourceMessages()
+        public void HandleResults_WithoutSuppression_PreservesTriggerAndSiblingMessages()
         {
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HIDDEN_MISSION_REPORT",
                 TriggerResultType = nameof(MissionCompletedResult),
-                SuppressTriggerMessage = true,
             };
             _game.EventPool.Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
@@ -263,7 +273,7 @@ namespace Rebellion.Tests.Systems
             _system.HandleResults(new GameResult[] { release, completion });
 
             Assert.IsFalse(release.SuppressDefaultMessage);
-            Assert.IsTrue(completion.SuppressDefaultMessage);
+            Assert.IsFalse(completion.SuppressDefaultMessage);
         }
 
         [Test]

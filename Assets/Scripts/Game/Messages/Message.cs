@@ -1,4 +1,6 @@
+using System;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Messages
 {
@@ -46,11 +48,7 @@ namespace Rebellion.Game.Messages
         Released,
     }
 
-    /// <summary>
-    /// Selects the advisor announcement produced for a data-authored narrative message.
-    /// Subject cues combine with the message subject; all other cues select a generic category.
-    /// </summary>
-    public enum AdvisorCue
+    public enum AdvisorNotificationPreset
     {
         None = AdvisorNotificationCode.None,
         PositivePopularSupport = AdvisorNotificationCode.PositivePopularSupport,
@@ -76,6 +74,45 @@ namespace Rebellion.Game.Messages
         SubjectReleased,
     }
 
+    /// <summary>
+    /// Overrides one droid or protocol segment in an advisor notification.
+    /// </summary>
+    [PersistableObject]
+    public sealed class AdvisorAnimation
+    {
+        public string Animation { get; set; }
+        public string AnimationPath { get; set; }
+        public int? FrameCount { get; set; }
+        public string Audio { get; set; }
+        public string AudioPath { get; set; }
+        public float? DelayBeforeSeconds { get; set; }
+        public bool? RequiresAnnouncementsEnabled { get; set; }
+    }
+
+    /// <summary>
+    /// Selects a preset advisor notification and optionally overrides its playback segments.
+    /// </summary>
+    [PersistableObject]
+    public sealed class AdvisorNotification
+    {
+        [PersistableAttribute]
+        public AdvisorNotificationPreset? Preset { get; set; }
+
+        public int? LifetimeTicks { get; set; }
+        public AdvisorAnimation Droid { get; set; }
+        public AdvisorAnimation Protocol { get; set; }
+
+        public bool HasOverrides => Droid != null || Protocol != null;
+
+        public void Validate()
+        {
+            if (!Preset.HasValue && !HasOverrides)
+                throw new InvalidOperationException(
+                    "AdvisorNotification requires a preset or a custom playback segment."
+                );
+        }
+    }
+
     public class Message : BaseGameEntity
     {
         public MessageType Type;
@@ -85,7 +122,7 @@ namespace Rebellion.Game.Messages
         public string Body;
         public string BackgroundImageKey;
         public string OverlayImagePath;
-        public string MessageVoicePath;
+        public string AudioPath;
         public string OfficerVoicePath;
         public string EventLocationInstanceID;
         public string NavigationTargetInstanceID;
@@ -93,6 +130,7 @@ namespace Rebellion.Game.Messages
         public int AdvisorNotificationCode;
         public AdvisorSubjectNotification AdvisorSubjectNotification;
         public string AdvisorSubjectTypeID;
+        public AdvisorNotification AdvisorNotification;
         public string MissionInstanceID;
         public int CreatedTick;
         public bool Read;

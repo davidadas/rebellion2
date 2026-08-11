@@ -227,6 +227,63 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
         }
 
         [Test]
+        public void ProcessPending_CustomNotification_UsesAuthoredAnimationAndAudioPaths()
+        {
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            StrategyAdvisorView view = rootObject.GetComponentInChildren<StrategyAdvisorView>(true);
+            StrategyAdvisorTheme theme = CreateTheme();
+            Texture2D protocolIdleTexture = new Texture2D(20, 30);
+            Texture2D droidIdleTexture = new Texture2D(20, 30);
+            Texture2D customFrame = new Texture2D(20, 30);
+            Dictionary<string, Texture2D> textures = new Dictionary<string, Texture2D>
+            {
+                [theme.GetFramePath(theme.ProtocolIdleAnimation, 0, false)] = protocolIdleTexture,
+                [theme.GetFramePath(theme.DroidIdleAnimation, 0, true)] = droidIdleTexture,
+                ["Pack/Custom/Advisor/frame-000"] = customFrame,
+            };
+            try
+            {
+                UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+                StrategyAdvisorController controller = CreateController(textures);
+                controller.BindView(view);
+                controller.Render(theme);
+                StrategyAdvisorAnimationViewData playback = null;
+                view.PlaybackStarted += data => playback = data;
+
+                controller.Notify(
+                    new Message(MessageType.Advice, "Custom")
+                    {
+                        AdvisorNotification = new AdvisorNotification
+                        {
+                            LifetimeTicks = 20,
+                            Droid = new AdvisorAnimation
+                            {
+                                AnimationPath = "Pack/Custom/Advisor",
+                                FrameCount = 1,
+                                AudioPath = "Pack/Custom/Audio/advisor",
+                            },
+                        },
+                    },
+                    1,
+                    true
+                );
+                controller.ProcessPending(1, true);
+
+                Assert.IsNotNull(playback);
+                Assert.AreSame(customFrame, playback.Frames.Single());
+                Assert.AreEqual("Pack/Custom/Audio/advisor", playback.AudioPath);
+                Assert.AreEqual(0f, playback.DelayBeforeSeconds);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(customFrame);
+                UnityEngine.Object.DestroyImmediate(droidIdleTexture);
+                UnityEngine.Object.DestroyImmediate(protocolIdleTexture);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
         public void ReplaceAnimation_ValidPlayback_InvokesPlaybackCallbacks()
         {
             GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
