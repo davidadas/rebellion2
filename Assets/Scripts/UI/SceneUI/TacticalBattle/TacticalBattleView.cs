@@ -583,11 +583,9 @@ public sealed class TacticalBattleView : MonoBehaviour
     public void SetObserving(bool observing)
     {
         this.observing = observing;
-        SetAvailableButtons(taskForceButtons, observing ? 0 : availableTaskForceCount);
-        SetAvailableButtons(fighterGroupButtons, observing ? 0 : availableFighterGroupCount);
+        SetAvailableButtons(taskForceButtons, availableTaskForceCount);
+        SetAvailableButtons(fighterGroupButtons, availableFighterGroupCount);
         bool commandsEnabled = !observing;
-        foreach (Button button in navigationSetButtons)
-            button.interactable = commandsEnabled;
         capitalShipMissionsButton.interactable = commandsEnabled;
         capitalShipManeuversButton.interactable = commandsEnabled;
         superlaserButton.interactable = commandsEnabled;
@@ -596,7 +594,6 @@ public sealed class TacticalBattleView : MonoBehaviour
         {
             HideMissionOrders();
             HideManeuvers();
-            HideCapitalShipStatus();
         }
 
         if (contentAssets != null)
@@ -629,8 +626,8 @@ public sealed class TacticalBattleView : MonoBehaviour
     {
         availableTaskForceCount = taskForceCount;
         availableFighterGroupCount = fighterGroupCount;
-        SetAvailableButtons(taskForceButtons, observing ? 0 : taskForceCount);
-        SetAvailableButtons(fighterGroupButtons, observing ? 0 : fighterGroupCount);
+        SetAvailableButtons(taskForceButtons, taskForceCount);
+        SetAvailableButtons(fighterGroupButtons, fighterGroupCount);
     }
 
     /// <summary>

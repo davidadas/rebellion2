@@ -653,7 +653,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
-        public void SetObserving_PopulatedGroups_DisablesPlayerCommandSlots()
+        public void SetObserving_PopulatedGroups_PreservesInspectionSlots()
         {
             ConfigureCompleteView();
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
@@ -661,11 +661,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             view.SetObserving(true);
 
-            Assert.IsTrue(
-                GetButtons("TaskForce")
-                    .Concat(GetButtons("FighterGroup"))
-                    .All(button => !button.interactable)
-            );
+            Assert.IsTrue(GetButtons("TaskForce").Take(3).All(button => button.interactable));
+            Assert.IsTrue(GetButtons("FighterGroup").Take(2).All(button => button.interactable));
+        }
+
+        [Test]
+        public void SetObserving_VisibleNavigationSets_PreservesDisplayControls()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            view.SetObserving(true);
+
+            Assert.IsTrue(GetButtons("NavigationSet").All(button => button.interactable));
         }
 
         [Test]

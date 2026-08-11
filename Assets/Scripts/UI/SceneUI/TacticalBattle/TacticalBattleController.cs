@@ -384,6 +384,9 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// <param name="target">The selected tactical object.</param>
     private void HandleUnitSelected(TacticalUnitState target)
     {
+        if (observing)
+            return;
+
         if (selectingSuperlaserTarget)
         {
             if (!Session.TryFireSuperlaser(playerDeathStar, target))
@@ -429,7 +432,9 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void RefreshUnitSelectionAvailability()
     {
-        battleRenderer.SetUnitSelectionEnabled(selectingSuperlaserTarget || SelectedGroup != null);
+        battleRenderer.SetUnitSelectionEnabled(
+            !observing && (selectingSuperlaserTarget || SelectedGroup != null)
+        );
     }
 
     /// <summary>
@@ -483,11 +488,11 @@ public sealed class TacticalBattleController : MonoBehaviour
         Session.SetComputerControlled(playerSide, !Session.IsComputerControlled(playerSide));
         observing = Session.IsComputerControlled(playerSide);
         selectingSuperlaserTarget = false;
-        SelectedGroup = null;
-        selectedCapitalShip = null;
-        selectedTaskForceNumber = 0;
+        pendingMissionOrder = null;
+        pendingManeuver = null;
         RefreshUnitSelectionAvailability();
-        battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
+        view.HideMissionOrders();
+        view.HideManeuvers();
         view.SetObserving(observing);
     }
 
@@ -690,7 +695,8 @@ public sealed class TacticalBattleController : MonoBehaviour
             && unit.IsActive
             && unit.Unit is CapitalShip { IsDeathStar: true }
         );
-        view.ShowMissionOrders(canRecover, canAttackDeathStar);
+        if (!observing)
+            view.ShowMissionOrders(canRecover, canAttackDeathStar);
     }
 
     /// <summary>
@@ -843,7 +849,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// <param name="editRoute">Whether to toggle the point within the current route.</param>
     private void SelectNavigationPoint(TacticalNavPoint point, bool editRoute)
     {
-        if (SelectedGroup == null)
+        if (observing || SelectedGroup == null)
             return;
 
         if (!editRoute)
@@ -869,7 +875,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectPendingMissionOrder(TacticalBehavior behavior)
     {
         if (
-            SelectedGroup is not { } selectedGroup
+            observing
+            || SelectedGroup is not { } selectedGroup
             || selectedGroup.Units.Count == 0
             || selectedGroup.Units.Any(unit => unit.Kind != selectedGroup.Units[0].Kind)
             || selectedGroup.Units[0].Kind
@@ -885,7 +892,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void AssignPendingMissionOrder()
     {
-        if (SelectedGroup == null || pendingMissionOrder == null)
+        if (observing || SelectedGroup == null || pendingMissionOrder == null)
             return;
 
         SelectedGroup.SetBehavior(pendingMissionOrder.Value);
@@ -909,7 +916,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectPendingManeuver(TacticalBehavior behavior)
     {
         if (
-            SelectedGroup is not { } selectedGroup
+            observing
+            || SelectedGroup is not { } selectedGroup
             || selectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
         )
             return;
@@ -924,7 +932,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectPendingFormation(TacticalFormation formation)
     {
         if (
-            SelectedGroup is not { } selectedGroup
+            observing
+            || SelectedGroup is not { } selectedGroup
             || selectedGroup.Units.Any(unit => unit.Kind != TacticalUnitKind.CapitalShip)
         )
             return;
@@ -937,7 +946,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void AssignPendingManeuver()
     {
-        if (SelectedGroup == null || pendingManeuver == null)
+        if (observing || SelectedGroup == null || pendingManeuver == null)
             return;
 
         SelectedGroup.SetBehavior(pendingManeuver.Value);
