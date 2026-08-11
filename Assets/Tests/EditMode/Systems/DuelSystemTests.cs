@@ -13,13 +13,13 @@ using Rebellion.Util.Common;
 namespace Rebellion.Tests.Systems
 {
     [TestFixture]
-    public class OfficerEncounterSystemTests
+    public class DuelSystemTests
     {
         [Test]
         public void HandleResults_FailedAvoidance_CapturesEncounteredOfficer()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
-            OfficerEncounterSystem system = new OfficerEncounterSystem(
+            DuelSystem system = new DuelSystem(
                 game,
                 new FixedRandomProvider(new[] { 0.99, 0.99, 0.99 })
             );
@@ -37,16 +37,14 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(encountered, capture.TargetOfficer);
             Assert.AreSame(opposing, capture.LinkedOfficer);
             Assert.AreEqual("event", capture.SourceEventInstanceID);
-            Assert.IsTrue(
-                results.OfType<OfficerEncounterResult>().Single().EncounteredOfficerCaptured
-            );
+            Assert.IsTrue(results.OfType<DuelResult>().Single().EncounteredOfficerCaptured);
         }
 
         [Test]
         public void HandleResults_Injuries_RewardTheOtherOfficersCombat()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
-            OfficerEncounterSystem system = new OfficerEncounterSystem(
+            DuelSystem system = new DuelSystem(
                 game,
                 new FixedRandomProvider(new[] { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 })
             );
@@ -75,10 +73,7 @@ namespace Rebellion.Tests.Systems
             };
             game.AttachNode(other, game.Galaxy.PlanetSystems[0]);
             game.MoveNode(opposing, other);
-            OfficerEncounterSystem system = new OfficerEncounterSystem(
-                game,
-                new FixedRandomProvider(new[] { 0.0 })
-            );
+            DuelSystem system = new DuelSystem(game, new FixedRandomProvider(new[] { 0.0 }));
 
             List<GameResult> results = system.HandleResults(
                 new[] { Request(encountered, opposing) }
@@ -122,13 +117,13 @@ namespace Rebellion.Tests.Systems
             return (game, encountered, opposing);
         }
 
-        private static OfficerEncounterRequestedResult Request(
+        private static DuelRequestedResult Request(
             Officer encountered,
             Officer opposing,
             string sourceEventInstanceID = null
         )
         {
-            return new OfficerEncounterRequestedResult
+            return new DuelRequestedResult
             {
                 EncounteredOfficer = encountered,
                 OpposingOfficer = opposing,

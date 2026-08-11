@@ -50,7 +50,7 @@ namespace Rebellion.Game.Missions
             Definition = definition;
             MissionDefinitionID = definition.InstanceID;
             TargetInstanceID = targetInstanceId;
-            CanAbort = definition.CanAbort;
+            CanCancel = definition.CanCancel;
             SourceEventInstanceID = sourceEventInstanceId;
         }
 
@@ -66,7 +66,6 @@ namespace Rebellion.Game.Missions
         public int RollDuration(IRandomNumberProvider provider)
         {
             EnsureDefinition();
-            Definition.Duration?.Validate();
             if (Definition.Duration?.Fixed != null)
                 return Definition.Duration.Fixed.Ticks;
             if (Definition.Duration?.Random != null)
@@ -96,7 +95,6 @@ namespace Rebellion.Game.Missions
         internal override List<GameResult> Execute(GameRoot game, IRandomNumberProvider provider)
         {
             EnsureDefinition();
-            Definition.Success?.Validate();
             bool succeeded = EvaluateSuccess(game, provider);
             return new List<GameResult>
             {

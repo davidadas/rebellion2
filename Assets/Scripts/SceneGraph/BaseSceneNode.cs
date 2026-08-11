@@ -9,7 +9,6 @@ namespace Rebellion.SceneGraph
     {
         OnMission,
         Captured,
-        Dead,
         Destroyed,
         Retired,
         Unavailable,
@@ -34,9 +33,6 @@ namespace Rebellion.SceneGraph
 
         [CloneIgnore]
         public string LastParentInstanceID { get; set; }
-
-        [CloneIgnore]
-        public string LastLocationInstanceID { get; set; }
 
         [CloneIgnore]
         [PersistableIgnore]

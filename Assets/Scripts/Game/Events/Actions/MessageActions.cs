@@ -5,6 +5,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
@@ -14,8 +15,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Suppresses one matching automatically generated message in the current result batch.
     /// </summary>
-    [PersistableObject(Name = "SuppressNextMessage")]
-    public sealed class SuppressNextMessageAction : GameAction
+    [PersistableObject(Name = "SuppressNextAutomaticMessage")]
+    public sealed class SuppressNextAutomaticMessageAction : GameAction
     {
         [PersistableAttribute(Name = "Type")]
         public MessageResultType MessageType { get; set; }
@@ -23,11 +24,12 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string RecipientFactionInstanceID { get; set; }
 
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
+            GameRoot game = context.Game;
             if (MessageType == MessageResultType.None)
                 throw new InvalidOperationException(
-                    "SuppressNextMessage requires a concrete message result type."
+                    "SuppressNextAutomaticMessage requires a concrete message result type."
                 );
 
             Faction recipient = string.IsNullOrWhiteSpace(RecipientFactionInstanceID)
@@ -35,12 +37,12 @@ namespace Rebellion.Game.Events
                 : game.GetFactionByOwnerInstanceID(RecipientFactionInstanceID);
             if (!string.IsNullOrWhiteSpace(RecipientFactionInstanceID) && recipient == null)
                 throw new InvalidOperationException(
-                    $"SuppressNextMessage could not resolve faction '{RecipientFactionInstanceID}'."
+                    $"SuppressNextAutomaticMessage could not resolve faction '{RecipientFactionInstanceID}'."
                 );
 
             return new List<GameResult>
             {
-                new SuppressNextMessageResult
+                new SuppressNextAutomaticMessageResult
                 {
                     MessageType = MessageType,
                     Recipient = recipient,
@@ -53,10 +55,10 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Selects one authored narrative fragment from current simulation state.
     /// </summary>
-    [PersistableObject(Name = "BodySegment")]
-    public sealed class NarrativeBodySegment
+    [PersistableObject(Name = "ConditionalBody")]
+    public sealed class ConditionalMessageBody
     {
-        public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
+        public List<GameConditional> Conditions { get; set; } = new List<GameConditional>();
         public string Body { get; set; }
         public string ElseBody { get; set; }
 
@@ -68,7 +70,7 @@ namespace Rebellion.Game.Events
         /// <returns>The body selected by the condition results.</returns>
         public string Resolve(GameRoot game, GameResult triggerResult = null)
         {
-            return Conditionals.TrueForAll(condition => condition.IsMet(game, triggerResult))
+            return Conditions.TrueForAll(condition => condition.IsMet(game, triggerResult))
                 ? Body
                 : ElseBody;
         }
@@ -99,8 +101,8 @@ namespace Rebellion.Game.Events
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public string Subject { get; set; }
         public string Body { get; set; }
-        public List<NarrativeBodySegment> BodySegments { get; set; } =
-            new List<NarrativeBodySegment>();
+        public List<ConditionalMessageBody> ConditionalBodies { get; set; } =
+            new List<ConditionalMessageBody>();
         public MessageBackgroundImage BackgroundImage { get; set; }
         public MessageImage OverlayImage { get; set; }
         public MessageAudio AmbientAudio { get; set; }
@@ -110,20 +112,11 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Resolves the authored references and emits presentation-neutral narrative data.
         /// </summary>
-        /// <param name="game">The game state used to resolve faction and scene-node IDs.</param>
+        /// <param name="context">The dependencies and activation data for this action.</param>
         /// <returns>A single narrative message result.</returns>
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
-            return ExecuteCore(game, null, game.Random);
-        }
-
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            return ExecuteCore(game, context?.TriggerResult, provider ?? game.Random);
+            return ExecuteCore(context.Game, context.Activation?.TriggerResult, context.Random);
         }
 
         /// <summary>
@@ -157,17 +150,15 @@ namespace Rebellion.Game.Events
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 
             string bodyTemplate = Body ?? string.Empty;
-            foreach (NarrativeBodySegment segment in BodySegments)
+            foreach (ConditionalMessageBody segment in ConditionalBodies)
                 bodyTemplate += segment.Resolve(game, triggerResult) ?? string.Empty;
-            OfficerEncounterResult encounter = triggerResult as OfficerEncounterResult;
+            DuelResult encounter = triggerResult as DuelResult;
             string voicePath = AmbientAudio?.Path ?? encounter?.AudioPath;
             string imagePath = BackgroundImage?.Path ?? encounter?.ImagePath;
 
-            BackgroundImage?.Validate();
-            ValidateAdvisorNotification();
             return new List<GameResult>
             {
-                new NarrativeMessageResult
+                new MessageRequestedResult
                 {
                     Recipient = recipient,
                     SubjectNode = subject,
@@ -179,17 +170,12 @@ namespace Rebellion.Game.Events
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
-                    AudioPath = voicePath,
+                    AmbientAudioPath = voicePath,
                     OfficerVoicePath = OfficerVoice?.Resolve(subject as Officer, provider),
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },
             };
-        }
-
-        private void ValidateAdvisorNotification()
-        {
-            AdvisorNotification?.Validate();
         }
     }
 }

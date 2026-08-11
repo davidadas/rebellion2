@@ -11,7 +11,7 @@ namespace Rebellion.Tests.Game.Events
     public class EventStateConditionsTests
     {
         [Test]
-        public void EvaluateBinding_OfficerInsideBoundFleet_MatchesInstanceID()
+        public void EvaluateBinding_OfficerInsideBoundFleet_DoesNotMatchInstanceID()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer emperor = EntityFactory.CreateOfficer("emperor", "empire");
@@ -35,7 +35,7 @@ namespace Rebellion.Tests.Game.Events
 
             bool matches = conditional.IsMet(game, context);
 
-            Assert.IsTrue(matches);
+            Assert.IsFalse(matches);
         }
 
         [Test]

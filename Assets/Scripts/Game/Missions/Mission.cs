@@ -62,7 +62,7 @@ namespace Rebellion.Game.Missions
         /// Gets or sets whether player commands may abort this mission. Simulation invalidation
         /// remains governed independently by <see cref="GetAbortReason"/>.
         /// </summary>
-        public bool CanAbort { get; set; } = true;
+        public bool CanCancel { get; set; } = true;
 
         // Mission progress.
         public int MaxProgress { get; set; }

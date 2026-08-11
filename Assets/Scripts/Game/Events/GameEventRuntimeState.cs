@@ -1,0 +1,62 @@
+using System;
+using System.Collections.Generic;
+using Rebellion.Util.Serialization;
+
+namespace Rebellion.Game.Events
+{
+    /// <summary>
+    /// Stores the persisted execution history owned by the game-event subsystem.
+    /// </summary>
+    [PersistableObject]
+    public sealed class GameEventRuntimeState
+    {
+        public HashSet<string> CompletedEventIDs { get; set; } = new HashSet<string>();
+        public Dictionary<string, GameEventState> States { get; set; } =
+            new Dictionary<string, GameEventState>(StringComparer.Ordinal);
+        public Dictionary<string, int> Variables { get; set; } =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+
+        public void Complete(string eventInstanceID) => CompletedEventIDs.Add(eventInstanceID);
+
+        public bool IsComplete(string eventInstanceID) =>
+            CompletedEventIDs.Contains(eventInstanceID);
+
+        public GameEventState GetState(string eventInstanceID)
+        {
+            if (string.IsNullOrWhiteSpace(eventInstanceID))
+                throw new ArgumentException(
+                    "Event instance ID is required.",
+                    nameof(eventInstanceID)
+                );
+            if (!States.TryGetValue(eventInstanceID, out GameEventState state))
+            {
+                state = new GameEventState();
+                States.Add(eventInstanceID, state);
+            }
+            return state;
+        }
+
+        public GameEventState GetState(string eventInstanceID, string targetInstanceID) =>
+            GetState(eventInstanceID).GetTargetState(targetInstanceID);
+
+        public bool TryGetState(
+            string eventInstanceID,
+            string targetInstanceID,
+            out GameEventState state
+        ) => GetState(eventInstanceID).TryGetTargetState(targetInstanceID, out state);
+
+        public int GetVariable(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Event variable key is required.", nameof(key));
+            return Variables.TryGetValue(key, out int value) ? value : 0;
+        }
+
+        public void SetVariable(string key, int value)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Event variable key is required.", nameof(key));
+            Variables[key] = value;
+        }
+    }
+}

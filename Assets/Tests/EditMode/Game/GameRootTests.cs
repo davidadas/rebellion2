@@ -89,7 +89,7 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(0, _game.CurrentTick, "Current tick should be initialized to 0");
             Assert.IsEmpty(_game.EventPool, "Event pool should be empty initially");
             Assert.IsEmpty(
-                _game.CompletedEventIDs,
+                _game.EventRuntime.CompletedEventIDs,
                 "Completed event IDs should be empty initially"
             );
         }
@@ -270,7 +270,6 @@ namespace Rebellion.Tests.Game
             Assert.IsNull(officer.GetParent());
             Assert.IsTrue(_faction1.VoidPool.Contains(officer));
             Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
-            Assert.AreEqual(_planet.InstanceID, officer.LastLocationInstanceID);
             Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
             Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
         }
@@ -480,35 +479,6 @@ namespace Rebellion.Tests.Game
             // Retrieve event and verify.
             GameEvent retrievedEvent = _game.GetEventByInstanceID("EVENT1");
             Assert.AreEqual(event1, retrievedEvent, "Should return the correct event");
-        }
-
-        [Test]
-        public void AddCompletedEvent_ValidEventID_AddsToCompletedList()
-        {
-            // Add completed event to the completed list.
-            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
-            _game.AddCompletedEvent(event1);
-
-            // Verify addition to the completed list.
-            Assert.IsTrue(
-                _game.CompletedEventIDs.Contains(event1.InstanceID),
-                "Completed event IDs should contain the added event's ID"
-            );
-        }
-
-        [Test]
-        public void IsEventComplete_CompletedEvent_ReturnsTrue()
-        {
-            // Add completed event to the completed list.
-            GameEvent event1 = new GameEvent { InstanceID = "EVENT1" };
-            _game.AddCompletedEvent(event1);
-
-            // Check completion status.
-            Assert.IsTrue(_game.IsEventComplete("EVENT1"), "EVENT1 should be marked as complete");
-            Assert.IsFalse(
-                _game.IsEventComplete("EVENT2"),
-                "EVENT2 should not be marked as complete"
-            );
         }
 
         [Test]

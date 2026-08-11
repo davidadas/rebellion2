@@ -423,7 +423,10 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                CompletedEventIDs = new HashSet<string> { "EVENT1", "EVENT2", "EVENT3" },
+                EventRuntime = new GameEventRuntimeState
+                {
+                    CompletedEventIDs = new HashSet<string> { "EVENT1", "EVENT2", "EVENT3" },
+                },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
@@ -431,10 +434,10 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(3, loadedGame.CompletedEventIDs.Count);
-            Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT1"));
-            Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT2"));
-            Assert.IsTrue(loadedGame.CompletedEventIDs.Contains("EVENT3"));
+            Assert.AreEqual(3, loadedGame.EventRuntime.CompletedEventIDs.Count);
+            Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains("EVENT1"));
+            Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains("EVENT2"));
+            Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains("EVENT3"));
         }
 
         [Test]
@@ -443,17 +446,20 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                EventStates = new Dictionary<string, GameEventState>
+                EventRuntime = new GameEventRuntimeState
                 {
+                    States = new Dictionary<string, GameEventState>
                     {
-                        "STORY_EVENT",
-                        new GameEventState
                         {
-                            IsInitialized = true,
-                            NextEligibleTick = 412,
-                            ExecutionCount = 3,
-                            LastExecutionTick = 400,
-                        }
+                            "STORY_EVENT",
+                            new GameEventState
+                            {
+                                IsInitialized = true,
+                                NextEligibleTick = 412,
+                                ExecutionCount = 3,
+                                LastExecutionTick = 400,
+                            }
+                        },
                     },
                 },
                 Factions = _factions,
@@ -463,7 +469,7 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            GameEventState state = loadedGame.EventStates["STORY_EVENT"];
+            GameEventState state = loadedGame.EventRuntime.States["STORY_EVENT"];
             Assert.IsTrue(state.IsInitialized);
             Assert.AreEqual(412, state.NextEligibleTick);
             Assert.AreEqual(3, state.ExecutionCount);
@@ -476,10 +482,13 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = new GameSummary { PlayerFactionID = "FNALL1" },
-                EventVariables = new Dictionary<string, int>
+                EventRuntime = new GameEventRuntimeState
                 {
-                    { "luke.dagobah.stage", 8 },
-                    { "luke.heritage.revealed", 1 },
+                    Variables = new Dictionary<string, int>
+                    {
+                        { "luke.dagobah.stage", 8 },
+                        { "luke.heritage.revealed", 1 },
+                    },
                 },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
@@ -488,9 +497,9 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(8, loadedGame.GetEventVariable("luke.dagobah.stage"));
-            Assert.AreEqual(1, loadedGame.GetEventVariable("luke.heritage.revealed"));
-            Assert.AreEqual(0, loadedGame.GetEventVariable("unset"));
+            Assert.AreEqual(8, loadedGame.EventRuntime.GetVariable("luke.dagobah.stage"));
+            Assert.AreEqual(1, loadedGame.EventRuntime.GetVariable("luke.heritage.revealed"));
+            Assert.AreEqual(0, loadedGame.EventRuntime.GetVariable("unset"));
         }
 
         // TODO: Officer serialization needs investigation - officers have complex initialization requirements
@@ -669,7 +678,7 @@ namespace Rebellion.Tests.Managers
                 Summary = summary,
                 Factions = new List<Faction>(),
                 EventPool = new List<GameEvent>(),
-                CompletedEventIDs = new HashSet<string>(),
+                EventRuntime = new GameEventRuntimeState(),
                 UnrecruitedOfficers = new List<Officer>(),
                 Galaxy = new GalaxyMap(),
             };
@@ -681,8 +690,8 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual(0, loadedGame.Factions.Count);
             Assert.IsNotNull(loadedGame.EventPool);
             Assert.AreEqual(0, loadedGame.EventPool.Count);
-            Assert.IsNotNull(loadedGame.CompletedEventIDs);
-            Assert.AreEqual(0, loadedGame.CompletedEventIDs.Count);
+            Assert.IsNotNull(loadedGame.EventRuntime.CompletedEventIDs);
+            Assert.AreEqual(0, loadedGame.EventRuntime.CompletedEventIDs.Count);
             Assert.IsNotNull(loadedGame.UnrecruitedOfficers);
             Assert.AreEqual(0, loadedGame.UnrecruitedOfficers.Count);
         }
@@ -745,7 +754,7 @@ namespace Rebellion.Tests.Managers
             GameRoot game = new GameRoot
             {
                 Summary = summary,
-                CompletedEventIDs = completedEvents,
+                EventRuntime = new GameEventRuntimeState { CompletedEventIDs = completedEvents },
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
@@ -753,10 +762,10 @@ namespace Rebellion.Tests.Managers
             _saveGameManager.SaveGameData(game, _saveFileName);
             GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
 
-            Assert.AreEqual(50, loadedGame.CompletedEventIDs.Count);
+            Assert.AreEqual(50, loadedGame.EventRuntime.CompletedEventIDs.Count);
             for (int i = 0; i < 50; i++)
             {
-                Assert.IsTrue(loadedGame.CompletedEventIDs.Contains($"EVENT{i}"));
+                Assert.IsTrue(loadedGame.EventRuntime.CompletedEventIDs.Contains($"EVENT{i}"));
             }
         }
 

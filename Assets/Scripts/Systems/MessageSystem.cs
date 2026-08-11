@@ -15,7 +15,8 @@ namespace Rebellion.Systems
         private readonly GameRoot _game;
         private readonly MessageFactory _messageFactory;
 
-        public event Action<Faction, Message> MessageDelivered;
+        public event Action<MessageDeliveredResult> MessageDelivered;
+        public event Action<IReadOnlyList<GameResult>> ResultsProduced;
 
         /// <summary>
         /// Initializes a message system for the supplied game state and message definitions.
@@ -32,22 +33,33 @@ namespace Rebellion.Systems
         /// Creates and delivers faction messages for the supplied game results.
         /// </summary>
         /// <param name="results">The game results to process.</param>
-        public void ProcessResults(IEnumerable<GameResult> results)
+        public List<GameResult> ProcessResults(IEnumerable<GameResult> results)
         {
-            foreach (
-                (Faction faction, Message message) delivery in _messageFactory.CreateMessages(
-                    results,
-                    _game
-                )
-            )
+            List<GameResult> deliveredResults = new List<GameResult>();
+            foreach (MessageDelivery delivery in _messageFactory.CreateMessages(results, _game))
             {
-                if (delivery.faction == null || delivery.message == null)
+                if (delivery.Recipient == null || delivery.Message == null)
                     continue;
 
-                delivery.message.CreatedTick = _game.CurrentTick;
-                delivery.faction.AddMessage(delivery.message);
-                MessageDelivered?.Invoke(delivery.faction, delivery.message);
+                delivery.Message.CreatedTick = _game.CurrentTick;
+                delivery.Recipient.AddMessage(delivery.Message);
+                MessageDeliveredResult delivered = new MessageDeliveredResult
+                {
+                    Recipient = delivery.Recipient,
+                    Message = delivery.Message,
+                    NotificationType = delivery.NotificationType,
+                    AdvisorSubjectNotification = delivery.AdvisorSubjectNotification,
+                    AdvisorSubjectTypeID = delivery.AdvisorSubjectTypeID,
+                    AdvisorNotification = delivery.AdvisorNotification,
+                    Tick = _game.CurrentTick,
+                };
+                deliveredResults.Add(delivered);
+                MessageDelivered?.Invoke(delivered);
             }
+
+            if (deliveredResults.Count > 0)
+                ResultsProduced?.Invoke(deliveredResults);
+            return deliveredResults;
         }
 
         /// <summary>

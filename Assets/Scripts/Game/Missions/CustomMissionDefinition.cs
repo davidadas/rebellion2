@@ -26,21 +26,6 @@ namespace Rebellion.Game.Missions
     {
         public FixedMissionDuration Fixed { get; set; }
         public RandomMissionDuration Random { get; set; }
-
-        public void Validate()
-        {
-            if ((Fixed != null) == (Random != null))
-                throw new System.InvalidOperationException(
-                    "Mission Duration requires exactly one of Fixed or Random."
-                );
-            if (
-                Random != null
-                && (Random.MinimumTicks < 0 || Random.MaximumTicks < Random.MinimumTicks)
-            )
-                throw new System.InvalidOperationException(
-                    "Mission random duration requires a non-negative ordered range."
-                );
-        }
     }
 
     [PersistableObject]
@@ -88,16 +73,6 @@ namespace Rebellion.Game.Missions
         public AutomaticMissionSuccess Automatic { get; set; }
         public ChanceMissionSuccess Chance { get; set; }
         public OpposedMissionSuccess Opposed { get; set; }
-
-        public void Validate()
-        {
-            int authoredRules =
-                (Automatic != null ? 1 : 0) + (Chance != null ? 1 : 0) + (Opposed != null ? 1 : 0);
-            if (authoredRules != 1)
-                throw new System.InvalidOperationException(
-                    "Mission Success requires exactly one of Automatic, Chance, or Opposed."
-                );
-        }
     }
 
     /// <summary>
@@ -106,7 +81,7 @@ namespace Rebellion.Game.Missions
     [PersistableObject(Name = "MissionDefinition")]
     public sealed class CustomMissionDefinition : BaseGameEntity
     {
-        public bool CanAbort { get; set; }
+        public bool CanCancel { get; set; }
         public MissionDuration Duration { get; set; }
         public string OwnerFactionInstanceID { get; set; }
         public MissionSuccessRule Success { get; set; }

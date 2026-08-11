@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Events;
@@ -18,7 +19,7 @@ namespace Rebellion.Tests.Game.Events
                 Planet = new PlanetTarget { InstanceID = planet.InstanceID },
             };
 
-            Planet resolved = target.Resolve(game, new StubRNG()) as Planet;
+            Planet resolved = target.Resolve(game, new StubRNG()).Cast<Planet>().Single();
 
             Assert.AreSame(planet, resolved);
         }
@@ -33,13 +34,13 @@ namespace Rebellion.Tests.Game.Events
                 Planet = new PlanetTarget { InstanceID = planet.InstanceID },
             };
 
-            Planet resolved = target.Resolve(game, new StubRNG()) as Planet;
+            Planet resolved = target.Resolve(game, new StubRNG()).Cast<Planet>().SingleOrDefault();
 
             Assert.IsNull(resolved);
         }
 
         [Test]
-        public void Resolve_RandomPlanetTarget_SelectsEligibleSystemType()
+        public void Resolve_RandomPlanetsTarget_SelectsEligibleSystemType()
         {
             GameRoot game = BuildGame(out Planet corePlanet);
             PlanetSystem rimSystem = new PlanetSystem
@@ -59,7 +60,7 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            Planet resolved = target.Resolve(game, new StubRNG()) as Planet;
+            Planet resolved = target.Resolve(game, new StubRNG()).Cast<Planet>().Single();
 
             Assert.AreSame(rimPlanet, resolved);
             Assert.AreNotSame(corePlanet, resolved);
@@ -81,17 +82,16 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Resolve_RandomPlanetCountAboveOne_ThrowsInvalidOperationException()
+        public void Resolve_EachPlanet_ReturnsEverySurvivingPlanet()
         {
-            GameRoot game = BuildGame(out _);
-            GameEventTarget target = new GameEventTarget
-            {
-                RandomPlanets = new RandomPlanetsTarget { Count = 2 },
-            };
+            GameRoot game = BuildGame(out Planet firstPlanet);
+            Planet secondPlanet = new Planet { InstanceID = "second-planet" };
+            game.AttachNode(secondPlanet, firstPlanet.GetParent());
+            GameEventTarget target = new GameEventTarget { EachPlanet = new EachPlanetTarget() };
 
-            TestDelegate resolve = () => target.Resolve(game, new StubRNG());
+            Planet[] resolved = target.Resolve(game, new StubRNG()).Cast<Planet>().ToArray();
 
-            Assert.Throws<InvalidOperationException>(resolve);
+            CollectionAssert.AreEqual(new[] { firstPlanet, secondPlanet }, resolved);
         }
 
         private static GameRoot BuildGame(out Planet planet)

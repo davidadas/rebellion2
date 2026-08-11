@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -11,15 +10,13 @@ namespace Rebellion.Game.Events
     /// </summary>
     public sealed class GameEventExecutionContext
     {
-        private readonly Dictionary<string, object> _bindings = new Dictionary<string, object>(
-            StringComparer.Ordinal
-        );
         private readonly List<GameResult> _results = new List<GameResult>();
 
         public GameEvent Event { get; }
         public GameEventState State { get; }
         public ISceneNode ScopeTarget { get; }
         public GameResult TriggerResult { get; }
+        public GameEventBindings Bindings { get; }
         public IReadOnlyList<GameResult> Results => _results;
 
         /// <summary>
@@ -42,9 +39,10 @@ namespace Rebellion.Game.Events
             State = state;
             ScopeTarget = scopeTarget;
             TriggerResult = triggerResult;
+            Bindings = new GameEventBindings();
             Bind("scope", scopeTarget);
             Bind("trigger", triggerResult);
-            GameEventTriggerRegistry.Bind(this, trigger, triggerResult);
+            trigger?.Bind(this, triggerResult);
         }
 
         /// <summary>
@@ -62,10 +60,7 @@ namespace Rebellion.Game.Events
         /// <param name="value">The value to expose; null values are ignored.</param>
         public void Bind(string name, object value)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("A binding name is required.", nameof(name));
-            if (value != null)
-                _bindings[name] = value;
+            Bindings.Set(name, value);
         }
 
         /// <summary>
@@ -77,14 +72,7 @@ namespace Rebellion.Game.Events
         /// <returns>True when a compatible binding exists.</returns>
         public bool TryGetBinding<T>(string name, out T value)
         {
-            if (_bindings.TryGetValue(name, out object binding) && binding is T typed)
-            {
-                value = typed;
-                return true;
-            }
-
-            value = default;
-            return false;
+            return Bindings.TryGet(name, out value);
         }
 
         /// <summary>
@@ -99,7 +87,7 @@ namespace Rebellion.Game.Events
         /// Attempts to read a binding without imposing a compile-time value type.
         /// </summary>
         public bool TryGetBinding(string name, out object value) =>
-            _bindings.TryGetValue(name, out value);
+            Bindings.TryGet(name, out value);
 
         /// <summary>
         /// Records a result emitted during this activation for later actions to inspect.
@@ -110,5 +98,37 @@ namespace Rebellion.Game.Events
             if (result != null)
                 _results.Add(result);
         }
+    }
+
+    /// <summary>
+    /// Holds the named values exposed by a matched trigger during one event activation.
+    /// </summary>
+    public sealed class GameEventBindings
+    {
+        private readonly Dictionary<string, object> _values = new Dictionary<string, object>(
+            System.StringComparer.Ordinal
+        );
+
+        public void Set(string name, object value)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new System.ArgumentException("A binding name is required.", nameof(name));
+            if (value != null)
+                _values[name] = value;
+        }
+
+        public bool TryGet<T>(string name, out T value)
+        {
+            if (_values.TryGetValue(name, out object binding) && binding is T typed)
+            {
+                value = typed;
+                return true;
+            }
+
+            value = default;
+            return false;
+        }
+
+        public bool TryGet(string name, out object value) => _values.TryGetValue(name, out value);
     }
 }

@@ -22,7 +22,9 @@ namespace Rebellion.Systems
     /// </summary>
     public class MovementSystem
         : IGameResultHandler<BlockadeChangedResult>,
-            IGameResultHandler<UnitMovementRequestedResult>
+            IGameResultHandler<UnitMovementRequestedResult>,
+            IGameResultHandler<UnitActivationRequestedResult>,
+            IGameResultHandler<MissionReturnDestinationRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -135,6 +137,45 @@ namespace Rebellion.Systems
                     RequestMove(result.Units, result.Destination);
                 else if (result.Unit != null)
                     RequestMove(result.Unit, result.Destination);
+            }
+
+            return new List<GameResult>();
+        }
+
+        List<GameResult> IGameResultHandler<UnitActivationRequestedResult>.HandleResults(
+            IReadOnlyList<UnitActivationRequestedResult> results
+        )
+        {
+            foreach (UnitActivationRequestedResult result in results)
+            {
+                if (result?.Unit == null)
+                    continue;
+                ContainerNode destination = result.Destination;
+                if (
+                    destination == null
+                    && result.UseMissionReturnDestination
+                    && result.Unit is IMissionParticipant participant
+                )
+                    destination = ResolveReturnDestination(participant);
+                if (destination != null)
+                    _game.ActivateFromVoid(result.Unit, destination);
+            }
+
+            return new List<GameResult>();
+        }
+
+        List<GameResult> IGameResultHandler<MissionReturnDestinationRequestedResult>.HandleResults(
+            IReadOnlyList<MissionReturnDestinationRequestedResult> results
+        )
+        {
+            foreach (MissionReturnDestinationRequestedResult result in results)
+            {
+                if (result?.Participant == null)
+                    continue;
+                result.Participant.MissionReturnParentInstanceID = result.ReturnParent?.InstanceID;
+                result.Participant.MissionReturnLocationInstanceID = result
+                    .ReturnLocation
+                    ?.InstanceID;
             }
 
             return new List<GameResult>();
@@ -438,6 +479,26 @@ namespace Rebellion.Systems
             }
 
             return null;
+        }
+
+        private ContainerNode ResolveReturnDestination(IMissionParticipant participant)
+        {
+            ContainerNode destination = ResolveMissionReturnDestination(participant);
+            if (destination != null)
+                return destination;
+
+            Planet priorLocation = _game.GetSceneNodeByInstanceID<Planet>(
+                participant.MissionReturnLocationInstanceID
+            );
+            return _game
+                .GetFactionByOwnerInstanceID(participant.OwnerInstanceID)
+                ?.GetOwnedColonizedPlanets()
+                .Where(planet => !planet.IsDestroyed && planet.CanAcceptChild(participant))
+                .OrderBy(planet =>
+                    priorLocation == null ? 0 : planet.GetRawDistanceTo(priorLocation)
+                )
+                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .FirstOrDefault();
         }
 
         /// <summary>
@@ -1554,6 +1615,51 @@ namespace Rebellion.Systems
                 GameLogger.Warning(
                     $"{unit.GetDisplayName()} has no friendly planet to evacuate to."
                 );
+            }
+        }
+
+        /// <summary>
+        /// Moves surviving officers and starfighters away from a destroyed capital ship.
+        /// </summary>
+        public void EvacuateDestroyedCapitalShip(CapitalShip destroyedShip)
+        {
+            if (destroyedShip == null)
+                throw new ArgumentNullException(nameof(destroyedShip));
+
+            Fleet fleet = destroyedShip.GetParentOfType<Fleet>();
+            CapitalShip survivingShip = fleet?.CapitalShips.FirstOrDefault(ship =>
+                ship != destroyedShip
+                && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                && ship.Movement == null
+                && ship.CurrentHullStrength > 0
+            );
+            foreach (Officer officer in destroyedShip.Officers.ToList())
+            {
+                if (survivingShip != null)
+                    _game.MoveNode(officer, survivingShip);
+                else
+                    EvacuateToNearestFriendlyPlanet(officer);
+            }
+
+            foreach (
+                Starfighter starfighter in destroyedShip
+                    .Starfighters.Where(starfighter =>
+                        starfighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    )
+                    .ToList()
+            )
+            {
+                CapitalShip survivingCarrier = fleet?.CapitalShips.FirstOrDefault(ship =>
+                    ship != destroyedShip
+                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
+                    && ship.Movement == null
+                    && ship.CurrentHullStrength > 0
+                    && ship.GetExcessStarfighterCapacity() > 0
+                );
+                if (survivingCarrier != null)
+                    _game.MoveNode(starfighter, survivingCarrier);
+                else
+                    EvacuateToNearestFriendlyPlanet(starfighter);
             }
         }
 

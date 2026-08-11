@@ -8,6 +8,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using Rebellion.Util.Extensions;
@@ -477,7 +478,7 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// Requests authoritative resolution of a linked-officer encounter.
     /// </summary>
-    public class OfficerEncounterRequestedResult : GameResult
+    public class DuelRequestedResult : GameResult
     {
         public Officer EncounteredOfficer { get; set; }
         public Officer OpposingOfficer { get; set; }
@@ -488,7 +489,7 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// Records the complete outcome of a linked-officer encounter.
     /// </summary>
-    public class OfficerEncounterResult : GameResult
+    public class DuelResult : GameResult
     {
         public Officer EncounteredOfficer { get; set; }
         public Officer OpposingOfficer { get; set; }
@@ -544,15 +545,9 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Luke completed Dagobah training.
+    /// A data-defined event requested a faction message.
     /// </summary>
-    /// <summary>
-    /// Luke learned about his heritage.
-    /// </summary>
-    /// <summary>
-    /// A data-defined narrative event requested a faction message.
-    /// </summary>
-    public class NarrativeMessageResult : GameResult
+    public class MessageRequestedResult : GameResult
     {
         public Faction Recipient { get; set; }
         public ISceneNode SubjectNode { get; set; }
@@ -564,15 +559,28 @@ namespace Rebellion.Game.Results
         public string BackgroundImageKey { get; set; }
         public string BackgroundImagePath { get; set; }
         public string OverlayImagePath { get; set; }
-        public string AudioPath { get; set; }
+        public string AmbientAudioPath { get; set; }
         public string OfficerVoicePath { get; set; }
+        public AdvisorNotification AdvisorNotification { get; set; }
+    }
+
+    /// <summary>
+    /// A message was created and delivered to a faction.
+    /// </summary>
+    public sealed class MessageDeliveredResult : GameResult
+    {
+        public Faction Recipient { get; set; }
+        public Message Message { get; set; }
+        public AdvisorNotificationType NotificationType { get; set; }
+        public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
+        public string AdvisorSubjectTypeID { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
     }
 
     /// <summary>
     /// Suppresses one matching automatic message produced by the current result batch.
     /// </summary>
-    public sealed class SuppressNextMessageResult : GameResult
+    public sealed class SuppressNextAutomaticMessageResult : GameResult
     {
         public MessageResultType MessageType { get; set; }
         public Faction Recipient { get; set; }
@@ -596,6 +604,26 @@ namespace Rebellion.Game.Results
         public IMovable Unit { get; set; }
         public List<IMovable> Units { get; set; } = new List<IMovable>();
         public ContainerNode Destination { get; set; }
+    }
+
+    /// <summary>
+    /// Requests activation of one retained off-map unit at an explicit destination.
+    /// </summary>
+    public sealed class UnitActivationRequestedResult : GameResult
+    {
+        public ISceneNode Unit { get; set; }
+        public ContainerNode Destination { get; set; }
+        public bool UseMissionReturnDestination { get; set; }
+    }
+
+    /// <summary>
+    /// Requests storage of the standard mission return anchors for one participant.
+    /// </summary>
+    public sealed class MissionReturnDestinationRequestedResult : GameResult
+    {
+        public IMissionParticipant Participant { get; set; }
+        public ContainerNode ReturnParent { get; set; }
+        public Planet ReturnLocation { get; set; }
     }
 
     /// <summary>

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
@@ -11,19 +10,13 @@ namespace Rebellion.Game.Events
     /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
     /// Execute returns the results of those actions for notification and logging.
     /// </summary>
-    public class GameEvent : BaseGameEntity
+    public sealed class GameEvent : BaseGameEntity
     {
         [PersistableAttribute]
         public bool RunsOnce { get; set; }
 
         [PersistableIgnore]
         public bool Repeats => !RunsOnce && Schedule?.At == null && Schedule?.After == null;
-
-        // Scope Selection.
-        public GameEventScope Scope { get; set; }
-        public PlanetScopeOwnership PlanetScopeOwnership { get; set; }
-        public PlanetSystemType PlanetScopeSystemType { get; set; }
-        public bool FilterPlanetScopeSystemType { get; set; }
 
         // Result Triggers.
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
@@ -115,10 +108,11 @@ namespace Rebellion.Game.Events
         )
         {
             List<GameResult> results = new List<GameResult>();
+            GameActionContext actionContext = new GameActionContext(game, provider, context);
 
             foreach (GameAction action in Actions)
             {
-                foreach (GameResult result in action.Execute(game, provider, context))
+                foreach (GameResult result in action.Execute(actionContext))
                 {
                     if (result != null && string.IsNullOrEmpty(result.SourceEventInstanceID))
                         result.SourceEventInstanceID = InstanceID;

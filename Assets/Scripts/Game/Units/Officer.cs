@@ -53,18 +53,6 @@ namespace Rebellion.Game.Units
     }
 
     /// <summary>
-    /// Identifies one additive, externally managed officer-rating adjustment.
-    /// Stable keys let ongoing systems reconcile modifiers without accumulating duplicates.
-    /// </summary>
-    [PersistableObject]
-    public sealed class OfficerRatingModifier
-    {
-        public string Key { get; set; }
-        public OfficerRating Rating { get; set; }
-        public int Amount { get; set; }
-    }
-
-    /// <summary>
     /// Represents an officer that can be used in missions.
     /// </summary>
     public class Officer : LeafNode, IMissionParticipant, IMovable
@@ -149,21 +137,7 @@ namespace Rebellion.Game.Units
         public MovementState Movement { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
-        public List<string> OrderVoicePaths { get; set; } = new List<string>();
-        public List<string> PersonnelArrivedVoicePaths { get; set; } = new List<string>();
-        public List<string> MissionSuccessVoicePaths { get; set; } = new List<string>();
-        public List<string> MissionFailureVoicePaths { get; set; } = new List<string>();
-        public List<string> MissionAbortVoicePaths { get; set; } = new List<string>();
-        public List<string> ReleasedVoicePaths { get; set; } = new List<string>();
-        public List<string> RecoveredVoicePaths { get; set; } = new List<string>();
-        public List<string> EnemyDetectedVoicePaths { get; set; } = new List<string>();
-        public List<string> ForceGrowthVoicePaths { get; set; } = new List<string>();
-        public List<string> ForceUserDiscoveredVoicePaths { get; set; } = new List<string>();
-        public List<string> TraitorDiscoveredVoicePaths { get; set; } = new List<string>();
-        public List<string> RescueAttemptVoicePaths { get; set; } = new List<string>();
-        public List<string> BountyAttackVoicePaths { get; set; } = new List<string>();
-        public List<string> DagobahCompletedVoicePaths { get; set; } = new List<string>();
-        public List<string> SeatOfPowerVoicePaths { get; set; } = new List<string>();
+        public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
 
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =
@@ -174,8 +148,6 @@ namespace Rebellion.Game.Units
                 { OfficerRating.Combat, 0 },
                 { OfficerRating.Leadership, 0 },
             };
-        public List<OfficerRatingModifier> RatingModifiers { get; set; } =
-            new List<OfficerRatingModifier>();
         public bool CanImproveMissionRating => true;
 
         /// <summary>
@@ -203,6 +175,7 @@ namespace Rebellion.Game.Units
                 OfficerRating.ShipResearch => ShipResearch,
                 OfficerRating.TroopResearch => TroopResearch,
                 OfficerRating.FacilityResearch => FacilityResearch,
+                OfficerRating.Force => ForceValue,
                 OfficerRating.None => 0,
                 _ => Ratings.TryGetValue(rating, out int value) ? value : 0,
             };
@@ -227,6 +200,9 @@ namespace Rebellion.Game.Units
                 case OfficerRating.FacilityResearch:
                     FacilityResearch = value;
                     return value;
+                case OfficerRating.Force:
+                    ForceValue = Math.Max(0, value);
+                    return ForceValue;
                 case OfficerRating.None:
                     return 0;
                 default:
@@ -251,97 +227,10 @@ namespace Rebellion.Game.Units
                     0,
                     ApplyForceRatingBonus(baseRating) - InjuryPoints
                 ),
+                OfficerRating.Force => ForceRank,
                 _ => baseRating,
             };
-            int effectiveRating = officerRating + GetRatingModifierTotal(rating);
-            return rating == OfficerRating.Combat ? Math.Max(0, effectiveRating) : effectiveRating;
-        }
-
-        /// <summary>
-        /// Adds or replaces one externally managed rating modifier.
-        /// </summary>
-        /// <param name="key">The stable key owned by the managing system.</param>
-        /// <param name="rating">The officer rating being adjusted.</param>
-        /// <param name="amount">The signed additive adjustment; zero removes the modifier.</param>
-        public void SetRatingModifier(string key, OfficerRating rating, int amount)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("A rating modifier key is required.", nameof(key));
-
-            RatingModifiers ??= new List<OfficerRatingModifier>();
-            OfficerRatingModifier modifier = RatingModifiers.Find(item => item.Key == key);
-            if (amount == 0)
-            {
-                if (modifier != null)
-                    RatingModifiers.Remove(modifier);
-                return;
-            }
-
-            if (modifier == null)
-            {
-                RatingModifiers.Add(
-                    new OfficerRatingModifier
-                    {
-                        Key = key,
-                        Rating = rating,
-                        Amount = amount,
-                    }
-                );
-                return;
-            }
-
-            modifier.Rating = rating;
-            modifier.Amount = amount;
-        }
-
-        /// <summary>
-        /// Removes one externally managed rating modifier.
-        /// </summary>
-        /// <param name="key">The stable modifier key to remove.</param>
-        public void RemoveRatingModifier(string key)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("A rating modifier key is required.", nameof(key));
-
-            RatingModifiers?.RemoveAll(modifier => modifier.Key == key);
-        }
-
-        /// <summary>
-        /// Removes managed modifiers in a namespace unless their keys are currently active.
-        /// </summary>
-        /// <param name="prefix">The stable namespace prefix owned by the managing system.</param>
-        /// <param name="activeKeys">The modifier keys that remain active.</param>
-        public void RemoveRatingModifiersExcept(string prefix, ISet<string> activeKeys)
-        {
-            if (prefix == null)
-                throw new ArgumentNullException(nameof(prefix));
-            if (activeKeys == null)
-                throw new ArgumentNullException(nameof(activeKeys));
-
-            RatingModifiers?.RemoveAll(modifier =>
-                modifier.Key?.StartsWith(prefix, StringComparison.Ordinal) == true
-                && !activeKeys.Contains(modifier.Key)
-            );
-        }
-
-        /// <summary>
-        /// Sums every managed adjustment applied to one rating.
-        /// </summary>
-        /// <param name="rating">The rating whose modifiers are summed.</param>
-        /// <returns>The signed additive total.</returns>
-        private int GetRatingModifierTotal(OfficerRating rating)
-        {
-            int total = 0;
-            if (RatingModifiers == null)
-                return total;
-
-            foreach (OfficerRatingModifier modifier in RatingModifiers)
-            {
-                if (modifier.Rating == rating)
-                    total += modifier.Amount;
-            }
-
-            return total;
+            return officerRating;
         }
 
         /// <summary>
@@ -479,7 +368,7 @@ namespace Rebellion.Game.Units
             IRandomNumberProvider provider
         )
         {
-            return SelectVoicePath(GetVoicePaths(voiceLineType), provider);
+            return SelectVoicePath(VoiceSet.Get(voiceLineType), provider);
         }
 
         /// <summary>
@@ -489,36 +378,8 @@ namespace Rebellion.Game.Units
         /// <returns>True when a matching voice path exists.</returns>
         public bool HasVoicePath(OfficerVoiceLineType voiceLineType)
         {
-            IReadOnlyList<string> paths = GetVoicePaths(voiceLineType);
+            IReadOnlyList<string> paths = VoiceSet.Get(voiceLineType);
             return paths?.Count > 0;
-        }
-
-        /// <summary>
-        /// Gets the available voice paths for an officer event.
-        /// </summary>
-        /// <param name="voiceLineType">The officer event requesting a voice response.</param>
-        /// <returns>The matching voice paths, or null when the event has no configured paths.</returns>
-        private IReadOnlyList<string> GetVoicePaths(OfficerVoiceLineType voiceLineType)
-        {
-            return voiceLineType switch
-            {
-                OfficerVoiceLineType.Order => OrderVoicePaths,
-                OfficerVoiceLineType.PersonnelArrived => PersonnelArrivedVoicePaths,
-                OfficerVoiceLineType.MissionSuccess => MissionSuccessVoicePaths,
-                OfficerVoiceLineType.MissionFailure => MissionFailureVoicePaths,
-                OfficerVoiceLineType.MissionAbort => MissionAbortVoicePaths,
-                OfficerVoiceLineType.Released => ReleasedVoicePaths,
-                OfficerVoiceLineType.Recovered => RecoveredVoicePaths,
-                OfficerVoiceLineType.EnemyDetected => EnemyDetectedVoicePaths,
-                OfficerVoiceLineType.ForceGrowth => ForceGrowthVoicePaths,
-                OfficerVoiceLineType.ForceUserDiscovered => ForceUserDiscoveredVoicePaths,
-                OfficerVoiceLineType.TraitorDiscovered => TraitorDiscoveredVoicePaths,
-                OfficerVoiceLineType.RescueAttempt => RescueAttemptVoicePaths,
-                OfficerVoiceLineType.BountyAttack => BountyAttackVoicePaths,
-                OfficerVoiceLineType.DagobahCompleted => DagobahCompletedVoicePaths,
-                OfficerVoiceLineType.SeatOfPower => SeatOfPowerVoicePaths,
-                _ => null,
-            };
         }
 
         /// <summary>

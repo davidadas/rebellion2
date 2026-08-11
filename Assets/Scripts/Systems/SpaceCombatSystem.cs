@@ -1873,7 +1873,15 @@ namespace Rebellion.Systems
 
                 if (damage.HullAfter <= 0)
                 {
-                    CapitalShipDestruction.Resolve(_game, _movement, ship);
+                    _movement.EvacuateDestroyedCapitalShip(ship);
+                    foreach (Regiment regiment in ship.Regiments.ToList())
+                    {
+                        _game.AddToVoid(regiment);
+                        _game.SetVoidStatus(regiment, VoidStatus.Destroyed);
+                    }
+                    _game.AddToVoid(ship);
+                    _game.SetVoidStatus(ship, VoidStatus.Destroyed);
+                    GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
             }
 

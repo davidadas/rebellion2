@@ -47,11 +47,8 @@ namespace Rebellion.Game.FogOfWar
         public List<Starfighter> Starfighters;
         public List<Mission> Missions;
 
-        // Complete Espionage Intelligence.
-        public bool HasEspionageIntelligence;
-
-        // Category-limited intelligence supplied by informants and other event sources.
-        public PlanetIntelligenceCategory IntelligenceCategories;
+        // Intelligence categories revealed by espionage, informants, and other sources.
+        public PlanetIntelligenceCategory RevealedCategories;
 
         // Manufacturing Intelligence.
         public bool HasManufacturingIntelligence;

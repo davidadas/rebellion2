@@ -44,9 +44,9 @@ namespace Rebellion.Tests.Game.Events
             return game;
         }
 
-        private static InformantIntelligenceAction CreateInformantAction()
+        private static GatherInformantIntelligenceAction CreateInformantAction()
         {
-            return new InformantIntelligenceAction
+            return new GatherInformantIntelligenceAction
             {
                 FactionRoutes = new List<InformantFactionRoute>
                 {
@@ -88,9 +88,7 @@ namespace Rebellion.Tests.Game.Events
 
             List<GameResult> results = action.Execute(game);
 
-            OfficerEncounterRequestedResult request = results
-                .OfType<OfficerEncounterRequestedResult>()
-                .Single();
+            DuelRequestedResult request = results.OfType<DuelRequestedResult>().Single();
             Assert.AreSame(attacker, request.EncounteredOfficer);
             Assert.AreSame(defender, request.OpposingOfficer);
         }
@@ -124,9 +122,9 @@ namespace Rebellion.Tests.Game.Events
                 completion
             );
 
-            OfficerEncounterRequestedResult request = action
+            DuelRequestedResult request = action
                 .Execute(game, game.Random, context)
-                .OfType<OfficerEncounterRequestedResult>()
+                .OfType<DuelRequestedResult>()
                 .Single();
 
             Assert.AreSame(vader, request.EncounteredOfficer);
@@ -135,7 +133,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void TriggerDuel_ForceRankChance_UsesSummedRankThreshold()
+        public void TriggerDuel_ValidOfficers_RequestsDuel()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -152,25 +150,21 @@ namespace Rebellion.Tests.Game.Events
                 SecondOfficerInstanceID = vader.InstanceID,
             };
 
-            Assert.IsEmpty(action.Execute(game, new SequenceRNG(new[] { 20 }), null));
-            Assert.AreEqual(
-                1,
-                action
-                    .Execute(game, new SequenceRNG(new[] { 19 }), null)
-                    .OfType<OfficerEncounterRequestedResult>()
-                    .Count()
+            IEnumerable<GameResult> results = action.Execute(
+                game,
+                new SequenceRNG(new[] { 20 }),
+                null
             );
 
-            luke.ForceValue = 0;
-            Assert.IsEmpty(action.Execute(game, new SequenceRNG(new[] { 0 }), null));
+            Assert.AreEqual(1, results.OfType<DuelRequestedResult>().Count());
         }
 
         [Test]
-        public void InformantIntelligence_OwnerSupportFails_EmitsOpposingFactionIntelligence()
+        public void GatherInformantIntelligence_OwnerSupportFails_EmitsOpposingFactionIntelligence()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             empirePlanet.PopularSupport["empire"] = 20;
-            InformantIntelligenceAction action = CreateInformantAction();
+            GatherInformantIntelligenceAction action = CreateInformantAction();
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
                 new GameEventState(),
@@ -186,7 +180,7 @@ namespace Rebellion.Tests.Game.Events
             PlanetIntelligenceResult intelligence = results
                 .OfType<PlanetIntelligenceResult>()
                 .Single();
-            NarrativeMessageResult message = results.OfType<NarrativeMessageResult>().Single();
+            MessageRequestedResult message = results.OfType<MessageRequestedResult>().Single();
             Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
             Assert.AreSame(empirePlanet, intelligence.Planet);
             Assert.AreEqual(PlanetIntelligenceCategory.GroundForces, intelligence.Categories);
@@ -195,11 +189,11 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void InformantIntelligence_OwnerSupportSucceeds_EmitsNothing()
+        public void GatherInformantIntelligence_OwnerSupportSucceeds_EmitsNothing()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             empirePlanet.PopularSupport["empire"] = 20;
-            InformantIntelligenceAction action = CreateInformantAction();
+            GatherInformantIntelligenceAction action = CreateInformantAction();
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
                 new GameEventState(),
@@ -231,19 +225,19 @@ namespace Rebellion.Tests.Game.Events
                 AmbientAudio = new MessageAudio { Path = "Audio/Luke/dialogue" },
             };
 
-            NarrativeMessageResult result = action
+            MessageRequestedResult result = action
                 .Execute(game)
-                .OfType<NarrativeMessageResult>()
+                .OfType<MessageRequestedResult>()
                 .Single();
 
             Assert.AreEqual("rebels", result.Recipient.InstanceID);
             Assert.AreSame(luke, result.SubjectNode);
             Assert.AreSame(rebelPlanet, result.Location);
-            Assert.AreEqual("Audio/Luke/dialogue", result.AudioPath);
+            Assert.AreEqual("Audio/Luke/dialogue", result.AmbientAudioPath);
         }
 
         [Test]
-        public void SendMessage_ConditionalBodySegments_ComposeFromOfficerState()
+        public void SendMessage_ConditionalBodies_ComposesFromOfficerState()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -253,11 +247,11 @@ namespace Rebellion.Tests.Game.Events
             {
                 SubjectInstanceID = luke.InstanceID,
                 Body = "Luke learned the truth. ",
-                BodySegments = new List<NarrativeBodySegment>
+                ConditionalBodies = new List<ConditionalMessageBody>
                 {
-                    new NarrativeBodySegment
+                    new ConditionalMessageBody
                     {
-                        Conditionals = new List<GameConditional>
+                        Conditions = new List<GameConditional>
                         {
                             new IsInjuredConditional { OfficerInstanceID = luke.InstanceID },
                         },
@@ -267,9 +261,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            NarrativeMessageResult result = action
+            MessageRequestedResult result = action
                 .Execute(game)
-                .OfType<NarrativeMessageResult>()
+                .OfType<MessageRequestedResult>()
                 .Single();
 
             Assert.AreEqual("Luke learned the truth. Luke was injured.", result.Body);
@@ -285,7 +279,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 SubjectInstanceID = luke.InstanceID,
             };
-            OfficerEncounterResult encounter = new OfficerEncounterResult
+            DuelResult encounter = new DuelResult
             {
                 EncounteredOfficer = luke,
                 AudioPath = "selected-encounter-voice",
@@ -297,12 +291,12 @@ namespace Rebellion.Tests.Game.Events
                 encounter
             );
 
-            NarrativeMessageResult result = action
+            MessageRequestedResult result = action
                 .Execute(game, game.Random, context)
-                .OfType<NarrativeMessageResult>()
+                .OfType<MessageRequestedResult>()
                 .Single();
 
-            Assert.AreEqual("selected-encounter-voice", result.AudioPath);
+            Assert.AreEqual("selected-encounter-voice", result.AmbientAudioPath);
         }
 
         [Test]
@@ -310,7 +304,7 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.MissionSuccessVoicePaths.Add("luke-success");
+            luke.VoiceSet.MissionSuccess.Add("luke-success");
             game.AttachNode(luke, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
@@ -321,9 +315,9 @@ namespace Rebellion.Tests.Game.Events
                 },
             };
 
-            NarrativeMessageResult result = action
+            MessageRequestedResult result = action
                 .Execute(game, new FixedRNG(0), null)
-                .OfType<NarrativeMessageResult>()
+                .OfType<MessageRequestedResult>()
                 .Single();
 
             Assert.AreEqual("luke-success", result.OfficerVoicePath);
@@ -333,10 +327,10 @@ namespace Rebellion.Tests.Game.Events
         public void IfAction_EventVariable_SelectsBranchAndPersistsMutation()
         {
             GameRoot game = BuildGame(out _, out _);
-            game.SetEventVariable("luke.stage", 2);
+            game.EventRuntime.SetVariable("luke.stage", 2);
             IfAction action = new IfAction
             {
-                Conditionals = new List<GameConditional>
+                Conditions = new List<GameConditional>
                 {
                     new EvaluateEventVariableConditional
                     {
@@ -345,24 +339,18 @@ namespace Rebellion.Tests.Game.Events
                         Value = 2,
                     },
                 },
-                Then = new GameActionBlock
+                Actions = new List<GameAction>
                 {
-                    Actions = new List<GameAction>
+                    new SetEventVariableAction
                     {
-                        new SetEventVariableAction
-                        {
-                            Key = "luke.stage",
-                            Operation = EventVariableOperation.Add,
-                            Operand = 1,
-                        },
+                        Key = "luke.stage",
+                        Operation = EventVariableOperation.Add,
+                        Operand = 1,
                     },
                 },
-                Else = new GameActionBlock
+                Else = new List<GameAction>
                 {
-                    Actions = new List<GameAction>
-                    {
-                        new SetEventVariableAction { Key = "wrong", Operand = 1 },
-                    },
+                    new SetEventVariableAction { Key = "wrong", Operand = 1 },
                 },
             };
 
@@ -373,8 +361,8 @@ namespace Rebellion.Tests.Game.Events
 
             Assert.AreEqual(2, result.PreviousValue);
             Assert.AreEqual(3, result.CurrentValue);
-            Assert.AreEqual(3, game.GetEventVariable("luke.stage"));
-            Assert.AreEqual(0, game.GetEventVariable("wrong"));
+            Assert.AreEqual(3, game.EventRuntime.GetVariable("luke.stage"));
+            Assert.AreEqual(0, game.EventRuntime.GetVariable("wrong"));
         }
 
         [Test]
@@ -430,16 +418,24 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ReturnFromVoid_OfficerWithPreviousLocation_ReturnsOfficerToLocation()
+        public void ActivateFromVoid_OfficerInVoid_RequestsActivationUsingMissionReturnDestination()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, origin);
             new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
 
-            new ReturnFromVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+            List<GameResult> results = new ActivateFromVoidAction
+            {
+                UnitInstanceID = luke.InstanceID,
+            }.Execute(game);
 
-            Assert.AreSame(origin, luke.GetParent());
+            UnitActivationRequestedResult result = results
+                .OfType<UnitActivationRequestedResult>()
+                .Single();
+            Assert.AreSame(luke, result.Unit);
+            Assert.IsTrue(result.UseMissionReturnDestination);
+            Assert.IsNull(luke.GetParent());
         }
 
         [Test]
@@ -468,17 +464,20 @@ namespace Rebellion.Tests.Game.Events
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            luke.PersonnelArrivedVoicePaths.Add("old");
+            luke.VoiceSet.PersonnelArrived.Add("old");
             game.AttachNode(luke, rebelPlanet);
             SetOfficerVoiceSetAction action = new SetOfficerVoiceSetAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                PersonnelArrivedVoicePaths = new List<string> { "jedi-arrived" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    PersonnelArrived = new List<string> { "jedi-arrived" },
+                },
             };
 
             Assert.IsEmpty(action.Execute(game));
 
-            CollectionAssert.AreEqual(new[] { "jedi-arrived" }, luke.PersonnelArrivedVoicePaths);
+            CollectionAssert.AreEqual(new[] { "jedi-arrived" }, luke.VoiceSet.PersonnelArrived);
         }
 
         [Test]
@@ -520,16 +519,17 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerForce_Percent_AdjustsCurrentRank()
+        public void AdjustOfficerRating_PercentOfCurrentRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.ForceValue = 40;
             game.AttachNode(luke, rebelPlanet);
-            AdjustOfficerForceAction action = new AdjustOfficerForceAction
+            AdjustOfficerRatingAction action = new AdjustOfficerRatingAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Percent = 25,
+                Rating = OfficerRating.Force,
+                PercentOfCurrentRank = 25,
             };
 
             ForceExperienceResult result = action
@@ -563,7 +563,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerRating_Percent_AdjustsStoredRating()
+        public void AdjustOfficerRating_PercentOfBaseRating_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -574,7 +574,7 @@ namespace Rebellion.Tests.Game.Events
             {
                 OfficerInstanceID = luke.InstanceID,
                 Rating = OfficerRating.ShipResearch,
-                Percent = -25,
+                PercentOfBaseRating = -25,
             }.Execute(game);
 
             Assert.AreEqual(30, luke.GetBaseRating(OfficerRating.ShipResearch));
@@ -593,13 +593,13 @@ namespace Rebellion.Tests.Game.Events
                     OfficerInstanceID = luke.InstanceID,
                     Rating = OfficerRating.Combat,
                     Amount = 5,
-                    Percent = 10,
+                    PercentOfBaseRating = 10,
                 }.Execute(game)
             );
         }
 
         [Test]
-        public void SetOfficerForceState_EligibilityTransition_InitializesForceOnce()
+        public void SetOfficerJediState_EligibilityTransition_InitializesForceOnce()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer leia = EntityFactory.CreateOfficer("leia", "rebels");
@@ -608,7 +608,7 @@ namespace Rebellion.Tests.Game.Events
             leia.JediLevel = 10;
             leia.JediLevelVariance = 5;
             game.AttachNode(leia, rebelPlanet);
-            SetOfficerForceStateAction action = new SetOfficerForceStateAction
+            SetOfficerJediStateAction action = new SetOfficerJediStateAction
             {
                 OfficerInstanceID = leia.InstanceID,
                 IsJedi = true,
@@ -761,7 +761,7 @@ namespace Rebellion.Tests.Game.Events
                     },
                     new DestroyUnitsAction
                     {
-                        Selectors = new List<UnitSelector>
+                        Selectors = new List<GameEventSelector>
                         {
                             new SelectRandomUnits
                             {
@@ -799,23 +799,29 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Chance_Success_ExecutesEveryChildAction()
+        public void DestroyUnits_SelectedUnit_RetainsUnitInFactionVoidPool()
         {
-            GameRoot game = BuildGame(out _, out _);
-            ChanceAction action = new ChanceAction
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Regiment regiment = new Regiment
             {
-                Probability = 1,
-                Actions = new List<GameAction>
+                InstanceID = "regiment",
+                OwnerInstanceID = planet.OwnerInstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(regiment, planet);
+            DestroyUnitsAction action = new DestroyUnitsAction
+            {
+                Selectors = new List<GameEventSelector>
                 {
-                    new SetEventVariableAction { Key = "first", Operand = 1 },
-                    new SetEventVariableAction { Key = "second", Operand = 2 },
+                    new SelectUnits { InstanceID = regiment.InstanceID },
                 },
             };
 
-            action.Execute(game, new FixedRNG());
+            action.Execute(game, new FixedRNG(0), null);
 
-            Assert.AreEqual(1, game.GetEventVariable("first"));
-            Assert.AreEqual(2, game.GetEventVariable("second"));
+            Faction owner = game.GetFactions()
+                .Single(faction => faction.InstanceID == planet.OwnerInstanceID);
+            Assert.Contains(regiment, owner.VoidPool);
         }
 
         [Test]
@@ -848,9 +854,9 @@ namespace Rebellion.Tests.Game.Events
 
             action.Execute(game, new SequenceRNG(new[] { 3 }));
 
-            Assert.Zero(game.GetEventVariable("wrong"));
-            Assert.AreEqual(1, game.GetEventVariable("first"));
-            Assert.AreEqual(2, game.GetEventVariable("second"));
+            Assert.Zero(game.EventRuntime.GetVariable("wrong"));
+            Assert.AreEqual(1, game.EventRuntime.GetVariable("first"));
+            Assert.AreEqual(2, game.EventRuntime.GetVariable("second"));
         }
     }
 }

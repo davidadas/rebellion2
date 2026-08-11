@@ -32,7 +32,6 @@ namespace Rebellion.Game.Messages
             if (definition == null)
                 return null;
 
-            definition.BackgroundImage?.Validate();
             string title = Interpolate(definition.Subject, values);
             string body = Interpolate(definition.Body, values);
 
@@ -49,9 +48,9 @@ namespace Rebellion.Game.Messages
                         (imageFaction ?? faction)?.InstanceID
                     ),
                 OverlayImagePath = overlayImagePath,
-                AudioPath = GetAssetPath(
-                    definition.AudioPath,
-                    definition.AudioPaths,
+                AmbientAudioPath = GetAssetPath(
+                    definition.AmbientAudioPath,
+                    definition.AmbientAudioPaths,
                     faction?.InstanceID
                 ),
                 OfficerVoicePath = officerVoicePath,

@@ -467,27 +467,23 @@ public sealed class FinderWindowRowBuilder
     /// <returns>The displayed status or an empty string.</returns>
     private static string GetPersonnelStatusText(ISceneNode personnel)
     {
+        if (personnel is Officer { IsKilled: true })
+            return "Killed";
+        if (personnel is Officer { IsCaptured: true })
+            return "Captured";
+        if (personnel is Officer { InjuryPoints: > 0 })
+            return "Injured";
+        if (personnel is IMovable movable && movable.GetTransitMovement() != null)
+            return "Enroute";
+        if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())
+            return "On Mission";
+
         if (personnel is BaseSceneNode { VoidState: not null } voidUnit)
             return string.IsNullOrWhiteSpace(voidUnit.VoidState.DisplayText)
                 ? voidUnit.VoidState.Status == VoidStatus.OnMission
                     ? "On Mission"
                     : voidUnit.VoidState.Status?.ToString() ?? "Unavailable"
                 : voidUnit.VoidState.DisplayText;
-
-        if (personnel is IMovable movable && movable.GetTransitMovement() != null)
-            return "Enroute";
-
-        if (personnel is Officer officer)
-        {
-            if (officer.IsCaptured)
-                return "Captured";
-            if (officer.InjuryPoints > 0)
-                return "Injured";
-            if (officer.IsOnMission())
-                return "On Mission";
-            if (officer.IsKilled)
-                return "Killed";
-        }
         else if (personnel is SpecialForces specialForces && specialForces.IsOnMission())
         {
             return "On Mission";

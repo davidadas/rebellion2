@@ -4,7 +4,6 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -1398,18 +1397,17 @@ public sealed class StrategyController
     /// <summary>
     /// Offers a newly delivered player message to the advisor notification controller.
     /// </summary>
-    /// <param name="faction">The message recipient.</param>
-    /// <param name="message">The delivered message.</param>
-    private void HandleMessageDelivered(Faction faction, Message message)
+    /// <param name="delivery">The delivered message and transient presentation request.</param>
+    private void HandleMessageDelivered(MessageDeliveredResult delivery)
     {
-        if (faction?.InstanceID != PlayerFactionId)
+        if (delivery?.Recipient?.InstanceID != PlayerFactionId)
             return;
 
         messagesWindowController.ReconcileWindows();
         strategyHudController.NotifyAdvisor(
-            message,
+            delivery,
             gameManager.GetCurrentTick(),
-            faction.IsAdvisorMessageNotificationEnabled(message.Type)
+            delivery.Recipient.IsAdvisorMessageNotificationEnabled(delivery.Message.Type)
         );
         MarkDirty();
     }

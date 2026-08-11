@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
 using Rebellion.SceneGraph;
@@ -15,6 +16,9 @@ namespace Rebellion.Game.Events
     {
         public PlanetTarget Planet { get; set; }
         public RandomPlanetsTarget RandomPlanets { get; set; }
+        public EachPlanetTarget EachPlanet { get; set; }
+
+        public bool MaintainsStatePerTarget => EachPlanet != null;
 
         /// <summary>
         /// Resolves the single configured target selector.
@@ -22,17 +26,28 @@ namespace Rebellion.Game.Events
         /// <param name="game">The current game state.</param>
         /// <param name="provider">The deterministic random source used by random selectors.</param>
         /// <returns>The selected scene node, or null when no eligible target exists.</returns>
-        public ISceneNode Resolve(GameRoot game, IRandomNumberProvider provider)
+        public IReadOnlyList<ISceneNode> Resolve(GameRoot game, IRandomNumberProvider provider)
         {
             if (game == null)
                 throw new ArgumentNullException(nameof(game));
-            if (Planet != null && RandomPlanets != null)
+            int configuredSelectors =
+                (Planet == null ? 0 : 1)
+                + (RandomPlanets == null ? 0 : 1)
+                + (EachPlanet == null ? 0 : 1);
+            if (configuredSelectors != 1)
                 throw new InvalidOperationException(
-                    "An event can define only one target selector."
+                    "An event target requires exactly one selector."
                 );
 
-            return Planet?.Resolve(game) ?? RandomPlanets?.Resolve(game, provider);
+            if (Planet != null)
+                return One(Planet.Resolve(game));
+            if (RandomPlanets != null)
+                return One(RandomPlanets.Resolve(game, provider));
+            return EachPlanet.Resolve(game);
         }
+
+        private static IReadOnlyList<ISceneNode> One(ISceneNode target) =>
+            target == null ? Array.Empty<ISceneNode>() : new[] { target };
     }
 
     /// <summary>
@@ -85,9 +100,8 @@ namespace Rebellion.Game.Events
                 throw new ArgumentNullException(nameof(provider));
             if (Count != 1)
                 throw new InvalidOperationException(
-                    "RandomPlanets currently supports exactly one target."
+                    "RandomPlanets currently supports Count=\"1\"."
                 );
-
             Planet[] candidates = game.GetGalaxyMap()
                 .PlanetSystems.Where(system => system.SystemType == SystemType)
                 .SelectMany(system => system.Planets)
@@ -97,6 +111,26 @@ namespace Rebellion.Game.Events
             return candidates.Length == 0
                 ? null
                 : candidates[provider.NextInt(0, candidates.Length)];
+        }
+    }
+
+    /// <summary>
+    /// Selects every surviving planet for independently scheduled event evaluation.
+    /// </summary>
+    [PersistableObject]
+    public sealed class EachPlanetTarget
+    {
+        public IReadOnlyList<ISceneNode> Resolve(GameRoot game)
+        {
+            if (game == null)
+                throw new ArgumentNullException(nameof(game));
+
+            return game.GetGalaxyMap()
+                .PlanetSystems.SelectMany(system => system.Planets)
+                .Where(planet => !planet.IsDestroyed)
+                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
+                .Cast<ISceneNode>()
+                .ToArray();
         }
     }
 }

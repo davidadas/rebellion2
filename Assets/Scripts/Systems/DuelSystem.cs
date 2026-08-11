@@ -12,7 +12,7 @@ namespace Rebellion.Systems
     /// <summary>
     /// Resolves asymmetric encounters between linked opposing officers.
     /// </summary>
-    public sealed class OfficerEncounterSystem : IGameResultHandler<OfficerEncounterRequestedResult>
+    public sealed class DuelSystem : IGameResultHandler<DuelRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _random;
@@ -23,7 +23,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="game">The current game state.</param>
         /// <param name="random">The deterministic simulation random source.</param>
-        public OfficerEncounterSystem(GameRoot game, IRandomNumberProvider random)
+        public DuelSystem(GameRoot game, IRandomNumberProvider random)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _random = random ?? throw new ArgumentNullException(nameof(random));
@@ -33,15 +33,13 @@ namespace Rebellion.Systems
         }
 
         /// <inheritdoc />
-        public List<GameResult> HandleResults(
-            IReadOnlyList<OfficerEncounterRequestedResult> results
-        )
+        public List<GameResult> HandleResults(IReadOnlyList<DuelRequestedResult> results)
         {
             List<GameResult> reactions = new List<GameResult>();
             if (results == null)
                 return reactions;
 
-            foreach (OfficerEncounterRequestedResult request in results)
+            foreach (DuelRequestedResult request in results)
             {
                 if (CanResolve(request))
                     Resolve(request, reactions);
@@ -55,7 +53,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The encounter request to validate.</param>
         /// <returns>True when authoritative resolution may proceed.</returns>
-        private bool CanResolve(OfficerEncounterRequestedResult request)
+        private bool CanResolve(DuelRequestedResult request)
         {
             Officer encountered = request?.EncounteredOfficer;
             Officer opposing = request?.OpposingOfficer;
@@ -76,7 +74,7 @@ namespace Rebellion.Systems
         /// </summary>
         /// <param name="request">The validated encounter request.</param>
         /// <param name="reactions">The result collection receiving authoritative outcomes.</param>
-        private void Resolve(OfficerEncounterRequestedResult request, List<GameResult> reactions)
+        private void Resolve(DuelRequestedResult request, List<GameResult> reactions)
         {
             Officer encountered = request.EncounteredOfficer;
             Officer opposing = request.OpposingOfficer;
@@ -137,7 +135,7 @@ namespace Rebellion.Systems
 
             reactions.Add(
                 Stamp(
-                    new OfficerEncounterResult
+                    new DuelResult
                     {
                         EncounteredOfficer = encountered,
                         OpposingOfficer = opposing,
@@ -157,7 +155,7 @@ namespace Rebellion.Systems
         private void ApplyForceAdvancement(
             Officer officer,
             Officer opponent,
-            OfficerEncounterRequestedResult request,
+            DuelRequestedResult request,
             List<GameResult> reactions
         )
         {
@@ -229,7 +227,7 @@ namespace Rebellion.Systems
             Officer injured,
             int injury,
             Officer beneficiary,
-            OfficerEncounterRequestedResult request,
+            DuelRequestedResult request,
             List<GameResult> reactions
         )
         {
@@ -261,7 +259,7 @@ namespace Rebellion.Systems
         /// <param name="reaction">The reaction to stamp.</param>
         /// <param name="request">The source encounter request.</param>
         /// <returns>The stamped reaction.</returns>
-        private static T Stamp<T>(T reaction, OfficerEncounterRequestedResult request)
+        private static T Stamp<T>(T reaction, DuelRequestedResult request)
             where T : GameResult
         {
             reaction.SourceEventInstanceID = request.SourceEventInstanceID;

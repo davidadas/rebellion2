@@ -12,9 +12,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
-        public override bool IsMet(GameRoot game)
+        public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             return officer != null && Evaluate(officer);
         }
 
@@ -48,16 +48,19 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Tests which faction currently holds a captured officer.
     /// </summary>
-    [PersistableObject(Name = "OfficerCaptor")]
-    public sealed class OfficerCaptorConditional : GameConditional
+    [PersistableObject(Name = "IsCapturedBy")]
+    public sealed class IsCapturedByConditional : GameConditional
     {
+        [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
         public string FactionInstanceID { get; set; }
 
         /// <inheritdoc />
-        public override bool IsMet(GameRoot game)
+        public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             return officer?.IsCaptured == true && officer.CaptorInstanceID == FactionInstanceID;
         }
     }
@@ -66,7 +69,7 @@ namespace Rebellion.Game.Events
     /// Compares one officer's effective Force rank with an authored threshold.
     /// </summary>
     [PersistableObject(Name = "HasForceRank")]
-    public class HasForceRankConditional : GameConditional
+    public sealed class HasForceRankConditional : GameConditional
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -78,9 +81,9 @@ namespace Rebellion.Game.Events
         public int Value { get; set; }
 
         /// <inheritdoc />
-        public override bool IsMet(GameRoot game)
+        public override bool IsMet(GameConditionContext context)
         {
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 return false;
 

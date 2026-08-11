@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Common;
@@ -45,6 +47,64 @@ namespace Rebellion.Systems
 
             return new List<GameResult>();
         }
+
+        /// <summary>
+        /// Resolves whether an eligible mission participant betrays the mission.
+        /// </summary>
+        public bool TryResolveMissionBetrayal(Mission mission, out List<GameResult> results)
+        {
+            if (mission == null)
+                throw new ArgumentNullException(nameof(mission));
+
+            results = new List<GameResult>();
+            Officer defector = mission
+                .GetAllParticipants()
+                .OfType<Officer>()
+                .FirstOrDefault(Defects);
+            if (defector == null)
+                return false;
+
+            Officer discoverer = mission
+                .GetAllParticipants()
+                .OfType<Officer>()
+                .Where(officer => officer != defector && CanDiscover(officer))
+                .FirstOrDefault(officer => _provider.NextInt(0, 100) < officer.ForceRank);
+            if (discoverer != null)
+            {
+                defector.IsTraitor = true;
+                results.Add(
+                    new TraitorDiscoveredResult
+                    {
+                        Officer = defector,
+                        DiscoveredBy = discoverer,
+                        Context = mission.GetParent() as Planet,
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            }
+
+            return true;
+        }
+
+        private bool Defects(Officer officer)
+        {
+            if (
+                officer
+                is not {
+                    CanBetray: true,
+                    CurrentRank: OfficerRank.None,
+                    IsCaptured: false,
+                    IsKilled: false,
+                }
+            )
+                return false;
+
+            int probability = 100 - Math.Clamp(officer.Loyalty, 0, 100);
+            return _provider.NextInt(0, 100) < probability;
+        }
+
+        private static bool CanDiscover(Officer officer) =>
+            officer is { IsCaptured: false, IsKilled: false } && officer.ForceRank > 0;
 
         /// <summary>
         /// Applies one deterministic loyalty shift after a faction gains control.

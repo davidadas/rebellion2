@@ -813,20 +813,22 @@ internal sealed class StrategyStatusInfoBuilder
     /// <returns>The displayed officer status.</returns>
     private static string GetOfficerStatusText(Officer officer)
     {
+        if (officer.IsKilled)
+            return "Killed";
+        if (officer.IsCaptured)
+            return "Captured";
+        if (officer.InjuryPoints > 0)
+            return "Injured";
+        if (officer.GetTransitMovement() != null)
+            return "Enroute";
+        if (officer.IsOnMission())
+            return "On Mission";
         if (officer.VoidState != null)
             return string.IsNullOrWhiteSpace(officer.VoidState.DisplayText)
                 ? officer.VoidState.Status == VoidStatus.OnMission
                     ? "On Mission"
                     : officer.VoidState.Status?.ToString() ?? "Unavailable"
                 : officer.VoidState.DisplayText;
-        if (officer.GetTransitMovement() != null)
-            return "Enroute";
-        if (officer.IsCaptured)
-            return "Captured";
-        if (officer.InjuryPoints > 0)
-            return "Injured";
-        if (officer.IsOnMission())
-            return "On Mission";
         return "Awaiting Orders";
     }
 

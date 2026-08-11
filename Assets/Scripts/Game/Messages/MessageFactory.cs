@@ -7,6 +7,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Messages
@@ -18,6 +19,8 @@ namespace Rebellion.Game.Messages
     {
         private readonly MessageDefinition[] _definitions;
         private readonly MessageTemplateBuilder _templateBuilder = new MessageTemplateBuilder();
+        private readonly Dictionary<Message, MessageDelivery> _deliveriesByMessage =
+            new Dictionary<Message, MessageDelivery>();
 
         /// <summary>
         /// Creates a message factory backed by the supplied message definitions.
@@ -34,24 +37,22 @@ namespace Rebellion.Game.Messages
         /// <param name="results">The game results to translate into message deliveries.</param>
         /// <param name="game">The game state used to resolve affected factions and display names.</param>
         /// <returns>The messages to add to each recipient faction.</returns>
-        public List<(Faction faction, Message message)> CreateMessages(
-            IEnumerable<GameResult> results,
-            GameRoot game
-        )
+        public List<MessageDelivery> CreateMessages(IEnumerable<GameResult> results, GameRoot game)
         {
+            _deliveriesByMessage.Clear();
             GameResult[] completeResultArray =
                 results?.Where(result => result != null).ToArray() ?? Array.Empty<GameResult>();
-            SuppressNextMessageResult[] suppressions = completeResultArray
-                .OfType<SuppressNextMessageResult>()
+            SuppressNextAutomaticMessageResult[] suppressions = completeResultArray
+                .OfType<SuppressNextAutomaticMessageResult>()
                 .ToArray();
-            NarrativeMessageResult[] narrativeResults = completeResultArray
-                .OfType<NarrativeMessageResult>()
+            MessageRequestedResult[] requestedMessages = completeResultArray
+                .OfType<MessageRequestedResult>()
                 .ToArray();
             GameResult[] resultArray = completeResultArray
                 .Where(result =>
                     result.SuppressDefaultMessage != true
-                    && result is not NarrativeMessageResult
-                    && result is not SuppressNextMessageResult
+                    && result is not MessageRequestedResult
+                    && result is not SuppressNextAutomaticMessageResult
                 )
                 .ToArray();
             MissionCompletedResult[] missionResults = resultArray
@@ -69,8 +70,7 @@ namespace Rebellion.Game.Messages
             MissionSystemIntelligenceResult[] systemIntelligenceResults = resultArray
                 .OfType<MissionSystemIntelligenceResult>()
                 .ToArray();
-            List<(Faction faction, Message message)> deliveries =
-                new List<(Faction faction, Message message)>();
+            List<MessageDelivery> deliveries = new List<MessageDelivery>();
 
             AddArrivalMessages(resultArray.OfType<UnitArrivedResult>(), game, deliveries);
             AddFacilityLossMessages(
@@ -166,25 +166,27 @@ namespace Rebellion.Game.Messages
             );
 
             ApplyMessageSuppressions(deliveries, suppressions);
-            AddNarrativeEventMessages(narrativeResults, deliveries);
+            AddRequestedMessages(requestedMessages, deliveries);
 
             return deliveries;
         }
 
         /// <summary>
         /// Consumes each suppression by removing the first matching automatic delivery.
-        /// Authored narrative messages are appended only after this method runs.
+        /// Authored requested messages are appended only after this method runs.
         /// </summary>
         private static void ApplyMessageSuppressions(
-            List<(Faction faction, Message message)> deliveries,
-            IEnumerable<SuppressNextMessageResult> suppressions
+            List<MessageDelivery> deliveries,
+            IEnumerable<SuppressNextAutomaticMessageResult> suppressions
         )
         {
-            foreach (SuppressNextMessageResult suppression in suppressions)
+            foreach (SuppressNextAutomaticMessageResult suppression in suppressions)
             {
                 int index = deliveries.FindIndex(delivery =>
-                    delivery.message?.ResultType == suppression.MessageType
-                    && (suppression.Recipient == null || delivery.faction == suppression.Recipient)
+                    delivery.Message?.ResultType == suppression.MessageType
+                    && (
+                        suppression.Recipient == null || delivery.Recipient == suppression.Recipient
+                    )
                 );
                 if (index >= 0)
                     deliveries.RemoveAt(index);
@@ -200,7 +202,7 @@ namespace Rebellion.Game.Messages
         private void AddTraitorDiscoveryMessages(
             IEnumerable<TraitorDiscoveredResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (TraitorDiscoveredResult result in results)
@@ -265,7 +267,7 @@ namespace Rebellion.Game.Messages
                     destination,
                     fleet
                 ),
-                AdvisorNotificationCode.FleetArrived
+                AdvisorNotificationType.FleetArrived
             );
         }
 
@@ -299,7 +301,7 @@ namespace Rebellion.Game.Messages
                     destination,
                     shipArray.FirstOrDefault()
                 ),
-                AdvisorNotificationCode.UnitsArrived
+                AdvisorNotificationType.UnitsArrived
             );
         }
 
@@ -333,7 +335,7 @@ namespace Rebellion.Game.Messages
                     destination,
                     unitArray[0] as ISceneNode
                 ),
-                AdvisorNotificationCode.UnitsArrived
+                AdvisorNotificationType.UnitsArrived
             );
         }
 
@@ -395,7 +397,7 @@ namespace Rebellion.Game.Messages
             );
 
             return reporter == null
-                ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
+                ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
         }
 
@@ -425,7 +427,7 @@ namespace Rebellion.Game.Messages
                     destination,
                     headquarters
                 ),
-                AdvisorNotificationCode.UnitsArrived
+                AdvisorNotificationType.UnitsArrived
             );
         }
 
@@ -653,7 +655,7 @@ namespace Rebellion.Game.Messages
                     ),
                     planet
                 ),
-                AdvisorNotificationCode.Manufacturing
+                AdvisorNotificationType.Manufacturing
             );
         }
 
@@ -741,7 +743,7 @@ namespace Rebellion.Game.Messages
                 message.MissionInstanceID = result.MissionInstanceID;
 
             return reporter == null
-                ? WithAdvisorNotification(message, AdvisorNotificationCode.FieldPersonnel)
+                ? WithAdvisorNotification(message, AdvisorNotificationType.FieldPersonnel)
                 : WithAdvisorSubject(message, AdvisorSubjectNotification.Report, reporter);
         }
 
@@ -801,7 +803,7 @@ namespace Rebellion.Game.Messages
                 ),
                 target
             );
-            return WithAdvisorNotification(message, AdvisorNotificationCode.AgentReport);
+            return WithAdvisorNotification(message, AdvisorNotificationType.AgentReport);
         }
 
         /// <summary>
@@ -909,14 +911,14 @@ namespace Rebellion.Game.Messages
         }
 
         /// <summary>
-        /// Converts data-driven narrative results into faction message deliveries.
+        /// Converts requested message results into faction message deliveries.
         /// </summary>
-        private void AddNarrativeEventMessages(
-            IEnumerable<NarrativeMessageResult> results,
-            List<(Faction faction, Message message)> deliveries
+        private void AddRequestedMessages(
+            IEnumerable<MessageRequestedResult> results,
+            List<MessageDelivery> deliveries
         )
         {
-            foreach (NarrativeMessageResult result in results)
+            foreach (MessageRequestedResult result in results)
             {
                 if (result?.Recipient == null)
                     continue;
@@ -939,7 +941,7 @@ namespace Rebellion.Game.Messages
                                 Key = result.BackgroundImageKey,
                                 Path = result.BackgroundImagePath,
                             },
-                    AudioPath = result.AudioPath,
+                    AmbientAudioPath = result.AmbientAudioPath,
                 };
                 Message message = _templateBuilder.Build(
                     definition,
@@ -958,7 +960,7 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 ApplyAdvisorNotification(message, result.AdvisorNotification);
-                message.AdvisorSubjectTypeID = result.SubjectNode?.TypeID;
+                GetDelivery(message).AdvisorSubjectTypeID = result.SubjectNode?.TypeID;
                 message.EventLocationInstanceID = result.Location?.InstanceID;
                 message.NavigationTargetInstanceID = result.SubjectNode?.InstanceID;
                 AddDelivery(deliveries, result.Recipient, message);
@@ -968,28 +970,26 @@ namespace Rebellion.Game.Messages
         /// <summary>
         /// Applies a content-authored advisor notification to a narrative message.
         /// </summary>
-        private static void ApplyAdvisorNotification(
-            Message message,
-            AdvisorNotification notification
-        )
+        private void ApplyAdvisorNotification(Message message, AdvisorNotification notification)
         {
-            message.AdvisorNotification = notification;
+            MessageDelivery delivery = GetDelivery(message);
+            delivery.AdvisorNotification = notification;
             if (notification?.Preset.HasValue != true)
                 return;
 
             switch (notification.Preset.Value)
             {
                 case AdvisorNotificationPreset.SubjectReport:
-                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Report;
+                    delivery.AdvisorSubjectNotification = AdvisorSubjectNotification.Report;
                     break;
                 case AdvisorNotificationPreset.SubjectCaptured:
-                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Captured;
+                    delivery.AdvisorSubjectNotification = AdvisorSubjectNotification.Captured;
                     break;
                 case AdvisorNotificationPreset.SubjectReleased:
-                    message.AdvisorSubjectNotification = AdvisorSubjectNotification.Released;
+                    delivery.AdvisorSubjectNotification = AdvisorSubjectNotification.Released;
                     break;
                 default:
-                    message.AdvisorNotificationCode = (int)notification.Preset.Value;
+                    delivery.NotificationType = (AdvisorNotificationType)notification.Preset.Value;
                     break;
             }
         }
@@ -1189,10 +1189,10 @@ namespace Rebellion.Game.Messages
                 ),
                 result.Planet
             );
-            AdvisorNotificationCode notification =
+            AdvisorNotificationType notification =
                 faction?.InstanceID == controller?.InstanceID
-                    ? AdvisorNotificationCode.NegativePopularSupport
-                    : AdvisorNotificationCode.PositivePopularSupport;
+                    ? AdvisorNotificationType.NegativePopularSupport
+                    : AdvisorNotificationType.PositivePopularSupport;
             return WithAdvisorNotification(message, notification);
         }
 
@@ -1219,7 +1219,7 @@ namespace Rebellion.Game.Messages
                     ),
                     result.Planet
                 ),
-                AdvisorNotificationCode.NegativePopularSupport
+                AdvisorNotificationType.NegativePopularSupport
             );
         }
 
@@ -1253,7 +1253,7 @@ namespace Rebellion.Game.Messages
                     ),
                     result.Planet
                 ),
-                AdvisorNotificationCode.PositivePopularSupport
+                AdvisorNotificationType.PositivePopularSupport
             );
         }
 
@@ -1280,7 +1280,7 @@ namespace Rebellion.Game.Messages
                     ),
                     result.Planet
                 ),
-                AdvisorNotificationCode.PositivePopularSupport
+                AdvisorNotificationType.PositivePopularSupport
             );
         }
 
@@ -1315,7 +1315,7 @@ namespace Rebellion.Game.Messages
                     ),
                     result.Planet
                 ),
-                AdvisorNotificationCode.NegativePopularSupport
+                AdvisorNotificationType.NegativePopularSupport
             );
         }
 
@@ -1346,7 +1346,7 @@ namespace Rebellion.Game.Messages
                     ),
                     result.Planet
                 ),
-                AdvisorNotificationCode.NegativePopularSupport
+                AdvisorNotificationType.NegativePopularSupport
             );
         }
 
@@ -1607,10 +1607,10 @@ namespace Rebellion.Game.Messages
                     { "system", result.Planet?.GetDisplayName() ?? string.Empty },
                 }
             );
-            AdvisorNotificationCode notification =
+            AdvisorNotificationType notification =
                 faction?.InstanceID == result.AttackingFaction?.InstanceID
-                    ? AdvisorNotificationCode.None
-                    : AdvisorNotificationCode.Bombardment;
+                    ? AdvisorNotificationType.None
+                    : AdvisorNotificationType.Bombardment;
 
             return WithEventLocation(WithAdvisorNotification(message, notification), result.Planet);
         }
@@ -1646,10 +1646,10 @@ namespace Rebellion.Game.Messages
                 },
                 result.AttackingFaction
             );
-            AdvisorNotificationCode notification =
+            AdvisorNotificationType notification =
                 faction?.InstanceID == result.AttackingFaction?.InstanceID
-                    ? AdvisorNotificationCode.None
-                    : AdvisorNotificationCode.PlanetaryAssault;
+                    ? AdvisorNotificationType.None
+                    : AdvisorNotificationType.PlanetaryAssault;
 
             return WithEventLocation(WithAdvisorNotification(message, notification), result.Planet);
         }
@@ -1663,7 +1663,7 @@ namespace Rebellion.Game.Messages
         private void AddArrivalMessages(
             IEnumerable<UnitArrivedResult> arrivals,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             var shipGroups =
@@ -1830,7 +1830,7 @@ namespace Rebellion.Game.Messages
         private void AddFacilityLossMessages(
             IEnumerable<GameObjectDestroyedOnArrivalResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (GameObjectDestroyedOnArrivalResult result in results)
@@ -1853,7 +1853,7 @@ namespace Rebellion.Game.Messages
         /// </summary>
         private void AddSmugglingMessages(
             IEnumerable<SmugglingChangedResult> results,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (SmugglingChangedResult result in results)
@@ -1886,7 +1886,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
             IEnumerable<MissionSystemIntelligenceResult> systemIntelligenceResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             OfficerKilledResult[] killedArray =
@@ -1944,7 +1944,7 @@ namespace Rebellion.Game.Messages
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddRecruitmentMessages(
             IEnumerable<RecruitmentExhaustedResult> results,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (RecruitmentExhaustedResult result in results)
@@ -1968,7 +1968,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<MissionCompletedResult> missionResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             OfficerKilledResult[] killedArray =
@@ -2110,7 +2110,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<ForceExperienceResult> experienceResults,
             IEnumerable<ForceDiscoveryResult> discoveryResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             ForceDiscoveryResult[] discoveryArray = (
@@ -2154,7 +2154,7 @@ namespace Rebellion.Game.Messages
         private void AddSabotageMessages(
             IEnumerable<GameObjectSabotagedResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             var reportItems = (results ?? Enumerable.Empty<GameObjectSabotagedResult>())
@@ -2212,7 +2212,7 @@ namespace Rebellion.Game.Messages
         private void AddResearchMessages(
             IEnumerable<ResearchOrderedResult> orderedResults,
             IEnumerable<ResearchExhaustedResult> exhaustedResults,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (ResearchOrderedResult result in orderedResults)
@@ -2243,7 +2243,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<PlanetUprisingStartedResult> startedResults,
             IEnumerable<PlanetUprisingEndedResult> endedResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (PlanetNearUprisingResult result in nearResults)
@@ -2292,7 +2292,7 @@ namespace Rebellion.Game.Messages
         private void AddPopularSupportOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (PlanetOwnershipChangedResult result in results)
@@ -2342,7 +2342,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<PlanetOwnershipChangedResult> ownershipResults,
             IEnumerable<HeadquartersDestroyedResult> headquartersResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (PlanetOwnershipChangedResult result in ownershipResults)
@@ -2469,7 +2469,7 @@ namespace Rebellion.Game.Messages
         private void AddPlanetIncidentMessages(
             IEnumerable<PlanetIncidentResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (PlanetIncidentResult result in results)
@@ -2537,7 +2537,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<BlockadeChangedResult> blockadeResults,
             IEnumerable<EvacuationLossesResult> evacuationResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (BlockadeChangedResult result in blockadeResults)
@@ -2583,7 +2583,7 @@ namespace Rebellion.Game.Messages
         private void AddMaintenanceMessages(
             IEnumerable<GameObjectAutoscrappedResult> autoscrapResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             var reportItems = (autoscrapResults ?? Enumerable.Empty<GameObjectAutoscrappedResult>())
@@ -2642,7 +2642,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<ShipHullDamageResult> shipResults,
             IEnumerable<FighterDamageResult> fighterResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (ShipHullDamageResult result in shipResults)
@@ -2671,7 +2671,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<BombardmentResult> bombardmentResults,
             IEnumerable<PlanetaryAssaultResult> assaultResults,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (SpaceCombatResult result in battleResults)
@@ -2745,7 +2745,7 @@ namespace Rebellion.Game.Messages
         private void AddDeploymentMessages(
             IEnumerable<GameObjectDeployedResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             IManufacturable[] units = (results ?? Enumerable.Empty<GameObjectDeployedResult>())
@@ -2816,7 +2816,7 @@ namespace Rebellion.Game.Messages
         /// <param name="deliveries">The delivery list to append messages to.</param>
         private void AddManufacturingMessages(
             IEnumerable<ManufacturingIdleResult> results,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (ManufacturingIdleResult result in results)
@@ -2840,7 +2840,7 @@ namespace Rebellion.Game.Messages
         private void AddSeatOfPowerMessages(
             IEnumerable<SeatOfPowerChangedResult> results,
             GameRoot game,
-            List<(Faction faction, Message message)> deliveries
+            List<MessageDelivery> deliveries
         )
         {
             foreach (SeatOfPowerChangedResult result in results)
@@ -2863,16 +2863,24 @@ namespace Rebellion.Game.Messages
         /// <param name="deliveries">The delivery list to append to.</param>
         /// <param name="faction">The faction that should receive the message.</param>
         /// <param name="message">The message to deliver.</param>
-        private static void AddDelivery(
-            List<(Faction faction, Message message)> deliveries,
-            Faction faction,
-            Message message
-        )
+        private void AddDelivery(List<MessageDelivery> deliveries, Faction faction, Message message)
         {
             if (faction == null || message == null)
                 return;
 
-            deliveries.Add((faction, message));
+            MessageDelivery delivery = GetDelivery(message);
+            delivery.Recipient = faction;
+            deliveries.Add(delivery);
+        }
+
+        private MessageDelivery GetDelivery(Message message)
+        {
+            if (!_deliveriesByMessage.TryGetValue(message, out MessageDelivery delivery))
+            {
+                delivery = new MessageDelivery { Message = message };
+                _deliveriesByMessage.Add(message, delivery);
+            }
+            return delivery;
         }
 
         /// <summary>
@@ -2915,29 +2923,29 @@ namespace Rebellion.Game.Messages
         /// </summary>
         /// <param name="resultType">The message result type, or null.</param>
         /// <returns>The matching advisor notification code.</returns>
-        private static AdvisorNotificationCode GetDefaultAdvisorNotification(
+        private static AdvisorNotificationType GetDefaultAdvisorNotification(
             MessageResultType? resultType
         )
         {
             return resultType switch
             {
-                MessageResultType.FleetArrived => AdvisorNotificationCode.FleetArrived,
-                MessageResultType.ShipsArrived => AdvisorNotificationCode.UnitsArrived,
-                MessageResultType.ManufacturingIdle => AdvisorNotificationCode.Manufacturing,
+                MessageResultType.FleetArrived => AdvisorNotificationType.FleetArrived,
+                MessageResultType.ShipsArrived => AdvisorNotificationType.UnitsArrived,
+                MessageResultType.ManufacturingIdle => AdvisorNotificationType.Manufacturing,
                 MessageResultType.CapitalShipRepaired =>
-                    AdvisorNotificationCode.CapitalShipRepaired,
+                    AdvisorNotificationType.CapitalShipRepaired,
                 MessageResultType.StarfighterRepaired =>
-                    AdvisorNotificationCode.StarfighterRepaired,
-                MessageResultType.SabotageStrike => AdvisorNotificationCode.Maintenance,
-                MessageResultType.FacilityLost => AdvisorNotificationCode.Maintenance,
-                MessageResultType.ResearchComplete => AdvisorNotificationCode.Research,
-                MessageResultType.ResearchExhausted => AdvisorNotificationCode.Research,
-                MessageResultType.BlockadeInitiated => AdvisorNotificationCode.BlockadeInitiated,
-                MessageResultType.BlockadeDetected => AdvisorNotificationCode.BlockadeDetected,
-                MessageResultType.MaintenanceAutoscrap => AdvisorNotificationCode.Maintenance,
-                MessageResultType.Bombardment => AdvisorNotificationCode.Bombardment,
-                MessageResultType.PlanetaryAssault => AdvisorNotificationCode.PlanetaryAssault,
-                _ => AdvisorNotificationCode.None,
+                    AdvisorNotificationType.StarfighterRepaired,
+                MessageResultType.SabotageStrike => AdvisorNotificationType.Maintenance,
+                MessageResultType.FacilityLost => AdvisorNotificationType.Maintenance,
+                MessageResultType.ResearchComplete => AdvisorNotificationType.Research,
+                MessageResultType.ResearchExhausted => AdvisorNotificationType.Research,
+                MessageResultType.BlockadeInitiated => AdvisorNotificationType.BlockadeInitiated,
+                MessageResultType.BlockadeDetected => AdvisorNotificationType.BlockadeDetected,
+                MessageResultType.MaintenanceAutoscrap => AdvisorNotificationType.Maintenance,
+                MessageResultType.Bombardment => AdvisorNotificationType.Bombardment,
+                MessageResultType.PlanetaryAssault => AdvisorNotificationType.PlanetaryAssault,
+                _ => AdvisorNotificationType.None,
             };
         }
 
@@ -2947,13 +2955,13 @@ namespace Rebellion.Game.Messages
         /// <param name="message">The message to update.</param>
         /// <param name="notification">The advisor notification code.</param>
         /// <returns>The updated message, or null when no message was supplied.</returns>
-        private static Message WithAdvisorNotification(
+        private Message WithAdvisorNotification(
             Message message,
-            AdvisorNotificationCode notification
+            AdvisorNotificationType notification
         )
         {
             if (message != null)
-                message.AdvisorNotificationCode = (int)notification;
+                GetDelivery(message).NotificationType = notification;
 
             return message;
         }
@@ -2965,7 +2973,7 @@ namespace Rebellion.Game.Messages
         /// <param name="notification">The officer notification kind.</param>
         /// <param name="officer">The officer represented by the notification.</param>
         /// <returns>The updated message.</returns>
-        private static Message WithAdvisorSubject(
+        private Message WithAdvisorSubject(
             Message message,
             AdvisorSubjectNotification notification,
             Officer officer
@@ -2978,8 +2986,9 @@ namespace Rebellion.Game.Messages
             )
                 return message;
 
-            message.AdvisorSubjectNotification = notification;
-            message.AdvisorSubjectTypeID = officer.TypeID;
+            MessageDelivery delivery = GetDelivery(message);
+            delivery.AdvisorSubjectNotification = notification;
+            delivery.AdvisorSubjectTypeID = officer.TypeID;
             return message;
         }
 

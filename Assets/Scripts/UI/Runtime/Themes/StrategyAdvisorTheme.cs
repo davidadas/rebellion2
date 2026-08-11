@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Rebellion.Game.Messages;
+using Rebellion.Presentation.Advisor;
 using Rebellion.Util.Serialization;
 
 /// <summary>

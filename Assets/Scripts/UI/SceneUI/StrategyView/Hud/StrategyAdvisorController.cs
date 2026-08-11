@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Presentation.Advisor;
 using UnityEngine;
 
 /// <summary>
@@ -128,16 +130,16 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// <summary>
     /// Queues or replaces a pending notification derived from a delivered message.
     /// </summary>
-    /// <param name="message">The delivered message.</param>
+    /// <param name="delivery">The delivered message and transient presentation request.</param>
     /// <param name="currentTick">The current game tick.</param>
     /// <param name="notificationEnabled">Whether its message category permits notification.</param>
-    public void Notify(Message message, int currentTick, bool notificationEnabled)
+    public void Notify(MessageDeliveredResult delivery, int currentTick, bool notificationEnabled)
     {
-        if (message == null || theme == null || !notificationEnabled)
+        if (delivery?.Message == null || theme == null || !notificationEnabled)
             return;
 
         StrategyAdvisorNotificationTheme notification = ResolveNotification(
-            message,
+            delivery,
             out int lifetimeTicks
         );
         if (notification == null)
@@ -157,16 +159,16 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     }
 
     private StrategyAdvisorNotificationTheme ResolveNotification(
-        Message message,
+        MessageDeliveredResult delivery,
         out int lifetimeTicks
     )
     {
-        AdvisorNotification authored = message.AdvisorNotification;
+        AdvisorNotification authored = delivery.AdvisorNotification;
         StrategyAdvisorNotificationTheme preset = null;
         lifetimeTicks = 0;
         if (authored?.Preset.HasValue != false)
         {
-            int code = GetNotificationCode(theme, message);
+            int code = GetNotificationCode(theme, delivery);
             preset = theme.GetNotification(code, out lifetimeTicks);
         }
         if (authored?.HasOverrides != true)
@@ -345,21 +347,24 @@ public sealed class StrategyAdvisorController : IContextMenuReceiver
     /// Resolves the notification code for a message, honoring subject-specific mappings.
     /// </summary>
     /// <param name="advisorTheme">The active advisor theme.</param>
-    /// <param name="message">The delivered message.</param>
+    /// <param name="delivery">The delivered message and transient presentation request.</param>
     /// <returns>The notification code mapped by the message.</returns>
-    internal static int GetNotificationCode(StrategyAdvisorTheme advisorTheme, Message message)
+    internal static int GetNotificationCode(
+        StrategyAdvisorTheme advisorTheme,
+        MessageDeliveredResult delivery
+    )
     {
         if (advisorTheme == null)
             throw new ArgumentNullException(nameof(advisorTheme));
-        if (message == null)
-            throw new ArgumentNullException(nameof(message));
+        if (delivery == null)
+            throw new ArgumentNullException(nameof(delivery));
 
-        if (message.AdvisorSubjectNotification == AdvisorSubjectNotification.None)
-            return message.AdvisorNotificationCode;
+        if (delivery.AdvisorSubjectNotification == AdvisorSubjectNotification.None)
+            return (int)delivery.NotificationType;
 
         return advisorTheme.GetSubjectNotificationCode(
-            message.AdvisorSubjectTypeID,
-            message.AdvisorSubjectNotification
+            delivery.AdvisorSubjectTypeID,
+            delivery.AdvisorSubjectNotification
         );
     }
 

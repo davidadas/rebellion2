@@ -30,7 +30,7 @@ public sealed class GameManager
     // Unit Systems.
     private FleetSystem _fleetSystem;
     private PersonnelSystem _personnelSystem;
-    private OfficerEncounterSystem _officerEncounterSystem;
+    private DuelSystem _duelSystem;
     private MovementSystem _movementSystem;
     private HeadquartersSystem _headquartersSystem;
 
@@ -307,7 +307,7 @@ public sealed class GameManager
         _blockadeSystem = new BlockadeSystem(_game, _randomProvider);
         _fleetSystem = new FleetSystem(_game);
         _personnelSystem = new PersonnelSystem(_game);
-        _officerEncounterSystem = new OfficerEncounterSystem(_game, _randomProvider);
+        _duelSystem = new DuelSystem(_game, _randomProvider);
         _movementSystem = new MovementSystem(_game, _fogOfWarSystem, _fleetSystem, _blockadeSystem);
         _headquartersSystem = new HeadquartersSystem(_game, _movementSystem);
         _manufacturingSystem = new ManufacturingSystem(_game, _fleetSystem, _movementSystem);
@@ -332,7 +332,7 @@ public sealed class GameManager
             _randomProvider,
             _movementSystem,
             _uprisingSystem,
-            new MissionDefectionSystem(_game),
+            _officerLoyaltySystem,
             _gameData.MissionDefinitions
         );
         _spaceCombatSystem = new SpaceCombatSystem(_game, _randomProvider, _movementSystem);
@@ -371,7 +371,9 @@ public sealed class GameManager
         _resultProcessor.Subscribe<GameResult>(_eventSystem);
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
         _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
-        _resultProcessor.Subscribe<OfficerEncounterRequestedResult>(_officerEncounterSystem);
+        _resultProcessor.Subscribe<UnitActivationRequestedResult>(_movementSystem);
+        _resultProcessor.Subscribe<MissionReturnDestinationRequestedResult>(_movementSystem);
+        _resultProcessor.Subscribe<DuelRequestedResult>(_duelSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_officerLoyaltySystem);
@@ -385,6 +387,7 @@ public sealed class GameManager
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;
+        _messageSystem.ResultsProduced += HandleSystemResultsProduced;
         _maintenanceSystem.ResultsProduced += HandleSystemResultsProduced;
         _bombardmentSystem.ResultsProduced += HandleSystemResultsProduced;
         _planetaryAssaultSystem.ResultsProduced += HandleSystemResultsProduced;

@@ -14,6 +14,7 @@ namespace Rebellion.Game.Missions
         ShipResearch,
         TroopResearch,
         FacilityResearch,
+        Force,
     }
 
     /// <summary>

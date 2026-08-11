@@ -4,7 +4,9 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Messages;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Presentation.Advisor;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -161,7 +163,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
             theme.NotificationCodes.Add(
                 new StrategyAdvisorNotificationCodeTheme
                 {
-                    Code = (int)AdvisorNotificationCode.PositivePopularSupport,
+                    Code = (int)AdvisorNotificationType.PositivePopularSupport,
                     TableID = 10,
                     LifetimeTicks = 20,
                 }
@@ -195,10 +197,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 int playbackCount = 0;
                 view.PlaybackStarted += _ => playbackCount++;
                 controller.Notify(
-                    new Message(MessageType.Fleet, "Fleet arrived")
+                    new MessageDeliveredResult
                     {
-                        AdvisorNotificationCode = (int)
-                            AdvisorNotificationCode.PositivePopularSupport,
+                        Message = new Message(MessageType.Fleet, "Fleet arrived"),
+                        NotificationType = AdvisorNotificationType.PositivePopularSupport,
                     },
                     1,
                     true
@@ -251,8 +253,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Hud
                 view.PlaybackStarted += data => playback = data;
 
                 controller.Notify(
-                    new Message(MessageType.Advice, "Custom")
+                    new MessageDeliveredResult
                     {
+                        Message = new Message(MessageType.Advice, "Custom"),
                         AdvisorNotification = new AdvisorNotification
                         {
                             LifetimeTicks = 20,

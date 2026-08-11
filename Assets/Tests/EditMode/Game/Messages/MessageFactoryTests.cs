@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Presentation.Advisor;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.Messages
@@ -16,8 +17,11 @@ namespace Rebellion.Tests.Game.Messages
     [TestFixture]
     public class MessageFactoryTests
     {
+        private static readonly Dictionary<Message, MessageDelivery> DeliveriesByMessage =
+            new Dictionary<Message, MessageDelivery>();
+
         [Test]
-        public void CreateMessages_NarrativeEvent_UsesDataDefinedPresentation()
+        public void CreateMessages_RequestedMessage_UsesDataDefinedPresentation()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
             Officer luke = EntityFactory.CreateOfficer("luke", alliance.InstanceID);
@@ -30,7 +34,7 @@ namespace Rebellion.Tests.Game.Messages
                 CreateMessages(
                     game,
                     new MessageDefinition[0],
-                    new NarrativeMessageResult
+                    new MessageRequestedResult
                     {
                         Recipient = alliance,
                         SubjectNode = luke,
@@ -41,7 +45,7 @@ namespace Rebellion.Tests.Game.Messages
                         Body = "{subject} confronts {relatedSubject} for {faction}",
                         BackgroundImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
-                        AudioPath = "Story/dialogue",
+                        AmbientAudioPath = "Story/dialogue",
                         OfficerVoicePath = "Officers/luke/dialogue",
                         AdvisorNotification = new AdvisorNotification
                         {
@@ -57,15 +61,18 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Story/image", message.DisplayImagePath);
             Assert.IsNull(message.BackgroundImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);
-            Assert.AreEqual("Story/dialogue", message.AudioPath);
+            Assert.AreEqual("Story/dialogue", message.AmbientAudioPath);
             Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
             Assert.AreEqual(luke.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
-            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
         }
 
         [Test]
-        public void CreateMessages_SuppressNextMessage_RemovesOneAutomaticMessageOnly()
+        public void CreateMessages_SuppressNextAutomaticMessage_RemovesOneAutomaticMessageOnly()
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
             Officer luke = new Officer
@@ -75,7 +82,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(luke, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -98,12 +105,12 @@ namespace Rebellion.Tests.Game.Messages
                     IsCaptured = true,
                     Context = origin,
                 },
-                new SuppressNextMessageResult
+                new SuppressNextAutomaticMessageResult
                 {
                     MessageType = MessageResultType.OfficerCaptured,
                     Recipient = alliance,
                 },
-                new NarrativeMessageResult
+                new MessageRequestedResult
                 {
                     Recipient = alliance,
                     SubjectNode = luke,
@@ -116,12 +123,12 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(2, deliveries.Count);
             Assert.AreEqual(
                 1,
-                deliveries.Count(delivery => delivery.message.Title == "Generic capture")
+                deliveries.Count(delivery => delivery.Message.Title == "Generic capture")
             );
             Assert.AreEqual(
                 1,
                 deliveries.Count(delivery =>
-                    delivery.message.Title == "Jabba Captures Luke Skywalker"
+                    delivery.Message.Title == "Jabba Captures Luke Skywalker"
                 )
             );
         }
@@ -192,7 +199,7 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("Audio/SFX/StrategyView/Messages/test_voice", message.AudioPath);
+            Assert.AreEqual("Audio/SFX/StrategyView/Messages/test_voice", message.AmbientAudioPath);
         }
 
         [Test]
@@ -229,7 +236,7 @@ namespace Rebellion.Tests.Game.Messages
                 empire
             );
 
-            Assert.AreEqual("empire-voice", message.AudioPath);
+            Assert.AreEqual("empire-voice", message.AmbientAudioPath);
         }
 
         [Test]
@@ -337,7 +344,10 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Reporter",
                 OwnerInstanceID = alliance.InstanceID,
                 MessageImagePath = "reporter-image",
-                PersonnelArrivedVoicePaths = new List<string> { "arrival-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    PersonnelArrived = new List<string> { "arrival-voice" },
+                },
             };
             Officer passenger = new Officer
             {
@@ -377,8 +387,11 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Passenger", message.Body);
             Assert.AreEqual("reporter-image", message.OverlayImagePath);
             Assert.AreEqual("arrival-voice", message.OfficerVoicePath);
-            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
-            Assert.AreEqual(reporter.TypeID, message.AdvisorSubjectTypeID);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
+            Assert.AreEqual(reporter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
             Assert.AreEqual(reporter.InstanceID, message.NavigationTargetInstanceID);
         }
 
@@ -403,7 +416,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstOfficer, destination);
             game.AttachNode(secondOfficer, destination);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -447,7 +460,10 @@ namespace Rebellion.Tests.Game.Messages
                 TypeID = "OFAL003",
                 DisplayName = "Luke Skywalker",
                 OwnerInstanceID = alliance.InstanceID,
-                PersonnelArrivedVoicePaths = new List<string> { "arrival-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    PersonnelArrived = new List<string> { "arrival-voice" },
+                },
             };
             SpecialForces infiltrators = new SpecialForces
             {
@@ -503,7 +519,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -529,15 +545,12 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(1, deliveries.Count);
-            Assert.AreEqual("Units Arrive at Yavin", deliveries[0].message.Title);
+            Assert.AreEqual("Units Arrive at Yavin", deliveries[0].Message.Title);
             Assert.AreEqual(
                 "Units:\nInfantry Regiment\nX-wing Squadron",
-                deliveries[0].message.Body
+                deliveries[0].Message.Body
             );
-            Assert.AreEqual(
-                (int)AdvisorNotificationCode.UnitsArrived,
-                deliveries[0].message.AdvisorNotificationCode
-            );
+            Assert.AreEqual(AdvisorNotificationType.UnitsArrived, deliveries[0].NotificationType);
         }
 
         [Test]
@@ -594,7 +607,7 @@ namespace Rebellion.Tests.Game.Messages
                 BuildingType = BuildingType.Headquarters,
             };
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[] { allianceHeadquarters },
                 new UnitArrivedResult { Unit = imperialHeadquarters, Destination = destination }
@@ -674,7 +687,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstShip, fleet);
             game.AttachNode(secondShip, fleet);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -700,7 +713,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            List<Message> messages = deliveries.ConvertAll(delivery => delivery.message);
+            List<Message> messages = deliveries.ConvertAll(delivery => delivery.Message);
 
             Assert.AreEqual(2, messages.Count);
             Assert.IsTrue(messages.Any(message => message.Body == "body:Nebulon-B Frigate"));
@@ -730,7 +743,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstShip, fleet);
             game.AttachNode(secondShip, fleet);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -920,7 +933,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 TypeID = "OFEM001",
                 OwnerInstanceID = alliance.InstanceID,
-                SeatOfPowerVoicePaths = new List<string> { "seat-voice" },
+                VoiceSet = new OfficerVoiceSet { SeatOfPower = new List<string> { "seat-voice" } },
             };
 
             Message message = FirstMessageFor(
@@ -946,8 +959,11 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("body", message.Body);
             Assert.AreEqual("seat-image", message.DisplayImagePath);
             Assert.AreEqual("seat-voice", message.OfficerVoicePath);
-            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
-            Assert.AreEqual(officer.TypeID, message.AdvisorSubjectTypeID);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
+            Assert.AreEqual(officer.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -1000,7 +1016,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(shipyard, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1066,7 +1082,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(regiment, origin);
             game.AttachNode(secondRegiment, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1106,7 +1122,7 @@ namespace Rebellion.Tests.Game.Messages
                 new GameObjectDeployedResult { GameObject = secondRegiment }
             );
 
-            Message[] messages = deliveries.Select(delivery => delivery.message).ToArray();
+            Message[] messages = deliveries.Select(delivery => delivery.Message).ToArray();
             Assert.AreEqual(4, messages.Length);
             Assert.AreEqual("Nebulon-B Frigate Deployed at Coruscant", messages[0].Title);
             Assert.AreEqual(
@@ -1121,7 +1137,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             Assert.AreEqual("death-star-encyclopedia-image", messages[1].DisplayImagePath);
             Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
-            Assert.AreEqual("fighter-voice", messages[2].AudioPath);
+            Assert.AreEqual("fighter-voice", messages[2].AmbientAudioPath);
             Assert.AreEqual("fighter-encyclopedia-image", messages[2].DisplayImagePath);
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
@@ -1175,8 +1191,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(destination.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
             Assert.AreEqual(
-                (int)AdvisorNotificationCode.Maintenance,
-                message.AdvisorNotificationCode
+                AdvisorNotificationType.Maintenance,
+                DeliveryFor(message).NotificationType
             );
         }
 
@@ -1190,7 +1206,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = alliance.InstanceID,
             };
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1217,7 +1233,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 SmugglingDefinitions(),
                 new SmugglingChangedResult
@@ -1237,7 +1253,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Dissention among the population has allowed smugglers to begin operations on Yavin.  As a result, valuable resources are being lost.",
                 loss.Body
             );
-            Assert.AreEqual("empire-smuggling-voice", loss.AudioPath);
+            Assert.AreEqual("empire-smuggling-voice", loss.AmbientAudioPath);
             Assert.AreEqual(target.InstanceID, loss.NavigationTargetInstanceID);
 
             Message benefit = FirstMessageFor(deliveries, alliance);
@@ -1246,7 +1262,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Smugglers from Yavin are providing us with additional resources.",
                 benefit.Body
             );
-            Assert.AreEqual("alliance-smuggling-voice", benefit.AudioPath);
+            Assert.AreEqual("alliance-smuggling-voice", benefit.AmbientAudioPath);
             Assert.AreEqual(target.InstanceID, benefit.EventLocationInstanceID);
         }
 
@@ -1256,7 +1272,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 SmugglingDefinitions(),
                 new SmugglingChangedResult
@@ -1275,7 +1291,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Increasing support on Yavin has put an end to the smuggling losses there.",
                 lossEnd.Body
             );
-            Assert.IsNull(lossEnd.AudioPath);
+            Assert.IsNull(lossEnd.AmbientAudioPath);
 
             Message benefitEnd = FirstMessageFor(deliveries, alliance);
             Assert.AreEqual("Smuggling Benefits End", benefitEnd.Title);
@@ -1283,7 +1299,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Popular opinion on Yavin has caused smugglers from that system to withdraw their support.",
                 benefitEnd.Body
             );
-            Assert.IsNull(benefitEnd.AudioPath);
+            Assert.IsNull(benefitEnd.AmbientAudioPath);
         }
 
         [Test]
@@ -1467,7 +1483,10 @@ namespace Rebellion.Tests.Game.Messages
                 TypeID = "OFAL004",
                 DisplayName = "Recruiter",
                 OwnerInstanceID = alliance.InstanceID,
-                MissionSuccessVoicePaths = new List<string> { "success-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionSuccess = new List<string> { "success-voice" },
+                },
             };
             Officer recruit = new Officer
             {
@@ -1509,8 +1528,11 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual("Recruiter recruits Recruit", message.Title);
             Assert.AreEqual("success-voice", message.OfficerVoicePath);
-            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
-            Assert.AreEqual(recruiter.TypeID, message.AdvisorSubjectTypeID);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
+            Assert.AreEqual(recruiter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -1521,7 +1543,10 @@ namespace Rebellion.Tests.Game.Messages
             {
                 TypeID = "OFAL003",
                 OwnerInstanceID = alliance.InstanceID,
-                MissionFailureVoicePaths = new List<string> { "failure-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionFailure = new List<string> { "failure-voice" },
+                },
             };
             Mission mission = new SabotageMission
             {
@@ -1554,8 +1579,11 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual("failure-voice", message.OfficerVoicePath);
-            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
-            Assert.AreEqual(reporter.TypeID, message.AdvisorSubjectTypeID);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
+            Assert.AreEqual(reporter.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -1565,8 +1593,11 @@ namespace Rebellion.Tests.Game.Messages
             Officer reporter = new Officer
             {
                 OwnerInstanceID = alliance.InstanceID,
-                MissionFailureVoicePaths = new List<string> { "failure-voice" },
-                MissionAbortVoicePaths = new List<string> { "abort-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionFailure = new List<string> { "failure-voice" },
+                    MissionAbort = new List<string> { "abort-voice" },
+                },
             };
             Mission mission = new SabotageMission
             {
@@ -1707,7 +1738,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -1730,7 +1761,7 @@ namespace Rebellion.Tests.Game.Messages
                 }
             );
 
-            Assert.IsFalse(deliveries.Any(delivery => delivery.faction == alliance));
+            Assert.IsFalse(deliveries.Any(delivery => delivery.Recipient == alliance));
         }
 
         [Test]
@@ -1943,7 +1974,10 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Student",
                 OwnerInstanceID = alliance.InstanceID,
                 MessageImagePath = "student-card",
-                MissionSuccessVoicePaths = new List<string> { "student-success" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionSuccess = new List<string> { "student-success" },
+                },
             };
             Officer trainer = new Officer
             {
@@ -1951,7 +1985,10 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Trainer",
                 OwnerInstanceID = alliance.InstanceID,
                 MessageImagePath = "trainer-card",
-                MissionSuccessVoicePaths = new List<string> { "trainer-success" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    MissionSuccess = new List<string> { "trainer-success" },
+                },
             };
             JediTrainingMission mission = new JediTrainingMission
             {
@@ -2082,8 +2119,8 @@ namespace Rebellion.Tests.Game.Messages
                     },
                     new RecruitmentExhaustedResult { Faction = alliance, Planet = origin }
                 )
-                .Where(delivery => delivery.faction == alliance)
-                .Select(delivery => delivery.message)
+                .Where(delivery => delivery.Recipient == alliance)
+                .Select(delivery => delivery.Message)
                 .ToList();
 
             Assert.AreEqual(1, messages.Count);
@@ -2157,7 +2194,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(mission, target);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2200,8 +2237,8 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("agent-card", FirstMessageFor(deliveries, alliance).OverlayImagePath);
             Assert.IsNull(FirstMessageFor(deliveries, empire).OverlayImagePath);
             Assert.AreEqual(
-                (int)AdvisorNotificationCode.AgentReport,
-                FirstMessageFor(deliveries, empire).AdvisorNotificationCode
+                AdvisorNotificationType.AgentReport,
+                FirstDeliveryFor(deliveries, empire).NotificationType
             );
         }
 
@@ -2311,7 +2348,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(target, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2350,9 +2387,9 @@ namespace Rebellion.Tests.Game.Messages
             Assert.IsNull(captorMessage.OverlayImagePath);
             Assert.AreEqual(
                 AdvisorSubjectNotification.Captured,
-                captorMessage.AdvisorSubjectNotification
+                DeliveryFor(captorMessage).AdvisorSubjectNotification
             );
-            Assert.AreEqual(target.TypeID, captorMessage.AdvisorSubjectTypeID);
+            Assert.AreEqual(target.TypeID, DeliveryFor(captorMessage).AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -2364,7 +2401,10 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Agent",
                 OwnerInstanceID = alliance.InstanceID,
                 MessageImagePath = "agent-card",
-                RecoveredVoicePaths = new List<string> { "recovered-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    Recovered = new List<string> { "recovered-voice" },
+                },
             };
             game.AttachNode(officer, origin);
 
@@ -2405,7 +2445,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2429,8 +2469,8 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             List<Message> messages = deliveries
-                .Where(delivery => delivery.faction == alliance)
-                .Select(delivery => delivery.message)
+                .Where(delivery => delivery.Recipient == alliance)
+                .Select(delivery => delivery.Message)
                 .ToList();
             Assert.AreEqual(1, messages.Count);
             Assert.AreEqual("killed:Agent:Coruscant", messages[0].Title);
@@ -2541,7 +2581,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2571,7 +2611,7 @@ namespace Rebellion.Tests.Game.Messages
             };
             game.AttachNode(officer, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2672,7 +2712,10 @@ namespace Rebellion.Tests.Game.Messages
                 InstanceID = "discoverer",
                 OwnerInstanceID = alliance.InstanceID,
                 MessageImagePath = "luke-card",
-                TraitorDiscoveredVoicePaths = new List<string> { "luke-discovers-traitor" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    TraitorDiscovered = new List<string> { "luke-discovers-traitor" },
+                },
             };
             Officer traitor = new Officer
             {
@@ -2683,7 +2726,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(discoverer, origin);
             game.AttachNode(traitor, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2704,8 +2747,8 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(1, deliveries.Count);
-            Assert.AreSame(alliance, deliveries[0].faction);
-            Message message = deliveries[0].message;
+            Assert.AreSame(alliance, deliveries[0].Recipient);
+            Message message = deliveries[0].Message;
             Assert.AreEqual("Luke Skywalker Discovers Traitor", message.Title);
             Assert.AreEqual(
                 "Through the use of the Force, I have discovered that Lando Calrissian has betrayed us to the Empire.",
@@ -2716,8 +2759,11 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(origin.InstanceID, message.EventLocationInstanceID);
             Assert.AreEqual(traitor.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(discoverer.InstanceID, message.NavigationSecondaryTargetInstanceID);
-            Assert.AreEqual(discoverer.TypeID, message.AdvisorSubjectTypeID);
-            Assert.AreEqual(AdvisorSubjectNotification.Report, message.AdvisorSubjectNotification);
+            Assert.AreEqual(discoverer.TypeID, DeliveryFor(message).AdvisorSubjectTypeID);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.Report,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
         }
 
         [Test]
@@ -2733,7 +2779,10 @@ namespace Rebellion.Tests.Game.Messages
                 IsJediTrainer = true,
                 ForceValue = game.Config.Jedi.ForceQualifiedThreshold,
                 MessageImagePath = "discoverer-image",
-                ForceUserDiscoveredVoicePaths = new List<string> { "discovery-voice" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    ForceUserDiscovered = new List<string> { "discovery-voice" },
+                },
             };
             Officer candidate = new Officer
             {
@@ -2769,9 +2818,12 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("body:Candidate", message.Body);
             Assert.AreEqual("discoverer-image", message.OverlayImagePath);
             Assert.IsNull(message.OfficerVoicePath);
-            Assert.AreEqual(0, message.AdvisorNotificationCode);
-            Assert.AreEqual(AdvisorSubjectNotification.None, message.AdvisorSubjectNotification);
-            Assert.IsNull(message.AdvisorSubjectTypeID);
+            Assert.AreEqual(AdvisorNotificationType.None, DeliveryFor(message).NotificationType);
+            Assert.AreEqual(
+                AdvisorSubjectNotification.None,
+                DeliveryFor(message).AdvisorSubjectNotification
+            );
+            Assert.IsNull(DeliveryFor(message).AdvisorSubjectTypeID);
         }
 
         [Test]
@@ -2827,7 +2879,7 @@ namespace Rebellion.Tests.Game.Messages
                 OwnerInstanceID = empire.InstanceID,
             };
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -2843,10 +2895,10 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(1, deliveries.Count);
-            Assert.AreEqual("Saboteurs Strike at Yavin", deliveries[0].message.Title);
+            Assert.AreEqual("Saboteurs Strike at Yavin", deliveries[0].Message.Title);
             Assert.AreEqual(
                 "Destroyed at Yavin:\nShield Generator\nStormtrooper Regiment",
-                deliveries[0].message.Body
+                deliveries[0].Message.Body
             );
         }
 
@@ -2879,7 +2931,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             specific.GameObjectTypeID = deathStar.TypeID;
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[] { generic, specific },
                 new GameObjectSabotagedResult { SabotagedObject = deathStar, Context = target },
@@ -2888,10 +2940,10 @@ namespace Rebellion.Tests.Game.Messages
 
             Assert.AreEqual(2, deliveries.Count);
             Assert.IsTrue(
-                deliveries.Any(delivery => delivery.message.Title == "Death Star Sabotaged")
+                deliveries.Any(delivery => delivery.Message.Title == "Death Star Sabotaged")
             );
             Assert.IsTrue(
-                deliveries.Any(delivery => delivery.message.Body == "generic:Shield Generator")
+                deliveries.Any(delivery => delivery.Message.Body == "generic:Shield Generator")
             );
         }
 
@@ -3012,7 +3064,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3037,7 +3089,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3058,21 +3110,21 @@ namespace Rebellion.Tests.Game.Messages
             );
 
             Assert.AreEqual(1, deliveries.Count);
-            Assert.AreEqual(empire, deliveries[0].faction);
-            Assert.AreNotEqual(alliance, deliveries[0].faction);
-            Assert.AreEqual(MessageType.PopularSupport, deliveries[0].message.Type);
-            Assert.AreEqual("Yavin Near Uprising", deliveries[0].message.Title);
+            Assert.AreEqual(empire, deliveries[0].Recipient);
+            Assert.AreNotEqual(alliance, deliveries[0].Recipient);
+            Assert.AreEqual(MessageType.PopularSupport, deliveries[0].Message.Type);
+            Assert.AreEqual("Yavin Near Uprising", deliveries[0].Message.Title);
             Assert.AreEqual(
                 "Unrest has pushed Yavin close to uprising.",
-                deliveries[0].message.Body
+                deliveries[0].Message.Body
             );
-            Assert.AreEqual("empire-image", deliveries[0].message.DisplayImagePath);
-            Assert.AreEqual("empire-unrest", deliveries[0].message.AudioPath);
+            Assert.AreEqual("empire-image", deliveries[0].Message.DisplayImagePath);
+            Assert.AreEqual("empire-unrest", deliveries[0].Message.AmbientAudioPath);
             Assert.AreEqual(
-                (int)AdvisorNotificationCode.NegativePopularSupport,
-                deliveries[0].message.AdvisorNotificationCode
+                AdvisorNotificationType.NegativePopularSupport,
+                deliveries[0].NotificationType
             );
-            Assert.AreEqual(target.InstanceID, deliveries[0].message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, deliveries[0].Message.EventLocationInstanceID);
         }
 
         [Test]
@@ -3265,7 +3317,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Yavin neutral", message.Title);
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
             Assert.AreEqual("support-image", message.DisplayImagePath);
-            Assert.AreEqual("neutral-audio", message.AudioPath);
+            Assert.AreEqual("neutral-audio", message.AmbientAudioPath);
         }
 
         [Test]
@@ -3274,7 +3326,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
             target.OwnerInstanceID = null;
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3312,7 +3364,7 @@ namespace Rebellion.Tests.Game.Messages
             definition.PreviousOwnerInstanceID = empire.InstanceID;
             definition.NewOwnerInstanceID = alliance.InstanceID;
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[] { definition },
                 new PlanetOwnershipChangedResult
@@ -3349,7 +3401,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             definition.FactionInstanceID = alliance.InstanceID;
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[] { definition },
                 new HeadquartersDestroyedResult
@@ -3381,7 +3433,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             newRawMaterials.PlanetStat = PlanetStatType.RawMaterial;
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[] { newRawMaterials },
                 new PlanetIncidentResult
@@ -3537,7 +3589,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(shipyard, origin);
             game.AttachNode(regiment, origin);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3586,7 +3638,7 @@ namespace Rebellion.Tests.Game.Messages
             game.AttachNode(firstShipyard, origin);
             game.AttachNode(secondShipyard, second);
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 new[]
                 {
@@ -3612,7 +3664,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(2, deliveries.Count);
             CollectionAssert.AreEquivalent(
                 new[] { "maintenance:Coruscant", "maintenance:Corellia" },
-                deliveries.Select(delivery => delivery.message.Title)
+                deliveries.Select(delivery => delivery.Message.Title)
             );
         }
 
@@ -3622,7 +3674,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 SpaceBattleDefinitions(),
                 new SpaceCombatResult
@@ -3674,7 +3726,7 @@ namespace Rebellion.Tests.Game.Messages
                     definition.ResultType == MessageResultType.SpaceBattle
                 )
                 .ToArray();
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 definitions,
                 new SpaceCombatResult
@@ -3728,7 +3780,7 @@ namespace Rebellion.Tests.Game.Messages
                     definition.ResultType == MessageResultType.SpaceBattle
                 )
                 .ToArray();
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 definitions,
                 new SpaceCombatResult
@@ -3774,7 +3826,7 @@ namespace Rebellion.Tests.Game.Messages
                 target
             );
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 SpaceBattleDefinitions(),
                 new SpaceCombatResult
@@ -3803,7 +3855,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 BombardmentDefinitions(),
                 new BombardmentResult
@@ -3820,10 +3872,10 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageResultType.Bombardment, message.ResultType);
             Assert.AreEqual("owned-target:Alliance:Empire:Yavin", message.Title);
             Assert.AreEqual("target-losses-image", message.DisplayImagePath);
-            Assert.AreEqual(0, message.AdvisorNotificationCode);
+            Assert.AreEqual(AdvisorNotificationType.None, DeliveryFor(message).NotificationType);
             Assert.AreEqual(
-                (int)AdvisorNotificationCode.Bombardment,
-                defendingMessage.AdvisorNotificationCode
+                AdvisorNotificationType.Bombardment,
+                DeliveryFor(defendingMessage).NotificationType
             );
         }
 
@@ -3874,7 +3926,7 @@ namespace Rebellion.Tests.Game.Messages
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 AssaultDefinitions(),
                 new PlanetaryAssaultResult
@@ -3891,10 +3943,13 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual(MessageResultType.PlanetaryAssault, defenderMessage.ResultType);
             Assert.AreEqual("owned-failed:Alliance:Empire:Yavin", defenderMessage.Title);
             Assert.AreEqual("alliance-image", defenderMessage.DisplayImagePath);
-            Assert.AreEqual(0, attackerMessage.AdvisorNotificationCode);
             Assert.AreEqual(
-                (int)AdvisorNotificationCode.PlanetaryAssault,
-                defenderMessage.AdvisorNotificationCode
+                AdvisorNotificationType.None,
+                DeliveryFor(attackerMessage).NotificationType
+            );
+            Assert.AreEqual(
+                AdvisorNotificationType.PlanetaryAssault,
+                DeliveryFor(defenderMessage).NotificationType
             );
         }
 
@@ -3903,7 +3958,7 @@ namespace Rebellion.Tests.Game.Messages
         {
             (GameRoot game, _, _, _, Planet target) = BuildTwoFactionMessageScene();
 
-            List<(Faction faction, Message message)> deliveries = CreateMessages(
+            List<MessageDelivery> deliveries = CreateMessages(
                 game,
                 BombardmentDefinitions().Concat(AssaultDefinitions()).ToArray(),
                 new BombardmentResult { Planet = target },
@@ -3915,23 +3970,33 @@ namespace Rebellion.Tests.Game.Messages
             Assert.IsEmpty(deliveries);
         }
 
-        private static List<(Faction faction, Message message)> CreateMessages(
+        private static List<MessageDelivery> CreateMessages(
             GameRoot game,
             MessageDefinition[] definitions,
             params GameResult[] results
         )
         {
             MessageFactory factory = new MessageFactory(definitions);
-            return factory.CreateMessages(results, game);
+            List<MessageDelivery> deliveries = factory.CreateMessages(results, game);
+            foreach (MessageDelivery delivery in deliveries)
+                DeliveriesByMessage[delivery.Message] = delivery;
+            return deliveries;
         }
 
         private static Message FirstMessageFor(
-            IEnumerable<(Faction faction, Message message)> deliveries,
+            IEnumerable<MessageDelivery> deliveries,
             Faction faction
         )
         {
-            return deliveries.First(delivery => delivery.faction == faction).message;
+            return deliveries.First(delivery => delivery.Recipient == faction).Message;
         }
+
+        private static MessageDelivery FirstDeliveryFor(
+            IEnumerable<MessageDelivery> deliveries,
+            Faction faction
+        ) => deliveries.First(delivery => delivery.Recipient == faction);
+
+        private static MessageDelivery DeliveryFor(Message message) => DeliveriesByMessage[message];
 
         private static MessageDefinition Definition(
             MessageResultType resultType,
@@ -3972,8 +4037,8 @@ namespace Rebellion.Tests.Game.Messages
                         ? null
                         : new MessageBackgroundImage { Key = imageKey, Path = imagePath },
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),
-                AudioPath = voicePath,
-                AudioPaths = voicePaths ?? new Dictionary<string, string>(),
+                AmbientAudioPath = voicePath,
+                AmbientAudioPaths = voicePaths ?? new Dictionary<string, string>(),
                 PlanetDestroyed = planetDestroyed,
             };
 

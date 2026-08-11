@@ -19,16 +19,6 @@ namespace Rebellion.Game.Messages
 
         [PersistableAttribute]
         public string Path { get; set; }
-
-        public void Validate()
-        {
-            bool hasKey = !string.IsNullOrWhiteSpace(Key);
-            bool hasPath = !string.IsNullOrWhiteSpace(Path);
-            if (hasKey == hasPath)
-                throw new System.InvalidOperationException(
-                    "BackgroundImage requires exactly one of Key or Path."
-                );
-        }
     }
 
     /// <summary>
@@ -63,11 +53,9 @@ namespace Rebellion.Game.Messages
         public string Resolve(Officer officer, IRandomNumberProvider provider)
         {
             bool hasPath = !string.IsNullOrWhiteSpace(Path);
-            if (hasPath == Preset.HasValue)
-                throw new System.InvalidOperationException(
-                    "OfficerVoice requires exactly one of Path or Preset."
-                );
-            return hasPath ? Path : officer?.GetVoicePath(Preset.Value, provider);
+            if (hasPath)
+                return Path;
+            return Preset.HasValue ? officer?.GetVoicePath(Preset.Value, provider) : null;
         }
     }
 
@@ -219,8 +207,8 @@ namespace Rebellion.Game.Messages
         public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();
-        public string AudioPath { get; set; }
-        public Dictionary<string, string> AudioPaths { get; set; } =
+        public string AmbientAudioPath { get; set; }
+        public Dictionary<string, string> AmbientAudioPaths { get; set; } =
             new Dictionary<string, string>();
     }
 }

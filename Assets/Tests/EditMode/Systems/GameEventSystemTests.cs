@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.Contains(gameEvent, _game.EventPool);
-            Assert.IsFalse(_game.IsEventComplete(gameEvent.InstanceID));
+            Assert.IsFalse(_game.EventRuntime.IsComplete(gameEvent.InstanceID));
         }
 
         [Test]
@@ -50,7 +50,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-            Assert.IsTrue(_game.IsEventComplete(gameEvent.InstanceID));
+            Assert.IsTrue(_game.EventRuntime.IsComplete(gameEvent.InstanceID));
         }
 
         [Test]
@@ -63,7 +63,7 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
 
             Assert.Contains(gameEvent, _game.EventPool);
-            Assert.IsTrue(_game.IsEventComplete(gameEvent.InstanceID));
+            Assert.IsTrue(_game.EventRuntime.IsComplete(gameEvent.InstanceID));
         }
 
         [Test]
@@ -83,7 +83,10 @@ namespace Rebellion.Tests.Systems
             _game.CurrentTick = 12;
             _system.ProcessEvents(_game.EventPool);
             Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-            Assert.AreEqual(12, _game.GetEventState(gameEvent.InstanceID).LastExecutionTick);
+            Assert.AreEqual(
+                12,
+                _game.EventRuntime.GetState(gameEvent.InstanceID).LastExecutionTick
+            );
         }
 
         [Test]
@@ -97,11 +100,11 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
             _game.CurrentTick = 5;
             _system.ProcessEvents(_game.EventPool);
-            Assert.AreEqual(1, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
 
             _game.CurrentTick = 6;
             _system.ProcessEvents(_game.EventPool);
-            Assert.AreEqual(2, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
         [Test]
@@ -152,17 +155,13 @@ namespace Rebellion.Tests.Systems
             _system.HandleResults(
                 new[]
                 {
-                    new OfficerEncounterResult
-                    {
-                        EncounteredOfficer = luke,
-                        OpposingOfficer = vader,
-                    },
+                    new DuelResult { EncounteredOfficer = luke, OpposingOfficer = vader },
                 }
             );
 
-            Assert.AreEqual(1, _game.GetEventVariable("luke.heritage.revealed"));
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("luke.heritage.revealed"));
             Assert.IsFalse(_game.EventPool.Contains(gameEvent));
-            Assert.AreEqual(1, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(1, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
         [Test]
@@ -173,19 +172,7 @@ namespace Rebellion.Tests.Systems
                 InstanceID = "ARRIVAL_REACTION",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger
-                    {
-                        Event = "core:unit.arrived",
-                        Bindings = new List<GameEventTriggerBinding>
-                        {
-                            new GameEventTriggerBinding { Argument = "Unit", As = "unit" },
-                            new GameEventTriggerBinding
-                            {
-                                Argument = "Destination",
-                                As = "destination",
-                            },
-                        },
-                    },
+                    new UnitArrivedTrigger { Unit = "unit", Destination = "destination" },
                 },
                 Conditionals = new List<GameConditional> { new HasArrivalBindingsConditional() },
                 Actions = new List<GameAction>
@@ -204,11 +191,11 @@ namespace Rebellion.Tests.Systems
                 }
             );
 
-            Assert.AreEqual(1, _game.GetEventVariable("arrival.triggered"));
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("arrival.triggered"));
         }
 
         [Test]
-        public void HandleResults_SuppressNextMessage_EmitsExplicitInstruction()
+        public void HandleResults_SuppressNextAutomaticMessage_EmitsExplicitInstruction()
         {
             Officer luke = new Officer { InstanceID = "luke" };
             GameEvent gameEvent = new GameEvent
@@ -217,23 +204,11 @@ namespace Rebellion.Tests.Systems
                 RunsOnce = true,
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger
+                    new OfficerCaptureChangedTrigger
                     {
-                        Event = "core:officer.capture-changed",
-                        Bindings = new List<GameEventTriggerBinding>
-                        {
-                            new GameEventTriggerBinding { Argument = "Officer", As = "officer" },
-                            new GameEventTriggerBinding
-                            {
-                                Argument = "IsCaptured",
-                                As = "isCaptured",
-                            },
-                            new GameEventTriggerBinding
-                            {
-                                Argument = "SourceEventInstanceID",
-                                As = "sourceEvent",
-                            },
-                        },
+                        Officer = "officer",
+                        IsCaptured = "isCaptured",
+                        SourceEventInstanceID = "sourceEvent",
                     },
                 },
                 Conditionals = new List<GameConditional>
@@ -245,7 +220,7 @@ namespace Rebellion.Tests.Systems
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "jabba.captured.luke", Operand = 1 },
-                    new SuppressNextMessageAction
+                    new SuppressNextAutomaticMessageAction
                     {
                         MessageType = MessageResultType.OfficerCaptured,
                     },
@@ -279,9 +254,9 @@ namespace Rebellion.Tests.Systems
             Assert.IsFalse(palaceMission.SuppressDefaultMessage);
             Assert.AreEqual(
                 MessageResultType.OfficerCaptured,
-                reactions.OfType<SuppressNextMessageResult>().Single().MessageType
+                reactions.OfType<SuppressNextAutomaticMessageResult>().Single().MessageType
             );
-            Assert.AreEqual(1, _game.GetEventVariable("jabba.captured.luke"));
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("jabba.captured.luke"));
             Assert.IsFalse(_game.EventPool.Contains(gameEvent));
         }
 
@@ -291,10 +266,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "HIDDEN_MISSION_REPORT",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger { Event = "core:mission.completed" },
-                },
+                Triggers = new List<GameEventTrigger> { new MissionCompletedTrigger() },
             };
             _game.EventPool.Add(gameEvent);
             OfficerCaptureStateResult release = new OfficerCaptureStateResult
@@ -337,7 +309,7 @@ namespace Rebellion.Tests.Systems
                 },
             };
             _game.EventPool.Add(gameEvent);
-            OfficerEncounterResult encounter = new OfficerEncounterResult
+            DuelResult encounter = new DuelResult
             {
                 EncounteredOfficer = luke,
                 OpposingOfficer = vader,
@@ -347,8 +319,8 @@ namespace Rebellion.Tests.Systems
             _system.HandleResults(new[] { encounter });
 
             Assert.Contains(gameEvent, _game.EventPool);
-            Assert.AreEqual(2, _game.GetEventVariable("encounter.count"));
-            Assert.AreEqual(2, _game.GetEventState(gameEvent.InstanceID).ExecutionCount);
+            Assert.AreEqual(2, _game.EventRuntime.GetVariable("encounter.count"));
+            Assert.AreEqual(2, _game.EventRuntime.GetState(gameEvent.InstanceID).ExecutionCount);
         }
 
         [Test]
@@ -357,10 +329,7 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "RESULT_ONLY",
-                Triggers = new List<GameEventTrigger>
-                {
-                    new GameEventTrigger { Event = "core:officer.encountered" },
-                },
+                Triggers = new List<GameEventTrigger> { new DuelCompletedTrigger() },
                 Actions = new List<GameAction>
                 {
                     new SetEventVariableAction { Key = "unexpected", Operand = 1 },
@@ -370,13 +339,15 @@ namespace Rebellion.Tests.Systems
 
             _system.ProcessEvents(_game.EventPool);
 
-            Assert.Zero(_game.GetEventVariable("unexpected"));
+            Assert.Zero(_game.EventRuntime.GetVariable("unexpected"));
             Assert.Contains(gameEvent, _game.EventPool);
         }
 
         [Test]
-        public void ProcessEvents_PlanetScope_MaintainsIndependentPersistedSchedules()
+        public void ProcessEvents_EachPlanetTarget_MaintainsIndependentPersistedSchedules()
         {
+            _game.Factions.Add(new Faction { InstanceID = "alliance" });
+            _game.Factions.Add(new Faction { InstanceID = "empire" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet first = new Planet { InstanceID = "first" };
@@ -388,8 +359,11 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "SCOPED",
-                Scope = GameEventScope.EachPlanet,
-                PlanetScopeOwnership = PlanetScopeOwnership.Owned,
+                Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
+                Conditionals = new List<GameConditional>
+                {
+                    new IsOwnedConditional { PlanetBinding = "scope" },
+                },
                 Schedule = new GameEventScheduler
                 {
                     Every = new EveryTicks { Ticks = 20, InitialDelayTicks = 10 },
@@ -402,31 +376,36 @@ namespace Rebellion.Tests.Systems
             _system.ProcessEvents(_game.EventPool);
             Assert.AreEqual(
                 110,
-                _game.GetEventState(gameEvent.InstanceID, first.InstanceID).NextEligibleTick
+                _game.EventRuntime.GetState(gameEvent.InstanceID, first.InstanceID).NextEligibleTick
             );
             Assert.AreEqual(
                 110,
-                _game.GetEventState(gameEvent.InstanceID, second.InstanceID).NextEligibleTick
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID, second.InstanceID)
+                    .NextEligibleTick
             );
 
             _game.CurrentTick = 110;
             _system.ProcessEvents(_game.EventPool);
 
-            Assert.AreEqual(1, _game.GetEventVariable("scope.first"));
-            Assert.AreEqual(1, _game.GetEventVariable("scope.second"));
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.first"));
+            Assert.AreEqual(1, _game.EventRuntime.GetVariable("scope.second"));
             Assert.AreEqual(
                 130,
-                _game.GetEventState(gameEvent.InstanceID, first.InstanceID).NextEligibleTick
+                _game.EventRuntime.GetState(gameEvent.InstanceID, first.InstanceID).NextEligibleTick
             );
             Assert.AreEqual(
                 130,
-                _game.GetEventState(gameEvent.InstanceID, second.InstanceID).NextEligibleTick
+                _game
+                    .EventRuntime.GetState(gameEvent.InstanceID, second.InstanceID)
+                    .NextEligibleTick
             );
         }
 
         [Test]
-        public void ProcessEvents_OwnedPlanetScope_ArmsWhenNeutralPlanetBecomesOwned()
+        public void ProcessEvents_EachOwnedPlanetTarget_ArmsWhenNeutralPlanetBecomesOwned()
         {
+            _game.Factions.Add(new Faction { InstanceID = "alliance" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
@@ -434,8 +413,11 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "OWNED_ONLY",
-                Scope = GameEventScope.EachPlanet,
-                PlanetScopeOwnership = PlanetScopeOwnership.Owned,
+                Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
+                Conditionals = new List<GameConditional>
+                {
+                    new IsOwnedConditional { PlanetBinding = "scope" },
+                },
                 Schedule = new GameEventScheduler
                 {
                     Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
@@ -446,20 +428,27 @@ namespace Rebellion.Tests.Systems
 
             _game.CurrentTick = 100;
             _system.ProcessEvents(_game.EventPool);
-            Assert.IsFalse(_game.EventStates.ContainsKey("OWNED_ONLY"));
+            Assert.IsFalse(
+                _game.EventRuntime.GetState(gameEvent.InstanceID, planet.InstanceID).IsInitialized
+            );
 
             planet.OwnerInstanceID = "alliance";
             _game.CurrentTick = 120;
             _system.ProcessEvents(_game.EventPool);
 
-            GameEventState state = _game.GetEventState(gameEvent.InstanceID, planet.InstanceID);
+            GameEventState state = _game.EventRuntime.GetState(
+                gameEvent.InstanceID,
+                planet.InstanceID
+            );
             Assert.AreEqual(150, state.NextEligibleTick);
             Assert.Zero(state.ExecutionCount);
         }
 
         [Test]
-        public void ProcessEvents_OwnedPlanetScope_RearmsAfterNeutralInterval()
+        public void ProcessEvents_EachOwnedPlanetTarget_RearmsAfterNeutralInterval()
         {
+            _game.Factions.Add(new Faction { InstanceID = "alliance" });
+            _game.Factions.Add(new Faction { InstanceID = "empire" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };
             _game.AttachNode(system, _game.Galaxy);
             Planet planet = new Planet { InstanceID = "planet" };
@@ -468,8 +457,11 @@ namespace Rebellion.Tests.Systems
             GameEvent gameEvent = new GameEvent
             {
                 InstanceID = "OWNED_ONLY",
-                Scope = GameEventScope.EachPlanet,
-                PlanetScopeOwnership = PlanetScopeOwnership.Owned,
+                Target = new GameEventTarget { EachPlanet = new EachPlanetTarget() },
+                Conditionals = new List<GameConditional>
+                {
+                    new IsOwnedConditional { PlanetBinding = "scope" },
+                },
                 Schedule = new GameEventScheduler
                 {
                     Every = new EveryTicks { Ticks = 30, InitialDelayTicks = 30 },
@@ -487,7 +479,10 @@ namespace Rebellion.Tests.Systems
             _game.CurrentTick = 120;
             _system.ProcessEvents(_game.EventPool);
 
-            GameEventState state = _game.GetEventState(gameEvent.InstanceID, planet.InstanceID);
+            GameEventState state = _game.EventRuntime.GetState(
+                gameEvent.InstanceID,
+                planet.InstanceID
+            );
             Assert.IsTrue(state.IsScopeActive);
             Assert.AreEqual(150, state.NextEligibleTick);
             Assert.Zero(state.ExecutionCount);
@@ -513,15 +508,7 @@ namespace Rebellion.Tests.Systems
         private static List<GameEventTrigger> EncounterTrigger() =>
             new List<GameEventTrigger>
             {
-                new GameEventTrigger
-                {
-                    Event = "core:officer.encountered",
-                    Bindings = new List<GameEventTriggerBinding>
-                    {
-                        new GameEventTriggerBinding { Argument = "Officer", As = "officer" },
-                        new GameEventTriggerBinding { Argument = "Opponent", As = "opponent" },
-                    },
-                },
+                new DuelCompletedTrigger { Officer = "officer", Opponent = "opponent" },
             };
 
         private static EvaluateBindingConditional BindingEquals(string name, string value) =>
@@ -534,18 +521,13 @@ namespace Rebellion.Tests.Systems
 
         private sealed class RecordScopedPlanetAction : GameAction
         {
-            public override List<GameResult> Execute(GameRoot game) => new List<GameResult>();
-
-            public override List<GameResult> Execute(
-                GameRoot game,
-                IRandomNumberProvider provider,
-                GameEventExecutionContext context
-            )
+            public override List<GameResult> Execute(GameActionContext context)
             {
-                Planet planet = context.GetScopeTarget<Planet>();
-                game.SetEventVariable(
+                GameRoot game = context.Game;
+                Planet planet = context.Activation.GetScopeTarget<Planet>();
+                game.EventRuntime.SetVariable(
                     $"scope.{planet.InstanceID}",
-                    game.GetEventVariable($"scope.{planet.InstanceID}") + 1
+                    game.EventRuntime.GetVariable($"scope.{planet.InstanceID}") + 1
                 );
                 return new List<GameResult>();
             }
@@ -553,11 +535,9 @@ namespace Rebellion.Tests.Systems
 
         private sealed class HasArrivalBindingsConditional : GameConditional
         {
-            public override bool IsMet(GameRoot game) => false;
-
-            public override bool IsMet(GameRoot game, GameEventExecutionContext context) =>
-                context.GetBinding<Officer>("unit") != null
-                && context.GetBinding<Planet>("destination") != null;
+            public override bool IsMet(GameConditionContext context) =>
+                context.Activation?.GetBinding<Officer>("unit") != null
+                && context.Activation.GetBinding<Planet>("destination") != null;
         }
     }
 }

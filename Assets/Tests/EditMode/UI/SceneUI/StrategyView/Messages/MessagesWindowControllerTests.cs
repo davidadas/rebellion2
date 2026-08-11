@@ -22,7 +22,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         {
             Message message = new Message(MessageType.Fleet, "Fleet Arrived")
             {
-                AudioPath = "Audio/SFX/StrategyView/Messages/fleet",
+                AmbientAudioPath = "Audio/SFX/StrategyView/Messages/fleet",
                 OfficerVoicePath = "Audio/Voices/Officers/officer",
             };
 

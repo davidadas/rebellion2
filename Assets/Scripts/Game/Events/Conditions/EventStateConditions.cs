@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Linq;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -23,7 +22,7 @@ namespace Rebellion.Game.Events
     /// A <see cref="GameConditional"/> that is met when the current tick count satisfies a comparison against a target value.
     /// </summary>
     [PersistableObject(Name = "TickCount")]
-    public class TickCountConditional : GameConditional
+    public sealed class TickCountConditional : GameConditional
     {
         [PersistableAttribute]
         public EventVariableComparison Comparison { get; set; }
@@ -34,10 +33,11 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Compares the current tick against the authored tick count.
         /// </summary>
-        /// <param name="game">The game state providing the current tick.</param>
+        /// <param name="context">The context providing the current game state.</param>
         /// <returns>True when the tick comparison holds; otherwise false.</returns>
-        public override bool IsMet(GameRoot game)
+        public override bool IsMet(GameConditionContext context)
         {
+            GameRoot game = context.Game;
             return Comparison switch
             {
                 EventVariableComparison.Equal => game.CurrentTick == Ticks,
@@ -57,7 +57,7 @@ namespace Rebellion.Game.Events
     /// A <see cref="GameConditional"/> that is met when the specified game event has been completed.
     /// </summary>
     [PersistableObject(Name = "IsEventComplete")]
-    public class IsEventCompleteConditional : GameConditional
+    public sealed class IsEventCompleteConditional : GameConditional
     {
         [PersistableAttribute]
         public string EventInstanceID { get; set; }
@@ -65,11 +65,11 @@ namespace Rebellion.Game.Events
         /// <summary>
         /// Checks whether the event with the configured instance ID has been marked complete.
         /// </summary>
-        /// <param name="game">The game state tracking completed events.</param>
+        /// <param name="context">The context providing event runtime state.</param>
         /// <returns>True if the event is complete; otherwise false.</returns>
-        public override bool IsMet(GameRoot game)
+        public override bool IsMet(GameConditionContext context)
         {
-            return game.IsEventComplete(EventInstanceID);
+            return context.Game.EventRuntime.IsComplete(EventInstanceID);
         }
     }
 
@@ -77,7 +77,7 @@ namespace Rebellion.Game.Events
     /// Compares a persistent, data-defined event variable with an authored value.
     /// </summary>
     [PersistableObject(Name = "EvaluateEventVariable")]
-    public class EvaluateEventVariableConditional : GameConditional
+    public sealed class EvaluateEventVariableConditional : GameConditional
     {
         [PersistableAttribute]
         public string Key { get; set; }
@@ -89,9 +89,9 @@ namespace Rebellion.Game.Events
         public int Value { get; set; }
 
         /// <inheritdoc />
-        public override bool IsMet(GameRoot game)
+        public override bool IsMet(GameConditionContext context)
         {
-            int current = game.GetEventVariable(Key);
+            int current = context.Game.EventRuntime.GetVariable(Key);
             return Comparison switch
             {
                 EventVariableComparison.Equal => current == Value,
@@ -122,11 +122,12 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string Value { get; set; }
 
-        public override bool IsMet(GameRoot game) => false;
-
-        public override bool IsMet(GameRoot game, GameEventExecutionContext context)
+        public override bool IsMet(GameConditionContext context)
         {
-            if (context == null || !context.TryGetBinding(Name, out object actual))
+            if (
+                context.Activation == null
+                || !context.Activation.TryGetBinding(Name, out object actual)
+            )
                 return false;
 
             if (actual is IEnumerable values && actual is not string)
@@ -163,13 +164,6 @@ namespace Rebellion.Game.Events
         {
             if (actual is IGameEntity entity)
             {
-                if (entity.InstanceID == expected)
-                    return 0;
-                if (
-                    actual is ISceneNode node
-                    && node.GetChildren<ISceneNode>(child => child.InstanceID == expected).Any()
-                )
-                    return 0;
                 return string.Compare(entity.InstanceID, expected, StringComparison.Ordinal);
             }
             if (actual is bool boolean && bool.TryParse(expected, out bool expectedBoolean))

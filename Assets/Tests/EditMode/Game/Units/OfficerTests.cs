@@ -98,41 +98,12 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void GetEffectiveRating_CombatNegativeModifier_CannotGoBelowZero()
-        {
-            Officer officer = new Officer();
-            officer.SetBaseRating(OfficerRating.Combat, 50);
-            officer.SetRatingModifier("penalty", OfficerRating.Combat, -90);
-
-            Assert.AreEqual(0, officer.GetEffectiveRating(OfficerRating.Combat));
-        }
-
-        [Test]
         public void GetEffectiveRating_Leadership_DoesNotApplyForceRankBonus()
         {
             Officer officer = new Officer { ForceValue = 50, ForceTrainingAdjustment = 50 };
             officer.SetBaseRating(OfficerRating.Leadership, 40);
 
             Assert.AreEqual(40, officer.GetEffectiveRating(OfficerRating.Leadership));
-        }
-
-        [Test]
-        public void SetRatingModifier_StableKeys_ReconcilesWithoutMutatingBaseRating()
-        {
-            Officer officer = new Officer();
-            officer.SetBaseRating(OfficerRating.Leadership, 40);
-
-            officer.SetRatingModifier("seat-of-power", OfficerRating.Leadership, 50);
-            officer.SetRatingModifier("seat-of-power", OfficerRating.Leadership, 50);
-            officer.SetRatingModifier("command", OfficerRating.Leadership, 10);
-
-            Assert.AreEqual(100, officer.GetEffectiveRating(OfficerRating.Leadership));
-            Assert.AreEqual(40, officer.GetBaseRating(OfficerRating.Leadership));
-            Assert.AreEqual(2, officer.RatingModifiers.Count);
-
-            officer.RemoveRatingModifier("seat-of-power");
-
-            Assert.AreEqual(50, officer.GetEffectiveRating(OfficerRating.Leadership));
         }
 
         [Test]
@@ -214,15 +185,6 @@ namespace Rebellion.Tests.Game.Units
                 CanBetray = false,
                 MissionReturnParentInstanceID = "return-parent",
                 MissionReturnLocationInstanceID = "return-location",
-                RatingModifiers = new List<OfficerRatingModifier>
-                {
-                    new OfficerRatingModifier
-                    {
-                        Key = "game-event:seat-of-power:effect:0",
-                        Rating = OfficerRating.Leadership,
-                        Amount = 50,
-                    },
-                },
             };
 
             string xml = SerializationHelper.Serialize(originalOfficer);
@@ -268,8 +230,7 @@ namespace Rebellion.Tests.Game.Units
                 originalOfficer.MissionReturnLocationInstanceID,
                 deserializedOfficer.MissionReturnLocationInstanceID
             );
-            Assert.AreEqual(1, deserializedOfficer.RatingModifiers.Count);
-            Assert.AreEqual(75, deserializedOfficer.GetEffectiveRating(OfficerRating.Leadership));
+            Assert.AreEqual(25, deserializedOfficer.GetEffectiveRating(OfficerRating.Leadership));
             Assert.AreEqual(
                 originalOfficer.GetBaseRating(OfficerRating.Espionage),
                 deserializedOfficer.GetBaseRating(OfficerRating.Espionage),
@@ -412,7 +373,10 @@ namespace Rebellion.Tests.Game.Units
         {
             Officer officer = new Officer
             {
-                PersonnelArrivedVoicePaths = new List<string> { "configured" },
+                VoiceSet = new OfficerVoiceSet
+                {
+                    PersonnelArrived = new List<string> { "configured" },
+                },
             };
 
             Assert.AreEqual(

@@ -59,7 +59,7 @@ namespace Rebellion.Tests.Content
                 "LUKE_VISITS_YODA",
                 gameEvent.Conditionals.OfType<IsEventCompleteConditional>().Single().EventInstanceID
             );
-            Assert.IsTrue(gameEvent.Actions.OfType<ReturnFromVoidAction>().Any());
+            Assert.IsTrue(gameEvent.Actions.OfType<ActivateFromVoidAction>().Any());
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
             Assert.AreEqual("Luke Leaves Dagobah", message.Subject);
@@ -75,7 +75,7 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual("LUKE_SKYWALKER", voiceSet.OfficerInstanceID);
             StringAssert.EndsWith(
                 "/advanced-personnel-arrived-01",
-                voiceSet.PersonnelArrivedVoicePaths.First()
+                voiceSet.VoiceSet.PersonnelArrived.First()
             );
         }
 
@@ -109,9 +109,9 @@ namespace Rebellion.Tests.Content
                     .Single();
                 SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
 
-                Assert.AreEqual("core:mission.completed", gameEvent.Triggers.Single().Event);
-                SuppressNextMessageAction suppression = gameEvent
-                    .Actions.OfType<SuppressNextMessageAction>()
+                Assert.IsInstanceOf<MissionCompletedTrigger>(gameEvent.Triggers.Single());
+                SuppressNextAutomaticMessageAction suppression = gameEvent
+                    .Actions.OfType<SuppressNextAutomaticMessageAction>()
                     .Single();
                 Assert.AreEqual(MessageResultType.OfficerCaptured, suppression.MessageType);
                 Assert.AreEqual("FNALL1", suppression.RecipientFactionInstanceID);
@@ -132,7 +132,7 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(
                 MessageResultType.OfficerCaptured,
                 hanCapture
-                    .Actions.OfType<SuppressNextMessageAction>()
+                    .Actions.OfType<SuppressNextAutomaticMessageAction>()
                     .Single(action => action.MessageType == MessageResultType.OfficerCaptured)
                     .MessageType
             );
@@ -148,15 +148,18 @@ namespace Rebellion.Tests.Content
                 candidate.InstanceID == "PALACE_RESCUE_REPORT_POLICY"
             );
             Assert.IsTrue(reportPolicy.Repeats);
-            Assert.AreEqual("core:mission.completed", reportPolicy.Triggers.Single().Event);
+            Assert.IsInstanceOf<MissionCompletedTrigger>(reportPolicy.Triggers.Single());
             Assert.AreEqual(
                 MessageResultType.MissionReport,
-                reportPolicy.Actions.OfType<SuppressNextMessageAction>().Single().MessageType
+                reportPolicy
+                    .Actions.OfType<SuppressNextAutomaticMessageAction>()
+                    .Single()
+                    .MessageType
             );
             CollectionAssert.AreEquivalent(
                 expectedEvents.Select(expected => expected.sourceEventId),
                 reportPolicy
-                    .Conditionals.OfType<OrConditional>()
+                    .Conditionals.OfType<AnyConditional>()
                     .Single()
                     .Conditionals.OfType<EvaluateBindingConditional>()
                     .Select(source => source.Value)
@@ -212,9 +215,9 @@ namespace Rebellion.Tests.Content
                 GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                     candidate.InstanceID == effectsEventId
                 );
-                Assert.AreEqual("core:officer.encountered", gameEvent.Triggers.Single().Event);
+                Assert.IsInstanceOf<DuelCompletedTrigger>(gameEvent.Triggers.Single());
                 Assert.IsEmpty(
-                    gameEvent.Actions.OfType<SuppressNextMessageAction>(),
+                    gameEvent.Actions.OfType<SuppressNextAutomaticMessageAction>(),
                     effectsEventId
                 );
                 EvaluateBindingConditional[] bindings = gameEvent
@@ -236,7 +239,7 @@ namespace Rebellion.Tests.Content
                 SendMessageAction report = gameEvent.Actions.OfType<SendMessageAction>().Single();
                 Assert.AreEqual(subjectId, report.SubjectInstanceID);
                 Assert.AreEqual(opponentId, report.RelatedSubjectInstanceID);
-                Assert.AreEqual(5, report.BodySegments.Count);
+                Assert.AreEqual(5, report.ConditionalBodies.Count);
             }
         }
 
@@ -284,7 +287,7 @@ namespace Rebellion.Tests.Content
                 .ToArray();
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
             Assert.IsTrue(gameEvent.Repeats);
-            Assert.AreEqual("core:unit.arrived", gameEvent.Triggers.Single().Event);
+            Assert.IsInstanceOf<UnitArrivedTrigger>(gameEvent.Triggers.Single());
             Assert.AreEqual(
                 "EMPEROR_PALPATINE",
                 arrival.Single(binding => binding.Name == "unit").Value

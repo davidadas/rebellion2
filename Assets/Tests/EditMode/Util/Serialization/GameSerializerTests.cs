@@ -10,6 +10,7 @@ using Rebellion.Game.Events;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Presentation.Advisor;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Util.Serialization
@@ -271,7 +272,7 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_SuppressNextMessage_RoundTripsExplicitAction()
+        public void Serialize_SuppressNextAutomaticMessage_RoundTripsExplicitAction()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
             GameEvent gameEvent = new GameEvent
@@ -279,18 +280,7 @@ namespace Rebellion.Tests.Util.Serialization
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new GameEventTrigger
-                    {
-                        Event = "core:officer.capture-changed",
-                        Bindings = new List<GameEventTriggerBinding>
-                        {
-                            new GameEventTriggerBinding
-                            {
-                                Argument = "SourceEventInstanceID",
-                                As = "sourceEvent",
-                            },
-                        },
-                    },
+                    new OfficerCaptureChangedTrigger { SourceEventInstanceID = "sourceEvent" },
                 },
                 Conditionals = new List<GameConditional>
                 {
@@ -303,7 +293,7 @@ namespace Rebellion.Tests.Util.Serialization
                 },
                 Actions = new List<GameAction>
                 {
-                    new SuppressNextMessageAction
+                    new SuppressNextAutomaticMessageAction
                     {
                         MessageType = MessageResultType.OfficerCaptured,
                         RecipientFactionInstanceID = "FNALL1",
@@ -315,15 +305,15 @@ namespace Rebellion.Tests.Util.Serialization
             GameEvent deserialized = (GameEvent)DeserializeFromString(serializer, serializedXml);
 
             StringAssert.Contains(
-                "<SuppressNextMessage Type=\"OfficerCaptured\" RecipientFactionInstanceID=\"FNALL1\"",
+                "<SuppressNextAutomaticMessage Type=\"OfficerCaptured\" RecipientFactionInstanceID=\"FNALL1\"",
                 serializedXml
             );
             StringAssert.Contains(
                 "<EvaluateBinding Name=\"sourceEvent\" Comparison=\"Equal\" Value=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
                 serializedXml
             );
-            SuppressNextMessageAction action =
-                deserialized.Actions.Single() as SuppressNextMessageAction;
+            SuppressNextAutomaticMessageAction action =
+                deserialized.Actions.Single() as SuppressNextAutomaticMessageAction;
             Assert.IsNotNull(action);
             Assert.AreEqual(MessageResultType.OfficerCaptured, action.MessageType);
             Assert.AreEqual("FNALL1", action.RecipientFactionInstanceID);
@@ -334,7 +324,7 @@ namespace Rebellion.Tests.Util.Serialization
         }
 
         [Test]
-        public void Serialize_GameEventNarrativeActions_RoundTripsAliasesAndPresentation()
+        public void Serialize_GameEventMessageActions_RoundTripsAliasesAndPresentation()
         {
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
             GameEvent gameEvent = new GameEvent
@@ -358,11 +348,11 @@ namespace Rebellion.Tests.Util.Serialization
                                         MessageType = MessageType.Advice,
                                         Subject = "{subject}",
                                         Body = "At {location}",
-                                        BodySegments = new List<NarrativeBodySegment>
+                                        ConditionalBodies = new List<ConditionalMessageBody>
                                         {
-                                            new NarrativeBodySegment
+                                            new ConditionalMessageBody
                                             {
-                                                Conditionals = new List<GameConditional>
+                                                Conditions = new List<GameConditional>
                                                 {
                                                     new IsInjuredConditional
                                                     {
@@ -391,7 +381,7 @@ namespace Rebellion.Tests.Util.Serialization
                     },
                     new IfAction
                     {
-                        Conditionals = new List<GameConditional>
+                        Conditions = new List<GameConditional>
                         {
                             new EvaluateEventVariableConditional
                             {
@@ -400,23 +390,21 @@ namespace Rebellion.Tests.Util.Serialization
                                 Value = 1,
                             },
                         },
-                        Then = new GameActionBlock
+                        Actions = new List<GameAction>
                         {
-                            Actions = new List<GameAction>
+                            new SetEventVariableAction
                             {
-                                new SetEventVariableAction
-                                {
-                                    Key = "luke.stage",
-                                    Operation = EventVariableOperation.Add,
-                                    Operand = 1,
-                                },
+                                Key = "luke.stage",
+                                Operation = EventVariableOperation.Add,
+                                Operand = 1,
                             },
                         },
                     },
                     new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
-                    new AdjustOfficerForceAction
+                    new AdjustOfficerRatingAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
+                        Rating = OfficerRating.Force,
                         Amount = 5,
                     },
                     new ApplyOfficerInjuryAction
@@ -455,27 +443,26 @@ namespace Rebellion.Tests.Util.Serialization
             );
             Assert.AreEqual("Story/advisor", message.AdvisorNotification.Protocol.AnimationPath);
             Assert.AreEqual(3, message.AdvisorNotification.Protocol.FrameCount);
-            Assert.AreEqual(1, message.BodySegments.Count);
-            Assert.AreEqual("Injured", message.BodySegments[0].Body);
+            Assert.AreEqual(1, message.ConditionalBodies.Count);
+            Assert.AreEqual("Injured", message.ConditionalBodies[0].Body);
             IsInjuredConditional bodyCondition =
-                message.BodySegments[0].Conditionals[0] as IsInjuredConditional;
+                message.ConditionalBodies[0].Conditions[0] as IsInjuredConditional;
             Assert.IsNotNull(bodyCondition);
             IfAction conditional = deserialized.Actions[1] as IfAction;
             Assert.IsNotNull(conditional);
             EvaluateEventVariableConditional condition =
-                conditional.Conditionals[0] as EvaluateEventVariableConditional;
+                conditional.Conditions[0] as EvaluateEventVariableConditional;
             Assert.IsNotNull(condition);
             Assert.AreEqual("luke.stage", condition.Key);
             Assert.AreEqual(EventVariableComparison.Equal, condition.Comparison);
-            SetEventVariableAction setVariable =
-                conditional.Then.Actions[0] as SetEventVariableAction;
+            SetEventVariableAction setVariable = conditional.Actions[0] as SetEventVariableAction;
             Assert.IsNotNull(setVariable);
             Assert.AreEqual(EventVariableOperation.Add, setVariable.Operation);
             AddToVoidAction addToVoid = deserialized.Actions[2] as AddToVoidAction;
             Assert.IsNotNull(addToVoid);
             Assert.AreEqual("LUKE_SKYWALKER", addToVoid.UnitInstanceID);
-            AdjustOfficerForceAction forceAdjustment =
-                deserialized.Actions[3] as AdjustOfficerForceAction;
+            AdjustOfficerRatingAction forceAdjustment =
+                deserialized.Actions[3] as AdjustOfficerRatingAction;
             Assert.IsNotNull(forceAdjustment);
             Assert.AreEqual(5, forceAdjustment.Amount);
             ApplyOfficerInjuryAction injury = deserialized.Actions[4] as ApplyOfficerInjuryAction;

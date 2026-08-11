@@ -17,6 +17,16 @@ namespace Rebellion.Systems
         private const int _percentScale = 100;
 
         private readonly GameRoot _game;
+        private readonly Dictionary<string, PlanetSmugglingState> _states = new Dictionary<
+            string,
+            PlanetSmugglingState
+        >(StringComparer.Ordinal);
+
+        private sealed class PlanetSmugglingState
+        {
+            public int Percent { get; set; }
+            public string ControllerInstanceID { get; set; }
+        }
 
         /// <summary>
         /// Creates a smuggling system for the supplied game.
@@ -25,6 +35,32 @@ namespace Rebellion.Systems
         public SmugglingSystem(GameRoot game)
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
+            InitializeStates();
+        }
+
+        /// <summary>
+        /// Rebuilds derived smuggling state without emitting start notifications after loading.
+        /// </summary>
+        private void InitializeStates()
+        {
+            foreach (
+                Planet planet in _game
+                    .GetGalaxyMap()
+                    .PlanetSystems.SelectMany(system => system.Planets)
+            )
+            {
+                Faction controller = FindFaction(planet.OwnerInstanceID);
+                Faction beneficiary = FindBeneficiary(planet, controller);
+                int percent = CalculatePercent(planet, controller, beneficiary);
+                if (percent <= 0)
+                    continue;
+
+                _states[planet.InstanceID] = new PlanetSmugglingState
+                {
+                    Percent = percent,
+                    ControllerInstanceID = controller.InstanceID,
+                };
+            }
         }
 
         /// <summary>
@@ -58,8 +94,9 @@ namespace Rebellion.Systems
             Planet planet = facility.GetParentOfType<Planet>();
             if (
                 planet == null
-                || planet.SmugglingPercent <= 0
-                || _game.Random.NextInt(0, _percentScale) >= planet.SmugglingPercent
+                || !_states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state)
+                || state.Percent <= 0
+                || _game.Random.NextInt(0, _percentScale) >= state.Percent
             )
                 return controller;
 
@@ -74,8 +111,9 @@ namespace Rebellion.Systems
         private void RefreshPlanet(Planet planet, List<GameResult> results)
         {
             Faction controller = FindFaction(planet.OwnerInstanceID);
-            int oldPercent = planet.SmugglingPercent;
-            Faction oldController = FindFaction(planet.SmugglingControllerInstanceID);
+            _states.TryGetValue(planet.InstanceID, out PlanetSmugglingState state);
+            int oldPercent = state?.Percent ?? 0;
+            Faction oldController = FindFaction(state?.ControllerInstanceID);
             if (oldController == null && oldPercent > 0)
                 oldController = controller;
 
@@ -90,7 +128,6 @@ namespace Rebellion.Systems
                     0
                 );
                 oldPercent = 0;
-                planet.SmugglingPercent = 0;
             }
 
             Faction beneficiary = FindBeneficiary(planet, controller);
@@ -98,10 +135,20 @@ namespace Rebellion.Systems
             if (oldPercent != newPercent)
             {
                 AddChange(results, planet, controller, beneficiary, oldPercent, newPercent);
-                planet.SmugglingPercent = newPercent;
             }
 
-            planet.SmugglingControllerInstanceID = newPercent > 0 ? controller?.InstanceID : null;
+            if (newPercent <= 0)
+            {
+                _states.Remove(planet.InstanceID);
+            }
+            else
+            {
+                _states[planet.InstanceID] = new PlanetSmugglingState
+                {
+                    Percent = newPercent,
+                    ControllerInstanceID = controller?.InstanceID,
+                };
+            }
         }
 
         /// <summary>

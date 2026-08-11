@@ -218,7 +218,7 @@ namespace Rebellion.Systems
         /// <param name="snapshot">The latest intelligence snapshot, if any.</param>
         private static void AddObservedMissions(Planet viewPlanet, PlanetSnapshot snapshot)
         {
-            if (snapshot?.HasEspionageIntelligence != true)
+            if (snapshot?.RevealedCategories != PlanetIntelligenceCategory.All)
                 return;
 
             foreach (Mission mission in snapshot.Missions)
@@ -563,8 +563,7 @@ namespace Rebellion.Systems
             PlanetIntelligenceCategory category
         )
         {
-            return snapshot.HasEspionageIntelligence
-                || snapshot.IntelligenceCategories.HasFlag(category);
+            return snapshot.RevealedCategories.HasFlag(category);
         }
 
         /// <summary>

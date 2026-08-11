@@ -69,7 +69,6 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = _system.ProcessTick();
 
-            Assert.AreEqual(75, _planet.SmugglingPercent);
             PlanetStatChangedResult stat = results.OfType<PlanetStatChangedResult>().Single();
             Assert.AreEqual(PlanetStatType.Smuggling, stat.Stat);
             Assert.AreEqual(0, stat.OldValue);
@@ -78,6 +77,21 @@ namespace Rebellion.Tests.Systems
             Assert.AreSame(_planet, changed.Planet);
             Assert.AreSame(_faction, changed.Controller);
             Assert.AreEqual("FACTION2", changed.Beneficiary.InstanceID);
+        }
+
+        [Test]
+        public void ProcessTick_ExistingSmugglingState_DoesNotRepeatStartNotification()
+        {
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            _system = new ResourceProductionSystem(_game);
+
+            List<GameResult> results = _system.ProcessTick();
+
+            Assert.IsEmpty(results.OfType<SmugglingChangedResult>());
         }
 
         [Test]
@@ -118,9 +132,12 @@ namespace Rebellion.Tests.Systems
                 fleet
             );
 
-            _system.ProcessTick();
+            PlanetStatChangedResult result = _system
+                .ProcessTick()
+                .OfType<PlanetStatChangedResult>()
+                .Single();
 
-            Assert.AreEqual(58, _planet.SmugglingPercent);
+            Assert.AreEqual(58, result.NewValue);
         }
 
         [Test]
@@ -146,7 +163,6 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = _system.ProcessTick();
 
-            Assert.AreEqual(0, _planet.SmugglingPercent);
             Assert.IsEmpty(results);
         }
 
@@ -198,8 +214,7 @@ namespace Rebellion.Tests.Systems
                 { "FACTION1", 20 },
                 { "FACTION2", 20 },
             };
-            _planet.SmugglingPercent = 75;
-            _planet.SmugglingControllerInstanceID = "FACTION1";
+            _system.ProcessTick();
             _planet.OwnerInstanceID = "FACTION2";
 
             SmugglingChangedResult[] changes = _system
@@ -214,7 +229,6 @@ namespace Rebellion.Tests.Systems
             Assert.AreEqual("FACTION2", changes[1].Controller.InstanceID);
             Assert.AreEqual(0, changes[1].OldPercent);
             Assert.AreEqual(75, changes[1].NewPercent);
-            Assert.AreEqual("FACTION2", _planet.SmugglingControllerInstanceID);
         }
 
         [Test]
@@ -222,11 +236,15 @@ namespace Rebellion.Tests.Systems
         {
             _planet.PopularSupport = new Dictionary<string, int>
             {
+                { "FACTION1", 15 },
+                { "FACTION2", 85 },
+            };
+            _system.ProcessTick();
+            _planet.PopularSupport = new Dictionary<string, int>
+            {
                 { "FACTION1", 25 },
                 { "FACTION2", 75 },
             };
-            _planet.SmugglingPercent = 75;
-            _planet.SmugglingControllerInstanceID = "FACTION1";
 
             List<GameResult> results = _system.ProcessTick();
 

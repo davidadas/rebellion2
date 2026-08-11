@@ -8,24 +8,22 @@ using Rebellion.Game.Units;
 namespace Rebellion.Tests.Game.Events
 {
     [TestFixture]
-    public class GameEventTriggerRegistryTests
+    public class GameEventTriggerTests
     {
         [Test]
-        public void Bind_UnitArrival_BindsUnitDestinationAndPlanet()
+        public void Bind_UnitArrivedTrigger_BindsAuthoredValues()
         {
             Officer officer = new Officer { InstanceID = "officer" };
             Planet destination = new Planet { InstanceID = "planet" };
-            UnitArrivedResult arrival = new UnitArrivedResult
+            UnitArrivedTrigger trigger = new UnitArrivedTrigger
             {
-                Unit = officer,
-                Destination = destination,
+                Unit = "unit",
+                Destination = "destination",
             };
 
             GameEventExecutionContext context = CreateContext(
-                "core:unit.arrived",
-                arrival,
-                ("Unit", "unit"),
-                ("Destination", "destination")
+                trigger,
+                new UnitArrivedResult { Unit = officer, Destination = destination }
             );
 
             Assert.AreSame(officer, context.GetBinding<Officer>("unit"));
@@ -33,19 +31,19 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Bind_OfficerEncounter_BindsBothOfficers()
+        public void Bind_DuelCompletedTrigger_BindsAuthoredValues()
         {
             Officer encountered = new Officer { InstanceID = "encountered" };
             Officer opponent = new Officer { InstanceID = "opponent" };
+            DuelCompletedTrigger trigger = new DuelCompletedTrigger
+            {
+                Officer = "officer",
+                Opponent = "opponent",
+            };
+
             GameEventExecutionContext context = CreateContext(
-                "core:officer.encountered",
-                new OfficerEncounterResult
-                {
-                    EncounteredOfficer = encountered,
-                    OpposingOfficer = opponent,
-                },
-                ("Officer", "officer"),
-                ("Opponent", "opponent")
+                trigger,
+                new DuelResult { EncounteredOfficer = encountered, OpposingOfficer = opponent }
             );
 
             Assert.AreSame(encountered, context.GetBinding<Officer>("officer"));
@@ -53,22 +51,26 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Bind_OfficerCapture_BindsOfficerLinkAndContext()
+        public void Bind_OfficerCaptureChangedTrigger_BindsAuthoredValues()
         {
             Officer officer = new Officer { InstanceID = "officer" };
             Officer linkedOfficer = new Officer { InstanceID = "linked" };
             Planet planet = new Planet { InstanceID = "planet" };
+            OfficerCaptureChangedTrigger trigger = new OfficerCaptureChangedTrigger
+            {
+                Officer = "officer",
+                LinkedOfficer = "linkedOfficer",
+                Context = "context",
+            };
+
             GameEventExecutionContext context = CreateContext(
-                "core:officer.capture-changed",
+                trigger,
                 new OfficerCaptureStateResult
                 {
                     TargetOfficer = officer,
                     LinkedOfficer = linkedOfficer,
                     Context = planet,
-                },
-                ("Officer", "officer"),
-                ("LinkedOfficer", "linkedOfficer"),
-                ("Context", "context")
+                }
             );
 
             Assert.AreSame(officer, context.GetBinding<Officer>("officer"));
@@ -77,39 +79,29 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void Bind_MissionCompletion_BindsMission()
+        public void Bind_MissionCompletedTrigger_BindsAuthoredValues()
         {
             Mission mission = new StubMission();
+            MissionCompletedTrigger trigger = new MissionCompletedTrigger { Mission = "mission" };
+
             GameEventExecutionContext context = CreateContext(
-                "core:mission.completed",
-                new MissionCompletedResult { Mission = mission },
-                ("Mission", "mission")
+                trigger,
+                new MissionCompletedResult { Mission = mission }
             );
 
             Assert.AreSame(mission, context.GetBinding<Mission>("mission"));
         }
 
         private static GameEventExecutionContext CreateContext(
-            string eventID,
-            GameResult result,
-            params (string Argument, string As)[] bindings
-        )
-        {
-            GameEventTrigger trigger = new GameEventTrigger { Event = eventID };
-            foreach ((string argument, string alias) in bindings)
-            {
-                trigger.Bindings.Add(
-                    new GameEventTriggerBinding { Argument = argument, As = alias }
-                );
-            }
-
-            return new GameEventExecutionContext(
+            GameEventTrigger trigger,
+            GameResult result
+        ) =>
+            new GameEventExecutionContext(
                 new GameEvent(),
                 new GameEventState(),
                 null,
                 result,
                 trigger
             );
-        }
     }
 }

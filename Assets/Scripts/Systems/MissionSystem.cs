@@ -25,7 +25,7 @@ namespace Rebellion.Systems
         private readonly IRandomNumberProvider _provider;
         private readonly MovementSystem _movementManager;
         private readonly UprisingSystem _uprisingSystem;
-        private readonly MissionDefectionSystem _defectionSystem;
+        private readonly OfficerLoyaltySystem _officerLoyaltySystem;
         private readonly MissionFactory _missionFactory;
         private readonly Dictionary<string, CustomMissionDefinition> _customMissionDefinitions;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
@@ -37,14 +37,14 @@ namespace Rebellion.Systems
         /// <param name="provider">The random number provider for mission resolution.</param>
         /// <param name="movementManager">The movement system used for participant travel.</param>
         /// <param name="uprisingSystem">The uprising system used by uprising missions.</param>
-        /// <param name="defectionSystem">The mission participant defection resolver.</param>
+        /// <param name="officerLoyaltySystem">The officer loyalty and betrayal resolver.</param>
         /// <param name="customMissionDefinitions">The content-authored mission definitions.</param>
         public MissionSystem(
             GameRoot game,
             IRandomNumberProvider provider,
             MovementSystem movementManager,
             UprisingSystem uprisingSystem,
-            MissionDefectionSystem defectionSystem = null,
+            OfficerLoyaltySystem officerLoyaltySystem = null,
             IEnumerable<CustomMissionDefinition> customMissionDefinitions = null
         )
         {
@@ -53,7 +53,8 @@ namespace Rebellion.Systems
             _movementManager = movementManager;
             _uprisingSystem =
                 uprisingSystem ?? throw new ArgumentNullException(nameof(uprisingSystem));
-            _defectionSystem = defectionSystem ?? new MissionDefectionSystem(game);
+            _officerLoyaltySystem =
+                officerLoyaltySystem ?? new OfficerLoyaltySystem(game, provider);
             _missionFactory = new MissionFactory(game);
             _customMissionDefinitions = (
                 customMissionDefinitions ?? Array.Empty<CustomMissionDefinition>()
@@ -313,7 +314,7 @@ namespace Rebellion.Systems
             Mission mission = _game.GetSceneNodeByInstanceID<Mission>(missionInstanceID);
             if (mission == null)
                 return false;
-            if (!mission.CanAbort)
+            if (!mission.CanCancel)
                 return false;
             if (mission.IsWaitingForParticipants())
                 return false;
@@ -556,9 +557,8 @@ namespace Rebellion.Systems
         private List<GameResult> ExecuteMission(Mission mission)
         {
             if (
-                _defectionSystem.TryResolveDefection(
+                _officerLoyaltySystem.TryResolveMissionBetrayal(
                     mission,
-                    _provider,
                     out List<GameResult> betrayalResults
                 )
             )
@@ -971,7 +971,7 @@ namespace Rebellion.Systems
             {
                 officer.IsKilled = true;
                 _game.AddToVoid(officer);
-                _game.SetVoidStatus(officer, VoidStatus.Dead);
+                _game.SetVoidStatus(officer, null);
                 results.Add(
                     new OfficerKilledResult
                     {

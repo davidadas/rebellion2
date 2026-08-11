@@ -21,8 +21,9 @@ namespace Rebellion.Game.Events
             new List<MissionUnitReference>();
         public List<MissionUnitReference> Decoys { get; set; } = new List<MissionUnitReference>();
 
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
+            GameRoot game = context.Game;
             if (Target == null || string.IsNullOrWhiteSpace(Target.UnitInstanceID))
                 throw new InvalidOperationException("CreateMission requires a target unit.");
             ResolveUnit(game, Target);

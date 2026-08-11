@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -14,5 +16,26 @@ namespace Rebellion.Game.Events
         public int NextEligibleTick { get; set; }
         public int ExecutionCount { get; set; }
         public int LastExecutionTick { get; set; } = -1;
+
+        public Dictionary<string, GameEventState> TargetStates { get; set; } =
+            new Dictionary<string, GameEventState>(StringComparer.Ordinal);
+
+        public GameEventState GetTargetState(string targetInstanceID)
+        {
+            if (string.IsNullOrWhiteSpace(targetInstanceID))
+                throw new ArgumentException(
+                    "Event target instance ID is required.",
+                    nameof(targetInstanceID)
+                );
+            if (!TargetStates.TryGetValue(targetInstanceID, out GameEventState state))
+            {
+                state = new GameEventState();
+                TargetStates.Add(targetInstanceID, state);
+            }
+            return state;
+        }
+
+        public bool TryGetTargetState(string targetInstanceID, out GameEventState state) =>
+            TargetStates.TryGetValue(targetInstanceID, out state);
     }
 }

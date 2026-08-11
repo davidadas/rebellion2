@@ -72,12 +72,7 @@ namespace Rebellion.Game
 
         // Game events.
         public List<GameEvent> EventPool = new List<GameEvent>();
-        public HashSet<string> CompletedEventIDs = new HashSet<string>();
-        public Dictionary<string, GameEventState> EventStates =
-            new Dictionary<string, GameEventState>();
-        public Dictionary<string, int> EventVariables = new Dictionary<string, int>(
-            StringComparer.Ordinal
-        );
+        public GameEventRuntimeState EventRuntime { get; set; } = new GameEventRuntimeState();
 
         // Scene nodes.
         [PersistableIgnore]
@@ -368,16 +363,14 @@ namespace Rebellion.Game
                 );
 
             Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
-            VoidPool pool = faction.VoidPool ??= new VoidPool();
+            List<ISceneNode> pool = faction.VoidPool ??= new List<ISceneNode>();
             if (pool.Contains(node))
                 return;
-            if (!pool.CanStore(node))
+            if (!IsVoidUnit(node))
                 throw new InvalidOperationException(
                     $"{node.GetType().Name} cannot enter a void pool."
                 );
 
-            BaseSceneNode sceneNode = (BaseSceneNode)node;
-            sceneNode.LastLocationInstanceID = node.GetParentOfType<Planet>()?.InstanceID;
             ISceneNode previousParent = node.GetParent();
             DetachNode(node);
             try
@@ -422,8 +415,8 @@ namespace Rebellion.Game
         {
             foreach (Faction faction in Factions)
             {
-                faction.VoidPool ??= new VoidPool();
-                foreach (ISceneNode node in faction.VoidPool.GetUnits())
+                faction.VoidPool ??= new List<ISceneNode>();
+                foreach (ISceneNode node in faction.VoidPool)
                 {
                     node.SetParent(null);
                     node.Traverse(child =>
@@ -436,49 +429,34 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Returns an off-map unit to its prior attachment, prior planet, or nearest friendly planet.
+        /// Atomically restores an off-map unit to an explicitly selected destination.
         /// </summary>
         /// <param name="node">The retained unit to return.</param>
-        /// <returns>True when a valid destination accepts the unit; otherwise false.</returns>
-        public bool ReturnFromVoid(ISceneNode node)
+        /// <param name="destination">The scene container receiving the unit.</param>
+        public void ActivateFromVoid(ISceneNode node, ContainerNode destination)
         {
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
             Faction faction = GetFactionByOwnerInstanceID(node.OwnerInstanceID);
-            VoidPool pool = faction.VoidPool ??= new VoidPool();
+            List<ISceneNode> pool = faction.VoidPool ??= new List<ISceneNode>();
             if (!pool.Contains(node))
                 throw new InvalidOperationException(
                     $"{node.GetDisplayName()} is not in a void pool."
                 );
 
-            BaseSceneNode sceneNode = (BaseSceneNode)node;
-            Planet priorPlanet = GetSceneNodeByInstanceID<Planet>(sceneNode.LastLocationInstanceID);
-            ContainerNode destination = GetSceneNodeByInstanceID<ContainerNode>(
-                sceneNode.LastParentInstanceID
-            );
-            if (!CanReturnTo(node, destination))
-                destination = CanReturnTo(node, priorPlanet) ? priorPlanet : null;
-            if (destination == null)
-            {
-                destination = faction
-                    .GetOwnedColonizedPlanets()
-                    .Where(planet => CanReturnTo(node, planet))
-                    .OrderBy(planet =>
-                        priorPlanet == null ? 0 : planet.GetRawDistanceTo(priorPlanet)
-                    )
-                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                    .FirstOrDefault();
-            }
-            if (destination == null)
-                return false;
+            if (!destination.CanAcceptChild(node))
+                throw new InvalidOperationException(
+                    $"{destination.GetDisplayName()} cannot accept {node.GetDisplayName()}."
+                );
 
             pool.Remove(node);
             node.Traverse(RemoveSceneNodeByInstanceID);
             try
             {
                 AttachNode(node, destination);
-                sceneNode.VoidState = null;
-                return true;
+                ((BaseSceneNode)node).VoidState = null;
             }
             catch
             {
@@ -503,19 +481,15 @@ namespace Rebellion.Game
             return false;
         }
 
-        /// <summary>
-        /// Returns whether a destination can accept a unit on a surviving friendly planet.
-        /// </summary>
-        /// <param name="node">The unit to place.</param>
-        /// <param name="destination">The candidate container.</param>
-        /// <returns>True when the destination is valid and friendly.</returns>
-        private static bool CanReturnTo(ISceneNode node, ContainerNode destination)
-        {
-            if (destination?.CanAcceptChild(node) != true)
-                return false;
-            Planet planet = destination as Planet ?? destination.GetParentOfType<Planet>();
-            return planet?.IsDestroyed == false && planet.OwnerInstanceID == node.OwnerInstanceID;
-        }
+        private static bool IsVoidUnit(ISceneNode node) =>
+            node
+                is Building
+                    or CapitalShip
+                    or Fleet
+                    or Officer
+                    or Regiment
+                    or SpecialForces
+                    or Starfighter;
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.
@@ -678,129 +652,6 @@ namespace Rebellion.Game
         public GameEvent GetEventByInstanceID(string instanceId)
         {
             return EventPool.Find(gameEvent => gameEvent.InstanceID == instanceId);
-        }
-
-        /// <summary>
-        /// Adds a game event to the list of completed event IDs.
-        /// </summary>
-        /// <param name="gameEvent">The completed game event.</param>
-        public void AddCompletedEvent(GameEvent gameEvent)
-        {
-            CompletedEventIDs.Add(gameEvent.InstanceID);
-        }
-
-        /// <summary>
-        /// Checks if a game event has been completed.
-        /// </summary>
-        /// <param name="eventInstanceId">The ID of the game event to check.</param>
-        /// <returns>True if the game event has been completed; false otherwise.</returns>
-        public bool IsEventComplete(string eventInstanceId)
-        {
-            return CompletedEventIDs.Contains(eventInstanceId);
-        }
-
-        /// <summary>
-        /// Returns the persistent runtime state for an event, creating it on first use.
-        /// </summary>
-        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
-        /// <returns>The save-game-owned event state.</returns>
-        public GameEventState GetEventState(string eventInstanceId)
-        {
-            if (string.IsNullOrWhiteSpace(eventInstanceId))
-                throw new ArgumentException(
-                    "Event instance ID is required.",
-                    nameof(eventInstanceId)
-                );
-
-            if (!EventStates.TryGetValue(eventInstanceId, out GameEventState state))
-            {
-                state = new GameEventState();
-                EventStates.Add(eventInstanceId, state);
-            }
-
-            return state;
-        }
-
-        /// <summary>
-        /// Returns persistent scheduling state for one independently scheduled event target.
-        /// </summary>
-        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
-        /// <param name="scopeTargetInstanceId">The scoped target's stable instance ID.</param>
-        /// <returns>The save-game-owned state for this event and target pair.</returns>
-        public GameEventState GetEventState(string eventInstanceId, string scopeTargetInstanceId)
-        {
-            if (string.IsNullOrWhiteSpace(scopeTargetInstanceId))
-                throw new ArgumentException(
-                    "Scoped event target instance ID is required.",
-                    nameof(scopeTargetInstanceId)
-                );
-
-            return GetEventState(GetScopedEventStateKey(eventInstanceId, scopeTargetInstanceId));
-        }
-
-        /// <summary>
-        /// Attempts to retrieve scheduling state for one independently scheduled event target.
-        /// </summary>
-        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
-        /// <param name="scopeTargetInstanceId">The scoped target's stable instance ID.</param>
-        /// <param name="state">Receives the saved state when present.</param>
-        /// <returns>True when state already exists for the pair.</returns>
-        public bool TryGetEventState(
-            string eventInstanceId,
-            string scopeTargetInstanceId,
-            out GameEventState state
-        )
-        {
-            if (string.IsNullOrWhiteSpace(eventInstanceId))
-                throw new ArgumentException(
-                    "Event instance ID is required.",
-                    nameof(eventInstanceId)
-                );
-            if (string.IsNullOrWhiteSpace(scopeTargetInstanceId))
-                throw new ArgumentException(
-                    "Scoped event target instance ID is required.",
-                    nameof(scopeTargetInstanceId)
-                );
-
-            return EventStates.TryGetValue(
-                GetScopedEventStateKey(eventInstanceId, scopeTargetInstanceId),
-                out state
-            );
-        }
-
-        /// <summary>
-        /// Builds an unambiguous persisted key for one event and scope-target pair.
-        /// </summary>
-        /// <param name="eventInstanceId">The event definition's stable instance ID.</param>
-        /// <param name="scopeTargetInstanceId">The scoped target's stable instance ID.</param>
-        /// <returns>The length-prefixed composite key.</returns>
-        private static string GetScopedEventStateKey(
-            string eventInstanceId,
-            string scopeTargetInstanceId
-        ) => $"{eventInstanceId.Length}:{eventInstanceId}{scopeTargetInstanceId}";
-
-        /// <summary>
-        /// Returns a persistent event variable, treating an unset variable as zero.
-        /// </summary>
-        /// <param name="key">The stable variable key.</param>
-        /// <returns>The stored value, or zero when unset.</returns>
-        public int GetEventVariable(string key)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("Event variable key is required.", nameof(key));
-
-            return EventVariables.TryGetValue(key, out int value) ? value : 0;
-        }
-
-        /// <summary>
-        /// Stores a persistent event variable.
-        /// </summary>
-        public void SetEventVariable(string key, int value)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("Event variable key is required.", nameof(key));
-
-            EventVariables[key] = value;
         }
 
         /// <summary>

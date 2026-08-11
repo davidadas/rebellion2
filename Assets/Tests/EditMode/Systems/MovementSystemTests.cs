@@ -20,6 +20,60 @@ namespace Rebellion.Tests.Systems
     [TestFixture]
     public class MovementSystemTests
     {
+        [Test]
+        public void EvacuateDestroyedCapitalShip_UnfinishedCarrierAvailable_MovesStarfighterToFriendlyPlanet()
+        {
+            GameRoot game = new GameRoot(TestConfig.Create());
+            Faction faction = new Faction { InstanceID = "alliance" };
+            game.Factions.Add(faction);
+            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
+            game.AttachNode(system, game.Galaxy);
+            Planet combatPlanet = new Planet { InstanceID = "combat" };
+            Planet friendlyPlanet = new Planet
+            {
+                InstanceID = "friendly",
+                OwnerInstanceID = faction.InstanceID,
+                IsColonized = true,
+            };
+            game.AttachNode(combatPlanet, system);
+            game.AttachNode(friendlyPlanet, system);
+            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
+            CapitalShip destroyedShip = new CapitalShip
+            {
+                InstanceID = "destroyed",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 1,
+            };
+            CapitalShip unfinishedCarrier = new CapitalShip
+            {
+                InstanceID = "unfinished",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                CurrentHullStrength = 100,
+                StarfighterCapacity = 1,
+            };
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "fighter",
+                OwnerInstanceID = faction.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(fleet, combatPlanet);
+            game.AttachNode(destroyedShip, fleet);
+            game.AttachNode(unfinishedCarrier, fleet);
+            game.AttachNode(starfighter, destroyedShip);
+            MovementSystem movement = new MovementSystem(
+                game,
+                new FogOfWarSystem(game),
+                new FleetSystem(game)
+            );
+
+            movement.EvacuateDestroyedCapitalShip(destroyedShip);
+
+            Assert.AreSame(friendlyPlanet, starfighter.GetParent());
+        }
+
         // Builds a minimal scene: two planets in the same system, an officer parented to
         // the origin planet, and a MovementSystem ready to use.
         private (

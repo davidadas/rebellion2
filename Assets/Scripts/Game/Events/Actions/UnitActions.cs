@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -10,218 +11,32 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    public enum UnitCategory
-    {
-        Any,
-        PlanetaryDefense,
-        ManufacturingFacility,
-        Regiment,
-        Building,
-        Officer,
-        Fleet,
-        CapitalShip,
-        Starfighter,
-        SpecialForces,
-    }
-
-    [PersistableObject]
-    public abstract class UnitSelector
-    {
-        internal abstract IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        );
-    }
-
-    [PersistableObject(Name = "SelectUnits")]
-    public sealed class SelectUnits : UnitSelector
-    {
-        [PersistableAttribute]
-        public string InstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string TypeID { get; set; }
-
-        [PersistableAttribute]
-        public string PlanetInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public string PlanetBinding { get; set; }
-
-        [PersistableAttribute]
-        public string OwnerFactionInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public UnitCategory UnitCategory { get; set; }
-
-        [PersistableAttribute]
-        public bool? IsCaptured { get; set; }
-
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            string planetInstanceID = PlanetInstanceID;
-            if (
-                !string.IsNullOrWhiteSpace(PlanetBinding)
-                && context?.GetBinding<Planet>(PlanetBinding) is Planet boundPlanet
-            )
-                planetInstanceID = boundPlanet.InstanceID;
-
-            return game.GetRegisteredSceneNodesByType<ISceneNode>()
-                .Where(IsUnit)
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(InstanceID) || node.InstanceID == InstanceID
-                )
-                .Where(node => string.IsNullOrWhiteSpace(TypeID) || node.TypeID == TypeID)
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(planetInstanceID)
-                    || node.GetParentOfType<Planet>()?.InstanceID == planetInstanceID
-                )
-                .Where(node =>
-                    string.IsNullOrWhiteSpace(OwnerFactionInstanceID)
-                    || node.OwnerInstanceID == OwnerFactionInstanceID
-                )
-                .Where(node =>
-                    !IsCaptured.HasValue
-                    || node is Officer officer && officer.IsCaptured == IsCaptured.Value
-                )
-                .Where(MatchesCategory);
-        }
-
-        private static bool IsUnit(ISceneNode node) =>
-            node
-                is Building
-                    or Regiment
-                    or Officer
-                    or Fleet
-                    or CapitalShip
-                    or Starfighter
-                    or SpecialForces;
-
-        private bool MatchesCategory(ISceneNode node) =>
-            UnitCategory switch
-            {
-                UnitCategory.Any => true,
-                UnitCategory.PlanetaryDefense => node
-                    is Building
-                    {
-                        BuildingType: BuildingType.Defense or BuildingType.Weapon,
-                        ManufacturingStatus: ManufacturingStatus.Complete
-                    },
-                UnitCategory.ManufacturingFacility => node
-                    is Building
-                    {
-                        BuildingType: BuildingType.Shipyard
-                            or BuildingType.TrainingFacility
-                            or BuildingType.ConstructionFacility,
-                        ManufacturingStatus: ManufacturingStatus.Complete
-                    },
-                UnitCategory.Regiment => node is Regiment,
-                UnitCategory.Building => node is Building,
-                UnitCategory.Officer => node is Officer,
-                UnitCategory.Fleet => node is Fleet,
-                UnitCategory.CapitalShip => node is CapitalShip,
-                UnitCategory.Starfighter => node is Starfighter,
-                UnitCategory.SpecialForces => node is SpecialForces,
-                _ => false,
-            };
-    }
-
-    [PersistableObject(Name = "SelectRandomUnits")]
-    public sealed class SelectRandomUnits : UnitSelector
-    {
-        [PersistableAttribute]
-        public int ChancePercent { get; set; } = 100;
-
-        [PersistableAttribute]
-        public int MinimumCount { get; set; }
-
-        [PersistableAttribute]
-        public int MaximumCount { get; set; } = int.MaxValue;
-
-        [PersistableInlineCollection]
-        public List<SelectUnits> Queries { get; set; } = new List<SelectUnits>();
-
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            List<ISceneNode> candidates = Queries
-                .SelectMany(query => query.Select(game, provider, context))
-                .Distinct()
-                .OrderBy(unit => unit.InstanceID, StringComparer.Ordinal)
-                .ToList();
-            List<ISceneNode> selected = candidates
-                .Where(_ => provider.NextInt(0, 100) < Math.Clamp(ChancePercent, 0, 100))
-                .ToList();
-            List<ISceneNode> remaining = candidates.Except(selected).ToList();
-            while (selected.Count < Math.Min(Math.Max(0, MinimumCount), candidates.Count))
-            {
-                int index = provider.NextInt(0, remaining.Count);
-                selected.Add(remaining[index]);
-                remaining.RemoveAt(index);
-            }
-            while (selected.Count > Math.Max(0, MaximumCount))
-                selected.RemoveAt(provider.NextInt(0, selected.Count));
-            return selected;
-        }
-    }
-
-    [PersistableObject(Name = "SelectBinding")]
-    public sealed class SelectBinding : UnitSelector
-    {
-        [PersistableAttribute]
-        public string Name { get; set; }
-
-        internal override IEnumerable<ISceneNode> Select(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            if (context?.TryGetBinding(Name, out object value) != true)
-                return Enumerable.Empty<ISceneNode>();
-            if (value is ISceneNode node)
-                return new[] { node };
-            return value is IEnumerable<ISceneNode> nodes ? nodes : Enumerable.Empty<ISceneNode>();
-        }
-    }
-
     [PersistableObject(Name = "DestroyUnits")]
     public sealed class DestroyUnitsAction : GameAction
     {
         [PersistableInlineCollection]
-        public List<UnitSelector> Selectors { get; set; } = new List<UnitSelector>();
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random, null);
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
+        public override List<GameResult> Execute(GameActionContext context)
         {
+            GameRoot game = context.Game;
             if (Selectors.Count == 0)
                 throw new InvalidOperationException("DestroyUnits requires at least one selector.");
             List<ISceneNode> destroyed = Selectors
-                .SelectMany(selector => selector.Select(game, provider, context))
+                .SelectMany(selector => selector.Select(game, context.Random, context.Activation))
                 .Distinct()
                 .ToList();
 
             foreach (ISceneNode unit in destroyed)
-                game.DetachNode(unit);
+            {
+                game.AddToVoid(unit);
+                game.SetVoidStatus(unit, VoidStatus.Destroyed);
+            }
 
-            Planet planet = context?.GetScopeTarget<Planet>();
+            Planet planet = context.Activation?.GetScopeTarget<Planet>();
             PlanetIncidentResult incident = context
-                ?.Results.OfType<PlanetIncidentResult>()
+                .Activation?.Results.OfType<PlanetIncidentResult>()
                 .LastOrDefault(result =>
                     result.Planet == planet && result.IncidentType == IncidentType.Disaster
                 );
@@ -254,7 +69,7 @@ namespace Rebellion.Game.Events
     /// Requests authoritative movement for one or more movable scene nodes.
     /// </summary>
     [PersistableObject(Name = "RequestMovement")]
-    public class RequestMovementAction : GameAction
+    public sealed class RequestMovementAction : GameAction
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -271,19 +86,14 @@ namespace Rebellion.Game.Events
         public List<MovementUnitReference> Units { get; set; } = new List<MovementUnitReference>();
 
         [PersistableInlineCollection]
-        public List<UnitSelector> Selectors { get; set; } = new List<UnitSelector>();
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game) => Execute(game, game.Random, null);
-
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
+        public override List<GameResult> Execute(GameActionContext context)
         {
-            List<IMovable> units = ResolveUnits(game, provider, context);
-            ContainerNode destination = ResolveDestination(game, context);
+            GameRoot game = context.Game;
+            List<IMovable> units = ResolveUnits(game, context.Random, context.Activation);
+            ContainerNode destination = ResolveDestination(game, context.Activation);
             if (destination == null)
                 throw new InvalidOperationException(
                     "RequestMovement could not resolve its destination."
@@ -360,8 +170,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "UnitInstanceID")]
         public string UnitInstanceID { get; set; }
 
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
+            GameRoot game = context.Game;
             ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
             if (unit == null)
                 throw new InvalidOperationException(
@@ -369,6 +180,36 @@ namespace Rebellion.Game.Events
                 );
             game.AddToVoid(unit);
             return new List<GameResult>();
+        }
+    }
+
+    /// <summary>
+    /// Records a participant's current attachment through the standard mission-return fields.
+    /// </summary>
+    [PersistableObject(Name = "SetMissionReturnDestination")]
+    public sealed class SetMissionReturnDestinationAction : GameAction
+    {
+        [PersistableAttribute]
+        public string UnitInstanceID { get; set; }
+
+        public override List<GameResult> Execute(GameActionContext context)
+        {
+            IMissionParticipant participant =
+                context.Game.GetSceneNodeByInstanceID<IMissionParticipant>(UnitInstanceID);
+            if (participant == null)
+                throw new InvalidOperationException(
+                    $"SetMissionReturnDestination could not resolve participant '{UnitInstanceID}'."
+                );
+            return new List<GameResult>
+            {
+                new MissionReturnDestinationRequestedResult
+                {
+                    Participant = participant,
+                    ReturnParent = participant.GetParent() as ContainerNode,
+                    ReturnLocation = participant.GetParentOfType<Planet>(),
+                    Tick = context.Game.CurrentTick,
+                },
+            };
         }
     }
 
@@ -387,8 +228,9 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string DisplayText { get; set; }
 
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
+            GameRoot game = context.Game;
             ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
             if (unit == null)
                 throw new InvalidOperationException(
@@ -400,23 +242,31 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Returns an off-map unit to its last valid attachment or a friendly fallback planet.
+    /// Requests activation of an off-map unit at an explicit destination.
     /// </summary>
-    [PersistableObject(Name = "ReturnFromVoid")]
-    public sealed class ReturnFromVoidAction : GameAction
+    [PersistableObject(Name = "ActivateFromVoid")]
+    public sealed class ActivateFromVoidAction : GameAction
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
 
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
+            GameRoot game = context.Game;
             ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
             if (unit == null)
                 throw new InvalidOperationException(
-                    $"ReturnFromVoid could not resolve unit '{UnitInstanceID}'."
+                    $"ActivateFromVoid could not resolve unit '{UnitInstanceID}'."
                 );
-            game.ReturnFromVoid(unit);
-            return new List<GameResult>();
+            return new List<GameResult>
+            {
+                new UnitActivationRequestedResult
+                {
+                    Unit = unit,
+                    UseMissionReturnDestination = true,
+                    Tick = game.CurrentTick,
+                },
+            };
         }
     }
 }

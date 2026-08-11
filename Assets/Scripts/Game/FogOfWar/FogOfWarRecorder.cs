@@ -96,7 +96,7 @@ namespace Rebellion.Game.FogOfWar
             snapshot.TickCaptured = currentTick;
             if (categories.HasFlag(PlanetIntelligenceCategory.System))
                 UpdatePlanetState(snapshot, planet, currentTick);
-            snapshot.IntelligenceCategories |= categories;
+            snapshot.RevealedCategories |= categories;
             if (categories.HasFlag(PlanetIntelligenceCategory.Officers))
             {
                 snapshot.Officers.Clear();
@@ -279,17 +279,14 @@ namespace Rebellion.Game.FogOfWar
 
             if (includeEspionageIntelligence)
             {
-                planetSnapshot.HasEspionageIntelligence = true;
-                planetSnapshot.IntelligenceCategories = PlanetIntelligenceCategory.All;
+                planetSnapshot.RevealedCategories = PlanetIntelligenceCategory.All;
                 AddEnemyMissionsToSnapshot(faction, planet, planetSnapshot);
                 AddManufacturingQueueToSnapshot(planet, planetSnapshot);
             }
             else
             {
-                planetSnapshot.HasEspionageIntelligence =
-                    previousSnapshot?.HasEspionageIntelligence == true;
-                planetSnapshot.IntelligenceCategories =
-                    previousSnapshot?.IntelligenceCategories ?? PlanetIntelligenceCategory.None;
+                planetSnapshot.RevealedCategories =
+                    previousSnapshot?.RevealedCategories ?? PlanetIntelligenceCategory.None;
                 CarryForwardRevealedMissions(previousSnapshot, planetSnapshot);
                 PreserveIncomingFleetIntelligence(previousSnapshot, planetSnapshot);
                 PreserveManufacturingIntelligence(previousSnapshot, planetSnapshot, planet);
@@ -328,7 +325,7 @@ namespace Rebellion.Game.FogOfWar
             PlanetSnapshot snapshot
         )
         {
-            if (previousSnapshot?.HasEspionageIntelligence != true)
+            if (previousSnapshot?.RevealedCategories != PlanetIntelligenceCategory.All)
                 return;
 
             snapshot.Missions.AddRange(
@@ -347,13 +344,9 @@ namespace Rebellion.Game.FogOfWar
         )
         {
             if (
-                previousSnapshot == null
-                || (
-                    !previousSnapshot.HasEspionageIntelligence
-                    && !previousSnapshot.IntelligenceCategories.HasFlag(
-                        PlanetIntelligenceCategory.CapitalShips
-                    )
-                )
+                previousSnapshot?.RevealedCategories.HasFlag(
+                    PlanetIntelligenceCategory.CapitalShips
+                ) != true
             )
                 return;
 
@@ -890,13 +883,6 @@ namespace Rebellion.Game.FogOfWar
         {
             Officer copy = officer.GetShallowCopy(CloneMode.Full);
             copy.Ratings = new Dictionary<OfficerRating, int>(officer.Ratings);
-            copy.RatingModifiers =
-                officer.RatingModifiers?.ConvertAll(modifier => new OfficerRatingModifier
-                {
-                    Key = modifier.Key,
-                    Rating = modifier.Rating,
-                    Amount = modifier.Amount,
-                }) ?? new List<OfficerRatingModifier>();
             copy.Movement = CopyMovementForSnapshot(officer.Movement);
             ClearParentReferences(copy);
             return copy;

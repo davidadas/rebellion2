@@ -1469,63 +1469,6 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void EvacuateStarfighters_SurvivingShipUnderConstruction_MovesToFriendlyPlanet()
-        {
-            GameRoot game = new GameRoot(TestConfig.Create());
-            Faction faction = new Faction { InstanceID = "alliance" };
-            game.Factions.Add(faction);
-
-            PlanetSystem system = new PlanetSystem { InstanceID = "system" };
-            game.AttachNode(system, game.Galaxy);
-            Planet combatPlanet = new Planet { InstanceID = "combat" };
-            Planet friendlyPlanet = new Planet
-            {
-                InstanceID = "friendly",
-                OwnerInstanceID = faction.InstanceID,
-                IsColonized = true,
-            };
-            game.AttachNode(combatPlanet, system);
-            game.AttachNode(friendlyPlanet, system);
-
-            Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = faction.InstanceID };
-            CapitalShip destroyedShip = new CapitalShip
-            {
-                InstanceID = "destroyed",
-                OwnerInstanceID = faction.InstanceID,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-                StarfighterCapacity = 1,
-            };
-            CapitalShip unfinishedCarrier = new CapitalShip
-            {
-                InstanceID = "unfinished",
-                OwnerInstanceID = faction.InstanceID,
-                ManufacturingStatus = ManufacturingStatus.Building,
-                CurrentHullStrength = 100,
-                StarfighterCapacity = 1,
-            };
-            Starfighter starfighter = new Starfighter
-            {
-                InstanceID = "fighter",
-                OwnerInstanceID = faction.InstanceID,
-                ManufacturingStatus = ManufacturingStatus.Complete,
-            };
-            game.AttachNode(fleet, combatPlanet);
-            game.AttachNode(destroyedShip, fleet);
-            game.AttachNode(unfinishedCarrier, fleet);
-            game.AttachNode(starfighter, destroyedShip);
-            MovementSystem movement = new MovementSystem(
-                game,
-                new FogOfWarSystem(game),
-                new FleetSystem(game)
-            );
-
-            CapitalShipDestruction.Resolve(game, movement, destroyedShip);
-
-            Assert.AreSame(friendlyPlanet, starfighter.GetParent());
-            Assert.IsFalse(unfinishedCarrier.Starfighters.Contains(starfighter));
-        }
-
-        [Test]
         public void EvacuateOfficers_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
         {
             GameRoot game = new GameRoot(TestConfig.Create());

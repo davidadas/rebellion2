@@ -28,21 +28,14 @@ namespace Rebellion.Game.Events
         public int Amount { get; set; }
 
         /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
-            throw new InvalidOperationException("AdjustPlanetResource requires a planet target.");
-        }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            Planet planet = context?.GetScopeTarget<Planet>();
+            GameRoot game = context.Game;
+            Planet planet = context.Activation?.GetScopeTarget<Planet>();
             if (planet == null)
-                return Execute(game);
+                throw new InvalidOperationException(
+                    "AdjustPlanetResource requires a planet target."
+                );
 
             int oldValue;
             int newValue;
@@ -113,19 +106,12 @@ namespace Rebellion.Game.Events
         public int MinimumTotalLoss { get; set; } = 1;
 
         /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game) =>
-            throw new InvalidOperationException("ReduceResources requires a planet target.");
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
+        public override List<GameResult> Execute(GameActionContext context)
         {
-            Planet planet = context?.GetScopeTarget<Planet>();
+            GameRoot game = context.Game;
+            Planet planet = context.Activation?.GetScopeTarget<Planet>();
             if (planet == null)
-                return Execute(game);
+                throw new InvalidOperationException("ReduceResources requires a planet target.");
 
             int oldRaw = planet.NumRawResourceNodes;
             int oldEnergy = planet.EnergyCapacity;
@@ -140,7 +126,7 @@ namespace Rebellion.Game.Events
                 if (
                     iteration < oldRaw
                     && RollProbability(
-                        provider,
+                        context.Random,
                         ((oldEnergy - rawLoss - energyLoss) + oldRaw) * LossProbabilityPerResource
                     )
                 )
@@ -148,7 +134,7 @@ namespace Rebellion.Game.Events
                 if (
                     iteration < oldEnergy
                     && RollProbability(
-                        provider,
+                        context.Random,
                         ((oldRaw - rawLoss - energyLoss) + oldEnergy) * LossProbabilityPerResource
                     )
                 )

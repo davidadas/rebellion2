@@ -424,7 +424,15 @@ namespace Rebellion.Systems
                     continue;
 
                 result.DestroyedCapitalShips.Add(ship);
-                CapitalShipDestruction.Resolve(_game, _movement, ship);
+                _movement.EvacuateDestroyedCapitalShip(ship);
+                foreach (Regiment regiment in ship.Regiments.ToList())
+                {
+                    _game.AddToVoid(regiment);
+                    _game.SetVoidStatus(regiment, VoidStatus.Destroyed);
+                }
+                _game.AddToVoid(ship);
+                _game.SetVoidStatus(ship, VoidStatus.Destroyed);
+                GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
             }
         }
 
@@ -814,7 +822,7 @@ namespace Rebellion.Systems
                     }
                 );
                 _game.AddToVoid(officer);
-                _game.SetVoidStatus(officer, VoidStatus.Dead);
+                _game.SetVoidStatus(officer, null);
             }
         }
 

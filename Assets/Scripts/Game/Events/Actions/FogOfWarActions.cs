@@ -6,6 +6,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Presentation.Advisor;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
@@ -25,8 +26,8 @@ namespace Rebellion.Game.Events
     /// Resolves a controlled-world informant check with data-defined faction routing
     /// and uniformly weighted intelligence categories.
     /// </summary>
-    [PersistableObject(Name = "InformantIntelligence")]
-    public sealed class InformantIntelligenceAction : GameAction
+    [PersistableObject(Name = "GatherInformantIntelligence")]
+    public sealed class GatherInformantIntelligenceAction : GameAction
     {
         public int MaximumPopularSupport { get; set; } = 100;
         public string Subject { get; set; }
@@ -41,27 +42,15 @@ namespace Rebellion.Game.Events
             new List<PlanetIntelligenceCategory>();
 
         /// <inheritdoc />
-        public override List<GameResult> Execute(GameRoot game)
+        public override List<GameResult> Execute(GameActionContext context)
         {
-            throw new InvalidOperationException(
-                "InformantIntelligence must execute from a planet-scoped game event."
-            );
-        }
-
-        /// <inheritdoc />
-        public override List<GameResult> Execute(
-            GameRoot game,
-            IRandomNumberProvider provider,
-            GameEventExecutionContext context
-        )
-        {
-            if (provider == null)
-                throw new ArgumentNullException(nameof(provider));
-            BackgroundImage?.Validate();
-            AdvisorNotification?.Validate();
-            Planet planet = context?.GetScopeTarget<Planet>();
+            GameRoot game = context.Game;
+            IRandomNumberProvider provider = context.Random;
+            Planet planet = context.Activation?.GetScopeTarget<Planet>();
             if (planet == null)
-                return Execute(game);
+                throw new InvalidOperationException(
+                    "GatherInformantIntelligence must execute from a planet-scoped game event."
+                );
 
             InformantFactionRoute route = FactionRoutes.FirstOrDefault(candidate =>
                 candidate.ControllerFactionInstanceID == planet.OwnerInstanceID
@@ -89,7 +78,7 @@ namespace Rebellion.Game.Events
                     Categories = categories,
                     Tick = game.CurrentTick,
                 },
-                new NarrativeMessageResult
+                new MessageRequestedResult
                 {
                     Recipient = recipient,
                     SubjectNode = planet,
@@ -99,7 +88,7 @@ namespace Rebellion.Game.Events
                     Body = Body,
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = BackgroundImage?.Path,
-                    AudioPath = AmbientAudio?.Path,
+                    AmbientAudioPath = AmbientAudio?.Path,
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },

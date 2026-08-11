@@ -157,7 +157,7 @@ namespace Rebellion.Tests.Game.Missions
             Assert.AreEqual(definition.InstanceID, mission.MissionDefinitionID);
             Assert.AreSame(definition, mission.Definition);
             Assert.AreEqual(definition.DisplayName, mission.DisplayName);
-            Assert.IsFalse(mission.CanAbort);
+            Assert.IsFalse(mission.CanCancel);
         }
 
         private static CustomMissionDefinition OpposedDefinition() =>
