@@ -140,6 +140,22 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 alliance.FighterWithdrawalAudioPath
             );
             Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13000-1033-tactical-blast",
+                alliance.LaserCannonFireAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13003-1033-tactical-blast",
+                alliance.FighterLaserCannonFireAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13004-1033-tactical-blast",
+                empire.FighterLaserCannonFireAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13005-1033-tactical-blast",
+                alliance.FighterIonCannonFireAudioPath
+            );
+            Assert.AreEqual(
                 alliance.CapitalShipArrivalAudioPath,
                 empire.CapitalShipArrivalAudioPath
             );

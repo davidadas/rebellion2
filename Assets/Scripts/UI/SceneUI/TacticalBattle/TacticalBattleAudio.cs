@@ -58,6 +58,9 @@ internal sealed class TacticalBattleAudio
 
         foreach (TacticalCombatEvent combatEvent in events)
         {
+            if (combatEvent.Kind == TacticalCombatEventKind.WeaponImpact)
+                Enqueue(GetWeaponFirePath(combatEvent), TacticalAudioChannel.Combat);
+
             TacticalAudioChannel channel = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => TacticalAudioChannel.Combat,
@@ -76,6 +79,29 @@ internal sealed class TacticalBattleAudio
             };
             Enqueue(path, channel);
         }
+    }
+
+    /// <summary>
+    /// Resolves the firing cue for the attacking unit and weapon family.
+    /// </summary>
+    /// <param name="combatEvent">The completed weapon attack to resolve.</param>
+    /// <returns>The configured firing cue.</returns>
+    private string GetWeaponFirePath(TacticalCombatEvent combatEvent)
+    {
+        TacticalBattleTheme theme = GetTheme(combatEvent.Source.Side);
+        bool fighters = combatEvent.Source.Kind == TacticalUnitKind.Fighters;
+        return combatEvent.WeaponType switch
+        {
+            TacticalWeaponType.LaserCannon => fighters
+                ? theme.FighterLaserCannonFireAudioPath
+                : theme.LaserCannonFireAudioPath,
+            TacticalWeaponType.Turbolaser => theme.TurbolaserFireAudioPath,
+            TacticalWeaponType.IonCannon => fighters
+                ? theme.FighterIonCannonFireAudioPath
+                : theme.IonCannonFireAudioPath,
+            TacticalWeaponType.Torpedo => theme.TorpedoFireAudioPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
+        };
     }
 
     /// <summary>
@@ -123,10 +149,10 @@ internal sealed class TacticalBattleAudio
             TacticalWeaponType.IonCannon => combatEvent.PenetratedShields
                 ? theme.IonShieldPenetrationAudioPath
                 : theme.IonShieldHitAudioPath,
-            TacticalWeaponType.Torpedo => combatEvent.PenetratedShields
+            TacticalWeaponType.LaserCannon => combatEvent.PenetratedShields
                 ? theme.ProjectileShieldPenetrationAudioPath
                 : theme.ProjectileShieldHitAudioPath,
-            TacticalWeaponType.Turbolaser or TacticalWeaponType.LaserCannon =>
+            TacticalWeaponType.Turbolaser or TacticalWeaponType.Torpedo =>
                 combatEvent.PenetratedShields
                     ? theme.EnergyShieldPenetrationAudioPath
                     : theme.EnergyShieldHitAudioPath,

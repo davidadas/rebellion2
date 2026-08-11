@@ -12,6 +12,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _attackerCapitalShipWithdrawal = "attacker-capital-withdrawal";
         private const string _attackerFighterArrival = "attacker-fighter-arrival";
         private const string _attackerFighterWithdrawal = "attacker-fighter-withdrawal";
+        private const string _attackerFighterIonFire = "attacker-fighter-ion-fire";
+        private const string _attackerFighterLaserFire = "attacker-fighter-laser-fire";
+        private const string _attackerIonFire = "attacker-ion-fire";
+        private const string _attackerLaserFire = "attacker-laser-fire";
+        private const string _attackerTorpedoFire = "attacker-torpedo-fire";
+        private const string _attackerTurbolaserFire = "attacker-turbolaser-fire";
         private const string _defenderCapitalShipArrival = "defender-capital-arrival";
         private const string _defenderFighterArrival = "defender-fighter-arrival";
         private const string _defenderEnergyPenetration = "defender-energy-penetration";
@@ -37,6 +43,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         CapitalShipWithdrawalAudioPath = _attackerCapitalShipWithdrawal,
                         FighterArrivalAudioPath = _attackerFighterArrival,
                         FighterWithdrawalAudioPath = _attackerFighterWithdrawal,
+                        LaserCannonFireAudioPath = _attackerLaserFire,
+                        FighterLaserCannonFireAudioPath = _attackerFighterLaserFire,
+                        TurbolaserFireAudioPath = _attackerTurbolaserFire,
+                        IonCannonFireAudioPath = _attackerIonFire,
+                        FighterIonCannonFireAudioPath = _attackerFighterIonFire,
+                        TorpedoFireAudioPath = _attackerTorpedoFire,
                     },
                     [TacticalBattleSide.Defender] = new TacticalBattleTheme
                     {
@@ -103,7 +115,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             audio.Advance(0f);
 
             CollectionAssert.AreEqual(
-                new[] { _attackerCapitalShipArrival, _defenderEnergyHit },
+                new[] { _attackerCapitalShipArrival, _attackerTurbolaserFire },
                 played
             );
         }
@@ -131,9 +143,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CollectionAssert.AreEqual(
                 new[]
                 {
+                    _attackerTurbolaserFire,
                     _defenderEnergyHit,
-                    _defenderEnergyHit,
-                    _defenderEnergyHit,
+                    _attackerTurbolaserFire,
                     _defenderEnergyHit,
                 },
                 played
@@ -194,9 +206,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [TestCase(TacticalWeaponType.Turbolaser, false, _defenderEnergyHit)]
-        [TestCase(TacticalWeaponType.LaserCannon, true, _defenderEnergyPenetration)]
-        [TestCase(TacticalWeaponType.Torpedo, false, _defenderProjectileHit)]
-        [TestCase(TacticalWeaponType.Torpedo, true, _defenderProjectilePenetration)]
+        [TestCase(TacticalWeaponType.LaserCannon, true, _defenderProjectilePenetration)]
+        [TestCase(TacticalWeaponType.Torpedo, false, _defenderEnergyHit)]
+        [TestCase(TacticalWeaponType.Torpedo, true, _defenderEnergyPenetration)]
         [TestCase(TacticalWeaponType.IonCannon, false, _defenderIonHit)]
         [TestCase(TacticalWeaponType.IonCannon, true, _defenderIonPenetration)]
         public void QueueEvents_WeaponImpact_QueuesTargetFactionDamageCue(
@@ -218,6 +230,38 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         penetratedShields ? TacticalImpactState.Hull : TacticalImpactState.Shield
                     ),
                 }
+            );
+            audio.Advance(0f);
+            audio.Advance(1f);
+
+            Assert.AreEqual(expectedPath, played[1]);
+        }
+
+        [TestCase(TacticalWeaponType.LaserCannon, TacticalUnitKind.CapitalShip, _attackerLaserFire)]
+        [TestCase(
+            TacticalWeaponType.LaserCannon,
+            TacticalUnitKind.Fighters,
+            _attackerFighterLaserFire
+        )]
+        [TestCase(
+            TacticalWeaponType.Turbolaser,
+            TacticalUnitKind.CapitalShip,
+            _attackerTurbolaserFire
+        )]
+        [TestCase(TacticalWeaponType.IonCannon, TacticalUnitKind.CapitalShip, _attackerIonFire)]
+        [TestCase(TacticalWeaponType.IonCannon, TacticalUnitKind.Fighters, _attackerFighterIonFire)]
+        [TestCase(TacticalWeaponType.Torpedo, TacticalUnitKind.Fighters, _attackerTorpedoFire)]
+        public void QueueEvents_WeaponImpact_QueuesSourceWeaponFireCueBeforeDamageCue(
+            TacticalWeaponType weaponType,
+            TacticalUnitKind sourceKind,
+            string expectedPath
+        )
+        {
+            TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker, sourceKind);
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueEvents(
+                new[] { TacticalCombatEvent.WeaponImpact(attacker, defender, weaponType) }
             );
             audio.Advance(0f);
 

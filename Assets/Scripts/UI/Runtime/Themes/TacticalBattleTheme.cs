@@ -24,6 +24,18 @@ public sealed class TacticalBattleTheme
 
     public string FighterWithdrawalAudioPath { get; set; }
 
+    public string LaserCannonFireAudioPath { get; set; }
+
+    public string FighterLaserCannonFireAudioPath { get; set; }
+
+    public string TurbolaserFireAudioPath { get; set; }
+
+    public string IonCannonFireAudioPath { get; set; }
+
+    public string FighterIonCannonFireAudioPath { get; set; }
+
+    public string TorpedoFireAudioPath { get; set; }
+
     public string SuperlaserAudioPath { get; set; }
 
     public string EnergyShieldHitAudioPath { get; set; }
