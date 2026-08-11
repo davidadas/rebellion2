@@ -33,12 +33,12 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private Sprite[] blueBlastImpactFrames = Array.Empty<Sprite>();
     private Sprite[] blueNetImpactFrames = Array.Empty<Sprite>();
     private Sprite[] blueSpreadImpactFrames = Array.Empty<Sprite>();
+    private Sprite[] destructionEffectFrames = Array.Empty<Sprite>();
     private Material navigationSelectedMaterial;
     private bool initialized;
     private bool unitSelectionEnabled;
     private TacticalBattleSession session;
     private Sprite[] orangeBlastImpactFrames = Array.Empty<Sprite>();
-    private Sprite[] orangeDoubleBlastImpactFrames = Array.Empty<Sprite>();
     private Sprite[] orangeSplitImpactFrames = Array.Empty<Sprite>();
     private Sprite[] tractorLockEffectFrames = Array.Empty<Sprite>();
 
@@ -57,8 +57,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// </summary>
     public bool HasActiveCombatEffects =>
         GetComponentInChildren<TacticalCombatEffectView>(true) != null
-        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null
-        || GetComponentInChildren<TacticalDestructionEffectView>(true) != null;
+        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null;
 
     /// <summary>
     /// Loads and creates all model-backed tactical units.
@@ -106,7 +105,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         blueSpreadImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueSpread", 6);
         blueNetImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueNet", 16);
         blueBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueBlast", 7);
-        orangeDoubleBlastImpactFrames = LoadEffectFrames(
+        destructionEffectFrames = LoadEffectFrames(
             contentAssets,
             $"{impactRoot}/OrangeDoubleBlast",
             16
@@ -184,11 +183,14 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates one object-scaled pyrotechnic burst at a destroyed unit's final position.
+    /// Creates the object-scaled destruction animation at a capital ship's final position.
     /// </summary>
     /// <param name="combatEvent">The unit-destruction event to present.</param>
     private void CreateDestructionEffect(TacticalCombatEvent combatEvent)
     {
+        if (combatEvent.Source.Kind == TacticalUnitKind.Fighters)
+            return;
+
         const float fallbackDiameter = 4f;
         float diameter =
             unitViewsByState.TryGetValue(combatEvent.Source, out TacticalUnitView unitView)
@@ -198,7 +200,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         GameObject effect = new GameObject("Destruction Effect");
         effect.transform.SetParent(transform, false);
         effect.transform.localPosition = ToUnityVector(combatEvent.SourcePosition);
-        effect.AddComponent<TacticalDestructionEffectView>().Initialize(diameter);
+        effect
+            .AddComponent<TacticalOneShotEffectView>()
+            .Initialize(destructionEffectFrames, diameter);
     }
 
     /// <summary>
@@ -228,26 +232,29 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <returns>The ordered impact frames, or an empty sequence when none is shown.</returns>
     private Sprite[] GetWeaponImpactFrames(TacticalCombatEvent combatEvent)
     {
-        switch (combatEvent.WeaponType)
+        if (
+            combatEvent.Target.Kind == TacticalUnitKind.Fighters
+            || combatEvent.ImpactState == TacticalImpactState.Destroyed
+        )
         {
-            case TacticalWeaponType.LaserCannon:
-                return combatEvent.ImpactState == TacticalImpactState.Destroyed
-                    ? blueSpreadImpactFrames
-                    : orangeSplitImpactFrames;
-            case TacticalWeaponType.Turbolaser:
-                if (combatEvent.Target.Kind == TacticalUnitKind.Fighters)
-                    return blueBlastImpactFrames;
-
-                return combatEvent.ImpactState == TacticalImpactState.Destroyed
-                    ? blueNetImpactFrames
-                    : orangeBlastImpactFrames;
-            case TacticalWeaponType.IonCannon:
-                return orangeDoubleBlastImpactFrames;
-            case TacticalWeaponType.Torpedo:
-                return Array.Empty<Sprite>();
-            default:
-                throw new ArgumentOutOfRangeException(nameof(combatEvent));
+            return Array.Empty<Sprite>();
         }
+
+        if (combatEvent.ImpactState == TacticalImpactState.Shield)
+        {
+            return combatEvent.WeaponType == TacticalWeaponType.IonCannon
+                ? orangeSplitImpactFrames
+                : blueSpreadImpactFrames;
+        }
+
+        return combatEvent.WeaponType switch
+        {
+            TacticalWeaponType.LaserCannon or TacticalWeaponType.Turbolaser =>
+                orangeBlastImpactFrames,
+            TacticalWeaponType.IonCannon => blueNetImpactFrames,
+            TacticalWeaponType.Torpedo => blueBlastImpactFrames,
+            _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
+        };
     }
 
     /// <summary>

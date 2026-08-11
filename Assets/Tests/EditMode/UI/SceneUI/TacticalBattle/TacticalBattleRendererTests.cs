@@ -135,7 +135,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
             RegisterUnitView(target);
             typeof(TacticalBattleRenderer)
-                .GetField("orangeSplitImpactFrames", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetField("blueSpreadImpactFrames", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.SetValue(renderer, new Sprite[1]);
 
             renderer.PresentEvents(
@@ -193,6 +193,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         public void PresentEvents_UnitDestroyed_CreatesPyrotechnicEffect()
         {
             TacticalUnitState unit = CreateCapitalShip(TacticalBattleSide.Attacker);
+            typeof(TacticalBattleRenderer)
+                .GetField("destructionEffectFrames", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, new Sprite[1]);
 
             renderer.PresentEvents(
                 new[]
@@ -202,18 +205,18 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             );
 
             Assert.IsTrue(renderer.HasActiveCombatEffects);
-            Assert.IsNotNull(root.GetComponentInChildren<TacticalDestructionEffectView>());
+            Assert.IsNotNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
         }
 
         [TestCase(
             TacticalWeaponType.LaserCannon,
             TacticalImpactState.Shield,
             TacticalUnitKind.CapitalShip,
-            "orangeSplitImpactFrames"
+            "blueSpreadImpactFrames"
         )]
         [TestCase(
-            TacticalWeaponType.LaserCannon,
-            TacticalImpactState.Destroyed,
+            TacticalWeaponType.Turbolaser,
+            TacticalImpactState.Shield,
             TacticalUnitKind.CapitalShip,
             "blueSpreadImpactFrames"
         )]
@@ -224,22 +227,22 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             "orangeBlastImpactFrames"
         )]
         [TestCase(
-            TacticalWeaponType.Turbolaser,
-            TacticalImpactState.Destroyed,
+            TacticalWeaponType.IonCannon,
+            TacticalImpactState.Shield,
+            TacticalUnitKind.CapitalShip,
+            "orangeSplitImpactFrames"
+        )]
+        [TestCase(
+            TacticalWeaponType.IonCannon,
+            TacticalImpactState.Hull,
             TacticalUnitKind.CapitalShip,
             "blueNetImpactFrames"
         )]
         [TestCase(
-            TacticalWeaponType.Turbolaser,
-            TacticalImpactState.Shield,
-            TacticalUnitKind.Fighters,
-            "blueBlastImpactFrames"
-        )]
-        [TestCase(
-            TacticalWeaponType.IonCannon,
-            TacticalImpactState.Shield,
+            TacticalWeaponType.Torpedo,
+            TacticalImpactState.Hull,
             TacticalUnitKind.CapitalShip,
-            "orangeDoubleBlastImpactFrames"
+            "blueBlastImpactFrames"
         )]
         public void GetWeaponImpactFrames_ResolvedImpact_ReturnsMappedAnimation(
             TacticalWeaponType weaponType,
@@ -276,6 +279,61 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     ?.Invoke(renderer, new object[] { combatEvent });
 
             Assert.AreSame(expectedFrames, actualFrames);
+        }
+
+        [TestCase(TacticalImpactState.Shield, TacticalUnitKind.Fighters)]
+        [TestCase(TacticalImpactState.Hull, TacticalUnitKind.Fighters)]
+        [TestCase(TacticalImpactState.Destroyed, TacticalUnitKind.CapitalShip)]
+        public void GetWeaponImpactFrames_UnrenderedImpact_ReturnsNoAnimation(
+            TacticalImpactState impactState,
+            TacticalUnitKind targetKind
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target =
+                targetKind == TacticalUnitKind.Fighters
+                    ? TacticalUnitState.FromFighters(
+                        new Starfighter { CurrentSquadronSize = 1 },
+                        TacticalBattleSide.Defender
+                    )
+                    : CreateCapitalShip(TacticalBattleSide.Defender);
+            TacticalCombatEvent combatEvent = TacticalCombatEvent.WeaponImpact(
+                source,
+                target,
+                TacticalWeaponType.LaserCannon,
+                impactState
+            );
+
+            Sprite[] actualFrames = (Sprite[])
+                typeof(TacticalBattleRenderer)
+                    .GetMethod(
+                        "GetWeaponImpactFrames",
+                        BindingFlags.Instance | BindingFlags.NonPublic
+                    )
+                    ?.Invoke(renderer, new object[] { combatEvent });
+
+            Assert.IsEmpty(actualFrames);
+        }
+
+        [Test]
+        public void PresentEvents_FighterDestroyed_DoesNotCreatePyrotechnicAnimation()
+        {
+            TacticalUnitState fighter = TacticalUnitState.FromFighters(
+                new Starfighter { CurrentSquadronSize = 1 },
+                TacticalBattleSide.Attacker
+            );
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.UnitDestroyed,
+                        fighter
+                    ),
+                }
+            );
+
+            Assert.IsNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
         }
 
         /// <summary>
