@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Owns the short lifetime and fade of one tactical weapon or destruction effect.
+/// Owns the short lifetime and fade of one tactical weapon effect.
 /// </summary>
 public sealed class TacticalCombatEffectView : MonoBehaviour
 {
@@ -10,25 +10,20 @@ public sealed class TacticalCombatEffectView : MonoBehaviour
     private float elapsedTime;
     private float lifetime;
     private Material material;
-    private Vector3 initialScale;
-    private bool expands;
 
     /// <summary>
-    /// Configures the effect's owned material, lifetime, and optional expansion.
+    /// Configures the effect's owned material and lifetime.
     /// </summary>
     /// <param name="ownedMaterial">The effect material destroyed with this view.</param>
     /// <param name="duration">The effect lifetime in seconds.</param>
-    /// <param name="expand">Whether the effect expands while fading.</param>
-    public void Initialize(Material ownedMaterial, float duration, bool expand)
+    public void Initialize(Material ownedMaterial, float duration)
     {
         material = ownedMaterial ?? throw new ArgumentNullException(nameof(ownedMaterial));
         if (duration <= 0f)
             throw new ArgumentOutOfRangeException(nameof(duration));
 
         lifetime = duration;
-        expands = expand;
         initialColor = material.color;
-        initialScale = transform.localScale;
     }
 
     /// <summary>
@@ -42,8 +37,6 @@ public sealed class TacticalCombatEffectView : MonoBehaviour
         elapsedTime += Time.deltaTime;
         float progress = Mathf.Clamp01(elapsedTime / lifetime);
         material.color = new Color(initialColor.r, initialColor.g, initialColor.b, 1f - progress);
-        if (expands)
-            transform.localScale = initialScale * Mathf.Lerp(1f, 3f, progress);
         if (elapsedTime >= lifetime)
             Destroy(gameObject);
     }

@@ -14,7 +14,6 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 {
     private const float _capitalShipScale = 12f;
     private const float _closeSpritePixelsPerUnit = 2f;
-    private const float _destructionEffectDuration = 0.65f;
     private const float _farSpritePixelsPerUnit = 1f;
     private const float _weaponEffectDuration = 0.18f;
     private const int _persistentEffectFrameCount = 8;
@@ -154,8 +153,6 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
                 CreateWeaponEffect(combatEvent);
             else if (combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired)
                 CreateSuperlaserEffect(combatEvent);
-            else if (combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
-                CreateDestructionEffect(combatEvent.TargetPosition);
             else if (combatEvent.Kind == TacticalCombatEventKind.TractorLock)
                 SetTractorLockEffect(combatEvent.Target, true);
             else if (combatEvent.Kind == TacticalCombatEventKind.TractorRelease)
@@ -180,9 +177,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         line.endWidth = 0.5f;
         line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
         line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
-        effect
-            .AddComponent<TacticalCombatEffectView>()
-            .Initialize(material, _weaponEffectDuration, false);
+        effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
     }
 
     /// <summary>
@@ -300,33 +295,12 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         line.sharedMaterial = material;
         line.useWorldSpace = false;
         line.positionCount = 2;
-        line.startWidth = 0.25f;
-        line.endWidth = 0.08f;
+        float width = GetWeaponWidth(combatEvent.WeaponType.Value);
+        line.startWidth = width;
+        line.endWidth = width;
         line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
         line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
-        effect
-            .AddComponent<TacticalCombatEffectView>()
-            .Initialize(material, _weaponEffectDuration, false);
-    }
-
-    /// <summary>
-    /// Creates the expanding pyrotechnic effect used when a tactical unit is destroyed.
-    /// </summary>
-    /// <param name="position">The captured destruction position.</param>
-    private void CreateDestructionEffect(System.Numerics.Vector3 position)
-    {
-        GameObject effect = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        effect.name = "Destruction Effect";
-        effect.transform.SetParent(transform, false);
-        effect.transform.localPosition = ToUnityVector(position);
-        effect.transform.localScale = Vector3.one * 2f;
-        effect.layer = LayerMask.NameToLayer("Ignore Raycast");
-
-        Material material = CreateEffectMaterial(new Color(1f, 0.35f, 0.05f));
-        effect.GetComponent<MeshRenderer>().sharedMaterial = material;
-        effect
-            .AddComponent<TacticalCombatEffectView>()
-            .Initialize(material, _destructionEffectDuration, true);
+        effect.AddComponent<TacticalCombatEffectView>().Initialize(material, _weaponEffectDuration);
     }
 
     /// <summary>
@@ -350,11 +324,33 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <returns>The corresponding effect color.</returns>
     private static Color GetWeaponColor(TacticalCombatEvent combatEvent)
     {
-        return combatEvent.WeaponType switch
+        if (combatEvent.WeaponType == TacticalWeaponType.IonCannon)
+            return Color.blue;
+        if (
+            combatEvent.WeaponType == TacticalWeaponType.Torpedo
+            && combatEvent.Source.Kind == TacticalUnitKind.Fighters
+        )
         {
-            TacticalWeaponType.IonCannon => new Color(0.2f, 0.55f, 1f),
-            TacticalWeaponType.Torpedo => new Color(1f, 0.65f, 0.15f),
-            _ => combatEvent.Source.Side == TacticalBattleSide.Attacker ? Color.red : Color.green,
+            return Color.white;
+        }
+
+        return combatEvent.Source.Side == TacticalBattleSide.Attacker ? Color.red : Color.green;
+    }
+
+    /// <summary>
+    /// Selects the base beam width used by one tactical weapon family.
+    /// </summary>
+    /// <param name="weaponType">The weapon family being presented.</param>
+    /// <returns>The beam width in tactical world units.</returns>
+    private static float GetWeaponWidth(TacticalWeaponType weaponType)
+    {
+        return weaponType switch
+        {
+            TacticalWeaponType.LaserCannon => 0.5f,
+            TacticalWeaponType.Turbolaser => 0.65f,
+            TacticalWeaponType.IonCannon => 0.4f,
+            TacticalWeaponType.Torpedo => 0.2f,
+            _ => throw new ArgumentOutOfRangeException(nameof(weaponType)),
         };
     }
 

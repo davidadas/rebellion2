@@ -1,6 +1,7 @@
 using System.Reflection;
 using NUnit.Framework;
 using Rebellion.Game.Tactical;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
@@ -79,6 +80,90 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsTrue(hasActiveEffects);
         }
 
+        [TestCase(TacticalWeaponType.LaserCannon, 0.5f)]
+        [TestCase(TacticalWeaponType.Turbolaser, 0.65f)]
+        [TestCase(TacticalWeaponType.IonCannon, 0.4f)]
+        [TestCase(TacticalWeaponType.Torpedo, 0.2f)]
+        public void PresentEvents_WeaponImpact_UsesWeaponFamilyBeamWidth(
+            TacticalWeaponType weaponType,
+            float expectedWidth
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(
+                new[] { TacticalCombatEvent.WeaponImpact(source, target, weaponType) }
+            );
+
+            LineRenderer line = root.GetComponentInChildren<LineRenderer>();
+            Assert.AreEqual(expectedWidth, line.startWidth);
+            Assert.AreEqual(expectedWidth, line.endWidth);
+        }
+
+        [TestCase(TacticalBattleSide.Attacker, TacticalWeaponType.LaserCannon, 1f, 0f, 0f)]
+        [TestCase(TacticalBattleSide.Defender, TacticalWeaponType.Turbolaser, 0f, 1f, 0f)]
+        [TestCase(TacticalBattleSide.Attacker, TacticalWeaponType.IonCannon, 0f, 0f, 1f)]
+        public void PresentEvents_CapitalShipWeaponImpact_UsesWeaponBeamColor(
+            TacticalBattleSide side,
+            TacticalWeaponType weaponType,
+            float red,
+            float green,
+            float blue
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(side);
+            TacticalUnitState target = CreateCapitalShip(
+                side == TacticalBattleSide.Attacker
+                    ? TacticalBattleSide.Defender
+                    : TacticalBattleSide.Attacker
+            );
+
+            renderer.PresentEvents(
+                new[] { TacticalCombatEvent.WeaponImpact(source, target, weaponType) }
+            );
+
+            Color color = root.GetComponentInChildren<LineRenderer>().sharedMaterial.color;
+            Assert.AreEqual(new Color(red, green, blue), color);
+        }
+
+        [Test]
+        public void PresentEvents_FighterTorpedoImpact_UsesWhiteBeam()
+        {
+            TacticalUnitState source = TacticalUnitState.FromFighters(
+                new Starfighter { CurrentSquadronSize = 1 },
+                TacticalBattleSide.Attacker
+            );
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(source, target, TacticalWeaponType.Torpedo),
+                }
+            );
+
+            Assert.AreEqual(
+                Color.white,
+                root.GetComponentInChildren<LineRenderer>().sharedMaterial.color
+            );
+        }
+
+        [Test]
+        public void PresentEvents_UnitDestroyed_DoesNotCreateAnAdditionalEffect()
+        {
+            TacticalUnitState unit = CreateCapitalShip(TacticalBattleSide.Attacker);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, unit),
+                }
+            );
+
+            Assert.IsFalse(renderer.HasActiveCombatEffects);
+        }
+
         /// <summary>
         /// Builds the runtime-only marker hierarchy through the renderer's initialization helper.
         /// </summary>
@@ -88,6 +173,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             typeof(TacticalBattleRenderer)
                 .GetMethod("CreateNavigationGrid", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.Invoke(renderer, new object[] { grid });
+        }
+
+        /// <summary>
+        /// Creates one minimal capital-ship state for renderer tests.
+        /// </summary>
+        /// <param name="side">The tactical side assigned to the state.</param>
+        /// <returns>The initialized tactical state.</returns>
+        private static TacticalUnitState CreateCapitalShip(TacticalBattleSide side)
+        {
+            return TacticalUnitState.FromCapitalShip(
+                new CapitalShip { CurrentHullStrength = 1, MaxHullStrength = 1 },
+                side
+            );
         }
 
         /// <summary>
