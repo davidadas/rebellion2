@@ -3,15 +3,20 @@ using System.Collections.Generic;
 using Rebellion.Game.Tactical;
 
 /// <summary>
-/// Presents faction-specific tactical cues through a single-channel queue.
+/// Presents faction-specific tactical cues through bounded tactical audio channels.
 /// </summary>
 internal sealed class TacticalBattleAudio
 {
+    private const float _combatCueLifetime = 3f;
+    private const float _unitCueLifetime = 8f;
     private readonly Action<string> play;
     private readonly Func<string, float> getDuration;
     private readonly IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> themes;
-    private readonly Queue<string> pending = new Queue<string>();
-    private float remainingDuration;
+    private readonly Queue<PendingCue> combatCues = new Queue<PendingCue>();
+    private readonly Queue<PendingCue> unitCues = new Queue<PendingCue>();
+    private float combatCueRemainingDuration;
+    private float elapsedTime;
+    private float unitCueRemainingDuration;
 
     /// <summary>
     /// Creates a tactical cue presenter using resident content audio.
@@ -39,7 +44,7 @@ internal sealed class TacticalBattleAudio
         if (unit == null)
             throw new ArgumentNullException(nameof(unit));
 
-        Enqueue(GetArrivalPath(unit));
+        Enqueue(GetArrivalPath(unit), TacticalAudioChannel.Unit);
     }
 
     /// <summary>
@@ -53,6 +58,13 @@ internal sealed class TacticalBattleAudio
 
         foreach (TacticalCombatEvent combatEvent in events)
         {
+            TacticalAudioChannel channel = combatEvent.Kind switch
+            {
+                TacticalCombatEventKind.WeaponImpact => TacticalAudioChannel.Combat,
+                TacticalCombatEventKind.UnitWithdrawn or TacticalCombatEventKind.SuperlaserFired =>
+                    TacticalAudioChannel.Unit,
+                _ => TacticalAudioChannel.None,
+            };
             string path = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => GetImpactPath(combatEvent),
@@ -62,7 +74,7 @@ internal sealed class TacticalBattleAudio
                 ).SuperlaserAudioPath,
                 _ => null,
             };
-            Enqueue(path);
+            Enqueue(path, channel);
         }
     }
 
@@ -131,26 +143,73 @@ internal sealed class TacticalBattleAudio
         if (elapsedTime < 0f)
             throw new ArgumentOutOfRangeException(nameof(elapsedTime));
 
-        float availableTime = elapsedTime;
+        AdvanceChannel(
+            unitCues,
+            _unitCueLifetime,
+            elapsedTime,
+            this.elapsedTime,
+            ref unitCueRemainingDuration
+        );
+        AdvanceChannel(
+            combatCues,
+            _combatCueLifetime,
+            elapsedTime,
+            this.elapsedTime,
+            ref combatCueRemainingDuration
+        );
+        this.elapsedTime += elapsedTime;
+    }
+
+    /// <summary>
+    /// Advances one independently bounded tactical audio channel.
+    /// </summary>
+    /// <param name="pending">The channel's pending cues.</param>
+    /// <param name="lifetime">The maximum time a pending cue remains relevant.</param>
+    /// <param name="availableTime">The elapsed real time available to the channel.</param>
+    /// <param name="currentTime">The real time at the beginning of the update.</param>
+    /// <param name="remainingDuration">The duration remaining on the active cue.</param>
+    private void AdvanceChannel(
+        Queue<PendingCue> pending,
+        float lifetime,
+        float availableTime,
+        float currentTime,
+        ref float remainingDuration
+    )
+    {
         while (remainingDuration <= availableTime && pending.Count > 0)
         {
             availableTime -= remainingDuration;
-            string path = pending.Dequeue();
-            play(path);
-            remainingDuration = Math.Max(0f, getDuration(path));
+            currentTime += remainingDuration;
+            remainingDuration = 0f;
+
+            PendingCue cue = pending.Dequeue();
+            if (currentTime - cue.QueuedAt > lifetime)
+                continue;
+
+            play(cue.Path);
+            remainingDuration = Math.Max(0f, getDuration(cue.Path));
         }
 
         remainingDuration = Math.Max(0f, remainingDuration - availableTime);
     }
 
     /// <summary>
-    /// Adds a configured cue to the pending queue.
+    /// Adds a configured cue to its tactical audio channel.
     /// </summary>
     /// <param name="path">The optional addressed audio path.</param>
-    private void Enqueue(string path)
+    /// <param name="channel">The independently bounded channel that presents the cue.</param>
+    private void Enqueue(string path, TacticalAudioChannel channel)
     {
-        if (!string.IsNullOrWhiteSpace(path))
-            pending.Enqueue(path.Trim());
+        if (string.IsNullOrWhiteSpace(path) || channel == TacticalAudioChannel.None)
+            return;
+
+        Queue<PendingCue> pending = channel switch
+        {
+            TacticalAudioChannel.Combat => combatCues,
+            TacticalAudioChannel.Unit => unitCues,
+            _ => throw new ArgumentOutOfRangeException(nameof(channel)),
+        };
+        pending.Enqueue(new PendingCue(path.Trim(), elapsedTime));
     }
 
     /// <summary>
@@ -164,5 +223,42 @@ internal sealed class TacticalBattleAudio
             throw new InvalidOperationException($"Tactical audio theme is missing for {side}.");
 
         return theme;
+    }
+
+    /// <summary>
+    /// Identifies independently bounded tactical cue families.
+    /// </summary>
+    private enum TacticalAudioChannel
+    {
+        None,
+        Combat,
+        Unit,
+    }
+
+    /// <summary>
+    /// Holds one addressed cue until its channel can present it.
+    /// </summary>
+    private readonly struct PendingCue
+    {
+        /// <summary>
+        /// Creates a pending cue at the current tactical audio time.
+        /// </summary>
+        /// <param name="path">The addressed audio path.</param>
+        /// <param name="queuedAt">The real time at which the cue was queued.</param>
+        internal PendingCue(string path, float queuedAt)
+        {
+            Path = path;
+            QueuedAt = queuedAt;
+        }
+
+        /// <summary>
+        /// Gets the addressed audio path.
+        /// </summary>
+        internal string Path { get; }
+
+        /// <summary>
+        /// Gets the real time at which the cue was queued.
+        /// </summary>
+        internal float QueuedAt { get; }
     }
 }

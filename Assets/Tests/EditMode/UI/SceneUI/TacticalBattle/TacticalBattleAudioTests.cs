@@ -83,6 +83,64 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void Advance_UnitAndCombatCuesQueued_StartsBothChannelsImmediately()
+        {
+            TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+            audio.QueueArrival(attacker);
+            audio.QueueEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        attacker,
+                        defender,
+                        TacticalWeaponType.Turbolaser,
+                        TacticalImpactState.Shield
+                    ),
+                }
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { _attackerCapitalShipArrival, _defenderEnergyHit },
+                played
+            );
+        }
+
+        [Test]
+        public void Advance_CombatCueWaitsPastLifetime_DiscardsStaleCue()
+        {
+            TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+            TacticalCombatEvent[] impacts = new TacticalCombatEvent[5];
+            for (int index = 0; index < impacts.Length; index++)
+            {
+                impacts[index] = TacticalCombatEvent.WeaponImpact(
+                    attacker,
+                    defender,
+                    TacticalWeaponType.Turbolaser,
+                    TacticalImpactState.Shield
+                );
+            }
+            audio.QueueEvents(impacts);
+            audio.Advance(0f);
+
+            audio.Advance(4f);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    _defenderEnergyHit,
+                    _defenderEnergyHit,
+                    _defenderEnergyHit,
+                    _defenderEnergyHit,
+                },
+                played
+            );
+        }
+
+        [Test]
         public void QueueEvents_CapitalShipWithdrawal_QueuesCapitalShipCue()
         {
             TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
