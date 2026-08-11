@@ -472,31 +472,35 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
-        public void PresentEvents_SuperlaserFired_CreatesDedicatedBeamEffect()
+        public void PresentEvents_SuperlaserFired_CreatesProceduralStretchEffect()
         {
             TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
             TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+            target.Position = new System.Numerics.Vector3(0f, 0f, 10f);
 
             renderer.PresentEvents(new[] { TacticalCombatEvent.SuperlaserFired(source, target) });
 
-            LineRenderer line = root.GetComponentInChildren<LineRenderer>();
-            Assert.IsNotNull(line);
-            Assert.AreEqual(1f, line.startWidth);
-            Assert.AreEqual(1f, line.endWidth);
+            TacticalSuperlaserEffectView effect =
+                root.GetComponentInChildren<TacticalSuperlaserEffectView>();
+            Assert.IsNotNull(effect);
+            Assert.AreEqual(2, effect.GetComponentsInChildren<MeshFilter>().Length);
             Assert.IsTrue(renderer.HasActiveCombatEffects);
         }
 
         [Test]
-        public void PresentEvents_SuperlaserFired_UsesSourceFactionBeamColor()
+        public void PresentEvents_SuperlaserFired_UsesGreenBeamColor()
         {
             TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Defender);
             TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Attacker);
+            target.Position = new System.Numerics.Vector3(0f, 0f, 10f);
 
             renderer.PresentEvents(new[] { TacticalCombatEvent.SuperlaserFired(source, target) });
 
             Assert.AreEqual(
                 Color.green,
-                root.GetComponentInChildren<LineRenderer>().sharedMaterial.color
+                root.GetComponentInChildren<TacticalSuperlaserEffectView>()
+                    .GetComponentInChildren<MeshRenderer>()
+                    .sharedMaterial.color
             );
         }
 

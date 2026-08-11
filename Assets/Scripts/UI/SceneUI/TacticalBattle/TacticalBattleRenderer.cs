@@ -76,7 +76,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// </summary>
     public bool HasActiveCombatEffects =>
         GetComponentInChildren<TacticalCombatEffectView>(true) != null
-        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null;
+        || GetComponentInChildren<TacticalOneShotEffectView>(true) != null
+        || GetComponentInChildren<TacticalSuperlaserEffectView>(true) != null;
 
     /// <summary>
     /// Loads and creates all model-backed tactical units.
@@ -229,25 +230,17 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the full-width faction beam used by the Death Star superlaser.
+    /// Creates the expanding green beam and terminal flare used by the Death Star superlaser.
     /// </summary>
     /// <param name="combatEvent">The resolved superlaser event.</param>
     private void CreateSuperlaserEffect(TacticalCombatEvent combatEvent)
     {
         GameObject effect = new GameObject("Superlaser Effect");
         effect.transform.SetParent(transform, false);
-        LineRenderer line = effect.AddComponent<LineRenderer>();
-        Material material = CreateEffectMaterial(GetFactionBeamColor(combatEvent));
-        line.sharedMaterial = material;
-        line.useWorldSpace = false;
-        line.positionCount = 2;
-        line.startWidth = 1f;
-        line.endWidth = 1f;
         effect
-            .AddComponent<TacticalCombatEffectView>()
-            .InitializeTravelingBeam(
-                material,
-                line,
+            .AddComponent<TacticalSuperlaserEffectView>()
+            .Initialize(
+                CreateEffectMaterial(Color.green),
                 ToUnityVector(combatEvent.SourcePosition),
                 ToUnityVector(combatEvent.TargetPosition),
                 _standardBeamDuration
