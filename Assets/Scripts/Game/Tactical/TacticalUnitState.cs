@@ -17,13 +17,21 @@ namespace Rebellion.Game.Tactical
         private const float _damageControlInterval = 50f;
         private const int _maximumSystemDamage = 4;
         private const float _systemDamagePenalty = 0.25f;
+        private static readonly TacticalDamageSystem[] _damageControlOrder =
+        {
+            TacticalDamageSystem.TractorBeam,
+            TacticalDamageSystem.ShieldGenerator,
+            TacticalDamageSystem.Hyperdrive,
+            TacticalDamageSystem.SublightDrive,
+            TacticalDamageSystem.WeaponSystems,
+        };
         private readonly ReadOnlyCollection<TacticalWeaponBattery> weaponBatteries;
         private readonly float[] arcCharge = new float[4];
         private readonly float[] arcChargeRequired = new float[4];
         private readonly int[] systemDamage = new int[5];
         private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
         private readonly int damageControl;
-        private readonly bool hasHyperdrive;
+        private readonly int hyperdriveCount;
         private readonly int torpedoStrengthPerFighter;
         private readonly int tractorBeamPower;
         private float shieldRechargeRemainder;
@@ -183,9 +191,9 @@ namespace Rebellion.Game.Tactical
         /// Gets whether the unit can move and its hyperdrive can complete a tactical withdrawal.
         /// </summary>
         public bool CanWithdraw =>
-            hasHyperdrive
+            hyperdriveCount > 0
             && EffectiveSublightSpeed > 0f
-            && GetSystemDamage(TacticalDamageSystem.Hyperdrive) < _maximumSystemDamage;
+            && GetSystemDamage(TacticalDamageSystem.Hyperdrive) < hyperdriveCount;
 
         /// <summary>
         /// Gets the remaining temporary component disruption time.
@@ -210,7 +218,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="sublightSpeed">The tactical movement rating.</param>
         /// <param name="maneuverability">The tactical turning rating.</param>
         /// <param name="damageControl">The chance to repair subsystem damage.</param>
-        /// <param name="hasHyperdrive">Whether the unit can leave tactical space independently.</param>
+        /// <param name="hyperdriveCount">The number of independent hyperdrives available to the unit.</param>
         /// <param name="tractorBeamPower">The unit's undamaged tractor-beam strength.</param>
         /// <param name="tractorBeamRange">The unit's maximum tractor-lock range.</param>
         /// <param name="torpedoStrengthPerFighter">The torpedo strength of each fighter.</param>
@@ -229,7 +237,7 @@ namespace Rebellion.Game.Tactical
             int sublightSpeed,
             int maneuverability,
             int damageControl,
-            bool hasHyperdrive,
+            int hyperdriveCount,
             int tractorBeamPower,
             int tractorBeamRange,
             int torpedoStrengthPerFighter,
@@ -251,7 +259,7 @@ namespace Rebellion.Game.Tactical
             SublightSpeed = Math.Max(0, sublightSpeed);
             Maneuverability = Math.Max(0, maneuverability);
             this.damageControl = Math.Max(0, damageControl);
-            this.hasHyperdrive = hasHyperdrive;
+            this.hyperdriveCount = Math.Max(0, hyperdriveCount);
             this.tractorBeamPower = Math.Max(0, tractorBeamPower);
             TractorBeamRange = Math.Max(0, tractorBeamRange);
             this.torpedoStrengthPerFighter = Math.Max(0, torpedoStrengthPerFighter);
@@ -286,7 +294,7 @@ namespace Rebellion.Game.Tactical
                 ship.SublightSpeed,
                 ship.Maneuverability,
                 ship.DamageControl,
-                ship.Hyperdrive > 0,
+                (ship.Hyperdrive > 0 ? 1 : 0) + (ship.BackupHyperdrive > 0 ? 1 : 0),
                 ship.TractorBeamPower,
                 ship.TractorBeamnRange,
                 0,
@@ -324,7 +332,7 @@ namespace Rebellion.Game.Tactical
                 fighters.SublightSpeed,
                 fighters.Agility,
                 0,
-                fighters.Hyperdrive > 0,
+                fighters.Hyperdrive > 0 ? 1 : 0,
                 0,
                 0,
                 fighters.Torpedoes,
@@ -632,13 +640,15 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Adds one persistent damage level to a subsystem, capped at four.
+        /// Adds one persistent damage level to a subsystem up to that subsystem's capacity.
         /// </summary>
         /// <param name="system">The subsystem receiving damage.</param>
         private void AddSystemDamage(TacticalDamageSystem system)
         {
             int index = (int)system;
-            systemDamage[index] = Math.Min(_maximumSystemDamage, systemDamage[index] + 1);
+            int maximumDamage =
+                system == TacticalDamageSystem.Hyperdrive ? hyperdriveCount : _maximumSystemDamage;
+            systemDamage[index] = Math.Min(maximumDamage, systemDamage[index] + 1);
         }
 
         /// <summary>
@@ -661,8 +671,9 @@ namespace Rebellion.Game.Tactical
                     continue;
 
                 int selectedDamage = random.NextInt(1, systemDamage.Sum() + 1);
-                for (int index = 0; index < systemDamage.Length; index++)
+                foreach (TacticalDamageSystem system in _damageControlOrder)
                 {
+                    int index = (int)system;
                     if (selectedDamage <= systemDamage[index])
                     {
                         systemDamage[index]--;

@@ -56,6 +56,7 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public int Hyperdrive;
+        public int BackupHyperdrive;
         public int SublightSpeed;
         public int Maneuverability;
 

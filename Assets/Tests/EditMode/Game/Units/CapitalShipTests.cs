@@ -25,6 +25,7 @@ namespace Rebellion.Tests.Game.Units
                 MaxShieldStrength = 50,
                 ShieldRechargeRate = 5,
                 Hyperdrive = 2,
+                BackupHyperdrive = 4,
                 SublightSpeed = 15,
                 Maneuverability = 8,
                 WeaponRecharge = 12,
@@ -332,6 +333,11 @@ namespace Rebellion.Tests.Game.Units
             CapitalShip deserialized = SerializationHelper.Deserialize<CapitalShip>(serialized);
 
             Assert.AreEqual(
+                _capitalShip.BackupHyperdrive,
+                deserialized.BackupHyperdrive,
+                "BackupHyperdrive should be correctly deserialized."
+            );
+            Assert.AreEqual(
                 _capitalShip.StarfighterCapacity,
                 deserialized.StarfighterCapacity,
                 "StarfighterCapacity should be correctly deserialized."
@@ -536,6 +542,12 @@ namespace Rebellion.Tests.Game.Units
         public void Hyperdrive_DefaultCapitalShip_ReturnsExpectedValue()
         {
             Assert.AreEqual(2, _capitalShip.Hyperdrive);
+        }
+
+        [Test]
+        public void BackupHyperdrive_DefaultCapitalShip_ReturnsExpectedValue()
+        {
+            Assert.AreEqual(4, _capitalShip.BackupHyperdrive);
         }
 
         [Test]
