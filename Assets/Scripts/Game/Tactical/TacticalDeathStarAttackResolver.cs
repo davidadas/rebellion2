@@ -17,15 +17,26 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets whether defensive fire damaged any fighter during the approach.</summary>
         public bool TookApproachDamage { get; }
 
+        /// <summary>Gets the surviving squadrons destroyed when the run finishes.</summary>
+        public IReadOnlyList<TacticalUnitState> CompletionCasualties { get; }
+
         /// <summary>
         /// Initializes one resolved attack-run result.
         /// </summary>
         /// <param name="succeeded">Whether the attack destroyed the Death Star.</param>
         /// <param name="tookApproachDamage">Whether defensive fire damaged the attackers.</param>
-        public TacticalDeathStarAttackResult(bool succeeded, bool tookApproachDamage)
+        /// <param name="completionCasualties">The surviving squadrons lost when the run finishes.</param>
+        public TacticalDeathStarAttackResult(
+            bool succeeded,
+            bool tookApproachDamage,
+            IReadOnlyList<TacticalUnitState> completionCasualties
+        )
         {
             Succeeded = succeeded;
             TookApproachDamage = tookApproachDamage;
+            CompletionCasualties =
+                completionCasualties
+                ?? throw new ArgumentNullException(nameof(completionCasualties));
         }
     }
 
@@ -75,15 +86,24 @@ namespace Rebellion.Game.Tactical
 
                 if (CanCompleteRun(unit, fighterCommandBudget))
                 {
-                    ResolveSuccessfulRun(participants);
-                    return new TacticalDeathStarAttackResult(true, tookApproachDamage);
+                    IReadOnlyList<TacticalUnitState> completionCasualties = PrepareSuccessfulRun(
+                        participants
+                    );
+                    return new TacticalDeathStarAttackResult(
+                        true,
+                        tookApproachDamage,
+                        completionCasualties
+                    );
                 }
 
                 attackOrder.Enqueue(unit);
             }
 
-            DestroySquadrons(participants);
-            return new TacticalDeathStarAttackResult(false, tookApproachDamage);
+            return new TacticalDeathStarAttackResult(
+                false,
+                tookApproachDamage,
+                participants.Where(unit => unit.IsActive).ToArray()
+            );
         }
 
         /// <summary>
@@ -132,10 +152,13 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Restores surviving squadrons and destroys half of them in formation order.
+        /// Restores surviving squadrons and selects the half lost when the run finishes.
         /// </summary>
         /// <param name="participants">The squadrons committed to the run.</param>
-        private static void ResolveSuccessfulRun(IReadOnlyList<TacticalUnitState> participants)
+        /// <returns>The surviving squadrons lost at completion in formation order.</returns>
+        private static IReadOnlyList<TacticalUnitState> PrepareSuccessfulRun(
+            IReadOnlyList<TacticalUnitState> participants
+        )
         {
             TacticalUnitState[] survivors = participants.Where(unit => unit.IsActive).ToArray();
             foreach (TacticalUnitState survivor in survivors)
@@ -144,17 +167,7 @@ namespace Rebellion.Game.Tactical
                 survivor.Hull = Math.Max(0, fighters.MaxSquadronSize);
             }
 
-            DestroySquadrons(survivors.Take(survivors.Length / 2));
-        }
-
-        /// <summary>
-        /// Destroys each supplied fighter squadron.
-        /// </summary>
-        /// <param name="squadrons">The fighter squadrons to destroy.</param>
-        private static void DestroySquadrons(IEnumerable<TacticalUnitState> squadrons)
-        {
-            foreach (TacticalUnitState squadron in squadrons)
-                squadron.Hull = 0;
+            return survivors.Take(survivors.Length / 2).ToArray();
         }
     }
 }

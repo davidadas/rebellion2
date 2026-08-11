@@ -189,6 +189,15 @@ namespace Rebellion.Game.Tactical
                 TacticalCombatEventKind outcome = run.Result.Succeeded
                     ? TacticalCombatEventKind.DeathStarAttackSucceeded
                     : TacticalCombatEventKind.DeathStarAttackFailed;
+                foreach (
+                    TacticalUnitState casualty in run.Result.CompletionCasualties.Where(unit =>
+                        unit.IsActive
+                    )
+                )
+                {
+                    casualty.Hull = 0;
+                    events.Add(TacticalCombatEvent.UnitDestroyed(run.DeathStar, casualty));
+                }
                 if (run.Result.Succeeded)
                     run.DeathStar.Hull = 0;
                 Complete(group, run, outcome);

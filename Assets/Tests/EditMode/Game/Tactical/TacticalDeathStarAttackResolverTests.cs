@@ -9,7 +9,7 @@ namespace Rebellion.Tests.Game.Tactical
     public sealed class TacticalDeathStarAttackResolverTests
     {
         [Test]
-        public void Resolve_SuccessfulAttackRun_DestroysHalfOfCommittedSquadrons()
+        public void Resolve_SuccessfulAttackRun_SelectsHalfOfCommittedSquadronsForCompletionLoss()
         {
             TacticalUnitState firstSquadron = CreateFighters(12, 10);
             TacticalUnitState secondSquadron = CreateFighters(12, 10);
@@ -23,22 +23,24 @@ namespace Rebellion.Tests.Game.Tactical
             );
 
             Assert.IsTrue(result.Succeeded);
-            Assert.AreEqual(0, firstSquadron.Hull);
+            CollectionAssert.AreEqual(new[] { firstSquadron }, result.CompletionCasualties);
+            Assert.AreEqual(12, firstSquadron.Hull);
             Assert.AreEqual(12, secondSquadron.Hull);
         }
 
         [Test]
-        public void Resolve_FailedAttackRun_DestroysCommittedFighters()
+        public void Resolve_FailedAttackRun_SelectsCommittedFightersForCompletionLoss()
         {
-            TacticalUnitState fighters = CreateFighters(12, 10);
+            TacticalUnitState fighters = CreateFighters(12, 10, agility: 8);
             TacticalDeathStarAttackResolver resolver = new TacticalDeathStarAttackResolver(
-                new FixedRandomProvider(new[] { 0.99d })
+                new FixedRandomProvider(new[] { 0.8d, 0.99d })
             );
 
             TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
             Assert.IsFalse(result.Succeeded);
-            Assert.AreEqual(0, fighters.Hull);
+            CollectionAssert.AreEqual(new[] { fighters }, result.CompletionCasualties);
+            Assert.AreEqual(12, fighters.Hull);
         }
 
         [Test]
@@ -52,7 +54,8 @@ namespace Rebellion.Tests.Game.Tactical
             TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
             Assert.IsFalse(result.Succeeded);
-            Assert.AreEqual(0, fighters.Hull);
+            CollectionAssert.AreEqual(new[] { fighters }, result.CompletionCasualties);
+            Assert.AreEqual(12, fighters.Hull);
         }
 
         [Test]

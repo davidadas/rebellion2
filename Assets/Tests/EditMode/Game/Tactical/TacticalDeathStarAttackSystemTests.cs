@@ -185,6 +185,34 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_SuccessfulRunAfterThreeSeconds_AppliesCompletionCasualties()
+        {
+            TacticalUnitState firstFighters = CreateFighters(12, 100);
+            TacticalUnitState secondFighters = CreateFighters(12, 100);
+            TacticalUnitState deathStar = CreateDeathStar();
+            TacticalShipGroup group = CreateAttackGroup(
+                new[] { firstFighters, secondFighters },
+                deathStar
+            );
+            TacticalDeathStarAttackSystem system = CreateSystem(0d, 0d);
+            system.TryBegin(group, deathStar);
+            system.DrainEvents();
+
+            system.Advance(TacticalDeathStarAttackSystem.RunDuration);
+
+            Assert.IsFalse(firstFighters.IsActive);
+            Assert.IsTrue(secondFighters.IsActive);
+            Assert.IsTrue(
+                system
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed
+                        && combatEvent.Target == firstFighters
+                    )
+            );
+        }
+
+        [Test]
         public void Advance_FailedRunAfterThreeSeconds_PreservesDeathStarAndReportsOutcome()
         {
             TacticalUnitState fighters = CreateFighters(1, 0);
@@ -197,6 +225,7 @@ namespace Rebellion.Tests.Game.Tactical
             system.Advance(TacticalDeathStarAttackSystem.RunDuration);
 
             Assert.IsTrue(deathStar.IsActive);
+            Assert.IsFalse(fighters.IsActive);
             Assert.AreEqual(
                 TacticalCombatEventKind.DeathStarAttackFailed,
                 system
@@ -236,6 +265,7 @@ namespace Rebellion.Tests.Game.Tactical
             system.Advance(0.1f);
 
             Assert.IsTrue(deathStar.IsActive);
+            Assert.IsTrue(fighters.IsActive);
             Assert.AreEqual(
                 TacticalCombatEventKind.DeathStarAttackBrokenOff,
                 system.DrainEvents().Single().Kind
@@ -255,11 +285,19 @@ namespace Rebellion.Tests.Game.Tactical
             TacticalUnitState deathStar
         )
         {
-            TacticalUnitState[] battleUnits = { fighters, deathStar };
+            return CreateAttackGroup(new[] { fighters }, deathStar);
+        }
+
+        private static TacticalShipGroup CreateAttackGroup(
+            IReadOnlyList<TacticalUnitState> fighters,
+            TacticalUnitState deathStar
+        )
+        {
+            TacticalUnitState[] battleUnits = fighters.Append(deathStar).ToArray();
             TacticalShipGroup group = new TacticalShipGroup(
                 TacticalBattleSide.Attacker,
                 battleUnits,
-                new[] { fighters }
+                fighters
             );
             group.AssignPrimaryTarget(deathStar);
             group.SetBehavior(TacticalBehavior.AttackDeathStar);
