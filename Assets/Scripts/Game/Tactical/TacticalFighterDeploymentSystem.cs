@@ -26,19 +26,124 @@ namespace Rebellion.Game.Tactical
         /// <param name="random">The deterministic tactical random source.</param>
         internal TacticalFighterDeploymentSystem(
             IReadOnlyList<TacticalUnitState> units,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            bool initializeLaunchQueues = true
         )
         {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
 
-            launchQueues = units
-                .Where(unit => !unit.IsDeployed && unit.RecoveryTarget != null)
-                .GroupBy(unit => unit.RecoveryTarget)
-                .ToDictionary(group => group.Key, group => new Queue<TacticalUnitState>(group));
-            foreach (TacticalUnitState carrier in launchQueues.Keys)
-                ScheduleNextLaunch(carrier);
+            launchQueues = initializeLaunchQueues
+                ? units
+                    .Where(unit => !unit.IsDeployed && unit.RecoveryTarget != null)
+                    .GroupBy(unit => unit.RecoveryTarget)
+                    .ToDictionary(group => group.Key, group => new Queue<TacticalUnitState>(group))
+                : new Dictionary<TacticalUnitState, Queue<TacticalUnitState>>();
+            if (initializeLaunchQueues)
+            {
+                foreach (TacticalUnitState carrier in launchQueues.Keys)
+                    ScheduleNextLaunch(carrier);
+            }
+        }
+
+        /// <summary>
+        /// Captures elapsed launch timing and each carrier's remaining fighter order.
+        /// </summary>
+        /// <returns>The resumable fighter-deployment state.</returns>
+        internal TacticalFighterDeploymentSnapshot CaptureState()
+        {
+            return new TacticalFighterDeploymentSnapshot
+            {
+                ElapsedTime = elapsedTime,
+                LaunchQueues = launchQueues
+                    .Select(entry => new TacticalFighterLaunchQueueSnapshot
+                    {
+                        CarrierInstanceID = entry.Key.Unit.GetInstanceID(),
+                        FighterInstanceIDs = entry
+                            .Value.Select(fighter => fighter.Unit.GetInstanceID())
+                            .ToList(),
+                        NextLaunchTime = nextLaunchTimes[entry.Key],
+                    })
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Restores elapsed launch timing and carrier queues without consuming random values.
+        /// </summary>
+        /// <param name="snapshot">The saved fighter-deployment state.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        internal void RestoreState(
+            TacticalFighterDeploymentSnapshot snapshot,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+            if (unitsById == null)
+                throw new ArgumentNullException(nameof(unitsById));
+            if (snapshot.LaunchQueues == null)
+                throw new ArgumentException(
+                    "The fighter launch queues are missing.",
+                    nameof(snapshot)
+                );
+
+            elapsedTime = snapshot.ElapsedTime;
+            launchQueues.Clear();
+            nextLaunchTimes.Clear();
+            foreach (TacticalFighterLaunchQueueSnapshot queueSnapshot in snapshot.LaunchQueues)
+            {
+                TacticalUnitState carrier = ResolveUnit(queueSnapshot.CarrierInstanceID, unitsById);
+                if (queueSnapshot.FighterInstanceIDs == null)
+                {
+                    throw new ArgumentException(
+                        "A fighter launch queue has no fighter order.",
+                        nameof(snapshot)
+                    );
+                }
+
+                Queue<TacticalUnitState> queue = new Queue<TacticalUnitState>(
+                    queueSnapshot.FighterInstanceIDs.Select(fighterInstanceID =>
+                        ResolveUnit(fighterInstanceID, unitsById)
+                    )
+                );
+                if (queue.Count == 0 || launchQueues.ContainsKey(carrier))
+                {
+                    throw new ArgumentException(
+                        "A fighter launch queue is empty or duplicated.",
+                        nameof(snapshot)
+                    );
+                }
+
+                launchQueues.Add(carrier, queue);
+                nextLaunchTimes.Add(carrier, queueSnapshot.NextLaunchTime);
+            }
+        }
+
+        /// <summary>
+        /// Resolves one strategic unit identifier to its tactical state.
+        /// </summary>
+        /// <param name="unitInstanceID">The strategic unit identifier.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        /// <returns>The matching tactical unit.</returns>
+        private static TacticalUnitState ResolveUnit(
+            string unitInstanceID,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (
+                string.IsNullOrEmpty(unitInstanceID)
+                || !unitsById.TryGetValue(unitInstanceID, out TacticalUnitState unit)
+            )
+            {
+                throw new ArgumentException(
+                    $"Tactical unit '{unitInstanceID}' is not part of this battle.",
+                    nameof(unitInstanceID)
+                );
+            }
+
+            return unit;
         }
 
         /// <summary>

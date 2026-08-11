@@ -37,6 +37,9 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets or sets the tactical command groups in their stable HUD order.</summary>
         public List<TacticalShipGroupSnapshot> Groups { get; set; } =
             new List<TacticalShipGroupSnapshot>();
+
+        /// <summary>Gets or sets the carrier fighter-launch state.</summary>
+        public TacticalFighterDeploymentSnapshot FighterDeployment { get; set; }
     }
 
     /// <summary>
@@ -143,5 +146,35 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets or sets the ordered tactical navigation route.</summary>
         public List<TacticalVectorSnapshot> NavigationPoints { get; set; } =
             new List<TacticalVectorSnapshot>();
+    }
+
+    /// <summary>
+    /// Stores the timing and ordered carrier queues for fighter deployment.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalFighterDeploymentSnapshot
+    {
+        /// <summary>Gets or sets elapsed fighter-deployment time.</summary>
+        public float ElapsedTime { get; set; }
+
+        /// <summary>Gets or sets the active carrier launch queues.</summary>
+        public List<TacticalFighterLaunchQueueSnapshot> LaunchQueues { get; set; } =
+            new List<TacticalFighterLaunchQueueSnapshot>();
+    }
+
+    /// <summary>
+    /// Stores one carrier's remaining fighter launch order and next launch time.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalFighterLaunchQueueSnapshot
+    {
+        /// <summary>Gets or sets the carrier strategic unit identifier.</summary>
+        public string CarrierInstanceID { get; set; }
+
+        /// <summary>Gets or sets remaining fighter identifiers in launch order.</summary>
+        public List<string> FighterInstanceIDs { get; set; } = new List<string>();
+
+        /// <summary>Gets or sets the tactical time at which the next fighter launches.</summary>
+        public float NextLaunchTime { get; set; }
     }
 }

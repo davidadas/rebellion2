@@ -107,6 +107,44 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreEqual(12, fighters.Hull);
         }
 
+        [Test]
+        public void RestoreState_PendingCarrierQueue_PreservesTimingAndLaunchOrder()
+        {
+            TacticalUnitState carrier = CreateCarrier();
+            carrier.Unit.InstanceID = "CARRIER1";
+            TacticalUnitState firstFighters = CreateHeldFighters(carrier, "first");
+            firstFighters.Unit.InstanceID = "FIGHTERS1";
+            TacticalUnitState secondFighters = CreateHeldFighters(carrier, "second");
+            secondFighters.Unit.InstanceID = "FIGHTERS2";
+            TacticalFighterDeploymentSystem original = CreateSystem(
+                carrier,
+                new[] { firstFighters, secondFighters },
+                0d
+            );
+            original.Advance(4f);
+            TacticalFighterDeploymentSnapshot snapshot = original.CaptureState();
+            TacticalFighterDeploymentSystem restored = new TacticalFighterDeploymentSystem(
+                new[] { carrier, firstFighters, secondFighters },
+                new FixedRandomProvider(new[] { 0.99d }),
+                initializeLaunchQueues: false
+            );
+            restored.RestoreState(
+                snapshot,
+                new[] { carrier, firstFighters, secondFighters }.ToDictionary(unit =>
+                    unit.Unit.GetInstanceID()
+                )
+            );
+
+            restored.Advance(1f);
+
+            Assert.IsTrue(firstFighters.IsDeployed);
+            Assert.IsFalse(secondFighters.IsDeployed);
+
+            restored.Advance(13f);
+
+            Assert.IsTrue(secondFighters.IsDeployed);
+        }
+
         private static TacticalFighterDeploymentSystem CreateSystem(
             TacticalUnitState carrier,
             TacticalUnitState[] fighters,
