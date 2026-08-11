@@ -21,6 +21,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private TacticalBehavior? pendingManeuver;
     private TacticalFormation pendingFormation;
     private TacticalUnitState selectedCapitalShip;
+    private int selectedTaskForceNumber;
     private TacticalUnitState playerDeathStar;
     private bool selectingSuperlaserTarget;
     private bool leftShipHighlightsVisible;
@@ -468,6 +469,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.HideGameOptions();
         SelectedGroup = null;
         selectedCapitalShip = null;
+        selectedTaskForceNumber = 0;
         RefreshUnitSelectionAvailability();
         battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
     }
@@ -481,6 +483,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         observing = Session.IsComputerControlled(playerSide);
         SelectedGroup = null;
         selectedCapitalShip = null;
+        selectedTaskForceNumber = 0;
         RefreshUnitSelectionAvailability();
         battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
         view.SetObserving(observing);
@@ -574,6 +577,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectTaskForce(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
+        selectedTaskForceNumber = index + 1;
         RefreshUnitSelectionAvailability();
         pendingMissionOrder = null;
         view.HideMissionOrders();
@@ -669,6 +673,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectFighterGroup(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
+        selectedTaskForceNumber = 0;
         RefreshUnitSelectionAvailability();
         pendingManeuver = null;
         view.HideManeuvers();
@@ -787,7 +792,12 @@ public sealed class TacticalBattleController : MonoBehaviour
         int activeShipCount = SelectedGroup.Units.Count(unit =>
             unit.IsActive && unit.Kind == TacticalUnitKind.CapitalShip
         );
-        view.ShowCapitalShipStatus(selectedCapitalShip, activeShipCount > 1);
+        view.ShowCapitalShipStatus(
+            selectedCapitalShip,
+            SelectedGroup,
+            selectedTaskForceNumber,
+            activeShipCount > 1
+        );
     }
 
     /// <summary>

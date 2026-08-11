@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using Rebellion.Game.Tactical;
+using Rebellion.Game.Units;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -114,6 +116,21 @@ public sealed class TacticalBattleView : MonoBehaviour
 
     [SerializeField]
     private RawImage[] systemStatusImages = Array.Empty<RawImage>();
+
+    [SerializeField]
+    private TMP_Text capitalShipNameText;
+
+    [SerializeField]
+    private RawImage capitalShipStatusImage;
+
+    [SerializeField]
+    private TMP_Text capitalShipOrderText;
+
+    [SerializeField]
+    private TMP_Text capitalShipTaskForceText;
+
+    [SerializeField]
+    private TMP_Text capitalShipFormationText;
 
     [SerializeField]
     private GameObject superlaserPanel;
@@ -462,6 +479,11 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// <param name="hull">The hull-integrity status bar.</param>
     /// <param name="shields">The shield-strength status bar.</param>
     /// <param name="systems">The five subsystem status images in source order.</param>
+    /// <param name="shipName">The selected ship's display-name field.</param>
+    /// <param name="shipStatus">The selected ship's tactical status image.</param>
+    /// <param name="order">The selected ship's active-order field.</param>
+    /// <param name="taskForce">The selected ship's task-force field.</param>
+    /// <param name="formation">The selected task force's formation field.</param>
     public void ConfigureCapitalShipStatus(
         GameObject panel,
         Button previous,
@@ -470,7 +492,12 @@ public sealed class TacticalBattleView : MonoBehaviour
         Button maneuvers,
         Image hull,
         Image shields,
-        RawImage[] systems
+        RawImage[] systems,
+        TMP_Text shipName,
+        RawImage shipStatus,
+        TMP_Text order,
+        TMP_Text taskForce,
+        TMP_Text formation
     )
     {
         capitalShipStatusPanel = panel ?? throw new ArgumentNullException(nameof(panel));
@@ -482,6 +509,11 @@ public sealed class TacticalBattleView : MonoBehaviour
         hullStatusBar = hull ?? throw new ArgumentNullException(nameof(hull));
         shieldStatusBar = shields ?? throw new ArgumentNullException(nameof(shields));
         systemStatusImages = systems ?? throw new ArgumentNullException(nameof(systems));
+        capitalShipNameText = shipName ?? throw new ArgumentNullException(nameof(shipName));
+        capitalShipStatusImage = shipStatus ?? throw new ArgumentNullException(nameof(shipStatus));
+        capitalShipOrderText = order ?? throw new ArgumentNullException(nameof(order));
+        capitalShipTaskForceText = taskForce ?? throw new ArgumentNullException(nameof(taskForce));
+        capitalShipFormationText = formation ?? throw new ArgumentNullException(nameof(formation));
     }
 
     /// <summary>
@@ -650,11 +682,18 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
-    /// Displays the selected capital ship's hull, shields, and subsystem condition.
+    /// Displays the selected capital ship's identity, orders, formation, and condition.
     /// </summary>
     /// <param name="unit">The selected capital ship.</param>
+    /// <param name="group">The command group that owns the selected ship.</param>
+    /// <param name="taskForceNumber">The selected task force's one-based HUD number.</param>
     /// <param name="canCycle">Whether its task force contains another active capital ship.</param>
-    public void ShowCapitalShipStatus(TacticalUnitState unit, bool canCycle)
+    public void ShowCapitalShipStatus(
+        TacticalUnitState unit,
+        TacticalShipGroup group,
+        int taskForceNumber,
+        bool canCycle
+    )
     {
         if (unit == null)
             throw new ArgumentNullException(nameof(unit));
@@ -663,13 +702,77 @@ public sealed class TacticalBattleView : MonoBehaviour
                 "Capital-ship status requires a capital ship.",
                 nameof(unit)
             );
+        if (group == null)
+            throw new ArgumentNullException(nameof(group));
+        if (taskForceNumber is < 1 or > 8)
+            throw new ArgumentOutOfRangeException(nameof(taskForceNumber));
 
+        capitalShipNameText.text = unit.Unit.GetDisplayName();
+        if (contentAssets != null)
+        {
+            CapitalShip ship = (CapitalShip)unit.Unit;
+            capitalShipStatusImage.texture = ContentBindings.RequireTexture(
+                contentAssets,
+                ship.TacticalStatusImagePath
+            );
+        }
+        capitalShipOrderText.text = GetOrderText(group);
+        capitalShipTaskForceText.text = $"Task Force {taskForceNumber}";
+        capitalShipFormationText.text = $"Tactics: {GetFormationText(group.Formation)}";
         hullStatusBar.fillAmount = GetRatio(unit.Hull, unit.InitialHull);
         shieldStatusBar.fillAmount = GetRatio(unit.Shields, unit.InitialShields);
         previousCapitalShipButton.interactable = canCycle;
         nextCapitalShipButton.interactable = canCycle;
         ApplySystemStatus(unit);
         capitalShipStatusPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Formats the selected task force's visible order and target.
+    /// </summary>
+    /// <param name="group">The selected task force.</param>
+    /// <returns>The source-style order label.</returns>
+    internal static string GetOrderText(TacticalShipGroup group)
+    {
+        if (group == null)
+            throw new ArgumentNullException(nameof(group));
+
+        string order = group.Behavior switch
+        {
+            TacticalBehavior.None => "No Orders",
+            TacticalBehavior.AttackCapitalShips => "Attack Capital Ships",
+            TacticalBehavior.AttackFighters => "Attack Fighters",
+            TacticalBehavior.AttackDeathStar => "Attack Death Star",
+            TacticalBehavior.Escort => "Escort",
+            TacticalBehavior.Recover => "Recover",
+            TacticalBehavior.Withdraw => "Withdraw",
+            TacticalBehavior.LeftHook => "Left Hook",
+            TacticalBehavior.RightHook => "Right Hook",
+            TacticalBehavior.Hammer => "Hammer",
+            TacticalBehavior.Anvil => "Anvil",
+            TacticalBehavior.Hold => "No Orders",
+            _ => group.Behavior.ToString(),
+        };
+        TacticalUnitState target =
+            group.Behavior == TacticalBehavior.Escort
+                ? group.EscortTarget
+                : group.Targets.FirstOrDefault(target => target.IsActive);
+        return target == null ? order : $"{order} {target.Unit.GetDisplayName()}";
+    }
+
+    /// <summary>
+    /// Formats the selected task force's capital-ship formation.
+    /// </summary>
+    /// <param name="formation">The selected formation.</param>
+    /// <returns>The formation's source-facing label.</returns>
+    internal static string GetFormationText(TacticalFormation formation)
+    {
+        return formation switch
+        {
+            TacticalFormation.StandOff => "Stand Off",
+            TacticalFormation.Surround => "Surround",
+            _ => throw new ArgumentOutOfRangeException(nameof(formation)),
+        };
     }
 
     /// <summary>

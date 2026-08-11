@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -267,6 +268,46 @@ public static class TacticalBattleSceneBuilder
                 15
             );
         }
+        TextMeshProUGUI capitalShipName = CreateStatusText(
+            "ShipName",
+            capitalShipStatusPanel.transform,
+            26,
+            7,
+            97,
+            9
+        );
+        RawImage capitalShipStatusImage = CreateImage(
+            "ShipStatusImage",
+            capitalShipStatusPanel.transform,
+            26,
+            17,
+            96,
+            39
+        );
+        TextMeshProUGUI capitalShipOrder = CreateStatusText(
+            "Order",
+            capitalShipStatusPanel.transform,
+            15,
+            182,
+            121,
+            9
+        );
+        TextMeshProUGUI capitalShipTaskForce = CreateStatusText(
+            "TaskForce",
+            capitalShipStatusPanel.transform,
+            26,
+            52,
+            97,
+            9
+        );
+        TextMeshProUGUI capitalShipFormation = CreateStatusText(
+            "Formation",
+            capitalShipStatusPanel.transform,
+            15,
+            193,
+            121,
+            9
+        );
 
         GameObject superlaserPanel = new GameObject("Superlaser", typeof(RectTransform));
         superlaserPanel.transform.SetParent(canvasObject.transform, false);
@@ -670,7 +711,12 @@ public static class TacticalBattleSceneBuilder
             capitalShipManeuversButton,
             hullStatusBar,
             shieldStatusBar,
-            systemStatusImages
+            systemStatusImages,
+            capitalShipName,
+            capitalShipStatusImage,
+            capitalShipOrder,
+            capitalShipTaskForce,
+            capitalShipFormation
         );
         view.ConfigureSuperlaser(
             superlaserPanel,
@@ -806,6 +852,33 @@ public static class TacticalBattleSceneBuilder
     }
 
     /// <summary>
+    /// Creates one runtime-populated image in top-left source coordinates.
+    /// </summary>
+    /// <param name="name">The hierarchy name.</param>
+    /// <param name="parent">The parent transform.</param>
+    /// <param name="x">The source-space left edge.</param>
+    /// <param name="y">The source-space top edge.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <returns>The generated raw image.</returns>
+    private static RawImage CreateImage(
+        string name,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        GameObject target = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer));
+        target.transform.SetParent(parent, false);
+        RawImage image = target.AddComponent<RawImage>();
+        image.raycastTarget = false;
+        SetSourceRect(image.rectTransform, x, y, width, height);
+        return image;
+    }
+
+    /// <summary>
     /// Creates one content-bound tactical button with its original released and pressed artwork.
     /// </summary>
     private static Button CreateBoundButton(
@@ -906,6 +979,42 @@ public static class TacticalBattleSceneBuilder
         image.raycastTarget = false;
         SetSourceRect(image.rectTransform, x, y, width, height);
         return image;
+    }
+
+    /// <summary>
+    /// Creates one source-positioned status line for the selected capital ship.
+    /// </summary>
+    /// <param name="name">The generated object name.</param>
+    /// <param name="parent">The selected-ship panel transform.</param>
+    /// <param name="x">The source-space left edge.</param>
+    /// <param name="y">The source-space top edge.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <returns>The generated text field.</returns>
+    private static TextMeshProUGUI CreateStatusText(
+        string name,
+        Transform parent,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        GameObject textObject = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(TextMeshProUGUI)
+        );
+        textObject.transform.SetParent(parent, false);
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        text.fontSize = 8;
+        text.color = Color.white;
+        text.alignment = TextAlignmentOptions.MidlineLeft;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Ellipsis;
+        text.raycastTarget = false;
+        SetSourceRect(text.rectTransform, x, y, width, height);
+        return text;
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Tactical;
+using Rebellion.Game.Units;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -31,6 +33,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button nextCapitalShipButton;
         private Button capitalShipMissionsButton;
         private Button capitalShipManeuversButton;
+        private TMP_Text capitalShipNameText;
+        private RawImage capitalShipStatusImage;
+        private TMP_Text capitalShipOrderText;
+        private TMP_Text capitalShipTaskForceText;
+        private TMP_Text capitalShipFormationText;
         private GameObject superlaserPanel;
         private Button superlaserButton;
         private Button leftShipHighlightsButton;
@@ -116,6 +123,73 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             view.HandleKeyDown(KeyCode.Alpha6);
 
             Assert.That(selectedIndex, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void GetOrderText_UnassignedTaskForce_ShowsNoOrders()
+        {
+            TacticalUnitState ship = CreateCapitalShip("Liberator", TacticalBattleSide.Attacker);
+            TacticalShipGroup group = new TacticalShipGroup(
+                TacticalBattleSide.Attacker,
+                new[] { ship },
+                new[] { ship }
+            );
+
+            string text = TacticalBattleView.GetOrderText(group);
+
+            Assert.That(text, Is.EqualTo("No Orders"));
+        }
+
+        [Test]
+        public void GetOrderText_TargetedAttack_AppendsTargetName()
+        {
+            TacticalUnitState ship = CreateCapitalShip("Liberator", TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip("Judicator", TacticalBattleSide.Defender);
+            TacticalShipGroup group = new TacticalShipGroup(
+                TacticalBattleSide.Attacker,
+                new[] { ship, target },
+                new[] { ship }
+            );
+            group.SetBehavior(TacticalBehavior.AttackCapitalShips);
+            group.AssignPrimaryTarget(target);
+
+            string text = TacticalBattleView.GetOrderText(group);
+
+            Assert.That(text, Is.EqualTo("Attack Capital Ships Judicator"));
+        }
+
+        [TestCase(TacticalFormation.StandOff, "Stand Off")]
+        [TestCase(TacticalFormation.Surround, "Surround")]
+        public void GetFormationText_KnownFormation_ReturnsDisplayLabel(
+            TacticalFormation formation,
+            string expected
+        )
+        {
+            string text = TacticalBattleView.GetFormationText(formation);
+
+            Assert.That(text, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void ShowCapitalShipStatus_SelectedTaskForce_ShowsSourceStatusLines()
+        {
+            TacticalUnitState ship = CreateCapitalShip("Liberator", TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip("Judicator", TacticalBattleSide.Defender);
+            TacticalShipGroup group = new TacticalShipGroup(
+                TacticalBattleSide.Attacker,
+                new[] { ship, target },
+                new[] { ship }
+            );
+            group.SetBehavior(TacticalBehavior.AttackCapitalShips);
+            group.AssignPrimaryTarget(target);
+            group.SetFormation(TacticalFormation.Surround);
+
+            view.ShowCapitalShipStatus(ship, group, 3, false);
+
+            Assert.That(capitalShipNameText.text, Is.EqualTo("Liberator"));
+            Assert.That(capitalShipOrderText.text, Is.EqualTo("Attack Capital Ships Judicator"));
+            Assert.That(capitalShipTaskForceText.text, Is.EqualTo("Task Force 3"));
+            Assert.That(capitalShipFormationText.text, Is.EqualTo("Tactics: Surround"));
         }
 
         [Test]
@@ -700,6 +774,36 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 system.transform.SetParent(root.transform, false);
                 systems[index] = system.GetComponent<RawImage>();
             }
+            capitalShipNameText = new GameObject(
+                "ShipName",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI)
+            ).GetComponent<TMP_Text>();
+            capitalShipNameText.transform.SetParent(root.transform, false);
+            capitalShipStatusImage = new GameObject(
+                "ShipStatusImage",
+                typeof(RectTransform),
+                typeof(RawImage)
+            ).GetComponent<RawImage>();
+            capitalShipStatusImage.transform.SetParent(root.transform, false);
+            capitalShipOrderText = new GameObject(
+                "Order",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI)
+            ).GetComponent<TMP_Text>();
+            capitalShipOrderText.transform.SetParent(root.transform, false);
+            capitalShipTaskForceText = new GameObject(
+                "TaskForce",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI)
+            ).GetComponent<TMP_Text>();
+            capitalShipTaskForceText.transform.SetParent(root.transform, false);
+            capitalShipFormationText = new GameObject(
+                "Formation",
+                typeof(RectTransform),
+                typeof(TextMeshProUGUI)
+            ).GetComponent<TMP_Text>();
+            capitalShipFormationText.transform.SetParent(root.transform, false);
 
             view.ConfigureCapitalShipStatus(
                 capitalShipStatusPanel,
@@ -709,7 +813,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 capitalShipManeuversButton,
                 hull.GetComponent<Image>(),
                 shields.GetComponent<Image>(),
-                systems
+                systems,
+                capitalShipNameText,
+                capitalShipStatusImage,
+                capitalShipOrderText,
+                capitalShipTaskForceText,
+                capitalShipFormationText
             );
         }
 
@@ -730,6 +839,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 fireVisual,
                 charge.GetComponent<Image>()
             );
+        }
+
+        private static TacticalUnitState CreateCapitalShip(
+            string displayName,
+            TacticalBattleSide side
+        )
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                DisplayName = displayName,
+                CurrentHullStrength = 100,
+                MaxHullStrength = 100,
+                MaxShieldStrength = 100,
+            };
+            return TacticalUnitState.FromCapitalShip(ship, side);
         }
 
         private void ConfigureCompleteView()

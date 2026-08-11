@@ -38,6 +38,11 @@ namespace Rebellion.Game.Units
         /// </summary>
         public string TacticalModelPath { get; set; }
 
+        /// <summary>
+        /// Gets or sets the content address for this ship's tactical status image.
+        /// </summary>
+        public string TacticalStatusImagePath { get; set; }
+
         // Manufacture Info.
         public string ProducerOwnerID { get; set; }
         public string ProducerPlanetID { get; set; }
