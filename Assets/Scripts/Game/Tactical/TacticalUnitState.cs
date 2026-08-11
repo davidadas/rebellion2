@@ -174,28 +174,23 @@ namespace Rebellion.Game.Tactical
         /// <summary>
         /// Gets the sublight movement available after persistent drive damage.
         /// </summary>
-        public float EffectiveSublightSpeed => GetEffectiveSublightSpeed(0f);
-
-        /// <summary>
-        /// Gets the sublight movement available after command support and persistent drive damage.
-        /// </summary>
-        /// <param name="commandBudget">The movement supplied by the unit's tactical commander.</param>
-        /// <returns>The nonnegative movement available to the unit.</returns>
-        public float GetEffectiveSublightSpeed(float commandBudget)
+        public float EffectiveSublightSpeed
         {
-            if (IsMovementDisabled)
-                return 0f;
+            get
+            {
+                if (IsMovementDisabled)
+                    return 0f;
 
-            float hullCondition =
-                InitialHull > 0 ? Math.Min(Hull, InitialHull) / (float)InitialHull : 0f;
-            return Math.Max(
-                0f,
-                SublightSpeed * hullCondition
-                    - SublightSpeed
-                        * GetSystemDamage(TacticalDamageSystem.SublightDrive)
-                        * _systemDamagePenalty
-                    + Math.Max(0f, commandBudget)
-            );
+                float hullCondition =
+                    InitialHull > 0 ? Math.Min(Hull, InitialHull) / (float)InitialHull : 0f;
+                return Math.Max(
+                    0f,
+                    SublightSpeed * hullCondition
+                        - SublightSpeed
+                            * GetSystemDamage(TacticalDamageSystem.SublightDrive)
+                            * _systemDamagePenalty
+                );
+            }
         }
 
         /// <summary>

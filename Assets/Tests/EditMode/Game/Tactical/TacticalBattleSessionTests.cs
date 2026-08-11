@@ -871,7 +871,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_AssignedCommander_AddsCombatBudgetToFighterMovement()
+        public void Advance_AssignedCommander_ImprovesFighterTurningWithoutChangingSpeed()
         {
             Starfighter fighters = CreateFighters(12, 0);
             fighters.SublightSpeed = 10;
@@ -889,19 +889,20 @@ namespace Rebellion.Tests.Game.Tactical
             AdvanceArrival(session);
             TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
             fighterUnit.Position = Vector3.Zero;
-            fighterUnit.Forward = Vector3.UnitZ;
+            fighterUnit.Forward = Vector3.UnitX;
 
-            session.Advance(1f);
+            session.Advance(0.1f);
 
-            Assert.AreEqual(16f, fighterUnit.Position.Z, 0.001f);
+            Assert.Greater(fighterUnit.Forward.Z, 0f);
+            Assert.AreEqual(1f, fighterUnit.Position.Length(), 0.001f);
         }
 
         [Test]
-        public void Advance_MultipleAssignedAdmirals_UsesStrongestLeadershipBudget()
+        public void Advance_MultipleAssignedAdmirals_UsesStrongestLeadershipForTurning()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.SublightSpeed = 10;
-            attackingShip.Maneuverability = 10;
+            attackingShip.Maneuverability = 0;
             Officer juniorAdmiral = new Officer { CurrentRank = OfficerRank.Admiral };
             juniorAdmiral.SetBaseRating(OfficerRating.Leadership, 0);
             Officer seniorAdmiral = new Officer { CurrentRank = OfficerRank.Admiral };
@@ -919,11 +920,12 @@ namespace Rebellion.Tests.Game.Tactical
                 unit.Unit == attackingShip
             );
             attackingUnit.Position = Vector3.Zero;
-            attackingUnit.Forward = Vector3.UnitZ;
+            attackingUnit.Forward = Vector3.UnitX;
 
-            session.Advance(1f);
+            session.Advance(0.1f);
 
-            Assert.AreEqual(11f, attackingUnit.Position.Z, 0.001f);
+            Assert.Greater(attackingUnit.Forward.Z, 0f);
+            Assert.AreEqual(1f, attackingUnit.Position.Length(), 0.001f);
         }
 
         [Test]
@@ -1026,7 +1028,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(initialPosition - Vector3.UnitZ * 5.5f, movingUnit.Position);
+            Assert.AreEqual(initialPosition - Vector3.UnitZ * 5f, movingUnit.Position);
             Assert.IsFalse(
                 session
                     .DrainEvents()
@@ -1282,7 +1284,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(new Vector3(0f, 2f, 5.5f), movingUnit.Position);
+            Assert.AreEqual(new Vector3(0f, 2f, 5f), movingUnit.Position);
         }
 
         [Test]
@@ -1331,7 +1333,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             Assert.AreEqual(0f, movingUnit.Position.X, 0.001f);
 
-            session.Advance(1f);
+            session.Advance(20f);
 
             Assert.Less(movingUnit.Position.X, 0f);
             Assert.Greater(movingUnit.Position.Y, 0f);

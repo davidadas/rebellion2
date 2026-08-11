@@ -329,8 +329,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="units">The battle's tactical units.</param>
         /// <param name="groups">The battle's mutable command groups.</param>
         /// <param name="navigationGrid">The battle's fixed navigation-anchor lattice.</param>
-        /// <param name="fighterCommandBudgets">The normalized fighter-command contribution for each side.</param>
-        /// <param name="capitalCommandBudgets">The normalized capital-command contribution for each side.</param>
+        /// <param name="fighterCommandBudgets">The fighter-command budget for each side.</param>
+        /// <param name="capitalCommandBudgets">The capital-command budget for each side.</param>
         /// <param name="isDeathStarAttackOrderValid">Tests whether an assigned Death Star attack remains valid.</param>
         /// <param name="random">The battle's deterministic random source.</param>
         public TacticalBattleSimulator(
@@ -1135,14 +1135,12 @@ namespace Rebellion.Game.Tactical
 
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            float movementSpeed = unit.GetEffectiveSublightSpeed(GetCommandBudget(unit));
+            float movementSpeed = unit.EffectiveSublightSpeed;
             if (distance <= _navigationArrivalDistance || movementSpeed <= 0f)
                 return;
 
             Vector3 desiredForward = displacement / distance;
-            float turnBudget = unit.Maneuverability;
-            if (unit.Kind == TacticalUnitKind.CapitalShip)
-                turnBudget += GetCommandBudget(unit);
+            float turnBudget = unit.Maneuverability + GetCommandTurnBonus(unit);
             float turnAmount = Math.Min(1f, turnBudget * elapsedTime);
             unit.Forward = NormalizeOrDefault(
                 Vector3.Lerp(unit.Forward, desiredForward, turnAmount),
@@ -1265,17 +1263,22 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Gets the active tactical commander's movement contribution for one unit.
+        /// Gets the active tactical commander's maneuver contribution for one unit.
         /// </summary>
         /// <param name="unit">The unit receiving command support.</param>
-        /// <returns>The command contribution for the unit's kind and side.</returns>
-        private float GetCommandBudget(TacticalUnitState unit)
+        /// <returns>The maneuver contribution for the unit's kind and side.</returns>
+        private float GetCommandTurnBonus(TacticalUnitState unit)
         {
-            IReadOnlyDictionary<TacticalBattleSide, float> budgets =
-                unit.Kind == TacticalUnitKind.Fighters
-                    ? fighterCommandBudgets
-                    : capitalCommandBudgets;
-            return budgets.TryGetValue(unit.Side, out float budget) ? budget : 1f;
+            if (unit.Kind == TacticalUnitKind.Fighters)
+            {
+                return fighterCommandBudgets.TryGetValue(unit.Side, out float fighterBudget)
+                    ? Math.Max(0f, fighterBudget - 1f)
+                    : 0f;
+            }
+
+            return capitalCommandBudgets.TryGetValue(unit.Side, out float capitalBudget)
+                ? Math.Max(0f, 9f - capitalBudget)
+                : 0f;
         }
 
         /// <summary>
@@ -1420,7 +1423,7 @@ namespace Rebellion.Game.Tactical
                 return;
             }
 
-            float movementSpeed = unit.GetEffectiveSublightSpeed(0f);
+            float movementSpeed = unit.EffectiveSublightSpeed;
             if (movementSpeed <= 0f)
                 return;
 

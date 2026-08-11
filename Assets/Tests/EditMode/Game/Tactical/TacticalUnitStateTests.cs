@@ -229,7 +229,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void GetEffectiveSublightSpeed_CommandBudgetAndDriveDamage_PreservesCommandBudget()
+        public void EffectiveSublightSpeed_DriveDamage_ReducesBaseMovement()
         {
             TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);
             unit.ApplyDamage(
@@ -238,9 +238,7 @@ namespace Rebellion.Tests.Game.Tactical
             );
             unit.Hull = unit.InitialHull;
 
-            float movement = unit.GetEffectiveSublightSpeed(6f);
-
-            Assert.AreEqual(unit.SublightSpeed * 0.75f + 6f, movement, 0.001f);
+            Assert.AreEqual(unit.SublightSpeed * 0.75f, unit.EffectiveSublightSpeed, 0.001f);
         }
 
         [Test]

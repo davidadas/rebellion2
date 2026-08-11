@@ -577,10 +577,10 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Builds each side's normalized fighter-command contribution from its assigned commander.
+        /// Builds each side's fighter-command budget from its assigned commander.
         /// </summary>
         /// <param name="encounter">The strategic encounter supplying both fleets.</param>
-        /// <returns>The fighter-command contribution indexed by tactical side.</returns>
+        /// <returns>The fighter-command budget indexed by tactical side.</returns>
         private static IReadOnlyDictionary<TacticalBattleSide, float> BuildFighterCommandBudgets(
             PendingCombatResult encounter
         )
@@ -607,7 +607,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="fleet">The fleet whose commander supports its fighters.</param>
         /// <param name="planet">The contested planet that may station a commander.</param>
         /// <param name="ownerInstanceId">The faction whose commander is selected.</param>
-        /// <returns>A value from one through nine, with one used when no commander is assigned.</returns>
+        /// <returns>A value from one through six, with one used when no commander is assigned.</returns>
         private static float GetFighterCommandBudget(
             Fleet fleet,
             Planet planet,
@@ -631,15 +631,15 @@ namespace Rebellion.Game.Tactical
             return Math.Clamp(
                 (commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0) / 20f + 1f,
                 1f,
-                9f
+                6f
             );
         }
 
         /// <summary>
-        /// Builds each side's capital-command contribution from its strongest assigned admiral.
+        /// Builds each side's capital-command budget from its strongest assigned admiral.
         /// </summary>
         /// <param name="encounter">The strategic encounter supplying both fleets.</param>
-        /// <returns>The capital-command contribution indexed by tactical side.</returns>
+        /// <returns>The capital-command budget indexed by tactical side.</returns>
         private static IReadOnlyDictionary<TacticalBattleSide, float> BuildCapitalCommandBudgets(
             PendingCombatResult encounter
         )
@@ -656,7 +656,7 @@ namespace Rebellion.Game.Tactical
         /// capital budget.
         /// </summary>
         /// <param name="fleet">The fleet whose admiral supports its capital ships.</param>
-        /// <returns>A value from one through nine, with one used when no admiral is assigned.</returns>
+        /// <returns>A value from one through nine, with nine used when no admiral is assigned.</returns>
         private static float GetCapitalCommandBudget(Fleet fleet)
         {
             Officer admiral = fleet
@@ -664,11 +664,8 @@ namespace Rebellion.Game.Tactical
                 .Where(officer => officer.CurrentRank == OfficerRank.Admiral)
                 .OrderByDescending(officer => officer.GetEffectiveRating(OfficerRating.Leadership))
                 .FirstOrDefault();
-            if (admiral == null)
-                return 1f;
-
             return Math.Clamp(
-                9f - admiral.GetEffectiveRating(OfficerRating.Leadership) / 10f,
+                9f - (admiral?.GetEffectiveRating(OfficerRating.Leadership) ?? 0) / 10f,
                 1f,
                 9f
             );
