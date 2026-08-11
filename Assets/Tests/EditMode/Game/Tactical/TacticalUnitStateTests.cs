@@ -489,6 +489,30 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void FireArc_PartiallyDestroyedFighterSquadron_ScalesStrengthToSurvivors()
+        {
+            Starfighter fighters = new Starfighter
+            {
+                CurrentSquadronSize = 12,
+                LaserCannon = 5,
+                LaserRange = 12,
+                IonCannon = 3,
+                IonRange = 18,
+            };
+            TacticalUnitState unit = TacticalUnitState.FromFighters(
+                fighters,
+                TacticalBattleSide.Attacker
+            );
+            unit.ApplyDamage(6);
+
+            IReadOnlyList<TacticalAttack> attacks = unit.FireArc(TacticalWeaponArc.Fore, 10f);
+
+            Assert.AreEqual(2, attacks.Count);
+            Assert.AreEqual(30, attacks[0].Strength);
+            Assert.AreEqual(18, attacks[1].Strength);
+        }
+
+        [Test]
         public void GetTorpedoAttackStrength_PartiallyDestroyedSquadron_ScalesSurvivingStrength()
         {
             Starfighter fighters = new Starfighter { CurrentSquadronSize = 12, Torpedoes = 2 };

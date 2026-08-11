@@ -436,7 +436,7 @@ namespace Rebellion.Game.Tactical
             );
             return
                 battery != null && distance <= battery.Range && CanEngageTarget(battery, targetKind)
-                ? battery.GetCount(arc)
+                ? GetEffectiveWeaponStrength(battery.GetCount(arc))
                 : 0;
         }
 
@@ -460,7 +460,7 @@ namespace Rebellion.Game.Tactical
 
             return weaponBatteries
                 .Where(battery => distance <= battery.Range && CanEngageTarget(battery, targetKind))
-                .Sum(battery => battery.GetCount(arc));
+                .Sum(battery => GetEffectiveWeaponStrength(battery.GetCount(arc)));
         }
 
         /// <summary>
@@ -510,7 +510,11 @@ namespace Rebellion.Game.Tactical
                 .Where(battery =>
                     weaponTypes.Contains(battery.WeaponType) && battery.GetCount(arc) > 0
                 )
-                .Select(battery => new TacticalAttack(battery.WeaponType, battery.GetCount(arc)))
+                .Select(battery => new TacticalAttack(
+                    battery.WeaponType,
+                    GetEffectiveWeaponStrength(battery.GetCount(arc))
+                ))
+                .Where(attack => attack.Strength > 0)
                 .ToArray();
             BeginArcRecharge(arc, attacks);
             return attacks;
@@ -538,7 +542,11 @@ namespace Rebellion.Game.Tactical
                     && battery.GetCount(arc) > 0
                     && CanEngageTarget(battery, targetKind)
                 )
-                .Select(battery => new TacticalAttack(battery.WeaponType, battery.GetCount(arc)))
+                .Select(battery => new TacticalAttack(
+                    battery.WeaponType,
+                    GetEffectiveWeaponStrength(battery.GetCount(arc))
+                ))
+                .Where(attack => attack.Strength > 0)
                 .ToArray();
             BeginArcRecharge(arc, attacks);
             return attacks;
@@ -854,6 +862,18 @@ namespace Rebellion.Game.Tactical
             return Kind == TacticalUnitKind.Fighters && InitialHull > 0
                 ? InitialShields * Hull / InitialHull
                 : InitialShields;
+        }
+
+        /// <summary>
+        /// Scales fighter weapon strength by the surviving portion of the squadron.
+        /// </summary>
+        /// <param name="strength">The full unit's weapon strength.</param>
+        /// <returns>The weapon strength available from the surviving unit.</returns>
+        private int GetEffectiveWeaponStrength(int strength)
+        {
+            return Kind == TacticalUnitKind.Fighters && InitialHull > 0
+                ? strength * Math.Min(Hull, InitialHull) / InitialHull
+                : strength;
         }
 
         /// <summary>
