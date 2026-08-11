@@ -58,7 +58,6 @@ namespace Rebellion.Game.Tactical
         private readonly TacticalDeathStarAttackSystem deathStarAttackSystem;
         private readonly TacticalFighterDeploymentSystem fighterDeploymentSystem;
         private readonly TacticalSuperlaserSystem superlaserSystem;
-        private readonly TacticalTractorBeamSystem tractorBeamSystem;
         private readonly Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid;
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets;
@@ -211,20 +210,28 @@ namespace Rebellion.Game.Tactical
             public TacticalAttack Attack { get; }
 
             /// <summary>
+            /// Gets whether this attack is the tractor effect coupled to laser fire.
+            /// </summary>
+            public bool IsTractorBeam { get; }
+
+            /// <summary>
             /// Initializes an attack that resolves after every unit has acted.
             /// </summary>
             /// <param name="source">The unit producing the attack.</param>
             /// <param name="target">The unit receiving the attack.</param>
             /// <param name="attack">The weapon-family attack.</param>
+            /// <param name="isTractorBeam">Whether the attack is a tractor-beam effect.</param>
             public PendingAttack(
                 TacticalUnitState source,
                 TacticalUnitState target,
-                TacticalAttack attack
+                TacticalAttack attack,
+                bool isTractorBeam = false
             )
             {
                 Source = source;
                 Target = target;
                 Attack = attack;
+                IsTractorBeam = isTractorBeam;
             }
         }
 
@@ -356,7 +363,6 @@ namespace Rebellion.Game.Tactical
             );
             fighterDeploymentSystem = new TacticalFighterDeploymentSystem(units, random);
             superlaserSystem = new TacticalSuperlaserSystem(units);
-            tractorBeamSystem = new TacticalTractorBeamSystem();
             PlaceFormation(TacticalBattleSide.Attacker, -1f, Vector3.UnitZ);
             PlaceFormation(TacticalBattleSide.Defender, 1f, -Vector3.UnitZ);
             PlaceGroupMarkers();
@@ -392,14 +398,15 @@ namespace Rebellion.Game.Tactical
             fighterDeploymentSystem.ResolveCarrierStateChanges();
             fighterDeploymentSystem.Advance(elapsedTime);
             events.AddRange(fighterDeploymentSystem.DrainEvents());
-            UpdateTractorLocks();
-            events.AddRange(tractorBeamSystem.DrainEvents());
             List<PendingAttack> attacks = new List<PendingAttack>();
             foreach (TacticalUnitState unit in units.Where(unit => unit.IsActive).ToArray())
                 attacks.AddRange(AdvanceUnit(unit, elapsedTime));
 
-            foreach (PendingAttack attack in attacks)
+            foreach (PendingAttack attack in ExpandTractorAttacks(attacks).ToArray())
             {
+                if (attack.IsTractorBeam && !attack.Target.IsActive)
+                    continue;
+
                 bool targetWasActive = attack.Target.IsActive;
                 int shieldsBeforeImpact = attack.Target.Shields;
                 TacticalAttack resolvedAttack = AdjustAttackForFighterEvasion(attack);
@@ -409,13 +416,19 @@ namespace Rebellion.Game.Tactical
                     : resolvedAttack.Strength > shieldsBeforeImpact ? TacticalImpactState.Hull
                     : TacticalImpactState.Shield;
                 events.Add(
-                    TacticalCombatEvent.WeaponImpact(
-                        attack.Source,
-                        attack.Target,
-                        attack.Attack.WeaponType,
-                        impactState,
-                        resolvedAttack.Strength
-                    )
+                    attack.IsTractorBeam
+                        ? TacticalCombatEvent.TractorLock(
+                            TacticalCombatEventKind.TractorLock,
+                            attack.Source,
+                            attack.Target
+                        )
+                        : TacticalCombatEvent.WeaponImpact(
+                            attack.Source,
+                            attack.Target,
+                            attack.Attack.WeaponType,
+                            impactState,
+                            resolvedAttack.Strength
+                        )
                 );
                 if (targetWasActive && !attack.Target.IsActive)
                 {
@@ -424,8 +437,6 @@ namespace Rebellion.Game.Tactical
             }
 
             fighterDeploymentSystem.ResolveCarrierStateChanges();
-            tractorBeamSystem.ReleaseInvalidLocks();
-            events.AddRange(tractorBeamSystem.DrainEvents());
         }
 
         /// <summary>
@@ -439,6 +450,7 @@ namespace Rebellion.Game.Tactical
             if (
                 pendingAttack.Target.Kind != TacticalUnitKind.Fighters
                 || attack.WeaponType == TacticalWeaponType.Torpedo
+                || pendingAttack.IsTractorBeam
                 || attack.Strength == 0
             )
             {
@@ -453,24 +465,33 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Reconciles each active tractor source with its current command target.
+        /// Inserts each eligible tractor effect immediately after its associated laser attack.
         /// </summary>
-        private void UpdateTractorLocks()
+        /// <param name="attacks">The weapon-family attacks fired during this interval.</param>
+        /// <returns>The attacks in their final resolution order.</returns>
+        private static IEnumerable<PendingAttack> ExpandTractorAttacks(
+            IEnumerable<PendingAttack> attacks
+        )
         {
-            tractorBeamSystem.ReleaseInvalidLocks();
-            foreach (TacticalUnitState unit in units.Where(unit => unit.IsActive))
+            foreach (PendingAttack attack in attacks)
             {
-                TacticalShipGroup group = groups.LastOrDefault(candidate =>
-                    candidate.Units.Contains(unit)
-                );
-                TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.None;
-                TacticalUnitState target =
-                    behavior == TacticalBehavior.Withdraw
-                    || behavior == TacticalBehavior.Recover
-                    || behavior == TacticalBehavior.AttackDeathStar
-                        ? null
-                        : GetTarget(unit, group, behavior);
-                tractorBeamSystem.UpdateLock(unit, target);
+                yield return attack;
+                if (
+                    TacticalTractorBeamSystem.TryGetAttackStrength(
+                        attack.Source,
+                        attack.Target,
+                        attack.Attack,
+                        out int tractorStrength
+                    )
+                )
+                {
+                    yield return new PendingAttack(
+                        attack.Source,
+                        attack.Target,
+                        new TacticalAttack(TacticalWeaponType.LaserCannon, tractorStrength),
+                        true
+                    );
+                }
             }
         }
 
@@ -1114,7 +1135,7 @@ namespace Rebellion.Game.Tactical
 
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit, GetCommandBudget(unit));
+            float movementSpeed = unit.GetEffectiveSublightSpeed(GetCommandBudget(unit));
             if (distance <= _navigationArrivalDistance || movementSpeed <= 0f)
                 return;
 
@@ -1399,7 +1420,7 @@ namespace Rebellion.Game.Tactical
                 return;
             }
 
-            float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit);
+            float movementSpeed = unit.GetEffectiveSublightSpeed(0f);
             if (movementSpeed <= 0f)
                 return;
 

@@ -1363,6 +1363,70 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_LaserFireAtUnshieldedFighters_AppliesTractorAttackAfterLaserDamage()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 1, 0, 0, 0, 200 };
+            attackingShip.TractorBeamPower = 3;
+            attackingShip.TractorBeamnRange = 200;
+            Starfighter defendingFighters = CreateFighters(12, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(100, 0, defendingFighters)),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackFighters);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(8, session.Units.Single(unit => unit.Unit == defendingFighters).Hull);
+            Assert.IsTrue(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.TractorLock
+                        && combatEvent.Source.Unit == attackingShip
+                        && combatEvent.Target.Unit == defendingFighters
+                    )
+            );
+        }
+
+        [Test]
+        public void Advance_LaserFireAtShieldedFighters_DoesNotApplyTractorAttack()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 1, 0, 0, 0, 200 };
+            attackingShip.TractorBeamPower = 3;
+            attackingShip.TractorBeamnRange = 200;
+            Starfighter defendingFighters = CreateFighters(12, 1);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(100, 0, defendingFighters)),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackFighters);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(12, session.Units.Single(unit => unit.Unit == defendingFighters).Hull);
+            Assert.IsFalse(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent => combatEvent.Kind == TacticalCombatEventKind.TractorLock)
+            );
+        }
+
+        [Test]
         public void Advance_TurbolaserOnlyCapitalShipEngagesFighters_DoesNotFire()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

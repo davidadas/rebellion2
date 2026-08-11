@@ -184,9 +184,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             else if (combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired)
                 CreateSuperlaserEffect(combatEvent);
             else if (combatEvent.Kind == TacticalCombatEventKind.TractorLock)
-                SetTractorLockEffect(combatEvent.Target, true);
-            else if (combatEvent.Kind == TacticalCombatEventKind.TractorRelease)
-                SetTractorLockEffect(combatEvent.Target, false);
+                ShowTractorBeamEffect(combatEvent.Target);
         }
     }
 
@@ -872,14 +870,13 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies one tractor-lock lifecycle event to the affected unit presentation.
+    /// Plays one tractor-beam event on the affected unit presentation.
     /// </summary>
-    /// <param name="target">The unit gaining or losing a tractor lock.</param>
-    /// <param name="active">Whether a new lock was established instead of released.</param>
-    private void SetTractorLockEffect(TacticalUnitState target, bool active)
+    /// <param name="target">The unit struck by the tractor beam.</param>
+    private void ShowTractorBeamEffect(TacticalUnitState target)
     {
         if (target != null && unitViewsByState.TryGetValue(target, out TacticalUnitView unitView))
-            unitView.SetTractorLockActive(active);
+            unitView.ShowTractorBeam();
     }
 
     /// <summary>

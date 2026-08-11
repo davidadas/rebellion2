@@ -12,8 +12,7 @@ public sealed class TacticalUnitView : MonoBehaviour
     private GameObject highlightObject;
     private Mesh highlightMesh;
     private Bounds presentationBounds;
-    private TacticalPersistentEffectView tractorLockEffect;
-    private int tractorLockCount;
+    private Sprite[] tractorBeamFrames = System.Array.Empty<Sprite>();
     private TacticalUnitState unit;
 
     /// <summary>
@@ -52,9 +51,9 @@ public sealed class TacticalUnitView : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the persistent tractor-lock and gravity-well effects for this unit.
+    /// Configures the tractor-beam animation and persistent gravity-well effect for this unit.
     /// </summary>
-    /// <param name="tractorFrames">The tractor-lock animation frames.</param>
+    /// <param name="tractorFrames">The tractor-beam animation frames.</param>
     /// <param name="gravityWellFrames">The gravity-well animation frames.</param>
     /// <param name="bounds">The unit presentation bounds in local space.</param>
     public void ConfigurePersistentEffects(
@@ -64,11 +63,8 @@ public sealed class TacticalUnitView : MonoBehaviour
     )
     {
         presentationBounds = bounds;
-        tractorLockEffect = CreatePersistentEffect(
-            "Tractor Lock Effect",
-            tractorFrames,
-            _persistentEffectDiameter
-        );
+        tractorBeamFrames =
+            tractorFrames ?? throw new System.ArgumentNullException(nameof(tractorFrames));
         gravityWellEffect = CreatePersistentEffect(
             "Gravity Well Effect",
             gravityWellFrames,
@@ -100,13 +96,18 @@ public sealed class TacticalUnitView : MonoBehaviour
     }
 
     /// <summary>
-    /// Records one established or released tractor lock affecting this unit.
+    /// Plays one tractor-beam effect around this unit.
     /// </summary>
-    /// <param name="active">Whether a new lock was established instead of released.</param>
-    public void SetTractorLockActive(bool active)
+    public void ShowTractorBeam()
     {
-        tractorLockCount = Mathf.Max(0, tractorLockCount + (active ? 1 : -1));
-        RefreshPersistentEffects();
+        if (tractorBeamFrames.Length == 0)
+            return;
+
+        GameObject effectObject = new GameObject("Tractor Beam Effect");
+        effectObject.transform.SetParent(transform, false);
+        effectObject
+            .AddComponent<TacticalOneShotEffectView>()
+            .Initialize(tractorBeamFrames, _persistentEffectDiameter);
     }
 
     /// <summary>
@@ -184,16 +185,15 @@ public sealed class TacticalUnitView : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies gravity-well precedence over the tractor-lock presentation.
+    /// Applies the gravity-well presentation state.
     /// </summary>
     private void RefreshPersistentEffects()
     {
-        if (tractorLockEffect == null || gravityWellEffect == null || unit == null)
+        if (gravityWellEffect == null || unit == null)
             return;
 
         bool hasGravityWell = unit.Unit is CapitalShip { HasGravityWell: true };
         gravityWellEffect.SetVisible(hasGravityWell);
-        tractorLockEffect.SetVisible(!hasGravityWell && tractorLockCount > 0);
     }
 
     /// <summary>

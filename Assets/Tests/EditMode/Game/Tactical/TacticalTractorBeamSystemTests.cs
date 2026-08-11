@@ -1,8 +1,8 @@
-using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Tests.Game.Tactical
 {
@@ -10,150 +10,116 @@ namespace Rebellion.Tests.Game.Tactical
     public class TacticalTractorBeamSystemTests
     {
         [Test]
-        public void UpdateLock_OpposingTargetWithinRange_ReducesMovementByTractorStrength()
+        public void TryGetAttackStrength_LaserFireAtUnshieldedFighters_CreatesTractorAttack()
         {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker, 6, 20);
             TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
-            source.Position = Vector3.Zero;
             target.Position = new Vector3(0f, 0f, 10f);
 
-            system.UpdateLock(source, target);
-
-            Assert.AreEqual(target.EffectiveSublightSpeed - 6f, system.GetMovementSpeed(target));
-            Assert.AreEqual(
-                TacticalCombatEventKind.TractorLock,
-                system.DrainEvents().Single().Kind
+            bool created = TacticalTractorBeamSystem.TryGetAttackStrength(
+                source,
+                target,
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 10),
+                out int attackStrength
             );
+
+            Assert.IsTrue(created);
+            Assert.AreEqual(6, attackStrength);
         }
 
         [Test]
-        public void UpdateLock_TargetLeavesRange_ReleasesMovementPenalty()
+        public void TryGetAttackStrength_TurbolaserFire_DoesNotCreateTractorAttack()
         {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker, 6, 20);
             TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
-            system.UpdateLock(source, target);
-            system.DrainEvents();
-            target.Position = new Vector3(0f, 0f, 21f);
 
-            system.UpdateLock(source, target);
-
-            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
-            Assert.AreEqual(
-                TacticalCombatEventKind.TractorRelease,
-                system.DrainEvents().Single().Kind
+            bool created = TacticalTractorBeamSystem.TryGetAttackStrength(
+                source,
+                target,
+                new TacticalAttack(TacticalWeaponType.Turbolaser, 10),
+                out _
             );
+
+            Assert.IsFalse(created);
         }
 
         [Test]
-        public void GetMovementSpeed_CommandBudgetAndTractorLock_AppliesTractorToCombinedBudget()
+        public void TryGetAttackStrength_ShieldedFighters_DoesNotCreateTractorAttack()
         {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
-            source.Position = Vector3.Zero;
-            target.Position = new Vector3(0f, 0f, 10f);
-            system.UpdateLock(source, target);
-
-            float movement = system.GetMovementSpeed(target, 4f);
-
-            Assert.AreEqual(target.EffectiveSublightSpeed + 4f - 6f, movement);
-        }
-
-        [Test]
-        public void UpdateLock_MultipleCapitalSources_CombinesEveryLock()
-        {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
-            TacticalUnitState[] sources = Enumerable
-                .Range(0, 5)
-                .Select(_ => CreateUnit(TacticalBattleSide.Attacker, 1, 20))
-                .ToArray();
-
-            foreach (TacticalUnitState source in sources)
-                system.UpdateLock(source, target);
-
-            Assert.AreEqual(target.EffectiveSublightSpeed - 5f, system.GetMovementSpeed(target));
-            Assert.AreEqual(5, system.DrainEvents().Count);
-        }
-
-        [Test]
-        public void UpdateLock_CapitalShipTarget_DoesNotEstablishLock()
-        {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
-
-            system.UpdateLock(source, target);
-
-            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
-            Assert.IsEmpty(system.DrainEvents());
-        }
-
-        [Test]
-        public void UpdateLock_ShieldedFighters_DoesNotEstablishLock()
-        {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker, 6, 20);
             TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender, 1);
 
-            system.UpdateLock(source, target);
+            bool created = TacticalTractorBeamSystem.TryGetAttackStrength(
+                source,
+                target,
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 10),
+                out _
+            );
 
-            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
-            Assert.IsEmpty(system.DrainEvents());
+            Assert.IsFalse(created);
         }
 
         [Test]
-        public void ReleaseInvalidLocks_FighterShieldsRecharge_ReleasesLock()
+        public void TryGetAttackStrength_CapitalShipTarget_DoesNotCreateTractorAttack()
         {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender, 0, 0);
+
+            bool created = TacticalTractorBeamSystem.TryGetAttackStrength(
+                source,
+                target,
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 10),
+                out _
+            );
+
+            Assert.IsFalse(created);
+        }
+
+        [Test]
+        public void TryGetAttackStrength_TargetOutsideRange_DoesNotCreateTractorAttack()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker, 6, 20);
             TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
-            system.UpdateLock(source, target);
-            system.DrainEvents();
-            target.Shields = 1;
+            target.Position = new Vector3(0f, 0f, 21f);
 
-            system.ReleaseInvalidLocks();
-
-            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
-            Assert.AreEqual(
-                TacticalCombatEventKind.TractorRelease,
-                system.DrainEvents().Single().Kind
+            bool created = TacticalTractorBeamSystem.TryGetAttackStrength(
+                source,
+                target,
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 10),
+                out _
             );
+
+            Assert.IsFalse(created);
         }
 
         [Test]
-        public void UpdateLock_SourceChangesTarget_ReleasesOldTargetBeforeLockingNewTarget()
+        public void TryGetAttackStrength_DamagedTractorSystem_ScalesAttackStrength()
         {
-            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState firstTarget = CreateFighters(TacticalBattleSide.Defender);
-            TacticalUnitState secondTarget = CreateFighters(TacticalBattleSide.Defender);
-            system.UpdateLock(source, firstTarget);
-            system.DrainEvents();
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker, 12, 20);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
+            source.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                new FixedRandomProvider(new[] { 0.93d })
+            );
+            source.Hull = source.InitialHull;
+            source.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                new FixedRandomProvider(new[] { 0.93d })
+            );
+            source.Hull = source.InitialHull;
 
-            system.UpdateLock(source, secondTarget);
+            bool created = TacticalTractorBeamSystem.TryGetAttackStrength(
+                source,
+                target,
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 10),
+                out int attackStrength
+            );
 
-            Assert.AreEqual(
-                firstTarget.EffectiveSublightSpeed,
-                system.GetMovementSpeed(firstTarget)
-            );
-            Assert.AreEqual(
-                secondTarget.EffectiveSublightSpeed - 6f,
-                system.GetMovementSpeed(secondTarget)
-            );
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    TacticalCombatEventKind.TractorRelease,
-                    TacticalCombatEventKind.TractorLock,
-                },
-                system.DrainEvents().Select(combatEvent => combatEvent.Kind)
-            );
+            Assert.IsTrue(created);
+            Assert.AreEqual(6, attackStrength);
         }
 
-        private static TacticalUnitState CreateUnit(
+        private static TacticalUnitState CreateCapitalShip(
             TacticalBattleSide side,
             int tractorPower,
             int tractorRange

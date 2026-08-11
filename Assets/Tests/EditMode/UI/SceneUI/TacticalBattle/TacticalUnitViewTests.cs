@@ -70,7 +70,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
-        public void ConfigurePersistentEffects_GravityWellUnit_ShowsOnlyGravityWellEffect()
+        public void ConfigurePersistentEffects_GravityWellUnit_ShowsGravityWellEffect()
         {
             view.Initialize(CreateUnit(true));
 
@@ -80,12 +80,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 new Bounds(Vector3.zero, Vector3.one)
             );
 
-            Assert.IsFalse(FindEffect("Tractor Lock Effect").gameObject.activeSelf);
             Assert.IsTrue(FindEffect("Gravity Well Effect").gameObject.activeSelf);
         }
 
         [Test]
-        public void ConfigurePersistentEffects_ScaledUnit_PreservesWorldEffectDiameter()
+        public void ShowTractorBeam_ScaledUnit_PreservesWorldEffectDiameter()
         {
             root.transform.localScale = Vector3.one * 12f;
             view.Initialize(CreateUnit());
@@ -95,12 +94,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 gravityWellFrames,
                 new Bounds(Vector3.zero, Vector3.one)
             );
+            view.ShowTractorBeam();
 
-            Assert.AreEqual(5f, FindEffect("Tractor Lock Effect").transform.lossyScale.x);
+            Assert.AreEqual(5f, FindOneShotEffect().transform.lossyScale.x);
         }
 
         [Test]
-        public void SetTractorLockActive_ActiveLock_ShowsTractorEffect()
+        public void ShowTractorBeam_ConfiguredFrames_CreatesOneShotEffect()
         {
             view.Initialize(CreateUnit());
             view.ConfigurePersistentEffects(
@@ -109,14 +109,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 new Bounds(Vector3.zero, Vector3.one)
             );
 
-            view.SetTractorLockActive(true);
+            view.ShowTractorBeam();
 
-            Assert.IsTrue(FindEffect("Tractor Lock Effect").gameObject.activeSelf);
-            Assert.IsFalse(FindEffect("Gravity Well Effect").gameObject.activeSelf);
+            Assert.That(FindOneShotEffect(), Is.Not.Null);
         }
 
         [Test]
-        public void SetTractorLockActive_OneOfMultipleLocksReleased_KeepsTractorEffectVisible()
+        public void ShowTractorBeam_MultipleAttacks_CreatesIndependentEffects()
         {
             view.Initialize(CreateUnit());
             view.ConfigurePersistentEffects(
@@ -124,12 +123,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 gravityWellFrames,
                 new Bounds(Vector3.zero, Vector3.one)
             );
-            view.SetTractorLockActive(true);
-            view.SetTractorLockActive(true);
+            view.ShowTractorBeam();
+            view.ShowTractorBeam();
 
-            view.SetTractorLockActive(false);
-
-            Assert.IsTrue(FindEffect("Tractor Lock Effect").gameObject.activeSelf);
+            Assert.That(
+                root.GetComponentsInChildren<TacticalOneShotEffectView>(true),
+                Has.Length.EqualTo(2)
+            );
         }
 
         /// <summary>
@@ -205,6 +205,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 root.GetComponentsInChildren<TacticalPersistentEffectView>(true),
                 effect => effect.name == name
             );
+        }
+
+        /// <summary>
+        /// Finds the first configured one-shot tactical effect.
+        /// </summary>
+        /// <returns>The matching effect.</returns>
+        private TacticalOneShotEffectView FindOneShotEffect()
+        {
+            return root.GetComponentInChildren<TacticalOneShotEffectView>(true);
         }
     }
 }
