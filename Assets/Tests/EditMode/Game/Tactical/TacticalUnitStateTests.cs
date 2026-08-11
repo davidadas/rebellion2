@@ -185,8 +185,8 @@ namespace Rebellion.Tests.Game.Tactical
 
         [TestCase(0.60d, TacticalDamageSystem.ShieldGenerator)]
         [TestCase(0.75d, TacticalDamageSystem.WeaponSystems)]
-        [TestCase(0.85d, TacticalDamageSystem.TractorBeam)]
-        [TestCase(0.93d, TacticalDamageSystem.SublightDrive)]
+        [TestCase(0.85d, TacticalDamageSystem.SublightDrive)]
+        [TestCase(0.93d, TacticalDamageSystem.TractorBeam)]
         [TestCase(0.99d, TacticalDamageSystem.Hyperdrive)]
         public void ApplyDamage_ConventionalHullCritical_DamagesSelectedSubsystem(
             double roll,
@@ -212,7 +212,7 @@ namespace Rebellion.Tests.Game.Tactical
             {
                 unit.ApplyDamage(
                     new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
-                    CreateRandom(0.93d)
+                    CreateRandom(0.85d)
                 );
             }
 
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             unit.ApplyDamage(
                 new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
-                CreateRandom(0.85d)
+                CreateRandom(0.93d)
             );
 
             Assert.AreEqual(8.88f, unit.EffectiveTractorBeamPower, 0.001f);

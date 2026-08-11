@@ -624,9 +624,9 @@ namespace Rebellion.Game.Tactical
             else if (criticalRoll <= 80f)
                 AddSystemDamage(TacticalDamageSystem.WeaponSystems);
             else if (criticalRoll <= 90f)
-                AddSystemDamage(TacticalDamageSystem.TractorBeam);
-            else if (criticalRoll <= 95f)
                 AddSystemDamage(TacticalDamageSystem.SublightDrive);
+            else if (criticalRoll <= 95f)
+                AddSystemDamage(TacticalDamageSystem.TractorBeam);
             else
                 AddSystemDamage(TacticalDamageSystem.Hyperdrive);
         }
