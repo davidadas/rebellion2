@@ -569,6 +569,35 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void HasGravityWell_PositiveProjectorCount_ReturnsTrue()
+        {
+            _capitalShip.GravityWellProjectors = 4;
+
+            Assert.IsTrue(_capitalShip.HasGravityWell);
+        }
+
+        [Test]
+        public void HasGravityWell_LegacyValueInitializesProjectorRatings()
+        {
+            _capitalShip.HasGravityWell = true;
+
+            Assert.AreEqual(4, _capitalShip.GravityWellProjectors);
+            Assert.AreEqual(100, _capitalShip.InterdictionStrength);
+        }
+
+        [Test]
+        public void HasGravityWell_DisabledLegacyValueClearsProjectorRatings()
+        {
+            _capitalShip.GravityWellProjectors = 4;
+            _capitalShip.InterdictionStrength = 100;
+
+            _capitalShip.HasGravityWell = false;
+
+            Assert.AreEqual(0, _capitalShip.GravityWellProjectors);
+            Assert.AreEqual(0, _capitalShip.InterdictionStrength);
+        }
+
+        [Test]
         public void DetectionRating_DefaultCapitalShip_ReturnsExpectedValue()
         {
             Assert.AreEqual(25, _capitalShip.DetectionRating);

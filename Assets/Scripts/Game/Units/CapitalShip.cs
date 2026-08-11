@@ -104,7 +104,42 @@ namespace Rebellion.Game.Units
         // Misc Info.
         public int TractorBeamPower;
         public int TractorBeamnRange;
-        public bool HasGravityWell;
+
+        /// <summary>
+        /// Number of gravity-well projectors carried by the ship.
+        /// </summary>
+        public int GravityWellProjectors;
+
+        /// <summary>
+        /// Tactical strength contributed by the ship's gravity-well equipment.
+        /// </summary>
+        public int InterdictionStrength;
+
+        /// <summary>
+        /// Gets or sets whether the ship carries gravity-well projectors.
+        /// </summary>
+        /// <remarks>
+        /// The setter preserves compatibility with content and saved games that predate the
+        /// explicit projector and interdiction ratings.
+        /// </remarks>
+        public bool HasGravityWell
+        {
+            get => GravityWellProjectors > 0;
+            set
+            {
+                if (!value)
+                {
+                    GravityWellProjectors = 0;
+                    InterdictionStrength = 0;
+                    return;
+                }
+
+                if (GravityWellProjectors == 0)
+                    GravityWellProjectors = 4;
+                if (InterdictionStrength == 0)
+                    InterdictionStrength = 100;
+            }
+        }
         public int DetectionRating;
 
         // Owner Info.
