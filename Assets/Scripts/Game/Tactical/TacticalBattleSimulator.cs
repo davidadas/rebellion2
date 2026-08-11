@@ -14,13 +14,13 @@ namespace Rebellion.Game.Tactical
     {
         internal const float BattlefieldScale = 100f;
         private const float _capitalFormationDepth = BattlefieldScale / 2f;
+        private const float _deathStarAttackDistance = 20f;
         private const float _fighterFormationDepth = BattlefieldScale * 0.65f;
         private const float _fighterRecoveryDistance = 2f;
         private const float _formationSpacing = 8f;
         private const float _maneuverAngle = (float)(Math.PI / 8d);
         private const float _maneuverDistanceScale = 0.75f;
         private const float _navigationArrivalDistance = 1f;
-        private const float _tacticalApproachDistance = 20f;
         private static readonly Vector3[] SurroundDirections =
         {
             new Vector3(1f, -1f, 0f),
@@ -497,7 +497,7 @@ namespace Rebellion.Game.Tactical
             if (deathStar == null)
                 return;
 
-            if (Vector3.Distance(unit.Position, deathStar.Position) > _tacticalApproachDistance)
+            if (Vector3.Distance(unit.Position, deathStar.Position) > _deathStarAttackDistance)
             {
                 Vector3 destination = GetApproachPosition(
                     unit,
@@ -704,7 +704,7 @@ namespace Rebellion.Game.Tactical
                 Vector3.Cross(Vector3.UnitY, approachDirection),
                 Vector3.UnitX
             );
-            markerPosition = target.Position - approachDirection * _tacticalApproachDistance;
+            markerPosition = target.Position;
             return markerPosition + GetFormationOffset(unit, group, approachDirection, right);
         }
 

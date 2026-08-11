@@ -1050,6 +1050,30 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AttackBehavior_AnchorsFormationOnTarget()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            CapitalShip defendingShip = CreateShip(600, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+            TacticalUnitState defendingUnit = session.Units.Single(unit =>
+                unit.Unit == defendingShip
+            );
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            Vector3 targetPosition = new Vector3(40f, 5f, 20f);
+            defendingUnit.Position = targetPosition;
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(targetPosition, group.MarkerPosition);
+        }
+
+        [Test]
         public void Advance_StandOffFormation_AlternatesMembersAroundLeadShip()
         {
             CapitalShip leadShip = CreateShip(600, 0);
