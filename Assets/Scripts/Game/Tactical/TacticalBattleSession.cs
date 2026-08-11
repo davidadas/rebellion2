@@ -43,7 +43,7 @@ namespace Rebellion.Game.Tactical
         private readonly IRandomNumberProvider random;
         private readonly ReadOnlyCollection<TacticalUnitState> units;
         private readonly TacticalBattleSimulator simulator;
-        private readonly TacticalCommandAutomation commandAutomation;
+        private readonly TacticalCommandControl commandControl;
         private float arrivalElapsedTime;
         private int pauseCount;
 
@@ -96,7 +96,7 @@ namespace Rebellion.Game.Tactical
             this.units = new ReadOnlyCollection<TacticalUnitState>(units);
             NavigationGrid = new TacticalNavigationGrid(TacticalBattleSimulator.BattlefieldScale);
             BuildCommandGroups();
-            commandAutomation = new TacticalCommandAutomation(this.units, groupView);
+            commandControl = new TacticalCommandControl();
             simulator = new TacticalBattleSimulator(
                 this.units,
                 groupView,
@@ -223,34 +223,34 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Configures the played side for manual commands and the opposing side for automated commands.
+        /// Configures the played side for manual commands and the opposing side for computer control.
         /// A retained session preserves any command-mode changes made after this initial configuration.
         /// </summary>
         /// <param name="playerSide">The side controlled by the local player.</param>
         public void ConfigurePlayerControl(TacticalBattleSide playerSide)
         {
-            commandAutomation.ConfigurePlayerControl(playerSide);
+            commandControl.ConfigurePlayerControl(playerSide);
         }
 
         /// <summary>
-        /// Gets whether one side periodically receives computer-generated tactical orders.
+        /// Gets whether one side is under computer command.
         /// </summary>
         /// <param name="side">The tactical side to inspect.</param>
-        /// <returns>True when the side is under automated command.</returns>
-        public bool IsAutomated(TacticalBattleSide side)
+        /// <returns>True when the computer controls the side.</returns>
+        public bool IsComputerControlled(TacticalBattleSide side)
         {
-            return commandAutomation.IsAutomated(side);
+            return commandControl.IsComputerControlled(side);
         }
 
         /// <summary>
-        /// Enables or disables periodic computer-generated orders for one tactical side.
+        /// Changes whether one tactical side is under computer command.
         /// Existing orders remain active when manual command is restored.
         /// </summary>
         /// <param name="side">The tactical side whose control mode changes.</param>
-        /// <param name="automated">Whether the side should receive automated orders.</param>
-        public void SetAutomated(TacticalBattleSide side, bool automated)
+        /// <param name="computerControlled">Whether the computer controls the side.</param>
+        public void SetComputerControlled(TacticalBattleSide side, bool computerControlled)
         {
-            commandAutomation.SetAutomated(side, automated);
+            commandControl.SetComputerControlled(side, computerControlled);
         }
 
         /// <summary>
@@ -380,21 +380,20 @@ namespace Rebellion.Game.Tactical
             foreach (TacticalShipGroup group in groups)
                 group.RemoveInactiveTargets();
 
-            commandAutomation.Advance(elapsedTime);
             simulator.Advance(elapsedTime);
-            FireAutomatedSuperlasers();
+            FireComputerControlledSuperlasers();
         }
 
         /// <summary>
-        /// Fires each automated side's charged Death Star at its first ranked active target.
+        /// Fires each computer-controlled side's charged Death Star at an active opposing target.
         /// </summary>
-        private void FireAutomatedSuperlasers()
+        private void FireComputerControlledSuperlasers()
         {
             foreach (
                 TacticalUnitState deathStar in units.Where(unit =>
                     unit.IsActive
                     && unit.Unit is CapitalShip { IsDeathStar: true }
-                    && commandAutomation.IsAutomated(unit.Side)
+                    && commandControl.IsComputerControlled(unit.Side)
                 )
             )
             {

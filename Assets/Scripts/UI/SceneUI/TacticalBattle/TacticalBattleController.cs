@@ -133,7 +133,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             path => contentAssets.GetPreloadedAudio(path).length
         );
         Session.ConfigurePlayerControl(playerSide);
-        observing = Session.IsAutomated(playerSide);
+        observing = Session.IsComputerControlled(playerSide);
         view.SetObserving(observing);
         view.SetGroupAvailability(
             Session.GetTaskForces(playerSide).Count,
@@ -474,8 +474,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// </summary>
     private void ToggleCommandMode()
     {
-        Session.SetAutomated(playerSide, !Session.IsAutomated(playerSide));
-        observing = Session.IsAutomated(playerSide);
+        Session.SetComputerControlled(playerSide, !Session.IsComputerControlled(playerSide));
+        observing = Session.IsComputerControlled(playerSide);
         SelectedGroup = null;
         selectedCapitalShip = null;
         RefreshUnitSelectionAvailability();

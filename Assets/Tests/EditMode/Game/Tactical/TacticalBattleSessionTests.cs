@@ -307,14 +307,14 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void ConfigurePlayerControl_UnconfiguredSession_AutomatesOnlyOpposingSide()
+        public void ConfigurePlayerControl_UnconfiguredSession_GivesComputerOnlyOpposingSide()
         {
             TacticalBattleSession session = CreateSession();
 
             session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
 
-            Assert.IsFalse(session.IsAutomated(TacticalBattleSide.Attacker));
-            Assert.IsTrue(session.IsAutomated(TacticalBattleSide.Defender));
+            Assert.IsFalse(session.IsComputerControlled(TacticalBattleSide.Attacker));
+            Assert.IsTrue(session.IsComputerControlled(TacticalBattleSide.Defender));
         }
 
         [Test]
@@ -322,80 +322,51 @@ namespace Rebellion.Tests.Game.Tactical
         {
             TacticalBattleSession session = CreateSession();
             session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
-            session.SetAutomated(TacticalBattleSide.Attacker, true);
+            session.SetComputerControlled(TacticalBattleSide.Attacker, true);
 
             session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
 
-            Assert.IsTrue(session.IsAutomated(TacticalBattleSide.Attacker));
+            Assert.IsTrue(session.IsComputerControlled(TacticalBattleSide.Attacker));
         }
 
         [Test]
-        public void Advance_AutomatedSide_AssignsRankedOpposingTargets()
+        public void Advance_ComputerControlledDeathStar_FiresAtOpposingTarget()
         {
-            CapitalShip weakerTarget = CreateShip(100, 0);
-            weakerTarget.TypeID = "weaker";
-            CapitalShip strongerTarget = CreateShip(500, 200);
-            strongerTarget.TypeID = "stronger";
-            PendingCombatResult encounter = new PendingCombatResult
-            {
-                AttackerFleet = CreateFleet(CreateShip(600, 250)),
-                DefenderFleet = CreateFleet(weakerTarget, strongerTarget),
-            };
-            TacticalBattleSession session = CreateTacticalSession(encounter);
-            session.SetAutomated(TacticalBattleSide.Attacker, true);
-
-            session.Advance(1f);
-            session.Advance(0.1f);
-
-            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
-            CollectionAssert.AreEqual(
-                new[] { strongerTarget, weakerTarget },
-                group.Targets.Select(target => target.Unit)
-            );
-            Assert.AreEqual(TacticalBehavior.PrimaryTarget, group.Behavior);
-        }
-
-        [Test]
-        public void Advance_AutomatedDeathStar_FiresAtRankedOpposingTarget()
-        {
-            CapitalShip weakerTarget = CreateShip(100, 0);
-            CapitalShip strongerTarget = CreateShip(500, 200);
+            CapitalShip target = CreateShip(500, 200);
             CapitalShip deathStar = CreateShip(1000, 1000);
             deathStar.IsDeathStar = true;
             PendingCombatResult encounter = new PendingCombatResult
             {
-                AttackerFleet = CreateFleet(weakerTarget, strongerTarget),
+                AttackerFleet = CreateFleet(target),
                 DefenderFleet = CreateFleet(deathStar),
             };
             TacticalBattleSession session = CreateTacticalSession(encounter);
             session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
-            TacticalUnitState strongerTargetState = session.Units.Single(unit =>
-                unit.Unit == strongerTarget
-            );
+            TacticalUnitState targetState = session.Units.Single(unit => unit.Unit == target);
             TacticalUnitState deathStarState = session.Units.Single(unit => unit.Unit == deathStar);
 
             session.Advance(0.1f);
 
-            Assert.AreEqual(strongerTargetState.InitialHull, strongerTargetState.Hull);
+            Assert.AreEqual(targetState.InitialHull, targetState.Hull);
             Assert.AreEqual(0f, session.GetSuperlaserCharge(deathStarState));
             Assert.IsTrue(
                 session
                     .DrainEvents()
                     .Any(combatEvent =>
                         combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired
-                        && combatEvent.Target.Unit == strongerTarget
+                        && combatEvent.Target.Unit == target
                     )
             );
 
             session.Advance(TacticalSuperlaserSystem.ResolutionDelay);
 
-            Assert.AreEqual(0, strongerTargetState.Hull);
+            Assert.AreEqual(0, targetState.Hull);
             Assert.IsTrue(
                 session
                     .DrainEvents()
                     .Any(combatEvent =>
                         combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed
-                        && combatEvent.Source.Unit == strongerTarget
+                        && combatEvent.Source.Unit == target
                     )
             );
         }
@@ -434,14 +405,28 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void SetAutomated_DisabledSide_PreservesExistingOrders()
+        public void SetComputerControlled_DisabledSide_PreservesExistingOrders()
         {
             TacticalBattleSession session = CreateSession();
             TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
             group.SetBehavior(TacticalBehavior.Hold);
 
-            session.SetAutomated(TacticalBattleSide.Attacker, false);
+            session.SetComputerControlled(TacticalBattleSide.Attacker, false);
             session.Advance(1f);
+            session.Advance(1f);
+
+            Assert.AreEqual(TacticalBehavior.Hold, group.Behavior);
+            Assert.IsEmpty(group.Targets);
+        }
+
+        [Test]
+        public void SetComputerControlled_EnabledSide_PreservesExistingOrders()
+        {
+            TacticalBattleSession session = CreateSession();
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            group.SetBehavior(TacticalBehavior.Hold);
+
+            session.SetComputerControlled(TacticalBattleSide.Attacker, true);
             session.Advance(1f);
 
             Assert.AreEqual(TacticalBehavior.Hold, group.Behavior);
