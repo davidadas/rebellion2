@@ -43,6 +43,9 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>Gets or sets Death Star superlaser charge and pending shot state.</summary>
         public TacticalSuperlaserSnapshot Superlaser { get; set; }
+
+        /// <summary>Gets or sets active and completed fighter attacks against a Death Star.</summary>
+        public TacticalDeathStarAttackSnapshot DeathStarAttack { get; set; }
     }
 
     /// <summary>
@@ -230,5 +233,50 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>Gets or sets the remaining delay before resolution.</summary>
         public float RemainingTime { get; set; }
+    }
+
+    /// <summary>
+    /// Stores active and completed fighter attack runs against a Death Star.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalDeathStarAttackSnapshot
+    {
+        /// <summary>Gets or sets the attack runs whose timed reports are still active.</summary>
+        public List<TacticalDeathStarAttackRunSnapshot> ActiveRuns { get; set; } =
+            new List<TacticalDeathStarAttackRunSnapshot>();
+
+        /// <summary>Gets or sets group indexes that already committed to an attack run.</summary>
+        public List<int> CompletedGroupIndexes { get; set; } = new List<int>();
+    }
+
+    /// <summary>
+    /// Stores one resolved Death Star attack outcome while its report sequence is active.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalDeathStarAttackRunSnapshot
+    {
+        /// <summary>Gets or sets the attacking fighter group index.</summary>
+        public int GroupIndex { get; set; }
+
+        /// <summary>Gets or sets the attack leader's strategic unit identifier.</summary>
+        public string LeaderInstanceID { get; set; }
+
+        /// <summary>Gets or sets the targeted Death Star identifier.</summary>
+        public string DeathStarInstanceID { get; set; }
+
+        /// <summary>Gets or sets whether the resolved run succeeds.</summary>
+        public bool Succeeded { get; set; }
+
+        /// <summary>Gets or sets whether approach fire damaged the attackers.</summary>
+        public bool TookApproachDamage { get; set; }
+
+        /// <summary>Gets or sets fighters scheduled to be lost when the run completes.</summary>
+        public List<string> CompletionCasualtyInstanceIDs { get; set; } = new List<string>();
+
+        /// <summary>Gets or sets elapsed attack-run time.</summary>
+        public float ElapsedTime { get; set; }
+
+        /// <summary>Gets or sets the number of report checkpoints already emitted.</summary>
+        public int ReportsEmitted { get; set; }
     }
 }

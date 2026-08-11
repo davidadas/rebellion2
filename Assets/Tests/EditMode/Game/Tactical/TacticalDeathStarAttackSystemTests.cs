@@ -272,6 +272,65 @@ namespace Rebellion.Tests.Game.Tactical
             );
         }
 
+        [Test]
+        public void RestoreState_ActiveRun_PreservesTimingAndResolvedOutcome()
+        {
+            TacticalUnitState fighters = CreateFighters(12, 100);
+            fighters.Unit.InstanceID = "FIGHTERS1";
+            TacticalUnitState deathStar = CreateDeathStar();
+            deathStar.Unit.InstanceID = "DEATHSTAR1";
+            TacticalShipGroup group = CreateAttackGroup(fighters, deathStar);
+            TacticalDeathStarAttackSystem original = CreateSystem(0d);
+            original.TryBegin(group, deathStar);
+            original.DrainEvents();
+            original.Advance(0.6f);
+            original.DrainEvents();
+            TacticalDeathStarAttackSnapshot snapshot = original.CaptureState(new[] { group });
+            TacticalDeathStarAttackSystem restored = CreateSystem();
+            restored.RestoreState(
+                snapshot,
+                new[] { group },
+                new[] { fighters, deathStar }.ToDictionary(unit => unit.Unit.GetInstanceID())
+            );
+
+            restored.Advance(2.4f);
+
+            Assert.IsFalse(deathStar.IsActive);
+            CollectionAssert.AreEqual(
+                new[] { 10, 3, 4, 11 },
+                restored
+                    .DrainEvents()
+                    .Where(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.DeathStarAttackReport
+                    )
+                    .Select(combatEvent => combatEvent.DeathStarReportIndex)
+            );
+        }
+
+        [Test]
+        public void RestoreState_CompletedRun_PreservesCommittedGroup()
+        {
+            TacticalUnitState fighters = CreateFighters(1, 0);
+            fighters.Unit.InstanceID = "FIGHTERS1";
+            TacticalUnitState deathStar = CreateDeathStar();
+            deathStar.Unit.InstanceID = "DEATHSTAR1";
+            TacticalShipGroup group = CreateAttackGroup(fighters, deathStar);
+            TacticalDeathStarAttackSystem original = CreateSystem(0.99d);
+            original.TryBegin(group, deathStar);
+            original.Advance(TacticalDeathStarAttackSystem.RunDuration);
+            TacticalDeathStarAttackSnapshot snapshot = original.CaptureState(new[] { group });
+            TacticalDeathStarAttackSystem restored = CreateSystem();
+            restored.RestoreState(
+                snapshot,
+                new[] { group },
+                new[] { fighters, deathStar }.ToDictionary(unit => unit.Unit.GetInstanceID())
+            );
+
+            bool committed = restored.IsCommitted(group);
+
+            Assert.IsTrue(committed);
+        }
+
         private static TacticalDeathStarAttackSystem CreateSystem(params double[] randomValues)
         {
             return new TacticalDeathStarAttackSystem(

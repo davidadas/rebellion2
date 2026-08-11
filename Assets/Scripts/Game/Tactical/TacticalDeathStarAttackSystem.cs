@@ -97,6 +97,180 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Captures active report sequences and groups that already committed to an attack.
+        /// </summary>
+        /// <param name="groups">All tactical command groups in stable battle order.</param>
+        /// <returns>The resumable Death Star attack state.</returns>
+        internal TacticalDeathStarAttackSnapshot CaptureState(
+            IReadOnlyList<TacticalShipGroup> groups
+        )
+        {
+            if (groups == null)
+                throw new ArgumentNullException(nameof(groups));
+
+            Dictionary<TacticalShipGroup, int> groupIndexes = groups
+                .Select((group, index) => new { group, index })
+                .ToDictionary(entry => entry.group, entry => entry.index);
+            return new TacticalDeathStarAttackSnapshot
+            {
+                ActiveRuns = runs.Select(entry => new TacticalDeathStarAttackRunSnapshot
+                    {
+                        GroupIndex = ResolveGroupIndex(entry.Key, groupIndexes),
+                        LeaderInstanceID = entry.Value.Leader.Unit.GetInstanceID(),
+                        DeathStarInstanceID = entry.Value.DeathStar.Unit.GetInstanceID(),
+                        Succeeded = entry.Value.Result.Succeeded,
+                        TookApproachDamage = entry.Value.Result.TookApproachDamage,
+                        CompletionCasualtyInstanceIDs = entry
+                            .Value.Result.CompletionCasualties.Select(unit =>
+                                unit.Unit.GetInstanceID()
+                            )
+                            .ToList(),
+                        ElapsedTime = entry.Value.ElapsedTime,
+                        ReportsEmitted = entry.Value.ReportsEmitted,
+                    })
+                    .ToList(),
+                CompletedGroupIndexes = completedGroups
+                    .Select(group => ResolveGroupIndex(group, groupIndexes))
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Restores active report sequences and groups that already committed to an attack.
+        /// </summary>
+        /// <param name="snapshot">The saved Death Star attack state.</param>
+        /// <param name="groups">All tactical command groups in stable battle order.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        internal void RestoreState(
+            TacticalDeathStarAttackSnapshot snapshot,
+            IReadOnlyList<TacticalShipGroup> groups,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+            if (groups == null)
+                throw new ArgumentNullException(nameof(groups));
+            if (unitsById == null)
+                throw new ArgumentNullException(nameof(unitsById));
+            if (snapshot.ActiveRuns == null || snapshot.CompletedGroupIndexes == null)
+                throw new ArgumentException(
+                    "The Death Star attack snapshot is incomplete.",
+                    nameof(snapshot)
+                );
+
+            runs.Clear();
+            completedGroups.Clear();
+            foreach (TacticalDeathStarAttackRunSnapshot runSnapshot in snapshot.ActiveRuns)
+            {
+                TacticalShipGroup group = ResolveGroup(runSnapshot.GroupIndex, groups);
+                if (runs.ContainsKey(group) || runSnapshot.CompletionCasualtyInstanceIDs == null)
+                {
+                    throw new ArgumentException(
+                        "The Death Star attack snapshot contains a duplicate or incomplete run.",
+                        nameof(snapshot)
+                    );
+                }
+
+                TacticalDeathStarAttackResult result = new TacticalDeathStarAttackResult(
+                    runSnapshot.Succeeded,
+                    runSnapshot.TookApproachDamage,
+                    runSnapshot
+                        .CompletionCasualtyInstanceIDs.Select(unitInstanceID =>
+                            ResolveUnit(unitInstanceID, unitsById)
+                        )
+                        .ToArray()
+                );
+                AttackRun run = new AttackRun(
+                    ResolveUnit(runSnapshot.LeaderInstanceID, unitsById),
+                    ResolveUnit(runSnapshot.DeathStarInstanceID, unitsById),
+                    result
+                )
+                {
+                    ElapsedTime = Math.Max(0f, runSnapshot.ElapsedTime),
+                    ReportsEmitted = Math.Clamp(runSnapshot.ReportsEmitted, 0, ReportCount),
+                };
+                runs.Add(group, run);
+            }
+
+            foreach (int groupIndex in snapshot.CompletedGroupIndexes)
+            {
+                TacticalShipGroup group = ResolveGroup(groupIndex, groups);
+                if (!completedGroups.Add(group) || runs.ContainsKey(group))
+                {
+                    throw new ArgumentException(
+                        "The Death Star attack snapshot contains a duplicate committed group.",
+                        nameof(snapshot)
+                    );
+                }
+            }
+        }
+
+        /// <summary>
+        /// Resolves a tactical group to its persisted stable index.
+        /// </summary>
+        /// <param name="group">The group to resolve.</param>
+        /// <param name="groupIndexes">All tactical groups indexed by reference.</param>
+        /// <returns>The group's stable battle index.</returns>
+        private static int ResolveGroupIndex(
+            TacticalShipGroup group,
+            IReadOnlyDictionary<TacticalShipGroup, int> groupIndexes
+        )
+        {
+            if (!groupIndexes.TryGetValue(group, out int groupIndex))
+                throw new InvalidOperationException(
+                    "A Death Star attack group is not part of the battle."
+                );
+
+            return groupIndex;
+        }
+
+        /// <summary>
+        /// Resolves one saved group index to its tactical command group.
+        /// </summary>
+        /// <param name="groupIndex">The saved group index.</param>
+        /// <param name="groups">All tactical groups in stable battle order.</param>
+        /// <returns>The matching tactical command group.</returns>
+        private static TacticalShipGroup ResolveGroup(
+            int groupIndex,
+            IReadOnlyList<TacticalShipGroup> groups
+        )
+        {
+            if (groupIndex < 0 || groupIndex >= groups.Count)
+                throw new ArgumentException(
+                    "A Death Star attack group index is invalid.",
+                    nameof(groupIndex)
+                );
+
+            return groups[groupIndex];
+        }
+
+        /// <summary>
+        /// Resolves one strategic unit identifier to its tactical state.
+        /// </summary>
+        /// <param name="unitInstanceID">The strategic unit identifier.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        /// <returns>The matching tactical unit.</returns>
+        private static TacticalUnitState ResolveUnit(
+            string unitInstanceID,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (
+                string.IsNullOrEmpty(unitInstanceID)
+                || !unitsById.TryGetValue(unitInstanceID, out TacticalUnitState unit)
+            )
+            {
+                throw new ArgumentException(
+                    $"Tactical unit '{unitInstanceID}' is not part of this battle.",
+                    nameof(unitInstanceID)
+                );
+            }
+
+            return unit;
+        }
+
+        /// <summary>
         /// Begins one attack run and resolves the participating fighters' approach losses.
         /// </summary>
         /// <param name="group">The fighter group beginning the run.</param>
