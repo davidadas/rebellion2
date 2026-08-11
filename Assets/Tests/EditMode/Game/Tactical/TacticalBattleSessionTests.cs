@@ -295,6 +295,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_AutomatedDeathStar_FiresAtRankedOpposingTarget()
+        {
+            CapitalShip weakerTarget = CreateShip(100, 0);
+            CapitalShip strongerTarget = CreateShip(500, 200);
+            CapitalShip deathStar = CreateShip(1000, 1000);
+            deathStar.IsDeathStar = true;
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(weakerTarget, strongerTarget),
+                DefenderFleet = CreateFleet(deathStar),
+            };
+            TacticalBattleSession session = CreateTacticalSession(encounter);
+            session.ConfigurePlayerControl(TacticalBattleSide.Attacker);
+            TacticalUnitState strongerTargetState = session.Units.Single(unit =>
+                unit.Unit == strongerTarget
+            );
+            TacticalUnitState deathStarState = session.Units.Single(unit => unit.Unit == deathStar);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(0, strongerTargetState.Hull);
+            Assert.AreEqual(0f, session.GetSuperlaserCharge(deathStarState));
+            Assert.IsTrue(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired
+                        && combatEvent.Target.Unit == strongerTarget
+                    )
+            );
+        }
+
+        [Test]
         public void SetAutomated_DisabledSide_PreservesExistingOrders()
         {
             TacticalBattleSession session = CreateSession();

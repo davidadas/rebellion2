@@ -45,6 +45,7 @@ namespace Rebellion.Game.Tactical
         };
         private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
         private readonly TacticalDeathStarAttackResolver deathStarAttackResolver;
+        private readonly TacticalSuperlaserSystem superlaserSystem;
         private readonly HashSet<TacticalShipGroup> resolvedDeathStarAttackGroups =
             new HashSet<TacticalShipGroup>();
         private readonly IReadOnlyList<TacticalShipGroup> groups;
@@ -148,6 +149,7 @@ namespace Rebellion.Game.Tactical
                 ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             deathStarAttackResolver = new TacticalDeathStarAttackResolver(random);
+            superlaserSystem = new TacticalSuperlaserSystem(units);
             PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
             PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
             PlaceGroupMarkers();
@@ -159,6 +161,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         public void Advance(float elapsedTime)
         {
+            superlaserSystem.Advance(elapsedTime);
             List<PendingAttack> attacks = new List<PendingAttack>();
             foreach (TacticalUnitState unit in units.Where(unit => unit.IsActive).ToArray())
                 attacks.AddRange(AdvanceUnit(unit, elapsedTime));
@@ -184,6 +187,34 @@ namespace Rebellion.Game.Tactical
                     );
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets one participating Death Star's current superlaser charge percentage.
+        /// </summary>
+        /// <param name="deathStar">The Death Star whose charge is requested.</param>
+        /// <returns>The current charge from zero through one hundred.</returns>
+        public float GetSuperlaserCharge(TacticalUnitState deathStar)
+        {
+            return superlaserSystem.GetCharge(deathStar);
+        }
+
+        /// <summary>
+        /// Fires one charged Death Star at an active opposing tactical object.
+        /// </summary>
+        /// <param name="deathStar">The firing Death Star.</param>
+        /// <param name="target">The selected opposing target.</param>
+        /// <returns>True when the shot fires.</returns>
+        public bool TryFireSuperlaser(TacticalUnitState deathStar, TacticalUnitState target)
+        {
+            if (!superlaserSystem.TryFire(deathStar, target))
+                return false;
+
+            events.Add(TacticalCombatEvent.SuperlaserFired(deathStar, target));
+            events.Add(
+                TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, target)
+            );
+            return true;
         }
 
         /// <summary>

@@ -256,6 +256,27 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Gets one participating Death Star's current superlaser charge percentage.
+        /// </summary>
+        /// <param name="deathStar">The Death Star whose charge is requested.</param>
+        /// <returns>The current charge from zero through one hundred.</returns>
+        public float GetSuperlaserCharge(TacticalUnitState deathStar)
+        {
+            return simulator.GetSuperlaserCharge(deathStar);
+        }
+
+        /// <summary>
+        /// Fires a charged Death Star at one active opposing tactical object.
+        /// </summary>
+        /// <param name="deathStar">The firing Death Star.</param>
+        /// <param name="target">The selected opposing tactical object.</param>
+        /// <returns>True when the shot fires.</returns>
+        public bool TryFireSuperlaser(TacticalUnitState deathStar, TacticalUnitState target)
+        {
+            return simulator.TryFireSuperlaser(deathStar, target);
+        }
+
+        /// <summary>
         /// Orders every command group on one side to leave the tactical battlefield.
         /// Units with disabled drives remain in combat until they can move or are destroyed.
         /// </summary>
@@ -338,6 +359,34 @@ namespace Rebellion.Game.Tactical
 
             commandAutomation.Advance(elapsedTime);
             simulator.Advance(elapsedTime);
+            FireAutomatedSuperlasers();
+        }
+
+        /// <summary>
+        /// Fires each automated side's charged Death Star at its first ranked active target.
+        /// </summary>
+        private void FireAutomatedSuperlasers()
+        {
+            foreach (
+                TacticalUnitState deathStar in units.Where(unit =>
+                    unit.IsActive
+                    && unit.Unit is CapitalShip { IsDeathStar: true }
+                    && commandAutomation.IsAutomated(unit.Side)
+                )
+            )
+            {
+                TacticalShipGroup group = groups.Last(candidate =>
+                    candidate.Units.Contains(deathStar)
+                );
+                TacticalUnitState target = group.Targets.FirstOrDefault(candidate =>
+                    candidate.IsActive && candidate.Side != deathStar.Side
+                );
+                target ??= units.FirstOrDefault(candidate =>
+                    candidate.IsActive && candidate.Side != deathStar.Side
+                );
+                if (target != null)
+                    simulator.TryFireSuperlaser(deathStar, target);
+            }
         }
 
         /// <summary>

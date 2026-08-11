@@ -9,6 +9,11 @@ public sealed class TacticalUnitView : MonoBehaviour
     private TacticalUnitState unit;
 
     /// <summary>
+    /// Raised when the player selects this unit in tactical space.
+    /// </summary>
+    public event System.Action<TacticalUnitState> Selected;
+
+    /// <summary>
     /// Gets the tactical unit projected by this view.
     /// </summary>
     internal TacticalUnitState Unit => unit;
@@ -48,6 +53,15 @@ public sealed class TacticalUnitView : MonoBehaviour
         Vector3 forward = ToUnityVector(unit.Forward);
         if (forward.sqrMagnitude > 0f)
             transform.localRotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+    }
+
+    /// <summary>
+    /// Forwards Unity's world-object selection to the tactical renderer.
+    /// </summary>
+    private void OnMouseDown()
+    {
+        if (unit?.IsActive == true)
+            Selected?.Invoke(unit);
     }
 
     /// <summary>

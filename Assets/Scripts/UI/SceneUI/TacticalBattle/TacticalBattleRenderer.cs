@@ -28,12 +28,18 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private readonly List<TacticalUnitView> unitViews = new List<TacticalUnitView>();
     private Material navigationSelectedMaterial;
     private bool initialized;
+    private bool unitSelectionEnabled;
     private TacticalBattleSession session;
 
     /// <summary>
     /// Raised when the player selects a visible tactical waypoint marker.
     /// </summary>
     public event Action<TacticalNavPoint, bool> NavigationPointSelected;
+
+    /// <summary>
+    /// Raised when an enabled tactical targeting command selects a visible unit.
+    /// </summary>
+    public event Action<TacticalUnitState> UnitSelected;
 
     /// <summary>
     /// Gets whether a weapon or destruction effect still requires presentation time.
@@ -126,9 +132,33 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         {
             if (combatEvent.Kind == TacticalCombatEventKind.WeaponImpact)
                 CreateWeaponEffect(combatEvent);
+            else if (combatEvent.Kind == TacticalCombatEventKind.SuperlaserFired)
+                CreateSuperlaserEffect(combatEvent);
             else if (combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
                 CreateDestructionEffect(combatEvent.TargetPosition);
         }
+    }
+
+    /// <summary>
+    /// Creates the broad green source-to-target beam used by the Death Star superlaser.
+    /// </summary>
+    /// <param name="combatEvent">The resolved superlaser event.</param>
+    private void CreateSuperlaserEffect(TacticalCombatEvent combatEvent)
+    {
+        GameObject effect = new GameObject("Superlaser Effect");
+        effect.transform.SetParent(transform, false);
+        LineRenderer line = effect.AddComponent<LineRenderer>();
+        Material material = CreateEffectMaterial(new Color(0.15f, 1f, 0.1f));
+        line.sharedMaterial = material;
+        line.useWorldSpace = false;
+        line.positionCount = 2;
+        line.startWidth = 0.9f;
+        line.endWidth = 0.5f;
+        line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
+        line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
+        effect
+            .AddComponent<TacticalCombatEffectView>()
+            .Initialize(material, _weaponEffectDuration, false);
     }
 
     /// <summary>
@@ -165,6 +195,15 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
                     ? navigationSelectedMaterial
                     : marker.NormalMaterial;
         }
+    }
+
+    /// <summary>
+    /// Enables or disables selection of tactical units in the 3D battle display.
+    /// </summary>
+    /// <param name="enabled">Whether visible tactical units accept selection.</param>
+    public void SetUnitSelectionEnabled(bool enabled)
+    {
+        unitSelectionEnabled = enabled;
     }
 
     /// <summary>
@@ -404,6 +443,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         lodGroup.RecalculateBounds();
         SetCollisionExtents(unit, lods[0].renderers);
         unitView.Initialize(unit);
+        ConfigureUnitSelection(unitView, lods[0].renderers);
         unitViews.Add(unitView);
     }
 
@@ -484,6 +524,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         lodGroup.RecalculateBounds();
         SetCollisionExtents(unit, lods[0].renderers);
         unitView.Initialize(unit);
+        ConfigureUnitSelection(unitView, lods[0].renderers);
         unitViews.Add(unitView);
     }
 
@@ -547,6 +588,42 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 
         float horizontalExtent = Mathf.Max(bounds.extents.x, bounds.extents.z);
         unit.SetCollisionExtents(horizontalExtent, bounds.extents.y);
+    }
+
+    /// <summary>
+    /// Adds one presentation-bounds collider and forwards its selection through the renderer.
+    /// </summary>
+    /// <param name="unitView">The unit presentation that receives selection.</param>
+    /// <param name="renderers">The close presentation used to calculate its bounds.</param>
+    private void ConfigureUnitSelection(
+        TacticalUnitView unitView,
+        IReadOnlyList<Renderer> renderers
+    )
+    {
+        Bounds bounds = renderers[0].bounds;
+        for (int index = 1; index < renderers.Count; index++)
+            bounds.Encapsulate(renderers[index].bounds);
+
+        Transform root = unitView.transform;
+        Vector3 scale = root.lossyScale;
+        BoxCollider collider = unitView.gameObject.AddComponent<BoxCollider>();
+        collider.center = root.InverseTransformPoint(bounds.center);
+        collider.size = new Vector3(
+            scale.x == 0f ? bounds.size.x : bounds.size.x / Mathf.Abs(scale.x),
+            scale.y == 0f ? bounds.size.y : bounds.size.y / Mathf.Abs(scale.y),
+            scale.z == 0f ? bounds.size.z : bounds.size.z / Mathf.Abs(scale.z)
+        );
+        unitView.Selected += HandleUnitSelected;
+    }
+
+    /// <summary>
+    /// Forwards world selection only while a tactical targeting command is active.
+    /// </summary>
+    /// <param name="unit">The selected tactical unit.</param>
+    private void HandleUnitSelected(TacticalUnitState unit)
+    {
+        if (unitSelectionEnabled)
+            UnitSelected?.Invoke(unit);
     }
 }
 

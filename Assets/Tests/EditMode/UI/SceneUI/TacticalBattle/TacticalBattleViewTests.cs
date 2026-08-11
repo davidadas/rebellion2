@@ -31,6 +31,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button nextCapitalShipButton;
         private Button capitalShipMissionsButton;
         private Button capitalShipManeuversButton;
+        private GameObject superlaserPanel;
+        private Button superlaserButton;
 
         [SetUp]
         public void SetUp()
@@ -42,6 +44,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CreateWithdrawalControls();
             CreateGameOptionsControls();
             CreateCapitalShipStatusControls();
+            CreateSuperlaserControls();
             view.ConfigureWithdrawal(
                 withdrawalButton,
                 withdrawalPanel,
@@ -458,6 +461,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void Awake_SuperlaserButton_RaisesSuperlaserRequested()
+        {
+            ConfigureCompleteView();
+            bool requested = false;
+            view.SuperlaserRequested += () => requested = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            superlaserButton.onClick.Invoke();
+
+            Assert.IsTrue(requested);
+        }
+
+        [Test]
         public void ShowWithdrawalConfirmation_OpenPanel_ClosesOtherCommandPanels()
         {
             ConfigureCompleteView();
@@ -593,6 +609,25 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 hull.GetComponent<Image>(),
                 shields.GetComponent<Image>(),
                 systems
+            );
+        }
+
+        private void CreateSuperlaserControls()
+        {
+            superlaserPanel = new GameObject("Superlaser", typeof(RectTransform));
+            superlaserPanel.transform.SetParent(root.transform, false);
+            RawImage fireVisual = CreateButton("FireSuperlaser", out superlaserButton);
+            GameObject charge = new GameObject(
+                "SuperlaserCharge",
+                typeof(RectTransform),
+                typeof(Image)
+            );
+            charge.transform.SetParent(superlaserPanel.transform, false);
+            view.ConfigureSuperlaser(
+                superlaserPanel,
+                superlaserButton,
+                fireVisual,
+                charge.GetComponent<Image>()
             );
         }
 

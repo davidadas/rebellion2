@@ -268,6 +268,39 @@ public static class TacticalBattleSceneBuilder
             );
         }
 
+        GameObject superlaserPanel = new GameObject("Superlaser", typeof(RectTransform));
+        superlaserPanel.transform.SetParent(canvasObject.transform, false);
+        SetSourceRect(superlaserPanel.GetComponent<RectTransform>(), 474, 0, 166, 25);
+        CreateBoundImage(
+            "Background",
+            superlaserPanel.transform,
+            $"{root}/1024-1033-tactical-ui-death-star-laser-gauge",
+            0,
+            0,
+            166,
+            25
+        );
+        Image superlaserChargeBar = CreateStatusBar(
+            "Charge",
+            superlaserPanel.transform,
+            new Color32(64, 255, 64, 255),
+            34,
+            9,
+            95,
+            6
+        );
+        Button superlaserButton = CreateBoundButton(
+            "Fire",
+            superlaserPanel.transform,
+            $"{root}/1021-1033-tactical-ui-death-star-laser-ready",
+            $"{root}/1022-1033-tactical-ui-death-star-laser-fired",
+            137,
+            2,
+            21,
+            20
+        );
+        RawImage superlaserButtonImage = superlaserButton.GetComponent<RawImage>();
+
         GameObject missionOrderPanel = new GameObject("MissionOrders", typeof(RectTransform));
         missionOrderPanel.transform.SetParent(canvasObject.transform, false);
         RectTransform missionOrderRect = missionOrderPanel.GetComponent<RectTransform>();
@@ -638,11 +671,18 @@ public static class TacticalBattleSceneBuilder
             shieldStatusBar,
             systemStatusImages
         );
+        view.ConfigureSuperlaser(
+            superlaserPanel,
+            superlaserButton,
+            superlaserButtonImage,
+            superlaserChargeBar
+        );
         capitalShipStatusPanel.SetActive(false);
         missionOrderPanel.SetActive(false);
         maneuverPanel.SetActive(false);
         gameOptionsPanel.SetActive(false);
         withdrawalPanel.SetActive(false);
+        superlaserPanel.SetActive(false);
     }
 
     /// <summary>

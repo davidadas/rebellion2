@@ -19,6 +19,9 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>A fighter group returns to its carrier.</summary>
         FightersRecovered = 3,
+
+        /// <summary>A Death Star superlaser strikes an opposing tactical object.</summary>
+        SuperlaserFired = 4,
     }
 
     /// <summary>
@@ -84,6 +87,25 @@ namespace Rebellion.Game.Tactical
                 source,
                 target ?? throw new ArgumentNullException(nameof(target)),
                 weaponType
+            );
+        }
+
+        /// <summary>
+        /// Creates a Death Star superlaser event between the firing station and its target.
+        /// </summary>
+        /// <param name="source">The firing Death Star.</param>
+        /// <param name="target">The destroyed opposing tactical object.</param>
+        /// <returns>The immutable superlaser event.</returns>
+        public static TacticalCombatEvent SuperlaserFired(
+            TacticalUnitState source,
+            TacticalUnitState target
+        )
+        {
+            return new TacticalCombatEvent(
+                TacticalCombatEventKind.SuperlaserFired,
+                source,
+                target ?? throw new ArgumentNullException(nameof(target)),
+                null
             );
         }
 

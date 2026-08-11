@@ -116,6 +116,13 @@
       <Private>false</Private>
     </Reference>
     <Reference
+      Include="UnityEngine.PhysicsModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference
       Include="UnityEngine.AnimationModule"
       Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.AnimationModule.dll')"
     >

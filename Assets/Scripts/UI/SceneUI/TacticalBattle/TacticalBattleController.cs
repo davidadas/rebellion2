@@ -21,6 +21,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private TacticalBehavior? pendingManeuver;
     private TacticalFormation pendingFormation;
     private TacticalUnitState selectedCapitalShip;
+    private TacticalUnitState playerDeathStar;
+    private bool selectingSuperlaserTarget;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
@@ -132,13 +134,19 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.CommandModeToggled += ToggleCommandMode;
         view.SettingsRequested += OpenSettings;
         view.GameOptionsClosed += CloseGameOptions;
+        view.SuperlaserRequested += BeginSuperlaserTargeting;
         battleRenderer.NavigationPointSelected += SelectNavigationPoint;
+        battleRenderer.UnitSelected += SelectSuperlaserTarget;
         await battleRenderer.InitializeAsync(
             Session,
             bootstrap.GetContentModelCache(),
             bootstrap.GetContentAssets(),
             shutdown.Token
         );
+        playerDeathStar = Session.Units.FirstOrDefault(unit =>
+            unit.Side == playerSide && unit.Unit is CapitalShip { IsDeathStar: true }
+        );
+        RefreshSuperlaser();
         isReady = true;
     }
 
@@ -164,6 +172,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             RefreshCapitalShipStatus();
         }
         battleRenderer.Synchronize();
+        RefreshSuperlaser();
         if (Session.IsComplete && !battleRenderer.HasActiveCombatEffects)
             CompleteBattle();
     }
@@ -200,13 +209,64 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.CommandModeToggled -= ToggleCommandMode;
             view.SettingsRequested -= OpenSettings;
             view.GameOptionsClosed -= CloseGameOptions;
+            view.SuperlaserRequested -= BeginSuperlaserTargeting;
         }
         if (battleRenderer != null)
+        {
             battleRenderer.NavigationPointSelected -= SelectNavigationPoint;
+            battleRenderer.UnitSelected -= SelectSuperlaserTarget;
+        }
         if (playerPaused)
             Session?.Resume();
         if (withdrawalConfirmationOpen)
             Session?.Resume();
+    }
+
+    /// <summary>
+    /// Arms the fully charged superlaser and waits for an opposing object selection.
+    /// </summary>
+    private void BeginSuperlaserTargeting()
+    {
+        if (
+            playerDeathStar?.IsActive != true
+            || Session.GetSuperlaserCharge(playerDeathStar) < TacticalSuperlaserSystem.MaximumCharge
+        )
+        {
+            return;
+        }
+
+        selectingSuperlaserTarget = true;
+        battleRenderer.SetUnitSelectionEnabled(true);
+    }
+
+    /// <summary>
+    /// Attempts to fire the armed superlaser at the selected tactical object.
+    /// </summary>
+    /// <param name="target">The selected tactical object.</param>
+    private void SelectSuperlaserTarget(TacticalUnitState target)
+    {
+        if (!selectingSuperlaserTarget || !Session.TryFireSuperlaser(playerDeathStar, target))
+            return;
+
+        selectingSuperlaserTarget = false;
+        battleRenderer.SetUnitSelectionEnabled(false);
+        RefreshSuperlaser();
+    }
+
+    /// <summary>
+    /// Synchronizes the original top-right charge control with the played side's Death Star.
+    /// </summary>
+    private void RefreshSuperlaser()
+    {
+        if (playerDeathStar?.IsActive != true)
+        {
+            selectingSuperlaserTarget = false;
+            battleRenderer.SetUnitSelectionEnabled(false);
+            view.HideSuperlaser();
+            return;
+        }
+
+        view.ShowSuperlaser(Session.GetSuperlaserCharge(playerDeathStar));
     }
 
     /// <summary>

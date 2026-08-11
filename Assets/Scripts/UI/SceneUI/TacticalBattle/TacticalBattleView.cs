@@ -71,6 +71,18 @@ public sealed class TacticalBattleView : MonoBehaviour
     [SerializeField]
     private RawImage[] systemStatusImages = Array.Empty<RawImage>();
 
+    [SerializeField]
+    private GameObject superlaserPanel;
+
+    [SerializeField]
+    private Button superlaserButton;
+
+    [SerializeField]
+    private RawImage superlaserButtonImage;
+
+    [SerializeField]
+    private Image superlaserChargeBar;
+
     private TacticalFormation pendingFormation;
 
     [SerializeField]
@@ -234,6 +246,11 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action GameOptionsClosed;
 
     /// <summary>
+    /// Raised when the player begins selecting a Death Star superlaser target.
+    /// </summary>
+    public event Action SuperlaserRequested;
+
+    /// <summary>
     /// Supplies the generated tactical HUD references.
     /// </summary>
     /// <param name="taskForces">The eight task-force controls.</param>
@@ -373,6 +390,26 @@ public sealed class TacticalBattleView : MonoBehaviour
         hullStatusBar = hull ?? throw new ArgumentNullException(nameof(hull));
         shieldStatusBar = shields ?? throw new ArgumentNullException(nameof(shields));
         systemStatusImages = systems ?? throw new ArgumentNullException(nameof(systems));
+    }
+
+    /// <summary>
+    /// Supplies the generated Death Star superlaser charge and firing controls.
+    /// </summary>
+    /// <param name="panel">The top-right charge panel.</param>
+    /// <param name="fire">The superlaser firing control.</param>
+    /// <param name="fireVisual">The firing control image.</param>
+    /// <param name="charge">The superlaser charge bar.</param>
+    public void ConfigureSuperlaser(
+        GameObject panel,
+        Button fire,
+        RawImage fireVisual,
+        Image charge
+    )
+    {
+        superlaserPanel = panel ?? throw new ArgumentNullException(nameof(panel));
+        superlaserButton = fire ?? throw new ArgumentNullException(nameof(fire));
+        superlaserButtonImage = fireVisual ?? throw new ArgumentNullException(nameof(fireVisual));
+        superlaserChargeBar = charge ?? throw new ArgumentNullException(nameof(charge));
     }
 
     /// <summary>
@@ -541,6 +578,36 @@ public sealed class TacticalBattleView : MonoBehaviour
     }
 
     /// <summary>
+    /// Shows the Death Star superlaser control and applies its current charge state.
+    /// </summary>
+    /// <param name="charge">The current charge from zero through one hundred.</param>
+    public void ShowSuperlaser(float charge)
+    {
+        float normalizedCharge = Mathf.Clamp01(charge / TacticalSuperlaserSystem.MaximumCharge);
+        superlaserChargeBar.fillAmount = normalizedCharge;
+        bool ready = normalizedCharge >= 1f;
+        superlaserButton.interactable = ready && !observing;
+        if (contentAssets != null)
+        {
+            superlaserButtonImage.texture = ContentBindings.RequireTexture(
+                contentAssets,
+                ready
+                    ? $"{sharedUIRoot}/1021-1033-tactical-ui-death-star-laser-ready"
+                    : $"{sharedUIRoot}/1023-1033-tactical-ui-death star-laser-loading"
+            );
+        }
+        superlaserPanel.SetActive(true);
+    }
+
+    /// <summary>
+    /// Hides the Death Star superlaser control when the played side has no active station.
+    /// </summary>
+    public void HideSuperlaser()
+    {
+        superlaserPanel.SetActive(false);
+    }
+
+    /// <summary>
     /// Replaces the tactical command panel with the withdrawal confirmation panel.
     /// </summary>
     public void ShowWithdrawalConfirmation()
@@ -614,6 +681,7 @@ public sealed class TacticalBattleView : MonoBehaviour
         commandModeButton.onClick.AddListener(() => CommandModeToggled?.Invoke());
         settingsButton.onClick.AddListener(() => SettingsRequested?.Invoke());
         closeGameOptionsButton.onClick.AddListener(() => GameOptionsClosed?.Invoke());
+        superlaserButton.onClick.AddListener(() => SuperlaserRequested?.Invoke());
         confirmWithdrawalButton.onClick.AddListener(() => WithdrawalConfirmed?.Invoke());
         cancelWithdrawalButton.onClick.AddListener(() => WithdrawalCancelled?.Invoke());
         HideMissionOrders();
@@ -695,6 +763,15 @@ public sealed class TacticalBattleView : MonoBehaviour
             throw new MissingReferenceException(
                 "Tactical HUD capital-ship status references are incomplete."
             );
+        }
+        if (
+            superlaserPanel == null
+            || superlaserButton == null
+            || superlaserButtonImage == null
+            || superlaserChargeBar == null
+        )
+        {
+            throw new MissingReferenceException("Death Star superlaser controls are incomplete.");
         }
         if (pauseButton == null || pauseImage == null)
             throw new MissingReferenceException("Tactical HUD pause references are incomplete.");
