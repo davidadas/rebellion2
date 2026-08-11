@@ -189,7 +189,11 @@ namespace Rebellion.Game.Tactical
         {
             targets.RemoveAll(target => !target.IsActive);
             if (EscortTarget?.IsActive != true)
+            {
                 EscortTarget = null;
+                if (Behavior == TacticalBehavior.Escort)
+                    Behavior = TacticalBehavior.None;
+            }
         }
 
         /// <summary>

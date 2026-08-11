@@ -67,6 +67,21 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void RemoveInactiveTargets_DestroyedEscortTarget_ClearsEscortOrder()
+        {
+            TacticalUnitState unit = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState escortTarget = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalShipGroup group = CreateGroup(unit, escortTarget);
+            group.AssignEscortTarget(escortTarget);
+            escortTarget.Hull = 0;
+
+            group.RemoveInactiveTargets();
+
+            Assert.IsNull(group.EscortTarget);
+            Assert.AreEqual(TacticalBehavior.None, group.Behavior);
+        }
+
+        [Test]
         public void SetFormation_ValidFormation_ReplacesCurrentFormation()
         {
             TacticalShipGroup group = CreateGroup(TacticalBattleSide.Attacker);
