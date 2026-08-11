@@ -838,7 +838,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_DefaultTargetWithoutAssignment_TargetsNearestOpposingUnit()
+        public void Advance_DefaultTargetWithoutAssignment_TargetsFirstOpposingUnit()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
             attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
@@ -854,12 +854,12 @@ namespace Rebellion.Tests.Game.Tactical
             session.Units.Single(unit => unit.Unit == firstDefendingShip).Position = new Vector3(
                 0f,
                 0f,
-                10f
+                40f
             );
             session.Units.Single(unit => unit.Unit == lastDefendingShip).Position = new Vector3(
                 0f,
                 0f,
-                40f
+                10f
             );
 
             session.Advance(0.1f);

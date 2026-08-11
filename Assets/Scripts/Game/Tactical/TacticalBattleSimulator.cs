@@ -577,11 +577,7 @@ namespace Rebellion.Game.Tactical
             }
             else
             {
-                selectedTarget = eligibleTargets
-                    .OrderBy(candidate =>
-                        Vector3.DistanceSquared(unit.Position, candidate.Position)
-                    )
-                    .FirstOrDefault();
+                selectedTarget = eligibleTargets.FirstOrDefault();
             }
             if (selectedTarget == null)
                 targets.Remove(unit);
