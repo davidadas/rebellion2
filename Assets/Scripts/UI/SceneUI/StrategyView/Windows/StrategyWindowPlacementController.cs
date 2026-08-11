@@ -114,12 +114,18 @@ public sealed class StrategyWindowPlacementController
     }
 
     /// <summary>
-    /// Gets the centered Options-overlay position from its authored prefab geometry.
+    /// Gets the Options-overlay position centered on the full strategy surface. The overlay is a
+    /// full-screen modal, so it centers on the screen rather than the smaller desktop bounds.
     /// </summary>
     /// <returns>The source-space Options-overlay position.</returns>
     public Vector2Int GetOptionsWindowPosition()
     {
-        return GetCenteredWindowPosition(windowLayer.OptionsMenuWindowPrefab);
+        Vector2Int windowSize = windowLayer.GetWindowSize(windowLayer.OptionsMenuWindowPrefab);
+        Vector2Int surfaceSize = windowLayer.GetSurfaceSize();
+        return new Vector2Int(
+            Mathf.RoundToInt(surfaceSize.x / 2f - windowSize.x / 2f),
+            Mathf.RoundToInt(surfaceSize.y / 2f - windowSize.y / 2f)
+        );
     }
 
     /// <summary>

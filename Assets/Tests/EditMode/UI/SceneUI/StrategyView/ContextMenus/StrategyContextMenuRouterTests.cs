@@ -145,6 +145,40 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
         }
 
         [Test]
+        public void TryExecuteShortcut_EnabledMatchingCommand_ExecutesWithoutOpeningMenu()
+        {
+            RecordingReceiver receiver = new RecordingReceiver();
+            StrategyMenuCommand command = new StrategyMenuCommand(
+                StrategyMenuAction.MoveConfirm,
+                "Confirmed Move",
+                true
+            );
+            _provider.Handle = true;
+            _provider.Request = new ContextMenuRequest(
+                _window,
+                new IContextMenuCommand[] { command },
+                receiver
+            );
+            PointerEventData eventData = new PointerEventData(null)
+            {
+                pointerCurrentRaycast = new RaycastResult { gameObject = _window.gameObject },
+            };
+
+            bool executed = _router.TryExecuteShortcut(
+                eventData,
+                17,
+                29,
+                StrategyMenuAction.MoveConfirm
+            );
+
+            Assert.IsTrue(executed);
+            Assert.AreEqual(1, receiver.SelectedCount);
+            Assert.AreSame(command, receiver.LastCommand);
+            Assert.IsFalse(_menuController.IsOpen);
+            Assert.IsFalse(_presenter.Open);
+        }
+
+        [Test]
         public void OpenContextMenu_NullWindow_CancelsRequestAndResetsPresenter()
         {
             RecordingReceiver receiver = new RecordingReceiver();

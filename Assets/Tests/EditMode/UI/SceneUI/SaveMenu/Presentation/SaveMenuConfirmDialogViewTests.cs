@@ -62,6 +62,22 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         }
 
         [Test]
+        public void Show_LegacyFixedBlocker_StretchesAcrossDialogRoot()
+        {
+            RectTransform blocker = _view.transform.Find("InputBlocker") as RectTransform;
+            blocker.anchorMin = new Vector2(0f, 1f);
+            blocker.anchorMax = new Vector2(0f, 1f);
+            blocker.sizeDelta = new Vector2(640f, 480f);
+
+            _view.Show("Confirm");
+
+            Assert.AreEqual(Vector2.zero, blocker.anchorMin);
+            Assert.AreEqual(Vector2.one, blocker.anchorMax);
+            Assert.AreEqual(Vector2.zero, blocker.sizeDelta);
+            Assert.AreEqual(Vector2.zero, blocker.anchoredPosition);
+        }
+
+        [Test]
         public void Hide_VisibleDialog_HidesWithoutResponse()
         {
             int responseCount = 0;

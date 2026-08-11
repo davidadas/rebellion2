@@ -169,6 +169,11 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
         if (modalInputBlockerImage == null)
             return;
 
+        // Apply the current global modal treatment at runtime as well as in the prefab builder so
+        // previously generated StrategyView prefabs cannot retain the old bright gray wash.
+        if (modalBackgroundDimImage != null)
+            modalBackgroundDimImage.color = new Color(0f, 0f, 0f, 0.8f);
+
         SetModalImageActive(modalInputBlockerImage, blockInput);
         SetModalImageActive(modalBackgroundDimImage, dimBackground);
 

@@ -120,24 +120,6 @@ namespace Rebellion.Input
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""DecreaseGameSpeed"",
-                    ""type"": ""Button"",
-                    ""id"": ""00000000-0000-0000-0000-000000000056"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""IncreaseGameSpeed"",
-                    ""type"": ""Button"",
-                    ""id"": ""00000000-0000-0000-0000-000000000057"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -171,6 +153,479 @@ namespace Rebellion.Input
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""QuickLoad"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
+        },
+        {
+            ""name"": ""Strategy"",
+            ""id"": ""00000000-0000-0000-0000-000000000012"",
+            ""actions"": [
+                {
+                    ""name"": ""DecreaseGameSpeed"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000056"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""IncreaseGameSpeed"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000057"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""MultiSelectModifier"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000013"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""RangeSelectModifier"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000014"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""AlternateSelectModifier"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000015"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""BookmarkSlot1"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000201"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot2"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000203"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot3"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000205"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot4"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000207"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot5"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000209"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot6"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000211"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot7"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000213"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot8"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000215"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot9"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000217"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot10"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000219"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot11"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000221"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""BookmarkSlot12"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000223"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenSystemFinder"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000225"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenFleetFinder"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000227"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenPersonnelFinder"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000229"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenPlanetFinder"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000231"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenEncyclopedia"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000233"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenAllMessages"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000235"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""DestroySelectedUnits"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000237"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""OpenMissionSetup"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000239"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""IssueMoveOrder"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000240"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ConfirmMoveOrder"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000241"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowPopularSupport"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000242"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowUprisings"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000243"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowIdleFleets"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000244"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowFleetsEnroute"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000245"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowIdlePersonnel"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000246"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowActivePersonnel"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000247"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowAvailableEnergy"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000248"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowAvailableRawMaterial"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000249"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowMines"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000250"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowRefineries"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000251"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowShipyards"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000252"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowTrainingFacilities"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000253"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowConstructionYards"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000254"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowIdleShipyards"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000255"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowIdleTrainingFacilities"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000256"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowIdleConstructionYards"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000257"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowTroopers"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000258"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowFighterSquadrons"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000259"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowDeathStarShields"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000260"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowPlanetaryShieldGenerators"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000261"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ShowPlanetaryDefenseBatteries"",
+                    ""type"": ""Button"",
+                    ""id"": ""00000000-0000-0000-0000-000000000262"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000016"",
+                    ""path"": ""<Keyboard>/ctrl"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""MultiSelectModifier"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000017"",
+                    ""path"": ""<Keyboard>/shift"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""RangeSelectModifier"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000018"",
+                    ""path"": ""<Keyboard>/alt"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""AlternateSelectModifier"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -569,72 +1024,213 @@ namespace Rebellion.Input
                     ""action"": ""IncreaseGameSpeed"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": true
-                }
-            ]
-        },
-        {
-            ""name"": ""Strategy"",
-            ""id"": ""00000000-0000-0000-0000-000000000012"",
-            ""actions"": [
-                {
-                    ""name"": ""MultiSelectModifier"",
-                    ""type"": ""Button"",
-                    ""id"": ""00000000-0000-0000-0000-000000000013"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
                 },
-                {
-                    ""name"": ""RangeSelectModifier"",
-                    ""type"": ""Button"",
-                    ""id"": ""00000000-0000-0000-0000-000000000014"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
-                },
-                {
-                    ""name"": ""AlternateSelectModifier"",
-                    ""type"": ""Button"",
-                    ""id"": ""00000000-0000-0000-0000-000000000015"",
-                    ""expectedControlType"": ""Button"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
-                }
-            ],
-            ""bindings"": [
                 {
                     ""name"": """",
-                    ""id"": ""00000000-0000-0000-0000-000000000016"",
-                    ""path"": ""<Keyboard>/ctrl"",
+                    ""id"": ""00000000-0000-0000-0000-000000000202"",
+                    ""path"": ""<Keyboard>/1"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""MultiSelectModifier"",
+                    ""action"": ""BookmarkSlot1"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
                 {
                     ""name"": """",
-                    ""id"": ""00000000-0000-0000-0000-000000000017"",
-                    ""path"": ""<Keyboard>/shift"",
+                    ""id"": ""00000000-0000-0000-0000-000000000204"",
+                    ""path"": ""<Keyboard>/2"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""RangeSelectModifier"",
+                    ""action"": ""BookmarkSlot2"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
                 {
                     ""name"": """",
-                    ""id"": ""00000000-0000-0000-0000-000000000018"",
-                    ""path"": ""<Keyboard>/alt"",
+                    ""id"": ""00000000-0000-0000-0000-000000000206"",
+                    ""path"": ""<Keyboard>/3"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
-                    ""action"": ""AlternateSelectModifier"",
+                    ""action"": ""BookmarkSlot3"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000208"",
+                    ""path"": ""<Keyboard>/4"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot4"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000210"",
+                    ""path"": ""<Keyboard>/5"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot5"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000212"",
+                    ""path"": ""<Keyboard>/6"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot6"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000214"",
+                    ""path"": ""<Keyboard>/7"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot7"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000216"",
+                    ""path"": ""<Keyboard>/8"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot8"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000218"",
+                    ""path"": ""<Keyboard>/9"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot9"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000220"",
+                    ""path"": ""<Keyboard>/0"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot10"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000222"",
+                    ""path"": ""<Keyboard>/minus"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot11"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000224"",
+                    ""path"": ""<Keyboard>/equals"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""BookmarkSlot12"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000226"",
+                    ""path"": ""<Keyboard>/s"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenSystemFinder"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000228"",
+                    ""path"": ""<Keyboard>/f"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenFleetFinder"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000230"",
+                    ""path"": ""<Keyboard>/o"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenPersonnelFinder"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000232"",
+                    ""path"": ""<Keyboard>/p"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenPlanetFinder"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000234"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenEncyclopedia"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000236"",
+                    ""path"": ""<Keyboard>/m"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""OpenAllMessages"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""00000000-0000-0000-0000-000000000238"",
+                    ""path"": ""<Keyboard>/delete"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard&Mouse"",
+                    ""action"": ""DestroySelectedUnits"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1041,13 +1637,56 @@ namespace Rebellion.Input
             m_Global_CancelOrSettings = m_Global.FindAction("CancelOrSettings", throwIfNotFound: true);
             m_Global_QuickSave = m_Global.FindAction("QuickSave", throwIfNotFound: true);
             m_Global_QuickLoad = m_Global.FindAction("QuickLoad", throwIfNotFound: true);
-            m_Global_DecreaseGameSpeed = m_Global.FindAction("DecreaseGameSpeed", throwIfNotFound: true);
-            m_Global_IncreaseGameSpeed = m_Global.FindAction("IncreaseGameSpeed", throwIfNotFound: true);
             // Strategy
             m_Strategy = asset.FindActionMap("Strategy", throwIfNotFound: true);
+            m_Strategy_DecreaseGameSpeed = m_Strategy.FindAction("DecreaseGameSpeed", throwIfNotFound: true);
+            m_Strategy_IncreaseGameSpeed = m_Strategy.FindAction("IncreaseGameSpeed", throwIfNotFound: true);
             m_Strategy_MultiSelectModifier = m_Strategy.FindAction("MultiSelectModifier", throwIfNotFound: true);
             m_Strategy_RangeSelectModifier = m_Strategy.FindAction("RangeSelectModifier", throwIfNotFound: true);
             m_Strategy_AlternateSelectModifier = m_Strategy.FindAction("AlternateSelectModifier", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot1 = m_Strategy.FindAction("BookmarkSlot1", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot2 = m_Strategy.FindAction("BookmarkSlot2", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot3 = m_Strategy.FindAction("BookmarkSlot3", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot4 = m_Strategy.FindAction("BookmarkSlot4", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot5 = m_Strategy.FindAction("BookmarkSlot5", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot6 = m_Strategy.FindAction("BookmarkSlot6", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot7 = m_Strategy.FindAction("BookmarkSlot7", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot8 = m_Strategy.FindAction("BookmarkSlot8", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot9 = m_Strategy.FindAction("BookmarkSlot9", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot10 = m_Strategy.FindAction("BookmarkSlot10", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot11 = m_Strategy.FindAction("BookmarkSlot11", throwIfNotFound: true);
+            m_Strategy_BookmarkSlot12 = m_Strategy.FindAction("BookmarkSlot12", throwIfNotFound: true);
+            m_Strategy_OpenSystemFinder = m_Strategy.FindAction("OpenSystemFinder", throwIfNotFound: true);
+            m_Strategy_OpenFleetFinder = m_Strategy.FindAction("OpenFleetFinder", throwIfNotFound: true);
+            m_Strategy_OpenPersonnelFinder = m_Strategy.FindAction("OpenPersonnelFinder", throwIfNotFound: true);
+            m_Strategy_OpenPlanetFinder = m_Strategy.FindAction("OpenPlanetFinder", throwIfNotFound: true);
+            m_Strategy_OpenEncyclopedia = m_Strategy.FindAction("OpenEncyclopedia", throwIfNotFound: true);
+            m_Strategy_OpenAllMessages = m_Strategy.FindAction("OpenAllMessages", throwIfNotFound: true);
+            m_Strategy_DestroySelectedUnits = m_Strategy.FindAction("DestroySelectedUnits", throwIfNotFound: true);
+            m_Strategy_OpenMissionSetup = m_Strategy.FindAction("OpenMissionSetup", throwIfNotFound: true);
+            m_Strategy_IssueMoveOrder = m_Strategy.FindAction("IssueMoveOrder", throwIfNotFound: true);
+            m_Strategy_ConfirmMoveOrder = m_Strategy.FindAction("ConfirmMoveOrder", throwIfNotFound: true);
+            m_Strategy_ShowPopularSupport = m_Strategy.FindAction("ShowPopularSupport", throwIfNotFound: true);
+            m_Strategy_ShowUprisings = m_Strategy.FindAction("ShowUprisings", throwIfNotFound: true);
+            m_Strategy_ShowIdleFleets = m_Strategy.FindAction("ShowIdleFleets", throwIfNotFound: true);
+            m_Strategy_ShowFleetsEnroute = m_Strategy.FindAction("ShowFleetsEnroute", throwIfNotFound: true);
+            m_Strategy_ShowIdlePersonnel = m_Strategy.FindAction("ShowIdlePersonnel", throwIfNotFound: true);
+            m_Strategy_ShowActivePersonnel = m_Strategy.FindAction("ShowActivePersonnel", throwIfNotFound: true);
+            m_Strategy_ShowAvailableEnergy = m_Strategy.FindAction("ShowAvailableEnergy", throwIfNotFound: true);
+            m_Strategy_ShowAvailableRawMaterial = m_Strategy.FindAction("ShowAvailableRawMaterial", throwIfNotFound: true);
+            m_Strategy_ShowMines = m_Strategy.FindAction("ShowMines", throwIfNotFound: true);
+            m_Strategy_ShowRefineries = m_Strategy.FindAction("ShowRefineries", throwIfNotFound: true);
+            m_Strategy_ShowShipyards = m_Strategy.FindAction("ShowShipyards", throwIfNotFound: true);
+            m_Strategy_ShowTrainingFacilities = m_Strategy.FindAction("ShowTrainingFacilities", throwIfNotFound: true);
+            m_Strategy_ShowConstructionYards = m_Strategy.FindAction("ShowConstructionYards", throwIfNotFound: true);
+            m_Strategy_ShowIdleShipyards = m_Strategy.FindAction("ShowIdleShipyards", throwIfNotFound: true);
+            m_Strategy_ShowIdleTrainingFacilities = m_Strategy.FindAction("ShowIdleTrainingFacilities", throwIfNotFound: true);
+            m_Strategy_ShowIdleConstructionYards = m_Strategy.FindAction("ShowIdleConstructionYards", throwIfNotFound: true);
+            m_Strategy_ShowTroopers = m_Strategy.FindAction("ShowTroopers", throwIfNotFound: true);
+            m_Strategy_ShowFighterSquadrons = m_Strategy.FindAction("ShowFighterSquadrons", throwIfNotFound: true);
+            m_Strategy_ShowDeathStarShields = m_Strategy.FindAction("ShowDeathStarShields", throwIfNotFound: true);
+            m_Strategy_ShowPlanetaryShieldGenerators = m_Strategy.FindAction("ShowPlanetaryShieldGenerators", throwIfNotFound: true);
+            m_Strategy_ShowPlanetaryDefenseBatteries = m_Strategy.FindAction("ShowPlanetaryDefenseBatteries", throwIfNotFound: true);
             // Window
             m_Window = asset.FindActionMap("Window", throwIfNotFound: true);
             m_Window_Confirm = m_Window.FindAction("Confirm", throwIfNotFound: true);
@@ -1152,8 +1791,6 @@ namespace Rebellion.Input
         private readonly InputAction m_Global_CancelOrSettings;
         private readonly InputAction m_Global_QuickSave;
         private readonly InputAction m_Global_QuickLoad;
-        private readonly InputAction m_Global_DecreaseGameSpeed;
-        private readonly InputAction m_Global_IncreaseGameSpeed;
         /// <summary>
         /// Provides access to input actions defined in input action map "Global".
         /// </summary>
@@ -1177,14 +1814,6 @@ namespace Rebellion.Input
             /// Provides access to the underlying input action "Global/QuickLoad".
             /// </summary>
             public InputAction @QuickLoad => m_Wrapper.m_Global_QuickLoad;
-            /// <summary>
-            /// Provides access to the underlying input action "Global/DecreaseGameSpeed".
-            /// </summary>
-            public InputAction @DecreaseGameSpeed => m_Wrapper.m_Global_DecreaseGameSpeed;
-            /// <summary>
-            /// Provides access to the underlying input action "Global/IncreaseGameSpeed".
-            /// </summary>
-            public InputAction @IncreaseGameSpeed => m_Wrapper.m_Global_IncreaseGameSpeed;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -1220,12 +1849,6 @@ namespace Rebellion.Input
                 @QuickLoad.started += instance.OnQuickLoad;
                 @QuickLoad.performed += instance.OnQuickLoad;
                 @QuickLoad.canceled += instance.OnQuickLoad;
-                @DecreaseGameSpeed.started += instance.OnDecreaseGameSpeed;
-                @DecreaseGameSpeed.performed += instance.OnDecreaseGameSpeed;
-                @DecreaseGameSpeed.canceled += instance.OnDecreaseGameSpeed;
-                @IncreaseGameSpeed.started += instance.OnIncreaseGameSpeed;
-                @IncreaseGameSpeed.performed += instance.OnIncreaseGameSpeed;
-                @IncreaseGameSpeed.canceled += instance.OnIncreaseGameSpeed;
             }
 
             /// <summary>
@@ -1246,12 +1869,6 @@ namespace Rebellion.Input
                 @QuickLoad.started -= instance.OnQuickLoad;
                 @QuickLoad.performed -= instance.OnQuickLoad;
                 @QuickLoad.canceled -= instance.OnQuickLoad;
-                @DecreaseGameSpeed.started -= instance.OnDecreaseGameSpeed;
-                @DecreaseGameSpeed.performed -= instance.OnDecreaseGameSpeed;
-                @DecreaseGameSpeed.canceled -= instance.OnDecreaseGameSpeed;
-                @IncreaseGameSpeed.started -= instance.OnIncreaseGameSpeed;
-                @IncreaseGameSpeed.performed -= instance.OnIncreaseGameSpeed;
-                @IncreaseGameSpeed.canceled -= instance.OnIncreaseGameSpeed;
             }
 
             /// <summary>
@@ -1289,9 +1906,54 @@ namespace Rebellion.Input
         // Strategy
         private readonly InputActionMap m_Strategy;
         private List<IStrategyActions> m_StrategyActionsCallbackInterfaces = new List<IStrategyActions>();
+        private readonly InputAction m_Strategy_DecreaseGameSpeed;
+        private readonly InputAction m_Strategy_IncreaseGameSpeed;
         private readonly InputAction m_Strategy_MultiSelectModifier;
         private readonly InputAction m_Strategy_RangeSelectModifier;
         private readonly InputAction m_Strategy_AlternateSelectModifier;
+        private readonly InputAction m_Strategy_BookmarkSlot1;
+        private readonly InputAction m_Strategy_BookmarkSlot2;
+        private readonly InputAction m_Strategy_BookmarkSlot3;
+        private readonly InputAction m_Strategy_BookmarkSlot4;
+        private readonly InputAction m_Strategy_BookmarkSlot5;
+        private readonly InputAction m_Strategy_BookmarkSlot6;
+        private readonly InputAction m_Strategy_BookmarkSlot7;
+        private readonly InputAction m_Strategy_BookmarkSlot8;
+        private readonly InputAction m_Strategy_BookmarkSlot9;
+        private readonly InputAction m_Strategy_BookmarkSlot10;
+        private readonly InputAction m_Strategy_BookmarkSlot11;
+        private readonly InputAction m_Strategy_BookmarkSlot12;
+        private readonly InputAction m_Strategy_OpenSystemFinder;
+        private readonly InputAction m_Strategy_OpenFleetFinder;
+        private readonly InputAction m_Strategy_OpenPersonnelFinder;
+        private readonly InputAction m_Strategy_OpenPlanetFinder;
+        private readonly InputAction m_Strategy_OpenEncyclopedia;
+        private readonly InputAction m_Strategy_OpenAllMessages;
+        private readonly InputAction m_Strategy_DestroySelectedUnits;
+        private readonly InputAction m_Strategy_OpenMissionSetup;
+        private readonly InputAction m_Strategy_IssueMoveOrder;
+        private readonly InputAction m_Strategy_ConfirmMoveOrder;
+        private readonly InputAction m_Strategy_ShowPopularSupport;
+        private readonly InputAction m_Strategy_ShowUprisings;
+        private readonly InputAction m_Strategy_ShowIdleFleets;
+        private readonly InputAction m_Strategy_ShowFleetsEnroute;
+        private readonly InputAction m_Strategy_ShowIdlePersonnel;
+        private readonly InputAction m_Strategy_ShowActivePersonnel;
+        private readonly InputAction m_Strategy_ShowAvailableEnergy;
+        private readonly InputAction m_Strategy_ShowAvailableRawMaterial;
+        private readonly InputAction m_Strategy_ShowMines;
+        private readonly InputAction m_Strategy_ShowRefineries;
+        private readonly InputAction m_Strategy_ShowShipyards;
+        private readonly InputAction m_Strategy_ShowTrainingFacilities;
+        private readonly InputAction m_Strategy_ShowConstructionYards;
+        private readonly InputAction m_Strategy_ShowIdleShipyards;
+        private readonly InputAction m_Strategy_ShowIdleTrainingFacilities;
+        private readonly InputAction m_Strategy_ShowIdleConstructionYards;
+        private readonly InputAction m_Strategy_ShowTroopers;
+        private readonly InputAction m_Strategy_ShowFighterSquadrons;
+        private readonly InputAction m_Strategy_ShowDeathStarShields;
+        private readonly InputAction m_Strategy_ShowPlanetaryShieldGenerators;
+        private readonly InputAction m_Strategy_ShowPlanetaryDefenseBatteries;
         /// <summary>
         /// Provides access to input actions defined in input action map "Strategy".
         /// </summary>
@@ -1304,6 +1966,14 @@ namespace Rebellion.Input
             /// </summary>
             public StrategyActions(@PlayerInputActions wrapper) { m_Wrapper = wrapper; }
             /// <summary>
+            /// Provides access to the underlying input action "Strategy/DecreaseGameSpeed".
+            /// </summary>
+            public InputAction @DecreaseGameSpeed => m_Wrapper.m_Strategy_DecreaseGameSpeed;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/IncreaseGameSpeed".
+            /// </summary>
+            public InputAction @IncreaseGameSpeed => m_Wrapper.m_Strategy_IncreaseGameSpeed;
+            /// <summary>
             /// Provides access to the underlying input action "Strategy/MultiSelectModifier".
             /// </summary>
             public InputAction @MultiSelectModifier => m_Wrapper.m_Strategy_MultiSelectModifier;
@@ -1315,6 +1985,178 @@ namespace Rebellion.Input
             /// Provides access to the underlying input action "Strategy/AlternateSelectModifier".
             /// </summary>
             public InputAction @AlternateSelectModifier => m_Wrapper.m_Strategy_AlternateSelectModifier;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot1".
+            /// </summary>
+            public InputAction @BookmarkSlot1 => m_Wrapper.m_Strategy_BookmarkSlot1;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot2".
+            /// </summary>
+            public InputAction @BookmarkSlot2 => m_Wrapper.m_Strategy_BookmarkSlot2;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot3".
+            /// </summary>
+            public InputAction @BookmarkSlot3 => m_Wrapper.m_Strategy_BookmarkSlot3;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot4".
+            /// </summary>
+            public InputAction @BookmarkSlot4 => m_Wrapper.m_Strategy_BookmarkSlot4;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot5".
+            /// </summary>
+            public InputAction @BookmarkSlot5 => m_Wrapper.m_Strategy_BookmarkSlot5;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot6".
+            /// </summary>
+            public InputAction @BookmarkSlot6 => m_Wrapper.m_Strategy_BookmarkSlot6;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot7".
+            /// </summary>
+            public InputAction @BookmarkSlot7 => m_Wrapper.m_Strategy_BookmarkSlot7;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot8".
+            /// </summary>
+            public InputAction @BookmarkSlot8 => m_Wrapper.m_Strategy_BookmarkSlot8;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot9".
+            /// </summary>
+            public InputAction @BookmarkSlot9 => m_Wrapper.m_Strategy_BookmarkSlot9;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot10".
+            /// </summary>
+            public InputAction @BookmarkSlot10 => m_Wrapper.m_Strategy_BookmarkSlot10;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot11".
+            /// </summary>
+            public InputAction @BookmarkSlot11 => m_Wrapper.m_Strategy_BookmarkSlot11;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/BookmarkSlot12".
+            /// </summary>
+            public InputAction @BookmarkSlot12 => m_Wrapper.m_Strategy_BookmarkSlot12;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenSystemFinder".
+            /// </summary>
+            public InputAction @OpenSystemFinder => m_Wrapper.m_Strategy_OpenSystemFinder;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenFleetFinder".
+            /// </summary>
+            public InputAction @OpenFleetFinder => m_Wrapper.m_Strategy_OpenFleetFinder;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenPersonnelFinder".
+            /// </summary>
+            public InputAction @OpenPersonnelFinder => m_Wrapper.m_Strategy_OpenPersonnelFinder;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenPlanetFinder".
+            /// </summary>
+            public InputAction @OpenPlanetFinder => m_Wrapper.m_Strategy_OpenPlanetFinder;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenEncyclopedia".
+            /// </summary>
+            public InputAction @OpenEncyclopedia => m_Wrapper.m_Strategy_OpenEncyclopedia;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenAllMessages".
+            /// </summary>
+            public InputAction @OpenAllMessages => m_Wrapper.m_Strategy_OpenAllMessages;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/DestroySelectedUnits".
+            /// </summary>
+            public InputAction @DestroySelectedUnits => m_Wrapper.m_Strategy_DestroySelectedUnits;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/OpenMissionSetup".
+            /// </summary>
+            public InputAction @OpenMissionSetup => m_Wrapper.m_Strategy_OpenMissionSetup;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/IssueMoveOrder".
+            /// </summary>
+            public InputAction @IssueMoveOrder => m_Wrapper.m_Strategy_IssueMoveOrder;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ConfirmMoveOrder".
+            /// </summary>
+            public InputAction @ConfirmMoveOrder => m_Wrapper.m_Strategy_ConfirmMoveOrder;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowPopularSupport".
+            /// </summary>
+            public InputAction @ShowPopularSupport => m_Wrapper.m_Strategy_ShowPopularSupport;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowUprisings".
+            /// </summary>
+            public InputAction @ShowUprisings => m_Wrapper.m_Strategy_ShowUprisings;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowIdleFleets".
+            /// </summary>
+            public InputAction @ShowIdleFleets => m_Wrapper.m_Strategy_ShowIdleFleets;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowFleetsEnroute".
+            /// </summary>
+            public InputAction @ShowFleetsEnroute => m_Wrapper.m_Strategy_ShowFleetsEnroute;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowIdlePersonnel".
+            /// </summary>
+            public InputAction @ShowIdlePersonnel => m_Wrapper.m_Strategy_ShowIdlePersonnel;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowActivePersonnel".
+            /// </summary>
+            public InputAction @ShowActivePersonnel => m_Wrapper.m_Strategy_ShowActivePersonnel;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowAvailableEnergy".
+            /// </summary>
+            public InputAction @ShowAvailableEnergy => m_Wrapper.m_Strategy_ShowAvailableEnergy;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowAvailableRawMaterial".
+            /// </summary>
+            public InputAction @ShowAvailableRawMaterial => m_Wrapper.m_Strategy_ShowAvailableRawMaterial;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowMines".
+            /// </summary>
+            public InputAction @ShowMines => m_Wrapper.m_Strategy_ShowMines;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowRefineries".
+            /// </summary>
+            public InputAction @ShowRefineries => m_Wrapper.m_Strategy_ShowRefineries;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowShipyards".
+            /// </summary>
+            public InputAction @ShowShipyards => m_Wrapper.m_Strategy_ShowShipyards;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowTrainingFacilities".
+            /// </summary>
+            public InputAction @ShowTrainingFacilities => m_Wrapper.m_Strategy_ShowTrainingFacilities;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowConstructionYards".
+            /// </summary>
+            public InputAction @ShowConstructionYards => m_Wrapper.m_Strategy_ShowConstructionYards;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowIdleShipyards".
+            /// </summary>
+            public InputAction @ShowIdleShipyards => m_Wrapper.m_Strategy_ShowIdleShipyards;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowIdleTrainingFacilities".
+            /// </summary>
+            public InputAction @ShowIdleTrainingFacilities => m_Wrapper.m_Strategy_ShowIdleTrainingFacilities;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowIdleConstructionYards".
+            /// </summary>
+            public InputAction @ShowIdleConstructionYards => m_Wrapper.m_Strategy_ShowIdleConstructionYards;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowTroopers".
+            /// </summary>
+            public InputAction @ShowTroopers => m_Wrapper.m_Strategy_ShowTroopers;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowFighterSquadrons".
+            /// </summary>
+            public InputAction @ShowFighterSquadrons => m_Wrapper.m_Strategy_ShowFighterSquadrons;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowDeathStarShields".
+            /// </summary>
+            public InputAction @ShowDeathStarShields => m_Wrapper.m_Strategy_ShowDeathStarShields;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowPlanetaryShieldGenerators".
+            /// </summary>
+            public InputAction @ShowPlanetaryShieldGenerators => m_Wrapper.m_Strategy_ShowPlanetaryShieldGenerators;
+            /// <summary>
+            /// Provides access to the underlying input action "Strategy/ShowPlanetaryDefenseBatteries".
+            /// </summary>
+            public InputAction @ShowPlanetaryDefenseBatteries => m_Wrapper.m_Strategy_ShowPlanetaryDefenseBatteries;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -1341,6 +2183,12 @@ namespace Rebellion.Input
             {
                 if (instance == null || m_Wrapper.m_StrategyActionsCallbackInterfaces.Contains(instance)) return;
                 m_Wrapper.m_StrategyActionsCallbackInterfaces.Add(instance);
+                @DecreaseGameSpeed.started += instance.OnDecreaseGameSpeed;
+                @DecreaseGameSpeed.performed += instance.OnDecreaseGameSpeed;
+                @DecreaseGameSpeed.canceled += instance.OnDecreaseGameSpeed;
+                @IncreaseGameSpeed.started += instance.OnIncreaseGameSpeed;
+                @IncreaseGameSpeed.performed += instance.OnIncreaseGameSpeed;
+                @IncreaseGameSpeed.canceled += instance.OnIncreaseGameSpeed;
                 @MultiSelectModifier.started += instance.OnMultiSelectModifier;
                 @MultiSelectModifier.performed += instance.OnMultiSelectModifier;
                 @MultiSelectModifier.canceled += instance.OnMultiSelectModifier;
@@ -1350,6 +2198,135 @@ namespace Rebellion.Input
                 @AlternateSelectModifier.started += instance.OnAlternateSelectModifier;
                 @AlternateSelectModifier.performed += instance.OnAlternateSelectModifier;
                 @AlternateSelectModifier.canceled += instance.OnAlternateSelectModifier;
+                @BookmarkSlot1.started += instance.OnBookmarkSlot1;
+                @BookmarkSlot1.performed += instance.OnBookmarkSlot1;
+                @BookmarkSlot1.canceled += instance.OnBookmarkSlot1;
+                @BookmarkSlot2.started += instance.OnBookmarkSlot2;
+                @BookmarkSlot2.performed += instance.OnBookmarkSlot2;
+                @BookmarkSlot2.canceled += instance.OnBookmarkSlot2;
+                @BookmarkSlot3.started += instance.OnBookmarkSlot3;
+                @BookmarkSlot3.performed += instance.OnBookmarkSlot3;
+                @BookmarkSlot3.canceled += instance.OnBookmarkSlot3;
+                @BookmarkSlot4.started += instance.OnBookmarkSlot4;
+                @BookmarkSlot4.performed += instance.OnBookmarkSlot4;
+                @BookmarkSlot4.canceled += instance.OnBookmarkSlot4;
+                @BookmarkSlot5.started += instance.OnBookmarkSlot5;
+                @BookmarkSlot5.performed += instance.OnBookmarkSlot5;
+                @BookmarkSlot5.canceled += instance.OnBookmarkSlot5;
+                @BookmarkSlot6.started += instance.OnBookmarkSlot6;
+                @BookmarkSlot6.performed += instance.OnBookmarkSlot6;
+                @BookmarkSlot6.canceled += instance.OnBookmarkSlot6;
+                @BookmarkSlot7.started += instance.OnBookmarkSlot7;
+                @BookmarkSlot7.performed += instance.OnBookmarkSlot7;
+                @BookmarkSlot7.canceled += instance.OnBookmarkSlot7;
+                @BookmarkSlot8.started += instance.OnBookmarkSlot8;
+                @BookmarkSlot8.performed += instance.OnBookmarkSlot8;
+                @BookmarkSlot8.canceled += instance.OnBookmarkSlot8;
+                @BookmarkSlot9.started += instance.OnBookmarkSlot9;
+                @BookmarkSlot9.performed += instance.OnBookmarkSlot9;
+                @BookmarkSlot9.canceled += instance.OnBookmarkSlot9;
+                @BookmarkSlot10.started += instance.OnBookmarkSlot10;
+                @BookmarkSlot10.performed += instance.OnBookmarkSlot10;
+                @BookmarkSlot10.canceled += instance.OnBookmarkSlot10;
+                @BookmarkSlot11.started += instance.OnBookmarkSlot11;
+                @BookmarkSlot11.performed += instance.OnBookmarkSlot11;
+                @BookmarkSlot11.canceled += instance.OnBookmarkSlot11;
+                @BookmarkSlot12.started += instance.OnBookmarkSlot12;
+                @BookmarkSlot12.performed += instance.OnBookmarkSlot12;
+                @BookmarkSlot12.canceled += instance.OnBookmarkSlot12;
+                @OpenSystemFinder.started += instance.OnOpenSystemFinder;
+                @OpenSystemFinder.performed += instance.OnOpenSystemFinder;
+                @OpenSystemFinder.canceled += instance.OnOpenSystemFinder;
+                @OpenFleetFinder.started += instance.OnOpenFleetFinder;
+                @OpenFleetFinder.performed += instance.OnOpenFleetFinder;
+                @OpenFleetFinder.canceled += instance.OnOpenFleetFinder;
+                @OpenPersonnelFinder.started += instance.OnOpenPersonnelFinder;
+                @OpenPersonnelFinder.performed += instance.OnOpenPersonnelFinder;
+                @OpenPersonnelFinder.canceled += instance.OnOpenPersonnelFinder;
+                @OpenPlanetFinder.started += instance.OnOpenPlanetFinder;
+                @OpenPlanetFinder.performed += instance.OnOpenPlanetFinder;
+                @OpenPlanetFinder.canceled += instance.OnOpenPlanetFinder;
+                @OpenEncyclopedia.started += instance.OnOpenEncyclopedia;
+                @OpenEncyclopedia.performed += instance.OnOpenEncyclopedia;
+                @OpenEncyclopedia.canceled += instance.OnOpenEncyclopedia;
+                @OpenAllMessages.started += instance.OnOpenAllMessages;
+                @OpenAllMessages.performed += instance.OnOpenAllMessages;
+                @OpenAllMessages.canceled += instance.OnOpenAllMessages;
+                @DestroySelectedUnits.started += instance.OnDestroySelectedUnits;
+                @DestroySelectedUnits.performed += instance.OnDestroySelectedUnits;
+                @DestroySelectedUnits.canceled += instance.OnDestroySelectedUnits;
+                @OpenMissionSetup.started += instance.OnOpenMissionSetup;
+                @OpenMissionSetup.performed += instance.OnOpenMissionSetup;
+                @OpenMissionSetup.canceled += instance.OnOpenMissionSetup;
+                @IssueMoveOrder.started += instance.OnIssueMoveOrder;
+                @IssueMoveOrder.performed += instance.OnIssueMoveOrder;
+                @IssueMoveOrder.canceled += instance.OnIssueMoveOrder;
+                @ConfirmMoveOrder.started += instance.OnConfirmMoveOrder;
+                @ConfirmMoveOrder.performed += instance.OnConfirmMoveOrder;
+                @ConfirmMoveOrder.canceled += instance.OnConfirmMoveOrder;
+                @ShowPopularSupport.started += instance.OnShowPopularSupport;
+                @ShowPopularSupport.performed += instance.OnShowPopularSupport;
+                @ShowPopularSupport.canceled += instance.OnShowPopularSupport;
+                @ShowUprisings.started += instance.OnShowUprisings;
+                @ShowUprisings.performed += instance.OnShowUprisings;
+                @ShowUprisings.canceled += instance.OnShowUprisings;
+                @ShowIdleFleets.started += instance.OnShowIdleFleets;
+                @ShowIdleFleets.performed += instance.OnShowIdleFleets;
+                @ShowIdleFleets.canceled += instance.OnShowIdleFleets;
+                @ShowFleetsEnroute.started += instance.OnShowFleetsEnroute;
+                @ShowFleetsEnroute.performed += instance.OnShowFleetsEnroute;
+                @ShowFleetsEnroute.canceled += instance.OnShowFleetsEnroute;
+                @ShowIdlePersonnel.started += instance.OnShowIdlePersonnel;
+                @ShowIdlePersonnel.performed += instance.OnShowIdlePersonnel;
+                @ShowIdlePersonnel.canceled += instance.OnShowIdlePersonnel;
+                @ShowActivePersonnel.started += instance.OnShowActivePersonnel;
+                @ShowActivePersonnel.performed += instance.OnShowActivePersonnel;
+                @ShowActivePersonnel.canceled += instance.OnShowActivePersonnel;
+                @ShowAvailableEnergy.started += instance.OnShowAvailableEnergy;
+                @ShowAvailableEnergy.performed += instance.OnShowAvailableEnergy;
+                @ShowAvailableEnergy.canceled += instance.OnShowAvailableEnergy;
+                @ShowAvailableRawMaterial.started += instance.OnShowAvailableRawMaterial;
+                @ShowAvailableRawMaterial.performed += instance.OnShowAvailableRawMaterial;
+                @ShowAvailableRawMaterial.canceled += instance.OnShowAvailableRawMaterial;
+                @ShowMines.started += instance.OnShowMines;
+                @ShowMines.performed += instance.OnShowMines;
+                @ShowMines.canceled += instance.OnShowMines;
+                @ShowRefineries.started += instance.OnShowRefineries;
+                @ShowRefineries.performed += instance.OnShowRefineries;
+                @ShowRefineries.canceled += instance.OnShowRefineries;
+                @ShowShipyards.started += instance.OnShowShipyards;
+                @ShowShipyards.performed += instance.OnShowShipyards;
+                @ShowShipyards.canceled += instance.OnShowShipyards;
+                @ShowTrainingFacilities.started += instance.OnShowTrainingFacilities;
+                @ShowTrainingFacilities.performed += instance.OnShowTrainingFacilities;
+                @ShowTrainingFacilities.canceled += instance.OnShowTrainingFacilities;
+                @ShowConstructionYards.started += instance.OnShowConstructionYards;
+                @ShowConstructionYards.performed += instance.OnShowConstructionYards;
+                @ShowConstructionYards.canceled += instance.OnShowConstructionYards;
+                @ShowIdleShipyards.started += instance.OnShowIdleShipyards;
+                @ShowIdleShipyards.performed += instance.OnShowIdleShipyards;
+                @ShowIdleShipyards.canceled += instance.OnShowIdleShipyards;
+                @ShowIdleTrainingFacilities.started += instance.OnShowIdleTrainingFacilities;
+                @ShowIdleTrainingFacilities.performed += instance.OnShowIdleTrainingFacilities;
+                @ShowIdleTrainingFacilities.canceled += instance.OnShowIdleTrainingFacilities;
+                @ShowIdleConstructionYards.started += instance.OnShowIdleConstructionYards;
+                @ShowIdleConstructionYards.performed += instance.OnShowIdleConstructionYards;
+                @ShowIdleConstructionYards.canceled += instance.OnShowIdleConstructionYards;
+                @ShowTroopers.started += instance.OnShowTroopers;
+                @ShowTroopers.performed += instance.OnShowTroopers;
+                @ShowTroopers.canceled += instance.OnShowTroopers;
+                @ShowFighterSquadrons.started += instance.OnShowFighterSquadrons;
+                @ShowFighterSquadrons.performed += instance.OnShowFighterSquadrons;
+                @ShowFighterSquadrons.canceled += instance.OnShowFighterSquadrons;
+                @ShowDeathStarShields.started += instance.OnShowDeathStarShields;
+                @ShowDeathStarShields.performed += instance.OnShowDeathStarShields;
+                @ShowDeathStarShields.canceled += instance.OnShowDeathStarShields;
+                @ShowPlanetaryShieldGenerators.started += instance.OnShowPlanetaryShieldGenerators;
+                @ShowPlanetaryShieldGenerators.performed += instance.OnShowPlanetaryShieldGenerators;
+                @ShowPlanetaryShieldGenerators.canceled += instance.OnShowPlanetaryShieldGenerators;
+                @ShowPlanetaryDefenseBatteries.started += instance.OnShowPlanetaryDefenseBatteries;
+                @ShowPlanetaryDefenseBatteries.performed += instance.OnShowPlanetaryDefenseBatteries;
+                @ShowPlanetaryDefenseBatteries.canceled += instance.OnShowPlanetaryDefenseBatteries;
             }
 
             /// <summary>
@@ -1361,6 +2338,12 @@ namespace Rebellion.Input
             /// <seealso cref="StrategyActions" />
             private void UnregisterCallbacks(IStrategyActions instance)
             {
+                @DecreaseGameSpeed.started -= instance.OnDecreaseGameSpeed;
+                @DecreaseGameSpeed.performed -= instance.OnDecreaseGameSpeed;
+                @DecreaseGameSpeed.canceled -= instance.OnDecreaseGameSpeed;
+                @IncreaseGameSpeed.started -= instance.OnIncreaseGameSpeed;
+                @IncreaseGameSpeed.performed -= instance.OnIncreaseGameSpeed;
+                @IncreaseGameSpeed.canceled -= instance.OnIncreaseGameSpeed;
                 @MultiSelectModifier.started -= instance.OnMultiSelectModifier;
                 @MultiSelectModifier.performed -= instance.OnMultiSelectModifier;
                 @MultiSelectModifier.canceled -= instance.OnMultiSelectModifier;
@@ -1370,6 +2353,135 @@ namespace Rebellion.Input
                 @AlternateSelectModifier.started -= instance.OnAlternateSelectModifier;
                 @AlternateSelectModifier.performed -= instance.OnAlternateSelectModifier;
                 @AlternateSelectModifier.canceled -= instance.OnAlternateSelectModifier;
+                @BookmarkSlot1.started -= instance.OnBookmarkSlot1;
+                @BookmarkSlot1.performed -= instance.OnBookmarkSlot1;
+                @BookmarkSlot1.canceled -= instance.OnBookmarkSlot1;
+                @BookmarkSlot2.started -= instance.OnBookmarkSlot2;
+                @BookmarkSlot2.performed -= instance.OnBookmarkSlot2;
+                @BookmarkSlot2.canceled -= instance.OnBookmarkSlot2;
+                @BookmarkSlot3.started -= instance.OnBookmarkSlot3;
+                @BookmarkSlot3.performed -= instance.OnBookmarkSlot3;
+                @BookmarkSlot3.canceled -= instance.OnBookmarkSlot3;
+                @BookmarkSlot4.started -= instance.OnBookmarkSlot4;
+                @BookmarkSlot4.performed -= instance.OnBookmarkSlot4;
+                @BookmarkSlot4.canceled -= instance.OnBookmarkSlot4;
+                @BookmarkSlot5.started -= instance.OnBookmarkSlot5;
+                @BookmarkSlot5.performed -= instance.OnBookmarkSlot5;
+                @BookmarkSlot5.canceled -= instance.OnBookmarkSlot5;
+                @BookmarkSlot6.started -= instance.OnBookmarkSlot6;
+                @BookmarkSlot6.performed -= instance.OnBookmarkSlot6;
+                @BookmarkSlot6.canceled -= instance.OnBookmarkSlot6;
+                @BookmarkSlot7.started -= instance.OnBookmarkSlot7;
+                @BookmarkSlot7.performed -= instance.OnBookmarkSlot7;
+                @BookmarkSlot7.canceled -= instance.OnBookmarkSlot7;
+                @BookmarkSlot8.started -= instance.OnBookmarkSlot8;
+                @BookmarkSlot8.performed -= instance.OnBookmarkSlot8;
+                @BookmarkSlot8.canceled -= instance.OnBookmarkSlot8;
+                @BookmarkSlot9.started -= instance.OnBookmarkSlot9;
+                @BookmarkSlot9.performed -= instance.OnBookmarkSlot9;
+                @BookmarkSlot9.canceled -= instance.OnBookmarkSlot9;
+                @BookmarkSlot10.started -= instance.OnBookmarkSlot10;
+                @BookmarkSlot10.performed -= instance.OnBookmarkSlot10;
+                @BookmarkSlot10.canceled -= instance.OnBookmarkSlot10;
+                @BookmarkSlot11.started -= instance.OnBookmarkSlot11;
+                @BookmarkSlot11.performed -= instance.OnBookmarkSlot11;
+                @BookmarkSlot11.canceled -= instance.OnBookmarkSlot11;
+                @BookmarkSlot12.started -= instance.OnBookmarkSlot12;
+                @BookmarkSlot12.performed -= instance.OnBookmarkSlot12;
+                @BookmarkSlot12.canceled -= instance.OnBookmarkSlot12;
+                @OpenSystemFinder.started -= instance.OnOpenSystemFinder;
+                @OpenSystemFinder.performed -= instance.OnOpenSystemFinder;
+                @OpenSystemFinder.canceled -= instance.OnOpenSystemFinder;
+                @OpenFleetFinder.started -= instance.OnOpenFleetFinder;
+                @OpenFleetFinder.performed -= instance.OnOpenFleetFinder;
+                @OpenFleetFinder.canceled -= instance.OnOpenFleetFinder;
+                @OpenPersonnelFinder.started -= instance.OnOpenPersonnelFinder;
+                @OpenPersonnelFinder.performed -= instance.OnOpenPersonnelFinder;
+                @OpenPersonnelFinder.canceled -= instance.OnOpenPersonnelFinder;
+                @OpenPlanetFinder.started -= instance.OnOpenPlanetFinder;
+                @OpenPlanetFinder.performed -= instance.OnOpenPlanetFinder;
+                @OpenPlanetFinder.canceled -= instance.OnOpenPlanetFinder;
+                @OpenEncyclopedia.started -= instance.OnOpenEncyclopedia;
+                @OpenEncyclopedia.performed -= instance.OnOpenEncyclopedia;
+                @OpenEncyclopedia.canceled -= instance.OnOpenEncyclopedia;
+                @OpenAllMessages.started -= instance.OnOpenAllMessages;
+                @OpenAllMessages.performed -= instance.OnOpenAllMessages;
+                @OpenAllMessages.canceled -= instance.OnOpenAllMessages;
+                @DestroySelectedUnits.started -= instance.OnDestroySelectedUnits;
+                @DestroySelectedUnits.performed -= instance.OnDestroySelectedUnits;
+                @DestroySelectedUnits.canceled -= instance.OnDestroySelectedUnits;
+                @OpenMissionSetup.started -= instance.OnOpenMissionSetup;
+                @OpenMissionSetup.performed -= instance.OnOpenMissionSetup;
+                @OpenMissionSetup.canceled -= instance.OnOpenMissionSetup;
+                @IssueMoveOrder.started -= instance.OnIssueMoveOrder;
+                @IssueMoveOrder.performed -= instance.OnIssueMoveOrder;
+                @IssueMoveOrder.canceled -= instance.OnIssueMoveOrder;
+                @ConfirmMoveOrder.started -= instance.OnConfirmMoveOrder;
+                @ConfirmMoveOrder.performed -= instance.OnConfirmMoveOrder;
+                @ConfirmMoveOrder.canceled -= instance.OnConfirmMoveOrder;
+                @ShowPopularSupport.started -= instance.OnShowPopularSupport;
+                @ShowPopularSupport.performed -= instance.OnShowPopularSupport;
+                @ShowPopularSupport.canceled -= instance.OnShowPopularSupport;
+                @ShowUprisings.started -= instance.OnShowUprisings;
+                @ShowUprisings.performed -= instance.OnShowUprisings;
+                @ShowUprisings.canceled -= instance.OnShowUprisings;
+                @ShowIdleFleets.started -= instance.OnShowIdleFleets;
+                @ShowIdleFleets.performed -= instance.OnShowIdleFleets;
+                @ShowIdleFleets.canceled -= instance.OnShowIdleFleets;
+                @ShowFleetsEnroute.started -= instance.OnShowFleetsEnroute;
+                @ShowFleetsEnroute.performed -= instance.OnShowFleetsEnroute;
+                @ShowFleetsEnroute.canceled -= instance.OnShowFleetsEnroute;
+                @ShowIdlePersonnel.started -= instance.OnShowIdlePersonnel;
+                @ShowIdlePersonnel.performed -= instance.OnShowIdlePersonnel;
+                @ShowIdlePersonnel.canceled -= instance.OnShowIdlePersonnel;
+                @ShowActivePersonnel.started -= instance.OnShowActivePersonnel;
+                @ShowActivePersonnel.performed -= instance.OnShowActivePersonnel;
+                @ShowActivePersonnel.canceled -= instance.OnShowActivePersonnel;
+                @ShowAvailableEnergy.started -= instance.OnShowAvailableEnergy;
+                @ShowAvailableEnergy.performed -= instance.OnShowAvailableEnergy;
+                @ShowAvailableEnergy.canceled -= instance.OnShowAvailableEnergy;
+                @ShowAvailableRawMaterial.started -= instance.OnShowAvailableRawMaterial;
+                @ShowAvailableRawMaterial.performed -= instance.OnShowAvailableRawMaterial;
+                @ShowAvailableRawMaterial.canceled -= instance.OnShowAvailableRawMaterial;
+                @ShowMines.started -= instance.OnShowMines;
+                @ShowMines.performed -= instance.OnShowMines;
+                @ShowMines.canceled -= instance.OnShowMines;
+                @ShowRefineries.started -= instance.OnShowRefineries;
+                @ShowRefineries.performed -= instance.OnShowRefineries;
+                @ShowRefineries.canceled -= instance.OnShowRefineries;
+                @ShowShipyards.started -= instance.OnShowShipyards;
+                @ShowShipyards.performed -= instance.OnShowShipyards;
+                @ShowShipyards.canceled -= instance.OnShowShipyards;
+                @ShowTrainingFacilities.started -= instance.OnShowTrainingFacilities;
+                @ShowTrainingFacilities.performed -= instance.OnShowTrainingFacilities;
+                @ShowTrainingFacilities.canceled -= instance.OnShowTrainingFacilities;
+                @ShowConstructionYards.started -= instance.OnShowConstructionYards;
+                @ShowConstructionYards.performed -= instance.OnShowConstructionYards;
+                @ShowConstructionYards.canceled -= instance.OnShowConstructionYards;
+                @ShowIdleShipyards.started -= instance.OnShowIdleShipyards;
+                @ShowIdleShipyards.performed -= instance.OnShowIdleShipyards;
+                @ShowIdleShipyards.canceled -= instance.OnShowIdleShipyards;
+                @ShowIdleTrainingFacilities.started -= instance.OnShowIdleTrainingFacilities;
+                @ShowIdleTrainingFacilities.performed -= instance.OnShowIdleTrainingFacilities;
+                @ShowIdleTrainingFacilities.canceled -= instance.OnShowIdleTrainingFacilities;
+                @ShowIdleConstructionYards.started -= instance.OnShowIdleConstructionYards;
+                @ShowIdleConstructionYards.performed -= instance.OnShowIdleConstructionYards;
+                @ShowIdleConstructionYards.canceled -= instance.OnShowIdleConstructionYards;
+                @ShowTroopers.started -= instance.OnShowTroopers;
+                @ShowTroopers.performed -= instance.OnShowTroopers;
+                @ShowTroopers.canceled -= instance.OnShowTroopers;
+                @ShowFighterSquadrons.started -= instance.OnShowFighterSquadrons;
+                @ShowFighterSquadrons.performed -= instance.OnShowFighterSquadrons;
+                @ShowFighterSquadrons.canceled -= instance.OnShowFighterSquadrons;
+                @ShowDeathStarShields.started -= instance.OnShowDeathStarShields;
+                @ShowDeathStarShields.performed -= instance.OnShowDeathStarShields;
+                @ShowDeathStarShields.canceled -= instance.OnShowDeathStarShields;
+                @ShowPlanetaryShieldGenerators.started -= instance.OnShowPlanetaryShieldGenerators;
+                @ShowPlanetaryShieldGenerators.performed -= instance.OnShowPlanetaryShieldGenerators;
+                @ShowPlanetaryShieldGenerators.canceled -= instance.OnShowPlanetaryShieldGenerators;
+                @ShowPlanetaryDefenseBatteries.started -= instance.OnShowPlanetaryDefenseBatteries;
+                @ShowPlanetaryDefenseBatteries.performed -= instance.OnShowPlanetaryDefenseBatteries;
+                @ShowPlanetaryDefenseBatteries.canceled -= instance.OnShowPlanetaryDefenseBatteries;
             }
 
             /// <summary>
@@ -1820,6 +2932,14 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnQuickLoad(InputAction.CallbackContext context);
+        }
+        /// <summary>
+        /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Strategy" which allows adding and removing callbacks.
+        /// </summary>
+        /// <seealso cref="StrategyActions.AddCallbacks(IStrategyActions)" />
+        /// <seealso cref="StrategyActions.RemoveCallbacks(IStrategyActions)" />
+        public interface IStrategyActions
+        {
             /// <summary>
             /// Method invoked when associated input action "DecreaseGameSpeed" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>
@@ -1834,14 +2954,6 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnIncreaseGameSpeed(InputAction.CallbackContext context);
-        }
-        /// <summary>
-        /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Strategy" which allows adding and removing callbacks.
-        /// </summary>
-        /// <seealso cref="StrategyActions.AddCallbacks(IStrategyActions)" />
-        /// <seealso cref="StrategyActions.RemoveCallbacks(IStrategyActions)" />
-        public interface IStrategyActions
-        {
             /// <summary>
             /// Method invoked when associated input action "MultiSelectModifier" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
             /// </summary>
@@ -1863,6 +2975,307 @@ namespace Rebellion.Input
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnAlternateSelectModifier(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot1" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot1(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot2" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot2(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot3" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot3(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot4" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot4(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot5" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot5(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot6" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot6(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot7" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot7(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot8" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot8(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot9" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot9(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot10" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot10(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot11" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot11(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "BookmarkSlot12" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnBookmarkSlot12(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenSystemFinder" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenSystemFinder(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenFleetFinder" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenFleetFinder(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenPersonnelFinder" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenPersonnelFinder(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenPlanetFinder" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenPlanetFinder(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenEncyclopedia" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenEncyclopedia(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenAllMessages" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenAllMessages(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "DestroySelectedUnits" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnDestroySelectedUnits(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "OpenMissionSetup" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnOpenMissionSetup(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "IssueMoveOrder" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnIssueMoveOrder(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ConfirmMoveOrder" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnConfirmMoveOrder(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowPopularSupport" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowPopularSupport(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowUprisings" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowUprisings(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowIdleFleets" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowIdleFleets(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowFleetsEnroute" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowFleetsEnroute(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowIdlePersonnel" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowIdlePersonnel(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowActivePersonnel" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowActivePersonnel(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowAvailableEnergy" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowAvailableEnergy(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowAvailableRawMaterial" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowAvailableRawMaterial(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowMines" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowMines(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowRefineries" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowRefineries(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowShipyards" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowShipyards(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowTrainingFacilities" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowTrainingFacilities(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowConstructionYards" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowConstructionYards(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowIdleShipyards" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowIdleShipyards(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowIdleTrainingFacilities" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowIdleTrainingFacilities(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowIdleConstructionYards" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowIdleConstructionYards(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowTroopers" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowTroopers(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowFighterSquadrons" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowFighterSquadrons(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowDeathStarShields" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowDeathStarShields(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowPlanetaryShieldGenerators" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowPlanetaryShieldGenerators(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "ShowPlanetaryDefenseBatteries" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnShowPlanetaryDefenseBatteries(InputAction.CallbackContext context);
         }
         /// <summary>
         /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Window" which allows adding and removing callbacks.

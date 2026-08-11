@@ -15,11 +15,16 @@ public sealed class MainMenuController : MonoBehaviour
     private MainMenuView view;
 
     [SerializeField]
+    private OptionsMenuView optionsMenuPrefab;
+
+    [SerializeField]
     [Min(0f)]
     private float creditsMusicFadeDuration = 0.5f;
 
     private GameVictoryCondition currentVictoryCondition;
     private Canvas mainMenuCanvas;
+    private MainMenuOptionsHost optionsHost;
+    private GameRuntime settingsRuntime;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -65,6 +70,12 @@ public sealed class MainMenuController : MonoBehaviour
         view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
         view.AudioCueRequested += PlayAudioCue;
+
+        // Escape (Cancel/Settings) opens the game menu when nothing else is open; when the overlay is
+        // open the cancel stack closes it first, so this only fires to open.
+        settingsRuntime = AppBootstrap.EnsureExists().GetRuntime();
+        if (settingsRuntime != null)
+            settingsRuntime.ToggleSettingsMenuRequested += HandleToggleSettingsMenu;
     }
 
     /// <summary>
@@ -119,6 +130,19 @@ public sealed class MainMenuController : MonoBehaviour
         view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
         view.AudioCueRequested -= PlayAudioCue;
+
+        if (settingsRuntime != null)
+            settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleSettingsMenu;
+    }
+
+    /// <summary>
+    /// Opens the shared Options overlay in response to the Escape / settings shortcut.
+    /// </summary>
+    private void HandleToggleSettingsMenu()
+    {
+        EnsureOptionsHost();
+        if (optionsHost != null && !optionsHost.IsOpen)
+            optionsHost.Open();
     }
 
     /// <summary>
@@ -200,12 +224,51 @@ public sealed class MainMenuController : MonoBehaviour
     }
 
     /// <summary>
-    /// Opens the save-menu scene in load mode.
+    /// Opens the shared Options overlay over the Main Menu as a settings + load screen.
     /// </summary>
     private void OpenLoadGameMenu()
     {
-        SaveMenuLaunchContext.OpenFromMainMenu();
-        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+        EnsureOptionsHost();
+        optionsHost?.Open();
+    }
+
+    /// <summary>
+    /// Renders the open Options overlay each frame while it is active.
+    /// </summary>
+    private void Update()
+    {
+        optionsHost?.Tick();
+    }
+
+    /// <summary>
+    /// Lazily builds the Main Menu Options overlay host on first use.
+    /// </summary>
+    private void EnsureOptionsHost()
+    {
+        if (optionsHost != null)
+            return;
+        if (optionsMenuPrefab == null)
+        {
+            Debug.LogWarning(
+                "MainMenu options prefab is not assigned; run Build Main Menu UI to wire it."
+            );
+            return;
+        }
+
+        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+        FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
+            bootstrap.GetContentPack().GameData.FactionThemes
+        );
+        optionsHost = new MainMenuOptionsHost(
+            mainMenuCanvas.transform,
+            optionsMenuPrefab,
+            bootstrap.GetContentAssets(),
+            themeLibrary,
+            bootstrap.GetUserSettingsManager(),
+            AudioManager.EnsureExists(),
+            bootstrap.GetInputManager(),
+            bootstrap.GetCancelStack()
+        );
     }
 
     /// <summary>
@@ -237,7 +300,11 @@ public sealed class MainMenuController : MonoBehaviour
         GameLaunchContext.SaveFileName = null;
         GameLaunchContext.PlayIntroCutscene = true;
 
+        // End any lingering session so the strategy scene builds a fresh game from these selections
+        // rather than re-entering a leftover game (GameFlowController reuses an active session).
+        AppBootstrap.Instance.GetRuntime()?.EndGame();
+
         AudioManager.EnsureExists().StopMusic();
-        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+        AppBootstrap.Instance.LoadScene(SceneNames.StrategyView);
     }
 }

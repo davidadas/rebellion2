@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// Presentation-only description of one key binding for the Controls page.
@@ -10,46 +11,73 @@ public sealed class OptionsBindingRow
     /// Creates an immutable binding row.
     /// </summary>
     /// <param name="action">The human-readable action name.</param>
-    /// <param name="keys">The human-readable bound keys.</param>
-    public OptionsBindingRow(string action, string keys)
+    /// <param name="primary">The primary bound keys.</param>
+    /// <param name="secondary">The secondary bound keys, if any.</param>
+    /// <param name="isHeader">Whether this row is a group header rather than a bindable action.</param>
+    public OptionsBindingRow(string action, string primary, string secondary = "", bool isHeader = false)
     {
         Action = action ?? string.Empty;
-        Keys = keys ?? string.Empty;
+        Primary = primary ?? string.Empty;
+        Secondary = secondary ?? string.Empty;
+        IsHeader = isHeader;
     }
 
     /// <summary>Gets the human-readable action name.</summary>
     public string Action { get; }
 
-    /// <summary>Gets the human-readable bound keys.</summary>
-    public string Keys { get; }
+    /// <summary>Gets the primary bound keys.</summary>
+    public string Primary { get; }
+
+    /// <summary>Gets the secondary bound keys.</summary>
+    public string Secondary { get; }
+
+    /// <summary>Gets whether this row is a group header rather than a bindable action.</summary>
+    public bool IsHeader { get; }
 }
 
 /// <summary>
-/// Presentation-only description of one save slot for the Save/Load page.
+/// Presentation-only description of one Save/Load row: either the "Create New Save" action or one
+/// existing save (faction icon, display name, and save date).
 /// </summary>
 public sealed class OptionsSaveSlot
 {
     /// <summary>
-    /// Creates an immutable save-slot row.
+    /// Creates an immutable save row.
     /// </summary>
-    /// <param name="name">The slot display name.</param>
-    /// <param name="detail">The secondary detail line.</param>
-    /// <param name="filled">Whether the slot holds a save.</param>
-    public OptionsSaveSlot(string name, string detail, bool filled)
+    /// <param name="name">The row display name.</param>
+    /// <param name="date">The save date line (empty for the create-new row).</param>
+    /// <param name="factionIcon">The saved faction's icon, or null.</param>
+    /// <param name="isCreateNew">Whether this row creates a new save.</param>
+    /// <param name="fileName">The save file name, or null for the create-new row.</param>
+    public OptionsSaveSlot(
+        string name,
+        string date,
+        Texture2D factionIcon,
+        bool isCreateNew,
+        string fileName
+    )
     {
         Name = name ?? string.Empty;
-        Detail = detail ?? string.Empty;
-        Filled = filled;
+        Date = date ?? string.Empty;
+        FactionIcon = factionIcon;
+        IsCreateNew = isCreateNew;
+        FileName = fileName ?? string.Empty;
     }
 
-    /// <summary>Gets the slot display name.</summary>
+    /// <summary>Gets the row display name.</summary>
     public string Name { get; }
 
-    /// <summary>Gets the secondary detail line.</summary>
-    public string Detail { get; }
+    /// <summary>Gets the save date line.</summary>
+    public string Date { get; }
 
-    /// <summary>Gets whether the slot holds a save.</summary>
-    public bool Filled { get; }
+    /// <summary>Gets the saved faction's icon, or null.</summary>
+    public Texture2D FactionIcon { get; }
+
+    /// <summary>Gets whether this row creates a new save.</summary>
+    public bool IsCreateNew { get; }
+
+    /// <summary>Gets the save file name backing this row.</summary>
+    public string FileName { get; }
 }
 
 /// <summary>
@@ -73,6 +101,9 @@ public sealed class OptionsMenuRenderData
     /// <param name="canSave">Whether saving is currently available.</param>
     /// <param name="canLoad">Whether loading is currently available.</param>
     /// <param name="canReturnToGame">Whether a running game exists to return to.</param>
+    /// <param name="canReturnToMainMenu">Whether returning to the Main Menu is possible.</param>
+    /// <param name="listeningRow">The binding row awaiting a key press, or -1.</param>
+    /// <param name="listeningSecondary">Whether the secondary column is awaiting a key press.</param>
     public OptionsMenuRenderData(
         int x,
         int y,
@@ -86,7 +117,10 @@ public sealed class OptionsMenuRenderData
         int selectedSlot,
         bool canSave,
         bool canLoad,
-        bool canReturnToGame
+        bool canReturnToGame,
+        bool canReturnToMainMenu,
+        int listeningRow,
+        bool listeningSecondary
     )
     {
         X = x;
@@ -102,6 +136,9 @@ public sealed class OptionsMenuRenderData
         CanSave = canSave;
         CanLoad = canLoad;
         CanReturnToGame = canReturnToGame;
+        CanReturnToMainMenu = canReturnToMainMenu;
+        ListeningRow = listeningRow;
+        ListeningSecondary = listeningSecondary;
     }
 
     /// <summary>Gets the source-space horizontal window position.</summary>
@@ -142,4 +179,13 @@ public sealed class OptionsMenuRenderData
 
     /// <summary>Gets whether a running game exists to return to.</summary>
     public bool CanReturnToGame { get; }
+
+    /// <summary>Gets whether returning to the Main Menu is possible (false when already there).</summary>
+    public bool CanReturnToMainMenu { get; }
+
+    /// <summary>Gets the binding row awaiting a key press, or -1.</summary>
+    public int ListeningRow { get; }
+
+    /// <summary>Gets whether the secondary column is awaiting a key press.</summary>
+    public bool ListeningSecondary { get; }
 }

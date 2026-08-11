@@ -70,6 +70,18 @@ public sealed class StrategyBriefingController
         activeBriefing = briefing;
         completed = onCompleted;
         segmentIndex = 0;
+        Faction playerFaction = game.GetPlayerFaction();
+        Faction opponentFaction = game.GetFactions().FirstOrDefault(faction => faction != playerFaction);
+        galaxyMapController.SetBriefingPresentation(
+            new StrategyBriefingMapPresentation(
+                StrategyBriefingMapMode.Default,
+                "Briefing",
+                null,
+                null,
+                playerFaction?.InstanceID,
+                opponentFaction?.InstanceID
+            )
+        );
         PlayCurrentSegment();
     }
 

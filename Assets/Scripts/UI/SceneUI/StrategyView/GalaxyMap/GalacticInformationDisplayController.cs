@@ -156,6 +156,19 @@ public sealed class GalacticInformationDisplayController : ICancelable
     }
 
     /// <summary>
+    /// Selects a filter from a keyboard binding and applies the same audible feedback as a
+    /// pointer press when that binding changes the active display.
+    /// </summary>
+    /// <param name="mode">The selected filter mode.</param>
+    internal void SelectFilterFromShortcut(GalacticInformationFilterMode mode)
+    {
+        if (filterMode != mode)
+            playSfx(StrategyUISoundPaths.GalacticInformationControl);
+
+        SelectFilter(mode);
+    }
+
+    /// <summary>
     /// Opens one category submenu and clears competing hover state.
     /// </summary>
     /// <param name="categoryIndex">The requested category index.</param>

@@ -198,6 +198,42 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Deletes a save file and its metadata sidecar, if present.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    public void DeleteSave(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return;
+
+        string savePath = GetSaveFilePath(fileName);
+        if (File.Exists(savePath))
+            File.Delete(savePath);
+
+        string metadataPath = GetSaveMetadataFilePath(fileName);
+        if (File.Exists(metadataPath))
+            File.Delete(metadataPath);
+    }
+
+    /// <summary>
+    /// Renames a save's stored display name, rewriting its metadata sidecar.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <param name="displayName">The new display name.</param>
+    public void SetSaveDisplayName(string fileName, string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName) || string.IsNullOrWhiteSpace(displayName))
+            return;
+
+        SaveGameEntry entry = TryReadSaveEntry(fileName);
+        if (entry?.Metadata == null)
+            return;
+
+        entry.Metadata.SaveDisplayName = displayName.Trim();
+        TryWriteSaveMetadata(fileName, entry.Metadata);
+    }
+
+    /// <summary>
     /// Save game data to file using XML serialization.
     /// Stamps the current schema version and save timestamp onto the metadata.
     /// </summary>
