@@ -14,7 +14,6 @@ namespace Rebellion.Game.Tactical
     {
         internal const float BattlefieldScale = 100f;
         private const float _capitalFormationDepth = BattlefieldScale / 2f;
-        private const float _deathStarAttackDistance = 20f;
         private const float _fighterFormationDepth = BattlefieldScale * 0.65f;
         private const float _fighterRecoveryDistance = 2f;
         private const float _formationSpacing = 8f;
@@ -457,7 +456,7 @@ namespace Rebellion.Game.Tactical
             }
             if (behavior == TacticalBehavior.AttackDeathStar)
             {
-                AdvanceDeathStarAttack(unit, group, elapsedTime);
+                AdvanceDeathStarAttack(unit, group);
                 return Array.Empty<PendingAttack>();
             }
             if (TryAdvanceNavigation(unit, group, elapsedTime))
@@ -528,12 +527,7 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="unit">The group member currently being advanced.</param>
         /// <param name="group">The fighter group performing the attack.</param>
-        /// <param name="elapsedTime">The elapsed tactical time.</param>
-        private void AdvanceDeathStarAttack(
-            TacticalUnitState unit,
-            TacticalShipGroup group,
-            float elapsedTime
-        )
+        private void AdvanceDeathStarAttack(TacticalUnitState unit, TacticalShipGroup group)
         {
             if (
                 unit.Kind != TacticalUnitKind.Fighters
@@ -548,20 +542,6 @@ namespace Rebellion.Game.Tactical
             TacticalUnitState deathStar = GetTarget(unit, group, TacticalBehavior.AttackDeathStar);
             if (deathStar == null)
                 return;
-
-            if (Vector3.Distance(unit.Position, deathStar.Position) > _deathStarAttackDistance)
-            {
-                Vector3 destination = GetApproachPosition(
-                    unit,
-                    deathStar,
-                    group,
-                    TacticalBehavior.AttackDeathStar,
-                    out Vector3 markerPosition
-                );
-                group.SetMarkerPosition(markerPosition);
-                MoveTowards(unit, destination, elapsedTime);
-                return;
-            }
 
             deathStarAttackSystem.TryBegin(group, deathStar);
             events.AddRange(deathStarAttackSystem.DrainEvents());

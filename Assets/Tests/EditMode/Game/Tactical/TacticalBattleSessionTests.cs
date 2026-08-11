@@ -1421,9 +1421,16 @@ namespace Rebellion.Tests.Game.Tactical
                 .GetFighterGroups(TacticalBattleSide.Attacker)
                 .Single()
                 .SetBehavior(TacticalBehavior.AttackDeathStar);
-            session.Units.Single(unit => unit.Unit == attackingFighters).Position = session
-                .Units.Single(unit => unit.Unit == deathStar)
-                .Position;
+            session.Units.Single(unit => unit.Unit == attackingFighters).Position = new Vector3(
+                0f,
+                0f,
+                -100f
+            );
+            session.Units.Single(unit => unit.Unit == deathStar).Position = new Vector3(
+                0f,
+                0f,
+                100f
+            );
 
             session.Advance(0.1f);
 
