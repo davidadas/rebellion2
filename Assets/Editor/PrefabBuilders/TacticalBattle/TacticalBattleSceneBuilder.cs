@@ -487,21 +487,21 @@ public static class TacticalBattleSceneBuilder
             25
         );
 
-        CreateBoundButton(
-            "EmpireShipHighlights",
+        Button leftShipHighlightsButton = CreateBoundButton(
+            "AllianceShipHighlights",
             canvasObject.transform,
-            $"{root}/Hud/empire-highlight-up",
-            $"{root}/Hud/empire-highlight-down",
+            $"{root}/Hud/alliance-highlight-up",
+            $"{root}/Hud/alliance-highlight-down",
             483,
             305,
             30,
             26
         );
-        CreateBoundButton(
-            "AllianceShipHighlights",
+        Button rightShipHighlightsButton = CreateBoundButton(
+            "EmpireShipHighlights",
             canvasObject.transform,
-            $"{root}/Hud/alliance-highlight-up",
-            $"{root}/Hud/alliance-highlight-down",
+            $"{root}/Hud/empire-highlight-up",
+            $"{root}/Hud/empire-highlight-down",
             515,
             305,
             30,
@@ -652,6 +652,7 @@ public static class TacticalBattleSceneBuilder
             confirmWithdrawalButton,
             cancelWithdrawalButton
         );
+        view.ConfigureShipHighlights(leftShipHighlightsButton, rightShipHighlightsButton);
         view.ConfigureGameOptions(
             gameOptionsButton,
             gameOptionsPanel,

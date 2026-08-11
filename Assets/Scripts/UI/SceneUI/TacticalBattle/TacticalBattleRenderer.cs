@@ -22,6 +22,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private static readonly string[] FighterGroupColors = { "red", "blue", "green", "gold" };
     private readonly List<Transform> fighterBillboards = new List<Transform>();
     private readonly List<Material> navigationMaterials = new List<Material>();
+    private readonly List<Material> shipHighlightMaterials = new List<Material>();
     private readonly List<ContentModelInstance> modelInstances = new List<ContentModelInstance>();
     private readonly List<GameObject> navigationSets = new List<GameObject>();
     private readonly List<Sprite> sprites = new List<Sprite>();
@@ -207,6 +208,36 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Shows or hides the colored capital-ship boxes for one tactical side.
+    /// </summary>
+    /// <param name="side">The tactical side whose capital ships are affected.</param>
+    /// <param name="color">The configured faction highlight color.</param>
+    /// <param name="visible">Whether the boxes should be visible.</param>
+    public void SetShipHighlights(TacticalBattleSide side, Color color, bool visible)
+    {
+        Material material = shipHighlightMaterials.FirstOrDefault(existing =>
+            existing.color == color
+        );
+        if (material == null)
+        {
+            Shader shader = Shader.Find("Unlit/Color");
+            if (shader == null)
+                throw new InvalidOperationException(
+                    "The tactical ship-highlight shader is unavailable."
+                );
+
+            material = new Material(shader) { color = color };
+            shipHighlightMaterials.Add(material);
+        }
+
+        foreach (TacticalUnitView unitView in unitViews)
+        {
+            if (unitView.Unit.Side == side && unitView.Unit.Unit is CapitalShip)
+                unitView.SetHighlighted(material, visible);
+        }
+    }
+
+    /// <summary>
     /// Releases instantiated model hierarchies when the tactical scene closes.
     /// </summary>
     private void OnDestroy()
@@ -223,7 +254,11 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         foreach (Material material in navigationMaterials)
             Destroy(material);
 
+        foreach (Material material in shipHighlightMaterials)
+            Destroy(material);
+
         navigationMaterials.Clear();
+        shipHighlightMaterials.Clear();
         navigationSets.Clear();
         unitViews.Clear();
     }
@@ -613,6 +648,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             scale.y == 0f ? bounds.size.y : bounds.size.y / Mathf.Abs(scale.y),
             scale.z == 0f ? bounds.size.z : bounds.size.z / Mathf.Abs(scale.z)
         );
+        if (unitView.Unit.Unit is CapitalShip)
+            unitView.ConfigureHighlight(new Bounds(collider.center, collider.size));
         unitView.Selected += HandleUnitSelected;
     }
 

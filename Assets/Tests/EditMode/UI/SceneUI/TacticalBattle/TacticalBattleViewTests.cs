@@ -33,6 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Button capitalShipManeuversButton;
         private GameObject superlaserPanel;
         private Button superlaserButton;
+        private Button leftShipHighlightsButton;
+        private Button rightShipHighlightsButton;
 
         [SetUp]
         public void SetUp()
@@ -45,6 +47,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CreateGameOptionsControls();
             CreateCapitalShipStatusControls();
             CreateSuperlaserControls();
+            CreateButton("LeftShipHighlights", out leftShipHighlightsButton);
+            CreateButton("RightShipHighlights", out rightShipHighlightsButton);
+            view.ConfigureShipHighlights(leftShipHighlightsButton, rightShipHighlightsButton);
             view.ConfigureWithdrawal(
                 withdrawalButton,
                 withdrawalPanel,
@@ -60,6 +65,23 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 settingsButton,
                 closeGameOptionsButton
             );
+        }
+
+        [Test]
+        public void Awake_ShipHighlightControls_ForwardsFactionToggleInput()
+        {
+            ConfigureCompleteView();
+            bool leftToggled = false;
+            bool rightToggled = false;
+            view.LeftShipHighlightsToggled += () => leftToggled = true;
+            view.RightShipHighlightsToggled += () => rightToggled = true;
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            leftShipHighlightsButton.onClick.Invoke();
+            rightShipHighlightsButton.onClick.Invoke();
+
+            Assert.IsTrue(leftToggled);
+            Assert.IsTrue(rightToggled);
         }
 
         [TearDown]

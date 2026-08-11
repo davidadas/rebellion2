@@ -23,10 +23,13 @@ public sealed class TacticalBattleController : MonoBehaviour
     private TacticalUnitState selectedCapitalShip;
     private TacticalUnitState playerDeathStar;
     private bool selectingSuperlaserTarget;
+    private bool leftShipHighlightsVisible;
+    private bool rightShipHighlightsVisible;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
     private TacticalCameraRig cameraRig;
+    private TacticalBattleTheme tacticalTheme;
     private TacticalBattleView view;
 
     /// <summary>
@@ -92,7 +95,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         FactionTheme theme = new FactionThemeLibrary(
             bootstrap.GetContentPack().GameData.FactionThemes
         ).GetTheme(gameManager.GetPlayerFaction().InstanceID);
-        TacticalBattleTheme tacticalTheme =
+        tacticalTheme =
             theme.TacticalBattle
             ?? throw new InvalidOperationException(
                 $"Faction '{theme.FactionInstanceID}' requires a tactical battle theme."
@@ -127,6 +130,8 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.CapitalShipManeuversRequested += ShowSelectedTaskForceManeuvers;
         view.PauseToggled += TogglePlayerPause;
         view.GameOptionsRequested += OpenGameOptions;
+        view.LeftShipHighlightsToggled += ToggleLeftShipHighlights;
+        view.RightShipHighlightsToggled += ToggleRightShipHighlights;
         view.WithdrawalRequested += RequestWithdrawal;
         view.WithdrawalConfirmed += ConfirmWithdrawal;
         view.WithdrawalCancelled += CancelWithdrawal;
@@ -204,6 +209,8 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.CapitalShipManeuversRequested -= ShowSelectedTaskForceManeuvers;
             view.PauseToggled -= TogglePlayerPause;
             view.GameOptionsRequested -= OpenGameOptions;
+            view.LeftShipHighlightsToggled -= ToggleLeftShipHighlights;
+            view.RightShipHighlightsToggled -= ToggleRightShipHighlights;
             view.WithdrawalRequested -= RequestWithdrawal;
             view.WithdrawalConfirmed -= ConfirmWithdrawal;
             view.WithdrawalCancelled -= CancelWithdrawal;
@@ -239,6 +246,52 @@ public sealed class TacticalBattleController : MonoBehaviour
 
         selectingSuperlaserTarget = true;
         RefreshUnitSelectionAvailability();
+    }
+
+    /// <summary>
+    /// Toggles the capital-ship boxes assigned to the left faction control.
+    /// </summary>
+    private void ToggleLeftShipHighlights()
+    {
+        leftShipHighlightsVisible = !leftShipHighlightsVisible;
+        SetFactionShipHighlights(
+            tacticalTheme.LeftShipHighlightFactionInstanceID,
+            tacticalTheme.LeftShipHighlightColorHex,
+            leftShipHighlightsVisible
+        );
+    }
+
+    /// <summary>
+    /// Toggles the capital-ship boxes assigned to the right faction control.
+    /// </summary>
+    private void ToggleRightShipHighlights()
+    {
+        rightShipHighlightsVisible = !rightShipHighlightsVisible;
+        SetFactionShipHighlights(
+            tacticalTheme.RightShipHighlightFactionInstanceID,
+            tacticalTheme.RightShipHighlightColorHex,
+            rightShipHighlightsVisible
+        );
+    }
+
+    /// <summary>
+    /// Resolves a configured faction to its encounter side and applies its ship boxes.
+    /// </summary>
+    /// <param name="factionInstanceId">The faction assigned to the control.</param>
+    /// <param name="colorHex">The faction's tactical highlight color.</param>
+    /// <param name="visible">Whether the boxes should be visible.</param>
+    private void SetFactionShipHighlights(string factionInstanceId, string colorHex, bool visible)
+    {
+        TacticalBattleSide side;
+        if (Session.Encounter.AttackerOwnerInstanceID == factionInstanceId)
+            side = TacticalBattleSide.Attacker;
+        else if (Session.Encounter.DefenderOwnerInstanceID == factionInstanceId)
+            side = TacticalBattleSide.Defender;
+        else
+            return;
+
+        Color color = ThemeColorParser.Parse(colorHex, Color.white);
+        battleRenderer.SetShipHighlights(side, color, visible);
     }
 
     /// <summary>

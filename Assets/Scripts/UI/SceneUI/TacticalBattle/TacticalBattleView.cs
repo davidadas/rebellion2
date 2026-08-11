@@ -95,6 +95,12 @@ public sealed class TacticalBattleView : MonoBehaviour
     private Button gameOptionsButton;
 
     [SerializeField]
+    private Button leftShipHighlightsButton;
+
+    [SerializeField]
+    private Button rightShipHighlightsButton;
+
+    [SerializeField]
     private GameObject gameOptionsPanel;
 
     [SerializeField]
@@ -212,6 +218,16 @@ public sealed class TacticalBattleView : MonoBehaviour
     public event Action GameOptionsRequested;
 
     /// <summary>
+    /// Raised when the player toggles the faction assigned to the left ship-highlight control.
+    /// </summary>
+    public event Action LeftShipHighlightsToggled;
+
+    /// <summary>
+    /// Raised when the player toggles the faction assigned to the right ship-highlight control.
+    /// </summary>
+    public event Action RightShipHighlightsToggled;
+
+    /// <summary>
     /// Raised when the player requests withdrawal from the battle.
     /// </summary>
     public event Action WithdrawalRequested;
@@ -327,6 +343,17 @@ public sealed class TacticalBattleView : MonoBehaviour
         withdrawalPanel = panel ?? throw new ArgumentNullException(nameof(panel));
         confirmWithdrawalButton = confirm ?? throw new ArgumentNullException(nameof(confirm));
         cancelWithdrawalButton = cancel ?? throw new ArgumentNullException(nameof(cancel));
+    }
+
+    /// <summary>
+    /// Supplies the generated faction ship-highlight controls.
+    /// </summary>
+    /// <param name="left">The left faction-highlight control.</param>
+    /// <param name="right">The right faction-highlight control.</param>
+    public void ConfigureShipHighlights(Button left, Button right)
+    {
+        leftShipHighlightsButton = left ?? throw new ArgumentNullException(nameof(left));
+        rightShipHighlightsButton = right ?? throw new ArgumentNullException(nameof(right));
     }
 
     /// <summary>
@@ -687,6 +714,8 @@ public sealed class TacticalBattleView : MonoBehaviour
             CapitalShipManeuversRequested?.Invoke()
         );
         pauseButton.onClick.AddListener(() => PauseToggled?.Invoke());
+        leftShipHighlightsButton.onClick.AddListener(() => LeftShipHighlightsToggled?.Invoke());
+        rightShipHighlightsButton.onClick.AddListener(() => RightShipHighlightsToggled?.Invoke());
         gameOptionsButton.onClick.AddListener(() => GameOptionsRequested?.Invoke());
         withdrawalButton.onClick.AddListener(() => WithdrawalRequested?.Invoke());
         immediateResultButton.onClick.AddListener(() => ImmediateResultRequested?.Invoke());
@@ -787,6 +816,8 @@ public sealed class TacticalBattleView : MonoBehaviour
         }
         if (pauseButton == null || pauseImage == null)
             throw new MissingReferenceException("Tactical HUD pause references are incomplete.");
+        if (leftShipHighlightsButton == null || rightShipHighlightsButton == null)
+            throw new MissingReferenceException("Tactical ship-highlight controls are missing.");
         if (
             gameOptionsButton == null
             || gameOptionsPanel == null

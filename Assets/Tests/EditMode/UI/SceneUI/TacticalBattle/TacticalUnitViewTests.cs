@@ -50,6 +50,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.That(root.activeSelf, Is.False);
         }
 
+        [Test]
+        public void ConfigureHighlight_CapitalShipBounds_CreatesHiddenTwelveEdgeBox()
+        {
+            view.ConfigureHighlight(new Bounds(Vector3.zero, new Vector3(2f, 4f, 6f)));
+
+            MeshFilter highlight = root.GetComponentInChildren<MeshFilter>(true);
+
+            Assert.That(highlight, Is.Not.Null);
+            Assert.That(highlight.sharedMesh.vertexCount, Is.EqualTo(8));
+            Assert.That(highlight.sharedMesh.GetIndexCount(0), Is.EqualTo(24));
+            Assert.That(highlight.gameObject.activeSelf, Is.False);
+        }
+
         /// <summary>
         /// Creates one active capital-ship tactical state for presentation tests.
         /// </summary>

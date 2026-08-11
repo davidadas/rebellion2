@@ -14,5 +14,13 @@ public sealed class TacticalBattleTheme
 
     public string FighterOrderVariant { get; set; }
 
+    public string LeftShipHighlightFactionInstanceID { get; set; }
+
+    public string LeftShipHighlightColorHex { get; set; }
+
+    public string RightShipHighlightFactionInstanceID { get; set; }
+
+    public string RightShipHighlightColorHex { get; set; }
+
     public float InitialCameraYaw { get; set; }
 }

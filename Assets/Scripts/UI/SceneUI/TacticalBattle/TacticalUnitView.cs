@@ -6,6 +6,8 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalUnitView : MonoBehaviour
 {
+    private GameObject highlightObject;
+    private Mesh highlightMesh;
     private TacticalUnitState unit;
 
     /// <summary>
@@ -26,6 +28,74 @@ public sealed class TacticalUnitView : MonoBehaviour
     {
         unit = state ?? throw new System.ArgumentNullException(nameof(state));
         Synchronize();
+    }
+
+    /// <summary>
+    /// Creates the capital ship's wireframe highlight box.
+    /// </summary>
+    /// <param name="bounds">The ship presentation bounds in local space.</param>
+    public void ConfigureHighlight(Bounds bounds)
+    {
+        highlightObject = new GameObject("Ship Highlight");
+        highlightObject.transform.SetParent(transform, false);
+        MeshFilter filter = highlightObject.AddComponent<MeshFilter>();
+        highlightObject.AddComponent<MeshRenderer>();
+        highlightMesh = CreateHighlightMesh(bounds);
+        filter.sharedMesh = highlightMesh;
+        highlightObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Applies the faction highlight material and visibility.
+    /// </summary>
+    /// <param name="material">The faction-colored wireframe material.</param>
+    /// <param name="visible">Whether the highlight should be visible.</param>
+    public void SetHighlighted(Material material, bool visible)
+    {
+        if (highlightObject == null)
+            return;
+
+        highlightObject.GetComponent<MeshRenderer>().sharedMaterial = material;
+        highlightObject.SetActive(visible);
+    }
+
+    /// <summary>
+    /// Releases the runtime-generated highlight mesh.
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (highlightMesh != null)
+            Destroy(highlightMesh);
+    }
+
+    /// <summary>
+    /// Builds the eight-corner, twelve-edge box used to identify faction capital ships.
+    /// </summary>
+    /// <param name="bounds">The local presentation bounds.</param>
+    /// <returns>The generated line mesh.</returns>
+    private static Mesh CreateHighlightMesh(Bounds bounds)
+    {
+        Vector3 min = bounds.min;
+        Vector3 max = bounds.max;
+        Mesh mesh = new Mesh { name = "Tactical Ship Highlight" };
+        mesh.vertices = new[]
+        {
+            new Vector3(min.x, min.y, min.z),
+            new Vector3(max.x, min.y, min.z),
+            new Vector3(max.x, max.y, min.z),
+            new Vector3(min.x, max.y, min.z),
+            new Vector3(min.x, min.y, max.z),
+            new Vector3(max.x, min.y, max.z),
+            new Vector3(max.x, max.y, max.z),
+            new Vector3(min.x, max.y, max.z),
+        };
+        mesh.SetIndices(
+            new[] { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 },
+            MeshTopology.Lines,
+            0
+        );
+        mesh.RecalculateBounds();
+        return mesh;
     }
 
     /// <summary>
