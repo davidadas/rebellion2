@@ -1186,6 +1186,43 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
+        public void ResolvePendingTactical_PlanetaryStarfighters_AppliesLossesAndClearsDecision()
+        {
+            GameRoot game = CreateGame();
+            game.Factions.First(faction => faction.InstanceID == "empire").PlayerID = "player1";
+            (Planet planet, _) = CreatePlanet(game, "combat", owner: "alliance");
+            Fleet attacker = CreateFleet(game, "ef1", "empire", planet, 1, 500, 10);
+            Starfighter defender = new Starfighter
+            {
+                InstanceID = "planet-fighter",
+                OwnerInstanceID = "alliance",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                LaserCannon = 5,
+            };
+            game.AttachNode(defender, planet);
+            SpaceCombatSystem manager = MakeSpaceCombat(game, new QueueRNG());
+            PendingCombatResult pending = manager
+                .ProcessTick()
+                .OfType<PendingCombatResult>()
+                .Single();
+            TacticalBattleSession session = TacticalBattleSession.Create(pending, new QueueRNG());
+            TacticalUnitState defendingUnit = session.Units.Single(unit => unit.Unit == defender);
+            defendingUnit.Hull = 0;
+
+            SpaceCombatResult result = manager
+                .ResolvePendingTactical(session)
+                .OfType<SpaceCombatResult>()
+                .Single();
+
+            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.IsFalse(manager.HasPendingDecision);
+            Assert.IsFalse(attacker.IsInCombat);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(defender.InstanceID));
+        }
+
+        [Test]
         public void ResolvePending_CorellianCorvetteAgainstPlanetaryTie_DestroysTie()
         {
             GameRoot game = new GameRoot(TestConfig.Create());
