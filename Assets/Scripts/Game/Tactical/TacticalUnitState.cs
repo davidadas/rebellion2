@@ -412,6 +412,35 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Returns one charged weapon family's strength against a tactical target kind.
+        /// </summary>
+        /// <param name="arc">The firing arc to inspect.</param>
+        /// <param name="distance">The distance to the prospective target.</param>
+        /// <param name="weaponType">The weapon family to inspect.</param>
+        /// <param name="targetKind">The prospective target's tactical kind.</param>
+        /// <returns>The eligible weapon-family strength.</returns>
+        internal int GetAvailableAttackStrength(
+            TacticalWeaponArc arc,
+            float distance,
+            TacticalWeaponType weaponType,
+            TacticalUnitKind targetKind
+        )
+        {
+            if (distance < 0f)
+                throw new ArgumentOutOfRangeException(nameof(distance));
+            if (!IsArcReady(arc))
+                return 0;
+
+            TacticalWeaponBattery battery = weaponBatteries.FirstOrDefault(candidate =>
+                candidate.WeaponType == weaponType
+            );
+            return
+                battery != null && distance <= battery.Range && CanEngageTarget(battery, targetKind)
+                ? battery.GetCount(arc)
+                : 0;
+        }
+
+        /// <summary>
         /// Returns charged weapon strength after range and target-kind restrictions.
         /// </summary>
         /// <param name="arc">The firing arc to inspect.</param>
@@ -462,6 +491,32 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Fires selected charged weapon families from one arc.
+        /// </summary>
+        /// <param name="arc">The firing arc to discharge.</param>
+        /// <param name="weaponTypes">The weapon families selected to fire.</param>
+        /// <returns>The independently resolved attacks fired from the arc.</returns>
+        internal IReadOnlyList<TacticalAttack> FireArc(
+            TacticalWeaponArc arc,
+            IReadOnlyCollection<TacticalWeaponType> weaponTypes
+        )
+        {
+            if (weaponTypes == null)
+                throw new ArgumentNullException(nameof(weaponTypes));
+            if (!IsArcReady(arc))
+                return Array.Empty<TacticalAttack>();
+
+            TacticalAttack[] attacks = weaponBatteries
+                .Where(battery =>
+                    weaponTypes.Contains(battery.WeaponType) && battery.GetCount(arc) > 0
+                )
+                .Select(battery => new TacticalAttack(battery.WeaponType, battery.GetCount(arc)))
+                .ToArray();
+            BeginArcRecharge(arc, attacks);
+            return attacks;
+        }
+
+        /// <summary>
         /// Fires charged weapon families after range and target-kind restrictions.
         /// </summary>
         /// <param name="arc">The firing arc to discharge.</param>
@@ -485,15 +540,28 @@ namespace Rebellion.Game.Tactical
                 )
                 .Select(battery => new TacticalAttack(battery.WeaponType, battery.GetCount(arc)))
                 .ToArray();
-            if (attacks.Length == 0)
-                return attacks;
+            BeginArcRecharge(arc, attacks);
+            return attacks;
+        }
+
+        /// <summary>
+        /// Starts recharging the energy spent by one arc discharge.
+        /// </summary>
+        /// <param name="arc">The discharged firing arc.</param>
+        /// <param name="attacks">The weapon-family attacks fired from the arc.</param>
+        private void BeginArcRecharge(
+            TacticalWeaponArc arc,
+            IReadOnlyCollection<TacticalAttack> attacks
+        )
+        {
+            if (attacks.Count == 0)
+                return;
 
             int index = (int)arc;
             arcCharge[index] = 0f;
             arcChargeRequired[index] = attacks.Sum(attack => attack.Strength);
             if (!rechargingArcs.Contains(arc))
                 rechargingArcs.Enqueue(arc);
-            return attacks;
         }
 
         /// <summary>

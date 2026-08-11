@@ -787,6 +787,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_CapitalTargetsShareStrongestArc_AssignsEachWeaponFamilyIndependently()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 5, 0, 0, 0, 100 };
+            Starfighter defendingFighters = CreateFighters(12, 0);
+            CapitalShip defendingShip = CreateShip(100, 0, defendingFighters);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+            TacticalUnitState attacker = session.Units.Single(unit => unit.Unit == attackingShip);
+            TacticalUnitState capitalTarget = session.Units.Single(unit =>
+                unit.Unit == defendingShip
+            );
+            TacticalUnitState fighterTarget = session.Units.Single(unit =>
+                unit.Unit == defendingFighters
+            );
+            attacker.Position = Vector3.Zero;
+            attacker.Forward = Vector3.UnitZ;
+            capitalTarget.Position = new Vector3(0f, 0f, 150f);
+            fighterTarget.Position = new Vector3(0f, 0f, 50f);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(70, capitalTarget.Hull);
+            Assert.AreEqual(7, fighterTarget.Hull);
+        }
+
+        [Test]
         public void Advance_HoldBehavior_FiresWithoutMoving()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

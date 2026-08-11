@@ -228,6 +228,94 @@ namespace Rebellion.Game.Tactical
             }
         }
 
+        private sealed class CapitalArcAttackPlan
+        {
+            private readonly Dictionary<TacticalWeaponType, WeaponTarget> targets =
+                new Dictionary<TacticalWeaponType, WeaponTarget>();
+
+            /// <summary>
+            /// Gets the firing arc represented by this plan.
+            /// </summary>
+            public TacticalWeaponArc Arc { get; }
+
+            /// <summary>
+            /// Gets the combined strength of the best target selected for each weapon family.
+            /// </summary>
+            public int Strength => targets.Values.Sum(target => target.Strength);
+
+            /// <summary>
+            /// Gets the weapon families assigned to targets in this arc.
+            /// </summary>
+            public IReadOnlyCollection<TacticalWeaponType> WeaponTypes => targets.Keys;
+
+            /// <summary>
+            /// Initializes an empty attack plan for one firing arc.
+            /// </summary>
+            /// <param name="arc">The firing arc represented by the plan.</param>
+            public CapitalArcAttackPlan(TacticalWeaponArc arc)
+            {
+                Arc = arc;
+            }
+
+            /// <summary>
+            /// Retains a target when it is stronger than the current target for one weapon family.
+            /// </summary>
+            /// <param name="weaponType">The weapon family being assigned.</param>
+            /// <param name="target">The prospective target.</param>
+            /// <param name="strength">The prospective attack strength.</param>
+            public void Consider(
+                TacticalWeaponType weaponType,
+                TacticalUnitState target,
+                int strength
+            )
+            {
+                if (
+                    strength <= 0
+                    || targets.TryGetValue(weaponType, out WeaponTarget current)
+                        && current.Strength >= strength
+                )
+                {
+                    return;
+                }
+
+                targets[weaponType] = new WeaponTarget(target, strength);
+            }
+
+            /// <summary>
+            /// Gets the target selected for one weapon family.
+            /// </summary>
+            /// <param name="weaponType">The weapon family whose target is requested.</param>
+            /// <returns>The selected tactical target.</returns>
+            public TacticalUnitState GetTarget(TacticalWeaponType weaponType)
+            {
+                return targets[weaponType].Target;
+            }
+        }
+
+        private readonly struct WeaponTarget
+        {
+            /// <summary>
+            /// Gets the selected tactical target.
+            /// </summary>
+            public TacticalUnitState Target { get; }
+
+            /// <summary>
+            /// Gets the target score for its assigned weapon family.
+            /// </summary>
+            public int Strength { get; }
+
+            /// <summary>
+            /// Initializes one weapon-family target selection.
+            /// </summary>
+            /// <param name="target">The selected tactical target.</param>
+            /// <param name="strength">The target's weapon-family score.</param>
+            public WeaponTarget(TacticalUnitState target, int strength)
+            {
+                Target = target;
+                Strength = strength;
+            }
+        }
+
         /// <summary>
         /// Initializes the simulator and places both sides into opposing formations.
         /// </summary>
@@ -469,8 +557,9 @@ namespace Rebellion.Game.Tactical
             if (target == null)
                 return Array.Empty<PendingAttack>();
 
-            TacticalUnitState attackTarget = SelectAttackTarget(unit, group, behavior, target);
-            IReadOnlyList<PendingAttack> attacks = FireTargetArc(unit, attackTarget);
+            IReadOnlyList<PendingAttack> attacks = ShouldSelectCapitalArc(unit, group, behavior)
+                ? FireStrongestCapitalArc(unit, GetEligibleTargets(unit, group, behavior))
+                : FireTargetArc(unit, target);
             if (behavior == TacticalBehavior.Hold)
                 return attacks;
 
@@ -505,8 +594,11 @@ namespace Rebellion.Game.Tactical
 
             TacticalUnitState attackTarget = GetTarget(unit, null, TacticalBehavior.None);
             IReadOnlyList<PendingAttack> attacks =
-                attackTarget == null
-                    ? Array.Empty<PendingAttack>()
+                unit.Kind == TacticalUnitKind.CapitalShip
+                    ? FireStrongestCapitalArc(
+                        unit,
+                        GetEligibleTargets(unit, null, TacticalBehavior.None)
+                    )
                     : FireTargetArc(unit, attackTarget);
             Vector3 approachDirection = NormalizeOrDefault(
                 escortTarget.Position - unit.Position,
@@ -642,52 +734,72 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Selects the target occupying the strongest charged capital-ship firing arc.
-        /// Fighter engagement remains bound to the group's assigned target.
+        /// Determines whether a capital ship may independently select targets for its weapon arcs.
         /// </summary>
         /// <param name="attacker">The acting unit.</param>
         /// <param name="group">The unit's controlling command group.</param>
         /// <param name="behavior">The unit's active behavior.</param>
-        /// <param name="assignedTarget">The target controlling movement and fighter engagement.</param>
-        /// <returns>The eligible target in the strongest arc, or the assigned target.</returns>
-        private TacticalUnitState SelectAttackTarget(
+        /// <returns>True when the ship should use opportunistic arc targeting.</returns>
+        private static bool ShouldSelectCapitalArc(
             TacticalUnitState attacker,
             TacticalShipGroup group,
-            TacticalBehavior behavior,
-            TacticalUnitState assignedTarget
+            TacticalBehavior behavior
         )
         {
-            if (
-                attacker.Kind != TacticalUnitKind.CapitalShip
-                || group?.Targets.Count > 0
-                || behavior
-                    is TacticalBehavior.AttackFighters
-                        or TacticalBehavior.AttackCapitalShips
-            )
-            {
-                return assignedTarget;
-            }
+            return attacker.Kind == TacticalUnitKind.CapitalShip
+                && group?.Targets.Count is not > 0
+                && behavior
+                    is not TacticalBehavior.AttackFighters
+                        and not TacticalBehavior.AttackCapitalShips;
+        }
 
-            IEnumerable<TacticalUnitState> candidates = GetEligibleTargets(
-                attacker,
-                group,
-                behavior
-            );
-            TacticalUnitState selectedTarget = null;
-            int strongestArc = 0;
+        /// <summary>
+        /// Selects the strongest charged arc and independently targets each weapon family in it.
+        /// </summary>
+        /// <param name="attacker">The capital ship selecting its firing arc.</param>
+        /// <param name="candidates">The active opposing targets to consider.</param>
+        /// <returns>The attacks produced by the selected arc.</returns>
+        private static IReadOnlyList<PendingAttack> FireStrongestCapitalArc(
+            TacticalUnitState attacker,
+            IEnumerable<TacticalUnitState> candidates
+        )
+        {
+            CapitalArcAttackPlan[] plans = Enum.GetValues(typeof(TacticalWeaponArc))
+                .Cast<TacticalWeaponArc>()
+                .Select(arc => new CapitalArcAttackPlan(arc))
+                .ToArray();
+
             foreach (TacticalUnitState candidate in candidates)
             {
                 float distance = Vector3.Distance(attacker.Position, candidate.Position);
                 TacticalWeaponArc arc = GetFiringArc(attacker, candidate.Position);
-                int strength = attacker.GetAvailableAttackStrength(arc, distance, candidate.Kind);
-                if (strength <= strongestArc)
-                    continue;
-
-                strongestArc = strength;
-                selectedTarget = candidate;
+                CapitalArcAttackPlan plan = plans[(int)arc];
+                foreach (TacticalWeaponBattery battery in attacker.WeaponBatteries)
+                {
+                    int strength = attacker.GetAvailableAttackStrength(
+                        arc,
+                        distance,
+                        battery.WeaponType,
+                        candidate.Kind
+                    );
+                    plan.Consider(battery.WeaponType, candidate, strength);
+                }
             }
 
-            return selectedTarget ?? assignedTarget;
+            CapitalArcAttackPlan selectedPlan = plans
+                .OrderByDescending(plan => plan.Strength)
+                .First();
+            if (selectedPlan.Strength <= 0)
+                return Array.Empty<PendingAttack>();
+
+            return attacker
+                .FireArc(selectedPlan.Arc, selectedPlan.WeaponTypes)
+                .Select(attack => new PendingAttack(
+                    attacker,
+                    selectedPlan.GetTarget(attack.WeaponType),
+                    attack
+                ))
+                .ToArray();
         }
 
         /// <summary>
