@@ -447,8 +447,8 @@ namespace Rebellion.Game.Tactical
 
             float attackerTurnRate = Math.Max(0.1f, pendingAttack.Source.Maneuverability);
             float targetTurnRate = Math.Max(0.1f, pendingAttack.Target.Maneuverability);
-            float relativeTurnRate = Math.Max(0.1f, targetTurnRate / attackerTurnRate);
-            int adjustedStrength = Math.Max(1, (int)(attack.Strength / relativeTurnRate));
+            float relativeTurnRate = Math.Max(0.1f, attackerTurnRate / targetTurnRate);
+            int adjustedStrength = Math.Max(1, (int)(attack.Strength * relativeTurnRate));
             return new TacticalAttack(attack.WeaponType, adjustedStrength);
         }
 

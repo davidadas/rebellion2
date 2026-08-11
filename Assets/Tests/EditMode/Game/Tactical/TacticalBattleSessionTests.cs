@@ -1448,6 +1448,34 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_OrdinaryAttackAgainstMuchSlowerFighters_DoesNotCapDamageMultiplier()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.Maneuverability = 40;
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 2, 0, 0, 0, 200 };
+            Starfighter defendingFighters = CreateFighters(12, 0);
+            defendingFighters.Agility = 2;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(100, 0, defendingFighters)),
+                }
+            );
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackFighters);
+
+            session.Advance(0.1f);
+
+            TacticalCombatEvent impact = session
+                .DrainEvents()
+                .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.WeaponImpact);
+            Assert.AreEqual(40, impact.AttackStrength);
+        }
+
+        [Test]
         public void Advance_FighterLaserAttackAgainstUnshieldedCapitalShip_FiresTorpedoes()
         {
             Starfighter attackingFighters = CreateFighters(12, 0);
