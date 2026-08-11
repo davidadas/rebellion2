@@ -17,7 +17,6 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private const float _destructionEffectDiameter = 7.5f;
     private const float _farSpritePixelsPerUnit = 1f;
     private const float _hullImpactEffectDiameter = 5f;
-    private const float _superlaserEffectDuration = 0.18f;
     private const float _standardBeamDuration = 1f;
     private const float _heavyBeamDuration = 2f;
     private const float _laserHeavyThreshold = 28.8f;
@@ -209,7 +208,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the broad green source-to-target beam used by the Death Star superlaser.
+    /// Creates the full-width faction beam used by the Death Star superlaser.
     /// </summary>
     /// <param name="combatEvent">The resolved superlaser event.</param>
     private void CreateSuperlaserEffect(TacticalCombatEvent combatEvent)
@@ -217,17 +216,21 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         GameObject effect = new GameObject("Superlaser Effect");
         effect.transform.SetParent(transform, false);
         LineRenderer line = effect.AddComponent<LineRenderer>();
-        Material material = CreateEffectMaterial(new Color(0.15f, 1f, 0.1f));
+        Material material = CreateEffectMaterial(GetFactionBeamColor(combatEvent));
         line.sharedMaterial = material;
         line.useWorldSpace = false;
         line.positionCount = 2;
-        line.startWidth = 0.9f;
-        line.endWidth = 0.5f;
-        line.SetPosition(0, ToUnityVector(combatEvent.SourcePosition));
-        line.SetPosition(1, ToUnityVector(combatEvent.TargetPosition));
+        line.startWidth = 1f;
+        line.endWidth = 1f;
         effect
             .AddComponent<TacticalCombatEffectView>()
-            .Initialize(material, _superlaserEffectDuration);
+            .InitializeTravelingBeam(
+                material,
+                line,
+                ToUnityVector(combatEvent.SourcePosition),
+                ToUnityVector(combatEvent.TargetPosition),
+                _standardBeamDuration
+            );
     }
 
     /// <summary>

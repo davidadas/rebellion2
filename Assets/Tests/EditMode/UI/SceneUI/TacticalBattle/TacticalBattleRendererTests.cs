@@ -386,9 +386,23 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             LineRenderer line = root.GetComponentInChildren<LineRenderer>();
             Assert.IsNotNull(line);
-            Assert.AreEqual(0.9f, line.startWidth);
-            Assert.AreEqual(0.5f, line.endWidth);
+            Assert.AreEqual(1f, line.startWidth);
+            Assert.AreEqual(1f, line.endWidth);
             Assert.IsTrue(renderer.HasActiveCombatEffects);
+        }
+
+        [Test]
+        public void PresentEvents_SuperlaserFired_UsesSourceFactionBeamColor()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Defender);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Attacker);
+
+            renderer.PresentEvents(new[] { TacticalCombatEvent.SuperlaserFired(source, target) });
+
+            Assert.AreEqual(
+                Color.green,
+                root.GetComponentInChildren<LineRenderer>().sharedMaterial.color
+            );
         }
 
         [Test]
