@@ -14,7 +14,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 {
     private const float _capitalShipScale = 12f;
     private const float _closeSpritePixelsPerUnit = 2f;
+    private const float _destructionEffectDiameter = 7.5f;
     private const float _farSpritePixelsPerUnit = 1f;
+    private const float _hullImpactEffectDiameter = 5f;
     private const float _superlaserEffectDuration = 0.18f;
     private const float _standardBeamDuration = 1f;
     private const float _heavyBeamDuration = 2f;
@@ -22,6 +24,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private const float _turbolaserHeavyThreshold = 34.666667f;
     private const float _ionHeavyThreshold = 32f;
     private const float _torpedoHeavyThreshold = 12.8f;
+    private const float _shieldImpactEffectDiameter = 2.5f;
     private const int _persistentEffectFrameCount = 8;
     private static readonly string[] ModelLods = { "close", "medium", "far" };
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
@@ -197,18 +200,12 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         if (combatEvent.Source.Kind == TacticalUnitKind.Fighters)
             return;
 
-        const float fallbackDiameter = 4f;
-        float diameter =
-            unitViewsByState.TryGetValue(combatEvent.Source, out TacticalUnitView unitView)
-            && unitView.PresentationDiameter > 0f
-                ? unitView.PresentationDiameter
-                : fallbackDiameter;
         GameObject effect = new GameObject("Destruction Effect");
         effect.transform.SetParent(transform, false);
         effect.transform.localPosition = ToUnityVector(combatEvent.SourcePosition);
         effect
             .AddComponent<TacticalOneShotEffectView>()
-            .Initialize(destructionEffectFrames, diameter);
+            .Initialize(destructionEffectFrames, _destructionEffectDiameter);
     }
 
     /// <summary>
@@ -401,7 +398,10 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         {
             targetView.ShowWeaponImpact(
                 impactFrames,
-                transform.TransformPoint(ToUnityVector(combatEvent.SourcePosition))
+                transform.TransformPoint(ToUnityVector(combatEvent.SourcePosition)),
+                combatEvent.ImpactState == TacticalImpactState.Shield
+                    ? _shieldImpactEffectDiameter
+                    : _hullImpactEffectDiameter
             );
         }
     }

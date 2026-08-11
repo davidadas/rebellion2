@@ -16,7 +16,7 @@ public sealed class TacticalPersistentEffectView : MonoBehaviour
     /// Configures the ordered animation frames and world-space diameter.
     /// </summary>
     /// <param name="animationFrames">The animation frames in playback order.</param>
-    /// <param name="diameter">The effect diameter in the parent unit's local space.</param>
+    /// <param name="diameter">The effect diameter in tactical world units.</param>
     public void Initialize(Sprite[] animationFrames, float diameter)
     {
         if (animationFrames == null)
@@ -33,7 +33,7 @@ public sealed class TacticalPersistentEffectView : MonoBehaviour
         spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         spriteRenderer.sprite = frames[0];
         spriteRenderer.sortingOrder = 100;
-        transform.localScale = Vector3.one * diameter;
+        SetWorldDiameter(diameter);
         gameObject.SetActive(false);
     }
 
@@ -78,5 +78,19 @@ public sealed class TacticalPersistentEffectView : MonoBehaviour
         Camera battleCamera = Camera.main;
         if (battleCamera != null)
             transform.rotation = battleCamera.transform.rotation;
+    }
+
+    /// <summary>
+    /// Compensates for the presentation parent's scale while retaining a world-space effect size.
+    /// </summary>
+    /// <param name="diameter">The requested world-space diameter.</param>
+    private void SetWorldDiameter(float diameter)
+    {
+        Vector3 parentScale = transform.parent == null ? Vector3.one : transform.parent.lossyScale;
+        transform.localScale = new Vector3(
+            diameter / Mathf.Max(Mathf.Abs(parentScale.x), Mathf.Epsilon),
+            diameter / Mathf.Max(Mathf.Abs(parentScale.y), Mathf.Epsilon),
+            diameter / Mathf.Max(Mathf.Abs(parentScale.z), Mathf.Epsilon)
+        );
     }
 }

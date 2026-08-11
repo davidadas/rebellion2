@@ -152,6 +152,61 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsNotNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
         }
 
+        [TestCase(TacticalImpactState.Shield, "blueSpreadImpactFrames", 2.5f)]
+        [TestCase(TacticalImpactState.Hull, "orangeBlastImpactFrames", 5f)]
+        public void PresentEvents_WeaponImpact_UsesImpactStateEffectDiameter(
+            TacticalImpactState impactState,
+            string frameFieldName,
+            float expectedDiameter
+        )
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+            RegisterUnitView(target);
+            typeof(TacticalBattleRenderer)
+                .GetField(frameFieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, new Sprite[1]);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.LaserCannon,
+                        impactState
+                    ),
+                }
+            );
+
+            TacticalOneShotEffectView effect =
+                root.GetComponentInChildren<TacticalOneShotEffectView>();
+            Assert.AreEqual(expectedDiameter, effect.transform.lossyScale.x);
+        }
+
+        [Test]
+        public void PresentEvents_CapitalShipDestroyed_UsesDestructionEffectDiameter()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            typeof(TacticalBattleRenderer)
+                .GetField("destructionEffectFrames", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, new Sprite[1]);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(
+                        TacticalCombatEventKind.UnitDestroyed,
+                        source
+                    ),
+                }
+            );
+
+            TacticalOneShotEffectView effect =
+                root.GetComponentInChildren<TacticalOneShotEffectView>();
+            Assert.AreEqual(7.5f, effect.transform.lossyScale.x);
+        }
+
         [Test]
         public void PresentEvents_FighterTorpedoImpact_UsesWhiteBeam()
         {

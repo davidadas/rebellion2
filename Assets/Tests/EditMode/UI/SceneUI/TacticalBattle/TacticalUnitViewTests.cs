@@ -85,6 +85,21 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void ConfigurePersistentEffects_ScaledUnit_PreservesWorldEffectDiameter()
+        {
+            root.transform.localScale = Vector3.one * 12f;
+            view.Initialize(CreateUnit());
+
+            view.ConfigurePersistentEffects(
+                tractorLockFrames,
+                gravityWellFrames,
+                new Bounds(Vector3.zero, Vector3.one)
+            );
+
+            Assert.AreEqual(5f, FindEffect("Tractor Lock Effect").transform.lossyScale.x);
+        }
+
+        [Test]
         public void SetTractorLockActive_ActiveLock_ShowsTractorEffect()
         {
             view.Initialize(CreateUnit());

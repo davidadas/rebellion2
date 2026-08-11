@@ -7,6 +7,7 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalUnitView : MonoBehaviour
 {
+    private const float _persistentEffectDiameter = 5f;
     private TacticalPersistentEffectView gravityWellEffect;
     private GameObject highlightObject;
     private Mesh highlightMesh;
@@ -24,12 +25,6 @@ public sealed class TacticalUnitView : MonoBehaviour
     /// Gets the tactical unit projected by this view.
     /// </summary>
     internal TacticalUnitState Unit => unit;
-
-    /// <summary>
-    /// Gets the largest presentation dimension used to scale object-bound effects.
-    /// </summary>
-    internal float PresentationDiameter =>
-        Mathf.Max(presentationBounds.size.x, presentationBounds.size.y, presentationBounds.size.z);
 
     /// <summary>
     /// Connects this presentation object to its tactical unit.
@@ -69,12 +64,15 @@ public sealed class TacticalUnitView : MonoBehaviour
     )
     {
         presentationBounds = bounds;
-        float diameter = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) * 1.15f;
-        tractorLockEffect = CreatePersistentEffect("Tractor Lock Effect", tractorFrames, diameter);
+        tractorLockEffect = CreatePersistentEffect(
+            "Tractor Lock Effect",
+            tractorFrames,
+            _persistentEffectDiameter
+        );
         gravityWellEffect = CreatePersistentEffect(
             "Gravity Well Effect",
             gravityWellFrames,
-            diameter
+            _persistentEffectDiameter
         );
         RefreshPersistentEffects();
     }
@@ -84,7 +82,8 @@ public sealed class TacticalUnitView : MonoBehaviour
     /// </summary>
     /// <param name="frames">The damage animation frames.</param>
     /// <param name="sourcePosition">The attack origin in world space.</param>
-    public void ShowWeaponImpact(Sprite[] frames, Vector3 sourcePosition)
+    /// <param name="diameter">The effect diameter in tactical world units.</param>
+    public void ShowWeaponImpact(Sprite[] frames, Vector3 sourcePosition, float diameter)
     {
         if (frames == null)
             throw new System.ArgumentNullException(nameof(frames));
@@ -97,11 +96,6 @@ public sealed class TacticalUnitView : MonoBehaviour
             sourcePosition - transform.position
         );
         effectObject.transform.localPosition = GetSurfacePoint(incomingDirection);
-        float diameter = Mathf.Max(
-            presentationBounds.size.x,
-            presentationBounds.size.y,
-            presentationBounds.size.z
-        );
         effectObject.AddComponent<TacticalOneShotEffectView>().Initialize(frames, diameter);
     }
 
