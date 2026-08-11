@@ -208,6 +208,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         IReadOnlyList<TacticalCombatEvent> combatEvents = Session.DrainEvents();
         battleRenderer.PresentEvents(combatEvents);
         battleAudio.QueueEvents(combatEvents);
+        QueueFighterLifecycleReports(combatEvents);
         QueueDestructionReports(combatEvents);
         battleAudio.Advance(Time.unscaledDeltaTime);
         if (
@@ -1060,6 +1061,33 @@ public sealed class TacticalBattleController : MonoBehaviour
                 else
                     battleAudio.QueueTargetDestroyed(playerSide, reportingUnit.Kind, groupIndex);
             }
+        }
+    }
+
+    /// <summary>
+    /// Queues the played faction's numbered launch and recovery reports.
+    /// </summary>
+    /// <param name="combatEvents">The simulation events produced by the current frame.</param>
+    private void QueueFighterLifecycleReports(IReadOnlyList<TacticalCombatEvent> combatEvents)
+    {
+        IReadOnlyList<TacticalShipGroup> groups = Session.GetFighterGroups(playerSide);
+        foreach (
+            TacticalCombatEvent combatEvent in combatEvents.Where(combatEvent =>
+                combatEvent.Source.Side == playerSide
+                && combatEvent.Kind
+                    is TacticalCombatEventKind.FightersDeployed
+                        or TacticalCombatEventKind.FightersRecovered
+            )
+        )
+        {
+            int groupIndex = FindGroupIndex(groups, combatEvent.Source);
+            if (groupIndex < 0)
+                continue;
+
+            if (combatEvent.Kind == TacticalCombatEventKind.FightersDeployed)
+                battleAudio.QueueFightersLaunched(playerSide, groupIndex);
+            else
+                battleAudio.QueueFightersRecovered(playerSide, groupIndex);
         }
     }
 

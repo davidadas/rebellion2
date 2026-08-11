@@ -81,6 +81,10 @@ public sealed class TacticalVoiceTheme
 
     public TacticalGroupVoiceTheme MissionAcknowledged { get; set; }
 
+    public TacticalGroupVoiceTheme FightersLaunched { get; set; }
+
+    public TacticalGroupVoiceTheme FightersRecovered { get; set; }
+
     public TacticalGroupVoiceTheme UnitLost { get; set; }
 
     public TacticalGroupVoiceTheme TargetDestroyed { get; set; }
@@ -137,6 +141,8 @@ public sealed class TacticalVoiceTheme
             AttackAcknowledged,
             FormationAcknowledged,
             MissionAcknowledged,
+            FightersLaunched,
+            FightersRecovered,
             UnitLost,
             TargetDestroyed,
         };

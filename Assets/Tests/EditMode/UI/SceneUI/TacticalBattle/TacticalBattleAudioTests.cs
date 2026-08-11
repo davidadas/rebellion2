@@ -67,6 +67,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             AttackAcknowledged = CreateGroupVoice("attack"),
                             FormationAcknowledged = CreateGroupVoice("formation"),
                             MissionAcknowledged = CreateGroupVoice("mission"),
+                            FightersLaunched = CreateGroupVoice("fighters-launched"),
+                            FightersRecovered = CreateGroupVoice("fighters-recovered"),
                             UnitLost = CreateGroupVoice("unit-lost"),
                             TargetDestroyed = CreateGroupVoice("target-destroyed"),
                             Outcome = new TacticalOutcomeVoiceTheme
@@ -257,6 +259,32 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             CollectionAssert.AreEqual(
                 new[] { "attacker-voice/fighter-group-green-orders-requested" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueFightersLaunched_FighterGroup_QueuesNamedLaunchReport()
+        {
+            audio.QueueFightersLaunched(TacticalBattleSide.Attacker, 0);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-red-fighters-launched" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueFightersRecovered_FighterGroup_QueuesNamedRecoveryReport()
+        {
+            audio.QueueFightersRecovered(TacticalBattleSide.Attacker, 3);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-gold-fighters-recovered" },
                 played
             );
         }

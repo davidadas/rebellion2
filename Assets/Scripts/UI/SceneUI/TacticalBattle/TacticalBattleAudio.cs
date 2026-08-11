@@ -145,6 +145,36 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the report that one numbered fighter group has launched.
+    /// </summary>
+    /// <param name="side">The side whose fighters launched.</param>
+    /// <param name="groupIndex">The zero-based fighter-group number.</param>
+    internal void QueueFightersLaunched(TacticalBattleSide side, int groupIndex)
+    {
+        QueueGroupVoice(
+            side,
+            GetTheme(side).Voice?.FightersLaunched,
+            TacticalUnitKind.Fighters,
+            groupIndex
+        );
+    }
+
+    /// <summary>
+    /// Queues the report that one numbered fighter group has recovered aboard its carrier.
+    /// </summary>
+    /// <param name="side">The side whose fighters recovered.</param>
+    /// <param name="groupIndex">The zero-based fighter-group number.</param>
+    internal void QueueFightersRecovered(TacticalBattleSide side, int groupIndex)
+    {
+        QueueGroupVoice(
+            side,
+            GetTheme(side).Voice?.FightersRecovered,
+            TacticalUnitKind.Fighters,
+            groupIndex
+        );
+    }
+
+    /// <summary>
     /// Queues the played faction's loss report for one numbered command group.
     /// </summary>
     /// <param name="side">The side that lost the unit.</param>
