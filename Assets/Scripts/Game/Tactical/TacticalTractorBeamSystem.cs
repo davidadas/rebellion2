@@ -95,6 +95,7 @@ namespace Rebellion.Game.Tactical
                 && target?.IsActive == true
                 && source.Kind == TacticalUnitKind.CapitalShip
                 && target.Kind == TacticalUnitKind.Fighters
+                && target.Shields == 0
                 && source.Side != target.Side
                 && source.EffectiveTractorBeamPower > 0f
                 && Vector3.Distance(source.Position, target.Position) <= source.TractorBeamRange;

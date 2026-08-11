@@ -92,6 +92,38 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void UpdateLock_ShieldedFighters_DoesNotEstablishLock()
+        {
+            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender, 1);
+
+            system.UpdateLock(source, target);
+
+            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
+            Assert.IsEmpty(system.DrainEvents());
+        }
+
+        [Test]
+        public void ReleaseInvalidLocks_FighterShieldsRecharge_ReleasesLock()
+        {
+            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
+            system.UpdateLock(source, target);
+            system.DrainEvents();
+            target.Shields = 1;
+
+            system.ReleaseInvalidLocks();
+
+            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
+            Assert.AreEqual(
+                TacticalCombatEventKind.TractorRelease,
+                system.DrainEvents().Single().Kind
+            );
+        }
+
+        [Test]
         public void UpdateLock_SourceChangesTarget_ReleasesOldTargetBeforeLockingNewTarget()
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
@@ -140,11 +172,15 @@ namespace Rebellion.Tests.Game.Tactical
             return TacticalUnitState.FromCapitalShip(ship, side);
         }
 
-        private static TacticalUnitState CreateFighters(TacticalBattleSide side)
+        private static TacticalUnitState CreateFighters(
+            TacticalBattleSide side,
+            int shieldStrength = 0
+        )
         {
             Starfighter fighters = new Starfighter
             {
                 CurrentSquadronSize = 100,
+                ShieldStrength = shieldStrength,
                 SublightSpeed = 10,
                 Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
