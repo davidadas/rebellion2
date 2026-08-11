@@ -866,13 +866,17 @@ namespace Rebellion.Game.Tactical
 
                 int lane = (index + 1) / 2;
                 float direction = index % 2 == 0 ? 1f : -1f;
-                return right * direction * lane * _formationSpacing;
+                float spacing = Math.Max(
+                    _formationSpacing,
+                    group.Units.Max(member => member.HorizontalExtent * 2f)
+                );
+                return right * direction * lane * spacing;
             }
 
             Vector3 localDirection = Vector3.Normalize(
-                SurroundDirections[index % SurroundDirections.Length]
+                SurroundDirections[(index + 1) % SurroundDirections.Length]
             );
-            int shell = index / SurroundDirections.Length;
+            int shell = (index + 1) / SurroundDirections.Length;
             float radius = _formationSpacing * (shell + 1);
             Vector3 up = Vector3.UnitY;
             return (right * localDirection.X + up * localDirection.Y + forward * localDirection.Z)

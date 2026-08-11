@@ -1087,7 +1087,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_SurroundFormation_DistributesMembersAcrossMultipleAxes()
+        public void Advance_SurroundFormation_UsesSourceOrderedDirections()
         {
             CapitalShip firstShip = CreateShip(600, 0);
             firstShip.Maneuverability = 10;
@@ -1109,8 +1109,34 @@ namespace Rebellion.Tests.Game.Tactical
 
             TacticalUnitState firstUnit = session.Units.Single(unit => unit.Unit == firstShip);
             TacticalUnitState secondUnit = session.Units.Single(unit => unit.Unit == secondShip);
-            Assert.Less(firstUnit.Position.Y, 0f);
+            Assert.AreEqual(0f, firstUnit.Position.Y, 0.001f);
             Assert.AreEqual(0f, secondUnit.Position.Y, 0.001f);
+            Assert.Greater(firstUnit.Position.Z, secondUnit.Position.Z);
+        }
+
+        [Test]
+        public void Advance_StandOffFormation_UsesLargestMemberExtentAsSpacingFloor()
+        {
+            CapitalShip leadShip = CreateShip(600, 0);
+            leadShip.Maneuverability = 10;
+            leadShip.SublightSpeed = 10;
+            CapitalShip wingShip = CreateShip(600, 0);
+            wingShip.Maneuverability = 10;
+            wingShip.SublightSpeed = 10;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(leadShip, wingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState leadUnit = session.Units.Single(unit => unit.Unit == leadShip);
+            TacticalUnitState wingUnit = session.Units.Single(unit => unit.Unit == wingShip);
+            leadUnit.SetCollisionExtents(10f, 1f);
+
+            session.Advance(1f);
+
+            Assert.Less(wingUnit.Position.Z, -8f);
         }
 
         [Test]
