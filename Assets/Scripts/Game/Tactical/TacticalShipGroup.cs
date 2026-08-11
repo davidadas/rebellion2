@@ -101,6 +101,21 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Replaces the group's target list with one opposing unit and directs the group to engage it.
+        /// </summary>
+        /// <param name="target">The opposing tactical unit to engage.</param>
+        public void AssignPrimaryTarget(TacticalUnitState target)
+        {
+            ValidateTarget(target);
+            if (!target.IsActive)
+                return;
+
+            targets.Clear();
+            targets.Add(target);
+            Behavior = TacticalBehavior.PrimaryTarget;
+        }
+
+        /// <summary>
         /// Replaces the capital ships' engagement formation.
         /// </summary>
         /// <param name="formation">The formation to assign.</param>

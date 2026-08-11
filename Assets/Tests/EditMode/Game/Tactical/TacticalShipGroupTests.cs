@@ -20,6 +20,22 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void AssignPrimaryTarget_OpposingActiveUnit_ReplacesTargetsAndBehavior()
+        {
+            TacticalUnitState unit = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState discarded = CreateUnit(TacticalBattleSide.Defender);
+            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender);
+            TacticalShipGroup group = CreateGroup(unit, discarded, target);
+            group.AddTarget(discarded);
+            group.SetBehavior(TacticalBehavior.Hammer);
+
+            group.AssignPrimaryTarget(target);
+
+            CollectionAssert.AreEqual(new[] { target }, group.Targets);
+            Assert.AreEqual(TacticalBehavior.PrimaryTarget, group.Behavior);
+        }
+
+        [Test]
         public void SetFormation_ValidFormation_ReplacesCurrentFormation()
         {
             TacticalShipGroup group = CreateGroup(TacticalBattleSide.Attacker);

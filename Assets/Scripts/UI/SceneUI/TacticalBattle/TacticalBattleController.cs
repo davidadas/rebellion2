@@ -136,7 +136,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.GameOptionsClosed += CloseGameOptions;
         view.SuperlaserRequested += BeginSuperlaserTargeting;
         battleRenderer.NavigationPointSelected += SelectNavigationPoint;
-        battleRenderer.UnitSelected += SelectSuperlaserTarget;
+        battleRenderer.UnitSelected += HandleUnitSelected;
         await battleRenderer.InitializeAsync(
             Session,
             bootstrap.GetContentModelCache(),
@@ -216,7 +216,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (battleRenderer != null)
         {
             battleRenderer.NavigationPointSelected -= SelectNavigationPoint;
-            battleRenderer.UnitSelected -= SelectSuperlaserTarget;
+            battleRenderer.UnitSelected -= HandleUnitSelected;
         }
         if (playerPaused)
             Session?.Resume();
@@ -238,21 +238,34 @@ public sealed class TacticalBattleController : MonoBehaviour
         }
 
         selectingSuperlaserTarget = true;
-        battleRenderer.SetUnitSelectionEnabled(true);
+        RefreshUnitSelectionAvailability();
     }
 
     /// <summary>
-    /// Attempts to fire the armed superlaser at the selected tactical object.
+    /// Applies the active targeting command to the selected tactical object.
     /// </summary>
     /// <param name="target">The selected tactical object.</param>
-    private void SelectSuperlaserTarget(TacticalUnitState target)
+    private void HandleUnitSelected(TacticalUnitState target)
     {
-        if (!selectingSuperlaserTarget || !Session.TryFireSuperlaser(playerDeathStar, target))
+        if (selectingSuperlaserTarget)
+        {
+            if (!Session.TryFireSuperlaser(playerDeathStar, target))
+                return;
+
+            selectingSuperlaserTarget = false;
+            RefreshUnitSelectionAvailability();
+            RefreshSuperlaser();
+            return;
+        }
+
+        if (SelectedGroup == null || target?.IsActive != true || target.Side == playerSide)
             return;
 
-        selectingSuperlaserTarget = false;
-        battleRenderer.SetUnitSelectionEnabled(false);
-        RefreshSuperlaser();
+        SelectedGroup.AssignPrimaryTarget(target);
+        if (SelectedGroup.Units.Any(unit => unit.Unit is Starfighter))
+            pendingMissionOrder = SelectedGroup.Behavior;
+        else
+            pendingManeuver = SelectedGroup.Behavior;
     }
 
     /// <summary>
@@ -263,12 +276,20 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (playerDeathStar?.IsActive != true)
         {
             selectingSuperlaserTarget = false;
-            battleRenderer.SetUnitSelectionEnabled(false);
+            RefreshUnitSelectionAvailability();
             view.HideSuperlaser();
             return;
         }
 
         view.ShowSuperlaser(Session.GetSuperlaserCharge(playerDeathStar));
+    }
+
+    /// <summary>
+    /// Enables tactical-object selection while a group or superlaser targeting command is active.
+    /// </summary>
+    private void RefreshUnitSelectionAvailability()
+    {
+        battleRenderer.SetUnitSelectionEnabled(selectingSuperlaserTarget || SelectedGroup != null);
     }
 
     /// <summary>
@@ -309,6 +330,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.HideGameOptions();
         SelectedGroup = null;
         selectedCapitalShip = null;
+        RefreshUnitSelectionAvailability();
         battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
     }
 
@@ -321,6 +343,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         observing = Session.IsAutomated(playerSide);
         SelectedGroup = null;
         selectedCapitalShip = null;
+        RefreshUnitSelectionAvailability();
         battleRenderer.SetNavigationRoute(Array.Empty<TacticalNavPoint>());
         view.SetObserving(observing);
     }
@@ -413,6 +436,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectTaskForce(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
+        RefreshUnitSelectionAvailability();
         pendingMissionOrder = null;
         view.HideMissionOrders();
         pendingManeuver = SelectedGroup.Behavior;
@@ -431,6 +455,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectFighterGroup(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
+        RefreshUnitSelectionAvailability();
         pendingManeuver = null;
         view.HideManeuvers();
         selectedCapitalShip = null;
