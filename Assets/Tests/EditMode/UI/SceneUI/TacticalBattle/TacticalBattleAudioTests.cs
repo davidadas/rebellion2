@@ -64,6 +64,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             WithdrawalBlocked = "withdrawal-blocked",
                             DeathStar = new TacticalDeathStarVoiceTheme
                             {
+                                Approaching = "death-star-approaching",
+                                AttackWindowOpen = "death-star-attack-window-open",
+                                FighterScreen = "death-star-fighter-screen",
+                                Shielded = "death-star-shielded",
                                 SuperlaserFiring = "superlaser-firing",
                                 SuperlaserReady = "superlaser-ready",
                                 SuperlaserWarning = "superlaser-warning",
@@ -113,7 +117,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             AudioRoot = "defender-voice",
                             DeathStar = new TacticalDeathStarVoiceTheme
                             {
+                                InsufficientFighterScreen =
+                                    "death-star-insufficient-fighter-screen",
                                 UnderAttack = "death-star-under-attack",
+                                AttackContinuing = "death-star-attack-continuing",
                                 AttackBrokenOff = "death-star-attack-broken-off",
                                 Destroyed = "death-star-destroyed",
                             },
@@ -402,6 +409,77 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void QueueDeathStarAvailability_OpposingExposedDeathStar_QueuesApproachThenAttackWindow()
+        {
+            audio.QueueDeathStarAvailability(
+                TacticalBattleSide.Attacker,
+                TacticalBattleSide.Defender,
+                TacticalDeathStarAttackAvailability.Available,
+                true
+            );
+
+            audio.Advance(0f);
+            audio.Advance(1f);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "attacker-voice/death-star-approaching",
+                    "attacker-voice/death-star-attack-window-open",
+                },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueDeathStarAvailability_ShieldedOpposingDeathStar_QueuesShieldReport()
+        {
+            audio.QueueDeathStarAvailability(
+                TacticalBattleSide.Attacker,
+                TacticalBattleSide.Defender,
+                TacticalDeathStarAttackAvailability.Shielded,
+                false
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/death-star-shielded" }, played);
+        }
+
+        [Test]
+        public void QueueDeathStarAvailability_DefendingFighterScreen_QueuesScreenReport()
+        {
+            audio.QueueDeathStarAvailability(
+                TacticalBattleSide.Attacker,
+                TacticalBattleSide.Defender,
+                TacticalDeathStarAttackAvailability.FighterScreen,
+                false
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/death-star-fighter-screen" }, played);
+        }
+
+        [Test]
+        public void QueueDeathStarAvailability_FriendlyDeathStarExposed_QueuesInsufficientScreenReport()
+        {
+            audio.QueueDeathStarAvailability(
+                TacticalBattleSide.Defender,
+                TacticalBattleSide.Defender,
+                TacticalDeathStarAttackAvailability.Available,
+                true
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "defender-voice/death-star-insufficient-fighter-screen" },
+                played
+            );
+        }
+
+        [Test]
         public void QueueDeathStarAttackReports_AttackingGroupStarts_QueuesRunningReport()
         {
             TacticalUnitState attacker = CreateUnit(
@@ -420,7 +498,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         defender
                     ),
                 },
-                _ => 1
+                _ => 1,
+                _ => TacticalDeathStarAttackAvailability.Available
             );
             audio.Advance(0f);
 
@@ -442,7 +521,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             audio.QueueDeathStarAttackReports(
                 TacticalBattleSide.Attacker,
                 new[] { TacticalCombatEvent.DeathStarAttackReport(attacker, defender, 1) },
-                _ => 0
+                _ => 0,
+                _ => TacticalDeathStarAttackAvailability.Available
             );
             audio.Advance(0f);
 
@@ -468,7 +548,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         defender
                     ),
                 },
-                _ => -1
+                _ => -1,
+                _ => TacticalDeathStarAttackAvailability.FighterScreen
             );
             audio.Advance(0f);
 
@@ -494,12 +575,43 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         defender
                     ),
                 },
-                _ => -1
+                _ => -1,
+                _ => TacticalDeathStarAttackAvailability.FighterScreen
             );
             audio.Advance(0f);
 
             CollectionAssert.AreEqual(
                 new[] { "defender-voice/death-star-attack-broken-off" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueDeathStarAttackReports_FailedEnemyRunWithAnotherRunAvailable_QueuesContinuingReport()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueDeathStarAttackReports(
+                TacticalBattleSide.Defender,
+                new[]
+                {
+                    TacticalCombatEvent.DeathStarAttackPhase(
+                        TacticalCombatEventKind.DeathStarAttackFailed,
+                        attacker,
+                        defender
+                    ),
+                },
+                _ => -1,
+                _ => TacticalDeathStarAttackAvailability.Available
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "defender-voice/death-star-attack-continuing" },
                 played
             );
         }
@@ -523,7 +635,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         defender
                     ),
                 },
-                _ => -1
+                _ => -1,
+                _ => TacticalDeathStarAttackAvailability.NoTarget
             );
             audio.Advance(0f);
 

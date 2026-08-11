@@ -1336,6 +1336,30 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void GetDeathStarAttackAvailability_ExistingAttackOrder_ReturnsAttackInProgress()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackDeathStar);
+
+            TacticalDeathStarAttackAvailability availability =
+                session.GetDeathStarAttackAvailability(TacticalBattleSide.Attacker);
+
+            Assert.AreEqual(TacticalDeathStarAttackAvailability.AttackInProgress, availability);
+        }
+
+        [Test]
         public void TryOrderDeathStarAttack_EligibleGroup_AssignsAttackBehavior()
         {
             Starfighter attackingFighters = CreateFighters(12, 0);

@@ -233,6 +233,47 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the played side's reports for one Death Star attack-availability state.
+    /// </summary>
+    /// <param name="playedSide">The side receiving the reports.</param>
+    /// <param name="deathStarSide">The side operating the Death Star.</param>
+    /// <param name="availability">The opposing fighter force's attack availability.</param>
+    /// <param name="includeApproach">Whether to precede the state report with the approach warning.</param>
+    internal void QueueDeathStarAvailability(
+        TacticalBattleSide playedSide,
+        TacticalBattleSide deathStarSide,
+        TacticalDeathStarAttackAvailability availability,
+        bool includeApproach
+    )
+    {
+        TacticalVoiceTheme voice = GetTheme(playedSide).Voice;
+        TacticalDeathStarVoiceTheme deathStar = voice?.DeathStar;
+        if (includeApproach && playedSide != deathStarSide)
+            Enqueue(voice?.GetAudioPath(deathStar?.Approaching), TacticalAudioChannel.Voice);
+
+        string report;
+        if (playedSide == deathStarSide)
+        {
+            report =
+                availability == TacticalDeathStarAttackAvailability.Available
+                    ? deathStar?.InsufficientFighterScreen
+                    : null;
+        }
+        else
+        {
+            report = availability switch
+            {
+                TacticalDeathStarAttackAvailability.Shielded => deathStar?.Shielded,
+                TacticalDeathStarAttackAvailability.FighterScreen => deathStar?.FighterScreen,
+                TacticalDeathStarAttackAvailability.Available => deathStar?.AttackWindowOpen,
+                _ => null,
+            };
+        }
+
+        Enqueue(voice?.GetAudioPath(report), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
     /// Queues the played faction's report that its Death Star has fired.
     /// </summary>
     /// <param name="side">The side operating the Death Star.</param>
@@ -303,16 +344,20 @@ internal sealed class TacticalBattleAudio
     /// <param name="playedSide">The side controlled or observed by the local player.</param>
     /// <param name="events">The simulation events produced by the current frame.</param>
     /// <param name="getGroupIndex">The operation that resolves a fighter's fixed HUD group.</param>
+    /// <param name="getAttackAvailability">The operation that resolves whether another fighter run can begin.</param>
     internal void QueueDeathStarAttackReports(
         TacticalBattleSide playedSide,
         IReadOnlyList<TacticalCombatEvent> events,
-        Func<TacticalUnitState, int> getGroupIndex
+        Func<TacticalUnitState, int> getGroupIndex,
+        Func<TacticalBattleSide, TacticalDeathStarAttackAvailability> getAttackAvailability
     )
     {
         if (events == null)
             throw new ArgumentNullException(nameof(events));
         if (getGroupIndex == null)
             throw new ArgumentNullException(nameof(getGroupIndex));
+        if (getAttackAvailability == null)
+            throw new ArgumentNullException(nameof(getAttackAvailability));
 
         TacticalVoiceTheme playedVoice = GetTheme(playedSide).Voice;
         TacticalDeathStarVoiceTheme deathStar = playedVoice?.DeathStar;
@@ -348,9 +393,12 @@ internal sealed class TacticalBattleAudio
                 {
                     TacticalCombatEventKind.DeathStarAttackStarted => deathStar?.UnderAttack,
                     TacticalCombatEventKind.DeathStarAttackSucceeded => deathStar?.Destroyed,
-                    TacticalCombatEventKind.DeathStarAttackFailed
-                    or TacticalCombatEventKind.DeathStarAttackBrokenOff =>
-                        deathStar?.AttackBrokenOff,
+                    TacticalCombatEventKind.DeathStarAttackFailed => getAttackAvailability(
+                        combatEvent.Source.Side
+                    ) == TacticalDeathStarAttackAvailability.Available
+                        ? deathStar?.AttackContinuing
+                        : deathStar?.AttackBrokenOff,
+                    TacticalCombatEventKind.DeathStarAttackBrokenOff => deathStar?.AttackBrokenOff,
                     _ => null,
                 };
             }

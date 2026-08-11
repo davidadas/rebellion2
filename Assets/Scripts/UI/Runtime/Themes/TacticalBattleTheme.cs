@@ -110,6 +110,18 @@ public sealed class TacticalDeathStarAttackGroupVoiceTheme
 [PersistableObject]
 public sealed class TacticalDeathStarVoiceTheme
 {
+    public string Approaching { get; set; }
+
+    public string AttackWindowOpen { get; set; }
+
+    public string FighterScreen { get; set; }
+
+    public string Shielded { get; set; }
+
+    public string InsufficientFighterScreen { get; set; }
+
+    public string AttackContinuing { get; set; }
+
     public string SuperlaserFiring { get; set; }
 
     public string SuperlaserReady { get; set; }
@@ -173,6 +185,18 @@ public sealed class TacticalDeathStarVoiceTheme
     /// <returns>The configured audio names.</returns>
     public IEnumerable<string> GetAudioNames()
     {
+        if (!string.IsNullOrWhiteSpace(Approaching))
+            yield return Approaching;
+        if (!string.IsNullOrWhiteSpace(AttackWindowOpen))
+            yield return AttackWindowOpen;
+        if (!string.IsNullOrWhiteSpace(FighterScreen))
+            yield return FighterScreen;
+        if (!string.IsNullOrWhiteSpace(Shielded))
+            yield return Shielded;
+        if (!string.IsNullOrWhiteSpace(InsufficientFighterScreen))
+            yield return InsufficientFighterScreen;
+        if (!string.IsNullOrWhiteSpace(AttackContinuing))
+            yield return AttackContinuing;
         if (!string.IsNullOrWhiteSpace(SuperlaserFiring))
             yield return SuperlaserFiring;
         if (!string.IsNullOrWhiteSpace(SuperlaserReady))

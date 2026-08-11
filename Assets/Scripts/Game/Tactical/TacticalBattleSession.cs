@@ -24,6 +24,27 @@ namespace Rebellion.Game.Tactical
     }
 
     /// <summary>
+    /// Identifies why fighter groups can or cannot begin a Death Star attack.
+    /// </summary>
+    public enum TacticalDeathStarAttackAvailability
+    {
+        /// <summary>No operational opposing Death Star is present.</summary>
+        NoTarget = 0,
+
+        /// <summary>An active planetary shield protects the Death Star.</summary>
+        Shielded = 1,
+
+        /// <summary>The defending fighter screen equals or exceeds the attacking fighters.</summary>
+        FighterScreen = 2,
+
+        /// <summary>The Death Star is exposed and the attacking side has fighter superiority.</summary>
+        Available = 3,
+
+        /// <summary>A fighter group has already committed to the attack.</summary>
+        AttackInProgress = 4,
+    }
+
+    /// <summary>
     /// Owns the isolated tactical state for one pending strategic encounter.
     /// </summary>
     public sealed class TacticalBattleSession
@@ -285,7 +306,23 @@ namespace Rebellion.Game.Tactical
             return group != null
                 && groups.Contains(group)
                 && group.Behavior != TacticalBehavior.AttackDeathStar
-                && IsDeathStarAttackOrderValid(group);
+                && !simulator.IsDeathStarAttackCommitted(group)
+                && group.Units.Any(unit => unit.Kind == TacticalUnitKind.Fighters && unit.IsActive)
+                && GetDeathStarAttackAvailability(group.Side)
+                    == TacticalDeathStarAttackAvailability.Available;
+        }
+
+        /// <summary>
+        /// Gets the battle-level availability of a Death Star attack for one side.
+        /// </summary>
+        /// <param name="side">The side whose fighter attack opportunity is requested.</param>
+        /// <returns>The current attack availability.</returns>
+        public TacticalDeathStarAttackAvailability GetDeathStarAttackAvailability(
+            TacticalBattleSide side
+        )
+        {
+            ValidateSide(side);
+            return GetDeathStarAttackAvailability(side, null);
         }
 
         /// <summary>
@@ -450,31 +487,62 @@ namespace Rebellion.Game.Tactical
                 group == null
                 || !groups.Contains(group)
                 || group.Units.All(unit => unit.Kind != TacticalUnitKind.Fighters || !unit.IsActive)
-                || groups.Any(candidate =>
-                    candidate != group && candidate.Behavior == TacticalBehavior.AttackDeathStar
-                )
-                || Encounter.Planet?.HasActiveDefenseFacility(DefenseFacilityClass.DeathStarShield)
-                    == true
             )
             {
                 return false;
             }
 
+            return GetDeathStarAttackAvailability(group.Side, group)
+                == TacticalDeathStarAttackAvailability.Available;
+        }
+
+        /// <summary>
+        /// Resolves Death Star attack availability while optionally ignoring one active order.
+        /// </summary>
+        /// <param name="side">The side attempting the fighter attack.</param>
+        /// <param name="ignoredGroup">The already assigned group to omit from the order check.</param>
+        /// <returns>The current attack availability.</returns>
+        private TacticalDeathStarAttackAvailability GetDeathStarAttackAvailability(
+            TacticalBattleSide side,
+            TacticalShipGroup ignoredGroup
+        )
+        {
             bool hasOpposingDeathStar = units.Any(unit =>
-                unit.IsActive
-                && unit.Side != group.Side
-                && unit.Unit is CapitalShip { IsDeathStar: true }
+                unit.IsActive && unit.Side != side && unit.Unit is CapitalShip { IsDeathStar: true }
             );
             if (!hasOpposingDeathStar)
-                return false;
+                return TacticalDeathStarAttackAvailability.NoTarget;
 
-            int attackingFighters = units.Count(unit =>
-                unit.IsActive && unit.Side == group.Side && unit.Kind == TacticalUnitKind.Fighters
-            );
+            if (
+                Encounter.Planet?.HasActiveDefenseFacility(DefenseFacilityClass.DeathStarShield)
+                == true
+            )
+            {
+                return TacticalDeathStarAttackAvailability.Shielded;
+            }
+
+            if (
+                groups.Any(group =>
+                    group != ignoredGroup && group.Behavior == TacticalBehavior.AttackDeathStar
+                )
+            )
+            {
+                return TacticalDeathStarAttackAvailability.AttackInProgress;
+            }
+
+            int attackingFighters = fighterGroups[side]
+                .Where(group =>
+                    group == ignoredGroup || !simulator.IsDeathStarAttackCommitted(group)
+                )
+                .SelectMany(group => group.Units)
+                .Distinct()
+                .Count(unit => unit.IsActive && unit.Kind == TacticalUnitKind.Fighters);
             int defendingFighters = units.Count(unit =>
-                unit.IsActive && unit.Side != group.Side && unit.Kind == TacticalUnitKind.Fighters
+                unit.IsActive && unit.Side != side && unit.Kind == TacticalUnitKind.Fighters
             );
-            return attackingFighters > defendingFighters;
+            return attackingFighters > defendingFighters
+                ? TacticalDeathStarAttackAvailability.Available
+                : TacticalDeathStarAttackAvailability.FighterScreen;
         }
 
         /// <summary>

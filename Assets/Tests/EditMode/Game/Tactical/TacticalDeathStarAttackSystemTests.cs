@@ -209,6 +209,20 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_CompletedRun_ResetsGroupBehavior()
+        {
+            TacticalUnitState fighters = CreateFighters(1, 0);
+            TacticalUnitState deathStar = CreateDeathStar();
+            TacticalShipGroup group = CreateAttackGroup(fighters, deathStar);
+            TacticalDeathStarAttackSystem system = CreateSystem(0.99d);
+            system.TryBegin(group, deathStar);
+
+            system.Advance(TacticalDeathStarAttackSystem.RunDuration);
+
+            Assert.AreEqual(TacticalBehavior.None, group.Behavior);
+        }
+
+        [Test]
         public void Advance_OrderChangedDuringRun_PreservesDeathStarAndReportsBrokenOff()
         {
             TacticalUnitState fighters = CreateFighters(12, 100);

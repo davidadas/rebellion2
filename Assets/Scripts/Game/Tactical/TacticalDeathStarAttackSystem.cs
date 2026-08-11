@@ -214,6 +214,7 @@ namespace Rebellion.Game.Tactical
             TacticalCombatEventKind outcome
         )
         {
+            group.SetBehavior(TacticalBehavior.None);
             events.Add(
                 TacticalCombatEvent.DeathStarAttackPhase(outcome, run.Leader, run.DeathStar)
             );

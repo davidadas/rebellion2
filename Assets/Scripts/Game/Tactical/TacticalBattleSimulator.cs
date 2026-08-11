@@ -302,6 +302,16 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Gets whether a fighter group has begun or completed its one Death Star attack run.
+        /// </summary>
+        /// <param name="group">The fighter group to inspect.</param>
+        /// <returns>True when the group cannot make another run.</returns>
+        public bool IsDeathStarAttackCommitted(TacticalShipGroup group)
+        {
+            return deathStarAttackSystem.IsCommitted(group);
+        }
+
+        /// <summary>
         /// Removes and returns every presentation event produced since the previous drain.
         /// </summary>
         /// <returns>The events in simulation order.</returns>

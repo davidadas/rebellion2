@@ -34,6 +34,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private TacticalBattleAudio battleAudio;
     private TacticalCameraRig cameraRig;
     private TacticalBattleTheme tacticalTheme;
+    private TacticalBattleSide? deathStarSide;
+    private TacticalDeathStarAttackAvailability? deathStarAttackAvailability;
     private TacticalBattleView view;
 
     /// <summary>
@@ -136,6 +138,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             path => contentAssets.GetPreloadedAudio(path).length
         );
         battleAudio.QueueFleetReady(playerSide);
+        InitializeDeathStarAvailability();
         Session.ConfigurePlayerControl(playerSide);
         observing = Session.IsComputerControlled(playerSide);
         view.SetObserving(observing);
@@ -212,8 +215,10 @@ public sealed class TacticalBattleController : MonoBehaviour
         battleAudio.QueueDeathStarAttackReports(
             playerSide,
             combatEvents,
-            unit => FindGroupIndex(Session.GetFighterGroups(playerSide), unit)
+            unit => FindGroupIndex(Session.GetFighterGroups(playerSide), unit),
+            Session.GetDeathStarAttackAvailability
         );
+        RefreshDeathStarAvailability();
         QueueFighterLifecycleReports(combatEvents);
         QueueDestructionReports(combatEvents);
         battleAudio.Advance(Time.unscaledDeltaTime);
@@ -451,6 +456,63 @@ public sealed class TacticalBattleController : MonoBehaviour
         }
 
         view.ShowSuperlaser(Session.GetSuperlaserCharge(playerDeathStar));
+    }
+
+    /// <summary>
+    /// Captures the participating Death Star and queues the opening attack-status reports.
+    /// </summary>
+    private void InitializeDeathStarAvailability()
+    {
+        TacticalUnitState deathStar = Session.Units.FirstOrDefault(unit =>
+            unit.IsActive && unit.Unit is CapitalShip { IsDeathStar: true }
+        );
+        if (deathStar == null)
+            return;
+
+        deathStarSide = deathStar.Side;
+        TacticalBattleSide attackingSide = GetOpposingSide(deathStar.Side);
+        deathStarAttackAvailability = Session.GetDeathStarAttackAvailability(attackingSide);
+        battleAudio.QueueDeathStarAvailability(
+            playerSide,
+            deathStar.Side,
+            deathStarAttackAvailability.Value,
+            true
+        );
+    }
+
+    /// <summary>
+    /// Queues a report when combat changes whether fighters can attack the Death Star.
+    /// </summary>
+    private void RefreshDeathStarAvailability()
+    {
+        if (deathStarSide == null)
+            return;
+
+        TacticalDeathStarAttackAvailability availability = Session.GetDeathStarAttackAvailability(
+            GetOpposingSide(deathStarSide.Value)
+        );
+        if (availability == deathStarAttackAvailability)
+            return;
+
+        deathStarAttackAvailability = availability;
+        battleAudio.QueueDeathStarAvailability(
+            playerSide,
+            deathStarSide.Value,
+            availability,
+            false
+        );
+    }
+
+    /// <summary>
+    /// Returns the other side of the two-sided tactical encounter.
+    /// </summary>
+    /// <param name="side">The side whose opponent is requested.</param>
+    /// <returns>The opposing tactical side.</returns>
+    private static TacticalBattleSide GetOpposingSide(TacticalBattleSide side)
+    {
+        return side == TacticalBattleSide.Attacker
+            ? TacticalBattleSide.Defender
+            : TacticalBattleSide.Attacker;
     }
 
     /// <summary>
