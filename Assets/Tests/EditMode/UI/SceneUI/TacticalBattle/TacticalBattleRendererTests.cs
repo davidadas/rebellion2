@@ -48,6 +48,56 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void CreateStarfieldDecoration_ConfiguredImage_CreatesTextureBackedMesh()
+        {
+            const string address = "Pack/Shared/Tactical/Environment/starfield";
+            texture = new Texture2D(440, 438);
+            FakeContentAssetSource contentAssets = new FakeContentAssetSource(address, texture);
+
+            typeof(TacticalBattleRenderer)
+                .GetMethod(
+                    "CreateStarfieldDecoration",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                )
+                ?.Invoke(renderer, new object[] { contentAssets, address });
+
+            MeshRenderer meshRenderer = root.GetComponentInChildren<MeshRenderer>();
+            Assert.AreEqual("Tactical Starfield", meshRenderer.gameObject.name);
+            Assert.AreSame(texture, meshRenderer.sharedMaterial.mainTexture);
+            Assert.AreEqual(address, contentAssets.RequestedAddress);
+        }
+
+        [Test]
+        public void UpdateStarfieldDecoration_WideCamera_MatchesCameraAspect()
+        {
+            const string address = "Pack/Shared/Tactical/Environment/starfield";
+            texture = new Texture2D(440, 438);
+            FakeContentAssetSource contentAssets = new FakeContentAssetSource(address, texture);
+            typeof(TacticalBattleRenderer)
+                .GetMethod(
+                    "CreateStarfieldDecoration",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                )
+                ?.Invoke(renderer, new object[] { contentAssets, address });
+            Camera camera = new GameObject("TacticalCamera").AddComponent<Camera>();
+            camera.transform.SetParent(root.transform, false);
+            camera.aspect = 2f;
+
+            typeof(TacticalBattleRenderer)
+                .GetMethod(
+                    "UpdateStarfieldDecoration",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                )
+                ?.Invoke(renderer, new object[] { camera });
+
+            Transform backdrop = root.transform.Find("Tactical Starfield");
+            Assert.That(
+                backdrop.localScale.x / backdrop.localScale.y,
+                Is.EqualTo(2f).Within(0.001f)
+            );
+        }
+
+        [Test]
         public void CreateHolocube_Enabled_CreatesBattlefieldBoundary()
         {
             TacticalNavigationGrid grid = new TacticalNavigationGrid(100f);

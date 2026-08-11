@@ -11,6 +11,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private Camera battleCamera;
         private TacticalCameraRig rig;
         private Button[] controls;
+        private RectTransform viewport;
 
         [SetUp]
         public void SetUp()
@@ -20,7 +21,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             battleCamera = root.AddComponent<Camera>();
             rig = root.AddComponent<TacticalCameraRig>();
             controls = CreateButtons(9);
+            viewport = CreateViewport(root.transform);
             rig.Configure(battleCamera, controls);
+            rig.ConfigureViewport(viewport);
             UIComponentTestHelper.InvokeLifecycle(rig, "Awake");
             rig.Initialize(150f);
         }
@@ -114,6 +117,28 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Camera invalidCamera = invalidRoot.AddComponent<Camera>();
             TacticalCameraRig invalidRig = invalidRoot.AddComponent<TacticalCameraRig>();
             invalidRig.Configure(invalidCamera, CreateButtons(8));
+            invalidRig.ConfigureViewport(CreateViewport(invalidRoot.transform));
+
+            try
+            {
+                Assert.Throws<MissingReferenceException>(() =>
+                    UIComponentTestHelper.InvokeLifecycle(invalidRig, "Awake")
+                );
+            }
+            finally
+            {
+                Object.DestroyImmediate(invalidRoot);
+            }
+        }
+
+        [Test]
+        public void Awake_MissingViewport_ThrowsMissingReferenceException()
+        {
+            GameObject invalidRoot = new GameObject("InvalidTacticalCameraRig");
+            invalidRoot.SetActive(false);
+            Camera invalidCamera = invalidRoot.AddComponent<Camera>();
+            TacticalCameraRig invalidRig = invalidRoot.AddComponent<TacticalCameraRig>();
+            invalidRig.Configure(invalidCamera, CreateButtons(9));
 
             try
             {
@@ -138,6 +163,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             }
 
             return buttons;
+        }
+
+        private static RectTransform CreateViewport(Transform parent)
+        {
+            GameObject viewportObject = new GameObject("BattleViewport", typeof(RectTransform));
+            viewportObject.transform.SetParent(parent, false);
+            return viewportObject.GetComponent<RectTransform>();
         }
     }
 }

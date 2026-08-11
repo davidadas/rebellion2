@@ -93,23 +93,17 @@ public static class TacticalBattleSceneBuilder
         CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(640f, 480f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 1f;
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         canvasObject.AddComponent<GraphicRaycaster>();
 
         TacticalBattleView view = canvasObject.AddComponent<TacticalBattleView>();
-        CreateBoundImage(
-            "ControlPanel",
-            canvasObject.transform,
-            $"{root}/Hud/control-panel",
-            0,
-            0,
-            640,
-            480
-        );
+        Transform controlSurface = CreateControlSurface(canvasObject.transform);
+        CreateControlPanelFrame(controlSurface, $"{root}/Hud/control-panel");
+        RectTransform viewport = CreateViewport(controlSurface);
+        cameraRig.ConfigureViewport(viewport);
         CreateBoundImage(
             "TaskForceHeader",
-            canvasObject.transform,
+            controlSurface,
             theme.TaskForceHeaderImagePath,
             9,
             1,
@@ -118,7 +112,7 @@ public static class TacticalBattleSceneBuilder
         );
         CreateBoundImage(
             "FighterGroupHeader",
-            canvasObject.transform,
+            controlSurface,
             theme.FighterGroupHeaderImagePath,
             296,
             1,
@@ -131,7 +125,7 @@ public static class TacticalBattleSceneBuilder
         {
             taskForceButtons[index] = CreateBoundButton(
                 $"TaskForce{index + 1}",
-                canvasObject.transform,
+                controlSurface,
                 $"{root}/TaskForces/group-up",
                 $"{root}/TaskForces/group-down",
                 60 + index * 29,
@@ -148,7 +142,7 @@ public static class TacticalBattleSceneBuilder
             string color = fighterColors[index];
             fighterGroupButtons[index] = CreateBoundButton(
                 $"{char.ToUpperInvariant(color[0])}{color[1..]}FighterGroup",
-                canvasObject.transform,
+                controlSurface,
                 $"{root}/FighterGroups/{color}-up",
                 $"{root}/FighterGroups/{color}-down",
                 347 + index * 29,
@@ -164,7 +158,7 @@ public static class TacticalBattleSceneBuilder
             int set = index + 1;
             navigationButtons[index] = CreateBoundButton(
                 $"NavigationSet{set}",
-                canvasObject.transform,
+                controlSurface,
                 $"{root}/Navigation/set-{set}-up",
                 $"{root}/Navigation/set-{set}-down",
                 485 + index * 39,
@@ -178,7 +172,7 @@ public static class TacticalBattleSceneBuilder
             "CapitalShipStatus",
             typeof(RectTransform)
         );
-        capitalShipStatusPanel.transform.SetParent(canvasObject.transform, false);
+        capitalShipStatusPanel.transform.SetParent(controlSurface, false);
         SetSourceRect(capitalShipStatusPanel.GetComponent<RectTransform>(), 482, 24, 149, 236);
         CreateBoundImage(
             "Background",
@@ -310,7 +304,7 @@ public static class TacticalBattleSceneBuilder
         );
 
         GameObject superlaserPanel = new GameObject("Superlaser", typeof(RectTransform));
-        superlaserPanel.transform.SetParent(canvasObject.transform, false);
+        superlaserPanel.transform.SetParent(controlSurface, false);
         SetSourceRect(superlaserPanel.GetComponent<RectTransform>(), 474, 0, 166, 25);
         CreateBoundImage(
             "Background",
@@ -343,7 +337,7 @@ public static class TacticalBattleSceneBuilder
         RawImage superlaserButtonImage = superlaserButton.GetComponent<RawImage>();
 
         GameObject missionOrderPanel = new GameObject("MissionOrders", typeof(RectTransform));
-        missionOrderPanel.transform.SetParent(canvasObject.transform, false);
+        missionOrderPanel.transform.SetParent(controlSurface, false);
         RectTransform missionOrderRect = missionOrderPanel.GetComponent<RectTransform>();
         missionOrderRect.anchorMin = Vector2.zero;
         missionOrderRect.anchorMax = Vector2.one;
@@ -429,7 +423,7 @@ public static class TacticalBattleSceneBuilder
         );
 
         GameObject maneuverPanel = new GameObject("Maneuvers", typeof(RectTransform));
-        maneuverPanel.transform.SetParent(canvasObject.transform, false);
+        maneuverPanel.transform.SetParent(controlSurface, false);
         RectTransform maneuverRect = maneuverPanel.GetComponent<RectTransform>();
         maneuverRect.anchorMin = Vector2.zero;
         maneuverRect.anchorMax = Vector2.one;
@@ -530,7 +524,7 @@ public static class TacticalBattleSceneBuilder
 
         Button leftShipHighlightsButton = CreateBoundButton(
             "AllianceShipHighlights",
-            canvasObject.transform,
+            controlSurface,
             $"{root}/Hud/alliance-highlight-up",
             $"{root}/Hud/alliance-highlight-down",
             483,
@@ -540,7 +534,7 @@ public static class TacticalBattleSceneBuilder
         );
         Button rightShipHighlightsButton = CreateBoundButton(
             "EmpireShipHighlights",
-            canvasObject.transform,
+            controlSurface,
             $"{root}/Hud/empire-highlight-up",
             $"{root}/Hud/empire-highlight-down",
             515,
@@ -550,7 +544,7 @@ public static class TacticalBattleSceneBuilder
         );
         Button gameOptionsButton = CreateBoundButton(
             "GameOptions",
-            canvasObject.transform,
+            controlSurface,
             $"{root}/Hud/options-up",
             $"{root}/Hud/options-down",
             608,
@@ -561,7 +555,7 @@ public static class TacticalBattleSceneBuilder
 
         RawImage pauseImage = CreateBoundImage(
             "Pause",
-            canvasObject.transform,
+            controlSurface,
             $"{root}/Hud/pause",
             561,
             308,
@@ -571,7 +565,7 @@ public static class TacticalBattleSceneBuilder
         Button pauseButton = CreateButton(pauseImage);
 
         GameObject gameOptionsPanel = new GameObject("GameOptionsPanel", typeof(RectTransform));
-        gameOptionsPanel.transform.SetParent(canvasObject.transform, false);
+        gameOptionsPanel.transform.SetParent(controlSurface, false);
         RectTransform gameOptionsRect = gameOptionsPanel.GetComponent<RectTransform>();
         SetSourceRect(gameOptionsRect, 482, 24, 149, 236);
         CreateBoundImage(
@@ -637,7 +631,7 @@ public static class TacticalBattleSceneBuilder
             "WithdrawalConfirmation",
             typeof(RectTransform)
         );
-        withdrawalPanel.transform.SetParent(canvasObject.transform, false);
+        withdrawalPanel.transform.SetParent(controlSurface, false);
         RectTransform withdrawalRect = withdrawalPanel.GetComponent<RectTransform>();
         SetSourceRect(withdrawalRect, 482, 24, 149, 236);
         CreateBoundImage(
@@ -669,7 +663,7 @@ public static class TacticalBattleSceneBuilder
             27,
             25
         );
-        Button[] cameraControls = CreateCameraControls(canvasObject.transform, root);
+        Button[] cameraControls = CreateCameraControls(controlSurface, root);
         cameraRig.Configure(cameraRig.GetComponent<Camera>(), cameraControls);
         view.Configure(
             taskForceButtons,
@@ -805,6 +799,75 @@ public static class TacticalBattleSceneBuilder
         GameObject eventSystem = new GameObject("EventSystem");
         eventSystem.AddComponent<EventSystem>();
         eventSystem.AddComponent<StandaloneInputModule>();
+    }
+
+    /// <summary>
+    /// Creates the centered, aspect-preserving surface used by the original tactical layout.
+    /// </summary>
+    /// <param name="parent">The full-screen tactical canvas.</param>
+    /// <returns>The 640 by 480 control surface.</returns>
+    private static Transform CreateControlSurface(Transform parent)
+    {
+        GameObject surface = new GameObject("ControlSurface", typeof(RectTransform));
+        surface.transform.SetParent(parent, false);
+        RectTransform rect = surface.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(640f, 480f);
+        return surface.transform;
+    }
+
+    /// <summary>
+    /// Creates the four control-panel pieces surrounding the unobstructed battle viewport.
+    /// </summary>
+    /// <param name="parent">The tactical control surface.</param>
+    /// <param name="address">The complete control-panel texture address.</param>
+    private static void CreateControlPanelFrame(Transform parent, string address)
+    {
+        CreateBoundImageSegment("ControlPanelTop", parent, address, 0, 0, 640, 30);
+        CreateBoundImageSegment("ControlPanelLeft", parent, address, 0, 30, 17, 438);
+        CreateBoundImageSegment("ControlPanelRight", parent, address, 457, 30, 183, 438);
+        CreateBoundImageSegment("ControlPanelBottom", parent, address, 0, 468, 640, 12);
+    }
+
+    /// <summary>
+    /// Creates the source-sized rectangle into which the tactical camera renders.
+    /// </summary>
+    /// <param name="parent">The tactical control surface.</param>
+    /// <returns>The camera viewport rectangle.</returns>
+    private static RectTransform CreateViewport(Transform parent)
+    {
+        GameObject target = new GameObject("BattleViewport", typeof(RectTransform));
+        target.transform.SetParent(parent, false);
+        RectTransform rect = target.GetComponent<RectTransform>();
+        SetSourceRect(rect, 17, 30, 440, 438);
+        return rect;
+    }
+
+    /// <summary>
+    /// Creates one cropped piece of the complete tactical control-panel texture.
+    /// </summary>
+    /// <param name="name">The hierarchy name.</param>
+    /// <param name="parent">The tactical control surface.</param>
+    /// <param name="address">The complete control-panel texture address.</param>
+    /// <param name="x">The source-space left edge.</param>
+    /// <param name="y">The source-space top edge.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    private static void CreateBoundImageSegment(
+        string name,
+        Transform parent,
+        string address,
+        int x,
+        int y,
+        int width,
+        int height
+    )
+    {
+        RawImage image = CreateBoundImage(name, parent, address, x, y, width, height);
+        image.uvRect = new Rect(x / 640f, 1f - (y + height) / 480f, width / 640f, height / 480f);
     }
 
     /// <summary>

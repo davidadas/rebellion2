@@ -7,6 +7,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Owns the runtime visual objects that project a tactical battle into the scene.
@@ -43,6 +44,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private readonly List<TacticalUnitView> unitViews = new List<TacticalUnitView>();
     private readonly Dictionary<TacticalUnitState, TacticalUnitView> unitViewsByState =
         new Dictionary<TacticalUnitState, TacticalUnitView>();
+    private Transform starfieldBackdrop;
     private Sprite[] gravityWellEffectFrames = Array.Empty<Sprite>();
     private Sprite[] blueBlastImpactFrames = Array.Empty<Sprite>();
     private Sprite[] blueNetImpactFrames = Array.Empty<Sprite>();
@@ -104,12 +106,16 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             throw new ArgumentNullException(nameof(videoSettings));
         if (string.IsNullOrWhiteSpace(theme.SharedEffectsRoot))
             throw new InvalidOperationException("A tactical shared-effects root is required.");
+        if (string.IsNullOrWhiteSpace(theme.StarfieldImagePath))
+            throw new InvalidOperationException("A tactical starfield image is required.");
         if (initialized)
             throw new InvalidOperationException("Tactical presentation is already initialized.");
 
         this.session = session;
         highDetail = videoSettings.HighDetail;
         showPyrotechnics = videoSettings.ShowPyro;
+        if (videoSettings.ShowStarfield)
+            CreateStarfieldDecoration(contentAssets, theme.StarfieldImagePath);
         if (showPyrotechnics)
             LoadPyrotechnicEffects(contentAssets, theme.SharedEffectsRoot);
         if (videoSettings.ShowPlanet)
@@ -164,6 +170,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 
         foreach (Transform billboard in environmentBillboards)
             billboard.rotation = battleCamera.transform.rotation;
+
+        UpdateStarfieldDecoration(battleCamera);
     }
 
     /// <summary>
@@ -376,6 +384,76 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         navigationSets.Clear();
         unitViews.Clear();
         unitViewsByState.Clear();
+    }
+
+    /// <summary>
+    /// Creates the screen-fixed tactical starfield behind every battle object.
+    /// </summary>
+    /// <param name="contentAssets">The active external content assets.</param>
+    /// <param name="address">The configured starfield texture address.</param>
+    private void CreateStarfieldDecoration(IContentAssetSource contentAssets, string address)
+    {
+        Texture2D texture = contentAssets.GetTexture(address);
+        if (texture == null)
+            throw new InvalidOperationException($"Tactical starfield is missing: {address}");
+
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+            throw new InvalidOperationException("The tactical starfield shader is unavailable.");
+
+        Mesh mesh = new Mesh
+        {
+            name = "Tactical Starfield Mesh",
+            vertices = new[]
+            {
+                new Vector3(-0.5f, -0.5f, 0f),
+                new Vector3(0.5f, -0.5f, 0f),
+                new Vector3(-0.5f, 0.5f, 0f),
+                new Vector3(0.5f, 0.5f, 0f),
+            },
+            uv = new[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(0f, 1f),
+                new Vector2(1f, 1f),
+            },
+            triangles = new[] { 0, 2, 1, 2, 3, 1 },
+        };
+        mesh.RecalculateBounds();
+        environmentMeshes.Add(mesh);
+
+        Material material = new Material(shader)
+        {
+            name = "Tactical Starfield Material",
+            mainTexture = texture,
+            renderQueue = (int)RenderQueue.Background,
+        };
+        environmentMaterials.Add(material);
+
+        GameObject backdrop = new GameObject("Tactical Starfield");
+        backdrop.transform.SetParent(transform, false);
+        backdrop.AddComponent<MeshFilter>().sharedMesh = mesh;
+        backdrop.AddComponent<MeshRenderer>().sharedMaterial = material;
+        starfieldBackdrop = backdrop.transform;
+    }
+
+    /// <summary>
+    /// Keeps the flat starfield aligned to the active tactical camera viewport.
+    /// </summary>
+    /// <param name="battleCamera">The active tactical camera.</param>
+    private void UpdateStarfieldDecoration(Camera battleCamera)
+    {
+        if (starfieldBackdrop == null || battleCamera == null)
+            return;
+
+        float distance = battleCamera.farClipPlane * 0.9f;
+        float height = 2f * distance * Mathf.Tan(battleCamera.fieldOfView * Mathf.Deg2Rad * 0.5f);
+        starfieldBackdrop.SetPositionAndRotation(
+            battleCamera.transform.position + battleCamera.transform.forward * distance,
+            battleCamera.transform.rotation
+        );
+        starfieldBackdrop.localScale = new Vector3(height * battleCamera.aspect, height, 1f);
     }
 
     /// <summary>

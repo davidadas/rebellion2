@@ -14,12 +14,16 @@ public sealed class TacticalCameraRig : MonoBehaviour
     private const float _zoomInMultiplier = 0.8f;
     private const float _zoomOutMultiplier = 1.25f;
     private const float _zoomDistanceScale = 1200f;
+    private readonly Vector3[] viewportCorners = new Vector3[4];
 
     [SerializeField]
     private Camera battleCamera;
 
     [SerializeField]
     private Button[] controls = Array.Empty<Button>();
+
+    [SerializeField]
+    private RectTransform viewport;
 
     private CameraState current;
     private CameraState defaults;
@@ -38,6 +42,15 @@ public sealed class TacticalCameraRig : MonoBehaviour
     {
         battleCamera = camera ?? throw new ArgumentNullException(nameof(camera));
         controls = cameraControls ?? throw new ArgumentNullException(nameof(cameraControls));
+    }
+
+    /// <summary>
+    /// Supplies the source-sized screen rectangle reserved for tactical rendering.
+    /// </summary>
+    /// <param name="viewportRect">The camera viewport on the tactical control surface.</param>
+    public void ConfigureViewport(RectTransform viewportRect)
+    {
+        viewport = viewportRect ?? throw new ArgumentNullException(nameof(viewportRect));
     }
 
     /// <summary>
@@ -126,6 +139,8 @@ public sealed class TacticalCameraRig : MonoBehaviour
             throw new MissingReferenceException(
                 "The tactical camera rig requires nine source-ordered controls."
             );
+        if (viewport == null)
+            throw new MissingReferenceException("The tactical camera rig requires a viewport.");
 
         controls[0].onClick.AddListener(ZoomIn);
         controls[1].onClick.AddListener(ZoomOut);
@@ -136,6 +151,22 @@ public sealed class TacticalCameraRig : MonoBehaviour
         controls[6].onClick.AddListener(RememberView);
         controls[7].onClick.AddListener(ResetView);
         controls[8].onClick.AddListener(ResetSubject);
+    }
+
+    /// <summary>
+    /// Keeps the camera aligned with the scaled tactical viewport after canvas layout changes.
+    /// </summary>
+    private void LateUpdate()
+    {
+        viewport.GetWorldCorners(viewportCorners);
+        Vector2 lowerLeft = RectTransformUtility.WorldToScreenPoint(null, viewportCorners[0]);
+        Vector2 upperRight = RectTransformUtility.WorldToScreenPoint(null, viewportCorners[2]);
+        battleCamera.pixelRect = new Rect(
+            lowerLeft.x,
+            lowerLeft.y,
+            upperRight.x - lowerLeft.x,
+            upperRight.y - lowerLeft.y
+        );
     }
 
     /// <summary>

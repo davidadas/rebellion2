@@ -115,6 +115,14 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("Pack/Shared/Tactical/Effects", alliance.SharedEffectsRoot);
             Assert.AreEqual("Pack/Shared/Tactical/Effects", empire.SharedEffectsRoot);
             Assert.AreEqual(
+                "Pack/Shared/Tactical/Environment/starfield",
+                alliance.StarfieldImagePath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Environment/starfield",
+                empire.StarfieldImagePath
+            );
+            Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13064-1033-tactical-pass-by",
                 alliance.CapitalShipArrivalAudio.Paths[0]
             );
