@@ -10,7 +10,6 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     internal sealed class TacticalTractorBeamSystem
     {
-        private const int _maximumLocksPerTarget = 4;
         private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> locks =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
@@ -33,7 +32,7 @@ namespace Rebellion.Game.Tactical
                 ReleaseLock(source, currentTarget);
             }
 
-            if (!CanMaintainLock(source, target) || CountLocks(target) >= _maximumLocksPerTarget)
+            if (!CanMaintainLock(source, target))
                 return;
 
             locks.Add(source, target);
@@ -94,19 +93,11 @@ namespace Rebellion.Game.Tactical
         {
             return source.IsActive
                 && target?.IsActive == true
+                && source.Kind == TacticalUnitKind.CapitalShip
+                && target.Kind == TacticalUnitKind.Fighters
                 && source.Side != target.Side
                 && source.EffectiveTractorBeamPower > 0f
                 && Vector3.Distance(source.Position, target.Position) <= source.TractorBeamRange;
-        }
-
-        /// <summary>
-        /// Counts the sources already applying tractor strength to one target.
-        /// </summary>
-        /// <param name="target">The target whose incoming locks are counted.</param>
-        /// <returns>The number of active incoming locks.</returns>
-        private int CountLocks(TacticalUnitState target)
-        {
-            return locks.Count(tractorLock => ReferenceEquals(tractorLock.Value, target));
         }
 
         /// <summary>

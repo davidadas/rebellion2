@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Game.Tactical
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
             TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
             source.Position = Vector3.Zero;
             target.Position = new Vector3(0f, 0f, 10f);
 
@@ -32,7 +32,7 @@ namespace Rebellion.Tests.Game.Tactical
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
             TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
             system.UpdateLock(source, target);
             system.DrainEvents();
             target.Position = new Vector3(0f, 0f, 21f);
@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Game.Tactical
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
             TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
             source.Position = Vector3.Zero;
             target.Position = new Vector3(0f, 0f, 10f);
             system.UpdateLock(source, target);
@@ -62,10 +62,10 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void UpdateLock_FourExistingSources_RejectsFifthSource()
+        public void UpdateLock_MultipleCapitalSources_CombinesEveryLock()
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
-            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+            TacticalUnitState target = CreateFighters(TacticalBattleSide.Defender);
             TacticalUnitState[] sources = Enumerable
                 .Range(0, 5)
                 .Select(_ => CreateUnit(TacticalBattleSide.Attacker, 1, 20))
@@ -74,8 +74,21 @@ namespace Rebellion.Tests.Game.Tactical
             foreach (TacticalUnitState source in sources)
                 system.UpdateLock(source, target);
 
-            Assert.AreEqual(target.EffectiveSublightSpeed - 4f, system.GetMovementSpeed(target));
-            Assert.AreEqual(4, system.DrainEvents().Count);
+            Assert.AreEqual(target.EffectiveSublightSpeed - 5f, system.GetMovementSpeed(target));
+            Assert.AreEqual(5, system.DrainEvents().Count);
+        }
+
+        [Test]
+        public void UpdateLock_CapitalShipTarget_DoesNotEstablishLock()
+        {
+            TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
+            TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
+            TacticalUnitState target = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+
+            system.UpdateLock(source, target);
+
+            Assert.AreEqual(target.EffectiveSublightSpeed, system.GetMovementSpeed(target));
+            Assert.IsEmpty(system.DrainEvents());
         }
 
         [Test]
@@ -83,8 +96,8 @@ namespace Rebellion.Tests.Game.Tactical
         {
             TacticalTractorBeamSystem system = new TacticalTractorBeamSystem();
             TacticalUnitState source = CreateUnit(TacticalBattleSide.Attacker, 6, 20);
-            TacticalUnitState firstTarget = CreateUnit(TacticalBattleSide.Defender, 0, 0);
-            TacticalUnitState secondTarget = CreateUnit(TacticalBattleSide.Defender, 0, 0);
+            TacticalUnitState firstTarget = CreateFighters(TacticalBattleSide.Defender);
+            TacticalUnitState secondTarget = CreateFighters(TacticalBattleSide.Defender);
             system.UpdateLock(source, firstTarget);
             system.DrainEvents();
 
@@ -125,6 +138,18 @@ namespace Rebellion.Tests.Game.Tactical
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             return TacticalUnitState.FromCapitalShip(ship, side);
+        }
+
+        private static TacticalUnitState CreateFighters(TacticalBattleSide side)
+        {
+            Starfighter fighters = new Starfighter
+            {
+                CurrentSquadronSize = 100,
+                SublightSpeed = 10,
+                Hyperdrive = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            return TacticalUnitState.FromFighters(fighters, side);
         }
     }
 }

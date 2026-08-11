@@ -1006,7 +1006,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_TargetWithinTractorRange_ReducesTargetMovement()
+        public void Advance_CapitalTargetWithinTractorRange_DoesNotApplyTractorBeam()
         {
             CapitalShip tractorShip = CreateShip(600, 0);
             tractorShip.TractorBeamPower = 6;
@@ -1026,8 +1026,8 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(initialPosition - Vector3.UnitZ * 2.5f, movingUnit.Position);
-            Assert.IsTrue(
+            Assert.AreEqual(initialPosition - Vector3.UnitZ * 5.5f, movingUnit.Position);
+            Assert.IsFalse(
                 session
                     .DrainEvents()
                     .Any(combatEvent =>
@@ -2181,7 +2181,7 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
-        public void Advance_WithdrawBehaviorFullyTractorLocked_DoesNotBeginWithdrawal()
+        public void Advance_WithdrawBehaviorWithOpposingTractorShip_BeginsCapitalWithdrawal()
         {
             CapitalShip withdrawingShip = CreateShip(600, 0);
             withdrawingShip.SublightSpeed = 5;
@@ -2206,8 +2206,8 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(2f);
 
-            Assert.AreEqual(initialPosition, withdrawingUnit.Position);
-            Assert.IsFalse(withdrawingUnit.IsWithdrawing);
+            Assert.AreEqual(initialPosition - Vector3.UnitZ * 10f, withdrawingUnit.Position);
+            Assert.IsTrue(withdrawingUnit.IsWithdrawing);
         }
 
         [Test]
