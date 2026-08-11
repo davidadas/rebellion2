@@ -29,6 +29,7 @@ namespace Rebellion.Game.Events
         /// <param name="state">Persistent scheduling state for this activation scope.</param>
         /// <param name="scopeTarget">The selected planet or other scoped scene node.</param>
         /// <param name="triggerResult">The result that activated this event, if any.</param>
+        /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         public GameEventExecutionContext(
             GameEvent gameEvent,
             GameEventState state,

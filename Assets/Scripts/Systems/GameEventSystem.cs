@@ -125,6 +125,7 @@ namespace Rebellion.Systems
         /// Executes a single game event if its conditions are met.
         /// </summary>
         /// <param name="gameEvent">The event to process.</param>
+        /// <param name="trigger">The trigger definition that matched the result, if any.</param>
         /// <param name="triggerResult">The simulation result that activated the event, if any.</param>
         /// <param name="scopeTarget">The planet whose independent schedule is being processed.</param>
         /// <param name="results">Receives results produced by the event.</param>
