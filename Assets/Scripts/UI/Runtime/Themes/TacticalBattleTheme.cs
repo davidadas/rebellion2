@@ -36,6 +36,10 @@ public sealed class TacticalBattleTheme
 
     public string TorpedoFireAudioPath { get; set; }
 
+    public string TractorLockAudioPath { get; set; }
+
+    public string TractorReleaseAudioPath { get; set; }
+
     public string SuperlaserAudioPath { get; set; }
 
     public string EnergyShieldHitAudioPath { get; set; }

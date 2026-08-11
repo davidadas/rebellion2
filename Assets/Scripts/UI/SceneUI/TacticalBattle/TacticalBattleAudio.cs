@@ -64,6 +64,8 @@ internal sealed class TacticalBattleAudio
             TacticalAudioChannel channel = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => TacticalAudioChannel.Combat,
+                TacticalCombatEventKind.TractorLock or TacticalCombatEventKind.TractorRelease =>
+                    TacticalAudioChannel.Combat,
                 TacticalCombatEventKind.UnitWithdrawn or TacticalCombatEventKind.SuperlaserFired =>
                     TacticalAudioChannel.Unit,
                 _ => TacticalAudioChannel.None,
@@ -71,6 +73,12 @@ internal sealed class TacticalBattleAudio
             string path = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => GetImpactPath(combatEvent),
+                TacticalCombatEventKind.TractorLock => GetTheme(
+                    combatEvent.Target.Side
+                ).TractorLockAudioPath,
+                TacticalCombatEventKind.TractorRelease => GetTheme(
+                    combatEvent.Target.Side
+                ).TractorReleaseAudioPath,
                 TacticalCombatEventKind.UnitWithdrawn => GetWithdrawalPath(combatEvent.Source),
                 TacticalCombatEventKind.SuperlaserFired => GetTheme(
                     combatEvent.Source.Side

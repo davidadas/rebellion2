@@ -27,6 +27,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _defenderProjectilePenetration = "defender-projectile-penetration";
         private const string _defenderProjectileHit = "defender-projectile-hit";
         private const string _defenderSuperlaser = "defender-superlaser";
+        private const string _defenderTractorLock = "defender-tractor-lock";
+        private const string _defenderTractorRelease = "defender-tractor-release";
         private readonly List<string> played = new List<string>();
         private TacticalBattleAudio audio;
 
@@ -61,6 +63,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         ProjectileShieldPenetrationAudioPath = _defenderProjectilePenetration,
                         ProjectileShieldHitAudioPath = _defenderProjectileHit,
                         SuperlaserAudioPath = _defenderSuperlaser,
+                        TractorLockAudioPath = _defenderTractorLock,
+                        TractorReleaseAudioPath = _defenderTractorRelease,
                     },
                 },
                 played.Add,
@@ -203,6 +207,22 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             audio.Advance(0f);
 
             CollectionAssert.AreEqual(new[] { _defenderSuperlaser }, played);
+        }
+
+        [TestCase(TacticalCombatEventKind.TractorLock, _defenderTractorLock)]
+        [TestCase(TacticalCombatEventKind.TractorRelease, _defenderTractorRelease)]
+        public void QueueEvents_TractorLifecycle_QueuesTargetFactionCue(
+            TacticalCombatEventKind kind,
+            string expectedPath
+        )
+        {
+            TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueEvents(new[] { TacticalCombatEvent.TractorLock(kind, attacker, defender) });
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { expectedPath }, played);
         }
 
         [TestCase(TacticalWeaponType.Turbolaser, false, _defenderEnergyHit)]

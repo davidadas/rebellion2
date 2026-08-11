@@ -259,6 +259,8 @@ public sealed class TacticalBattleController : MonoBehaviour
             theme.IonCannonFireAudioPath,
             theme.FighterIonCannonFireAudioPath,
             theme.TorpedoFireAudioPath,
+            theme.TractorLockAudioPath,
+            theme.TractorReleaseAudioPath,
             theme.SuperlaserAudioPath,
             theme.EnergyShieldHitAudioPath,
             theme.EnergyShieldPenetrationAudioPath,

@@ -132,6 +132,14 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 alliance.IonShieldPenetrationAudioPath
             );
             Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13006-1033-tactical-blast",
+                alliance.TractorLockAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13007-1033-tactical-blast",
+                alliance.TractorReleaseAudioPath
+            );
+            Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
                 alliance.FighterArrivalAudioPath
             );
