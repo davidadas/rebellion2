@@ -75,6 +75,8 @@ public sealed class TacticalVoiceTheme
 
     public TacticalGroupVoiceTheme MissionAcknowledged { get; set; }
 
+    public TacticalGroupVoiceTheme UnitLost { get; set; }
+
     public TacticalOutcomeVoiceTheme Outcome { get; set; }
 
     /// <summary>
@@ -122,6 +124,7 @@ public sealed class TacticalVoiceTheme
             AttackAcknowledged,
             FormationAcknowledged,
             MissionAcknowledged,
+            UnitLost,
         };
         foreach (TacticalGroupVoiceTheme group in groups)
         {

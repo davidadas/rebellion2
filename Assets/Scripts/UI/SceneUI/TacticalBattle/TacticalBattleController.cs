@@ -208,6 +208,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         IReadOnlyList<TacticalCombatEvent> combatEvents = Session.DrainEvents();
         battleRenderer.PresentEvents(combatEvents);
         battleAudio.QueueEvents(combatEvents);
+        QueueDestructionReports(combatEvents);
         battleAudio.Advance(Time.unscaledDeltaTime);
         if (
             selectedCapitalShip != null
@@ -1017,6 +1018,49 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         queue(playerSide, unit.Kind, selectedGroupIndex);
+    }
+
+    /// <summary>
+    /// Queues the numbered loss report for each destroyed unit on the played side.
+    /// </summary>
+    /// <param name="combatEvents">The events produced by the current simulation update.</param>
+    private void QueueDestructionReports(IReadOnlyList<TacticalCombatEvent> combatEvents)
+    {
+        foreach (
+            TacticalUnitState unit in combatEvents
+                .Where(combatEvent => combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
+                .Select(combatEvent => combatEvent.Source)
+                .Where(unit => unit.Side == playerSide)
+        )
+        {
+            IReadOnlyList<TacticalShipGroup> groups =
+                unit.Kind == TacticalUnitKind.CapitalShip
+                    ? Session.GetTaskForces(playerSide)
+                    : Session.GetFighterGroups(playerSide);
+            int groupIndex = FindGroupIndex(groups, unit);
+            if (groupIndex >= 0)
+                battleAudio.QueueUnitLost(playerSide, unit.Kind, groupIndex);
+        }
+    }
+
+    /// <summary>
+    /// Finds the fixed HUD slot containing one tactical unit.
+    /// </summary>
+    /// <param name="groups">The command groups in HUD order.</param>
+    /// <param name="unit">The unit whose command group to find.</param>
+    /// <returns>The zero-based slot, or -1 when the unit is not assigned.</returns>
+    private static int FindGroupIndex(
+        IReadOnlyList<TacticalShipGroup> groups,
+        TacticalUnitState unit
+    )
+    {
+        for (int index = 0; index < groups.Count; index++)
+        {
+            if (groups[index].Units.Contains(unit))
+                return index;
+        }
+
+        return -1;
     }
 
     /// <summary>

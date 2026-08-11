@@ -130,6 +130,17 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the played faction's loss report for one numbered command group.
+    /// </summary>
+    /// <param name="side">The side that lost the unit.</param>
+    /// <param name="kind">The kind of command group that lost the unit.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    internal void QueueUnitLost(TacticalBattleSide side, TacticalUnitKind kind, int groupIndex)
+    {
+        QueueGroupVoice(side, GetTheme(side).Voice?.UnitLost, kind, groupIndex);
+    }
+
+    /// <summary>
     /// Queues the final report heard by the played side when combat ends.
     /// </summary>
     /// <param name="side">The side receiving the report.</param>

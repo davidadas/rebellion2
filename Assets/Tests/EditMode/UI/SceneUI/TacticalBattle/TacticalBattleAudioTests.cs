@@ -64,6 +64,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             AttackAcknowledged = CreateGroupVoice("attack"),
                             FormationAcknowledged = CreateGroupVoice("formation"),
                             MissionAcknowledged = CreateGroupVoice("mission"),
+                            UnitLost = CreateGroupVoice("unit-lost"),
                             Outcome = new TacticalOutcomeVoiceTheme
                             {
                                 EnemyWithdrew = "victory-withdrawal",
@@ -227,6 +228,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             audio.Advance(0f);
 
             CollectionAssert.AreEqual(new[] { "attacker-voice/victory-withdrawal" }, played);
+        }
+
+        [Test]
+        public void QueueUnitLost_FighterGroup_QueuesNamedLossReport()
+        {
+            audio.QueueUnitLost(TacticalBattleSide.Attacker, TacticalUnitKind.Fighters, 1);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-blue-unit-lost" },
+                played
+            );
         }
 
         [Test]
