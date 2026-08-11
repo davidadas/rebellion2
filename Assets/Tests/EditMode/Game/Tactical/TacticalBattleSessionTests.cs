@@ -182,10 +182,27 @@ namespace Rebellion.Tests.Game.Tactical
                 unit.Side == TacticalBattleSide.Attacker
             );
 
-            session.Advance(1f);
+            AdvanceArrival(session);
 
             Assert.AreEqual(TacticalBattlePhase.Engagement, session.Phase);
             Assert.AreEqual(attacker.Position, session.GetPresentationPosition(attacker));
+        }
+
+        [Test]
+        public void Advance_ArrivalLargeElapsedTime_CapsSingleUpdateAtTwoTenthsOfASecond()
+        {
+            TacticalBattleSession session = CreateArrivingSession();
+            TacticalUnitState attacker = session.Units.First(unit =>
+                unit.Side == TacticalBattleSide.Attacker
+            );
+
+            session.Advance(1f);
+
+            Assert.AreEqual(TacticalBattlePhase.Arrival, session.Phase);
+            Assert.AreEqual(
+                attacker.Position - attacker.Forward * 39.288887f,
+                session.GetPresentationPosition(attacker)
+            );
         }
 
         [Test]
@@ -931,7 +948,7 @@ namespace Rebellion.Tests.Game.Tactical
                 },
                 new FixedRandomProvider(new[] { 0.02d })
             );
-            session.Advance(1f);
+            AdvanceArrival(session);
             session
                 .GetFighterGroups(TacticalBattleSide.Attacker)
                 .Single()
@@ -1177,7 +1194,7 @@ namespace Rebellion.Tests.Game.Tactical
             TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
             group.SetBehavior(TacticalBehavior.Withdraw);
 
-            session.Advance(2f);
+            session.Advance(4f);
             SpaceCombatResult result = session.BuildResult();
 
             Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
@@ -1208,7 +1225,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(origin - Vector3.UnitZ * 10f, unit.Position);
+            Assert.AreEqual(origin - Vector3.UnitZ * 0.625f, unit.Position);
             Assert.AreEqual(-Vector3.UnitZ, unit.Forward);
             Assert.IsTrue(unit.IsWithdrawing);
             Assert.IsFalse(unit.HasWithdrawn);
@@ -1269,8 +1286,8 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.5f);
 
-            Assert.AreEqual(firstOrigin - Vector3.UnitZ * 10f, firstUnit.Position);
-            Assert.AreEqual(secondOrigin - Vector3.UnitZ * 14.375f, secondUnit.Position);
+            Assert.AreEqual(firstOrigin - Vector3.UnitZ * 0.625f, firstUnit.Position);
+            Assert.AreEqual(secondOrigin - Vector3.UnitZ * 1.02222228f, secondUnit.Position);
         }
 
         [Test]
@@ -1290,7 +1307,7 @@ namespace Rebellion.Tests.Game.Tactical
                 .Single()
                 .SetBehavior(TacticalBehavior.Withdraw);
 
-            session.Advance(2f);
+            session.Advance(4f);
             TacticalCombatEvent withdrawal = session
                 .DrainEvents()
                 .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.UnitWithdrawn);
@@ -1382,8 +1399,14 @@ namespace Rebellion.Tests.Game.Tactical
                 encounter,
                 new FixedRandomProvider(new[] { 0d })
             );
-            session.Advance(1f);
+            AdvanceArrival(session);
             return session;
+        }
+
+        private static void AdvanceArrival(TacticalBattleSession session)
+        {
+            for (int step = 0; step < 8; step++)
+                session.Advance(0.2f);
         }
 
         private static TacticalBattleSession CreateArrivingSession(

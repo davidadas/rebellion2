@@ -16,8 +16,6 @@ namespace Rebellion.Game.Tactical
         private const float _formationSpacing = 8f;
         private const float _navigationArrivalDistance = 1f;
         private const float _tacticalApproachDistance = 20f;
-        private const float _withdrawalDuration = 1f;
-        private static readonly float[] WithdrawalDistances = { 40f, 57.5f, 65f, 32.5f };
         private static readonly Vector3[] SurroundDirections =
         {
             new Vector3(1f, -1f, 0f),
@@ -74,7 +72,7 @@ namespace Rebellion.Game.Tactical
             /// <summary>
             /// Gets the distance covered by this unit's exit curve.
             /// </summary>
-            public float Distance { get; }
+            public int Lane { get; }
 
             /// <summary>
             /// Gets or sets the elapsed time along the exit curve.
@@ -86,12 +84,12 @@ namespace Rebellion.Game.Tactical
             /// </summary>
             /// <param name="origin">The position at which withdrawal begins.</param>
             /// <param name="direction">The normalized exit direction.</param>
-            /// <param name="distance">The route's total distance.</param>
-            public WithdrawalMotion(Vector3 origin, Vector3 direction, float distance)
+            /// <param name="lane">The unit's stable flight-curve lane.</param>
+            public WithdrawalMotion(Vector3 origin, Vector3 direction, int lane)
             {
                 Origin = origin;
                 Direction = direction;
-                Distance = distance;
+                Lane = lane;
             }
         }
 
@@ -788,25 +786,24 @@ namespace Rebellion.Game.Tactical
                 int unitIndex = GetUnitIndex(unit);
                 Vector3 direction =
                     unit.Side == TacticalBattleSide.Attacker ? -Vector3.UnitZ : Vector3.UnitZ;
-                withdrawal = new WithdrawalMotion(
-                    unit.Position,
-                    direction,
-                    WithdrawalDistances[unitIndex % WithdrawalDistances.Length]
-                );
+                withdrawal = new WithdrawalMotion(unit.Position, direction, unitIndex);
                 withdrawals.Add(unit, withdrawal);
                 unit.BeginWithdrawal();
             }
 
             unit.Forward = withdrawal.Direction;
             withdrawal.ElapsedTime = Math.Min(
-                _withdrawalDuration,
-                withdrawal.ElapsedTime + elapsedTime * movementSpeed / unit.EffectiveSublightSpeed
+                TacticalFlightCurve.WithdrawalDuration,
+                withdrawal.ElapsedTime + elapsedTime
             );
-            float progress = withdrawal.ElapsedTime / _withdrawalDuration;
             unit.Position =
                 withdrawal.Origin
-                + withdrawal.Direction * withdrawal.Distance * progress * progress;
-            if (withdrawal.ElapsedTime >= _withdrawalDuration)
+                + withdrawal.Direction
+                    * TacticalFlightCurve.GetWithdrawalDistance(
+                        withdrawal.Lane,
+                        withdrawal.ElapsedTime
+                    );
+            if (withdrawal.ElapsedTime >= TacticalFlightCurve.WithdrawalDuration)
             {
                 unit.CompleteWithdrawal();
                 events.Add(

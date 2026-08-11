@@ -28,10 +28,8 @@ namespace Rebellion.Game.Tactical
     /// </summary>
     public sealed class TacticalBattleSession
     {
-        private const float _arrivalDuration = 1f;
         private const float _immediateResultStep = 1f / 60f;
         private const int _maximumImmediateResultSteps = 216000;
-        private static readonly float[] ArrivalDistances = { 40f, 57.5f, 65f, 32.5f };
         private readonly List<TacticalShipGroup> groups = new List<TacticalShipGroup>();
         private readonly ReadOnlyCollection<TacticalShipGroup> groupView;
         private readonly Dictionary<
@@ -365,8 +363,12 @@ namespace Rebellion.Game.Tactical
 
             if (Phase == TacticalBattlePhase.Arrival)
             {
-                arrivalElapsedTime = Math.Min(_arrivalDuration, arrivalElapsedTime + elapsedTime);
-                if (arrivalElapsedTime >= _arrivalDuration)
+                arrivalElapsedTime = Math.Min(
+                    TacticalFlightCurve.ArrivalDuration,
+                    arrivalElapsedTime
+                        + Math.Min(elapsedTime, TacticalFlightCurve.MaximumArrivalStep)
+                );
+                if (arrivalElapsedTime >= TacticalFlightCurve.ArrivalDuration)
                     Phase = TacticalBattlePhase.Engagement;
 
                 return;
@@ -428,9 +430,7 @@ namespace Rebellion.Game.Tactical
             if (Phase != TacticalBattlePhase.Arrival)
                 return unit.Position;
 
-            float progress = arrivalElapsedTime / _arrivalDuration;
-            float remaining = 1f - progress * progress;
-            float distance = ArrivalDistances[index % ArrivalDistances.Length] * remaining;
+            float distance = TacticalFlightCurve.GetArrivalDistance(index, arrivalElapsedTime);
             return unit.Position - unit.Forward * distance;
         }
 
