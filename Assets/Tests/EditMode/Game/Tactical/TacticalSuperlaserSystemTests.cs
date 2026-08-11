@@ -241,6 +241,33 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.Throws<ArgumentException>(() => system.GetCharge(ship));
         }
 
+        [Test]
+        public void RestoreState_PendingShot_PreservesChargeAndRemainingDelay()
+        {
+            TacticalUnitState deathStar = CreateDeathStar(TacticalBattleSide.Attacker);
+            deathStar.Unit.InstanceID = "DEATHSTAR1";
+            TacticalUnitState target = CreateShip(TacticalBattleSide.Defender);
+            target.Unit.InstanceID = "TARGET1";
+            TacticalSuperlaserSystem original = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            original.TryFire(deathStar, target);
+            original.Advance(0.4f);
+            TacticalSuperlaserSnapshot snapshot = original.CaptureState();
+            TacticalSuperlaserSystem restored = new TacticalSuperlaserSystem(
+                new[] { deathStar, target }
+            );
+            restored.RestoreState(
+                snapshot,
+                new[] { deathStar, target }.ToDictionary(unit => unit.Unit.GetInstanceID())
+            );
+
+            restored.Advance(0.6f);
+
+            Assert.AreSame(target, restored.DrainResolvedShots().Single().Target);
+            Assert.AreEqual(0.33f, restored.GetCharge(deathStar), 0.01f);
+        }
+
         private static TacticalUnitState CreateDeathStar(TacticalBattleSide side)
         {
             CapitalShip deathStar = new CapitalShip

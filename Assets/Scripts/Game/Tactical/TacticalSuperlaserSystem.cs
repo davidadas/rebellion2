@@ -102,6 +102,152 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Captures charge meters, delayed shots, and undrained superlaser notifications.
+        /// </summary>
+        /// <returns>The resumable superlaser state.</returns>
+        internal TacticalSuperlaserSnapshot CaptureState()
+        {
+            return new TacticalSuperlaserSnapshot
+            {
+                Charges = chargeByDeathStar
+                    .Select(entry => new TacticalSuperlaserChargeSnapshot
+                    {
+                        DeathStarInstanceID = entry.Key.Unit.GetInstanceID(),
+                        Charge = entry.Value,
+                    })
+                    .ToList(),
+                PendingShots = pendingShots
+                    .Select(shot => CaptureShot(shot.Source, shot.Target, shot.RemainingTime))
+                    .ToList(),
+                ReadyDeathStarInstanceIDs = readyDeathStars
+                    .Select(unit => unit.Unit.GetInstanceID())
+                    .ToList(),
+                ResolvedShots = resolvedShots
+                    .Select(shot => CaptureShot(shot.Source, shot.Target, 0f))
+                    .ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Restores charge meters, delayed shots, and undrained superlaser notifications.
+        /// </summary>
+        /// <param name="snapshot">The saved superlaser state.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        internal void RestoreState(
+            TacticalSuperlaserSnapshot snapshot,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+            if (unitsById == null)
+                throw new ArgumentNullException(nameof(unitsById));
+            if (
+                snapshot.Charges == null
+                || snapshot.PendingShots == null
+                || snapshot.ReadyDeathStarInstanceIDs == null
+                || snapshot.ResolvedShots == null
+            )
+            {
+                throw new ArgumentException(
+                    "The superlaser snapshot is incomplete.",
+                    nameof(snapshot)
+                );
+            }
+
+            chargeByDeathStar.Clear();
+            foreach (TacticalSuperlaserChargeSnapshot chargeSnapshot in snapshot.Charges)
+            {
+                TacticalUnitState deathStar = ResolveUnit(
+                    chargeSnapshot.DeathStarInstanceID,
+                    unitsById
+                );
+                if (!IsDeathStar(deathStar) || chargeByDeathStar.ContainsKey(deathStar))
+                {
+                    throw new ArgumentException(
+                        "The superlaser snapshot contains an invalid Death Star.",
+                        nameof(snapshot)
+                    );
+                }
+
+                chargeByDeathStar.Add(
+                    deathStar,
+                    Math.Clamp(chargeSnapshot.Charge, 0f, MaximumCharge)
+                );
+            }
+
+            pendingShots.Clear();
+            pendingShots.AddRange(
+                snapshot.PendingShots.Select(shotSnapshot => new PendingShot(
+                    ResolveUnit(shotSnapshot.SourceInstanceID, unitsById),
+                    ResolveUnit(shotSnapshot.TargetInstanceID, unitsById)
+                )
+                {
+                    RemainingTime = Math.Max(0f, shotSnapshot.RemainingTime),
+                })
+            );
+            readyDeathStars.Clear();
+            readyDeathStars.AddRange(
+                snapshot.ReadyDeathStarInstanceIDs.Select(unitInstanceID =>
+                    ResolveUnit(unitInstanceID, unitsById)
+                )
+            );
+            resolvedShots.Clear();
+            resolvedShots.AddRange(
+                snapshot.ResolvedShots.Select(shotSnapshot => new ResolvedShot(
+                    ResolveUnit(shotSnapshot.SourceInstanceID, unitsById),
+                    ResolveUnit(shotSnapshot.TargetInstanceID, unitsById)
+                ))
+            );
+        }
+
+        /// <summary>
+        /// Captures one superlaser shot using stable strategic unit identifiers.
+        /// </summary>
+        /// <param name="source">The firing Death Star.</param>
+        /// <param name="target">The targeted tactical unit.</param>
+        /// <param name="remainingTime">The remaining delayed-resolution time.</param>
+        /// <returns>The persisted shot state.</returns>
+        private static TacticalSuperlaserShotSnapshot CaptureShot(
+            TacticalUnitState source,
+            TacticalUnitState target,
+            float remainingTime
+        )
+        {
+            return new TacticalSuperlaserShotSnapshot
+            {
+                SourceInstanceID = source.Unit.GetInstanceID(),
+                TargetInstanceID = target.Unit.GetInstanceID(),
+                RemainingTime = remainingTime,
+            };
+        }
+
+        /// <summary>
+        /// Resolves one strategic unit identifier to its tactical state.
+        /// </summary>
+        /// <param name="unitInstanceID">The strategic unit identifier.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        /// <returns>The matching tactical unit.</returns>
+        private static TacticalUnitState ResolveUnit(
+            string unitInstanceID,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (
+                string.IsNullOrEmpty(unitInstanceID)
+                || !unitsById.TryGetValue(unitInstanceID, out TacticalUnitState unit)
+            )
+            {
+                throw new ArgumentException(
+                    $"Tactical unit '{unitInstanceID}' is not part of this battle.",
+                    nameof(unitInstanceID)
+                );
+            }
+
+            return unit;
+        }
+
+        /// <summary>
         /// Advances the dedicated charge meter for every operational Death Star.
         /// </summary>
         /// <param name="elapsedTime">The elapsed tactical time.</param>

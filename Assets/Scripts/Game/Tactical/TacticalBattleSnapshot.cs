@@ -40,6 +40,9 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>Gets or sets the carrier fighter-launch state.</summary>
         public TacticalFighterDeploymentSnapshot FighterDeployment { get; set; }
+
+        /// <summary>Gets or sets Death Star superlaser charge and pending shot state.</summary>
+        public TacticalSuperlaserSnapshot Superlaser { get; set; }
     }
 
     /// <summary>
@@ -176,5 +179,56 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>Gets or sets the tactical time at which the next fighter launches.</summary>
         public float NextLaunchTime { get; set; }
+    }
+
+    /// <summary>
+    /// Stores Death Star superlaser charge, delayed shots, and undrained notifications.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalSuperlaserSnapshot
+    {
+        /// <summary>Gets or sets each participating Death Star's current charge.</summary>
+        public List<TacticalSuperlaserChargeSnapshot> Charges { get; set; } =
+            new List<TacticalSuperlaserChargeSnapshot>();
+
+        /// <summary>Gets or sets shots waiting for their delayed resolution.</summary>
+        public List<TacticalSuperlaserShotSnapshot> PendingShots { get; set; } =
+            new List<TacticalSuperlaserShotSnapshot>();
+
+        /// <summary>Gets or sets ready notifications not yet drained by the simulator.</summary>
+        public List<string> ReadyDeathStarInstanceIDs { get; set; } = new List<string>();
+
+        /// <summary>Gets or sets resolved shots not yet drained by the simulator.</summary>
+        public List<TacticalSuperlaserShotSnapshot> ResolvedShots { get; set; } =
+            new List<TacticalSuperlaserShotSnapshot>();
+    }
+
+    /// <summary>
+    /// Stores one participating Death Star's superlaser charge.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalSuperlaserChargeSnapshot
+    {
+        /// <summary>Gets or sets the Death Star strategic unit identifier.</summary>
+        public string DeathStarInstanceID { get; set; }
+
+        /// <summary>Gets or sets its current charge from zero through one hundred.</summary>
+        public float Charge { get; set; }
+    }
+
+    /// <summary>
+    /// Stores one delayed or newly resolved superlaser shot.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalSuperlaserShotSnapshot
+    {
+        /// <summary>Gets or sets the firing Death Star identifier.</summary>
+        public string SourceInstanceID { get; set; }
+
+        /// <summary>Gets or sets the targeted tactical unit identifier.</summary>
+        public string TargetInstanceID { get; set; }
+
+        /// <summary>Gets or sets the remaining delay before resolution.</summary>
+        public float RemainingTime { get; set; }
     }
 }
