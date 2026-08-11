@@ -114,6 +114,15 @@ public sealed class StrategyWindowPlacementController
     }
 
     /// <summary>
+    /// Gets the centered Options-overlay position from its authored prefab geometry.
+    /// </summary>
+    /// <returns>The source-space Options-overlay position.</returns>
+    public Vector2Int GetOptionsWindowPosition()
+    {
+        return GetCenteredWindowPosition(windowLayer.OptionsMenuWindowPrefab);
+    }
+
+    /// <summary>
     /// Gets the centered confirmation-dialog position from its authored prefab geometry.
     /// </summary>
     /// <returns>The source-space confirmation-dialog position.</returns>

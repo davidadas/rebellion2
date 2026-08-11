@@ -61,6 +61,9 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     private EncyclopediaWindowView encyclopediaWindowPrefab;
 
     [SerializeField]
+    private OptionsMenuView optionsMenuWindowPrefab;
+
+    [SerializeField]
     private Vector2Int constructionWindowOffset;
 
     [SerializeField]
@@ -93,6 +96,8 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     internal FinderWindowView FinderWindowPrefab => finderWindowPrefab;
 
     internal EncyclopediaWindowView EncyclopediaWindowPrefab => encyclopediaWindowPrefab;
+
+    internal OptionsMenuView OptionsMenuWindowPrefab => optionsMenuWindowPrefab;
 
     internal Vector2Int ConstructionWindowOffset => constructionWindowOffset;
 

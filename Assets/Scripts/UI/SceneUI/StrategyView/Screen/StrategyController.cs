@@ -37,7 +37,8 @@ public sealed class StrategyController
         IMissionCreateWindowActions,
         IMessagesWindowActions,
         IStatusWindowActions,
-        IBattleAlertWindowActions
+        IBattleAlertWindowActions,
+        IOptionsMenuActions
 {
     [SerializeField]
     private CanvasGroup contentGroup;
@@ -121,6 +122,8 @@ public sealed class StrategyController
     private StrategyWindowPlacementController windowPlacementController;
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
+    private OptionsMenuController optionsMenuController;
+    private TickSpeed speedBeforeOptions = TickSpeed.Paused;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -374,6 +377,21 @@ public sealed class StrategyController
             CloseWindow,
             MarkDirty
         );
+        optionsMenuController = new OptionsMenuController(
+            strategyWindowLayerView,
+            strategyWindowManager,
+            windowPlacementController.GetOptionsWindowPosition,
+            CloseWindow,
+            AppBootstrap.Instance.GetUserSettingsManager(),
+            AudioManager.EnsureExists(),
+            AppBootstrap.Instance.GetInputManager(),
+            MarkDirty
+        );
+        optionsMenuController.Initialize(this);
+        cancelStack?.Register(optionsMenuController);
+        GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
+        if (settingsRuntime != null)
+            settingsRuntime.ToggleSettingsMenuRequested += HandleToggleOptions;
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
                 gameManager.SpaceCombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
@@ -664,6 +682,11 @@ public sealed class StrategyController
         SetBriefingInteractionEnabled(true);
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
+        if (optionsMenuController != null)
+            cancelStack?.Unregister(optionsMenuController);
+        GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
+        if (settingsRuntime != null)
+            settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleOptions;
         if (gameManager != null)
         {
             gameManager.GameSpeedChanged -= MarkDirty;
@@ -1101,6 +1124,7 @@ public sealed class StrategyController
         advisorReportWindowController.RenderWindows();
         statusWindowController.RenderWindows();
         encyclopediaWindowController.RenderWindows();
+        optionsMenuController.RenderWindows();
         finderWindowController.RenderWindows();
         messagesWindowController.RenderWindows();
         battleAlertWindowController.RenderWindows();
@@ -2740,6 +2764,75 @@ public sealed class StrategyController
     private void MarkDirty()
     {
         dirty = true;
+    }
+
+    /// <summary>
+    /// Toggles the in-game Options overlay when settings input is requested.
+    /// </summary>
+    private void HandleToggleOptions()
+    {
+        if (optionsMenuController == null)
+            return;
+
+        if (optionsMenuController.IsOpen)
+            optionsMenuController.Close();
+        else
+            optionsMenuController.Open();
+    }
+
+    /// <summary>Gets whether saving is available from strategy gameplay.</summary>
+    bool IOptionsMenuActions.CanSave => true;
+
+    /// <summary>Gets whether loading is available from strategy gameplay.</summary>
+    bool IOptionsMenuActions.CanLoad => true;
+
+    /// <summary>Gets whether the running game can be resumed.</summary>
+    bool IOptionsMenuActions.CanReturnToGame => true;
+
+    /// <summary>Pauses gameplay while the Options overlay is open.</summary>
+    void IOptionsMenuActions.PauseForOptions()
+    {
+        if (gameManager == null)
+            return;
+
+        speedBeforeOptions = gameManager.GetGameSpeed();
+        gameManager.SetGameSpeed(TickSpeed.Paused);
+    }
+
+    /// <summary>Restores the pre-pause game speed after the Options overlay closes.</summary>
+    void IOptionsMenuActions.ResumeFromOptions()
+    {
+        gameManager?.SetGameSpeed(speedBeforeOptions);
+    }
+
+    /// <summary>Navigates to the save menu from strategy gameplay.</summary>
+    void IOptionsMenuActions.OpenSaveMenu()
+    {
+        SaveMenuLaunchContext.OpenFromStrategyView();
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+    }
+
+    /// <summary>Navigates to the load menu from strategy gameplay.</summary>
+    void IOptionsMenuActions.OpenLoadMenu()
+    {
+        SaveMenuLaunchContext.OpenFromStrategyView();
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+    }
+
+    /// <summary>Returns to the main menu from strategy gameplay.</summary>
+    void IOptionsMenuActions.ReturnToMainMenu()
+    {
+        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.MainMenuSceneName);
+    }
+
+    /// <summary>Quits the application from strategy gameplay.</summary>
+    void IOptionsMenuActions.QuitApplication()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     /// <summary>
