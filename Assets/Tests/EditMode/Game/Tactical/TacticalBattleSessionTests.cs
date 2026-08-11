@@ -446,7 +446,8 @@ namespace Rebellion.Tests.Game.Tactical
                     .DrainEvents()
                     .Any(combatEvent =>
                         combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed
-                        && combatEvent.Source.Unit == target
+                        && combatEvent.Source.Unit == deathStar
+                        && combatEvent.Target.Unit == target
                     )
             );
         }

@@ -166,12 +166,12 @@ namespace Rebellion.Game.Tactical
         public void Advance(float elapsedTime)
         {
             superlaserSystem.Advance(elapsedTime);
-            foreach (TacticalUnitState target in superlaserSystem.DrainResolvedTargets())
+            foreach (
+                TacticalSuperlaserSystem.ResolvedShot shot in superlaserSystem.DrainResolvedShots()
+            )
             {
-                target.Hull = 0;
-                events.Add(
-                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, target)
-                );
+                shot.Target.Hull = 0;
+                events.Add(TacticalCombatEvent.UnitDestroyed(shot.Source, shot.Target));
             }
             fighterDeploymentSystem.ResolveCarrierStateChanges();
             fighterDeploymentSystem.Advance(elapsedTime);

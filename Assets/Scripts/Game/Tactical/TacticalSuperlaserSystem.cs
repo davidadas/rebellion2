@@ -16,10 +16,42 @@ namespace Rebellion.Game.Tactical
         private readonly HashSet<TacticalUnitState> participants;
         private readonly Dictionary<TacticalUnitState, float> chargeByDeathStar;
         private readonly List<PendingShot> pendingShots = new List<PendingShot>();
-        private readonly List<TacticalUnitState> resolvedTargets = new List<TacticalUnitState>();
+        private readonly List<ResolvedShot> resolvedShots = new List<ResolvedShot>();
+
+        /// <summary>
+        /// Identifies the source and target of one delayed superlaser result.
+        /// </summary>
+        internal readonly struct ResolvedShot
+        {
+            /// <summary>
+            /// Gets the Death Star that fired the shot.
+            /// </summary>
+            public TacticalUnitState Source { get; }
+
+            /// <summary>
+            /// Gets the opposing tactical object struck by the shot.
+            /// </summary>
+            public TacticalUnitState Target { get; }
+
+            /// <summary>
+            /// Initializes one resolved superlaser shot.
+            /// </summary>
+            /// <param name="source">The Death Star that fired the shot.</param>
+            /// <param name="target">The opposing tactical object struck by the shot.</param>
+            public ResolvedShot(TacticalUnitState source, TacticalUnitState target)
+            {
+                Source = source;
+                Target = target;
+            }
+        }
 
         private sealed class PendingShot
         {
+            /// <summary>
+            /// Gets the Death Star that fired the shot.
+            /// </summary>
+            public TacticalUnitState Source { get; }
+
             /// <summary>
             /// Gets the opposing tactical object selected for destruction.
             /// </summary>
@@ -33,9 +65,11 @@ namespace Rebellion.Game.Tactical
             /// <summary>
             /// Initializes one delayed superlaser result.
             /// </summary>
+            /// <param name="source">The Death Star that fired the shot.</param>
             /// <param name="target">The opposing tactical object selected for destruction.</param>
-            public PendingShot(TacticalUnitState target)
+            public PendingShot(TacticalUnitState source, TacticalUnitState target)
             {
+                Source = source;
                 Target = target;
             }
         }
@@ -94,7 +128,7 @@ namespace Rebellion.Game.Tactical
 
                 pendingShots.Remove(shot);
                 if (shot.Target.IsActive)
-                    resolvedTargets.Add(shot.Target);
+                    resolvedShots.Add(new ResolvedShot(shot.Source, shot.Target));
             }
         }
 
@@ -119,18 +153,18 @@ namespace Rebellion.Game.Tactical
             }
 
             chargeByDeathStar[deathStar] = 0f;
-            pendingShots.Add(new PendingShot(target));
+            pendingShots.Add(new PendingShot(deathStar, target));
             return true;
         }
 
         /// <summary>
-        /// Removes and returns targets reached by delayed superlaser shots.
+        /// Removes and returns delayed superlaser shots that reached active targets.
         /// </summary>
-        /// <returns>The active targets whose superlaser delay elapsed.</returns>
-        public IReadOnlyList<TacticalUnitState> DrainResolvedTargets()
+        /// <returns>The resolved shots in simulation order.</returns>
+        public IReadOnlyList<ResolvedShot> DrainResolvedShots()
         {
-            TacticalUnitState[] result = resolvedTargets.ToArray();
-            resolvedTargets.Clear();
+            ResolvedShot[] result = resolvedShots.ToArray();
+            resolvedShots.Clear();
             return result;
         }
 

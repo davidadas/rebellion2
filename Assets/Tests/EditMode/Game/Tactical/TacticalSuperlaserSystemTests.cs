@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
@@ -32,7 +33,7 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.IsTrue(fired);
             Assert.AreEqual(target.InitialHull, target.Hull);
             Assert.AreEqual(0f, system.GetCharge(deathStar));
-            Assert.IsEmpty(system.DrainResolvedTargets());
+            Assert.IsEmpty(system.DrainResolvedShots());
         }
 
         [Test]
@@ -141,7 +142,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             system.Advance(TacticalSuperlaserSystem.ResolutionDelay - 0.01f);
 
-            Assert.IsEmpty(system.DrainResolvedTargets());
+            Assert.IsEmpty(system.DrainResolvedShots());
         }
 
         [Test]
@@ -156,7 +157,10 @@ namespace Rebellion.Tests.Game.Tactical
 
             system.Advance(TacticalSuperlaserSystem.ResolutionDelay);
 
-            CollectionAssert.AreEqual(new[] { target }, system.DrainResolvedTargets());
+            TacticalSuperlaserSystem.ResolvedShot shot = system.DrainResolvedShots().Single();
+
+            Assert.AreSame(deathStar, shot.Source);
+            Assert.AreSame(target, shot.Target);
         }
 
         [Test]
@@ -172,7 +176,7 @@ namespace Rebellion.Tests.Game.Tactical
 
             system.Advance(TacticalSuperlaserSystem.ResolutionDelay);
 
-            Assert.IsEmpty(system.DrainResolvedTargets());
+            Assert.IsEmpty(system.DrainResolvedShots());
         }
 
         [Test]
@@ -188,7 +192,10 @@ namespace Rebellion.Tests.Game.Tactical
 
             system.Advance(TacticalSuperlaserSystem.ResolutionDelay);
 
-            CollectionAssert.AreEqual(new[] { target }, system.DrainResolvedTargets());
+            TacticalSuperlaserSystem.ResolvedShot shot = system.DrainResolvedShots().Single();
+
+            Assert.AreSame(deathStar, shot.Source);
+            Assert.AreSame(target, shot.Target);
         }
 
         [Test]
