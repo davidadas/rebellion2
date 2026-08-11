@@ -334,6 +334,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="capitalCommandBudgets">The capital-command budget for each side.</param>
         /// <param name="isDeathStarAttackOrderValid">Tests whether an assigned Death Star attack remains valid.</param>
         /// <param name="random">The battle's deterministic random source.</param>
+        /// <param name="initializeState">Whether to create new-battle formations and launch queues.</param>
         public TacticalBattleSimulator(
             IReadOnlyList<TacticalUnitState> units,
             IReadOnlyList<TacticalShipGroup> groups,
@@ -341,7 +342,8 @@ namespace Rebellion.Game.Tactical
             IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets,
             IReadOnlyDictionary<TacticalBattleSide, float> capitalCommandBudgets,
             Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            bool initializeState = true
         )
         {
             this.units = units ?? throw new ArgumentNullException(nameof(units));
@@ -362,11 +364,223 @@ namespace Rebellion.Game.Tactical
                 new TacticalDeathStarAttackResolver(random),
                 fighterCommandBudgets
             );
-            fighterDeploymentSystem = new TacticalFighterDeploymentSystem(units, random);
+            fighterDeploymentSystem = new TacticalFighterDeploymentSystem(
+                units,
+                random,
+                initializeState
+            );
             superlaserSystem = new TacticalSuperlaserSystem(units);
-            PlaceFormation(TacticalBattleSide.Attacker, -1f, Vector3.UnitZ);
-            PlaceFormation(TacticalBattleSide.Defender, 1f, -Vector3.UnitZ);
-            PlaceGroupMarkers();
+            if (initializeState)
+            {
+                PlaceFormation(TacticalBattleSide.Attacker, -1f, Vector3.UnitZ);
+                PlaceFormation(TacticalBattleSide.Defender, 1f, -Vector3.UnitZ);
+                PlaceGroupMarkers();
+            }
+        }
+
+        /// <summary>
+        /// Captures simulator-owned targeting, maneuver, movement, and weapon state.
+        /// </summary>
+        /// <param name="snapshot">The battle snapshot receiving simulator state.</param>
+        internal void CaptureState(TacticalBattleSnapshot snapshot)
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+
+            snapshot.TacticalTime = tacticalTime;
+            snapshot.FighterDeployment = fighterDeploymentSystem.CaptureState();
+            snapshot.Superlaser = superlaserSystem.CaptureState();
+            snapshot.DeathStarAttack = deathStarAttackSystem.CaptureState(groups);
+            snapshot.Targets = targets
+                .Select(entry => new TacticalTargetSnapshot
+                {
+                    SourceInstanceID = GetUnitID(entry.Key),
+                    TargetInstanceID = GetUnitID(entry.Value),
+                })
+                .ToList();
+            snapshot.ManeuverOrders = maneuverOrders
+                .Select(entry => new TacticalManeuverOrderSnapshot
+                {
+                    GroupIndex = GetGroupIndex(entry.Key),
+                    CommandRevision = entry.Value.CommandRevision,
+                    TargetInstanceID = GetUnitID(entry.Value.Target),
+                    Origin = CaptureVector(entry.Value.Origin),
+                    Marker = CaptureVector(entry.Value.Marker),
+                })
+                .ToList();
+            snapshot.CollisionAvoidance = collisionAvoidance
+                .Select(entry => new TacticalCollisionAvoidanceSnapshot
+                {
+                    UnitInstanceID = GetUnitID(entry.Key),
+                    VerticalClearanceBlocked = entry.Value.VerticalClearanceBlocked,
+                    HasTemporaryOffset = entry.Value.TemporaryOffset.HasValue,
+                    TemporaryOffset = entry.Value.TemporaryOffset.HasValue
+                        ? CaptureVector(entry.Value.TemporaryOffset.Value)
+                        : null,
+                    Phase = entry.Value.Phase,
+                    LastChangeTime = entry.Value.LastChangeTime,
+                })
+                .ToList();
+            snapshot.MarkerStability = markerStability
+                .Select(entry => new TacticalMarkerStabilitySnapshot
+                {
+                    GroupIndex = GetGroupIndex(entry.Key),
+                    Position = CaptureVector(entry.Value.Position),
+                    RefreshCount = entry.Value.RefreshCount,
+                })
+                .ToList();
+            snapshot.Withdrawals = withdrawals
+                .Select(entry => new TacticalWithdrawalSnapshot
+                {
+                    UnitInstanceID = GetUnitID(entry.Key),
+                    Origin = CaptureVector(entry.Value.Origin),
+                    Direction = CaptureVector(entry.Value.Direction),
+                    Lane = entry.Value.Lane,
+                    ElapsedTime = entry.Value.ElapsedTime,
+                })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Restores simulator-owned state without resolving combat or consuming random values.
+        /// </summary>
+        /// <param name="snapshot">The saved battle state.</param>
+        /// <param name="unitsById">All participating tactical units indexed by identifier.</param>
+        internal void RestoreState(
+            TacticalBattleSnapshot snapshot,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (snapshot == null)
+                throw new ArgumentNullException(nameof(snapshot));
+            if (unitsById == null)
+                throw new ArgumentNullException(nameof(unitsById));
+            if (
+                snapshot.FighterDeployment == null
+                || snapshot.Superlaser == null
+                || snapshot.DeathStarAttack == null
+                || snapshot.Targets == null
+                || snapshot.ManeuverOrders == null
+                || snapshot.CollisionAvoidance == null
+                || snapshot.MarkerStability == null
+                || snapshot.Withdrawals == null
+            )
+            {
+                throw new ArgumentException(
+                    "The tactical simulator snapshot is incomplete.",
+                    nameof(snapshot)
+                );
+            }
+
+            tacticalTime = Math.Max(0f, snapshot.TacticalTime);
+            fighterDeploymentSystem.RestoreState(snapshot.FighterDeployment, unitsById);
+            superlaserSystem.RestoreState(snapshot.Superlaser, unitsById);
+            deathStarAttackSystem.RestoreState(snapshot.DeathStarAttack, groups, unitsById);
+
+            targets.Clear();
+            foreach (TacticalTargetSnapshot targetSnapshot in snapshot.Targets)
+            {
+                AddUnique(
+                    targets,
+                    ResolveUnit(targetSnapshot.SourceInstanceID, unitsById),
+                    ResolveUnit(targetSnapshot.TargetInstanceID, unitsById),
+                    "target"
+                );
+            }
+
+            maneuverOrders.Clear();
+            foreach (TacticalManeuverOrderSnapshot orderSnapshot in snapshot.ManeuverOrders)
+            {
+                AddUnique(
+                    maneuverOrders,
+                    ResolveGroup(orderSnapshot.GroupIndex),
+                    new ManeuverOrder(
+                        orderSnapshot.CommandRevision,
+                        ResolveUnit(orderSnapshot.TargetInstanceID, unitsById),
+                        RestoreVector(orderSnapshot.Origin, nameof(orderSnapshot.Origin)),
+                        RestoreVector(orderSnapshot.Marker, nameof(orderSnapshot.Marker))
+                    ),
+                    "maneuver order"
+                );
+            }
+
+            collisionAvoidance.Clear();
+            foreach (
+                TacticalCollisionAvoidanceSnapshot avoidanceSnapshot in snapshot.CollisionAvoidance
+            )
+            {
+                if (
+                    avoidanceSnapshot.HasTemporaryOffset
+                    && avoidanceSnapshot.TemporaryOffset == null
+                )
+                {
+                    throw new ArgumentException(
+                        "A tactical collision detour is incomplete.",
+                        nameof(snapshot)
+                    );
+                }
+
+                AddUnique(
+                    collisionAvoidance,
+                    ResolveUnit(avoidanceSnapshot.UnitInstanceID, unitsById),
+                    new CollisionAvoidanceState
+                    {
+                        VerticalClearanceBlocked = avoidanceSnapshot.VerticalClearanceBlocked,
+                        TemporaryOffset = avoidanceSnapshot.HasTemporaryOffset
+                            ? RestoreVector(
+                                avoidanceSnapshot.TemporaryOffset,
+                                nameof(avoidanceSnapshot.TemporaryOffset)
+                            )
+                            : null,
+                        Phase = avoidanceSnapshot.Phase,
+                        LastChangeTime = avoidanceSnapshot.LastChangeTime,
+                    },
+                    "collision detour"
+                );
+            }
+
+            markerStability.Clear();
+            foreach (TacticalMarkerStabilitySnapshot stabilitySnapshot in snapshot.MarkerStability)
+            {
+                AddUnique(
+                    markerStability,
+                    ResolveGroup(stabilitySnapshot.GroupIndex),
+                    new MarkerStabilityState
+                    {
+                        Position = RestoreVector(
+                            stabilitySnapshot.Position,
+                            nameof(stabilitySnapshot.Position)
+                        ),
+                        RefreshCount = Math.Max(0, stabilitySnapshot.RefreshCount),
+                    },
+                    "marker stability"
+                );
+            }
+
+            withdrawals.Clear();
+            foreach (TacticalWithdrawalSnapshot withdrawalSnapshot in snapshot.Withdrawals)
+            {
+                AddUnique(
+                    withdrawals,
+                    ResolveUnit(withdrawalSnapshot.UnitInstanceID, unitsById),
+                    new WithdrawalMotion(
+                        RestoreVector(withdrawalSnapshot.Origin, nameof(withdrawalSnapshot.Origin)),
+                        RestoreVector(
+                            withdrawalSnapshot.Direction,
+                            nameof(withdrawalSnapshot.Direction)
+                        ),
+                        withdrawalSnapshot.Lane
+                    )
+                    {
+                        ElapsedTime = Math.Clamp(
+                            withdrawalSnapshot.ElapsedTime,
+                            0f,
+                            TacticalFlightCurve.WithdrawalDuration
+                        ),
+                    },
+                    "withdrawal"
+                );
+            }
         }
 
         /// <summary>
@@ -1471,6 +1685,128 @@ namespace Rebellion.Game.Tactical
             throw new InvalidOperationException(
                 "The tactical unit does not belong to this battle."
             );
+        }
+
+        /// <summary>
+        /// Gets a participating unit's stable strategic identifier.
+        /// </summary>
+        /// <param name="unit">The tactical unit to identify.</param>
+        /// <returns>The strategic unit identifier.</returns>
+        private static string GetUnitID(TacticalUnitState unit)
+        {
+            string instanceID = unit?.Unit?.GetInstanceID();
+            if (string.IsNullOrEmpty(instanceID))
+                throw new InvalidOperationException("A tactical unit has no stable identifier.");
+
+            return instanceID;
+        }
+
+        /// <summary>
+        /// Gets a command group's stable index in this battle.
+        /// </summary>
+        /// <param name="group">The tactical group to locate.</param>
+        /// <returns>The group index.</returns>
+        private int GetGroupIndex(TacticalShipGroup group)
+        {
+            for (int index = 0; index < groups.Count; index++)
+            {
+                if (ReferenceEquals(groups[index], group))
+                    return index;
+            }
+
+            throw new InvalidOperationException("A tactical group does not belong to this battle.");
+        }
+
+        /// <summary>
+        /// Resolves a saved group index to this battle's command group.
+        /// </summary>
+        /// <param name="groupIndex">The saved group index.</param>
+        /// <returns>The matching command group.</returns>
+        private TacticalShipGroup ResolveGroup(int groupIndex)
+        {
+            if (groupIndex < 0 || groupIndex >= groups.Count)
+                throw new ArgumentException(
+                    "A tactical group index is invalid.",
+                    nameof(groupIndex)
+                );
+
+            return groups[groupIndex];
+        }
+
+        /// <summary>
+        /// Resolves a saved strategic identifier to a participating tactical unit.
+        /// </summary>
+        /// <param name="unitInstanceID">The saved strategic unit identifier.</param>
+        /// <param name="unitsById">All participating units indexed by identifier.</param>
+        /// <returns>The matching tactical unit.</returns>
+        private static TacticalUnitState ResolveUnit(
+            string unitInstanceID,
+            IReadOnlyDictionary<string, TacticalUnitState> unitsById
+        )
+        {
+            if (
+                string.IsNullOrEmpty(unitInstanceID)
+                || !unitsById.TryGetValue(unitInstanceID, out TacticalUnitState unit)
+            )
+            {
+                throw new ArgumentException(
+                    $"Tactical unit '{unitInstanceID}' is not part of this battle.",
+                    nameof(unitInstanceID)
+                );
+            }
+
+            return unit;
+        }
+
+        /// <summary>
+        /// Adds one restored entry while rejecting duplicate snapshot keys.
+        /// </summary>
+        /// <typeparam name="TKey">The restored dictionary key type.</typeparam>
+        /// <typeparam name="TValue">The restored dictionary value type.</typeparam>
+        /// <param name="dictionary">The dictionary receiving the entry.</param>
+        /// <param name="key">The restored key.</param>
+        /// <param name="value">The restored value.</param>
+        /// <param name="description">The entry name used in validation errors.</param>
+        private static void AddUnique<TKey, TValue>(
+            IDictionary<TKey, TValue> dictionary,
+            TKey key,
+            TValue value,
+            string description
+        )
+        {
+            if (dictionary.ContainsKey(key))
+                throw new ArgumentException($"The tactical snapshot duplicates a {description}.");
+
+            dictionary.Add(key, value);
+        }
+
+        /// <summary>
+        /// Converts a runtime vector to its persisted representation.
+        /// </summary>
+        /// <param name="value">The vector to capture.</param>
+        /// <returns>The persisted vector components.</returns>
+        private static TacticalVectorSnapshot CaptureVector(Vector3 value)
+        {
+            return new TacticalVectorSnapshot
+            {
+                X = value.X,
+                Y = value.Y,
+                Z = value.Z,
+            };
+        }
+
+        /// <summary>
+        /// Converts persisted vector components to a runtime vector.
+        /// </summary>
+        /// <param name="snapshot">The vector components to restore.</param>
+        /// <param name="parameterName">The owning snapshot member name.</param>
+        /// <returns>The restored runtime vector.</returns>
+        private static Vector3 RestoreVector(TacticalVectorSnapshot snapshot, string parameterName)
+        {
+            if (snapshot == null)
+                throw new ArgumentException("A tactical vector is missing.", parameterName);
+
+            return new Vector3(snapshot.X, snapshot.Y, snapshot.Z);
         }
 
         /// <summary>

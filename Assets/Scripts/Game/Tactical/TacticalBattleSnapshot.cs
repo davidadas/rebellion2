@@ -46,6 +46,29 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>Gets or sets active and completed fighter attacks against a Death Star.</summary>
         public TacticalDeathStarAttackSnapshot DeathStarAttack { get; set; }
+
+        /// <summary>Gets or sets elapsed simulation time used by delayed tactical behavior.</summary>
+        public float TacticalTime { get; set; }
+
+        /// <summary>Gets or sets each unit's retained combat target.</summary>
+        public List<TacticalTargetSnapshot> Targets { get; set; } =
+            new List<TacticalTargetSnapshot>();
+
+        /// <summary>Gets or sets resolved group maneuver anchors.</summary>
+        public List<TacticalManeuverOrderSnapshot> ManeuverOrders { get; set; } =
+            new List<TacticalManeuverOrderSnapshot>();
+
+        /// <summary>Gets or sets persistent capital-ship collision detours.</summary>
+        public List<TacticalCollisionAvoidanceSnapshot> CollisionAvoidance { get; set; } =
+            new List<TacticalCollisionAvoidanceSnapshot>();
+
+        /// <summary>Gets or sets marker-stability counters used to select collision detours.</summary>
+        public List<TacticalMarkerStabilitySnapshot> MarkerStability { get; set; } =
+            new List<TacticalMarkerStabilitySnapshot>();
+
+        /// <summary>Gets or sets active unit withdrawal curves.</summary>
+        public List<TacticalWithdrawalSnapshot> Withdrawals { get; set; } =
+            new List<TacticalWithdrawalSnapshot>();
     }
 
     /// <summary>
@@ -278,5 +301,103 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>Gets or sets the number of report checkpoints already emitted.</summary>
         public int ReportsEmitted { get; set; }
+    }
+
+    /// <summary>
+    /// Stores one unit's retained tactical combat target.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalTargetSnapshot
+    {
+        /// <summary>Gets or sets the acting unit identifier.</summary>
+        public string SourceInstanceID { get; set; }
+
+        /// <summary>Gets or sets the targeted unit identifier.</summary>
+        public string TargetInstanceID { get; set; }
+    }
+
+    /// <summary>
+    /// Stores one resolved group maneuver for the lifetime of its command revision.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalManeuverOrderSnapshot
+    {
+        /// <summary>Gets or sets the tactical group index.</summary>
+        public int GroupIndex { get; set; }
+
+        /// <summary>Gets or sets the command revision that created the maneuver.</summary>
+        public int CommandRevision { get; set; }
+
+        /// <summary>Gets or sets the opposing target identifier.</summary>
+        public string TargetInstanceID { get; set; }
+
+        /// <summary>Gets or sets the group center used to calculate the maneuver.</summary>
+        public TacticalVectorSnapshot Origin { get; set; }
+
+        /// <summary>Gets or sets the resolved navigation anchor.</summary>
+        public TacticalVectorSnapshot Marker { get; set; }
+    }
+
+    /// <summary>
+    /// Stores one capital ship's persistent collision-detour state.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalCollisionAvoidanceSnapshot
+    {
+        /// <summary>Gets or sets the capital-ship identifier.</summary>
+        public string UnitInstanceID { get; set; }
+
+        /// <summary>Gets or sets whether vertical clearance failed on the previous update.</summary>
+        public bool VerticalClearanceBlocked { get; set; }
+
+        /// <summary>Gets or sets whether a temporary detour is active.</summary>
+        public bool HasTemporaryOffset { get; set; }
+
+        /// <summary>Gets or sets the active temporary destination offset.</summary>
+        public TacticalVectorSnapshot TemporaryOffset { get; set; }
+
+        /// <summary>Gets or sets the next detour phase.</summary>
+        public int Phase { get; set; }
+
+        /// <summary>Gets or sets when the temporary offset last changed.</summary>
+        public float LastChangeTime { get; set; }
+    }
+
+    /// <summary>
+    /// Stores the stable-marker count for one tactical group.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalMarkerStabilitySnapshot
+    {
+        /// <summary>Gets or sets the tactical group index.</summary>
+        public int GroupIndex { get; set; }
+
+        /// <summary>Gets or sets the marker position observed on the previous update.</summary>
+        public TacticalVectorSnapshot Position { get; set; }
+
+        /// <summary>Gets or sets consecutive refreshes at the same position.</summary>
+        public int RefreshCount { get; set; }
+    }
+
+    /// <summary>
+    /// Stores one unit's active withdrawal curve.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalWithdrawalSnapshot
+    {
+        /// <summary>Gets or sets the withdrawing unit identifier.</summary>
+        public string UnitInstanceID { get; set; }
+
+        /// <summary>Gets or sets the position where withdrawal began.</summary>
+        public TacticalVectorSnapshot Origin { get; set; }
+
+        /// <summary>Gets or sets the fixed exit direction.</summary>
+        public TacticalVectorSnapshot Direction { get; set; }
+
+        /// <summary>Gets or sets the stable flight-curve lane.</summary>
+        public int Lane { get; set; }
+
+        /// <summary>Gets or sets elapsed withdrawal time.</summary>
+        public float ElapsedTime { get; set; }
     }
 }

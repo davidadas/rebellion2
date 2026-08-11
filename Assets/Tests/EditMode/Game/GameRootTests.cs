@@ -149,6 +149,113 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void Serialization_TacticalSimulatorState_RoundTripsMutableState()
+        {
+            _game.PendingSpaceCombat = new SpaceCombatDecision
+            {
+                TacticalBattle = new TacticalBattleSnapshot
+                {
+                    TacticalTime = 12f,
+                    FighterDeployment = new TacticalFighterDeploymentSnapshot
+                    {
+                        ElapsedTime = 4f,
+                        LaunchQueues = new List<TacticalFighterLaunchQueueSnapshot>
+                        {
+                            new TacticalFighterLaunchQueueSnapshot
+                            {
+                                CarrierInstanceID = "CARRIER1",
+                                FighterInstanceIDs = new List<string> { "FIGHTERS1" },
+                                NextLaunchTime = 7f,
+                            },
+                        },
+                    },
+                    Superlaser = new TacticalSuperlaserSnapshot
+                    {
+                        Charges = new List<TacticalSuperlaserChargeSnapshot>
+                        {
+                            new TacticalSuperlaserChargeSnapshot
+                            {
+                                DeathStarInstanceID = "DEATHSTAR1",
+                                Charge = 25f,
+                            },
+                        },
+                    },
+                    DeathStarAttack = new TacticalDeathStarAttackSnapshot
+                    {
+                        CompletedGroupIndexes = new List<int> { 2 },
+                    },
+                    Targets = new List<TacticalTargetSnapshot>
+                    {
+                        new TacticalTargetSnapshot
+                        {
+                            SourceInstanceID = "SHIP1",
+                            TargetInstanceID = "SHIP2",
+                        },
+                    },
+                    ManeuverOrders = new List<TacticalManeuverOrderSnapshot>
+                    {
+                        new TacticalManeuverOrderSnapshot
+                        {
+                            GroupIndex = 1,
+                            CommandRevision = 3,
+                            TargetInstanceID = "SHIP2",
+                            Origin = new TacticalVectorSnapshot { X = 1f },
+                            Marker = new TacticalVectorSnapshot { Z = 2f },
+                        },
+                    },
+                    CollisionAvoidance = new List<TacticalCollisionAvoidanceSnapshot>
+                    {
+                        new TacticalCollisionAvoidanceSnapshot
+                        {
+                            UnitInstanceID = "SHIP1",
+                            HasTemporaryOffset = true,
+                            TemporaryOffset = new TacticalVectorSnapshot { Y = 5f },
+                            Phase = 2,
+                        },
+                    },
+                    MarkerStability = new List<TacticalMarkerStabilitySnapshot>
+                    {
+                        new TacticalMarkerStabilitySnapshot
+                        {
+                            GroupIndex = 1,
+                            Position = new TacticalVectorSnapshot { Z = 6f },
+                            RefreshCount = 5,
+                        },
+                    },
+                    Withdrawals = new List<TacticalWithdrawalSnapshot>
+                    {
+                        new TacticalWithdrawalSnapshot
+                        {
+                            UnitInstanceID = "SHIP1",
+                            Origin = new TacticalVectorSnapshot { Z = -50f },
+                            Direction = new TacticalVectorSnapshot { Z = -1f },
+                            Lane = 4,
+                            ElapsedTime = 1.5f,
+                        },
+                    },
+                },
+            };
+
+            string xml = SerializationHelper.Serialize(_game);
+            TacticalBattleSnapshot restored = SerializationHelper
+                .Deserialize<GameRoot>(xml)
+                .PendingSpaceCombat.TacticalBattle;
+
+            Assert.AreEqual(12f, restored.TacticalTime);
+            Assert.AreEqual(
+                "CARRIER1",
+                restored.FighterDeployment.LaunchQueues.Single().CarrierInstanceID
+            );
+            Assert.AreEqual(25f, restored.Superlaser.Charges.Single().Charge);
+            Assert.AreEqual(2, restored.DeathStarAttack.CompletedGroupIndexes.Single());
+            Assert.AreEqual("SHIP2", restored.Targets.Single().TargetInstanceID);
+            Assert.AreEqual(3, restored.ManeuverOrders.Single().CommandRevision);
+            Assert.AreEqual(5f, restored.CollisionAvoidance.Single().TemporaryOffset.Y);
+            Assert.AreEqual(5, restored.MarkerStability.Single().RefreshCount);
+            Assert.AreEqual(1.5f, restored.Withdrawals.Single().ElapsedTime);
+        }
+
+        [Test]
         public void GetFactions_GameWithMultipleFactions_ReturnsAllFactions()
         {
             // Get factions and verify the count and contents.

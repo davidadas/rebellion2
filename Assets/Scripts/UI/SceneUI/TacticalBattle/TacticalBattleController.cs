@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
@@ -74,9 +75,19 @@ public sealed class TacticalBattleController : MonoBehaviour
             );
         }
 
+        GameRoot game = gameManager.GetGame();
+        TacticalBattleSession retainedSession = TacticalBattleLaunchContext.TakeRetainedSession();
         Session =
-            TacticalBattleLaunchContext.TakeRetainedSession()
-            ?? TacticalBattleSession.Create(encounter, gameManager.GetGame().Random);
+            retainedSession
+            ?? (
+                game.PendingSpaceCombat?.TacticalBattle != null
+                    ? TacticalBattleSession.Restore(
+                        encounter,
+                        game.Random,
+                        game.PendingSpaceCombat.TacticalBattle
+                    )
+                    : TacticalBattleSession.Create(encounter, game.Random)
+            );
         view = GetComponentInChildren<TacticalBattleView>(true);
         if (view == null)
             throw new MissingReferenceException("Tactical battle view is missing.");
@@ -612,6 +623,12 @@ public sealed class TacticalBattleController : MonoBehaviour
             playerPaused = false;
         }
 
+        GameManager gameManager = AppBootstrap.Instance.GetRuntime()?.GetActiveGameManager();
+        SpaceCombatDecision pendingCombat = gameManager?.GetGame().PendingSpaceCombat;
+        if (pendingCombat == null)
+            throw new InvalidOperationException("The tactical encounter is no longer pending.");
+
+        pendingCombat.TacticalBattle = Session.CaptureState();
         TacticalBattleLaunchContext.RetainSession(Session);
         SaveMenuLaunchContext.OpenFromTacticalBattle();
         AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);

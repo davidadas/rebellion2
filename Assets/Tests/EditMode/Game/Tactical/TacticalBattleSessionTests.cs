@@ -800,6 +800,44 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Restore_ActiveWithdrawal_ContinuesOriginalFlightCurve()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.InstanceID = "ATTACKER1";
+            attackingShip.SublightSpeed = 1;
+            CapitalShip defendingShip = CreateShip(450, 0);
+            defendingShip.InstanceID = "DEFENDER1";
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(attackingShip),
+                DefenderFleet = CreateFleet(defendingShip),
+            };
+            TacticalBattleSession original = CreateTacticalSession(encounter);
+            original
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Withdraw);
+            original.Advance(0.5f);
+            TacticalBattleSnapshot snapshot = original.CaptureState();
+            original.Advance(0.5f);
+            Vector3 expectedPosition = original
+                .Units.Single(unit => unit.Unit == attackingShip)
+                .Position;
+            TacticalBattleSession restored = TacticalBattleSession.Restore(
+                encounter,
+                new FixedRandomProvider(new[] { 0d }),
+                snapshot
+            );
+
+            restored.Advance(0.5f);
+
+            Assert.AreEqual(
+                expectedPosition,
+                restored.Units.Single(unit => unit.Unit == attackingShip).Position
+            );
+        }
+
+        [Test]
         public void OrderWithdrawal_ActiveSide_AssignsEveryCommandGroup()
         {
             Starfighter fighters = CreateFighters(12, 10);

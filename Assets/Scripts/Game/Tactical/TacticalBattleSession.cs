@@ -108,7 +108,8 @@ namespace Rebellion.Game.Tactical
         private TacticalBattleSession(
             PendingCombatResult encounter,
             IList<TacticalUnitState> units,
-            IRandomNumberProvider random
+            IRandomNumberProvider random,
+            bool initializeSimulatorState
         )
         {
             Encounter = encounter;
@@ -125,7 +126,8 @@ namespace Rebellion.Game.Tactical
                 BuildFighterCommandBudgets(encounter),
                 BuildCapitalCommandBudgets(encounter),
                 IsDeathStarAttackOrderValid,
-                random
+                random,
+                initializeSimulatorState
             );
         }
 
@@ -138,6 +140,22 @@ namespace Rebellion.Game.Tactical
         public static TacticalBattleSession Create(
             PendingCombatResult encounter,
             IRandomNumberProvider random
+        )
+        {
+            return Create(encounter, random, true);
+        }
+
+        /// <summary>
+        /// Creates the stable tactical object graph with optional new-battle initialization.
+        /// </summary>
+        /// <param name="encounter">The pending strategic encounter.</param>
+        /// <param name="random">The game's deterministic random source.</param>
+        /// <param name="initializeSimulatorState">Whether to create new formations and launch queues.</param>
+        /// <returns>The tactical battle session.</returns>
+        private static TacticalBattleSession Create(
+            PendingCombatResult encounter,
+            IRandomNumberProvider random,
+            bool initializeSimulatorState
         )
         {
             if (encounter == null)
@@ -162,7 +180,7 @@ namespace Rebellion.Game.Tactical
             );
             EnsureSideCanFight(units, TacticalBattleSide.Attacker, nameof(encounter));
             EnsureSideCanFight(units, TacticalBattleSide.Defender, nameof(encounter));
-            return new TacticalBattleSession(encounter, units, random);
+            return new TacticalBattleSession(encounter, units, random, initializeSimulatorState);
         }
 
         /// <summary>
@@ -181,7 +199,7 @@ namespace Rebellion.Game.Tactical
             if (snapshot == null)
                 throw new ArgumentNullException(nameof(snapshot));
 
-            TacticalBattleSession session = Create(encounter, random);
+            TacticalBattleSession session = Create(encounter, random, false);
             session.RestoreState(snapshot);
             return session;
         }
@@ -192,7 +210,7 @@ namespace Rebellion.Game.Tactical
         /// <returns>The resumable tactical state.</returns>
         public TacticalBattleSnapshot CaptureState()
         {
-            return new TacticalBattleSnapshot
+            TacticalBattleSnapshot snapshot = new TacticalBattleSnapshot
             {
                 Phase = Phase,
                 ArrivalElapsedTime = arrivalElapsedTime,
@@ -213,6 +231,8 @@ namespace Rebellion.Game.Tactical
                     .Select((group, groupIndex) => group.CaptureState(groupIndex))
                     .ToList(),
             };
+            simulator.CaptureState(snapshot);
+            return snapshot;
         }
 
         /// <summary>
@@ -293,6 +313,7 @@ namespace Rebellion.Game.Tactical
                 snapshot.DefenderComputerControlled,
                 snapshot.PlayerControlConfigured
             );
+            simulator.RestoreState(snapshot, unitsById);
         }
 
         /// <summary>
