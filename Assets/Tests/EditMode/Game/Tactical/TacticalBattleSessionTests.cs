@@ -752,6 +752,41 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_MultipleTargetsInDifferentCapitalArcs_FiresStrongestArc()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
+            {
+                10,
+                0,
+                40,
+                0,
+                200,
+            };
+            CapitalShip forwardTarget = CreateShip(100, 0);
+            CapitalShip portTarget = CreateShip(100, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(forwardTarget, portTarget),
+                }
+            );
+            TacticalUnitState attacker = session.Units.Single(unit => unit.Unit == attackingShip);
+            TacticalUnitState forward = session.Units.Single(unit => unit.Unit == forwardTarget);
+            TacticalUnitState port = session.Units.Single(unit => unit.Unit == portTarget);
+            attacker.Position = Vector3.Zero;
+            attacker.Forward = Vector3.UnitZ;
+            forward.Position = new Vector3(0f, 0f, 50f);
+            port.Position = new Vector3(-50f, 0f, 0f);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(100, forward.Hull);
+            Assert.AreEqual(60, port.Hull);
+        }
+
+        [Test]
         public void Advance_HoldBehavior_FiresWithoutMoving()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

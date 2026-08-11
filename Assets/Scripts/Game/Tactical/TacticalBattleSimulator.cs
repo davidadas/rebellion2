@@ -469,7 +469,8 @@ namespace Rebellion.Game.Tactical
             if (target == null)
                 return Array.Empty<PendingAttack>();
 
-            IReadOnlyList<PendingAttack> attacks = FireStrongestArc(unit, target);
+            TacticalUnitState attackTarget = SelectAttackTarget(unit, group, behavior, target);
+            IReadOnlyList<PendingAttack> attacks = FireTargetArc(unit, attackTarget);
             if (behavior == TacticalBehavior.Hold)
                 return attacks;
 
@@ -506,7 +507,7 @@ namespace Rebellion.Game.Tactical
             IReadOnlyList<PendingAttack> attacks =
                 attackTarget == null
                     ? Array.Empty<PendingAttack>()
-                    : FireStrongestArc(unit, attackTarget);
+                    : FireTargetArc(unit, attackTarget);
             Vector3 approachDirection = NormalizeOrDefault(
                 escortTarget.Position - unit.Position,
                 unit.Forward
@@ -569,25 +570,8 @@ namespace Rebellion.Game.Tactical
                 return null;
             }
 
-            IEnumerable<TacticalUnitState> candidates =
-                group?.Targets.Count > 0
-                    ? group.Targets
-                    : units.Where(candidate => candidate.Side != unit.Side);
-            candidates = candidates.Where(candidate => candidate.IsActive);
-            if (behavior == TacticalBehavior.AttackFighters)
-                candidates = candidates.Where(candidate =>
-                    candidate.Kind == TacticalUnitKind.Fighters
-                );
-            else if (behavior == TacticalBehavior.AttackCapitalShips)
-                candidates = candidates.Where(candidate =>
-                    candidate.Kind == TacticalUnitKind.CapitalShip
-                );
-            else if (behavior == TacticalBehavior.AttackDeathStar)
-                candidates = candidates.Where(candidate =>
-                    candidate.Unit is CapitalShip { IsDeathStar: true }
-                );
-
-            TacticalUnitState[] eligibleTargets = candidates.ToArray();
+            TacticalUnitState[] eligibleTargets = GetEligibleTargets(unit, group, behavior)
+                .ToArray();
             if (
                 targets.TryGetValue(unit, out TacticalUnitState currentTarget)
                 && eligibleTargets.Contains(currentTarget)
@@ -620,16 +604,106 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Selects and discharges the strongest charged arc that can reach an eligible target.
+        /// Enumerates active opposing objects allowed by one tactical behavior.
+        /// </summary>
+        /// <param name="unit">The acting unit.</param>
+        /// <param name="group">The unit's controlling group, if assigned.</param>
+        /// <param name="behavior">The group's active behavior.</param>
+        /// <returns>The eligible targets in tactical object order.</returns>
+        private IEnumerable<TacticalUnitState> GetEligibleTargets(
+            TacticalUnitState unit,
+            TacticalShipGroup group,
+            TacticalBehavior behavior
+        )
+        {
+            IEnumerable<TacticalUnitState> candidates =
+                group?.Targets.Count > 0
+                    ? group.Targets
+                    : units.Where(candidate => candidate.Side != unit.Side);
+            candidates = candidates.Where(candidate => candidate.IsActive);
+            if (behavior == TacticalBehavior.AttackFighters)
+            {
+                return candidates.Where(candidate => candidate.Kind == TacticalUnitKind.Fighters);
+            }
+            if (behavior == TacticalBehavior.AttackCapitalShips)
+            {
+                return candidates.Where(candidate =>
+                    candidate.Kind == TacticalUnitKind.CapitalShip
+                );
+            }
+            if (behavior == TacticalBehavior.AttackDeathStar)
+            {
+                return candidates.Where(candidate =>
+                    candidate.Unit is CapitalShip { IsDeathStar: true }
+                );
+            }
+
+            return candidates;
+        }
+
+        /// <summary>
+        /// Selects the target occupying the strongest charged capital-ship firing arc.
+        /// Fighter engagement remains bound to the group's assigned target.
         /// </summary>
         /// <param name="attacker">The acting unit.</param>
-        /// <param name="target">The engaged opposing target.</param>
-        /// <returns>The pending attack, if an arc can fire.</returns>
-        private static IReadOnlyList<PendingAttack> FireStrongestArc(
+        /// <param name="group">The unit's controlling command group.</param>
+        /// <param name="behavior">The unit's active behavior.</param>
+        /// <param name="assignedTarget">The target controlling movement and fighter engagement.</param>
+        /// <returns>The eligible target in the strongest arc, or the assigned target.</returns>
+        private TacticalUnitState SelectAttackTarget(
+            TacticalUnitState attacker,
+            TacticalShipGroup group,
+            TacticalBehavior behavior,
+            TacticalUnitState assignedTarget
+        )
+        {
+            if (
+                attacker.Kind != TacticalUnitKind.CapitalShip
+                || group?.Targets.Count > 0
+                || behavior
+                    is TacticalBehavior.AttackFighters
+                        or TacticalBehavior.AttackCapitalShips
+            )
+            {
+                return assignedTarget;
+            }
+
+            IEnumerable<TacticalUnitState> candidates = GetEligibleTargets(
+                attacker,
+                group,
+                behavior
+            );
+            TacticalUnitState selectedTarget = null;
+            int strongestArc = 0;
+            foreach (TacticalUnitState candidate in candidates)
+            {
+                float distance = Vector3.Distance(attacker.Position, candidate.Position);
+                TacticalWeaponArc arc = GetFiringArc(attacker, candidate.Position);
+                int strength = attacker.GetAvailableAttackStrength(arc, distance);
+                if (strength <= strongestArc)
+                    continue;
+
+                strongestArc = strength;
+                selectedTarget = candidate;
+            }
+
+            return selectedTarget ?? assignedTarget;
+        }
+
+        /// <summary>
+        /// Discharges the charged arc occupied by an eligible target.
+        /// </summary>
+        /// <param name="attacker">The acting unit.</param>
+        /// <param name="target">The opposing target to fire upon.</param>
+        /// <returns>The pending attacks, if the target's arc can fire.</returns>
+        private static IReadOnlyList<PendingAttack> FireTargetArc(
             TacticalUnitState attacker,
             TacticalUnitState target
         )
         {
+            if (target == null)
+                return Array.Empty<PendingAttack>();
+
             float distance = Vector3.Distance(attacker.Position, target.Position);
             TacticalWeaponArc arc = GetFiringArc(attacker, target.Position);
             if (attacker.GetAvailableAttackStrength(arc, distance) <= 0)
