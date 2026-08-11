@@ -40,6 +40,12 @@ public sealed class TacticalBattleTheme
 
     public string TractorReleaseAudioPath { get; set; }
 
+    public string SmallShipDestructionAudioPath { get; set; }
+
+    public string MediumShipDestructionAudioPath { get; set; }
+
+    public string LargeShipDestructionAudioPath { get; set; }
+
     public string SuperlaserAudioPath { get; set; }
 
     public string EnergyShieldHitAudioPath { get; set; }

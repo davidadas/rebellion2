@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Tactical;
+using Rebellion.Game.Units;
 
 /// <summary>
 /// Presents faction-specific tactical cues through bounded tactical audio channels.
@@ -8,6 +9,8 @@ using Rebellion.Game.Tactical;
 internal sealed class TacticalBattleAudio
 {
     private const float _combatCueLifetime = 3f;
+    private const int _mediumDestructionHullThreshold = 1100;
+    private const int _largeDestructionHullThreshold = 2000;
     private const float _unitCueLifetime = 8f;
     private readonly Action<string> play;
     private readonly Func<string, float> getDuration;
@@ -64,6 +67,7 @@ internal sealed class TacticalBattleAudio
             TacticalAudioChannel channel = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => TacticalAudioChannel.Combat,
+                TacticalCombatEventKind.UnitDestroyed => TacticalAudioChannel.Combat,
                 TacticalCombatEventKind.TractorLock or TacticalCombatEventKind.TractorRelease =>
                     TacticalAudioChannel.Combat,
                 TacticalCombatEventKind.UnitWithdrawn or TacticalCombatEventKind.SuperlaserFired =>
@@ -73,6 +77,7 @@ internal sealed class TacticalBattleAudio
             string path = combatEvent.Kind switch
             {
                 TacticalCombatEventKind.WeaponImpact => GetImpactPath(combatEvent),
+                TacticalCombatEventKind.UnitDestroyed => GetDestructionPath(combatEvent.Source),
                 TacticalCombatEventKind.TractorLock => GetTheme(
                     combatEvent.Target.Side
                 ).TractorLockAudioPath,
@@ -166,6 +171,26 @@ internal sealed class TacticalBattleAudio
                     : theme.EnergyShieldHitAudioPath,
             _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
         };
+    }
+
+    /// <summary>
+    /// Resolves the destruction cue from the destroyed unit's original hull class.
+    /// </summary>
+    /// <param name="unit">The destroyed tactical unit.</param>
+    /// <returns>The configured destruction cue.</returns>
+    private string GetDestructionPath(TacticalUnitState unit)
+    {
+        TacticalBattleTheme theme = GetTheme(unit.Side);
+        if (unit.Kind == TacticalUnitKind.Fighters)
+            return theme.SmallShipDestructionAudioPath;
+
+        int maximumHull = ((CapitalShip)unit.Unit).MaxHullStrength;
+        if (maximumHull < _mediumDestructionHullThreshold)
+            return theme.SmallShipDestructionAudioPath;
+        if (maximumHull <= _largeDestructionHullThreshold)
+            return theme.MediumShipDestructionAudioPath;
+
+        return theme.LargeShipDestructionAudioPath;
     }
 
     /// <summary>

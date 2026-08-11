@@ -140,6 +140,18 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 alliance.TractorReleaseAudioPath
             );
             Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13009-1033-tactical-blast",
+                alliance.SmallShipDestructionAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13010-1033-tactical-blast",
+                alliance.MediumShipDestructionAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13011-1033-tactical-blast",
+                alliance.LargeShipDestructionAudioPath
+            );
+            Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
                 alliance.FighterArrivalAudioPath
             );

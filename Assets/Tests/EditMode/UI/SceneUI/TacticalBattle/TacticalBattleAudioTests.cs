@@ -27,6 +27,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _defenderProjectilePenetration = "defender-projectile-penetration";
         private const string _defenderProjectileHit = "defender-projectile-hit";
         private const string _defenderSuperlaser = "defender-superlaser";
+        private const string _defenderSmallDestruction = "defender-small-destruction";
+        private const string _defenderMediumDestruction = "defender-medium-destruction";
+        private const string _defenderLargeDestruction = "defender-large-destruction";
         private const string _defenderTractorLock = "defender-tractor-lock";
         private const string _defenderTractorRelease = "defender-tractor-release";
         private readonly List<string> played = new List<string>();
@@ -63,6 +66,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         ProjectileShieldPenetrationAudioPath = _defenderProjectilePenetration,
                         ProjectileShieldHitAudioPath = _defenderProjectileHit,
                         SuperlaserAudioPath = _defenderSuperlaser,
+                        SmallShipDestructionAudioPath = _defenderSmallDestruction,
+                        MediumShipDestructionAudioPath = _defenderMediumDestruction,
+                        LargeShipDestructionAudioPath = _defenderLargeDestruction,
                         TractorLockAudioPath = _defenderTractorLock,
                         TractorReleaseAudioPath = _defenderTractorRelease,
                     },
@@ -209,6 +215,30 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CollectionAssert.AreEqual(new[] { _defenderSuperlaser }, played);
         }
 
+        [TestCase(TacticalUnitKind.Fighters, 1, _defenderSmallDestruction)]
+        [TestCase(TacticalUnitKind.CapitalShip, 1099, _defenderSmallDestruction)]
+        [TestCase(TacticalUnitKind.CapitalShip, 1100, _defenderMediumDestruction)]
+        [TestCase(TacticalUnitKind.CapitalShip, 2000, _defenderMediumDestruction)]
+        [TestCase(TacticalUnitKind.CapitalShip, 2001, _defenderLargeDestruction)]
+        public void QueueEvents_UnitDestroyed_QueuesHullClassCue(
+            TacticalUnitKind kind,
+            int maximumHull,
+            string expectedPath
+        )
+        {
+            TacticalUnitState unit = CreateUnit(TacticalBattleSide.Defender, kind, maximumHull);
+
+            audio.QueueEvents(
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, unit),
+                }
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { expectedPath }, played);
+        }
+
         [TestCase(TacticalCombatEventKind.TractorLock, _defenderTractorLock)]
         [TestCase(TacticalCombatEventKind.TractorRelease, _defenderTractorRelease)]
         public void QueueEvents_TractorLifecycle_QueuesTargetFactionCue(
@@ -296,7 +326,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         /// <returns>The initialized tactical state.</returns>
         private static TacticalUnitState CreateUnit(
             TacticalBattleSide side,
-            TacticalUnitKind kind = TacticalUnitKind.CapitalShip
+            TacticalUnitKind kind = TacticalUnitKind.CapitalShip,
+            int maximumHull = 1
         )
         {
             if (kind == TacticalUnitKind.Fighters)
@@ -308,7 +339,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             }
 
             return TacticalUnitState.FromCapitalShip(
-                new CapitalShip { CurrentHullStrength = 1, MaxHullStrength = 1 },
+                new CapitalShip
+                {
+                    CurrentHullStrength = maximumHull,
+                    MaxHullStrength = maximumHull,
+                },
                 side
             );
         }
