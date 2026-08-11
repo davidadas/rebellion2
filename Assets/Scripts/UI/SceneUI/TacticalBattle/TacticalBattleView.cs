@@ -9,6 +9,49 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class TacticalBattleView : MonoBehaviour
 {
+    private static readonly KeyCode[] KeyboardShortcuts =
+    {
+        KeyCode.Return,
+        KeyCode.N,
+        KeyCode.PageUp,
+        KeyCode.I,
+        KeyCode.K,
+        KeyCode.PageDown,
+        KeyCode.C,
+        KeyCode.M,
+        KeyCode.End,
+        KeyCode.A,
+        KeyCode.Home,
+        KeyCode.G,
+        KeyCode.LeftArrow,
+        KeyCode.D,
+        KeyCode.UpArrow,
+        KeyCode.H,
+        KeyCode.RightArrow,
+        KeyCode.F,
+        KeyCode.DownArrow,
+        KeyCode.B,
+        KeyCode.Alpha1,
+        KeyCode.Alpha2,
+        KeyCode.Alpha3,
+        KeyCode.Alpha4,
+        KeyCode.Alpha5,
+        KeyCode.Alpha6,
+        KeyCode.Alpha7,
+        KeyCode.Alpha8,
+        KeyCode.P,
+        KeyCode.Q,
+        KeyCode.R,
+        KeyCode.S,
+        KeyCode.T,
+        KeyCode.U,
+        KeyCode.V,
+        KeyCode.W,
+        KeyCode.X,
+        KeyCode.Y,
+        KeyCode.Z,
+    };
+
     [SerializeField]
     private Button[] taskForceButtons = Array.Empty<Button>();
 
@@ -151,6 +194,21 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// Raised when the player toggles one of the four navigation-point sets.
     /// </summary>
     public event Action<int> NavigationSetVisibilityToggled;
+
+    /// <summary>
+    /// Raised when a tactical task-force focus shortcut is pressed.
+    /// </summary>
+    public event Action<int> TaskForceFocusRequested;
+
+    /// <summary>
+    /// Raised when a tactical fighter-group focus shortcut is pressed.
+    /// </summary>
+    public event Action<int> FighterGroupFocusRequested;
+
+    /// <summary>
+    /// Raised when a tactical camera shortcut is pressed.
+    /// </summary>
+    public event Action<TacticalCameraCommand> CameraCommandRequested;
 
     /// <summary>
     /// Raised when the player chooses a pending mission order for the selected tactical group.
@@ -730,6 +788,102 @@ public sealed class TacticalBattleView : MonoBehaviour
         HideCapitalShipStatus();
         HideGameOptions();
         HideWithdrawalConfirmation();
+    }
+
+    /// <summary>
+    /// Polls the original tactical keyboard shortcuts.
+    /// </summary>
+    private void Update()
+    {
+        foreach (KeyCode key in KeyboardShortcuts)
+        {
+            if (Input.GetKeyDown(key))
+                HandleKeyDown(key);
+        }
+
+        if (
+            Input.GetKeyDown(KeyCode.LeftBracket)
+            && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+        )
+        {
+            HandleKeyDown(KeyCode.LeftBracket);
+        }
+    }
+
+    /// <summary>
+    /// Routes one source-defined tactical shortcut to its semantic command.
+    /// </summary>
+    /// <param name="key">The pressed key.</param>
+    internal void HandleKeyDown(KeyCode key)
+    {
+        switch (key)
+        {
+            case KeyCode.Return:
+            case KeyCode.N:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.ResetSubject);
+                return;
+            case KeyCode.PageUp:
+            case KeyCode.I:
+            case KeyCode.K:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.ZoomIn);
+                return;
+            case KeyCode.PageDown:
+            case KeyCode.C:
+            case KeyCode.M:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.ZoomOut);
+                return;
+            case KeyCode.End:
+            case KeyCode.A:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.ResetView);
+                return;
+            case KeyCode.Home:
+            case KeyCode.G:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.RememberView);
+                return;
+            case KeyCode.LeftArrow:
+            case KeyCode.D:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.RotateLeft);
+                return;
+            case KeyCode.UpArrow:
+            case KeyCode.H:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.TiltUp);
+                return;
+            case KeyCode.RightArrow:
+            case KeyCode.F:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.RotateRight);
+                return;
+            case KeyCode.DownArrow:
+            case KeyCode.B:
+                CameraCommandRequested?.Invoke(TacticalCameraCommand.TiltDown);
+                return;
+        }
+
+        int taskForceIndex = (int)key - (int)KeyCode.Alpha1;
+        if (taskForceIndex >= 0 && taskForceIndex < taskForceButtons.Length)
+        {
+            if (taskForceButtons[taskForceIndex].interactable)
+                TaskForceSelected?.Invoke(taskForceIndex);
+            return;
+        }
+
+        const string taskForceFocusKeys = "pqrstuvw";
+        int focusIndex = taskForceFocusKeys.IndexOf(char.ToLowerInvariant((char)key));
+        if (focusIndex >= 0)
+        {
+            TaskForceFocusRequested?.Invoke(focusIndex);
+            return;
+        }
+
+        int fighterFocusIndex = key switch
+        {
+            KeyCode.X => 0,
+            KeyCode.Y => 1,
+            KeyCode.Z => 2,
+            KeyCode.LeftBracket => 3,
+            _ => -1,
+        };
+        if (fighterFocusIndex >= 0)
+            FighterGroupFocusRequested?.Invoke(fighterFocusIndex);
     }
 
     /// <summary>

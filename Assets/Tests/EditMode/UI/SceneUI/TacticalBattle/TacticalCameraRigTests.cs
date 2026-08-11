@@ -87,6 +87,26 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void Execute_RotateRightCommand_AppliesCameraControl()
+        {
+            rig.Execute(TacticalCameraCommand.RotateRight);
+
+            Assert.That(battleCamera.transform.eulerAngles.y, Is.EqualTo(153f).Within(0.01f));
+        }
+
+        [Test]
+        public void FocusSubject_TacticalPosition_ReCentersImmediately()
+        {
+            Vector3 subject = new Vector3(15f, -2f, 8f);
+
+            rig.FocusSubject(subject);
+
+            Vector3 projectedSubject =
+                battleCamera.transform.position + battleCamera.transform.forward * 240f;
+            Assert.That(Vector3.Distance(projectedSubject, subject), Is.LessThan(0.01f));
+        }
+
+        [Test]
         public void Awake_IncorrectControlCount_ThrowsMissingReferenceException()
         {
             GameObject invalidRoot = new GameObject("InvalidTacticalCameraRig");

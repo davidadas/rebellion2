@@ -117,6 +117,9 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.TaskForceSelected += SelectTaskForce;
         view.FighterGroupSelected += SelectFighterGroup;
         view.NavigationSetVisibilityToggled += ToggleNavigationSetVisibility;
+        view.TaskForceFocusRequested += FocusTaskForce;
+        view.FighterGroupFocusRequested += FocusFighterGroup;
+        view.CameraCommandRequested += ExecuteCameraCommand;
         view.MissionOrderSelected += SelectPendingMissionOrder;
         view.MissionOrderAssigned += AssignPendingMissionOrder;
         view.MissionOrderCancelled += CancelPendingMissionOrder;
@@ -196,6 +199,9 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.TaskForceSelected -= SelectTaskForce;
             view.FighterGroupSelected -= SelectFighterGroup;
             view.NavigationSetVisibilityToggled -= ToggleNavigationSetVisibility;
+            view.TaskForceFocusRequested -= FocusTaskForce;
+            view.FighterGroupFocusRequested -= FocusFighterGroup;
+            view.CameraCommandRequested -= ExecuteCameraCommand;
             view.MissionOrderSelected -= SelectPendingMissionOrder;
             view.MissionOrderAssigned -= AssignPendingMissionOrder;
             view.MissionOrderCancelled -= CancelPendingMissionOrder;
@@ -499,6 +505,56 @@ public sealed class TacticalBattleController : MonoBehaviour
         SetSelectedCapitalShipSubject();
         RefreshCapitalShipStatus();
         view.HideManeuvers();
+    }
+
+    /// <summary>
+    /// Centers the camera on one capital task force without changing command selection.
+    /// </summary>
+    /// <param name="index">The zero-based task-force slot.</param>
+    private void FocusTaskForce(int index)
+    {
+        FocusGroup(Session.GetTaskForces(playerSide), index);
+    }
+
+    /// <summary>
+    /// Centers the camera on one fighter group without changing command selection.
+    /// </summary>
+    /// <param name="index">The zero-based fighter-group slot.</param>
+    private void FocusFighterGroup(int index)
+    {
+        FocusGroup(Session.GetFighterGroups(playerSide), index);
+    }
+
+    /// <summary>
+    /// Centers the camera on one populated command group.
+    /// </summary>
+    /// <param name="groups">The ordered command groups.</param>
+    /// <param name="index">The zero-based group slot.</param>
+    private void FocusGroup(IReadOnlyList<TacticalShipGroup> groups, int index)
+    {
+        if (index < 0 || index >= groups.Count)
+            return;
+
+        TacticalUnitState[] activeUnits = groups[index]
+            .Units.Where(unit => unit.IsActive)
+            .ToArray();
+        if (activeUnits.Length == 0)
+            return;
+
+        Vector3 subject = Vector3.zero;
+        foreach (TacticalUnitState unit in activeUnits)
+            subject += ToUnityVector(Session.GetPresentationPosition(unit));
+
+        cameraRig.FocusSubject(subject / activeUnits.Length);
+    }
+
+    /// <summary>
+    /// Executes one keyboard-routed tactical camera command.
+    /// </summary>
+    /// <param name="command">The camera command to execute.</param>
+    private void ExecuteCameraCommand(TacticalCameraCommand command)
+    {
+        cameraRig.Execute(command);
     }
 
     /// <summary>

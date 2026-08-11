@@ -84,6 +84,51 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsTrue(rightToggled);
         }
 
+        [Test]
+        public void HandleKeyDown_PageUp_ForwardsZoomInCommand()
+        {
+            TacticalCameraCommand? receivedCommand = null;
+            view.CameraCommandRequested += command => receivedCommand = command;
+
+            view.HandleKeyDown(KeyCode.PageUp);
+
+            Assert.That(receivedCommand, Is.EqualTo(TacticalCameraCommand.ZoomIn));
+        }
+
+        [Test]
+        public void HandleKeyDown_NumberKey_ForwardsTaskForceSelection()
+        {
+            ConfigureCompleteView();
+            int selectedIndex = -1;
+            view.TaskForceSelected += index => selectedIndex = index;
+
+            view.HandleKeyDown(KeyCode.Alpha6);
+
+            Assert.That(selectedIndex, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void HandleKeyDown_TaskForceFocusKey_ForwardsTaskForceFocus()
+        {
+            int focusedIndex = -1;
+            view.TaskForceFocusRequested += index => focusedIndex = index;
+
+            view.HandleKeyDown(KeyCode.V);
+
+            Assert.That(focusedIndex, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void HandleKeyDown_FighterFocusKey_ForwardsFighterGroupFocus()
+        {
+            int focusedIndex = -1;
+            view.FighterGroupFocusRequested += index => focusedIndex = index;
+
+            view.HandleKeyDown(KeyCode.Z);
+
+            Assert.That(focusedIndex, Is.EqualTo(2));
+        }
+
         [TearDown]
         public void TearDown()
         {

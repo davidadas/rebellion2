@@ -65,6 +65,57 @@ public sealed class TacticalCameraRig : MonoBehaviour
     }
 
     /// <summary>
+    /// Centers the active view immediately on a tactical subject.
+    /// </summary>
+    /// <param name="subject">The tactical subject's world position.</param>
+    public void FocusSubject(Vector3 subject)
+    {
+        selectedSubject = subject;
+        current.Subject = subject;
+        ApplyCurrentState();
+    }
+
+    /// <summary>
+    /// Executes one source-defined camera command.
+    /// </summary>
+    /// <param name="command">The camera command to execute.</param>
+    public void Execute(TacticalCameraCommand command)
+    {
+        switch (command)
+        {
+            case TacticalCameraCommand.ZoomIn:
+                ZoomIn();
+                break;
+            case TacticalCameraCommand.ZoomOut:
+                ZoomOut();
+                break;
+            case TacticalCameraCommand.RotateLeft:
+                RotateLeft();
+                break;
+            case TacticalCameraCommand.RotateRight:
+                RotateRight();
+                break;
+            case TacticalCameraCommand.TiltUp:
+                TiltUp();
+                break;
+            case TacticalCameraCommand.TiltDown:
+                TiltDown();
+                break;
+            case TacticalCameraCommand.RememberView:
+                RememberView();
+                break;
+            case TacticalCameraCommand.ResetView:
+                ResetView();
+                break;
+            case TacticalCameraCommand.ResetSubject:
+                ResetSubject();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(command));
+        }
+    }
+
+    /// <summary>
     /// Verifies and connects the generated tactical camera controls.
     /// </summary>
     private void Awake()
