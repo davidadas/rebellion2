@@ -205,6 +205,41 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void EffectiveTractorBeamPower_TractorAndHullDamage_ReducesAvailableStrength()
+        {
+            CapitalShip ship = CreateCapitalShip(hull: 100, shields: 0);
+            ship.TractorBeamPower = 12;
+            ship.TractorBeamnRange = 20;
+            TacticalUnitState unit = TacticalUnitState.FromCapitalShip(
+                ship,
+                TacticalBattleSide.Attacker
+            );
+
+            unit.ApplyDamage(
+                new TacticalAttack(TacticalWeaponType.LaserCannon, 1),
+                CreateRandom(0.85d)
+            );
+
+            Assert.AreEqual(8.88f, unit.EffectiveTractorBeamPower, 0.001f);
+            Assert.AreEqual(20, unit.TractorBeamRange);
+        }
+
+        [Test]
+        public void EffectiveTractorBeamPower_HullDamage_ReducesAvailableStrengthProportionally()
+        {
+            CapitalShip ship = CreateCapitalShip(hull: 100, shields: 0);
+            ship.TractorBeamPower = 12;
+            TacticalUnitState unit = TacticalUnitState.FromCapitalShip(
+                ship,
+                TacticalBattleSide.Attacker
+            );
+
+            unit.ApplyDamage(50);
+
+            Assert.AreEqual(6f, unit.EffectiveTractorBeamPower);
+        }
+
+        [Test]
         public void CanWithdraw_MaximumHyperdriveDamage_ReturnsFalse()
         {
             TacticalUnitState unit = CreateCapitalShipState(hull: 100, shields: 0);

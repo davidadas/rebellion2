@@ -679,6 +679,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_TargetWithinTractorRange_ReducesTargetMovement()
+        {
+            CapitalShip tractorShip = CreateShip(600, 0);
+            tractorShip.TractorBeamPower = 6;
+            tractorShip.TractorBeamnRange = 200;
+            CapitalShip movingShip = CreateShip(600, 0);
+            movingShip.Maneuverability = 10;
+            movingShip.SublightSpeed = 10;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(tractorShip),
+                    DefenderFleet = CreateFleet(movingShip),
+                }
+            );
+            TacticalUnitState movingUnit = session.Units.Single(unit => unit.Unit == movingShip);
+            Vector3 initialPosition = movingUnit.Position;
+
+            session.Advance(0.5f);
+
+            Assert.AreEqual(initialPosition - Vector3.UnitZ * 2f, movingUnit.Position);
+            Assert.IsTrue(
+                session
+                    .DrainEvents()
+                    .Any(combatEvent =>
+                        combatEvent.Kind == TacticalCombatEventKind.TractorLock
+                        && combatEvent.Source.Unit == tractorShip
+                        && combatEvent.Target.Unit == movingShip
+                    )
+            );
+        }
+
+        [Test]
         public void Advance_OrderedTargetAssignment_AttacksFirstEligibleTarget()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
@@ -1177,6 +1210,36 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreEqual(-Vector3.UnitZ, unit.Forward);
             Assert.IsTrue(unit.IsWithdrawing);
             Assert.IsFalse(unit.HasWithdrawn);
+        }
+
+        [Test]
+        public void Advance_WithdrawBehaviorFullyTractorLocked_DoesNotBeginWithdrawal()
+        {
+            CapitalShip withdrawingShip = CreateShip(600, 0);
+            withdrawingShip.SublightSpeed = 5;
+            CapitalShip tractorShip = CreateShip(450, 0);
+            tractorShip.TractorBeamPower = 5;
+            tractorShip.TractorBeamnRange = 200;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(withdrawingShip),
+                    DefenderFleet = CreateFleet(tractorShip),
+                }
+            );
+            TacticalUnitState withdrawingUnit = session.Units.Single(unit =>
+                unit.Unit == withdrawingShip
+            );
+            Vector3 initialPosition = withdrawingUnit.Position;
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Withdraw);
+
+            session.Advance(2f);
+
+            Assert.AreEqual(initialPosition, withdrawingUnit.Position);
+            Assert.IsFalse(withdrawingUnit.IsWithdrawing);
         }
 
         [Test]

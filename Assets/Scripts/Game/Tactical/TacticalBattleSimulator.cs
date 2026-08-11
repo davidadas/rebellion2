@@ -47,6 +47,7 @@ namespace Rebellion.Game.Tactical
         private readonly TacticalDeathStarAttackResolver deathStarAttackResolver;
         private readonly TacticalFighterDeploymentSystem fighterDeploymentSystem;
         private readonly TacticalSuperlaserSystem superlaserSystem;
+        private readonly TacticalTractorBeamSystem tractorBeamSystem;
         private readonly HashSet<TacticalShipGroup> resolvedDeathStarAttackGroups =
             new HashSet<TacticalShipGroup>();
         private readonly IReadOnlyList<TacticalShipGroup> groups;
@@ -152,6 +153,7 @@ namespace Rebellion.Game.Tactical
             deathStarAttackResolver = new TacticalDeathStarAttackResolver(random);
             fighterDeploymentSystem = new TacticalFighterDeploymentSystem(units, random);
             superlaserSystem = new TacticalSuperlaserSystem(units);
+            tractorBeamSystem = new TacticalTractorBeamSystem();
             PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
             PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
             PlaceGroupMarkers();
@@ -166,6 +168,8 @@ namespace Rebellion.Game.Tactical
             fighterDeploymentSystem.Advance(elapsedTime);
             events.AddRange(fighterDeploymentSystem.DrainEvents());
             superlaserSystem.Advance(elapsedTime);
+            UpdateTractorLocks();
+            events.AddRange(tractorBeamSystem.DrainEvents());
             List<PendingAttack> attacks = new List<PendingAttack>();
             foreach (TacticalUnitState unit in units.Where(unit => unit.IsActive).ToArray())
                 attacks.AddRange(AdvanceUnit(unit, elapsedTime));
@@ -195,6 +199,30 @@ namespace Rebellion.Game.Tactical
             }
 
             fighterDeploymentSystem.ResolveCarrierStateChanges();
+            tractorBeamSystem.ReleaseInvalidLocks();
+            events.AddRange(tractorBeamSystem.DrainEvents());
+        }
+
+        /// <summary>
+        /// Reconciles each active tractor source with its current command target.
+        /// </summary>
+        private void UpdateTractorLocks()
+        {
+            tractorBeamSystem.ReleaseInvalidLocks();
+            foreach (TacticalUnitState unit in units.Where(unit => unit.IsActive))
+            {
+                TacticalShipGroup group = groups.LastOrDefault(candidate =>
+                    candidate.Units.Contains(unit)
+                );
+                TacticalBehavior behavior = group?.Behavior ?? TacticalBehavior.PrimaryTarget;
+                TacticalUnitState target =
+                    behavior == TacticalBehavior.Withdraw
+                    || behavior == TacticalBehavior.Recover
+                    || behavior == TacticalBehavior.AttackDeathStar
+                        ? null
+                        : GetTarget(unit, group, behavior);
+                tractorBeamSystem.UpdateLock(unit, target);
+            }
         }
 
         /// <summary>
@@ -569,7 +597,8 @@ namespace Rebellion.Game.Tactical
         {
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            if (distance <= _navigationArrivalDistance || unit.EffectiveSublightSpeed <= 0f)
+            float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit);
+            if (distance <= _navigationArrivalDistance || movementSpeed <= 0f)
                 return;
 
             Vector3 desiredForward = displacement / distance;
@@ -578,7 +607,7 @@ namespace Rebellion.Game.Tactical
                 Vector3.Lerp(unit.Forward, desiredForward, turnAmount),
                 desiredForward
             );
-            float movement = Math.Min(distance, unit.EffectiveSublightSpeed * elapsedTime);
+            float movement = Math.Min(distance, movementSpeed * elapsedTime);
             Vector3 candidatePosition = unit.Position + unit.Forward * movement;
             if (!TryFindCollision(unit, candidatePosition, out TacticalUnitState obstacle))
             {
@@ -746,6 +775,10 @@ namespace Rebellion.Game.Tactical
             if (!unit.CanWithdraw)
                 return;
 
+            float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit);
+            if (movementSpeed <= 0f)
+                return;
+
             if (!withdrawals.TryGetValue(unit, out WithdrawalMotion withdrawal))
             {
                 int unitIndex = GetUnitIndex(unit);
@@ -763,7 +796,7 @@ namespace Rebellion.Game.Tactical
             unit.Forward = withdrawal.Direction;
             withdrawal.ElapsedTime = Math.Min(
                 _withdrawalDuration,
-                withdrawal.ElapsedTime + elapsedTime
+                withdrawal.ElapsedTime + elapsedTime * movementSpeed / unit.EffectiveSublightSpeed
             );
             float progress = withdrawal.ElapsedTime / _withdrawalDuration;
             unit.Position =

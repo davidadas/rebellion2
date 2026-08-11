@@ -24,6 +24,7 @@ namespace Rebellion.Game.Tactical
         private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
         private readonly int damageControl;
         private readonly bool hasHyperdrive;
+        private readonly int tractorBeamPower;
         private float shieldRechargeRemainder;
         private float componentDisruptionTime;
         private float damageControlTime;
@@ -83,6 +84,23 @@ namespace Rebellion.Game.Tactical
         /// Gets the unit's tactical turning rating.
         /// </summary>
         public int Maneuverability { get; }
+
+        /// <summary>
+        /// Gets the maximum range at which the unit can establish a tractor lock.
+        /// </summary>
+        public int TractorBeamRange { get; }
+
+        /// <summary>
+        /// Gets the tractor-beam strength available after persistent subsystem damage.
+        /// </summary>
+        public float EffectiveTractorBeamPower =>
+            Math.Max(
+                0f,
+                tractorBeamPower * Math.Min(Hull, InitialHull) / Math.Max(1f, InitialHull)
+                    - tractorBeamPower
+                        * GetSystemDamage(TacticalDamageSystem.TractorBeam)
+                        * _systemDamagePenalty
+            );
 
         /// <summary>
         /// Gets or sets the unit's current tactical shield strength.
@@ -187,6 +205,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="maneuverability">The tactical turning rating.</param>
         /// <param name="damageControl">The chance to repair subsystem damage.</param>
         /// <param name="hasHyperdrive">Whether the unit can leave tactical space independently.</param>
+        /// <param name="tractorBeamPower">The unit's undamaged tractor-beam strength.</param>
+        /// <param name="tractorBeamRange">The unit's maximum tractor-lock range.</param>
         /// <param name="weaponBatteries">The unit's tactical weapon batteries.</param>
         /// <param name="recoveryTarget">The capital ship that deployed this unit.</param>
         /// <param name="isDeployed">Whether the unit begins in tactical space.</param>
@@ -202,6 +222,8 @@ namespace Rebellion.Game.Tactical
             int maneuverability,
             int damageControl,
             bool hasHyperdrive,
+            int tractorBeamPower,
+            int tractorBeamRange,
             IList<TacticalWeaponBattery> weaponBatteries,
             TacticalUnitState recoveryTarget = null,
             bool isDeployed = true
@@ -220,6 +242,8 @@ namespace Rebellion.Game.Tactical
             Maneuverability = Math.Max(0, maneuverability);
             this.damageControl = Math.Max(0, damageControl);
             this.hasHyperdrive = hasHyperdrive;
+            this.tractorBeamPower = Math.Max(0, tractorBeamPower);
+            TractorBeamRange = Math.Max(0, tractorBeamRange);
             Forward = Vector3.UnitZ;
             RecoveryTarget = recoveryTarget;
             IsDeployed = isDeployed;
@@ -251,6 +275,8 @@ namespace Rebellion.Game.Tactical
                 ship.Maneuverability,
                 ship.DamageControl,
                 ship.Hyperdrive > 0,
+                ship.TractorBeamPower,
+                ship.TractorBeamnRange,
                 ship.PrimaryWeapons.OrderBy(entry => entry.Key)
                     .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
                     .ToList()
@@ -285,6 +311,8 @@ namespace Rebellion.Game.Tactical
                 fighters.Agility,
                 0,
                 fighters.Hyperdrive > 0,
+                0,
+                0,
                 CreateFighterBatteries(fighters),
                 recoveryTarget,
                 recoveryTarget == null || fighters.Hyperdrive > 0

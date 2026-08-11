@@ -25,6 +25,12 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>A held fighter group launches from its capital ship.</summary>
         FightersDeployed = 5,
+
+        /// <summary>A tactical unit establishes a tractor lock on an opposing unit.</summary>
+        TractorLock = 6,
+
+        /// <summary>A tactical unit releases its tractor lock.</summary>
+        TractorRelease = 7,
     }
 
     /// <summary>
@@ -115,6 +121,35 @@ namespace Rebellion.Game.Tactical
         {
             return new TacticalCombatEvent(
                 TacticalCombatEventKind.SuperlaserFired,
+                source,
+                target ?? throw new ArgumentNullException(nameof(target)),
+                null
+            );
+        }
+
+        /// <summary>
+        /// Creates a tractor-lock lifecycle event between its source and target.
+        /// </summary>
+        /// <param name="kind">Whether the tractor lock is established or released.</param>
+        /// <param name="source">The unit producing the tractor beam.</param>
+        /// <param name="target">The unit affected by the tractor beam.</param>
+        /// <returns>The immutable tractor event.</returns>
+        public static TacticalCombatEvent TractorLock(
+            TacticalCombatEventKind kind,
+            TacticalUnitState source,
+            TacticalUnitState target
+        )
+        {
+            if (
+                kind != TacticalCombatEventKind.TractorLock
+                && kind != TacticalCombatEventKind.TractorRelease
+            )
+            {
+                throw new ArgumentOutOfRangeException(nameof(kind));
+            }
+
+            return new TacticalCombatEvent(
+                kind,
                 source,
                 target ?? throw new ArgumentNullException(nameof(target)),
                 null
