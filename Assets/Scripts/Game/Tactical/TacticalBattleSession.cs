@@ -669,7 +669,7 @@ namespace Rebellion.Game.Tactical
         /// capital budget.
         /// </summary>
         /// <param name="fleet">The fleet whose admiral supports its capital ships.</param>
-        /// <returns>A value from one through nine, with nine used when no admiral is assigned.</returns>
+        /// <returns>A value from one through nine, with one used when no admiral is assigned.</returns>
         private static float GetCapitalCommandBudget(Fleet fleet)
         {
             Officer admiral = fleet
@@ -677,8 +677,11 @@ namespace Rebellion.Game.Tactical
                 .Where(officer => officer.CurrentRank == OfficerRank.Admiral)
                 .OrderByDescending(officer => officer.GetEffectiveRating(OfficerRating.Leadership))
                 .FirstOrDefault();
+            if (admiral == null)
+                return 1f;
+
             return Math.Clamp(
-                9f - (admiral?.GetEffectiveRating(OfficerRating.Leadership) ?? 0) / 10f,
+                9f - admiral.GetEffectiveRating(OfficerRating.Leadership) / 10f,
                 1f,
                 9f
             );

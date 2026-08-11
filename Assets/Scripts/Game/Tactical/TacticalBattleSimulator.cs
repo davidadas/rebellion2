@@ -1134,12 +1134,14 @@ namespace Rebellion.Game.Tactical
 
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
-            float movementSpeed = unit.EffectiveSublightSpeed;
+            float movementSpeed = unit.GetEffectiveSublightSpeed(GetCommandMovementBudget(unit));
             if (distance <= _navigationArrivalDistance || movementSpeed <= 0f)
                 return;
 
             Vector3 desiredForward = displacement / distance;
-            float turnBudget = unit.Maneuverability + GetCommandTurnBonus(unit);
+            float turnBudget = unit.Maneuverability;
+            if (unit.Kind == TacticalUnitKind.CapitalShip)
+                turnBudget += GetCommandMovementBudget(unit);
             float turnAmount = Math.Min(1f, turnBudget * elapsedTime);
             unit.Forward = NormalizeOrDefault(
                 Vector3.Lerp(unit.Forward, desiredForward, turnAmount),
@@ -1262,22 +1264,17 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
-        /// Gets the active tactical commander's maneuver contribution for one unit.
+        /// Gets the active tactical commander's movement budget for one unit.
         /// </summary>
         /// <param name="unit">The unit receiving command support.</param>
-        /// <returns>The maneuver contribution for the unit's kind and side.</returns>
-        private float GetCommandTurnBonus(TacticalUnitState unit)
+        /// <returns>The movement budget for the unit's kind and side.</returns>
+        private float GetCommandMovementBudget(TacticalUnitState unit)
         {
-            if (unit.Kind == TacticalUnitKind.Fighters)
-            {
-                return fighterCommandBudgets.TryGetValue(unit.Side, out float fighterBudget)
-                    ? Math.Max(0f, fighterBudget - 1f)
-                    : 0f;
-            }
-
-            return capitalCommandBudgets.TryGetValue(unit.Side, out float capitalBudget)
-                ? Math.Max(0f, 9f - capitalBudget)
-                : 0f;
+            IReadOnlyDictionary<TacticalBattleSide, float> budgets =
+                unit.Kind == TacticalUnitKind.Fighters
+                    ? fighterCommandBudgets
+                    : capitalCommandBudgets;
+            return budgets.TryGetValue(unit.Side, out float budget) ? budget : 0f;
         }
 
         /// <summary>
