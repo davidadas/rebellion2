@@ -341,8 +341,7 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>
         /// Orders every command group on one side to leave the tactical battlefield when no
-        /// opposing gravity well holds it in combat. Units with disabled drives remain until they
-        /// can move or are destroyed.
+        /// opposing gravity well holds it in combat. Active units unable to withdraw are lost.
         /// </summary>
         /// <param name="side">The side withdrawing from combat.</param>
         /// <returns>True when withdrawal orders are assigned.</returns>

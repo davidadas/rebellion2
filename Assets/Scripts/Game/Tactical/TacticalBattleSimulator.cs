@@ -876,7 +876,13 @@ namespace Rebellion.Game.Tactical
         private void AdvanceWithdrawal(TacticalUnitState unit, float elapsedTime)
         {
             if (!unit.CanWithdraw)
+            {
+                unit.Hull = 0;
+                events.Add(
+                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, unit)
+                );
                 return;
+            }
 
             float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit);
             if (movementSpeed <= 0f)

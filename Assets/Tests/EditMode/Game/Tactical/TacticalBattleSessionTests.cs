@@ -1763,6 +1763,34 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_WithdrawBehaviorWithoutHyperdrive_DestroysUnit()
+        {
+            Starfighter fighters = CreateFighters(12, 10);
+            fighters.Hyperdrive = 0;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, fighters)),
+                    DefenderFleet = CreateFleet(CreateShip(450, 0)),
+                }
+            );
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            session.DrainEvents();
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.Withdraw);
+
+            session.Advance(0.1f);
+            TacticalCombatEvent destruction = session
+                .DrainEvents()
+                .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed);
+
+            Assert.IsFalse(fighterUnit.IsActive);
+            Assert.AreSame(fighterUnit, destruction.DestroyedUnit);
+        }
+
+        [Test]
         public void Advance_WithdrawBehavior_UsesStaggeredExitDistances()
         {
             CapitalShip firstShip = CreateShip(600, 0);
