@@ -48,6 +48,7 @@ namespace Rebellion.Game.Tactical
         private readonly TacticalFighterDeploymentSystem fighterDeploymentSystem;
         private readonly TacticalSuperlaserSystem superlaserSystem;
         private readonly TacticalTractorBeamSystem tractorBeamSystem;
+        private readonly Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid;
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
@@ -134,11 +135,13 @@ namespace Rebellion.Game.Tactical
         /// <param name="units">The battle's tactical units.</param>
         /// <param name="groups">The battle's mutable command groups.</param>
         /// <param name="fighterCommandBudgets">The normalized fighter-command contribution for each side.</param>
+        /// <param name="isDeathStarAttackOrderValid">Tests whether an assigned Death Star attack remains valid.</param>
         /// <param name="random">The battle's deterministic random source.</param>
         public TacticalBattleSimulator(
             IReadOnlyList<TacticalUnitState> units,
             IReadOnlyList<TacticalShipGroup> groups,
             IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets,
+            Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid,
             IRandomNumberProvider random
         )
         {
@@ -147,6 +150,9 @@ namespace Rebellion.Game.Tactical
             this.fighterCommandBudgets =
                 fighterCommandBudgets
                 ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
+            this.isDeathStarAttackOrderValid =
+                isDeathStarAttackOrderValid
+                ?? throw new ArgumentNullException(nameof(isDeathStarAttackOrderValid));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             deathStarAttackSystem = new TacticalDeathStarAttackSystem(
                 new TacticalDeathStarAttackResolver(random),
@@ -411,6 +417,7 @@ namespace Rebellion.Game.Tactical
             if (
                 unit.Kind != TacticalUnitKind.Fighters
                 || group == null
+                || !isDeathStarAttackOrderValid(group)
                 || deathStarAttackSystem.IsCommitted(group)
             )
             {

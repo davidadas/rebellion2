@@ -108,7 +108,12 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentNullException(nameof(group));
             if (deathStar == null)
                 throw new ArgumentNullException(nameof(deathStar));
-            if (IsCommitted(group) || !deathStar.IsActive || deathStar.Side == group.Side)
+            if (
+                runs.Count > 0
+                || IsCommitted(group)
+                || !deathStar.IsActive
+                || deathStar.Side == group.Side
+            )
                 return false;
 
             TacticalUnitState[] participants = group

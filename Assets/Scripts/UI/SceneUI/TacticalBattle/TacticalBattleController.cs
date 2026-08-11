@@ -753,11 +753,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         battleRenderer.SetNavigationRoute(SelectedGroup.NavigationPoints);
         SetCameraSubject(SelectedGroup);
         bool canRecover = SelectedGroup.Units.Any(unit => unit.RecoveryTarget?.IsActive == true);
-        bool canAttackDeathStar = Session.Units.Any(unit =>
-            unit.Side != playerSide
-            && unit.IsActive
-            && unit.Unit is CapitalShip { IsDeathStar: true }
-        );
+        bool canAttackDeathStar = Session.CanOrderDeathStarAttack(SelectedGroup);
         if (!observing)
             view.ShowMissionOrders(canRecover, canAttackDeathStar);
     }
@@ -958,7 +954,19 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (observing || SelectedGroup == null || pendingMissionOrder == null)
             return;
 
-        SelectedGroup.SetBehavior(pendingMissionOrder.Value);
+        if (
+            pendingMissionOrder == TacticalBehavior.AttackDeathStar
+            && !Session.TryOrderDeathStarAttack(SelectedGroup)
+        )
+        {
+            pendingMissionOrder = null;
+            view.HideMissionOrders();
+            return;
+        }
+
+        if (pendingMissionOrder != TacticalBehavior.AttackDeathStar)
+            SelectedGroup.SetBehavior(pendingMissionOrder.Value);
+
         if (pendingMissionOrder == TacticalBehavior.AttackDeathStar)
             battleAudio.QueueDeathStarAttackBegin(playerSide, selectedGroupIndex);
         else

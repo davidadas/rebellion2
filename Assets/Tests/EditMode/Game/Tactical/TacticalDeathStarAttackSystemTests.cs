@@ -28,6 +28,24 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void TryBegin_AnotherRunActive_DoesNotBeginConcurrentRun()
+        {
+            TacticalUnitState firstFighters = CreateFighters(12, 100);
+            TacticalUnitState secondFighters = CreateFighters(12, 100);
+            TacticalUnitState deathStar = CreateDeathStar();
+            TacticalShipGroup firstGroup = CreateAttackGroup(firstFighters, deathStar);
+            TacticalShipGroup secondGroup = CreateAttackGroup(secondFighters, deathStar);
+            TacticalDeathStarAttackSystem system = CreateSystem(0d);
+            system.TryBegin(firstGroup, deathStar);
+            system.DrainEvents();
+
+            bool began = system.TryBegin(secondGroup, deathStar);
+
+            Assert.IsFalse(began);
+            Assert.IsEmpty(system.DrainEvents());
+        }
+
+        [Test]
         public void Advance_AfterNinthCheckpoint_EmitsAllFailureReports()
         {
             TacticalUnitState fighters = CreateFighters(12, 0);

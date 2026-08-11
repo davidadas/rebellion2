@@ -101,6 +101,7 @@ namespace Rebellion.Game.Tactical
                 this.units,
                 groupView,
                 BuildFighterCommandBudgets(encounter),
+                IsDeathStarAttackOrderValid,
                 random
             );
         }
@@ -275,6 +276,33 @@ namespace Rebellion.Game.Tactical
         }
 
         /// <summary>
+        /// Gets whether one fighter group can receive a Death Star attack order.
+        /// </summary>
+        /// <param name="group">The fighter group that would receive the order.</param>
+        /// <returns>True when the opposing Death Star is exposed and the fighter screen is overcome.</returns>
+        public bool CanOrderDeathStarAttack(TacticalShipGroup group)
+        {
+            return group != null
+                && groups.Contains(group)
+                && group.Behavior != TacticalBehavior.AttackDeathStar
+                && IsDeathStarAttackOrderValid(group);
+        }
+
+        /// <summary>
+        /// Assigns a Death Star attack order when the battle eligibility rules permit it.
+        /// </summary>
+        /// <param name="group">The fighter group receiving the order.</param>
+        /// <returns>True when the order is assigned.</returns>
+        public bool TryOrderDeathStarAttack(TacticalShipGroup group)
+        {
+            if (!CanOrderDeathStarAttack(group))
+                return false;
+
+            group.SetBehavior(TacticalBehavior.AttackDeathStar);
+            return true;
+        }
+
+        /// <summary>
         /// Orders every command group on one side to leave the tactical battlefield when no
         /// opposing gravity well holds it in combat. Units with disabled drives remain until they
         /// can move or are destroyed.
@@ -409,6 +437,44 @@ namespace Rebellion.Game.Tactical
                 if (target != null)
                     simulator.TryFireSuperlaser(deathStar, target);
             }
+        }
+
+        /// <summary>
+        /// Tests the battle-level conditions that keep an assigned Death Star attack valid.
+        /// </summary>
+        /// <param name="group">The fighter group executing or receiving the order.</param>
+        /// <returns>True when the group has fighter superiority against an exposed Death Star.</returns>
+        private bool IsDeathStarAttackOrderValid(TacticalShipGroup group)
+        {
+            if (
+                group == null
+                || !groups.Contains(group)
+                || group.Units.All(unit => unit.Kind != TacticalUnitKind.Fighters || !unit.IsActive)
+                || groups.Any(candidate =>
+                    candidate != group && candidate.Behavior == TacticalBehavior.AttackDeathStar
+                )
+                || Encounter.Planet?.HasActiveDefenseFacility(DefenseFacilityClass.DeathStarShield)
+                    == true
+            )
+            {
+                return false;
+            }
+
+            bool hasOpposingDeathStar = units.Any(unit =>
+                unit.IsActive
+                && unit.Side != group.Side
+                && unit.Unit is CapitalShip { IsDeathStar: true }
+            );
+            if (!hasOpposingDeathStar)
+                return false;
+
+            int attackingFighters = units.Count(unit =>
+                unit.IsActive && unit.Side == group.Side && unit.Kind == TacticalUnitKind.Fighters
+            );
+            int defendingFighters = units.Count(unit =>
+                unit.IsActive && unit.Side != group.Side && unit.Kind == TacticalUnitKind.Fighters
+            );
+            return attackingFighters > defendingFighters;
         }
 
         /// <summary>

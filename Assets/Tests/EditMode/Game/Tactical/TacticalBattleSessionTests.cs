@@ -1239,6 +1239,126 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void CanOrderDeathStarAttack_ExposedDeathStarWithFighterSuperiority_ReturnsTrue()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+
+            bool canOrder = session.CanOrderDeathStarAttack(
+                session.GetFighterGroups(TacticalBattleSide.Attacker).Single()
+            );
+
+            Assert.IsTrue(canOrder);
+        }
+
+        [Test]
+        public void CanOrderDeathStarAttack_EqualFighterScreen_ReturnsFalse()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            Starfighter defendingFighters = CreateFighters(12, 0);
+            CapitalShip deathStar = CreateShip(100, 0, defendingFighters);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+
+            bool canOrder = session.CanOrderDeathStarAttack(
+                session.GetFighterGroups(TacticalBattleSide.Attacker).Single()
+            );
+
+            Assert.IsFalse(canOrder);
+        }
+
+        [Test]
+        public void CanOrderDeathStarAttack_ActiveDeathStarShield_ReturnsFalse()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            Planet planet = new Planet();
+            planet.Buildings.Add(
+                new Building
+                {
+                    DefenseFacilityClass = DefenseFacilityClass.DeathStarShield,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(deathStar),
+                    Planet = planet,
+                }
+            );
+
+            bool canOrder = session.CanOrderDeathStarAttack(
+                session.GetFighterGroups(TacticalBattleSide.Attacker).Single()
+            );
+
+            Assert.IsFalse(canOrder);
+        }
+
+        [Test]
+        public void CanOrderDeathStarAttack_AnotherAttackOrderExists_ReturnsFalse()
+        {
+            Starfighter firstFighters = CreateFighters(12, 0, "first");
+            Starfighter secondFighters = CreateFighters(12, 0, "second");
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, firstFighters, secondFighters)),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            IReadOnlyList<TacticalShipGroup> groups = session.GetFighterGroups(
+                TacticalBattleSide.Attacker
+            );
+            groups[0].SetBehavior(TacticalBehavior.AttackDeathStar);
+
+            bool canOrder = session.CanOrderDeathStarAttack(groups[1]);
+
+            Assert.IsFalse(canOrder);
+        }
+
+        [Test]
+        public void TryOrderDeathStarAttack_EligibleGroup_AssignsAttackBehavior()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(CreateShip(600, 0, attackingFighters)),
+                    DefenderFleet = CreateFleet(deathStar),
+                }
+            );
+            TacticalShipGroup group = session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single();
+
+            bool ordered = session.TryOrderDeathStarAttack(group);
+
+            Assert.IsTrue(ordered);
+            Assert.AreEqual(TacticalBehavior.AttackDeathStar, group.Behavior);
+        }
+
+        [Test]
         public void Advance_AttackDeathStarBehavior_DoesNotCommandCapitalShips()
         {
             CapitalShip attackingShip = CreateShip(100, 0);

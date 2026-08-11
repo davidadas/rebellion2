@@ -653,10 +653,7 @@ namespace Rebellion.Game.Galaxy
         /// <returns>True when an active KDY defense is present.</returns>
         private bool HasActiveKdyDefense()
         {
-            return Buildings.Any(building =>
-                building.DefenseFacilityClass == DefenseFacilityClass.KDY
-                && IsEntityActive(building)
-            );
+            return HasActiveDefenseFacility(DefenseFacilityClass.KDY);
         }
 
         /// <summary>
@@ -673,6 +670,18 @@ namespace Rebellion.Game.Galaxy
                     ) && IsEntityActive(b)
                 )
                 .Sum(b => b.ShieldStrength);
+        }
+
+        /// <summary>
+        /// Returns whether a complete, stationary defense facility of the requested class is active.
+        /// </summary>
+        /// <param name="facilityClass">The defensive facility class to find.</param>
+        /// <returns>True when an active matching facility is present.</returns>
+        public bool HasActiveDefenseFacility(DefenseFacilityClass facilityClass)
+        {
+            return Buildings.Any(building =>
+                building.DefenseFacilityClass == facilityClass && IsEntityActive(building)
+            );
         }
 
         /// <summary>
