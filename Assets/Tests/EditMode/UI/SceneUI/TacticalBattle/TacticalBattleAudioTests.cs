@@ -67,6 +67,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                                 SuperlaserFiring = "superlaser-firing",
                                 SuperlaserReady = "superlaser-ready",
                                 SuperlaserWarning = "superlaser-warning",
+                                AttackReports = new List<string>
+                                {
+                                    "attack-report-1",
+                                    "attack-report-2",
+                                },
+                                AttackGroups = CreateDeathStarAttackGroups(),
                             },
                             OrdersRequested = CreateGroupVoice("orders-requested"),
                             ManeuverAcknowledged = CreateGroupVoice("maneuver"),
@@ -102,6 +108,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         LargeShipDestructionAudioPath = _defenderLargeDestruction,
                         TractorLockAudioPath = _defenderTractorLock,
                         TractorReleaseAudioPath = _defenderTractorRelease,
+                        Voice = new TacticalVoiceTheme
+                        {
+                            AudioRoot = "defender-voice",
+                            DeathStar = new TacticalDeathStarVoiceTheme
+                            {
+                                UnderAttack = "death-star-under-attack",
+                                AttackBrokenOff = "death-star-attack-broken-off",
+                                Destroyed = "death-star-destroyed",
+                            },
+                        },
                     },
                 },
                 played.Add,
@@ -370,6 +386,148 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             audio.Advance(0f);
 
             CollectionAssert.AreEqual(new[] { "attacker-voice/superlaser-ready" }, played);
+        }
+
+        [Test]
+        public void QueueDeathStarAttackBegin_NumberedFighterGroup_QueuesBeginReport()
+        {
+            audio.QueueDeathStarAttackBegin(TacticalBattleSide.Attacker, 1);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-blue-death-star-begin" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueDeathStarAttackReports_AttackingGroupStarts_QueuesRunningReport()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueDeathStarAttackReports(
+                TacticalBattleSide.Attacker,
+                new[]
+                {
+                    TacticalCombatEvent.DeathStarAttackPhase(
+                        TacticalCombatEventKind.DeathStarAttackStarted,
+                        attacker,
+                        defender
+                    ),
+                },
+                _ => 1
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-blue-death-star-running" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueDeathStarAttackReports_TimedReport_QueuesConfiguredChatter()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueDeathStarAttackReports(
+                TacticalBattleSide.Attacker,
+                new[] { TacticalCombatEvent.DeathStarAttackReport(attacker, defender, 1) },
+                _ => 0
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/attack-report-2" }, played);
+        }
+
+        [Test]
+        public void QueueDeathStarAttackReports_DefendingDeathStarAttacked_QueuesWarning()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueDeathStarAttackReports(
+                TacticalBattleSide.Defender,
+                new[]
+                {
+                    TacticalCombatEvent.DeathStarAttackPhase(
+                        TacticalCombatEventKind.DeathStarAttackStarted,
+                        attacker,
+                        defender
+                    ),
+                },
+                _ => -1
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "defender-voice/death-star-under-attack" }, played);
+        }
+
+        [Test]
+        public void QueueDeathStarAttackReports_FailedEnemyRun_QueuesBrokenOffReport()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueDeathStarAttackReports(
+                TacticalBattleSide.Defender,
+                new[]
+                {
+                    TacticalCombatEvent.DeathStarAttackPhase(
+                        TacticalCombatEventKind.DeathStarAttackFailed,
+                        attacker,
+                        defender
+                    ),
+                },
+                _ => -1
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "defender-voice/death-star-attack-broken-off" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueDeathStarAttackReports_DestroyedDeathStar_QueuesDestroyedReport()
+        {
+            TacticalUnitState attacker = CreateUnit(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters
+            );
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+
+            audio.QueueDeathStarAttackReports(
+                TacticalBattleSide.Defender,
+                new[]
+                {
+                    TacticalCombatEvent.DeathStarAttackPhase(
+                        TacticalCombatEventKind.DeathStarAttackSucceeded,
+                        attacker,
+                        defender
+                    ),
+                },
+                _ => -1
+            );
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "defender-voice/death-star-destroyed" }, played);
         }
 
         [Test]
@@ -714,6 +872,31 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     $"fighter-group-gold-{category}",
                 },
             };
+        }
+
+        /// <summary>
+        /// Creates predictable named fighter-group reports for Death Star attack tests.
+        /// </summary>
+        /// <returns>The configured attack-group reports.</returns>
+        private static List<TacticalDeathStarAttackGroupVoiceTheme> CreateDeathStarAttackGroups()
+        {
+            string[] groupNames = { "red", "blue", "green", "gold" };
+            List<TacticalDeathStarAttackGroupVoiceTheme> groups =
+                new List<TacticalDeathStarAttackGroupVoiceTheme>();
+            foreach (string groupName in groupNames)
+            {
+                groups.Add(
+                    new TacticalDeathStarAttackGroupVoiceTheme
+                    {
+                        Begin = $"fighter-group-{groupName}-death-star-begin",
+                        Running = $"fighter-group-{groupName}-death-star-running",
+                        Failed = $"fighter-group-{groupName}-death-star-failed",
+                        Succeeded = $"fighter-group-{groupName}-death-star-succeeded",
+                    }
+                );
+            }
+
+            return groups;
         }
     }
 }

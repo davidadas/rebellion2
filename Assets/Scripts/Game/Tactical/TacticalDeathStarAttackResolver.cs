@@ -7,6 +7,29 @@ using Rebellion.Util.Common;
 namespace Rebellion.Game.Tactical
 {
     /// <summary>
+    /// Captures the resolved outcome and presentation branch for one Death Star attack run.
+    /// </summary>
+    internal readonly struct TacticalDeathStarAttackResult
+    {
+        /// <summary>Gets whether a participating fighter completed the attack run.</summary>
+        public bool Succeeded { get; }
+
+        /// <summary>Gets whether defensive fire damaged any fighter during the approach.</summary>
+        public bool TookApproachDamage { get; }
+
+        /// <summary>
+        /// Initializes one resolved attack-run result.
+        /// </summary>
+        /// <param name="succeeded">Whether the attack destroyed the Death Star.</param>
+        /// <param name="tookApproachDamage">Whether defensive fire damaged the attackers.</param>
+        public TacticalDeathStarAttackResult(bool succeeded, bool tookApproachDamage)
+        {
+            Succeeded = succeeded;
+            TookApproachDamage = tookApproachDamage;
+        }
+    }
+
+    /// <summary>
     /// Resolves the dedicated fighter attack run used against a Death Star.
     /// </summary>
     internal sealed class TacticalDeathStarAttackResolver
@@ -29,8 +52,8 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="fighterUnits">The fighter squadrons committed to the run.</param>
         /// <param name="fighterCommandBudget">The normalized Combat contribution from the fighter commander.</param>
-        /// <returns>True when one participating fighter completes the run.</returns>
-        public bool Resolve(
+        /// <returns>The resolved outcome and presentation branch.</returns>
+        public TacticalDeathStarAttackResult Resolve(
             IReadOnlyList<TacticalUnitState> fighterUnits,
             float fighterCommandBudget
         )
@@ -42,45 +65,48 @@ namespace Rebellion.Game.Tactical
                 .Where(unit => unit is { IsActive: true, Kind: TacticalUnitKind.Fighters })
                 .ToList();
             Queue<TacticalUnitState> attackOrder = new Queue<TacticalUnitState>(participants);
+            bool tookApproachDamage = false;
             for (int pass = 0; pass < _maximumAttackPasses && attackOrder.Count > 0; pass++)
             {
                 TacticalUnitState unit = attackOrder.Dequeue();
-                ApplyApproachFire(unit);
+                tookApproachDamage |= ApplyApproachFire(unit);
                 if (!unit.IsActive)
                     continue;
 
                 if (CanCompleteRun(unit, fighterCommandBudget))
                 {
                     ResolveSuccessfulRun(participants);
-                    return true;
+                    return new TacticalDeathStarAttackResult(true, tookApproachDamage);
                 }
 
                 attackOrder.Enqueue(unit);
             }
 
             DestroySquadrons(participants);
-            return false;
+            return new TacticalDeathStarAttackResult(false, tookApproachDamage);
         }
 
         /// <summary>
         /// Applies the defensive-fire check made before one squadron attempts its attack.
         /// </summary>
         /// <param name="unit">The fighter squadron making the approach.</param>
-        private void ApplyApproachFire(TacticalUnitState unit)
+        /// <returns>True when defensive fire damages or destroys the squadron.</returns>
+        private bool ApplyApproachFire(TacticalUnitState unit)
         {
             Starfighter fighters = (Starfighter)unit.Unit;
             int evasion =
                 unit.EffectiveSublightSpeed <= 0f ? 1 : Math.Clamp(fighters.Agility + 1, 1, 9);
             if (random.NextInt(1, 11) <= evasion)
-                return;
+                return false;
 
             if (unit.Hull < 2)
             {
                 unit.Hull = 0;
-                return;
+                return true;
             }
 
             unit.Hull -= random.NextInt(1, unit.Hull + 1);
+            return true;
         }
 
         /// <summary>

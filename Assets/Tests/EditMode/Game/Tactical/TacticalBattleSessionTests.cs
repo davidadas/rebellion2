@@ -1231,6 +1231,8 @@ namespace Rebellion.Tests.Game.Tactical
 
             session.Advance(0.1f);
 
+            session.Advance(TacticalDeathStarAttackSystem.RunDuration);
+
             Assert.AreEqual(0, session.Units.Single(unit => unit.Unit == deathStar).Hull);
             Assert.AreEqual(100, session.Units.Single(unit => unit.Unit == ordinaryShip).Hull);
             Assert.AreEqual(12, session.Units.Single(unit => unit.Unit == attackingFighters).Hull);
@@ -1288,6 +1290,8 @@ namespace Rebellion.Tests.Game.Tactical
                 .Position;
 
             session.Advance(0.1f);
+
+            session.Advance(TacticalDeathStarAttackSystem.RunDuration);
 
             Assert.AreEqual(0, session.Units.Single(unit => unit.Unit == deathStar).Hull);
         }

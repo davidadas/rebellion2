@@ -209,6 +209,11 @@ public sealed class TacticalBattleController : MonoBehaviour
         battleRenderer.PresentEvents(combatEvents);
         battleAudio.QueueEvents(combatEvents);
         battleAudio.QueueSuperlaserReports(playerSide, combatEvents);
+        battleAudio.QueueDeathStarAttackReports(
+            playerSide,
+            combatEvents,
+            unit => FindGroupIndex(Session.GetFighterGroups(playerSide), unit)
+        );
         QueueFighterLifecycleReports(combatEvents);
         QueueDestructionReports(combatEvents);
         battleAudio.Advance(Time.unscaledDeltaTime);
@@ -954,7 +959,10 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         SelectedGroup.SetBehavior(pendingMissionOrder.Value);
-        QueueSelectedGroupVoice(battleAudio.QueueMissionAcknowledged);
+        if (pendingMissionOrder == TacticalBehavior.AttackDeathStar)
+            battleAudio.QueueDeathStarAttackBegin(playerSide, selectedGroupIndex);
+        else
+            QueueSelectedGroupVoice(battleAudio.QueueMissionAcknowledged);
         pendingMissionOrder = null;
         view.HideMissionOrders();
     }

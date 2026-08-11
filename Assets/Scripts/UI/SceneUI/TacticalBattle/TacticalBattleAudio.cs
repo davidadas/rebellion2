@@ -221,6 +221,18 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the numbered fighter group's report that it is breaking off to attack a Death Star.
+    /// </summary>
+    /// <param name="side">The side beginning the attack.</param>
+    /// <param name="groupIndex">The zero-based fighter-group number.</param>
+    internal void QueueDeathStarAttackBegin(TacticalBattleSide side, int groupIndex)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        string report = voice?.DeathStar?.GetAttackGroupBegin(groupIndex);
+        Enqueue(voice?.GetAudioPath(report), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
     /// Queues the played faction's report that its Death Star has fired.
     /// </summary>
     /// <param name="side">The side operating the Death Star.</param>
@@ -282,6 +294,68 @@ internal sealed class TacticalBattleAudio
             {
                 QueueSuperlaserReady(playedSide);
             }
+        }
+    }
+
+    /// <summary>
+    /// Queues Death Star attack-run reports visible to the played tactical side.
+    /// </summary>
+    /// <param name="playedSide">The side controlled or observed by the local player.</param>
+    /// <param name="events">The simulation events produced by the current frame.</param>
+    /// <param name="getGroupIndex">The operation that resolves a fighter's fixed HUD group.</param>
+    internal void QueueDeathStarAttackReports(
+        TacticalBattleSide playedSide,
+        IReadOnlyList<TacticalCombatEvent> events,
+        Func<TacticalUnitState, int> getGroupIndex
+    )
+    {
+        if (events == null)
+            throw new ArgumentNullException(nameof(events));
+        if (getGroupIndex == null)
+            throw new ArgumentNullException(nameof(getGroupIndex));
+
+        TacticalVoiceTheme playedVoice = GetTheme(playedSide).Voice;
+        TacticalDeathStarVoiceTheme deathStar = playedVoice?.DeathStar;
+        foreach (TacticalCombatEvent combatEvent in events)
+        {
+            if (
+                combatEvent.Kind
+                is not (
+                    TacticalCombatEventKind.DeathStarAttackStarted
+                    or TacticalCombatEventKind.DeathStarAttackReport
+                    or TacticalCombatEventKind.DeathStarAttackSucceeded
+                    or TacticalCombatEventKind.DeathStarAttackFailed
+                    or TacticalCombatEventKind.DeathStarAttackBrokenOff
+                )
+            )
+            {
+                continue;
+            }
+
+            string audio = null;
+            if (combatEvent.Source.Side == playedSide)
+            {
+                int groupIndex = getGroupIndex(combatEvent.Source);
+                audio =
+                    combatEvent.Kind == TacticalCombatEventKind.DeathStarAttackReport
+                        ? deathStar?.GetAttackReport(combatEvent.DeathStarReportIndex)
+                    : groupIndex >= 0 ? deathStar?.GetAttackGroupAudio(groupIndex, combatEvent.Kind)
+                    : null;
+            }
+            else if (combatEvent.Target?.Side == playedSide)
+            {
+                audio = combatEvent.Kind switch
+                {
+                    TacticalCombatEventKind.DeathStarAttackStarted => deathStar?.UnderAttack,
+                    TacticalCombatEventKind.DeathStarAttackSucceeded => deathStar?.Destroyed,
+                    TacticalCombatEventKind.DeathStarAttackFailed
+                    or TacticalCombatEventKind.DeathStarAttackBrokenOff =>
+                        deathStar?.AttackBrokenOff,
+                    _ => null,
+                };
+            }
+
+            Enqueue(playedVoice?.GetAudioPath(audio), TacticalAudioChannel.Voice);
         }
     }
 

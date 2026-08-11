@@ -44,12 +44,10 @@ namespace Rebellion.Game.Tactical
             new Vector3(-1f, -1f, 0f),
         };
         private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
-        private readonly TacticalDeathStarAttackResolver deathStarAttackResolver;
+        private readonly TacticalDeathStarAttackSystem deathStarAttackSystem;
         private readonly TacticalFighterDeploymentSystem fighterDeploymentSystem;
         private readonly TacticalSuperlaserSystem superlaserSystem;
         private readonly TacticalTractorBeamSystem tractorBeamSystem;
-        private readonly HashSet<TacticalShipGroup> resolvedDeathStarAttackGroups =
-            new HashSet<TacticalShipGroup>();
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
@@ -150,7 +148,10 @@ namespace Rebellion.Game.Tactical
                 fighterCommandBudgets
                 ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
-            deathStarAttackResolver = new TacticalDeathStarAttackResolver(random);
+            deathStarAttackSystem = new TacticalDeathStarAttackSystem(
+                new TacticalDeathStarAttackResolver(random),
+                fighterCommandBudgets
+            );
             fighterDeploymentSystem = new TacticalFighterDeploymentSystem(units, random);
             superlaserSystem = new TacticalSuperlaserSystem(units);
             tractorBeamSystem = new TacticalTractorBeamSystem();
@@ -165,6 +166,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         public void Advance(float elapsedTime)
         {
+            deathStarAttackSystem.Advance(elapsedTime);
+            events.AddRange(deathStarAttackSystem.DrainEvents());
             superlaserSystem.Advance(elapsedTime);
             foreach (
                 TacticalSuperlaserSystem.ResolvedShot shot in superlaserSystem.DrainResolvedShots()
@@ -408,7 +411,7 @@ namespace Rebellion.Game.Tactical
             if (
                 unit.Kind != TacticalUnitKind.Fighters
                 || group == null
-                || resolvedDeathStarAttackGroups.Contains(group)
+                || deathStarAttackSystem.IsCommitted(group)
             )
             {
                 return;
@@ -432,41 +435,8 @@ namespace Rebellion.Game.Tactical
                 return;
             }
 
-            resolvedDeathStarAttackGroups.Add(group);
-            TacticalUnitState[] participants = group
-                .Units.Where(candidate => candidate.IsActive)
-                .ToArray();
-            Dictionary<TacticalUnitState, bool> activeBefore = participants.ToDictionary(
-                candidate => candidate,
-                candidate => candidate.IsActive
-            );
-            bool succeeded = deathStarAttackResolver.Resolve(
-                participants,
-                fighterCommandBudgets.TryGetValue(group.Side, out float commandBudget)
-                    ? commandBudget
-                    : 1f
-            );
-            foreach (TacticalUnitState participant in participants)
-            {
-                if (activeBefore[participant] && !participant.IsActive)
-                {
-                    events.Add(TacticalCombatEvent.UnitDestroyed(deathStar, participant));
-                }
-            }
-
-            if (!succeeded)
-                return;
-
-            deathStar.Hull = 0;
-            TacticalUnitState attackLeader = participants.FirstOrDefault();
-            events.Add(
-                attackLeader == null
-                    ? TacticalCombatEvent.UnitLifecycle(
-                        TacticalCombatEventKind.UnitDestroyed,
-                        deathStar
-                    )
-                    : TacticalCombatEvent.UnitDestroyed(attackLeader, deathStar)
-            );
+            deathStarAttackSystem.TryBegin(group, deathStar);
+            events.AddRange(deathStarAttackSystem.DrainEvents());
         }
 
         /// <summary>

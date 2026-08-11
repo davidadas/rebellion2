@@ -17,9 +17,12 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0d, 0d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { firstSquadron, secondSquadron }, 1f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(
+                new[] { firstSquadron, secondSquadron },
+                1f
+            );
 
-            Assert.IsTrue(succeeded);
+            Assert.IsTrue(result.Succeeded);
             Assert.AreEqual(0, firstSquadron.Hull);
             Assert.AreEqual(12, secondSquadron.Hull);
         }
@@ -32,9 +35,9 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0.99d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 1f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
-            Assert.IsFalse(succeeded);
+            Assert.IsFalse(result.Succeeded);
             Assert.AreEqual(0, fighters.Hull);
         }
 
@@ -46,9 +49,9 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 1f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
-            Assert.IsFalse(succeeded);
+            Assert.IsFalse(result.Succeeded);
             Assert.AreEqual(0, fighters.Hull);
         }
 
@@ -60,9 +63,9 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0d, 0.02d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 6f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 6f);
 
-            Assert.IsTrue(succeeded);
+            Assert.IsTrue(result.Succeeded);
             Assert.AreEqual(12, fighters.Hull);
         }
 
@@ -74,9 +77,9 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0d, 0.99d, 0d, 0d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 1f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
-            Assert.IsTrue(succeeded);
+            Assert.IsTrue(result.Succeeded);
             Assert.AreEqual(12, fighters.Hull);
         }
 
@@ -88,9 +91,10 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0.5d, 0.25d, 0d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 1f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
-            Assert.IsTrue(succeeded);
+            Assert.IsTrue(result.Succeeded);
+            Assert.IsTrue(result.TookApproachDamage);
             Assert.AreEqual(12, fighters.Hull);
         }
 
@@ -102,9 +106,10 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0.99d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 9f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 9f);
 
-            Assert.IsFalse(succeeded);
+            Assert.IsFalse(result.Succeeded);
+            Assert.IsTrue(result.TookApproachDamage);
             Assert.AreEqual(0, fighters.Hull);
         }
 
@@ -116,9 +121,9 @@ namespace Rebellion.Tests.Game.Tactical
                 new FixedRandomProvider(new[] { 0.8d, 0d })
             );
 
-            bool succeeded = resolver.Resolve(new[] { fighters }, 1f);
+            TacticalDeathStarAttackResult result = resolver.Resolve(new[] { fighters }, 1f);
 
-            Assert.IsTrue(succeeded);
+            Assert.IsTrue(result.Succeeded);
             Assert.AreEqual(1, fighters.Hull);
         }
 

@@ -34,6 +34,21 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>A Death Star finishes recharging its superlaser.</summary>
         SuperlaserReady = 8,
+
+        /// <summary>A fighter group begins its dedicated Death Star attack run.</summary>
+        DeathStarAttackStarted = 9,
+
+        /// <summary>A fighter attack run reaches one of its timed report checkpoints.</summary>
+        DeathStarAttackReport = 10,
+
+        /// <summary>A fighter attack run destroys its targeted Death Star.</summary>
+        DeathStarAttackSucceeded = 11,
+
+        /// <summary>A fighter attack run fails to destroy its targeted Death Star.</summary>
+        DeathStarAttackFailed = 12,
+
+        /// <summary>A fighter attack run ends before reaching its outcome.</summary>
+        DeathStarAttackBrokenOff = 13,
     }
 
     /// <summary>
@@ -78,6 +93,9 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets the resolved attack strength used to select the weapon presentation.</summary>
         public int AttackStrength { get; }
 
+        /// <summary>Gets the zero-based chatter cue for a Death Star attack report.</summary>
+        public int DeathStarReportIndex { get; }
+
         /// <summary>Gets whether the attack penetrated the target's remaining shields.</summary>
         public bool PenetratedShields => ImpactState != TacticalImpactState.Shield;
 
@@ -96,13 +114,15 @@ namespace Rebellion.Game.Tactical
         /// <param name="weaponType">The weapon family, for weapon impacts.</param>
         /// <param name="impactState">The target state produced by the impact.</param>
         /// <param name="attackStrength">The resolved attack strength used for presentation.</param>
+        /// <param name="deathStarReportIndex">The configured chatter cue for an attack report.</param>
         private TacticalCombatEvent(
             TacticalCombatEventKind kind,
             TacticalUnitState source,
             TacticalUnitState target,
             TacticalWeaponType? weaponType,
             TacticalImpactState impactState = TacticalImpactState.Shield,
-            int attackStrength = 0
+            int attackStrength = 0,
+            int deathStarReportIndex = -1
         )
         {
             Kind = kind;
@@ -111,6 +131,7 @@ namespace Rebellion.Game.Tactical
             WeaponType = weaponType;
             ImpactState = impactState;
             AttackStrength = attackStrength;
+            DeathStarReportIndex = deathStarReportIndex;
             SourcePosition = source.Position;
             TargetPosition = target?.Position ?? source.Position;
         }
@@ -190,6 +211,69 @@ namespace Rebellion.Game.Tactical
                 source,
                 target ?? throw new ArgumentNullException(nameof(target)),
                 null
+            );
+        }
+
+        /// <summary>
+        /// Creates one phase event for a fighter attack run against a Death Star.
+        /// </summary>
+        /// <param name="kind">The attack-run phase.</param>
+        /// <param name="source">The fighter group leader.</param>
+        /// <param name="target">The opposing Death Star.</param>
+        /// <returns>The immutable attack-run event.</returns>
+        public static TacticalCombatEvent DeathStarAttackPhase(
+            TacticalCombatEventKind kind,
+            TacticalUnitState source,
+            TacticalUnitState target
+        )
+        {
+            if (
+                kind != TacticalCombatEventKind.DeathStarAttackStarted
+                && kind != TacticalCombatEventKind.DeathStarAttackSucceeded
+                && kind != TacticalCombatEventKind.DeathStarAttackFailed
+                && kind != TacticalCombatEventKind.DeathStarAttackBrokenOff
+            )
+            {
+                throw new ArgumentOutOfRangeException(nameof(kind));
+            }
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (source.Side == target.Side)
+                throw new ArgumentException("A Death Star attack must target the opposing side.");
+
+            return new TacticalCombatEvent(kind, source, target, null);
+        }
+
+        /// <summary>
+        /// Creates one timed fighter report during a Death Star attack run.
+        /// </summary>
+        /// <param name="source">The fighter group leader.</param>
+        /// <param name="target">The opposing Death Star.</param>
+        /// <param name="reportIndex">The zero-based configured chatter cue.</param>
+        /// <returns>The immutable attack-run report event.</returns>
+        public static TacticalCombatEvent DeathStarAttackReport(
+            TacticalUnitState source,
+            TacticalUnitState target,
+            int reportIndex
+        )
+        {
+            if (reportIndex < 0)
+                throw new ArgumentOutOfRangeException(nameof(reportIndex));
+            if (target == null)
+                throw new ArgumentNullException(nameof(target));
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (source.Side == target.Side)
+                throw new ArgumentException("A Death Star attack must target the opposing side.");
+
+            return new TacticalCombatEvent(
+                TacticalCombatEventKind.DeathStarAttackReport,
+                source,
+                target,
+                null,
+                deathStarReportIndex: reportIndex
             );
         }
 

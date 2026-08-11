@@ -58,6 +58,53 @@ public sealed class TacticalGroupVoiceTheme
 }
 
 /// <summary>
+/// Defines the four reports associated with one named fighter group's Death Star attack.
+/// </summary>
+[PersistableObject]
+public sealed class TacticalDeathStarAttackGroupVoiceTheme
+{
+    public string Begin { get; set; }
+
+    public string Running { get; set; }
+
+    public string Failed { get; set; }
+
+    public string Succeeded { get; set; }
+
+    /// <summary>
+    /// Resolves the report for one attack-run phase.
+    /// </summary>
+    /// <param name="kind">The attack-run phase.</param>
+    /// <returns>The configured report, or null for a timed chatter checkpoint.</returns>
+    public string GetAudio(TacticalCombatEventKind kind)
+    {
+        return kind switch
+        {
+            TacticalCombatEventKind.DeathStarAttackStarted => Running,
+            TacticalCombatEventKind.DeathStarAttackFailed => Failed,
+            TacticalCombatEventKind.DeathStarAttackSucceeded => Succeeded,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Enumerates every non-empty group report configured for preloading.
+    /// </summary>
+    /// <returns>The configured audio names.</returns>
+    public IEnumerable<string> GetAudioNames()
+    {
+        if (!string.IsNullOrWhiteSpace(Begin))
+            yield return Begin;
+        if (!string.IsNullOrWhiteSpace(Running))
+            yield return Running;
+        if (!string.IsNullOrWhiteSpace(Failed))
+            yield return Failed;
+        if (!string.IsNullOrWhiteSpace(Succeeded))
+            yield return Succeeded;
+    }
+}
+
+/// <summary>
 /// Defines faction-specific Death Star tactical reports.
 /// </summary>
 [PersistableObject]
@@ -68,6 +115,57 @@ public sealed class TacticalDeathStarVoiceTheme
     public string SuperlaserReady { get; set; }
 
     public string SuperlaserWarning { get; set; }
+
+    public string UnderAttack { get; set; }
+
+    public string AttackBrokenOff { get; set; }
+
+    public string Destroyed { get; set; }
+
+    public List<string> AttackReports { get; set; } = new List<string>();
+
+    public List<TacticalDeathStarAttackGroupVoiceTheme> AttackGroups { get; set; } =
+        new List<TacticalDeathStarAttackGroupVoiceTheme>();
+
+    /// <summary>
+    /// Resolves one numbered fighter group's opening attack-run report.
+    /// </summary>
+    /// <param name="groupIndex">The zero-based fighter-group number.</param>
+    /// <returns>The configured report, or null when the group is not configured.</returns>
+    public string GetAttackGroupBegin(int groupIndex)
+    {
+        if (groupIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(groupIndex));
+
+        return groupIndex < AttackGroups.Count ? AttackGroups[groupIndex]?.Begin : null;
+    }
+
+    /// <summary>
+    /// Resolves one numbered fighter group's attack-run report.
+    /// </summary>
+    /// <param name="groupIndex">The zero-based fighter-group number.</param>
+    /// <param name="kind">The attack-run phase.</param>
+    /// <returns>The configured report, or null when the group or phase is not configured.</returns>
+    public string GetAttackGroupAudio(int groupIndex, TacticalCombatEventKind kind)
+    {
+        if (groupIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(groupIndex));
+
+        return groupIndex < AttackGroups.Count ? AttackGroups[groupIndex]?.GetAudio(kind) : null;
+    }
+
+    /// <summary>
+    /// Resolves one timed attack-run chatter report.
+    /// </summary>
+    /// <param name="reportIndex">The zero-based chatter report number.</param>
+    /// <returns>The configured report, or null when the report is not configured.</returns>
+    public string GetAttackReport(int reportIndex)
+    {
+        if (reportIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(reportIndex));
+
+        return reportIndex < AttackReports.Count ? AttackReports[reportIndex] : null;
+    }
 
     /// <summary>
     /// Enumerates every non-empty Death Star response configured for preloading.
@@ -81,6 +179,24 @@ public sealed class TacticalDeathStarVoiceTheme
             yield return SuperlaserReady;
         if (!string.IsNullOrWhiteSpace(SuperlaserWarning))
             yield return SuperlaserWarning;
+        if (!string.IsNullOrWhiteSpace(UnderAttack))
+            yield return UnderAttack;
+        if (!string.IsNullOrWhiteSpace(AttackBrokenOff))
+            yield return AttackBrokenOff;
+        if (!string.IsNullOrWhiteSpace(Destroyed))
+            yield return Destroyed;
+        foreach (string report in AttackReports)
+        {
+            if (!string.IsNullOrWhiteSpace(report))
+                yield return report;
+        }
+        foreach (TacticalDeathStarAttackGroupVoiceTheme group in AttackGroups)
+        {
+            if (group == null)
+                continue;
+            foreach (string audio in group.GetAudioNames())
+                yield return audio;
+        }
     }
 }
 
