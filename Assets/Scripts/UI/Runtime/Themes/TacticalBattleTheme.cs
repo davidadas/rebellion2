@@ -8,6 +8,8 @@ public sealed class TacticalBattleTheme
 {
     public string SharedUIRoot { get; set; }
 
+    public string SharedEffectsRoot { get; set; }
+
     public string TaskForceHeaderImagePath { get; set; }
 
     public string FighterGroupHeaderImagePath { get; set; }

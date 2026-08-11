@@ -17,6 +17,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private const float _destructionEffectDuration = 0.65f;
     private const float _farSpritePixelsPerUnit = 1f;
     private const float _weaponEffectDuration = 0.18f;
+    private const int _persistentEffectFrameCount = 8;
     private static readonly string[] ModelLods = { "close", "medium", "far" };
     private static readonly float[] LodScreenHeights = { 0.35f, 0.12f, 0.01f };
     private static readonly string[] FighterGroupColors = { "red", "blue", "green", "gold" };
@@ -27,10 +28,14 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private readonly List<GameObject> navigationSets = new List<GameObject>();
     private readonly List<Sprite> sprites = new List<Sprite>();
     private readonly List<TacticalUnitView> unitViews = new List<TacticalUnitView>();
+    private readonly Dictionary<TacticalUnitState, TacticalUnitView> unitViewsByState =
+        new Dictionary<TacticalUnitState, TacticalUnitView>();
+    private Sprite[] gravityWellEffectFrames = Array.Empty<Sprite>();
     private Material navigationSelectedMaterial;
     private bool initialized;
     private bool unitSelectionEnabled;
     private TacticalBattleSession session;
+    private Sprite[] tractorLockEffectFrames = Array.Empty<Sprite>();
 
     /// <summary>
     /// Raised when the player selects a visible tactical waypoint marker.
@@ -54,11 +59,13 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <param name="session">The active tactical session.</param>
     /// <param name="modelCache">The application-owned model cache.</param>
     /// <param name="contentAssets">The active external content assets.</param>
+    /// <param name="theme">The local faction's tactical presentation theme.</param>
     /// <param name="cancellationToken">Token that cancels scene initialization.</param>
     public async Task InitializeAsync(
         TacticalBattleSession session,
         ContentModelCache modelCache,
         IContentAssetSource contentAssets,
+        TacticalBattleTheme theme,
         CancellationToken cancellationToken
     )
     {
@@ -68,10 +75,22 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             throw new ArgumentNullException(nameof(modelCache));
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
+        if (theme == null)
+            throw new ArgumentNullException(nameof(theme));
+        if (string.IsNullOrWhiteSpace(theme.SharedEffectsRoot))
+            throw new InvalidOperationException("A tactical shared-effects root is required.");
         if (initialized)
             throw new InvalidOperationException("Tactical presentation is already initialized.");
 
         this.session = session;
+        tractorLockEffectFrames = LoadEffectFrames(
+            contentAssets,
+            $"{theme.SharedEffectsRoot}/TractorLock"
+        );
+        gravityWellEffectFrames = LoadEffectFrames(
+            contentAssets,
+            $"{theme.SharedEffectsRoot}/GravityWell"
+        );
 
         CapitalShip[] capitalShips = session
             .Units.Select(unit => unit.Unit)
@@ -137,6 +156,10 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
                 CreateSuperlaserEffect(combatEvent);
             else if (combatEvent.Kind == TacticalCombatEventKind.UnitDestroyed)
                 CreateDestructionEffect(combatEvent.TargetPosition);
+            else if (combatEvent.Kind == TacticalCombatEventKind.TractorLock)
+                SetTractorLockEffect(combatEvent.Target, true);
+            else if (combatEvent.Kind == TacticalCombatEventKind.TractorRelease)
+                SetTractorLockEffect(combatEvent.Target, false);
         }
     }
 
@@ -261,6 +284,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         shipHighlightMaterials.Clear();
         navigationSets.Clear();
         unitViews.Clear();
+        unitViewsByState.Clear();
     }
 
     /// <summary>
@@ -480,6 +504,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         unitView.Initialize(unit);
         ConfigureUnitSelection(unitView, lods[0].renderers);
         unitViews.Add(unitView);
+        unitViewsByState.Add(unit, unitView);
     }
 
     /// <summary>
@@ -561,6 +586,7 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         unitView.Initialize(unit);
         ConfigureUnitSelection(unitView, lods[0].renderers);
         unitViews.Add(unitView);
+        unitViewsByState.Add(unit, unitView);
     }
 
     /// <summary>
@@ -650,7 +676,53 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
         );
         if (unitView.Unit.Unit is CapitalShip)
             unitView.ConfigureHighlight(new Bounds(collider.center, collider.size));
+        unitView.ConfigurePersistentEffects(
+            tractorLockEffectFrames,
+            gravityWellEffectFrames,
+            new Bounds(collider.center, collider.size)
+        );
         unitView.Selected += HandleUnitSelected;
+    }
+
+    /// <summary>
+    /// Loads one ordered eight-frame persistent tactical effect.
+    /// </summary>
+    /// <param name="contentAssets">The active external content assets.</param>
+    /// <param name="rootAddress">The effect's content directory.</param>
+    /// <returns>The runtime sprites in playback order.</returns>
+    private Sprite[] LoadEffectFrames(IContentAssetSource contentAssets, string rootAddress)
+    {
+        Sprite[] frames = new Sprite[_persistentEffectFrameCount];
+        for (int index = 0; index < frames.Length; index++)
+        {
+            string address = $"{rootAddress}/frame-{index + 1}";
+            Texture2D texture = contentAssets.GetTexture(address);
+            if (texture == null)
+                throw new InvalidOperationException($"Tactical effect frame is missing: {address}");
+
+            Sprite sprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, texture.width, texture.height),
+                new Vector2(0.5f, 0.5f),
+                texture.width
+            );
+            sprite.name = $"{rootAddress} frame {index + 1}";
+            sprites.Add(sprite);
+            frames[index] = sprite;
+        }
+
+        return frames;
+    }
+
+    /// <summary>
+    /// Applies one tractor-lock lifecycle event to the affected unit presentation.
+    /// </summary>
+    /// <param name="target">The unit gaining or losing a tractor lock.</param>
+    /// <param name="active">Whether a new lock was established instead of released.</param>
+    private void SetTractorLockEffect(TacticalUnitState target, bool active)
+    {
+        if (target != null && unitViewsByState.TryGetValue(target, out TacticalUnitView unitView))
+            unitView.SetTractorLockActive(active);
     }
 
     /// <summary>

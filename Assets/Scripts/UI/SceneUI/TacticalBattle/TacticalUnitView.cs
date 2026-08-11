@@ -1,4 +1,5 @@
 using Rebellion.Game.Tactical;
+using Rebellion.Game.Units;
 using UnityEngine;
 
 /// <summary>
@@ -6,8 +7,11 @@ using UnityEngine;
 /// </summary>
 public sealed class TacticalUnitView : MonoBehaviour
 {
+    private TacticalPersistentEffectView gravityWellEffect;
     private GameObject highlightObject;
     private Mesh highlightMesh;
+    private TacticalPersistentEffectView tractorLockEffect;
+    private int tractorLockCount;
     private TacticalUnitState unit;
 
     /// <summary>
@@ -43,6 +47,38 @@ public sealed class TacticalUnitView : MonoBehaviour
         highlightMesh = CreateHighlightMesh(bounds);
         filter.sharedMesh = highlightMesh;
         highlightObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Creates the persistent tractor-lock and gravity-well effects for this unit.
+    /// </summary>
+    /// <param name="tractorFrames">The tractor-lock animation frames.</param>
+    /// <param name="gravityWellFrames">The gravity-well animation frames.</param>
+    /// <param name="bounds">The unit presentation bounds in local space.</param>
+    public void ConfigurePersistentEffects(
+        Sprite[] tractorFrames,
+        Sprite[] gravityWellFrames,
+        Bounds bounds
+    )
+    {
+        float diameter = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) * 1.15f;
+        tractorLockEffect = CreatePersistentEffect("Tractor Lock Effect", tractorFrames, diameter);
+        gravityWellEffect = CreatePersistentEffect(
+            "Gravity Well Effect",
+            gravityWellFrames,
+            diameter
+        );
+        RefreshPersistentEffects();
+    }
+
+    /// <summary>
+    /// Records one established or released tractor lock affecting this unit.
+    /// </summary>
+    /// <param name="active">Whether a new lock was established instead of released.</param>
+    public void SetTractorLockActive(bool active)
+    {
+        tractorLockCount = Mathf.Max(0, tractorLockCount + (active ? 1 : -1));
+        RefreshPersistentEffects();
     }
 
     /// <summary>
@@ -96,6 +132,40 @@ public sealed class TacticalUnitView : MonoBehaviour
         );
         mesh.RecalculateBounds();
         return mesh;
+    }
+
+    /// <summary>
+    /// Creates one child effect using an ordered animation sequence.
+    /// </summary>
+    /// <param name="name">The effect hierarchy name.</param>
+    /// <param name="frames">The animation frames in playback order.</param>
+    /// <param name="diameter">The effect diameter in local space.</param>
+    /// <returns>The configured persistent effect.</returns>
+    private TacticalPersistentEffectView CreatePersistentEffect(
+        string name,
+        Sprite[] frames,
+        float diameter
+    )
+    {
+        GameObject effectObject = new GameObject(name);
+        effectObject.transform.SetParent(transform, false);
+        TacticalPersistentEffectView effect =
+            effectObject.AddComponent<TacticalPersistentEffectView>();
+        effect.Initialize(frames, diameter);
+        return effect;
+    }
+
+    /// <summary>
+    /// Applies gravity-well precedence over the tractor-lock presentation.
+    /// </summary>
+    private void RefreshPersistentEffects()
+    {
+        if (tractorLockEffect == null || gravityWellEffect == null || unit == null)
+            return;
+
+        bool hasGravityWell = unit.Unit is CapitalShip { HasGravityWell: true };
+        gravityWellEffect.SetVisible(hasGravityWell);
+        tractorLockEffect.SetVisible(!hasGravityWell && tractorLockCount > 0);
     }
 
     /// <summary>

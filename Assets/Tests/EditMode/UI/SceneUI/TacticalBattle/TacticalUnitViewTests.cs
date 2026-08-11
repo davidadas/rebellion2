@@ -8,7 +8,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
     [TestFixture]
     public class TacticalUnitViewTests
     {
+        private Sprite[] gravityWellFrames;
         private GameObject root;
+        private Sprite[] tractorLockFrames;
         private TacticalUnitView view;
 
         [SetUp]
@@ -16,12 +18,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         {
             root = new GameObject("TacticalUnitViewTests");
             view = root.AddComponent<TacticalUnitView>();
+            tractorLockFrames = CreateFrames(Color.blue);
+            gravityWellFrames = CreateFrames(Color.red);
         }
 
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(root);
+            DestroyFrames(tractorLockFrames);
+            DestroyFrames(gravityWellFrames);
         }
 
         [Test]
@@ -63,11 +69,59 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.That(highlight.gameObject.activeSelf, Is.False);
         }
 
+        [Test]
+        public void ConfigurePersistentEffects_GravityWellUnit_ShowsOnlyGravityWellEffect()
+        {
+            view.Initialize(CreateUnit(true));
+
+            view.ConfigurePersistentEffects(
+                tractorLockFrames,
+                gravityWellFrames,
+                new Bounds(Vector3.zero, Vector3.one)
+            );
+
+            Assert.IsFalse(FindEffect("Tractor Lock Effect").gameObject.activeSelf);
+            Assert.IsTrue(FindEffect("Gravity Well Effect").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void SetTractorLockActive_ActiveLock_ShowsTractorEffect()
+        {
+            view.Initialize(CreateUnit());
+            view.ConfigurePersistentEffects(
+                tractorLockFrames,
+                gravityWellFrames,
+                new Bounds(Vector3.zero, Vector3.one)
+            );
+
+            view.SetTractorLockActive(true);
+
+            Assert.IsTrue(FindEffect("Tractor Lock Effect").gameObject.activeSelf);
+            Assert.IsFalse(FindEffect("Gravity Well Effect").gameObject.activeSelf);
+        }
+
+        [Test]
+        public void SetTractorLockActive_OneOfMultipleLocksReleased_KeepsTractorEffectVisible()
+        {
+            view.Initialize(CreateUnit());
+            view.ConfigurePersistentEffects(
+                tractorLockFrames,
+                gravityWellFrames,
+                new Bounds(Vector3.zero, Vector3.one)
+            );
+            view.SetTractorLockActive(true);
+            view.SetTractorLockActive(true);
+
+            view.SetTractorLockActive(false);
+
+            Assert.IsTrue(FindEffect("Tractor Lock Effect").gameObject.activeSelf);
+        }
+
         /// <summary>
         /// Creates one active capital-ship tactical state for presentation tests.
         /// </summary>
         /// <returns>The initialized tactical state.</returns>
-        private static TacticalUnitState CreateUnit()
+        private static TacticalUnitState CreateUnit(bool hasGravityWell = false)
         {
             return TacticalUnitState.FromCapitalShip(
                 new CapitalShip
@@ -75,8 +129,66 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     CurrentHullStrength = 100,
                     MaxHullStrength = 100,
                     MaxShieldStrength = 50,
+                    HasGravityWell = hasGravityWell,
                 },
                 TacticalBattleSide.Attacker
+            );
+        }
+
+        /// <summary>
+        /// Creates one test animation sequence with the required eight frames.
+        /// </summary>
+        /// <param name="color">The solid frame color.</param>
+        /// <returns>The owned test sprites.</returns>
+        private static Sprite[] CreateFrames(Color color)
+        {
+            Sprite[] frames = new Sprite[8];
+            for (int index = 0; index < frames.Length; index++)
+            {
+                Texture2D texture = new Texture2D(1, 1);
+                texture.SetPixel(0, 0, color);
+                texture.Apply();
+                frames[index] = Sprite.Create(
+                    texture,
+                    new Rect(0f, 0f, 1f, 1f),
+                    new Vector2(0.5f, 0.5f),
+                    1f
+                );
+            }
+
+            return frames;
+        }
+
+        /// <summary>
+        /// Releases one owned test animation sequence and its textures.
+        /// </summary>
+        /// <param name="frames">The sprites to release.</param>
+        private static void DestroyFrames(Sprite[] frames)
+        {
+            if (frames == null)
+                return;
+
+            foreach (Sprite frame in frames)
+            {
+                if (frame == null)
+                    continue;
+
+                Texture texture = frame.texture;
+                Object.DestroyImmediate(frame);
+                Object.DestroyImmediate(texture);
+            }
+        }
+
+        /// <summary>
+        /// Finds one configured persistent effect by hierarchy name.
+        /// </summary>
+        /// <param name="name">The effect hierarchy name.</param>
+        /// <returns>The matching effect.</returns>
+        private TacticalPersistentEffectView FindEffect(string name)
+        {
+            return System.Array.Find(
+                root.GetComponentsInChildren<TacticalPersistentEffectView>(true),
+                effect => effect.name == name
             );
         }
     }

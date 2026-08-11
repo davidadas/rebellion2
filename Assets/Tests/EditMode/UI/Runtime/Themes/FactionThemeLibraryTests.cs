@@ -112,6 +112,8 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             TacticalBattleTheme alliance = _library.GetTheme("FNALL1").TacticalBattle;
             TacticalBattleTheme empire = _library.GetTheme("FNEMP1").TacticalBattle;
 
+            Assert.AreEqual("Pack/Shared/Tactical/Effects", alliance.SharedEffectsRoot);
+            Assert.AreEqual("Pack/Shared/Tactical/Effects", empire.SharedEffectsRoot);
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13028-1033-tactical-blast",
                 alliance.ArrivalAudioPath
