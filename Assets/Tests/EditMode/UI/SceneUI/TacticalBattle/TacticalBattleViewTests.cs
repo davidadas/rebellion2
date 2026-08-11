@@ -96,6 +96,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void HandleKeyDown_Space_ForwardsSelectionFocus()
+        {
+            bool focusRequested = false;
+            view.SelectionFocusRequested += () => focusRequested = true;
+
+            view.HandleKeyDown(KeyCode.Space);
+
+            Assert.IsTrue(focusRequested);
+        }
+
+        [Test]
         public void HandleKeyDown_NumberKey_ForwardsTaskForceSelection()
         {
             ConfigureCompleteView();

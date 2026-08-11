@@ -145,6 +145,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         view.TaskForceFocusRequested += FocusTaskForce;
         view.FighterGroupFocusRequested += FocusFighterGroup;
         view.CameraCommandRequested += ExecuteCameraCommand;
+        view.SelectionFocusRequested += FocusCurrentSelection;
         view.MissionOrderSelected += SelectPendingMissionOrder;
         view.MissionOrderAssigned += AssignPendingMissionOrder;
         view.MissionOrderCancelled += CancelPendingMissionOrder;
@@ -267,6 +268,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             view.TaskForceFocusRequested -= FocusTaskForce;
             view.FighterGroupFocusRequested -= FocusFighterGroup;
             view.CameraCommandRequested -= ExecuteCameraCommand;
+            view.SelectionFocusRequested -= FocusCurrentSelection;
             view.MissionOrderSelected -= SelectPendingMissionOrder;
             view.MissionOrderAssigned -= AssignPendingMissionOrder;
             view.MissionOrderCancelled -= CancelPendingMissionOrder;
@@ -591,6 +593,22 @@ public sealed class TacticalBattleController : MonoBehaviour
     }
 
     /// <summary>
+    /// Centers the camera on the currently displayed ship or command group.
+    /// </summary>
+    private void FocusCurrentSelection()
+    {
+        if (selectedCapitalShip?.IsActive == true)
+        {
+            cameraRig.FocusSubject(
+                ToUnityVector(Session.GetPresentationPosition(selectedCapitalShip))
+            );
+            return;
+        }
+
+        FocusGroup(SelectedGroup);
+    }
+
+    /// <summary>
     /// Centers the camera on one populated command group.
     /// </summary>
     /// <param name="groups">The ordered command groups.</param>
@@ -600,9 +618,19 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (index < 0 || index >= groups.Count)
             return;
 
-        TacticalUnitState[] activeUnits = groups[index]
-            .Units.Where(unit => unit.IsActive)
-            .ToArray();
+        FocusGroup(groups[index]);
+    }
+
+    /// <summary>
+    /// Centers the camera on one populated command group.
+    /// </summary>
+    /// <param name="group">The command group to focus.</param>
+    private void FocusGroup(TacticalShipGroup group)
+    {
+        if (group == null)
+            return;
+
+        TacticalUnitState[] activeUnits = group.Units.Where(unit => unit.IsActive).ToArray();
         if (activeUnits.Length == 0)
             return;
 

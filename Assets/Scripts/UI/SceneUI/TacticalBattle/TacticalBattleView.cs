@@ -13,6 +13,7 @@ public sealed class TacticalBattleView : MonoBehaviour
     {
         KeyCode.Return,
         KeyCode.N,
+        KeyCode.Space,
         KeyCode.PageUp,
         KeyCode.I,
         KeyCode.K,
@@ -209,6 +210,11 @@ public sealed class TacticalBattleView : MonoBehaviour
     /// Raised when a tactical camera shortcut is pressed.
     /// </summary>
     public event Action<TacticalCameraCommand> CameraCommandRequested;
+
+    /// <summary>
+    /// Raised when the player requests focus on the currently displayed tactical selection.
+    /// </summary>
+    public event Action SelectionFocusRequested;
 
     /// <summary>
     /// Raised when the player chooses a pending mission order for the selected tactical group.
@@ -818,6 +824,9 @@ public sealed class TacticalBattleView : MonoBehaviour
     {
         switch (key)
         {
+            case KeyCode.Space:
+                SelectionFocusRequested?.Invoke();
+                return;
             case KeyCode.Return:
             case KeyCode.N:
                 CameraCommandRequested?.Invoke(TacticalCameraCommand.ResetSubject);
