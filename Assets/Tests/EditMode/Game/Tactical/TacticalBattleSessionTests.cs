@@ -1197,6 +1197,58 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_VerticalClearanceRemainsBlocked_AddsDelayedTemporaryDetour()
+        {
+            CapitalShip movingShip = CreateShip(600, 0);
+            movingShip.Maneuverability = 10;
+            movingShip.SublightSpeed = 1;
+            CapitalShip centerObstacle = CreateShip(600, 0);
+            CapitalShip upperObstacle = CreateShip(600, 0);
+            CapitalShip lowerObstacle = CreateShip(600, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(
+                        movingShip,
+                        centerObstacle,
+                        upperObstacle,
+                        lowerObstacle
+                    ),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+            TacticalUnitState movingUnit = session.Units.Single(unit => unit.Unit == movingShip);
+            TacticalUnitState centerUnit = session.Units.Single(unit =>
+                unit.Unit == centerObstacle
+            );
+            TacticalUnitState upperUnit = session.Units.Single(unit => unit.Unit == upperObstacle);
+            TacticalUnitState lowerUnit = session.Units.Single(unit => unit.Unit == lowerObstacle);
+            movingUnit.Position = Vector3.Zero;
+            movingUnit.Forward = Vector3.UnitZ;
+            movingUnit.SetCollisionExtents(2.5f, 1f);
+            centerUnit.Position = new Vector3(0f, 0f, 3f);
+            upperUnit.Position = new Vector3(0f, 2f, 3f);
+            lowerUnit.Position = new Vector3(0f, -2f, 3f);
+            centerUnit.SetCollisionExtents(2.5f, 1f);
+            upperUnit.SetCollisionExtents(2.5f, 1f);
+            lowerUnit.SetCollisionExtents(2.5f, 1f);
+            session
+                .GetTaskForces(TacticalBattleSide.Attacker)
+                .Single(group => group.Units.Contains(movingUnit))
+                .ReplaceNavigationPoints(new[] { new TacticalNavPoint(0f, 0f, 20f) });
+
+            for (int update = 0; update < 12; update++)
+                session.Advance(1f);
+
+            Assert.AreEqual(0f, movingUnit.Position.X, 0.001f);
+
+            session.Advance(1f);
+
+            Assert.Less(movingUnit.Position.X, 0f);
+            Assert.Greater(movingUnit.Position.Y, 0f);
+        }
+
+        [Test]
         public void Advance_AttackFightersBehavior_TargetsOnlyOpposingFighters()
         {
             CapitalShip attackingShip = CreateShip(600, 0);

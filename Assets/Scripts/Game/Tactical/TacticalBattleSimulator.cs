@@ -21,6 +21,15 @@ namespace Rebellion.Game.Tactical
         private const float _maneuverAngle = (float)(Math.PI / 8d);
         private const float _maneuverDistanceScale = 0.75f;
         private const float _navigationArrivalDistance = 1f;
+        private const int _stableMarkerRefreshesForDetour = 5;
+        private const float _temporaryDetourTimeout = 12f;
+        private static readonly Vector3[] TemporaryDetourOffsets =
+        {
+            new Vector3(20f, 0f, 0f),
+            new Vector3(-20f, 10f, 5f),
+            new Vector3(5f, 0f, 20f),
+            new Vector3(0f, -10f, -20f),
+        };
         private static readonly Vector3[] SurroundDirections =
         {
             new Vector3(1f, -1f, 0f),
@@ -60,8 +69,13 @@ namespace Rebellion.Game.Tactical
         private readonly TacticalNavigationGrid navigationGrid;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
+        private readonly Dictionary<TacticalUnitState, CollisionAvoidanceState> collisionAvoidance =
+            new Dictionary<TacticalUnitState, CollisionAvoidanceState>();
+        private readonly Dictionary<TacticalShipGroup, MarkerStabilityState> markerStability =
+            new Dictionary<TacticalShipGroup, MarkerStabilityState>();
         private readonly IRandomNumberProvider random;
         private readonly IReadOnlyList<TacticalUnitState> units;
+        private float tacticalTime;
         private readonly Dictionary<TacticalUnitState, WithdrawalMotion> withdrawals =
             new Dictionary<TacticalUnitState, WithdrawalMotion>();
 
@@ -142,6 +156,42 @@ namespace Rebellion.Game.Tactical
                 Direction = direction;
                 Lane = lane;
             }
+        }
+
+        private sealed class CollisionAvoidanceState
+        {
+            /// <summary>
+            /// Gets or sets whether vertical clearance failed during the previous update.
+            /// </summary>
+            public bool VerticalClearanceBlocked { get; set; }
+
+            /// <summary>
+            /// Gets or sets the active temporary destination offset.
+            /// </summary>
+            public Vector3? TemporaryOffset { get; set; }
+
+            /// <summary>
+            /// Gets or sets the next offset phase used by this unit.
+            /// </summary>
+            public int Phase { get; set; }
+
+            /// <summary>
+            /// Gets or sets the tactical time at which the temporary offset last changed.
+            /// </summary>
+            public float LastChangeTime { get; set; }
+        }
+
+        private sealed class MarkerStabilityState
+        {
+            /// <summary>
+            /// Gets or sets the marker position observed during the previous update.
+            /// </summary>
+            public Vector3 Position { get; set; }
+
+            /// <summary>
+            /// Gets or sets the number of consecutive refreshes at the same position.
+            /// </summary>
+            public int RefreshCount { get; set; }
         }
 
         private readonly struct PendingAttack
@@ -231,6 +281,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         public void Advance(float elapsedTime)
         {
+            tacticalTime += elapsedTime;
+            RefreshCollisionAvoidance();
             deathStarAttackSystem.Advance(elapsedTime);
             events.AddRange(deathStarAttackSystem.DrainEvents());
             superlaserSystem.Advance(elapsedTime);
@@ -887,6 +939,10 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         private void MoveTowards(TacticalUnitState unit, Vector3 destination, float elapsedTime)
         {
+            CollisionAvoidanceState avoidance = GetCollisionAvoidanceState(unit);
+            if (avoidance.TemporaryOffset.HasValue)
+                destination += avoidance.TemporaryOffset.Value;
+
             Vector3 displacement = destination - unit.Position;
             float distance = displacement.Length();
             float movementSpeed = tractorBeamSystem.GetMovementSpeed(unit, GetCommandBudget(unit));
@@ -932,6 +988,90 @@ namespace Rebellion.Game.Tactical
                 unit.Position = firstClearance;
             else if (!TryFindCollision(unit, secondClearance, out _))
                 unit.Position = secondClearance;
+            else if (unit.Kind == TacticalUnitKind.CapitalShip)
+                avoidance.VerticalClearanceBlocked = true;
+        }
+
+        /// <summary>
+        /// Updates delayed temporary detours and resets per-update clearance results.
+        /// </summary>
+        private void RefreshCollisionAvoidance()
+        {
+            foreach (TacticalShipGroup group in groups)
+            {
+                MarkerStabilityState stability = GetMarkerStabilityState(group);
+                if (stability.Position == group.MarkerPosition)
+                    stability.RefreshCount++;
+                else
+                {
+                    stability.Position = group.MarkerPosition;
+                    stability.RefreshCount = 0;
+                }
+
+                for (int index = 0; index < group.Units.Count; index++)
+                {
+                    TacticalUnitState unit = group.Units[index];
+                    if (unit.Kind != TacticalUnitKind.CapitalShip)
+                        continue;
+
+                    CollisionAvoidanceState avoidance = GetCollisionAvoidanceState(unit);
+                    bool timeoutElapsed =
+                        tacticalTime - avoidance.LastChangeTime > _temporaryDetourTimeout;
+                    if (
+                        avoidance.VerticalClearanceBlocked
+                        && avoidance.TemporaryOffset == null
+                        && stability.RefreshCount >= _stableMarkerRefreshesForDetour
+                        && timeoutElapsed
+                    )
+                    {
+                        avoidance.Phase = (avoidance.Phase + index + 1) & 3;
+                        avoidance.TemporaryOffset = TemporaryDetourOffsets[avoidance.Phase];
+                        avoidance.LastChangeTime = tacticalTime;
+                    }
+                    else if (
+                        !avoidance.VerticalClearanceBlocked
+                        && avoidance.TemporaryOffset != null
+                        && timeoutElapsed
+                    )
+                    {
+                        avoidance.TemporaryOffset = null;
+                    }
+
+                    avoidance.VerticalClearanceBlocked = false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the persistent collision-avoidance state for one tactical unit.
+        /// </summary>
+        /// <param name="unit">The unit whose state is requested.</param>
+        /// <returns>The unit's collision-avoidance state.</returns>
+        private CollisionAvoidanceState GetCollisionAvoidanceState(TacticalUnitState unit)
+        {
+            if (!collisionAvoidance.TryGetValue(unit, out CollisionAvoidanceState state))
+            {
+                state = new CollisionAvoidanceState();
+                collisionAvoidance.Add(unit, state);
+            }
+
+            return state;
+        }
+
+        /// <summary>
+        /// Gets the persistent marker-stability state for one tactical group.
+        /// </summary>
+        /// <param name="group">The group whose marker is tracked.</param>
+        /// <returns>The group's marker-stability state.</returns>
+        private MarkerStabilityState GetMarkerStabilityState(TacticalShipGroup group)
+        {
+            if (!markerStability.TryGetValue(group, out MarkerStabilityState state))
+            {
+                state = new MarkerStabilityState { Position = group.MarkerPosition };
+                markerStability.Add(group, state);
+            }
+
+            return state;
         }
 
         /// <summary>
