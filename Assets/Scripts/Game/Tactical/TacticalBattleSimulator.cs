@@ -197,7 +197,8 @@ namespace Rebellion.Game.Tactical
                         attack.Source,
                         attack.Target,
                         attack.Attack.WeaponType,
-                        impactState
+                        impactState,
+                        resolvedAttack.Strength
                     )
                 );
                 if (targetWasActive && !attack.Target.IsActive)

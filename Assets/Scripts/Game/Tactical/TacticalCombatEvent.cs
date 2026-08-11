@@ -68,6 +68,9 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets the target state produced by a weapon impact.</summary>
         public TacticalImpactState ImpactState { get; }
 
+        /// <summary>Gets the resolved attack strength used to select the weapon presentation.</summary>
+        public int AttackStrength { get; }
+
         /// <summary>Gets whether the attack penetrated the target's remaining shields.</summary>
         public bool PenetratedShields => ImpactState != TacticalImpactState.Shield;
 
@@ -90,7 +93,8 @@ namespace Rebellion.Game.Tactical
             TacticalUnitState source,
             TacticalUnitState target,
             TacticalWeaponType? weaponType,
-            TacticalImpactState impactState = TacticalImpactState.Shield
+            TacticalImpactState impactState = TacticalImpactState.Shield,
+            int attackStrength = 0
         )
         {
             Kind = kind;
@@ -98,6 +102,7 @@ namespace Rebellion.Game.Tactical
             Target = target;
             WeaponType = weaponType;
             ImpactState = impactState;
+            AttackStrength = attackStrength;
             SourcePosition = source.Position;
             TargetPosition = target?.Position ?? source.Position;
         }
@@ -109,20 +114,26 @@ namespace Rebellion.Game.Tactical
         /// <param name="target">The struck unit.</param>
         /// <param name="weaponType">The fired weapon family.</param>
         /// <param name="impactState">The target state produced by the impact.</param>
+        /// <param name="attackStrength">The resolved attack strength.</param>
         /// <returns>The immutable weapon-impact event.</returns>
         public static TacticalCombatEvent WeaponImpact(
             TacticalUnitState source,
             TacticalUnitState target,
             TacticalWeaponType weaponType,
-            TacticalImpactState impactState = TacticalImpactState.Shield
+            TacticalImpactState impactState = TacticalImpactState.Shield,
+            int attackStrength = 0
         )
         {
+            if (attackStrength < 0)
+                throw new ArgumentOutOfRangeException(nameof(attackStrength));
+
             return new TacticalCombatEvent(
                 TacticalCombatEventKind.WeaponImpact,
                 source,
                 target ?? throw new ArgumentNullException(nameof(target)),
                 weaponType,
-                impactState
+                impactState,
+                attackStrength
             );
         }
 

@@ -1433,6 +1433,27 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void DrainEvents_WeaponAttack_CapturesResolvedAttackStrength()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(CreateShip(600, 0)),
+                }
+            );
+
+            session.Advance(0.1f);
+            TacticalCombatEvent impact = session
+                .DrainEvents()
+                .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.WeaponImpact);
+
+            Assert.AreEqual(30, impact.AttackStrength);
+        }
+
+        [Test]
         public void DrainEvents_AttackExactlyExhaustsShields_ReturnsContainedImpact()
         {
             CapitalShip attackingShip = CreateShip(600, 0);
