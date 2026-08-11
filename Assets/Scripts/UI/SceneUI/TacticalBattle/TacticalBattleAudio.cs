@@ -16,6 +16,7 @@ internal sealed class TacticalBattleAudio
     private const float _voiceCueLifetime = 8f;
     private readonly Action<string> play;
     private readonly Func<string, float> getDuration;
+    private readonly Func<int, int> selectVariant;
     private readonly IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> themes;
     private readonly Queue<PendingCue> combatCues = new Queue<PendingCue>();
     private readonly Queue<PendingCue> unitCues = new Queue<PendingCue>();
@@ -36,15 +37,18 @@ internal sealed class TacticalBattleAudio
     /// <param name="themes">The faction presentation associated with each tactical side.</param>
     /// <param name="play">The operation that starts one addressed cue.</param>
     /// <param name="getDuration">The operation that returns an addressed cue's duration.</param>
+    /// <param name="selectVariant">The operation that selects an index below the supplied count.</param>
     internal TacticalBattleAudio(
         IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> themes,
         Action<string> play,
-        Func<string, float> getDuration
+        Func<string, float> getDuration,
+        Func<int, int> selectVariant = null
     )
     {
         this.themes = themes ?? throw new ArgumentNullException(nameof(themes));
         this.play = play ?? throw new ArgumentNullException(nameof(play));
         this.getDuration = getDuration ?? throw new ArgumentNullException(nameof(getDuration));
+        this.selectVariant = selectVariant ?? (count => UnityEngine.Random.Range(0, count));
     }
 
     /// <summary>
@@ -151,6 +155,7 @@ internal sealed class TacticalBattleAudio
     /// <param name="groupIndex">The zero-based fighter-group number.</param>
     internal void QueueFightersLaunched(TacticalBattleSide side, int groupIndex)
     {
+        Enqueue(Select(GetTheme(side).FighterLaunchAudio), TacticalAudioChannel.Unit);
         QueueGroupVoice(
             side,
             GetTheme(side).Voice?.FightersLaunched,
@@ -454,16 +459,16 @@ internal sealed class TacticalBattleAudio
                 TacticalCombatEventKind.UnitDestroyed => GetDestructionPath(
                     combatEvent.DestroyedUnit
                 ),
-                TacticalCombatEventKind.TractorLock => GetTheme(
-                    combatEvent.Target.Side
-                ).TractorLockAudioPath,
-                TacticalCombatEventKind.TractorRelease => GetTheme(
-                    combatEvent.Target.Side
-                ).TractorReleaseAudioPath,
+                TacticalCombatEventKind.TractorLock => Select(
+                    GetTheme(combatEvent.Target.Side).TractorLockAudio
+                ),
+                TacticalCombatEventKind.TractorRelease => Select(
+                    GetTheme(combatEvent.Target.Side).TractorReleaseAudio
+                ),
                 TacticalCombatEventKind.UnitWithdrawn => GetWithdrawalPath(combatEvent.Source),
-                TacticalCombatEventKind.SuperlaserFired => GetTheme(
-                    combatEvent.Source.Side
-                ).SuperlaserAudioPath,
+                TacticalCombatEventKind.SuperlaserFired => Select(
+                    GetTheme(combatEvent.Source.Side).SuperlaserAudio
+                ),
                 _ => null,
             };
             Enqueue(path, channel);
@@ -481,14 +486,14 @@ internal sealed class TacticalBattleAudio
         bool fighters = combatEvent.Source.Kind == TacticalUnitKind.Fighters;
         return combatEvent.WeaponType switch
         {
-            TacticalWeaponType.LaserCannon => fighters
-                ? theme.FighterLaserCannonFireAudioPath
-                : theme.LaserCannonFireAudioPath,
-            TacticalWeaponType.Turbolaser => theme.TurbolaserFireAudioPath,
-            TacticalWeaponType.IonCannon => fighters
-                ? theme.FighterIonCannonFireAudioPath
-                : theme.IonCannonFireAudioPath,
-            TacticalWeaponType.Torpedo => theme.TorpedoFireAudioPath,
+            TacticalWeaponType.LaserCannon => Select(
+                fighters ? theme.FighterLaserCannonFireAudio : theme.LaserCannonFireAudio
+            ),
+            TacticalWeaponType.Turbolaser => Select(theme.TurbolaserFireAudio),
+            TacticalWeaponType.IonCannon => Select(
+                fighters ? theme.FighterIonCannonFireAudio : theme.IonCannonFireAudio
+            ),
+            TacticalWeaponType.Torpedo => Select(theme.TorpedoFireAudio),
             _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
         };
     }
@@ -503,8 +508,8 @@ internal sealed class TacticalBattleAudio
         TacticalBattleTheme theme = GetTheme(unit.Side);
         return unit.Kind switch
         {
-            TacticalUnitKind.CapitalShip => theme.CapitalShipArrivalAudioPath,
-            TacticalUnitKind.Fighters => theme.FighterArrivalAudioPath,
+            TacticalUnitKind.CapitalShip => Select(theme.CapitalShipArrivalAudio),
+            TacticalUnitKind.Fighters => Select(theme.FighterArrivalAudio),
             _ => throw new ArgumentOutOfRangeException(nameof(unit)),
         };
     }
@@ -519,8 +524,8 @@ internal sealed class TacticalBattleAudio
         TacticalBattleTheme theme = GetTheme(unit.Side);
         return unit.Kind switch
         {
-            TacticalUnitKind.CapitalShip => theme.CapitalShipWithdrawalAudioPath,
-            TacticalUnitKind.Fighters => theme.FighterWithdrawalAudioPath,
+            TacticalUnitKind.CapitalShip => Select(theme.CapitalShipWithdrawalAudio),
+            TacticalUnitKind.Fighters => Select(theme.FighterWithdrawalAudio),
             _ => throw new ArgumentOutOfRangeException(nameof(unit)),
         };
     }
@@ -536,15 +541,15 @@ internal sealed class TacticalBattleAudio
         return combatEvent.WeaponType switch
         {
             TacticalWeaponType.IonCannon => combatEvent.PenetratedShields
-                ? theme.IonShieldPenetrationAudioPath
-                : theme.IonShieldHitAudioPath,
+                ? Select(theme.IonShieldPenetrationAudio)
+                : Select(theme.IonShieldHitAudio),
             TacticalWeaponType.LaserCannon => combatEvent.PenetratedShields
-                ? theme.ProjectileShieldPenetrationAudioPath
-                : theme.ProjectileShieldHitAudioPath,
+                ? Select(theme.ProjectileShieldPenetrationAudio)
+                : Select(theme.ProjectileShieldHitAudio),
             TacticalWeaponType.Turbolaser or TacticalWeaponType.Torpedo =>
                 combatEvent.PenetratedShields
-                    ? theme.EnergyShieldPenetrationAudioPath
-                    : theme.EnergyShieldHitAudioPath,
+                    ? Select(theme.EnergyShieldPenetrationAudio)
+                    : Select(theme.EnergyShieldHitAudio),
             _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
         };
     }
@@ -558,15 +563,34 @@ internal sealed class TacticalBattleAudio
     {
         TacticalBattleTheme theme = GetTheme(unit.Side);
         if (unit.Kind == TacticalUnitKind.Fighters)
-            return theme.SmallShipDestructionAudioPath;
+            return Select(theme.SmallShipDestructionAudio);
 
         int maximumHull = ((CapitalShip)unit.Unit).MaxHullStrength;
         if (maximumHull < _mediumDestructionHullThreshold)
-            return theme.SmallShipDestructionAudioPath;
+            return Select(theme.SmallShipDestructionAudio);
         if (maximumHull <= _largeDestructionHullThreshold)
-            return theme.MediumShipDestructionAudioPath;
+            return Select(theme.MediumShipDestructionAudio);
 
-        return theme.LargeShipDestructionAudioPath;
+        return Select(theme.LargeShipDestructionAudio);
+    }
+
+    /// <summary>
+    /// Selects one configured variant for a tactical sound event.
+    /// </summary>
+    /// <param name="cue">The configured event cue.</param>
+    /// <returns>The selected path, or null when the event has no configured sound.</returns>
+    private string Select(TacticalAudioCueTheme cue)
+    {
+        if (cue?.Paths == null || cue.Paths.Count == 0)
+            return null;
+
+        int index = selectVariant(cue.Paths.Count);
+        if (index < 0 || index >= cue.Paths.Count)
+            throw new InvalidOperationException(
+                "The tactical audio selector returned an invalid index."
+            );
+
+        return cue.Paths[index];
     }
 
     /// <summary>

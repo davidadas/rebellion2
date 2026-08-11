@@ -115,74 +115,61 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             Assert.AreEqual("Pack/Shared/Tactical/Effects", alliance.SharedEffectsRoot);
             Assert.AreEqual("Pack/Shared/Tactical/Effects", empire.SharedEffectsRoot);
             Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13028-1033-tactical-blast",
-                alliance.CapitalShipArrivalAudioPath
+                "Pack/Shared/Tactical/Audio/13064-1033-tactical-pass-by",
+                alliance.CapitalShipArrivalAudio.Paths[0]
             );
             Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13029-1033-tactical-blast",
-                alliance.CapitalShipWithdrawalAudioPath
+                "Pack/Shared/Tactical/Audio/13065-1033-tactical-pass-by",
+                alliance.CapitalShipWithdrawalAudio.Paths[0]
             );
-            Assert.IsNull(alliance.SuperlaserAudioPath);
+            Assert.IsNull(alliance.SuperlaserAudio);
             Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13012-1033-tactical-blast",
-                alliance.EnergyShieldHitAudioPath
+                "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
+                alliance.EnergyShieldHitAudio.Paths[0]
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13053-1033-tactical-blast",
+                alliance.IonShieldPenetrationAudio.Paths[2]
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13018-1033-tactical-blast",
+                alliance.TractorLockAudio.Paths[0]
             );
             Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13019-1033-tactical-blast",
-                alliance.IonShieldPenetrationAudioPath
+                alliance.TractorReleaseAudio.Paths[0]
+            );
+            Assert.AreEqual(3, alliance.SmallShipDestructionAudio.Paths.Count);
+            Assert.AreEqual(3, alliance.MediumShipDestructionAudio.Paths.Count);
+            Assert.AreEqual(3, alliance.LargeShipDestructionAudio.Paths.Count);
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13062-1033-tactical-pass-by-fighter-alliance",
+                alliance.FighterArrivalAudio.Paths[0]
             );
             Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13006-1033-tactical-blast",
-                alliance.TractorLockAudioPath
+                "Pack/Shared/Tactical/Audio/13063-1033-tactical-pass-by",
+                alliance.FighterWithdrawalAudio.Paths[0]
+            );
+            Assert.AreEqual(4, alliance.LaserCannonFireAudio.Paths.Count);
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13012-1033-tactical-blast",
+                alliance.FighterLaserCannonFireAudio.Paths[0]
             );
             Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13007-1033-tactical-blast",
-                alliance.TractorReleaseAudioPath
+                "Pack/Shared/Tactical/Audio/13014-1033-tactical-blast",
+                empire.FighterLaserCannonFireAudio.Paths[0]
+            );
+            CollectionAssert.AreEqual(
+                alliance.CapitalShipArrivalAudio.Paths,
+                empire.CapitalShipArrivalAudio.Paths
+            );
+            CollectionAssert.AreEqual(
+                alliance.FighterWithdrawalAudio.Paths,
+                empire.FighterWithdrawalAudio.Paths
             );
             Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13009-1033-tactical-blast",
-                alliance.SmallShipDestructionAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13010-1033-tactical-blast",
-                alliance.MediumShipDestructionAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13011-1033-tactical-blast",
-                alliance.LargeShipDestructionAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
-                alliance.FighterArrivalAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13031-1033-tactical-blast",
-                alliance.FighterWithdrawalAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13000-1033-tactical-blast",
-                alliance.LaserCannonFireAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13003-1033-tactical-blast",
-                alliance.FighterLaserCannonFireAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13004-1033-tactical-blast",
-                empire.FighterLaserCannonFireAudioPath
-            );
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13005-1033-tactical-blast",
-                alliance.FighterIonCannonFireAudioPath
-            );
-            Assert.AreEqual(
-                alliance.CapitalShipArrivalAudioPath,
-                empire.CapitalShipArrivalAudioPath
-            );
-            Assert.AreEqual(alliance.FighterWithdrawalAudioPath, empire.FighterWithdrawalAudioPath);
-            Assert.AreEqual(
-                "Pack/Shared/Tactical/Audio/13020-1033-tactical-blast",
-                empire.SuperlaserAudioPath
+                "Pack/Shared/Tactical/Audio/13054-1033-tactical-blast",
+                empire.SuperlaserAudio.Paths[0]
             );
         }
 

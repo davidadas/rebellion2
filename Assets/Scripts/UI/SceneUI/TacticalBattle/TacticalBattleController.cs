@@ -263,31 +263,35 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// <returns>The configured non-empty cue paths.</returns>
     private static IEnumerable<string> GetAudioPaths(TacticalBattleTheme theme)
     {
-        IEnumerable<string> effects = new[]
+        IEnumerable<TacticalAudioCueTheme> cues = new[]
         {
-            theme.CapitalShipArrivalAudioPath,
-            theme.CapitalShipWithdrawalAudioPath,
-            theme.FighterArrivalAudioPath,
-            theme.FighterWithdrawalAudioPath,
-            theme.LaserCannonFireAudioPath,
-            theme.FighterLaserCannonFireAudioPath,
-            theme.TurbolaserFireAudioPath,
-            theme.IonCannonFireAudioPath,
-            theme.FighterIonCannonFireAudioPath,
-            theme.TorpedoFireAudioPath,
-            theme.TractorLockAudioPath,
-            theme.TractorReleaseAudioPath,
-            theme.SmallShipDestructionAudioPath,
-            theme.MediumShipDestructionAudioPath,
-            theme.LargeShipDestructionAudioPath,
-            theme.SuperlaserAudioPath,
-            theme.EnergyShieldHitAudioPath,
-            theme.EnergyShieldPenetrationAudioPath,
-            theme.ProjectileShieldHitAudioPath,
-            theme.ProjectileShieldPenetrationAudioPath,
-            theme.IonShieldHitAudioPath,
-            theme.IonShieldPenetrationAudioPath,
-        }.Where(path => !string.IsNullOrWhiteSpace(path));
+            theme.CapitalShipArrivalAudio,
+            theme.CapitalShipWithdrawalAudio,
+            theme.FighterArrivalAudio,
+            theme.FighterWithdrawalAudio,
+            theme.FighterLaunchAudio,
+            theme.LaserCannonFireAudio,
+            theme.FighterLaserCannonFireAudio,
+            theme.TurbolaserFireAudio,
+            theme.IonCannonFireAudio,
+            theme.FighterIonCannonFireAudio,
+            theme.TorpedoFireAudio,
+            theme.TractorLockAudio,
+            theme.TractorReleaseAudio,
+            theme.SmallShipDestructionAudio,
+            theme.MediumShipDestructionAudio,
+            theme.LargeShipDestructionAudio,
+            theme.SuperlaserAudio,
+            theme.EnergyShieldHitAudio,
+            theme.EnergyShieldPenetrationAudio,
+            theme.ProjectileShieldHitAudio,
+            theme.ProjectileShieldPenetrationAudio,
+            theme.IonShieldHitAudio,
+            theme.IonShieldPenetrationAudio,
+        };
+        IEnumerable<string> effects = cues.Where(cue => cue?.Paths != null)
+            .SelectMany(cue => cue.Paths)
+            .Where(path => !string.IsNullOrWhiteSpace(path));
         return effects.Concat(theme.Voice?.GetAudioPaths() ?? Enumerable.Empty<string>());
     }
 

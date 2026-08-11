@@ -392,6 +392,15 @@ public sealed class TacticalOutcomeVoiceTheme
 }
 
 /// <summary>
+/// Defines the interchangeable sound effects for one tactical event.
+/// </summary>
+[PersistableObject]
+public sealed class TacticalAudioCueTheme
+{
+    public List<string> Paths { get; set; } = new List<string>();
+}
+
+/// <summary>
 /// Defines the faction-specific artwork and shared asset root for tactical space battles.
 /// </summary>
 [PersistableObject]
@@ -409,49 +418,51 @@ public sealed class TacticalBattleTheme
 
     public TacticalVoiceTheme Voice { get; set; }
 
-    public string CapitalShipArrivalAudioPath { get; set; }
+    public TacticalAudioCueTheme CapitalShipArrivalAudio { get; set; }
 
-    public string CapitalShipWithdrawalAudioPath { get; set; }
+    public TacticalAudioCueTheme CapitalShipWithdrawalAudio { get; set; }
 
-    public string FighterArrivalAudioPath { get; set; }
+    public TacticalAudioCueTheme FighterArrivalAudio { get; set; }
 
-    public string FighterWithdrawalAudioPath { get; set; }
+    public TacticalAudioCueTheme FighterWithdrawalAudio { get; set; }
 
-    public string LaserCannonFireAudioPath { get; set; }
+    public TacticalAudioCueTheme FighterLaunchAudio { get; set; }
 
-    public string FighterLaserCannonFireAudioPath { get; set; }
+    public TacticalAudioCueTheme LaserCannonFireAudio { get; set; }
 
-    public string TurbolaserFireAudioPath { get; set; }
+    public TacticalAudioCueTheme FighterLaserCannonFireAudio { get; set; }
 
-    public string IonCannonFireAudioPath { get; set; }
+    public TacticalAudioCueTheme TurbolaserFireAudio { get; set; }
 
-    public string FighterIonCannonFireAudioPath { get; set; }
+    public TacticalAudioCueTheme IonCannonFireAudio { get; set; }
 
-    public string TorpedoFireAudioPath { get; set; }
+    public TacticalAudioCueTheme FighterIonCannonFireAudio { get; set; }
 
-    public string TractorLockAudioPath { get; set; }
+    public TacticalAudioCueTheme TorpedoFireAudio { get; set; }
 
-    public string TractorReleaseAudioPath { get; set; }
+    public TacticalAudioCueTheme TractorLockAudio { get; set; }
 
-    public string SmallShipDestructionAudioPath { get; set; }
+    public TacticalAudioCueTheme TractorReleaseAudio { get; set; }
 
-    public string MediumShipDestructionAudioPath { get; set; }
+    public TacticalAudioCueTheme SmallShipDestructionAudio { get; set; }
 
-    public string LargeShipDestructionAudioPath { get; set; }
+    public TacticalAudioCueTheme MediumShipDestructionAudio { get; set; }
 
-    public string SuperlaserAudioPath { get; set; }
+    public TacticalAudioCueTheme LargeShipDestructionAudio { get; set; }
 
-    public string EnergyShieldHitAudioPath { get; set; }
+    public TacticalAudioCueTheme SuperlaserAudio { get; set; }
 
-    public string EnergyShieldPenetrationAudioPath { get; set; }
+    public TacticalAudioCueTheme EnergyShieldHitAudio { get; set; }
 
-    public string ProjectileShieldHitAudioPath { get; set; }
+    public TacticalAudioCueTheme EnergyShieldPenetrationAudio { get; set; }
 
-    public string ProjectileShieldPenetrationAudioPath { get; set; }
+    public TacticalAudioCueTheme ProjectileShieldHitAudio { get; set; }
 
-    public string IonShieldHitAudioPath { get; set; }
+    public TacticalAudioCueTheme ProjectileShieldPenetrationAudio { get; set; }
 
-    public string IonShieldPenetrationAudioPath { get; set; }
+    public TacticalAudioCueTheme IonShieldHitAudio { get; set; }
+
+    public TacticalAudioCueTheme IonShieldPenetrationAudio { get; set; }
 
     public string LeftShipHighlightFactionInstanceID { get; set; }
 

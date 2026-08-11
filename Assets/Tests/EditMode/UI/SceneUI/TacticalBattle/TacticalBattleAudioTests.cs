@@ -46,16 +46,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 {
                     [TacticalBattleSide.Attacker] = new TacticalBattleTheme
                     {
-                        CapitalShipArrivalAudioPath = _attackerCapitalShipArrival,
-                        CapitalShipWithdrawalAudioPath = _attackerCapitalShipWithdrawal,
-                        FighterArrivalAudioPath = _attackerFighterArrival,
-                        FighterWithdrawalAudioPath = _attackerFighterWithdrawal,
-                        LaserCannonFireAudioPath = _attackerLaserFire,
-                        FighterLaserCannonFireAudioPath = _attackerFighterLaserFire,
-                        TurbolaserFireAudioPath = _attackerTurbolaserFire,
-                        IonCannonFireAudioPath = _attackerIonFire,
-                        FighterIonCannonFireAudioPath = _attackerFighterIonFire,
-                        TorpedoFireAudioPath = _attackerTorpedoFire,
+                        CapitalShipArrivalAudio = Cue(_attackerCapitalShipArrival),
+                        CapitalShipWithdrawalAudio = Cue(_attackerCapitalShipWithdrawal),
+                        FighterArrivalAudio = Cue(_attackerFighterArrival),
+                        FighterWithdrawalAudio = Cue(_attackerFighterWithdrawal),
+                        LaserCannonFireAudio = Cue(_attackerLaserFire),
+                        FighterLaserCannonFireAudio = Cue(_attackerFighterLaserFire),
+                        TurbolaserFireAudio = Cue(_attackerTurbolaserFire),
+                        IonCannonFireAudio = Cue(_attackerIonFire),
+                        FighterIonCannonFireAudio = Cue(_attackerFighterIonFire),
+                        TorpedoFireAudio = Cue(_attackerTorpedoFire),
                         Voice = new TacticalVoiceTheme
                         {
                             AudioRoot = _attackerVoiceRoot,
@@ -98,20 +98,20 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     },
                     [TacticalBattleSide.Defender] = new TacticalBattleTheme
                     {
-                        CapitalShipArrivalAudioPath = _defenderCapitalShipArrival,
-                        FighterArrivalAudioPath = _defenderFighterArrival,
-                        EnergyShieldPenetrationAudioPath = _defenderEnergyPenetration,
-                        EnergyShieldHitAudioPath = _defenderEnergyHit,
-                        IonShieldPenetrationAudioPath = _defenderIonPenetration,
-                        IonShieldHitAudioPath = _defenderIonHit,
-                        ProjectileShieldPenetrationAudioPath = _defenderProjectilePenetration,
-                        ProjectileShieldHitAudioPath = _defenderProjectileHit,
-                        SuperlaserAudioPath = _defenderSuperlaser,
-                        SmallShipDestructionAudioPath = _defenderSmallDestruction,
-                        MediumShipDestructionAudioPath = _defenderMediumDestruction,
-                        LargeShipDestructionAudioPath = _defenderLargeDestruction,
-                        TractorLockAudioPath = _defenderTractorLock,
-                        TractorReleaseAudioPath = _defenderTractorRelease,
+                        CapitalShipArrivalAudio = Cue(_defenderCapitalShipArrival),
+                        FighterArrivalAudio = Cue(_defenderFighterArrival),
+                        EnergyShieldPenetrationAudio = Cue(_defenderEnergyPenetration),
+                        EnergyShieldHitAudio = Cue(_defenderEnergyHit),
+                        IonShieldPenetrationAudio = Cue(_defenderIonPenetration),
+                        IonShieldHitAudio = Cue(_defenderIonHit),
+                        ProjectileShieldPenetrationAudio = Cue(_defenderProjectilePenetration),
+                        ProjectileShieldHitAudio = Cue(_defenderProjectileHit),
+                        SuperlaserAudio = Cue(_defenderSuperlaser),
+                        SmallShipDestructionAudio = Cue(_defenderSmallDestruction),
+                        MediumShipDestructionAudio = Cue(_defenderMediumDestruction),
+                        LargeShipDestructionAudio = Cue(_defenderLargeDestruction),
+                        TractorLockAudio = Cue(_defenderTractorLock),
+                        TractorReleaseAudio = Cue(_defenderTractorRelease),
                         Voice = new TacticalVoiceTheme
                         {
                             AudioRoot = "defender-voice",
@@ -128,7 +128,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     },
                 },
                 played.Add,
-                _ => 1f
+                _ => 1f,
+                _ => 0
             );
         }
 
@@ -303,6 +304,29 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 new[] { "attacker-voice/fighter-group-red-fighters-launched" },
                 played
             );
+        }
+
+        [Test]
+        public void QueueFightersLaunched_ConfiguredLaunchEffect_QueuesLaunchEffect()
+        {
+            TacticalBattleAudio launchAudio = new TacticalBattleAudio(
+                new Dictionary<TacticalBattleSide, TacticalBattleTheme>
+                {
+                    [TacticalBattleSide.Attacker] = new TacticalBattleTheme
+                    {
+                        FighterLaunchAudio = Cue("fighter-launch"),
+                    },
+                    [TacticalBattleSide.Defender] = new TacticalBattleTheme(),
+                },
+                played.Add,
+                _ => 1f,
+                _ => 0
+            );
+
+            launchAudio.QueueFightersLaunched(TacticalBattleSide.Attacker, 0);
+            launchAudio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "fighter-launch" }, played);
         }
 
         [Test]
@@ -926,6 +950,43 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CollectionAssert.AreEqual(new[] { expectedPath }, played);
         }
 
+        [Test]
+        public void QueueEvents_WeaponCueHasVariants_QueuesSelectedVariant()
+        {
+            TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+            TacticalBattleAudio selectingAudio = new TacticalBattleAudio(
+                new Dictionary<TacticalBattleSide, TacticalBattleTheme>
+                {
+                    [TacticalBattleSide.Attacker] = new TacticalBattleTheme
+                    {
+                        LaserCannonFireAudio = new TacticalAudioCueTheme
+                        {
+                            Paths = new List<string> { "first", "second" },
+                        },
+                    },
+                    [TacticalBattleSide.Defender] = new TacticalBattleTheme(),
+                },
+                played.Add,
+                _ => 1f,
+                _ => 1
+            );
+
+            selectingAudio.QueueEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        attacker,
+                        defender,
+                        TacticalWeaponType.LaserCannon
+                    ),
+                }
+            );
+            selectingAudio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "second" }, played);
+        }
+
         /// <summary>
         /// Creates one minimal tactical unit of the requested class and side.
         /// </summary>
@@ -954,6 +1015,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 },
                 side
             );
+        }
+
+        /// <summary>
+        /// Creates a tactical sound event with one predictable variant.
+        /// </summary>
+        /// <param name="path">The configured sound path.</param>
+        /// <returns>The configured tactical sound event.</returns>
+        private static TacticalAudioCueTheme Cue(string path)
+        {
+            return new TacticalAudioCueTheme { Paths = new List<string> { path } };
         }
 
         /// <summary>
