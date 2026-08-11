@@ -585,21 +585,47 @@ namespace Rebellion.Game.Tactical
         {
             return new Dictionary<TacticalBattleSide, float>
             {
-                [TacticalBattleSide.Attacker] = GetFighterCommandBudget(encounter.AttackerFleet),
-                [TacticalBattleSide.Defender] = GetFighterCommandBudget(encounter.DefenderFleet),
+                [TacticalBattleSide.Attacker] = GetFighterCommandBudget(
+                    encounter.AttackerFleet,
+                    encounter.Planet,
+                    encounter.AttackerOwnerInstanceID
+                ),
+                [TacticalBattleSide.Defender] = GetFighterCommandBudget(
+                    encounter.DefenderFleet,
+                    encounter.Planet,
+                    encounter.DefenderOwnerInstanceID
+                ),
             };
         }
 
         /// <summary>
-        /// Normalizes the assigned commander's Combat rating into the tactical fighter budget.
+        /// Normalizes the strongest participating commander's Combat rating into the tactical
+        /// fighter budget.
         /// </summary>
         /// <param name="fleet">The fleet whose commander supports its fighters.</param>
+        /// <param name="planet">The contested planet that may station a commander.</param>
+        /// <param name="ownerInstanceId">The faction whose commander is selected.</param>
         /// <returns>A value from one through nine, with one used when no commander is assigned.</returns>
-        private static float GetFighterCommandBudget(Fleet fleet)
+        private static float GetFighterCommandBudget(
+            Fleet fleet,
+            Planet planet,
+            string ownerInstanceId
+        )
         {
-            Officer commander = fleet
-                ?.GetOfficers()
-                .FirstOrDefault(officer => officer.CurrentRank == OfficerRank.Commander);
+            IEnumerable<Officer> candidates = fleet?.GetOfficers() ?? Enumerable.Empty<Officer>();
+            if (planet != null && !string.IsNullOrEmpty(ownerInstanceId))
+            {
+                candidates = candidates.Concat(
+                    planet.Officers.Where(officer =>
+                        officer.GetOwnerInstanceID() == ownerInstanceId
+                    )
+                );
+            }
+
+            Officer commander = candidates
+                .Where(officer => officer.CurrentRank == OfficerRank.Commander)
+                .OrderByDescending(officer => officer.GetEffectiveRating(OfficerRating.Combat))
+                .FirstOrDefault();
             return Math.Clamp(
                 (commander?.GetEffectiveRating(OfficerRating.Combat) ?? 0) / 20f + 1f,
                 1f,

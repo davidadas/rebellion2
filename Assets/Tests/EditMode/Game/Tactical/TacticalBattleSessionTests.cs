@@ -1441,6 +1441,83 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void Advance_MultipleAssignedCommanders_UsesHighestCombatRating()
+        {
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip attackingShip = CreateShip(600, 0, attackingFighters);
+            Officer juniorCommander = new Officer { CurrentRank = OfficerRank.Commander };
+            juniorCommander.SetBaseRating(OfficerRating.Combat, 0);
+            Officer seniorCommander = new Officer { CurrentRank = OfficerRank.Commander };
+            seniorCommander.SetBaseRating(OfficerRating.Combat, 100);
+            attackingShip.Officers.AddRange(new[] { juniorCommander, seniorCommander });
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(deathStar),
+                },
+                new FixedRandomProvider(new[] { 0.02d })
+            );
+            AdvanceArrival(session);
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackDeathStar);
+            session.Units.Single(unit => unit.Unit == attackingFighters).Position = session
+                .Units.Single(unit => unit.Unit == deathStar)
+                .Position;
+
+            session.Advance(0.1f);
+            session.Advance(TacticalDeathStarAttackSystem.RunDuration);
+
+            Assert.AreEqual(0, session.Units.Single(unit => unit.Unit == deathStar).Hull);
+        }
+
+        [Test]
+        public void Advance_PlanetaryCommander_UsesCombatRatingForOwningSide()
+        {
+            const string attackerId = "attacker";
+            Starfighter attackingFighters = CreateFighters(12, 0);
+            CapitalShip attackingShip = CreateShip(600, 0, attackingFighters);
+            Officer commander = new Officer
+            {
+                CurrentRank = OfficerRank.Commander,
+                OwnerInstanceID = attackerId,
+            };
+            commander.SetBaseRating(OfficerRating.Combat, 100);
+            Planet planet = new Planet();
+            planet.Officers.Add(commander);
+            CapitalShip deathStar = CreateShip(100, 0);
+            deathStar.IsDeathStar = true;
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(deathStar),
+                    AttackerOwnerInstanceID = attackerId,
+                    DefenderOwnerInstanceID = "defender",
+                    Planet = planet,
+                },
+                new FixedRandomProvider(new[] { 0.02d })
+            );
+            AdvanceArrival(session);
+            session
+                .GetFighterGroups(TacticalBattleSide.Attacker)
+                .Single()
+                .SetBehavior(TacticalBehavior.AttackDeathStar);
+            session.Units.Single(unit => unit.Unit == attackingFighters).Position = session
+                .Units.Single(unit => unit.Unit == deathStar)
+                .Position;
+
+            session.Advance(0.1f);
+            session.Advance(TacticalDeathStarAttackSystem.RunDuration);
+
+            Assert.AreEqual(0, session.Units.Single(unit => unit.Unit == deathStar).Hull);
+        }
+
+        [Test]
         public void Advance_RecoverBehavior_ReturnsFightersToTheirDeployingCapitalShip()
         {
             Starfighter fighters = CreateFighters(12, 0);
