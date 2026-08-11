@@ -237,6 +237,39 @@ namespace Rebellion.Tests.Game.Tactical
         }
 
         [Test]
+        public void CanWithdraw_FightersWithoutHyperdrive_ReturnsFalse()
+        {
+            Starfighter fighters = new Starfighter
+            {
+                CurrentSquadronSize = 12,
+                SublightSpeed = 100,
+            };
+            TacticalUnitState unit = TacticalUnitState.FromFighters(
+                fighters,
+                TacticalBattleSide.Attacker
+            );
+
+            Assert.IsFalse(unit.CanWithdraw);
+        }
+
+        [Test]
+        public void CanWithdraw_FightersWithHyperdrive_ReturnsTrue()
+        {
+            Starfighter fighters = new Starfighter
+            {
+                CurrentSquadronSize = 12,
+                SublightSpeed = 100,
+                Hyperdrive = 100,
+            };
+            TacticalUnitState unit = TacticalUnitState.FromFighters(
+                fighters,
+                TacticalBattleSide.Attacker
+            );
+
+            Assert.IsTrue(unit.CanWithdraw);
+        }
+
+        [Test]
         public void Advance_DamagedSubsystemAndSuccessfulDamageControl_RepairsOneLevel()
         {
             TacticalUnitState unit = CreateCapitalShipState(
@@ -387,6 +420,7 @@ namespace Rebellion.Tests.Game.Tactical
                 ShieldRechargeRate = shieldRechargeRate,
                 WeaponRecharge = weaponRechargeRate,
                 DamageControl = damageControl,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }

@@ -22,6 +22,9 @@ namespace Rebellion.Game.Tactical
 
         /// <summary>A Death Star superlaser strikes an opposing tactical object.</summary>
         SuperlaserFired = 4,
+
+        /// <summary>A held fighter group launches from its capital ship.</summary>
+        FightersDeployed = 5,
     }
 
     /// <summary>
@@ -121,7 +124,7 @@ namespace Rebellion.Game.Tactical
         /// <summary>
         /// Creates a unit lifecycle event at the unit's current position.
         /// </summary>
-        /// <param name="kind">The destruction, withdrawal, or recovery category.</param>
+        /// <param name="kind">The deployment, destruction, withdrawal, or recovery category.</param>
         /// <param name="unit">The affected tactical unit.</param>
         /// <returns>The immutable lifecycle event.</returns>
         public static TacticalCombatEvent UnitLifecycle(
@@ -133,6 +136,7 @@ namespace Rebellion.Game.Tactical
                 kind != TacticalCombatEventKind.UnitDestroyed
                 && kind != TacticalCombatEventKind.UnitWithdrawn
                 && kind != TacticalCombatEventKind.FightersRecovered
+                && kind != TacticalCombatEventKind.FightersDeployed
             )
             {
                 throw new ArgumentOutOfRangeException(nameof(kind));

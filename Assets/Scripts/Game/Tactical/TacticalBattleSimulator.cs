@@ -45,6 +45,7 @@ namespace Rebellion.Game.Tactical
         };
         private readonly List<TacticalCombatEvent> events = new List<TacticalCombatEvent>();
         private readonly TacticalDeathStarAttackResolver deathStarAttackResolver;
+        private readonly TacticalFighterDeploymentSystem fighterDeploymentSystem;
         private readonly TacticalSuperlaserSystem superlaserSystem;
         private readonly HashSet<TacticalShipGroup> resolvedDeathStarAttackGroups =
             new HashSet<TacticalShipGroup>();
@@ -149,6 +150,7 @@ namespace Rebellion.Game.Tactical
                 ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
             this.random = random ?? throw new ArgumentNullException(nameof(random));
             deathStarAttackResolver = new TacticalDeathStarAttackResolver(random);
+            fighterDeploymentSystem = new TacticalFighterDeploymentSystem(units, random);
             superlaserSystem = new TacticalSuperlaserSystem(units);
             PlaceFormation(TacticalBattleSide.Attacker, -BattlefieldScale / 2f, Vector3.UnitZ);
             PlaceFormation(TacticalBattleSide.Defender, BattlefieldScale / 2f, -Vector3.UnitZ);
@@ -161,6 +163,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="elapsedTime">The elapsed tactical time.</param>
         public void Advance(float elapsedTime)
         {
+            fighterDeploymentSystem.Advance(elapsedTime);
+            events.AddRange(fighterDeploymentSystem.DrainEvents());
             superlaserSystem.Advance(elapsedTime);
             List<PendingAttack> attacks = new List<PendingAttack>();
             foreach (TacticalUnitState unit in units.Where(unit => unit.IsActive).ToArray())
@@ -189,6 +193,8 @@ namespace Rebellion.Game.Tactical
                     );
                 }
             }
+
+            fighterDeploymentSystem.ResolveCarrierStateChanges();
         }
 
         /// <summary>

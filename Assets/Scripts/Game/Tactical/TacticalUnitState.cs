@@ -23,6 +23,7 @@ namespace Rebellion.Game.Tactical
         private readonly int[] systemDamage = new int[5];
         private readonly Queue<TacticalWeaponArc> rechargingArcs = new Queue<TacticalWeaponArc>();
         private readonly int damageControl;
+        private readonly bool hasHyperdrive;
         private float shieldRechargeRemainder;
         private float componentDisruptionTime;
         private float damageControlTime;
@@ -91,7 +92,12 @@ namespace Rebellion.Game.Tactical
         /// <summary>
         /// Gets whether the unit can continue participating in combat.
         /// </summary>
-        public bool IsActive => Hull > 0 && !HasWithdrawn;
+        public bool IsActive => Hull > 0 && IsDeployed && !HasWithdrawn;
+
+        /// <summary>
+        /// Gets whether the unit has entered tactical space instead of remaining aboard a carrier.
+        /// </summary>
+        public bool IsDeployed { get; private set; }
 
         /// <summary>
         /// Gets the capital ship's tactical weapon batteries.
@@ -153,7 +159,8 @@ namespace Rebellion.Game.Tactical
         /// Gets whether the unit can move and its hyperdrive can complete a tactical withdrawal.
         /// </summary>
         public bool CanWithdraw =>
-            EffectiveSublightSpeed > 0f
+            hasHyperdrive
+            && EffectiveSublightSpeed > 0f
             && GetSystemDamage(TacticalDamageSystem.Hyperdrive) < _maximumSystemDamage;
 
         /// <summary>
@@ -179,8 +186,10 @@ namespace Rebellion.Game.Tactical
         /// <param name="sublightSpeed">The tactical movement rating.</param>
         /// <param name="maneuverability">The tactical turning rating.</param>
         /// <param name="damageControl">The chance to repair subsystem damage.</param>
+        /// <param name="hasHyperdrive">Whether the unit can leave tactical space independently.</param>
         /// <param name="weaponBatteries">The unit's tactical weapon batteries.</param>
         /// <param name="recoveryTarget">The capital ship that deployed this unit.</param>
+        /// <param name="isDeployed">Whether the unit begins in tactical space.</param>
         private TacticalUnitState(
             IGameEntity unit,
             TacticalBattleSide side,
@@ -192,8 +201,10 @@ namespace Rebellion.Game.Tactical
             int sublightSpeed,
             int maneuverability,
             int damageControl,
+            bool hasHyperdrive,
             IList<TacticalWeaponBattery> weaponBatteries,
-            TacticalUnitState recoveryTarget = null
+            TacticalUnitState recoveryTarget = null,
+            bool isDeployed = true
         )
         {
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
@@ -208,8 +219,10 @@ namespace Rebellion.Game.Tactical
             SublightSpeed = Math.Max(0, sublightSpeed);
             Maneuverability = Math.Max(0, maneuverability);
             this.damageControl = Math.Max(0, damageControl);
+            this.hasHyperdrive = hasHyperdrive;
             Forward = Vector3.UnitZ;
             RecoveryTarget = recoveryTarget;
+            IsDeployed = isDeployed;
             this.weaponBatteries = new ReadOnlyCollection<TacticalWeaponBattery>(
                 weaponBatteries ?? Array.Empty<TacticalWeaponBattery>()
             );
@@ -237,6 +250,7 @@ namespace Rebellion.Game.Tactical
                 ship.SublightSpeed,
                 ship.Maneuverability,
                 ship.DamageControl,
+                ship.Hyperdrive > 0,
                 ship.PrimaryWeapons.OrderBy(entry => entry.Key)
                     .Select(entry => TacticalWeaponBattery.Create(entry.Key, entry.Value))
                     .ToList()
@@ -270,9 +284,43 @@ namespace Rebellion.Game.Tactical
                 fighters.SublightSpeed,
                 fighters.Agility,
                 0,
+                fighters.Hyperdrive > 0,
                 CreateFighterBatteries(fighters),
-                recoveryTarget
+                recoveryTarget,
+                recoveryTarget == null || fighters.Hyperdrive > 0
             );
+        }
+
+        /// <summary>
+        /// Deploys a held fighter unit at its carrier's current launch position.
+        /// </summary>
+        /// <param name="position">The launch position in tactical space.</param>
+        internal void Deploy(Vector3 position)
+        {
+            if (Kind != TacticalUnitKind.Fighters || RecoveryTarget == null)
+                throw new InvalidOperationException("Only carrier-held fighters can deploy.");
+            if (IsDeployed)
+                throw new InvalidOperationException("The fighter unit is already deployed.");
+
+            Position = position;
+            Forward = RecoveryTarget.Forward;
+            IsDeployed = true;
+        }
+
+        /// <summary>
+        /// Carries a held fighter unit out of combat aboard its withdrawing carrier.
+        /// </summary>
+        internal void WithdrawWithCarrier()
+        {
+            if (Kind != TacticalUnitKind.Fighters || RecoveryTarget == null || IsDeployed)
+            {
+                throw new InvalidOperationException(
+                    "Only fighter units held aboard a carrier can withdraw with it."
+                );
+            }
+
+            IsWithdrawing = true;
+            HasWithdrawn = true;
         }
 
         /// <summary>

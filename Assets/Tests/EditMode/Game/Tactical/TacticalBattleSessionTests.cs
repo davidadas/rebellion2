@@ -112,6 +112,50 @@ namespace Rebellion.Tests.Game.Tactical
                 TacticalBattleSide.Defender,
                 session.Units.Single(unit => unit.Unit == defendingFighters).Side
             );
+            Assert.IsTrue(session.Units.Single(unit => unit.Unit == attackingFighters).IsDeployed);
+            Assert.IsTrue(session.Units.Single(unit => unit.Unit == defendingFighters).IsDeployed);
+        }
+
+        [Test]
+        public void Create_CarrierFightersWithoutHyperdrive_HoldsFightersForLaunch()
+        {
+            Starfighter fighters = CreateFighters(12, 10);
+            fighters.Hyperdrive = 0;
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250, fighters)),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+
+            TacticalBattleSession session = CreateArrivingSession(
+                encounter.AttackerFleet.CapitalShips.Single(),
+                encounter.DefenderFleet.CapitalShips.Single()
+            );
+
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            Assert.IsFalse(fighterUnit.IsDeployed);
+            Assert.IsFalse(fighterUnit.IsActive);
+        }
+
+        [Test]
+        public void Create_CarrierFightersWithHyperdrive_DeploysFightersImmediately()
+        {
+            Starfighter fighters = CreateFighters(12, 10);
+            fighters.Hyperdrive = 100;
+            PendingCombatResult encounter = new PendingCombatResult
+            {
+                AttackerFleet = CreateFleet(CreateShip(600, 250, fighters)),
+                DefenderFleet = CreateFleet(CreateShip(450, 175)),
+            };
+
+            TacticalBattleSession session = TacticalBattleSession.Create(
+                encounter,
+                new FixedRandomProvider(new[] { 0d })
+            );
+
+            TacticalUnitState fighterUnit = session.Units.Single(unit => unit.Unit == fighters);
+            Assert.IsTrue(fighterUnit.IsDeployed);
+            Assert.IsTrue(fighterUnit.IsActive);
         }
 
         [Test]
@@ -1222,6 +1266,7 @@ namespace Rebellion.Tests.Game.Tactical
                 CurrentHullStrength = hull,
                 MaxHullStrength = Math.Max(hull, 1),
                 MaxShieldStrength = shields,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.Starfighters.AddRange(fighters);
@@ -1276,6 +1321,7 @@ namespace Rebellion.Tests.Game.Tactical
                 CurrentSquadronSize = squadronSize,
                 MaxSquadronSize = Math.Max(squadronSize, 1),
                 ShieldStrength = shieldStrength,
+                Hyperdrive = 100,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
         }
