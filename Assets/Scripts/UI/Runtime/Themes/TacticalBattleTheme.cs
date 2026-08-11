@@ -71,6 +71,8 @@ public sealed class TacticalVoiceTheme
 
     public string WithdrawalBlocked { get; set; }
 
+    public TacticalGroupVoiceTheme OrdersRequested { get; set; }
+
     public TacticalGroupVoiceTheme ManeuverAcknowledged { get; set; }
 
     public TacticalGroupVoiceTheme AttackAcknowledged { get; set; }
@@ -130,6 +132,7 @@ public sealed class TacticalVoiceTheme
 
         TacticalGroupVoiceTheme[] groups =
         {
+            OrdersRequested,
             ManeuverAcknowledged,
             AttackAcknowledged,
             FormationAcknowledged,

@@ -62,6 +62,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                             FleetReady = "fleet-ready",
                             WithdrawalPreparing = "withdrawal-preparing",
                             WithdrawalBlocked = "withdrawal-blocked",
+                            OrdersRequested = CreateGroupVoice("orders-requested"),
                             ManeuverAcknowledged = CreateGroupVoice("maneuver"),
                             AttackAcknowledged = CreateGroupVoice("attack"),
                             FormationAcknowledged = CreateGroupVoice("formation"),
@@ -243,6 +244,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             CollectionAssert.AreEqual(
                 new[] { "attacker-voice/fighter-group-blue-unit-lost" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueOrdersRequested_FighterGroup_QueuesNamedSelectionReport()
+        {
+            audio.QueueOrdersRequested(TacticalBattleSide.Attacker, TacticalUnitKind.Fighters, 2);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-green-orders-requested" },
                 played
             );
         }

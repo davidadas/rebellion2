@@ -638,6 +638,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
         selectedGroupIndex = index;
         selectedTaskForceNumber = index + 1;
+        battleAudio.QueueOrdersRequested(playerSide, TacticalUnitKind.CapitalShip, index);
         RefreshUnitSelectionAvailability();
         pendingMissionOrder = null;
         view.HideMissionOrders();
@@ -735,6 +736,7 @@ public sealed class TacticalBattleController : MonoBehaviour
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
         selectedGroupIndex = index;
         selectedTaskForceNumber = 0;
+        battleAudio.QueueOrdersRequested(playerSide, TacticalUnitKind.Fighters, index);
         RefreshUnitSelectionAvailability();
         pendingManeuver = null;
         view.HideManeuvers();

@@ -70,6 +70,21 @@ internal sealed class TacticalBattleAudio
     }
 
     /// <summary>
+    /// Queues the selected command group's request for orders.
+    /// </summary>
+    /// <param name="side">The side whose group was selected.</param>
+    /// <param name="kind">The kind of selected command group.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    internal void QueueOrdersRequested(
+        TacticalBattleSide side,
+        TacticalUnitKind kind,
+        int groupIndex
+    )
+    {
+        QueueGroupVoice(side, GetTheme(side).Voice?.OrdersRequested, kind, groupIndex);
+    }
+
+    /// <summary>
     /// Queues the numbered command group's maneuver acknowledgement.
     /// </summary>
     /// <param name="side">The side receiving the order.</param>
