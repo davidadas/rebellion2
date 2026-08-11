@@ -61,8 +61,7 @@ public sealed class TacticalCombatEffectView : MonoBehaviour
 
         elapsedTime += Time.deltaTime;
         float progress = Mathf.Clamp01(elapsedTime / lifetime);
-        if (line != null)
-            line.SetPosition(1, Vector3.Lerp(sourcePosition, targetPosition, progress));
+        line?.SetPosition(1, Vector3.Lerp(sourcePosition, targetPosition, progress));
 
         if (elapsedTime >= lifetime)
             Destroy(gameObject);

@@ -185,5 +185,31 @@ namespace Rebellion.Tests.UI.Runtime.Themes
                 empire.SuperlaserAudioPath
             );
         }
+
+        [Test]
+        public void GetTheme_TacticalBattleContainsFactionVoiceMappings()
+        {
+            TacticalVoiceTheme alliance = _library.GetTheme("FNALL1").TacticalBattle.Voice;
+            TacticalVoiceTheme empire = _library.GetTheme("FNEMP1").TacticalBattle.Voice;
+
+            Assert.AreEqual("Pack/Factions/Alliance/Tactical/Audio/Voice", alliance.AudioRoot);
+            Assert.AreEqual(
+                "task-force-8-maneuver-acknowledged",
+                alliance.ManeuverAcknowledged.TaskForces[7]
+            );
+            Assert.AreEqual(
+                "fighter-group-gold-attack-acknowledged",
+                alliance.AttackAcknowledged.FighterGroups[3]
+            );
+            Assert.AreEqual("Pack/Factions/Empire/Tactical/Audio/Voice", empire.AudioRoot);
+            Assert.AreEqual(
+                "task-force-1-formation-acknowledged",
+                empire.FormationAcknowledged.TaskForces[0]
+            );
+            Assert.AreEqual(
+                "fighter-group-red-mission-acknowledged",
+                empire.MissionAcknowledged.FighterGroups[0]
+            );
+        }
     }
 }

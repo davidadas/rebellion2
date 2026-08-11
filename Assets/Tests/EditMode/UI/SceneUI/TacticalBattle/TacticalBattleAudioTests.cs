@@ -18,6 +18,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _attackerLaserFire = "attacker-laser-fire";
         private const string _attackerTorpedoFire = "attacker-torpedo-fire";
         private const string _attackerTurbolaserFire = "attacker-turbolaser-fire";
+        private const string _attackerVoiceRoot = "attacker-voice";
         private const string _defenderCapitalShipArrival = "defender-capital-arrival";
         private const string _defenderFighterArrival = "defender-fighter-arrival";
         private const string _defenderEnergyPenetration = "defender-energy-penetration";
@@ -54,6 +55,15 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                         IonCannonFireAudioPath = _attackerIonFire,
                         FighterIonCannonFireAudioPath = _attackerFighterIonFire,
                         TorpedoFireAudioPath = _attackerTorpedoFire,
+                        Voice = new TacticalVoiceTheme
+                        {
+                            AudioRoot = _attackerVoiceRoot,
+                            FleetReady = "fleet-ready",
+                            ManeuverAcknowledged = CreateGroupVoice("maneuver"),
+                            AttackAcknowledged = CreateGroupVoice("attack"),
+                            FormationAcknowledged = CreateGroupVoice("formation"),
+                            MissionAcknowledged = CreateGroupVoice("mission"),
+                        },
                     },
                     [TacticalBattleSide.Defender] = new TacticalBattleTheme
                     {
@@ -126,6 +136,100 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
 
             CollectionAssert.AreEqual(
                 new[] { _attackerCapitalShipArrival, _attackerTurbolaserFire },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueFleetReady_ConfiguredFactionVoice_QueuesFleetReadyCue()
+        {
+            audio.QueueFleetReady(TacticalBattleSide.Attacker);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/fleet-ready" }, played);
+        }
+
+        [Test]
+        public void QueueManeuverAcknowledged_TaskForce_QueuesNumberedTaskForceCue()
+        {
+            audio.QueueManeuverAcknowledged(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.CapitalShip,
+                1
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/task-force-2-maneuver" }, played);
+        }
+
+        [Test]
+        public void QueueAttackAcknowledged_FighterGroup_QueuesNamedFighterGroupCue()
+        {
+            audio.QueueAttackAcknowledged(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters,
+                2
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-green-attack" },
+                played
+            );
+        }
+
+        [Test]
+        public void QueueFormationAcknowledged_TaskForce_QueuesNumberedTaskForceCue()
+        {
+            audio.QueueFormationAcknowledged(TacticalBattleSide.Attacker, 0);
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(new[] { "attacker-voice/task-force-1-formation" }, played);
+        }
+
+        [Test]
+        public void QueueMissionAcknowledged_FighterGroup_QueuesNamedFighterGroupCue()
+        {
+            audio.QueueMissionAcknowledged(
+                TacticalBattleSide.Attacker,
+                TacticalUnitKind.Fighters,
+                3
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { "attacker-voice/fighter-group-gold-mission" },
+                played
+            );
+        }
+
+        [Test]
+        public void Advance_VoiceAndCombatCuesQueued_StartsBothChannelsImmediately()
+        {
+            TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
+            TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
+            audio.QueueFleetReady(TacticalBattleSide.Attacker);
+            audio.QueueEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        attacker,
+                        defender,
+                        TacticalWeaponType.Turbolaser,
+                        TacticalImpactState.Shield
+                    ),
+                }
+            );
+
+            audio.Advance(0f);
+
+            CollectionAssert.AreEqual(
+                new[] { _attackerTurbolaserFire, "attacker-voice/fleet-ready" },
                 played
             );
         }
@@ -346,6 +450,31 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                 },
                 side
             );
+        }
+
+        /// <summary>
+        /// Creates predictable numbered command responses for tactical audio tests.
+        /// </summary>
+        /// <param name="category">The response category included in every audio name.</param>
+        /// <returns>The configured command-group response set.</returns>
+        private static TacticalGroupVoiceTheme CreateGroupVoice(string category)
+        {
+            return new TacticalGroupVoiceTheme
+            {
+                Ship = $"ship-{category}",
+                TaskForces = new List<string>
+                {
+                    $"task-force-1-{category}",
+                    $"task-force-2-{category}",
+                },
+                FighterGroups = new List<string>
+                {
+                    $"fighter-group-red-{category}",
+                    $"fighter-group-blue-{category}",
+                    $"fighter-group-green-{category}",
+                    $"fighter-group-gold-{category}",
+                },
+            };
         }
     }
 }

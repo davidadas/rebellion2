@@ -12,14 +12,17 @@ internal sealed class TacticalBattleAudio
     private const int _mediumDestructionHullThreshold = 1100;
     private const int _largeDestructionHullThreshold = 2000;
     private const float _unitCueLifetime = 8f;
+    private const float _voiceCueLifetime = 8f;
     private readonly Action<string> play;
     private readonly Func<string, float> getDuration;
     private readonly IReadOnlyDictionary<TacticalBattleSide, TacticalBattleTheme> themes;
     private readonly Queue<PendingCue> combatCues = new Queue<PendingCue>();
     private readonly Queue<PendingCue> unitCues = new Queue<PendingCue>();
+    private readonly Queue<PendingCue> voiceCues = new Queue<PendingCue>();
     private float combatCueRemainingDuration;
     private float elapsedTime;
     private float unitCueRemainingDuration;
+    private float voiceCueRemainingDuration;
 
     /// <summary>
     /// Creates a tactical cue presenter using resident content audio.
@@ -48,6 +51,76 @@ internal sealed class TacticalBattleAudio
             throw new ArgumentNullException(nameof(unit));
 
         Enqueue(GetArrivalPath(unit), TacticalAudioChannel.Unit);
+    }
+
+    /// <summary>
+    /// Queues the played faction's opening fleet-ready report.
+    /// </summary>
+    /// <param name="side">The tactical side reporting readiness.</param>
+    internal void QueueFleetReady(TacticalBattleSide side)
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        Enqueue(voice?.GetAudioPath(voice.FleetReady), TacticalAudioChannel.Voice);
+    }
+
+    /// <summary>
+    /// Queues the numbered command group's maneuver acknowledgement.
+    /// </summary>
+    /// <param name="side">The side receiving the order.</param>
+    /// <param name="kind">The kind of command group receiving the order.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    internal void QueueManeuverAcknowledged(
+        TacticalBattleSide side,
+        TacticalUnitKind kind,
+        int groupIndex
+    )
+    {
+        QueueGroupVoice(side, GetTheme(side).Voice?.ManeuverAcknowledged, kind, groupIndex);
+    }
+
+    /// <summary>
+    /// Queues the numbered command group's target-engagement acknowledgement.
+    /// </summary>
+    /// <param name="side">The side receiving the order.</param>
+    /// <param name="kind">The kind of command group receiving the order.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    internal void QueueAttackAcknowledged(
+        TacticalBattleSide side,
+        TacticalUnitKind kind,
+        int groupIndex
+    )
+    {
+        QueueGroupVoice(side, GetTheme(side).Voice?.AttackAcknowledged, kind, groupIndex);
+    }
+
+    /// <summary>
+    /// Queues the numbered task force's formation acknowledgement.
+    /// </summary>
+    /// <param name="side">The side receiving the order.</param>
+    /// <param name="groupIndex">The zero-based task-force number.</param>
+    internal void QueueFormationAcknowledged(TacticalBattleSide side, int groupIndex)
+    {
+        QueueGroupVoice(
+            side,
+            GetTheme(side).Voice?.FormationAcknowledged,
+            TacticalUnitKind.CapitalShip,
+            groupIndex
+        );
+    }
+
+    /// <summary>
+    /// Queues the numbered command group's mission acknowledgement.
+    /// </summary>
+    /// <param name="side">The side receiving the order.</param>
+    /// <param name="kind">The kind of command group receiving the order.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    internal void QueueMissionAcknowledged(
+        TacticalBattleSide side,
+        TacticalUnitKind kind,
+        int groupIndex
+    )
+    {
+        QueueGroupVoice(side, GetTheme(side).Voice?.MissionAcknowledged, kind, groupIndex);
     }
 
     /// <summary>
@@ -216,7 +289,33 @@ internal sealed class TacticalBattleAudio
             this.elapsedTime,
             ref combatCueRemainingDuration
         );
+        AdvanceChannel(
+            voiceCues,
+            _voiceCueLifetime,
+            elapsedTime,
+            this.elapsedTime,
+            ref voiceCueRemainingDuration
+        );
         this.elapsedTime += elapsedTime;
+    }
+
+    /// <summary>
+    /// Resolves and queues one numbered command-group response.
+    /// </summary>
+    /// <param name="side">The side receiving the order.</param>
+    /// <param name="groupVoice">The configured response category.</param>
+    /// <param name="kind">The kind of command group receiving the order.</param>
+    /// <param name="groupIndex">The zero-based command-group number.</param>
+    private void QueueGroupVoice(
+        TacticalBattleSide side,
+        TacticalGroupVoiceTheme groupVoice,
+        TacticalUnitKind kind,
+        int groupIndex
+    )
+    {
+        TacticalVoiceTheme voice = GetTheme(side).Voice;
+        string audio = groupVoice?.GetAudio(kind, groupIndex);
+        Enqueue(voice?.GetAudioPath(audio), TacticalAudioChannel.Voice);
     }
 
     /// <summary>
@@ -266,6 +365,7 @@ internal sealed class TacticalBattleAudio
         {
             TacticalAudioChannel.Combat => combatCues,
             TacticalAudioChannel.Unit => unitCues,
+            TacticalAudioChannel.Voice => voiceCues,
             _ => throw new ArgumentOutOfRangeException(nameof(channel)),
         };
         pending.Enqueue(new PendingCue(path.Trim(), elapsedTime));
@@ -292,6 +392,7 @@ internal sealed class TacticalBattleAudio
         None,
         Combat,
         Unit,
+        Voice,
     }
 
     /// <summary>

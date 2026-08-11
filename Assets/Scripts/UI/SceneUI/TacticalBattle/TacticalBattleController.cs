@@ -21,6 +21,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private TacticalBehavior? pendingManeuver;
     private TacticalFormation pendingFormation;
     private TacticalUnitState selectedCapitalShip;
+    private int selectedGroupIndex = -1;
     private int selectedTaskForceNumber;
     private TacticalUnitState playerDeathStar;
     private bool selectingSuperlaserTarget;
@@ -133,6 +134,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             audioManager.PlaySfx,
             path => contentAssets.GetPreloadedAudio(path).length
         );
+        battleAudio.QueueFleetReady(playerSide);
         Session.ConfigurePlayerControl(playerSide);
         observing = Session.IsComputerControlled(playerSide);
         view.SetObserving(observing);
@@ -183,8 +185,8 @@ public sealed class TacticalBattleController : MonoBehaviour
         {
             foreach (TacticalUnitState unit in Session.Units.Where(unit => unit.IsActive))
                 battleAudio.QueueArrival(unit);
-            battleAudio.Advance(0f);
         }
+        battleAudio.Advance(0f);
         playerDeathStar = Session.Units.FirstOrDefault(unit =>
             unit.Side == playerSide && unit.Unit is CapitalShip { IsDeathStar: true }
         );
@@ -247,7 +249,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     /// <returns>The configured non-empty cue paths.</returns>
     private static IEnumerable<string> GetAudioPaths(TacticalBattleTheme theme)
     {
-        return new[]
+        IEnumerable<string> effects = new[]
         {
             theme.CapitalShipArrivalAudioPath,
             theme.CapitalShipWithdrawalAudioPath,
@@ -272,6 +274,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             theme.IonShieldHitAudioPath,
             theme.IonShieldPenetrationAudioPath,
         }.Where(path => !string.IsNullOrWhiteSpace(path));
+        return effects.Concat(theme.Voice?.GetAudioPaths() ?? Enumerable.Empty<string>());
     }
 
     /// <summary>
@@ -415,7 +418,10 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (target.Side == playerSide)
             SelectedGroup.AssignEscortTarget(target);
         else
+        {
             SelectedGroup.AssignPrimaryTarget(target);
+            QueueSelectedGroupVoice(battleAudio.QueueAttackAcknowledged);
+        }
         if (SelectedGroup.Units.Any(unit => unit.Unit is Starfighter))
             pendingMissionOrder = SelectedGroup.Behavior;
         else
@@ -485,6 +491,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     {
         view.HideGameOptions();
         SelectedGroup = null;
+        selectedGroupIndex = -1;
         selectedCapitalShip = null;
         selectedTaskForceNumber = 0;
         RefreshUnitSelectionAvailability();
@@ -595,6 +602,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectTaskForce(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetTaskForces(playerSide), index);
+        selectedGroupIndex = index;
         selectedTaskForceNumber = index + 1;
         RefreshUnitSelectionAvailability();
         pendingMissionOrder = null;
@@ -691,6 +699,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void SelectFighterGroup(int index)
     {
         SelectedGroup = GetGroupAt(Session.GetFighterGroups(playerSide), index);
+        selectedGroupIndex = index;
         selectedTaskForceNumber = 0;
         RefreshUnitSelectionAvailability();
         pendingManeuver = null;
@@ -907,6 +916,7 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
 
         SelectedGroup.SetBehavior(pendingMissionOrder.Value);
+        QueueSelectedGroupVoice(battleAudio.QueueMissionAcknowledged);
         pendingMissionOrder = null;
         view.HideMissionOrders();
     }
@@ -960,10 +970,28 @@ public sealed class TacticalBattleController : MonoBehaviour
         if (observing || SelectedGroup == null || pendingManeuver == null)
             return;
 
+        TacticalBehavior previousBehavior = SelectedGroup.Behavior;
+        TacticalFormation previousFormation = SelectedGroup.Formation;
         SelectedGroup.SetBehavior(pendingManeuver.Value);
         SelectedGroup.SetFormation(pendingFormation);
+        if (previousBehavior != SelectedGroup.Behavior)
+            QueueSelectedGroupVoice(battleAudio.QueueManeuverAcknowledged);
+        if (previousFormation != SelectedGroup.Formation)
+            battleAudio.QueueFormationAcknowledged(playerSide, selectedGroupIndex);
         pendingManeuver = null;
         view.HideManeuvers();
+    }
+
+    /// <summary>
+    /// Queues a command response for the currently selected numbered tactical group.
+    /// </summary>
+    /// <param name="queue">The response category to queue.</param>
+    private void QueueSelectedGroupVoice(Action<TacticalBattleSide, TacticalUnitKind, int> queue)
+    {
+        if (SelectedGroup?.Units.FirstOrDefault() is not TacticalUnitState unit)
+            return;
+
+        queue(playerSide, unit.Kind, selectedGroupIndex);
     }
 
     /// <summary>

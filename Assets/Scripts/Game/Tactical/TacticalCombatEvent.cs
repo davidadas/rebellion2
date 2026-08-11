@@ -88,6 +88,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="target">The affected unit, when distinct from the source.</param>
         /// <param name="weaponType">The weapon family, for weapon impacts.</param>
         /// <param name="impactState">The target state produced by the impact.</param>
+        /// <param name="attackStrength">The resolved attack strength used for presentation.</param>
         private TacticalCombatEvent(
             TacticalCombatEventKind kind,
             TacticalUnitState source,
