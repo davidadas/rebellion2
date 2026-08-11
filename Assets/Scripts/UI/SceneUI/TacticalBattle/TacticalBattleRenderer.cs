@@ -49,7 +49,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     private Sprite[] blueSpreadImpactFrames = Array.Empty<Sprite>();
     private Sprite[] destructionEffectFrames = Array.Empty<Sprite>();
     private Material navigationSelectedMaterial;
+    private bool highDetail = true;
     private bool initialized;
+    private bool showPyrotechnics = true;
     private bool unitSelectionEnabled;
     private TacticalBattleSession session;
     private Sprite[] orangeBlastImpactFrames = Array.Empty<Sprite>();
@@ -106,27 +108,10 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
             throw new InvalidOperationException("Tactical presentation is already initialized.");
 
         this.session = session;
-        gravityWellEffectFrames = LoadEffectFrames(
-            contentAssets,
-            $"{theme.SharedEffectsRoot}/GravityWell",
-            _persistentEffectFrameCount
-        );
-        tractorLockEffectFrames = LoadEffectFrames(
-            contentAssets,
-            $"{theme.SharedEffectsRoot}/TractorLock",
-            _persistentEffectFrameCount
-        );
-        string impactRoot = $"{theme.SharedEffectsRoot}/WeaponImpact";
-        orangeSplitImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/OrangeSplit", 6);
-        orangeBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/OrangeBlast", 7);
-        blueSpreadImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueSpread", 6);
-        blueNetImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueNet", 16);
-        blueBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueBlast", 7);
-        destructionEffectFrames = LoadEffectFrames(
-            contentAssets,
-            $"{impactRoot}/OrangeDoubleBlast",
-            16
-        );
+        highDetail = videoSettings.HighDetail;
+        showPyrotechnics = videoSettings.ShowPyro;
+        if (showPyrotechnics)
+            LoadPyrotechnicEffects(contentAssets, theme.SharedEffectsRoot);
         if (videoSettings.ShowPlanet)
             CreatePlanetDecoration(session.Encounter.Planet, contentAssets, theme.InitialCameraYaw);
         CreateHolocube(session.NavigationGrid, videoSettings.ShowHolocube);
@@ -209,6 +194,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     /// <param name="combatEvent">The unit-destruction event to present.</param>
     private void CreateDestructionEffect(TacticalCombatEvent combatEvent)
     {
+        if (!showPyrotechnics)
+            return;
+
         TacticalUnitState destroyedUnit = combatEvent.DestroyedUnit;
         if (destroyedUnit.Kind == TacticalUnitKind.Fighters)
             return;
@@ -506,7 +494,9 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
                 presentation.Duration
             );
 
-        Sprite[] impactFrames = GetWeaponImpactFrames(combatEvent);
+        Sprite[] impactFrames = showPyrotechnics
+            ? GetWeaponImpactFrames(combatEvent)
+            : Array.Empty<Sprite>();
         if (
             impactFrames.Length > 0
             && unitViewsByState.TryGetValue(combatEvent.Target, out TacticalUnitView targetView)
@@ -762,6 +752,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 
         LODGroup lodGroup = unitObject.AddComponent<LODGroup>();
         lodGroup.fadeMode = LODFadeMode.None;
+        if (!highDetail)
+            lods[0].screenRelativeTransitionHeight = 1f;
         lodGroup.SetLODs(lods);
         lodGroup.RecalculateBounds();
         SetCollisionExtents(unit, lods[0].renderers);
@@ -844,6 +836,8 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
 
         LODGroup lodGroup = unitObject.AddComponent<LODGroup>();
         lodGroup.fadeMode = LODFadeMode.None;
+        if (!highDetail)
+            lods[0].screenRelativeTransitionHeight = 1f;
         lodGroup.SetLODs(lods);
         lodGroup.RecalculateBounds();
         SetCollisionExtents(unit, lods[0].renderers);
@@ -984,12 +978,46 @@ public sealed class TacticalBattleRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Loads the texture-sheet sequences used by optional tactical pyrotechnics.
+    /// </summary>
+    /// <param name="contentAssets">The active external content assets.</param>
+    /// <param name="effectsRoot">The shared tactical-effects content root.</param>
+    private void LoadPyrotechnicEffects(IContentAssetSource contentAssets, string effectsRoot)
+    {
+        gravityWellEffectFrames = LoadEffectFrames(
+            contentAssets,
+            $"{effectsRoot}/GravityWell",
+            _persistentEffectFrameCount
+        );
+        tractorLockEffectFrames = LoadEffectFrames(
+            contentAssets,
+            $"{effectsRoot}/TractorLock",
+            _persistentEffectFrameCount
+        );
+        string impactRoot = $"{effectsRoot}/WeaponImpact";
+        orangeSplitImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/OrangeSplit", 6);
+        orangeBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/OrangeBlast", 7);
+        blueSpreadImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueSpread", 6);
+        blueNetImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueNet", 16);
+        blueBlastImpactFrames = LoadEffectFrames(contentAssets, $"{impactRoot}/BlueBlast", 7);
+        destructionEffectFrames = LoadEffectFrames(
+            contentAssets,
+            $"{impactRoot}/OrangeDoubleBlast",
+            16
+        );
+    }
+
+    /// <summary>
     /// Plays one tractor-beam event on the affected unit presentation.
     /// </summary>
     /// <param name="target">The unit struck by the tractor beam.</param>
     private void ShowTractorBeamEffect(TacticalUnitState target)
     {
-        if (target != null && unitViewsByState.TryGetValue(target, out TacticalUnitView unitView))
+        if (
+            showPyrotechnics
+            && target != null
+            && unitViewsByState.TryGetValue(target, out TacticalUnitView unitView)
+        )
             unitView.ShowTractorBeam();
     }
 

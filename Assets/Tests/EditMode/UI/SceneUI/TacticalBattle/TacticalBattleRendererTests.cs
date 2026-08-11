@@ -469,6 +469,77 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             Assert.IsNotNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
         }
 
+        [Test]
+        public void PresentEvents_UnitDestroyedWithPyrotechnicsDisabled_DoesNotCreateEffect()
+        {
+            TacticalUnitState unit = CreateCapitalShip(TacticalBattleSide.Attacker);
+            typeof(TacticalBattleRenderer)
+                .GetField("showPyrotechnics", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, false);
+            typeof(TacticalBattleRenderer)
+                .GetField("destructionEffectFrames", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, new Sprite[1]);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.UnitLifecycle(TacticalCombatEventKind.UnitDestroyed, unit),
+                }
+            );
+
+            Assert.IsNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
+        }
+
+        [Test]
+        public void PresentEvents_WeaponImpactWithPyrotechnicsDisabled_DoesNotCreateImpactEffect()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+            RegisterUnitView(target);
+            typeof(TacticalBattleRenderer)
+                .GetField("showPyrotechnics", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, false);
+            typeof(TacticalBattleRenderer)
+                .GetField("blueSpreadImpactFrames", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, new Sprite[1]);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.LaserCannon
+                    ),
+                }
+            );
+
+            Assert.IsNull(root.GetComponentInChildren<TacticalOneShotEffectView>());
+        }
+
+        [Test]
+        public void PresentEvents_WeaponImpactWithPyrotechnicsDisabled_CreatesWeaponBeam()
+        {
+            TacticalUnitState source = CreateCapitalShip(TacticalBattleSide.Attacker);
+            TacticalUnitState target = CreateCapitalShip(TacticalBattleSide.Defender);
+            typeof(TacticalBattleRenderer)
+                .GetField("showPyrotechnics", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(renderer, false);
+
+            renderer.PresentEvents(
+                new[]
+                {
+                    TacticalCombatEvent.WeaponImpact(
+                        source,
+                        target,
+                        TacticalWeaponType.LaserCannon
+                    ),
+                }
+            );
+
+            Assert.IsNotNull(root.GetComponentInChildren<LineRenderer>());
+        }
+
         [TestCase(
             TacticalWeaponType.LaserCannon,
             TacticalImpactState.Shield,
