@@ -11,6 +11,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         private const string _attackerArrival = "attacker-arrival";
         private const string _attackerWithdrawal = "attacker-withdrawal";
         private const string _defenderArrival = "defender-arrival";
+        private const string _defenderEnergyPenetration = "defender-energy-penetration";
+        private const string _defenderEnergyHit = "defender-energy-hit";
+        private const string _defenderIonPenetration = "defender-ion-penetration";
+        private const string _defenderIonHit = "defender-ion-hit";
+        private const string _defenderProjectilePenetration = "defender-projectile-penetration";
+        private const string _defenderProjectileHit = "defender-projectile-hit";
         private const string _defenderSuperlaser = "defender-superlaser";
         private readonly List<string> played = new List<string>();
         private TacticalBattleAudio audio;
@@ -30,6 +36,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     [TacticalBattleSide.Defender] = new TacticalBattleTheme
                     {
                         ArrivalAudioPath = _defenderArrival,
+                        EnergyShieldPenetrationAudioPath = _defenderEnergyPenetration,
+                        EnergyShieldHitAudioPath = _defenderEnergyHit,
+                        IonShieldPenetrationAudioPath = _defenderIonPenetration,
+                        IonShieldHitAudioPath = _defenderIonHit,
+                        ProjectileShieldPenetrationAudioPath = _defenderProjectilePenetration,
+                        ProjectileShieldHitAudioPath = _defenderProjectileHit,
                         SuperlaserAudioPath = _defenderSuperlaser,
                     },
                 },
@@ -92,8 +104,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
             CollectionAssert.AreEqual(new[] { _defenderSuperlaser }, played);
         }
 
-        [Test]
-        public void QueueEvents_UnmappedEvent_DoesNotQueueAudio()
+        [TestCase(TacticalWeaponType.Turbolaser, false, _defenderEnergyHit)]
+        [TestCase(TacticalWeaponType.LaserCannon, true, _defenderEnergyPenetration)]
+        [TestCase(TacticalWeaponType.Torpedo, false, _defenderProjectileHit)]
+        [TestCase(TacticalWeaponType.Torpedo, true, _defenderProjectilePenetration)]
+        [TestCase(TacticalWeaponType.IonCannon, false, _defenderIonHit)]
+        [TestCase(TacticalWeaponType.IonCannon, true, _defenderIonPenetration)]
+        public void QueueEvents_WeaponImpact_QueuesTargetFactionDamageCue(
+            TacticalWeaponType weaponType,
+            bool penetratedShields,
+            string expectedPath
+        )
         {
             TacticalUnitState attacker = CreateUnit(TacticalBattleSide.Attacker);
             TacticalUnitState defender = CreateUnit(TacticalBattleSide.Defender);
@@ -104,13 +125,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
                     TacticalCombatEvent.WeaponImpact(
                         attacker,
                         defender,
-                        TacticalWeaponType.LaserCannon
+                        weaponType,
+                        penetratedShields
                     ),
                 }
             );
             audio.Advance(0f);
 
-            Assert.IsEmpty(played);
+            CollectionAssert.AreEqual(new[] { expectedPath }, played);
         }
 
         /// <summary>

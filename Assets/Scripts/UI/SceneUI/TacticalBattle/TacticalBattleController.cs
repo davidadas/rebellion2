@@ -250,6 +250,12 @@ public sealed class TacticalBattleController : MonoBehaviour
             theme.ArrivalAudioPath,
             theme.WithdrawalAudioPath,
             theme.SuperlaserAudioPath,
+            theme.EnergyShieldHitAudioPath,
+            theme.EnergyShieldPenetrationAudioPath,
+            theme.ProjectileShieldHitAudioPath,
+            theme.ProjectileShieldPenetrationAudioPath,
+            theme.IonShieldHitAudioPath,
+            theme.IonShieldPenetrationAudioPath,
         }.Where(path => !string.IsNullOrWhiteSpace(path));
     }
 

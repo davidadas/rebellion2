@@ -20,6 +20,18 @@ public sealed class TacticalBattleTheme
 
     public string SuperlaserAudioPath { get; set; }
 
+    public string EnergyShieldHitAudioPath { get; set; }
+
+    public string EnergyShieldPenetrationAudioPath { get; set; }
+
+    public string ProjectileShieldHitAudioPath { get; set; }
+
+    public string ProjectileShieldPenetrationAudioPath { get; set; }
+
+    public string IonShieldHitAudioPath { get; set; }
+
+    public string IonShieldPenetrationAudioPath { get; set; }
+
     public string LeftShipHighlightFactionInstanceID { get; set; }
 
     public string LeftShipHighlightColorHex { get; set; }

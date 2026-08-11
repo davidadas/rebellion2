@@ -52,6 +52,7 @@ internal sealed class TacticalBattleAudio
         {
             string path = combatEvent.Kind switch
             {
+                TacticalCombatEventKind.WeaponImpact => GetImpactPath(combatEvent),
                 TacticalCombatEventKind.UnitWithdrawn => GetTheme(
                     combatEvent.Source.Side
                 ).WithdrawalAudioPath,
@@ -62,6 +63,30 @@ internal sealed class TacticalBattleAudio
             };
             Enqueue(path);
         }
+    }
+
+    /// <summary>
+    /// Resolves the original shield-impact family for one completed attack.
+    /// </summary>
+    /// <param name="combatEvent">The weapon impact to resolve.</param>
+    /// <returns>The configured impact cue.</returns>
+    private string GetImpactPath(TacticalCombatEvent combatEvent)
+    {
+        TacticalBattleTheme theme = GetTheme(combatEvent.Target.Side);
+        return combatEvent.WeaponType switch
+        {
+            TacticalWeaponType.IonCannon => combatEvent.PenetratedShields
+                ? theme.IonShieldPenetrationAudioPath
+                : theme.IonShieldHitAudioPath,
+            TacticalWeaponType.Torpedo => combatEvent.PenetratedShields
+                ? theme.ProjectileShieldPenetrationAudioPath
+                : theme.ProjectileShieldHitAudioPath,
+            TacticalWeaponType.Turbolaser or TacticalWeaponType.LaserCannon =>
+                combatEvent.PenetratedShields
+                    ? theme.EnergyShieldPenetrationAudioPath
+                    : theme.EnergyShieldHitAudioPath,
+            _ => throw new ArgumentOutOfRangeException(nameof(combatEvent)),
+        };
     }
 
     /// <summary>

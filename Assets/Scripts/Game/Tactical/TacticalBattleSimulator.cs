@@ -169,12 +169,14 @@ namespace Rebellion.Game.Tactical
             foreach (PendingAttack attack in attacks)
             {
                 bool targetWasActive = attack.Target.IsActive;
+                bool penetratedShields = attack.Attack.Strength > attack.Target.Shields;
                 attack.Target.ApplyDamage(attack.Attack, random);
                 events.Add(
                     TacticalCombatEvent.WeaponImpact(
                         attack.Source,
                         attack.Target,
-                        attack.Attack.WeaponType
+                        attack.Attack.WeaponType,
+                        penetratedShields
                     )
                 );
                 if (targetWasActive && !attack.Target.IsActive)

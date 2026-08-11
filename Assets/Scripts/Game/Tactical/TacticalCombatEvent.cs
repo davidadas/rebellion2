@@ -41,6 +41,9 @@ namespace Rebellion.Game.Tactical
         /// <summary>Gets the weapon family used by a weapon-impact event.</summary>
         public TacticalWeaponType? WeaponType { get; }
 
+        /// <summary>Gets whether the attack penetrated the target's remaining shields.</summary>
+        public bool PenetratedShields { get; }
+
         /// <summary>Gets the event origin captured when the event occurred.</summary>
         public Vector3 SourcePosition { get; }
 
@@ -54,17 +57,20 @@ namespace Rebellion.Game.Tactical
         /// <param name="source">The unit producing the event.</param>
         /// <param name="target">The affected unit, when distinct from the source.</param>
         /// <param name="weaponType">The weapon family, for weapon impacts.</param>
+        /// <param name="penetratedShields">Whether the impact passed through remaining shields.</param>
         private TacticalCombatEvent(
             TacticalCombatEventKind kind,
             TacticalUnitState source,
             TacticalUnitState target,
-            TacticalWeaponType? weaponType
+            TacticalWeaponType? weaponType,
+            bool penetratedShields = false
         )
         {
             Kind = kind;
             Source = source ?? throw new ArgumentNullException(nameof(source));
             Target = target;
             WeaponType = weaponType;
+            PenetratedShields = penetratedShields;
             SourcePosition = source.Position;
             TargetPosition = target?.Position ?? source.Position;
         }
@@ -75,18 +81,21 @@ namespace Rebellion.Game.Tactical
         /// <param name="source">The firing unit.</param>
         /// <param name="target">The struck unit.</param>
         /// <param name="weaponType">The fired weapon family.</param>
+        /// <param name="penetratedShields">Whether the attack penetrated the target's shields.</param>
         /// <returns>The immutable weapon-impact event.</returns>
         public static TacticalCombatEvent WeaponImpact(
             TacticalUnitState source,
             TacticalUnitState target,
-            TacticalWeaponType weaponType
+            TacticalWeaponType weaponType,
+            bool penetratedShields = false
         )
         {
             return new TacticalCombatEvent(
                 TacticalCombatEventKind.WeaponImpact,
                 source,
                 target ?? throw new ArgumentNullException(nameof(target)),
-                weaponType
+                weaponType,
+                penetratedShields
             );
         }
 

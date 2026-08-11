@@ -1011,6 +1011,29 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.AreSame(attackingShip, events[0].Source.Unit);
             Assert.AreSame(defendingShip, events[0].Target.Unit);
             Assert.AreEqual(TacticalWeaponType.Turbolaser, events[0].WeaponType);
+            Assert.IsTrue(events[0].PenetratedShields);
+        }
+
+        [Test]
+        public void DrainEvents_AttackExactlyExhaustsShields_ReturnsContainedImpact()
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 30, 0, 0, 0, 200 };
+            CapitalShip defendingShip = CreateShip(600, 30);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+
+            session.Advance(0.1f);
+            TacticalCombatEvent impact = session
+                .DrainEvents()
+                .Single(combatEvent => combatEvent.Kind == TacticalCombatEventKind.WeaponImpact);
+
+            Assert.IsFalse(impact.PenetratedShields);
         }
 
         [Test]

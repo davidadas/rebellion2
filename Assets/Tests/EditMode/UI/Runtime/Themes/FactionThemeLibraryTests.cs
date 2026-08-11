@@ -122,6 +122,14 @@ namespace Rebellion.Tests.UI.Runtime.Themes
             );
             Assert.IsNull(alliance.SuperlaserAudioPath);
             Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13012-1033-tactical-blast",
+                alliance.EnergyShieldHitAudioPath
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Tactical/Audio/13019-1033-tactical-blast",
+                alliance.IonShieldPenetrationAudioPath
+            );
+            Assert.AreEqual(
                 "Pack/Shared/Tactical/Audio/13030-1033-tactical-blast",
                 empire.ArrivalAudioPath
             );
