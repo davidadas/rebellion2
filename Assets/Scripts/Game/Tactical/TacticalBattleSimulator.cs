@@ -17,6 +17,8 @@ namespace Rebellion.Game.Tactical
         private const float _fighterFormationDepth = BattlefieldScale * 0.65f;
         private const float _fighterRecoveryDistance = 2f;
         private const float _formationSpacing = 8f;
+        private const float _maneuverAngle = (float)(Math.PI / 8d);
+        private const float _maneuverDistanceScale = 0.75f;
         private const float _navigationArrivalDistance = 1f;
         private const float _tacticalApproachDistance = 20f;
         private static readonly Vector3[] SurroundDirections =
@@ -53,12 +55,58 @@ namespace Rebellion.Game.Tactical
         private readonly IReadOnlyList<TacticalShipGroup> groups;
         private readonly IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets;
         private readonly IReadOnlyDictionary<TacticalBattleSide, float> capitalCommandBudgets;
+        private readonly Dictionary<TacticalShipGroup, ManeuverOrder> maneuverOrders =
+            new Dictionary<TacticalShipGroup, ManeuverOrder>();
+        private readonly TacticalNavigationGrid navigationGrid;
         private readonly Dictionary<TacticalUnitState, TacticalUnitState> targets =
             new Dictionary<TacticalUnitState, TacticalUnitState>();
         private readonly IRandomNumberProvider random;
         private readonly IReadOnlyList<TacticalUnitState> units;
         private readonly Dictionary<TacticalUnitState, WithdrawalMotion> withdrawals =
             new Dictionary<TacticalUnitState, WithdrawalMotion>();
+
+        private sealed class ManeuverOrder
+        {
+            /// <summary>
+            /// Gets the group command revision from which this marker was calculated.
+            /// </summary>
+            public int CommandRevision { get; }
+
+            /// <summary>
+            /// Gets the opposing tactical object around which the maneuver was calculated.
+            /// </summary>
+            public TacticalUnitState Target { get; }
+
+            /// <summary>
+            /// Gets the navigation anchor selected for the maneuver.
+            /// </summary>
+            public Vector3 Marker { get; }
+
+            /// <summary>
+            /// Gets the group center from which the maneuver was calculated.
+            /// </summary>
+            public Vector3 Origin { get; }
+
+            /// <summary>
+            /// Initializes one resolved group maneuver.
+            /// </summary>
+            /// <param name="commandRevision">The command revision being resolved.</param>
+            /// <param name="target">The maneuver's opposing target.</param>
+            /// <param name="origin">The group center when the command was issued.</param>
+            /// <param name="marker">The selected navigation anchor.</param>
+            public ManeuverOrder(
+                int commandRevision,
+                TacticalUnitState target,
+                Vector3 origin,
+                Vector3 marker
+            )
+            {
+                CommandRevision = commandRevision;
+                Target = target;
+                Origin = origin;
+                Marker = marker;
+            }
+        }
 
         private sealed class WithdrawalMotion
         {
@@ -136,6 +184,7 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         /// <param name="units">The battle's tactical units.</param>
         /// <param name="groups">The battle's mutable command groups.</param>
+        /// <param name="navigationGrid">The battle's fixed navigation-anchor lattice.</param>
         /// <param name="fighterCommandBudgets">The normalized fighter-command contribution for each side.</param>
         /// <param name="capitalCommandBudgets">The normalized capital-command contribution for each side.</param>
         /// <param name="isDeathStarAttackOrderValid">Tests whether an assigned Death Star attack remains valid.</param>
@@ -143,6 +192,7 @@ namespace Rebellion.Game.Tactical
         public TacticalBattleSimulator(
             IReadOnlyList<TacticalUnitState> units,
             IReadOnlyList<TacticalShipGroup> groups,
+            TacticalNavigationGrid navigationGrid,
             IReadOnlyDictionary<TacticalBattleSide, float> fighterCommandBudgets,
             IReadOnlyDictionary<TacticalBattleSide, float> capitalCommandBudgets,
             Func<TacticalShipGroup, bool> isDeathStarAttackOrderValid,
@@ -151,6 +201,8 @@ namespace Rebellion.Game.Tactical
         {
             this.units = units ?? throw new ArgumentNullException(nameof(units));
             this.groups = groups ?? throw new ArgumentNullException(nameof(groups));
+            this.navigationGrid =
+                navigationGrid ?? throw new ArgumentNullException(nameof(navigationGrid));
             this.fighterCommandBudgets =
                 fighterCommandBudgets
                 ?? throw new ArgumentNullException(nameof(fighterCommandBudgets));
@@ -620,7 +672,7 @@ namespace Rebellion.Game.Tactical
         /// <param name="behavior">The active approach behavior.</param>
         /// <param name="markerPosition">The resulting center of the commanded formation.</param>
         /// <returns>The desired tactical position.</returns>
-        private static Vector3 GetApproachPosition(
+        private Vector3 GetApproachPosition(
             TacticalUnitState unit,
             TacticalUnitState target,
             TacticalShipGroup group,
@@ -628,6 +680,22 @@ namespace Rebellion.Game.Tactical
             out Vector3 markerPosition
         )
         {
+            if (group != null && IsManeuverBehavior(behavior))
+            {
+                ManeuverOrder order = ResolveManeuverOrder(group, target, behavior);
+                markerPosition = order.Marker;
+                Vector3 maneuverDirection = NormalizeOrDefault(
+                    target.Position - order.Origin,
+                    unit.Forward
+                );
+                Vector3 maneuverRight = NormalizeOrDefault(
+                    Vector3.Cross(Vector3.UnitY, maneuverDirection),
+                    Vector3.UnitX
+                );
+                return markerPosition
+                    + GetFormationOffset(unit, group, maneuverDirection, maneuverRight);
+            }
+
             Vector3 approachDirection = NormalizeOrDefault(
                 target.Position - unit.Position,
                 unit.Forward
@@ -636,16 +704,130 @@ namespace Rebellion.Game.Tactical
                 Vector3.Cross(Vector3.UnitY, approachDirection),
                 Vector3.UnitX
             );
-            Vector3 maneuverOffset = behavior switch
-            {
-                TacticalBehavior.LeftHook => -right * _tacticalApproachDistance,
-                TacticalBehavior.RightHook => right * _tacticalApproachDistance,
-                TacticalBehavior.Hammer => -Vector3.UnitY * _tacticalApproachDistance,
-                TacticalBehavior.Anvil => Vector3.UnitY * _tacticalApproachDistance,
-                _ => -approachDirection * _tacticalApproachDistance,
-            };
-            markerPosition = target.Position + maneuverOffset;
+            markerPosition = target.Position - approachDirection * _tacticalApproachDistance;
             return markerPosition + GetFormationOffset(unit, group, approachDirection, right);
+        }
+
+        /// <summary>
+        /// Resolves one maneuver command to the navigation anchor used for its lifetime.
+        /// </summary>
+        /// <param name="group">The group performing the maneuver.</param>
+        /// <param name="target">The opposing tactical object around which to maneuver.</param>
+        /// <param name="behavior">The selected maneuver direction.</param>
+        /// <returns>The resolved group-level maneuver order.</returns>
+        private ManeuverOrder ResolveManeuverOrder(
+            TacticalShipGroup group,
+            TacticalUnitState target,
+            TacticalBehavior behavior
+        )
+        {
+            if (
+                maneuverOrders.TryGetValue(group, out ManeuverOrder order)
+                && order.CommandRevision == group.CommandRevision
+                && ReferenceEquals(order.Target, target)
+            )
+            {
+                return order;
+            }
+
+            Vector3 origin = GetActiveGroupCenter(group);
+            Vector3 targetVector = target.Position - origin;
+            Vector3 maneuverVector = RotateManeuverVector(targetVector, behavior);
+            Vector3 desiredMarker = origin + maneuverVector * _maneuverDistanceScale;
+            Vector3 marker = FindClosestNavigationAnchor(desiredMarker);
+            order = new ManeuverOrder(group.CommandRevision, target, origin, marker);
+            maneuverOrders[group] = order;
+            return order;
+        }
+
+        /// <summary>
+        /// Gets the center of the active units participating in one command group.
+        /// </summary>
+        /// <param name="group">The group whose center is requested.</param>
+        /// <returns>The active-unit center, or the existing command marker when none remain.</returns>
+        private static Vector3 GetActiveGroupCenter(TacticalShipGroup group)
+        {
+            Vector3 total = Vector3.Zero;
+            int count = 0;
+            foreach (TacticalUnitState unit in group.Units)
+            {
+                if (!unit.IsActive)
+                    continue;
+
+                total += unit.Position;
+                count++;
+            }
+
+            return count == 0 ? group.MarkerPosition : total / count;
+        }
+
+        /// <summary>
+        /// Rotates a group-to-target vector into the selected maneuver plane.
+        /// </summary>
+        /// <param name="targetVector">The vector from the group center to its target.</param>
+        /// <param name="behavior">The selected maneuver direction.</param>
+        /// <returns>The rotated maneuver vector.</returns>
+        private static Vector3 RotateManeuverVector(Vector3 targetVector, TacticalBehavior behavior)
+        {
+            float angle = behavior is TacticalBehavior.RightHook or TacticalBehavior.Hammer
+                ? -_maneuverAngle
+                : _maneuverAngle;
+            float cosine = (float)Math.Cos(angle);
+            float sine = (float)Math.Sin(angle);
+            if (behavior is TacticalBehavior.LeftHook or TacticalBehavior.RightHook)
+            {
+                return new Vector3(
+                    cosine * targetVector.X - sine * targetVector.Z,
+                    targetVector.Y,
+                    sine * targetVector.X + cosine * targetVector.Z
+                );
+            }
+
+            return new Vector3(
+                targetVector.X,
+                cosine * targetVector.Y + sine * targetVector.Z,
+                cosine * targetVector.Z - sine * targetVector.Y
+            );
+        }
+
+        /// <summary>
+        /// Finds the fixed tactical navigation anchor nearest a desired position.
+        /// </summary>
+        /// <param name="position">The desired tactical position.</param>
+        /// <returns>The nearest navigation anchor.</returns>
+        private Vector3 FindClosestNavigationAnchor(Vector3 position)
+        {
+            Vector3 closest = Vector3.Zero;
+            float closestDistance = float.MaxValue;
+            for (int setIndex = 0; setIndex < navigationGrid.SetCount; setIndex++)
+            {
+                foreach (TacticalNavPoint point in navigationGrid.GetPoints(setIndex))
+                {
+                    Vector3 candidate = new Vector3(point.X, point.Y, point.Z);
+                    float distance = Vector3.DistanceSquared(position, candidate);
+                    if (distance >= closestDistance)
+                        continue;
+
+                    closest = candidate;
+                    closestDistance = distance;
+                }
+            }
+
+            return closest;
+        }
+
+        /// <summary>
+        /// Gets whether a behavior uses a directional navigation-anchor maneuver.
+        /// </summary>
+        /// <param name="behavior">The behavior to inspect.</param>
+        /// <returns>True for the four directional maneuver orders.</returns>
+        private static bool IsManeuverBehavior(TacticalBehavior behavior)
+        {
+            return behavior
+                is TacticalBehavior.LeftHook
+                    or TacticalBehavior.RightHook
+                    or TacticalBehavior.Hammer
+                    or TacticalBehavior.Anvil;
         }
 
         /// <summary>

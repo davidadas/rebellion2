@@ -121,6 +121,7 @@ namespace Rebellion.Game.Tactical
             simulator = new TacticalBattleSimulator(
                 this.units,
                 groupView,
+                NavigationGrid,
                 BuildFighterCommandBudgets(encounter),
                 BuildCapitalCommandBudgets(encounter),
                 IsDeathStarAttackOrderValid,

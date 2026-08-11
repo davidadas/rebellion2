@@ -59,6 +59,11 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         internal Vector3 MarkerPosition { get; private set; }
 
+        /// <summary>
+        /// Gets the revision of the group's targeting and behavior command state.
+        /// </summary>
+        internal int CommandRevision { get; private set; }
+
         internal TacticalShipGroup(
             TacticalBattleSide side,
             IReadOnlyCollection<TacticalUnitState> battleUnits,
@@ -103,6 +108,7 @@ namespace Rebellion.Game.Tactical
                 throw new ArgumentOutOfRangeException(nameof(behavior));
 
             Behavior = behavior;
+            CommandRevision++;
             if (behavior != TacticalBehavior.Escort)
                 EscortTarget = null;
         }
@@ -119,6 +125,7 @@ namespace Rebellion.Game.Tactical
 
             targets.Clear();
             targets.Add(target);
+            CommandRevision++;
             EscortTarget = null;
             if (Behavior == TacticalBehavior.Escort)
                 Behavior = TacticalBehavior.None;
@@ -137,6 +144,7 @@ namespace Rebellion.Game.Tactical
             targets.Clear();
             EscortTarget = target;
             Behavior = TacticalBehavior.Escort;
+            CommandRevision++;
         }
 
         /// <summary>
@@ -171,6 +179,7 @@ namespace Rebellion.Game.Tactical
                 return;
 
             targets.Add(target);
+            CommandRevision++;
         }
 
         /// <summary>
@@ -179,7 +188,8 @@ namespace Rebellion.Game.Tactical
         /// <param name="target">The target to remove.</param>
         public void RemoveTarget(TacticalUnitState target)
         {
-            targets.Remove(target);
+            if (targets.Remove(target))
+                CommandRevision++;
         }
 
         /// <summary>
@@ -187,7 +197,8 @@ namespace Rebellion.Game.Tactical
         /// </summary>
         public void RemoveInactiveTargets()
         {
-            targets.RemoveAll(target => !target.IsActive);
+            if (targets.RemoveAll(target => !target.IsActive) > 0)
+                CommandRevision++;
             if (EscortTarget?.IsActive != true)
             {
                 EscortTarget = null;
@@ -215,6 +226,7 @@ namespace Rebellion.Game.Tactical
 
             targets.Clear();
             targets.AddRange(replacements);
+            CommandRevision++;
         }
 
         /// <summary>

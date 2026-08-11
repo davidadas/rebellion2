@@ -1011,6 +1011,44 @@ namespace Rebellion.Tests.Game.Tactical
             Assert.Greater(attackingUnit.Position.Z, 0f);
         }
 
+        [TestCase(TacticalBehavior.LeftHook, 100f, 0f, 50f, 0f, 50f)]
+        [TestCase(TacticalBehavior.RightHook, 100f, 0f, 50f, 0f, -50f)]
+        [TestCase(TacticalBehavior.Hammer, 0f, 100f, 0f, -50f, 50f)]
+        [TestCase(TacticalBehavior.Anvil, 0f, 100f, 0f, 50f, 50f)]
+        public void Advance_ManeuverBehavior_SnapsMarkerToExpectedNavigationPoint(
+            TacticalBehavior behavior,
+            float targetX,
+            float targetZ,
+            float expectedX,
+            float expectedY,
+            float expectedZ
+        )
+        {
+            CapitalShip attackingShip = CreateShip(600, 0);
+            CapitalShip defendingShip = CreateShip(600, 0);
+            TacticalBattleSession session = CreateTacticalSession(
+                new PendingCombatResult
+                {
+                    AttackerFleet = CreateFleet(attackingShip),
+                    DefenderFleet = CreateFleet(defendingShip),
+                }
+            );
+            TacticalUnitState attackingUnit = session.Units.Single(unit =>
+                unit.Unit == attackingShip
+            );
+            TacticalUnitState defendingUnit = session.Units.Single(unit =>
+                unit.Unit == defendingShip
+            );
+            TacticalShipGroup group = session.GetTaskForces(TacticalBattleSide.Attacker).Single();
+            attackingUnit.Position = Vector3.Zero;
+            defendingUnit.Position = new Vector3(targetX, 0f, targetZ);
+            group.SetBehavior(behavior);
+
+            session.Advance(0.1f);
+
+            Assert.AreEqual(new Vector3(expectedX, expectedY, expectedZ), group.MarkerPosition);
+        }
+
         [Test]
         public void Advance_StandOffFormation_AlternatesMembersAroundLeadShip()
         {
