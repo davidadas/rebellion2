@@ -590,6 +590,7 @@ public sealed class TacticalBattleView : MonoBehaviour
             button.interactable = commandsEnabled;
         capitalShipMissionsButton.interactable = commandsEnabled;
         capitalShipManeuversButton.interactable = commandsEnabled;
+        superlaserButton.interactable = commandsEnabled;
         withdrawalButton.interactable = commandsEnabled && withdrawalAvailable;
         if (observing)
         {

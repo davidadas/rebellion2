@@ -669,6 +669,17 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalBattle
         }
 
         [Test]
+        public void SetObserving_ManualSuperlaserControl_DisablesFireButton()
+        {
+            ConfigureCompleteView();
+            UIComponentTestHelper.InvokeLifecycle(view, "Awake");
+
+            view.SetObserving(true);
+
+            Assert.IsFalse(superlaserButton.interactable);
+        }
+
+        [Test]
         public void SetWithdrawalAvailable_GravityLock_DisablesWithdrawalButton()
         {
             ConfigureCompleteView();

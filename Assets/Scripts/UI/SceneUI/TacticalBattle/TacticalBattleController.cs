@@ -320,7 +320,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private void BeginSuperlaserTargeting()
     {
         if (
-            playerDeathStar?.IsActive != true
+            observing
+            || playerDeathStar?.IsActive != true
             || Session.GetSuperlaserCharge(playerDeathStar) < TacticalSuperlaserSystem.MaximumCharge
         )
         {
@@ -481,6 +482,7 @@ public sealed class TacticalBattleController : MonoBehaviour
     {
         Session.SetComputerControlled(playerSide, !Session.IsComputerControlled(playerSide));
         observing = Session.IsComputerControlled(playerSide);
+        selectingSuperlaserTarget = false;
         SelectedGroup = null;
         selectedCapitalShip = null;
         selectedTaskForceNumber = 0;
