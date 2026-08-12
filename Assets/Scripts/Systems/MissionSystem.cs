@@ -150,7 +150,7 @@ namespace Rebellion.Systems
             )
                 return "One or more mission participants are unavailable.";
 
-            if (target == null || target.GetParent() == null)
+            if (target == null || target.GetParent() == null || _game.IsInVoid(target))
                 return $"Mission target '{request.TargetInstanceID}' is unavailable.";
             return null;
         }
@@ -967,8 +967,7 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            _game.AddToVoid(specialForces);
-            _game.UnitLifecycle.SetStatus(specialForces, VoidStatus.Destroyed);
+            _game.DeleteNode(specialForces);
             results.Add(
                 new GameObjectDestroyedResult
                 {
@@ -1004,8 +1003,7 @@ namespace Rebellion.Systems
             else
             {
                 officer.IsKilled = true;
-                _game.AddToVoid(officer);
-                _game.UnitLifecycle.SetStatus(officer, null);
+                _game.DeleteNode(officer);
                 results.Add(
                     new OfficerKilledResult
                     {

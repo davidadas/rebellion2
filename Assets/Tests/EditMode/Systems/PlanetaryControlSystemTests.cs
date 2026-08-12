@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_TransfersBuildings_ToNewOwner()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
             Building building = new Building
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.Systems
         {
             Faction observer = AddFaction("observer");
             _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Systems
         public void TransferPlanet_CoreObserverSnapshot_RefreshesOwnershipOnly()
         {
             Faction observer = AddFaction("observer");
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.EnergyCapacity = 1;
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
             AddBuilding(_targetPlanet, "hidden-transfer-building", _empire.InstanceID);
@@ -162,7 +162,7 @@ namespace Rebellion.Tests.Systems
         {
             Faction observer = AddFaction("observer");
             _targetPlanet.GetParentOfType<PlanetSystem>().SystemType = PlanetSystemType.OuterRim;
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.EnergyCapacity = 1;
             CapturePlanetSnapshot(observer, _targetPlanet, 5);
             AddBuilding(_targetPlanet, "hidden-transfer-building", _empire.InstanceID);
@@ -192,7 +192,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_PreviousOwnerSnapshot_Refreshed()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
 
             _game.CurrentTick = 20;
             _ownershipSystem.TransferPlanet(_targetPlanet, _rebels);
@@ -247,7 +247,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_PlanetWithCanceledMission_ReturnsParticipants()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
 
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             _game.AttachNode(officer, _targetPlanet);
@@ -313,7 +313,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ClearPlanetOwnership_ActiveDiplomacyMission_CancelsMission()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _rebels.InstanceID);
             _targetPlanet.PopularSupport = new Dictionary<string, int>
             {
                 { _rebels.InstanceID, 70 },
@@ -370,7 +370,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_PlanetWithEnemyOfficers_EvictsEnemyOfficers()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             _game.AttachNode(officer, _targetPlanet);
 
@@ -383,7 +383,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_PlanetWithEnemyRegiments_EvictsEnemyRegiments()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
             Regiment regiment = EntityFactory.CreateRegiment("reg1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -421,7 +421,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_InTransitOfficerDestinedForPlanet_EvictsOfficer()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             _game.AttachNode(officer, _targetPlanet);
             officer.Movement = new MovementState
@@ -448,7 +448,7 @@ namespace Rebellion.Tests.Systems
             // Officer is mid-flight to _targetPlanet. After the planet changes sides the officer
             // should be redirected to the nearest empire planet, and the new journey must begin
             // from the officer's current visual position — not from targetPlanet's coordinates.
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             _game.AttachNode(officer, _targetPlanet);
 
@@ -494,7 +494,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_EvictedOfficer_DoesNotChangeOfficerOwner()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             Officer officer = EntityFactory.CreateOfficer("o1", "empire");
             _game.AttachNode(officer, _targetPlanet);
 
@@ -510,7 +510,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_BuildingAtPlanet_BuildingNotEvicted()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
             Building building = new Building
@@ -539,7 +539,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_PlanetWithManufacturingQueues_ClearsQueues()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
             ManufacturingSystem manufacturing = new ManufacturingSystem(
@@ -561,7 +561,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void ClearPlanetOwnership_PlanetWithManufacturingQueue_DestroysQueuedUnit()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
 
             ManufacturingSystem manufacturing = new ManufacturingSystem(
                 _game,
@@ -581,7 +581,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void TransferPlanet_PlanetWithInProgressBuilding_ClearsInProgressBuilding()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, "empire");
+            _game.ChangeOwnership(_targetPlanet, "empire");
             _targetPlanet.EnergyCapacity = 1;
 
             ManufacturingSystem manufacturing = new ManufacturingSystem(
@@ -626,7 +626,7 @@ namespace Rebellion.Tests.Systems
             string expectedOwnerId
         )
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.PopularSupport.Clear();
             _targetPlanet.SetPopularSupport(supportFactionId, support);
 
@@ -685,7 +685,7 @@ namespace Rebellion.Tests.Systems
         [Test]
         public void HandleResults_LastStationedRegiment_CancelsFormerOwnerDiplomacyMission()
         {
-            _game.UnitLifecycle.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             _targetPlanet.PopularSupport = new Dictionary<string, int>
             {
                 { _empire.InstanceID, 40 },
@@ -865,7 +865,7 @@ namespace Rebellion.Tests.Systems
         public void ReconcilePlanet_ColonizedPlanetLosesLastRegiment_BecomesNeutralWithoutControllingSupport()
         {
             (Planet planet, Regiment regiment) = StageUncolonizedPlanetWithFleet("wild3", "empire");
-            _game.UnitLifecycle.ChangeOwnership(planet, "empire");
+            _game.ChangeOwnership(planet, "empire");
 
             planet.IsColonized = true;
             _game.DetachNode(regiment);
@@ -897,7 +897,7 @@ namespace Rebellion.Tests.Systems
         {
             (Planet planet, Regiment _) = StageUncolonizedPlanetWithFleet("wild6", "empire");
             planet.IsColonized = true;
-            _game.UnitLifecycle.ChangeOwnership(planet, _empire.InstanceID);
+            _game.ChangeOwnership(planet, _empire.InstanceID);
             planet.SetPopularSupport(
                 _rebels.InstanceID,
                 _game.Config.SupportShift.OwnershipTransferThreshold
@@ -970,7 +970,7 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(building, planet);
 
             if (building.GetOwnerInstanceID() != ownerInstanceId)
-                _game.UnitLifecycle.ChangeOwnership(building, ownerInstanceId);
+                _game.ChangeOwnership(building, ownerInstanceId);
 
             return building;
         }

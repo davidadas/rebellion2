@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Factions;
-using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
@@ -274,13 +273,12 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
-    /// Current category-limited intelligence was supplied about a planet.
+    /// Current observations about selected game objects were supplied to a faction.
     /// </summary>
-    public class PlanetIntelligenceResult : GameResult
+    public class IntelligenceRevealedResult : GameResult
     {
         public Faction Recipient { get; set; }
-        public Planet Planet { get; set; }
-        public PlanetIntelligenceCategory Categories { get; set; }
+        public List<ISceneNode> Observations { get; set; } = new List<ISceneNode>();
     }
 
     #endregion
@@ -385,7 +383,7 @@ namespace Rebellion.Game.Results
     /// <summary>
     /// An espionage mission revealed intelligence about systems beyond its primary target.
     /// </summary>
-    public class MissionSystemIntelligenceResult : GameResult
+    public class SystemsRevealedResult : GameResult
     {
         public List<PlanetSystem> AdditionalSystems { get; set; } = new List<PlanetSystem>();
     }

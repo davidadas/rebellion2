@@ -991,8 +991,7 @@ namespace Rebellion.Systems
                 return false;
 
             ISceneNode destroyed = candidates[_provider.NextInt(0, candidates.Count)];
-            _game.AddToVoid(destroyed);
-            _game.UnitLifecycle.SetStatus(destroyed, VoidStatus.Destroyed);
+            _game.DeleteNode(destroyed);
             results.Add(
                 new PlanetIncidentResult
                 {

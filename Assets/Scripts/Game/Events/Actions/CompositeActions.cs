@@ -11,9 +11,8 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int Weight { get; set; } = 1;
 
-        public List<GameConditional> Conditions { get; set; } = new List<GameConditional>();
+        public List<GameConditional> When { get; set; } = new List<GameConditional>();
 
-        [PersistableInlineCollection]
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
     }
 
@@ -28,7 +27,7 @@ namespace Rebellion.Game.Events
             List<RandomOutcome> eligible = Outcomes
                 .Where(outcome =>
                     outcome.Weight > 0
-                    && outcome.Conditions.All(condition =>
+                    && outcome.When.All(condition =>
                         condition.IsMet(context.Game, context.Activation)
                     )
                 )

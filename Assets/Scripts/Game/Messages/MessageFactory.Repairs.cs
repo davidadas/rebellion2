@@ -11,24 +11,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates completed ship repairs into faction message deliveries.
     /// </summary>
-    internal sealed class RepairMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public RepairMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddMessages(
+        private void AddRepairMessages(
             IEnumerable<ShipHullDamageResult> shipResults,
             IEnumerable<FighterDamageResult> fighterResults,
             GameRoot game,
@@ -39,28 +24,41 @@ namespace Rebellion.Game.Messages
             {
                 if (result?.Ship == null || result.Ship.IsDamaged())
                     continue;
-                Add(deliveries, game, result.Ship, MessageResultType.CapitalShipRepaired);
+                AddRepairDelivery(
+                    deliveries,
+                    game,
+                    result.Ship,
+                    MessageResultType.CapitalShipRepaired,
+                    result
+                );
             }
 
             foreach (FighterDamageResult result in fighterResults)
             {
                 if (result?.Fighter == null || result.Fighter.HasLosses())
                     continue;
-                Add(deliveries, game, result.Fighter, MessageResultType.StarfighterRepaired);
+                AddRepairDelivery(
+                    deliveries,
+                    game,
+                    result.Fighter,
+                    MessageResultType.StarfighterRepaired,
+                    result
+                );
             }
         }
 
-        private void Add(
+        private void AddRepairDelivery(
             ICollection<MessageDelivery> deliveries,
             GameRoot game,
             ISceneNode unit,
-            MessageResultType resultType
+            MessageResultType resultType,
+            GameResult sourceResult
         )
         {
             Faction faction = game.GetFactions()
                 .FirstOrDefault(candidate => candidate.InstanceID == unit.GetOwnerInstanceID());
-            MessageDefinition definition = _definitions.GetDefinition(resultType);
-            Message message = _templates.Build(
+            MessageDefinition definition = _definitionResolver.GetDefinition(resultType);
+            Message message = _templateBuilder.Build(
                 definition,
                 faction,
                 new Dictionary<string, string>
@@ -74,11 +72,11 @@ namespace Rebellion.Game.Messages
                 message.EventLocationInstanceID = unit.GetParentOfType<Planet>()?.InstanceID;
                 message.NavigationTargetInstanceID = unit.InstanceID;
             }
-            _deliveries.WithNotification(
+            _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
-            _deliveries.Add(deliveries, faction, message);
+            _deliveryBuilder.Add(deliveries, faction, message, sourceResult);
         }
     }
 }

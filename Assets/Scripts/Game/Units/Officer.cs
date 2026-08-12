@@ -33,6 +33,18 @@ namespace Rebellion.Game.Units
         ForceMaster,
     }
 
+    public enum OfficerStat
+    {
+        Diplomacy,
+        Espionage,
+        Combat,
+        Leadership,
+        ShipResearch,
+        TroopResearch,
+        FacilityResearch,
+        Force,
+    }
+
     public enum OfficerVoiceLineType
     {
         Order,
@@ -132,7 +144,8 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
-        public VoidState VoidState { get; set; }
+        public bool IsRetired { get; set; }
+        public string StatusText { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
@@ -182,7 +195,6 @@ namespace Rebellion.Game.Units
                 OfficerRating.ShipResearch => ShipResearch,
                 OfficerRating.TroopResearch => TroopResearch,
                 OfficerRating.FacilityResearch => FacilityResearch,
-                OfficerRating.Force => ForceValue,
                 OfficerRating.None => 0,
                 _ => Ratings.TryGetValue(rating, out int value) ? value : 0,
             };
@@ -207,9 +219,6 @@ namespace Rebellion.Game.Units
                 case OfficerRating.FacilityResearch:
                     FacilityResearch = value;
                     return value;
-                case OfficerRating.Force:
-                    ForceValue = Math.Max(0, value);
-                    return ForceValue;
                 case OfficerRating.None:
                     return 0;
                 default:
@@ -234,7 +243,6 @@ namespace Rebellion.Game.Units
                     0,
                     ApplyForceRatingBonus(baseRating) - InjuryPoints
                 ),
-                OfficerRating.Force => ForceRank,
                 _ => baseRating,
             };
             return officerRating;
@@ -249,6 +257,41 @@ namespace Rebellion.Game.Units
         {
             SetBaseRating(rating, GetBaseRating(rating) + amount);
         }
+
+        public int GetBaseStat(OfficerStat stat)
+        {
+            return stat == OfficerStat.Force ? ForceValue : GetBaseRating(ToOfficerRating(stat));
+        }
+
+        public int GetCurrentStat(OfficerStat stat)
+        {
+            return stat == OfficerStat.Force
+                ? ForceRank
+                : GetEffectiveRating(ToOfficerRating(stat));
+        }
+
+        public int SetBaseStat(OfficerStat stat, int value)
+        {
+            if (stat == OfficerStat.Force)
+            {
+                ForceValue = Math.Max(0, value);
+                return ForceValue;
+            }
+            return SetBaseRating(ToOfficerRating(stat), value);
+        }
+
+        private static OfficerRating ToOfficerRating(OfficerStat stat) =>
+            stat switch
+            {
+                OfficerStat.Diplomacy => OfficerRating.Diplomacy,
+                OfficerStat.Espionage => OfficerRating.Espionage,
+                OfficerStat.Combat => OfficerRating.Combat,
+                OfficerStat.Leadership => OfficerRating.Leadership,
+                OfficerStat.ShipResearch => OfficerRating.ShipResearch,
+                OfficerStat.TroopResearch => OfficerRating.TroopResearch,
+                OfficerStat.FacilityResearch => OfficerRating.FacilityResearch,
+                _ => OfficerRating.None,
+            };
 
         /// <summary>
         /// Returns the base research value for the given discipline.

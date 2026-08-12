@@ -288,7 +288,7 @@ public sealed class GameManager
         _game = game;
         if (_game.Config == null)
             _game.SetConfig(_gameData.GameConfig);
-        _game.UnitLifecycle.Initialize();
+        _game.RebuildSceneState();
 
         _randomProvider = _game.Random;
         InitializeSystems();
@@ -382,7 +382,7 @@ public sealed class GameManager
         _resultProcessor.Subscribe<PlanetGarrisonChangedResult>(_uprisingSystem);
         _resultProcessor.Subscribe<PlanetUprisingStartedResult>(_missionSystem);
         _resultProcessor.Subscribe<MissionCompletedResult>(_jediSystem);
-        _resultProcessor.Subscribe<PlanetIntelligenceResult>(_fogOfWarSystem);
+        _resultProcessor.Subscribe<IntelligenceRevealedResult>(_fogOfWarSystem);
         _resultProcessor.Observe<GameObjectSabotagedResult>(_fogOfWarSystem.ProcessResults);
 
         _movementSystem.ResultsProduced += HandleSystemResultsProduced;

@@ -70,7 +70,6 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
-        public VoidState VoidState { get; set; }
 
         /// <summary>
         /// Default constructor for the Building class.

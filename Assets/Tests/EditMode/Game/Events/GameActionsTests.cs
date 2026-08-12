@@ -44,31 +44,6 @@ namespace Rebellion.Tests.Game.Events
             return game;
         }
 
-        private static GatherInformantIntelligenceAction CreateInformantAction()
-        {
-            return new GatherInformantIntelligenceAction
-            {
-                FactionRoutes = new List<InformantFactionRoute>
-                {
-                    new InformantFactionRoute
-                    {
-                        ControllerFactionInstanceID = "empire",
-                        RecipientFactionInstanceID = "rebels",
-                    },
-                },
-                IntelligenceChoices = new List<PlanetIntelligenceCategory>
-                {
-                    PlanetIntelligenceCategory.System,
-                    PlanetIntelligenceCategory.CapitalShips,
-                    PlanetIntelligenceCategory.Starfighters,
-                    PlanetIntelligenceCategory.GroundForces,
-                    PlanetIntelligenceCategory.Buildings,
-                    PlanetIntelligenceCategory.Officers,
-                    PlanetIntelligenceCategory.All,
-                },
-            };
-        }
-
         [Test]
         public void TriggerDuel_ValidIDs_EmitsRequest()
         {
@@ -160,53 +135,55 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void GatherInformantIntelligence_OwnerSupportFails_EmitsOpposingFactionIntelligence()
+        public void RevealToFaction_SelectedOfficer_EmitsConcreteObservation()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
-            empirePlanet.PopularSupport["empire"] = 20;
-            GatherInformantIntelligenceAction action = CreateInformantAction();
+            Officer officer = EntityFactory.CreateOfficer("officer", "empire");
+            game.AttachNode(officer, empirePlanet);
+            RevealToFactionAction action = new RevealToFactionAction
+            {
+                FactionInstanceID = "rebels",
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectOfficers { InstanceID = officer.InstanceID },
+                },
+            };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
                 new GameEventState(),
                 empirePlanet
             );
 
-            List<GameResult> results = action.Execute(
-                game,
-                new FixedRandomProvider(new[] { 0.8, 0.5 }),
-                context
-            );
+            List<GameResult> results = action.Execute(game, game.Random, context);
 
-            PlanetIntelligenceResult intelligence = results
-                .OfType<PlanetIntelligenceResult>()
+            IntelligenceRevealedResult intelligence = results
+                .OfType<IntelligenceRevealedResult>()
                 .Single();
-            MessageRequestedResult message = results.OfType<MessageRequestedResult>().Single();
             Assert.AreEqual("rebels", intelligence.Recipient.InstanceID);
-            Assert.AreSame(empirePlanet, intelligence.Planet);
-            Assert.AreEqual(PlanetIntelligenceCategory.GroundForces, intelligence.Categories);
-            Assert.AreSame(intelligence.Recipient, message.Recipient);
-            Assert.AreSame(empirePlanet, message.Location);
+            CollectionAssert.AreEqual(new[] { officer }, intelligence.Observations);
         }
 
         [Test]
-        public void GatherInformantIntelligence_OwnerSupportSucceeds_EmitsNothing()
+        public void RollAgainstPopularSupport_RollBelowSupport_ReturnsTrue()
         {
             GameRoot game = BuildGame(out Planet empirePlanet, out _);
             empirePlanet.PopularSupport["empire"] = 20;
-            GatherInformantIntelligenceAction action = CreateInformantAction();
+            game.Random = new FixedRandomProvider(new[] { 0.19 });
+            RollAgainstPopularSupportConditional conditional =
+                new RollAgainstPopularSupportConditional
+                {
+                    FactionInstanceID = "empire",
+                    PlanetBinding = "$target",
+                };
             GameEventExecutionContext context = new GameEventExecutionContext(
                 new GameEvent { InstanceID = "INFORMANTS" },
                 new GameEventState(),
                 empirePlanet
             );
 
-            List<GameResult> results = action.Execute(
-                game,
-                new FixedRandomProvider(new[] { 0.19 }),
-                context
-            );
+            bool result = conditional.IsMet(new GameConditionContext(game, context));
 
-            Assert.IsEmpty(results);
+            Assert.IsTrue(result);
         }
 
         [Test]
@@ -329,7 +306,7 @@ namespace Rebellion.Tests.Game.Events
         public void SendMessage_MultipleBackgroundSources_ThrowsException()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
-            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            Officer officer = EntityFactory.CreateOfficer("officer", rebelPlanet.OwnerInstanceID);
             game.AttachNode(officer, rebelPlanet);
             SendMessageAction action = new SendMessageAction
             {
@@ -409,33 +386,148 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AddToVoid_ActiveOfficer_RemovesOfficerFromSceneGraph()
+        public void RequestMovement_IncompatibleSelector_ThrowsPreciseError()
         {
-            GameRoot game = BuildGame(out _, out Planet origin);
-            Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
-            game.AttachNode(luke, origin);
+            GameRoot game = BuildGame(out Planet destination, out _);
+            RequestMovementAction action = new RequestMovementAction
+            {
+                DestinationInstanceID = destination.InstanceID,
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectPlanets { InstanceID = destination.InstanceID },
+                },
+            };
 
-            new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
 
-            Assert.IsNull(luke.GetParent());
-            Assert.IsTrue(game.GetFactionByOwnerInstanceID("rebels").VoidPool.Contains(luke));
+            StringAssert.Contains("only movable units", exception.Message);
         }
 
         [Test]
-        public void SetStatus_OfficerInVoid_SetsVoidStatus()
+        public void SetCaptureStatus_IncompatibleSelector_ThrowsPreciseError()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                IsCaptured = true,
+                CaptorFactionInstanceID = "rebels",
+                Selectors = new List<GameEventSelector>
+                {
+                    new SelectPlanets { InstanceID = planet.InstanceID },
+                },
+            };
+
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
+                action.Execute(game)
+            );
+
+            StringAssert.Contains("only officers", exception.Message);
+        }
+
+        [Test]
+        public void SetCaptureStatus_NormalCapture_AllowsEscape()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            game.AttachNode(officer, planet);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+            };
+
+            OfficerCaptureStateResult result = action
+                .Execute(game)
+                .OfType<OfficerCaptureStateResult>()
+                .Single();
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.AreEqual("empire", officer.CaptorInstanceID);
+            Assert.IsTrue(officer.CanEscape);
+            Assert.AreSame(officer, result.TargetOfficer);
+        }
+
+        [Test]
+        public void SetCaptureStatus_AuthoredNonEscapingCapture_DisablesEscape()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            game.AttachNode(officer, planet);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+                CanEscape = false,
+            };
+
+            action.Execute(game);
+
+            Assert.IsFalse(officer.CanEscape);
+        }
+
+        [Test]
+        public void SetCaptureStatus_Release_ClearsCaptorAndCaptureOnlyState()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "empire";
+            officer.CanEscape = false;
+            game.AttachNode(officer, planet);
+            SetCaptureStatusAction action = new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = false,
+            };
+
+            action.Execute(game);
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsTrue(officer.CanEscape);
+        }
+
+        [Test]
+        public void SetCaptureStatus_RecaptureAfterRelease_RestoresDefaultEscapeState()
+        {
+            GameRoot game = BuildGame(out Planet planet, out _);
+            Officer officer = EntityFactory.CreateOfficer("officer", planet.OwnerInstanceID);
+            officer.IsCaptured = true;
+            officer.CaptorInstanceID = "empire";
+            officer.CanEscape = false;
+            game.AttachNode(officer, planet);
+            new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = false,
+            }.Execute(game);
+
+            new SetCaptureStatusAction
+            {
+                OfficerInstanceID = officer.InstanceID,
+                IsCaptured = true,
+                CaptorFactionInstanceID = "empire",
+            }.Execute(game);
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsTrue(officer.CanEscape);
+        }
+
+        [Test]
+        public void AddToVoid_ActiveOfficer_ParentsOfficerToVoidPool()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, origin);
+
             new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
 
-            new SetStatusAction
-            {
-                UnitInstanceID = luke.InstanceID,
-                Status = VoidStatus.Training,
-            }.Execute(game);
-
-            Assert.AreEqual(VoidStatus.Training, luke.VoidState.Status);
+            Assert.IsInstanceOf<VoidPool>(luke.GetParent());
+            Assert.IsTrue(game.IsInVoid(luke));
         }
 
         [Test]
@@ -539,17 +631,17 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerRating_PercentOfCurrentRank_AdjustsForceRating()
+        public void AdjustOfficerStat_PercentOfCurrentRank_AdjustsForceRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.ForceValue = 40;
             game.AttachNode(luke, rebelPlanet);
-            AdjustOfficerRatingAction action = new AdjustOfficerRatingAction
+            AdjustOfficerStatAction action = new AdjustOfficerStatAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.Force,
-                PercentOfCurrentRank = 25,
+                Stat = OfficerStat.Force,
+                PercentOfCurrent = 25,
             };
 
             ForceExperienceResult result = action
@@ -563,7 +655,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerRating_Amount_AdjustsStoredRating()
+        public void AdjustOfficerStat_Amount_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
@@ -571,10 +663,10 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(luke, rebelPlanet);
 
             Assert.IsEmpty(
-                new AdjustOfficerRatingAction
+                new AdjustOfficerStatAction
                 {
                     OfficerInstanceID = luke.InstanceID,
-                    Rating = OfficerRating.Diplomacy,
+                    Stat = OfficerStat.Diplomacy,
                     Amount = 5,
                 }.Execute(game)
             );
@@ -583,37 +675,37 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustOfficerRating_PercentOfBaseRating_AdjustsStoredRating()
+        public void AdjustOfficerStat_PercentOfBaseRating_AdjustsStoredRating()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             luke.SetBaseRating(OfficerRating.ShipResearch, 40);
             game.AttachNode(luke, rebelPlanet);
 
-            new AdjustOfficerRatingAction
+            new AdjustOfficerStatAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                Rating = OfficerRating.ShipResearch,
-                PercentOfBaseRating = -25,
+                Stat = OfficerStat.ShipResearch,
+                PercentOfBase = -25,
             }.Execute(game);
 
             Assert.AreEqual(30, luke.GetBaseRating(OfficerRating.ShipResearch));
         }
 
         [Test]
-        public void AdjustOfficerRating_MultipleAdjustmentModes_Throws()
+        public void AdjustOfficerStat_MultipleAdjustmentModes_Throws()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
 
             Assert.Throws<InvalidOperationException>(() =>
-                new AdjustOfficerRatingAction
+                new AdjustOfficerStatAction
                 {
                     OfficerInstanceID = luke.InstanceID,
-                    Rating = OfficerRating.Combat,
+                    Stat = OfficerStat.Combat,
                     Amount = 5,
-                    PercentOfBaseRating = 10,
+                    PercentOfBase = 10,
                 }.Execute(game)
             );
         }
@@ -673,14 +765,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void AdjustPlanetResource_RawMaterials_IncreasesExplicitAmount()
+        public void AdjustPlanetStat_RawResourceNodes_IncreasesExplicitAmount()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            AdjustPlanetResourceAction action = new AdjustPlanetResourceAction
+            AdjustPlanetStatAction action = new AdjustPlanetStatAction
             {
-                Resource = PlanetResource.RawMaterials,
+                Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
@@ -692,23 +784,22 @@ namespace Rebellion.Tests.Game.Events
             List<GameResult> results = action.Execute(game, new SequenceRNG(), context);
 
             Assert.AreEqual(5, planet.NumRawResourceNodes);
-            PlanetIncidentResult incident = results.OfType<PlanetIncidentResult>().Single();
-            Assert.AreEqual(IncidentType.Resource, incident.IncidentType);
-            Assert.AreEqual(PlanetStatType.RawMaterial, incident.ChangedStat);
-            Assert.AreEqual(4, incident.OldValue);
-            Assert.AreEqual(5, incident.NewValue);
+            Assert.AreEqual(
+                PlanetStatType.RawMaterial,
+                results.OfType<PlanetStatChangedResult>().Single().Stat
+            );
         }
 
         [Test]
-        public void AdjustPlanetResource_NeutralPlanet_ReportsNoFaction()
+        public void AdjustPlanetStat_NeutralPlanet_ReportsNoFaction()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.OwnerInstanceID = null;
             planet.NumRawResourceNodes = 4;
             planet.EnergyCapacity = 8;
-            AdjustPlanetResourceAction action = new AdjustPlanetResourceAction
+            AdjustPlanetStatAction action = new AdjustPlanetStatAction
             {
-                Resource = PlanetResource.RawMaterials,
+                Stat = PlanetStat.RawResourceNodes,
                 Amount = 1,
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
@@ -727,15 +818,20 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ReduceResources_MinimumLoss_GuaranteesOneResourceLoss()
+        public void ReducePlanetStats_MinimumLoss_GuaranteesOnePointLoss()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 3;
             planet.EnergyCapacity = 3;
-            ReduceResourcesAction action = new ReduceResourcesAction
+            ReducePlanetStatsAction action = new ReducePlanetStatsAction
             {
                 LossProbabilityPerResource = 0,
                 MinimumTotalLoss = 1,
+                Stats = new List<PlanetStatReference>
+                {
+                    new PlanetStatReference { Stat = PlanetStat.RawResourceNodes },
+                    new PlanetStatReference { Stat = PlanetStat.EnergyCapacity },
+                },
             };
             GameEvent gameEvent = new GameEvent { InstanceID = "disaster" };
             GameEventExecutionContext context = new GameEventExecutionContext(
@@ -749,14 +845,10 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual(2, planet.NumRawResourceNodes);
             Assert.AreEqual(3, planet.EnergyCapacity);
             Assert.AreEqual(1, results.OfType<PlanetStatChangedResult>().Count());
-            Assert.AreEqual(
-                IncidentType.Disaster,
-                results.OfType<PlanetIncidentResult>().Single().IncidentType
-            );
         }
 
         [Test]
-        public void DestroyUnits_BuildingCandidate_AddsFacilityToDisasterResult()
+        public void RecordPlanetIncident_PriorDestroyedBuilding_IncludesFacility()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             planet.NumRawResourceNodes = 1;
@@ -774,29 +866,35 @@ namespace Rebellion.Tests.Game.Events
                 InstanceID = "disaster",
                 Actions = new List<GameAction>
                 {
-                    new ReduceResourcesAction
+                    new ReducePlanetStatsAction
                     {
                         LossProbabilityPerResource = 0,
                         MinimumTotalLoss = 1,
+                        Stats = new List<PlanetStatReference>
+                        {
+                            new PlanetStatReference { Stat = PlanetStat.RawResourceNodes },
+                            new PlanetStatReference { Stat = PlanetStat.EnergyCapacity },
+                        },
                     },
                     new DestroyUnitsAction
                     {
                         Selectors = new List<GameEventSelector>
                         {
-                            new SelectRandomUnits
+                            new SelectRandom
                             {
                                 ChancePercent = 100,
-                                Queries = new List<SelectUnits>
+                                Selectors = new List<GameEventSelector>
                                 {
-                                    new SelectUnits
+                                    new SelectBuildings
                                     {
                                         PlanetInstanceID = planet.InstanceID,
-                                        UnitCategory = UnitCategory.ManufacturingFacility,
+                                        Category = BuildingSelectionCategory.ManufacturingFacility,
                                     },
                                 },
                             },
                         },
                     },
+                    new RecordPlanetIncidentAction { IncidentType = IncidentType.Disaster },
                 },
             };
             GameEventExecutionContext context = new GameEventExecutionContext(
@@ -819,7 +917,7 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void DestroyUnits_SelectedUnit_RetainsUnitInFactionVoidPool()
+        public void DestroyUnits_SelectedUnit_DeletesUnitFromGame()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Regiment regiment = new Regiment
@@ -833,15 +931,14 @@ namespace Rebellion.Tests.Game.Events
             {
                 Selectors = new List<GameEventSelector>
                 {
-                    new SelectUnits { InstanceID = regiment.InstanceID },
+                    new SelectRegiments { InstanceID = regiment.InstanceID },
                 },
             };
 
             action.Execute(game, new FixedRNG(0), null);
 
-            Faction owner = game.GetFactions()
-                .Single(faction => faction.InstanceID == planet.OwnerInstanceID);
-            Assert.Contains(regiment, owner.VoidPool);
+            Assert.IsNull(regiment.GetParent());
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]
@@ -856,16 +953,15 @@ namespace Rebellion.Tests.Game.Events
             {
                 Selectors = new List<GameEventSelector>
                 {
-                    new SelectUnits { InstanceID = fleet.InstanceID },
-                    new SelectUnits { InstanceID = ship.InstanceID },
+                    new SelectFleets { InstanceID = fleet.InstanceID },
+                    new SelectCapitalShips { InstanceID = ship.InstanceID },
                 },
             };
 
             List<GameResult> results = action.Execute(game);
 
-            Assert.Contains(fleet, game.GetFactionByOwnerInstanceID("empire").VoidPool);
-            Assert.AreEqual(VoidStatus.Destroyed, fleet.VoidState.Status);
-            Assert.AreEqual(VoidStatus.Destroyed, ship.VoidState.Status);
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID));
             CollectionAssert.AreEquivalent(
                 new ISceneNode[] { fleet, ship },
                 results.OfType<GameObjectDestroyedResult>().Select(result => result.DestroyedObject)
@@ -873,15 +969,15 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void SelectUnits_ChildOfVoidUnit_ExcludesRetainedSubtree()
+        public void SelectCapitalShips_ChildOfVoidUnit_ExcludesRetainedSubtree()
         {
             GameRoot game = BuildGame(out Planet planet, out _);
             Fleet fleet = new Fleet { InstanceID = "fleet", OwnerInstanceID = "empire" };
             CapitalShip ship = new CapitalShip { InstanceID = "ship", OwnerInstanceID = "empire" };
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
-            game.UnitLifecycle.AddToVoid(fleet);
-            SelectUnits selector = new SelectUnits { InstanceID = ship.InstanceID };
+            game.AddToVoid(fleet);
+            SelectCapitalShips selector = new SelectCapitalShips { InstanceID = ship.InstanceID };
 
             List<ISceneNode> selected = selector.Select(game, new FixedRNG(0), null).ToList();
 

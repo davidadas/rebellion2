@@ -136,6 +136,115 @@ namespace Rebellion.Tests.Game.Messages
         }
 
         [Test]
+        public void CreateMessages_SuppressionWithDifferentMessageType_PreservesAutomaticMessage()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
+            game.AttachNode(officer, origin);
+            OfficerCaptureStateResult capture = new OfficerCaptureStateResult
+            {
+                TargetOfficer = officer,
+                IsCaptured = true,
+                Context = origin,
+            };
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "Captured",
+                        "Captured"
+                    ),
+                },
+                capture,
+                new SuppressNextAutomaticMessageResult
+                {
+                    MessageType = MessageResultType.SpaceBattle,
+                    TargetResult = capture,
+                }
+            );
+
+            Assert.AreEqual(1, deliveries.Count);
+        }
+
+        [Test]
+        public void CreateMessages_SuppressionWithDifferentRecipient_PreservesAutomaticMessage()
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, _) =
+                BuildTwoFactionMessageScene();
+            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
+            game.AttachNode(officer, origin);
+            OfficerCaptureStateResult capture = new OfficerCaptureStateResult
+            {
+                TargetOfficer = officer,
+                IsCaptured = true,
+                Context = origin,
+            };
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "Captured",
+                        "Captured"
+                    ),
+                },
+                capture,
+                new SuppressNextAutomaticMessageResult
+                {
+                    MessageType = MessageResultType.OfficerCaptured,
+                    Recipient = empire,
+                    TargetResult = capture,
+                }
+            );
+
+            Assert.AreSame(alliance, deliveries.Single().Recipient);
+        }
+
+        [Test]
+        public void CreateMessages_SuppressionFromSameEvent_RemovesDerivedAutomaticMessage()
+        {
+            (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
+            Officer officer = new Officer { OwnerInstanceID = alliance.InstanceID };
+            game.AttachNode(officer, origin);
+            OfficerCaptureStateResult capture = new OfficerCaptureStateResult
+            {
+                TargetOfficer = officer,
+                IsCaptured = true,
+                Context = origin,
+                SourceEventInstanceID = "CAPTURE_EVENT",
+            };
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.OfficerCaptured,
+                        MessageType.Mission,
+                        "Captured",
+                        "Captured"
+                    ),
+                },
+                capture,
+                new SuppressNextAutomaticMessageResult
+                {
+                    MessageType = MessageResultType.OfficerCaptured,
+                    TargetResult = new MissionCompletedResult(),
+                    SourceEventInstanceID = "CAPTURE_EVENT",
+                }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
+        [Test]
         public void CreateMessages_FleetArrival_InterpolatesFleetAndDestination()
         {
             (GameRoot game, Faction alliance, _, Planet destination) = BuildMessageScene();
@@ -1413,7 +1522,7 @@ namespace Rebellion.Tests.Game.Messages
                 CreateMessages(
                     game,
                     new[] { definition },
-                    new MissionSystemIntelligenceResult
+                    new SystemsRevealedResult
                     {
                         MissionInstanceID = mission.InstanceID,
                         AdditionalSystems = new List<PlanetSystem> { corellia, sullust },

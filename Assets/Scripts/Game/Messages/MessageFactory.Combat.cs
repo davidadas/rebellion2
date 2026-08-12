@@ -12,24 +12,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates space combat, bombardment, and planetary assault results into reports.
     /// </summary>
-    internal sealed class CombatMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public CombatMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddMessages(
+        private void AddCombatMessages(
             IEnumerable<SpaceCombatResult> battles,
             IEnumerable<BombardmentResult> bombardments,
             IEnumerable<PlanetaryAssaultResult> assaults,
@@ -39,11 +24,21 @@ namespace Rebellion.Game.Messages
         {
             foreach (SpaceCombatResult result in battles)
             {
-                Faction attacker = GetFaction(game, GetOwnerID(result, CombatSide.Attacker));
-                Faction defender = GetFaction(game, GetOwnerID(result, CombatSide.Defender));
-                Add(deliveries, attacker, CreateSpaceBattle(attacker, result, defender));
+                Faction attacker = GetCombatFaction(game, GetOwnerID(result, CombatSide.Attacker));
+                Faction defender = GetCombatFaction(game, GetOwnerID(result, CombatSide.Defender));
+                AddCombatDelivery(
+                    deliveries,
+                    attacker,
+                    CreateSpaceBattle(attacker, result, defender),
+                    result
+                );
                 if (defender?.InstanceID != attacker?.InstanceID)
-                    Add(deliveries, defender, CreateSpaceBattle(defender, result, attacker));
+                    AddCombatDelivery(
+                        deliveries,
+                        defender,
+                        CreateSpaceBattle(defender, result, attacker),
+                        result
+                    );
             }
 
             foreach (BombardmentResult result in bombardments)
@@ -52,14 +47,20 @@ namespace Rebellion.Game.Messages
                     continue;
                 Faction defender =
                     result.OwnershipChange?.PreviousOwner
-                    ?? GetFaction(game, result.Planet.OwnerInstanceID);
-                Add(
+                    ?? GetCombatFaction(game, result.Planet.OwnerInstanceID);
+                AddCombatDelivery(
                     deliveries,
                     result.AttackingFaction,
-                    CreateBombardment(result.AttackingFaction, result, defender)
+                    CreateBombardment(result.AttackingFaction, result, defender),
+                    result
                 );
                 if (defender?.InstanceID != result.AttackingFaction.InstanceID)
-                    Add(deliveries, defender, CreateBombardment(defender, result, defender));
+                    AddCombatDelivery(
+                        deliveries,
+                        defender,
+                        CreateBombardment(defender, result, defender),
+                        result
+                    );
             }
 
             foreach (PlanetaryAssaultResult result in assaults)
@@ -68,14 +69,20 @@ namespace Rebellion.Game.Messages
                     continue;
                 Faction defender =
                     result.OwnershipChange?.PreviousOwner
-                    ?? GetFaction(game, result.Planet.OwnerInstanceID);
-                Add(
+                    ?? GetCombatFaction(game, result.Planet.OwnerInstanceID);
+                AddCombatDelivery(
                     deliveries,
                     result.AttackingFaction,
-                    CreateAssault(result.AttackingFaction, result, defender)
+                    CreateAssault(result.AttackingFaction, result, defender),
+                    result
                 );
                 if (defender?.InstanceID != result.AttackingFaction.InstanceID)
-                    Add(deliveries, defender, CreateAssault(defender, result, defender));
+                    AddCombatDelivery(
+                        deliveries,
+                        defender,
+                        CreateAssault(defender, result, defender),
+                        result
+                    );
             }
         }
 
@@ -91,7 +98,7 @@ namespace Rebellion.Game.Messages
             if (outcome == MessageResultOutcome.None)
                 return null;
 
-            MessageDefinition definition = _definitions.GetDefinition(
+            MessageDefinition definition = _definitionResolver.GetDefinition(
                 MessageResultType.SpaceBattle,
                 outcome
             );
@@ -102,8 +109,8 @@ namespace Rebellion.Game.Messages
                 { "system", result.Planet?.GetDisplayName() ?? string.Empty },
             };
             AddNarrative(values, definition, faction, opponent, result, outcome);
-            Message message = Build(definition, faction, values);
-            SetLocation(message, result.Planet, GetFleet(faction, result));
+            Message message = BuildCombatMessage(definition, faction, values);
+            SetCombatLocation(message, result.Planet, GetFleet(faction, result));
             return message;
         }
 
@@ -113,24 +120,24 @@ namespace Rebellion.Game.Messages
             Faction targetFaction
         )
         {
-            MessageDefinition definition = _definitions.GetDefinition(
+            MessageDefinition definition = _definitionResolver.GetDefinition(
                 MessageResultType.Bombardment,
                 GetBombardmentOutcome(result),
                 GetBombardmentOwnership(result),
                 planetDestroyed: result.PlanetDestroyed
             );
-            Message message = Build(
+            Message message = BuildCombatMessage(
                 definition,
                 faction,
                 CombatValues(result.AttackingFaction, targetFaction, result.Planet)
             );
-            _deliveries.WithNotification(
+            _deliveryBuilder.WithNotification(
                 message,
                 faction?.InstanceID == result.AttackingFaction?.InstanceID
                     ? AdvisorNotificationType.None
                     : AdvisorNotificationType.Bombardment
             );
-            SetLocation(message, result.Planet, result.Planet);
+            SetCombatLocation(message, result.Planet, result.Planet);
             return message;
         }
 
@@ -140,36 +147,36 @@ namespace Rebellion.Game.Messages
             Faction targetFaction
         )
         {
-            MessageDefinition definition = _definitions.GetDefinition(
+            MessageDefinition definition = _definitionResolver.GetDefinition(
                 MessageResultType.PlanetaryAssault,
                 result.Success ? MessageResultOutcome.Success : MessageResultOutcome.Failed,
                 GetAssaultOwnership(result)
             );
-            Message message = Build(
+            Message message = BuildCombatMessage(
                 definition,
                 faction,
                 CombatValues(result.AttackingFaction, targetFaction, result.Planet),
                 result.AttackingFaction
             );
-            _deliveries.WithNotification(
+            _deliveryBuilder.WithNotification(
                 message,
                 faction?.InstanceID == result.AttackingFaction?.InstanceID
                     ? AdvisorNotificationType.None
                     : AdvisorNotificationType.PlanetaryAssault
             );
-            SetLocation(message, result.Planet, result.Planet);
+            SetCombatLocation(message, result.Planet, result.Planet);
             return message;
         }
 
-        private Message Build(
+        private Message BuildCombatMessage(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
             Faction imageFaction = null
         )
         {
-            Message message = _templates.Build(definition, faction, values, imageFaction);
-            return _deliveries.WithNotification(
+            Message message = _templateBuilder.Build(definition, faction, values, imageFaction);
+            return _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -417,7 +424,7 @@ namespace Rebellion.Game.Messages
         private static string Render(string template, Dictionary<string, string> values) =>
             MessageTemplateBuilder.Interpolate(template, values);
 
-        private static void SetLocation(Message message, Planet planet, IGameEntity target)
+        private static void SetCombatLocation(Message message, Planet planet, IGameEntity target)
         {
             if (message == null)
                 return;
@@ -425,13 +432,14 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = target?.InstanceID ?? planet?.InstanceID;
         }
 
-        private void Add(
+        private void AddCombatDelivery(
             ICollection<MessageDelivery> deliveries,
             Faction faction,
-            Message message
-        ) => _deliveries.Add(deliveries, faction, message);
+            Message message,
+            GameResult sourceResult
+        ) => _deliveryBuilder.Add(deliveries, faction, message, sourceResult);
 
-        private static Faction GetFaction(GameRoot game, string instanceID) =>
+        private static Faction GetCombatFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);

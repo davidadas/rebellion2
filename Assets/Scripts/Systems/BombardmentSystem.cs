@@ -427,11 +427,9 @@ namespace Rebellion.Systems
                 _movement.EvacuateDestroyedCapitalShip(ship);
                 foreach (Regiment regiment in ship.Regiments.ToList())
                 {
-                    _game.AddToVoid(regiment);
-                    _game.UnitLifecycle.SetStatus(regiment, VoidStatus.Destroyed);
+                    _game.DeleteNode(regiment);
                 }
-                _game.AddToVoid(ship);
-                _game.UnitLifecycle.SetStatus(ship, VoidStatus.Destroyed);
+                _game.DeleteNode(ship);
                 GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
             }
         }
@@ -674,8 +672,7 @@ namespace Rebellion.Systems
                 case BombardmentTargetType.Regiment:
                     Regiment regiment = (Regiment)target.Entity;
                     result.DestroyedRegiments.Add(regiment);
-                    _game.AddToVoid(regiment);
-                    _game.UnitLifecycle.SetStatus(regiment, VoidStatus.Destroyed);
+                    _game.DeleteNode(regiment);
                     break;
                 case BombardmentTargetType.Building:
                     Building building = (Building)target.Entity;
@@ -686,8 +683,7 @@ namespace Rebellion.Systems
                     }
                     else
                     {
-                        _game.AddToVoid(building);
-                        _game.UnitLifecycle.SetStatus(building, VoidStatus.Destroyed);
+                        _game.DeleteNode(building);
                     }
                     break;
                 case BombardmentTargetType.Headquarters:
@@ -821,8 +817,7 @@ namespace Rebellion.Systems
                         Tick = _game.CurrentTick,
                     }
                 );
-                _game.AddToVoid(officer);
-                _game.UnitLifecycle.SetStatus(officer, null);
+                _game.DeleteNode(officer);
             }
         }
 

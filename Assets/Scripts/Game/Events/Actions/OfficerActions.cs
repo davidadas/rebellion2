@@ -2,18 +2,43 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
     /// <summary>
+    /// Sets the authored status text displayed for an officer.
+    /// </summary>
+    [PersistableObject(Name = "SetOfficerStatus")]
+    public sealed class SetOfficerStatusAction : GameAction
+    {
+        [PersistableAttribute]
+        public string OfficerInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string Text { get; set; }
+
+        public override List<GameResult> Execute(GameActionContext context)
+        {
+            Officer officer = context.Game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+            if (officer == null)
+                throw new InvalidOperationException(
+                    $"SetOfficerStatus could not resolve officer '{OfficerInstanceID}'."
+                );
+
+            officer.StatusText = Text;
+            return new List<GameResult>();
+        }
+    }
+
+    /// <summary>
     /// Sets one officer's captivity state and emits the standard state-change result.
     /// </summary>
-    [PersistableObject(Name = "SetCaptivity")]
-    public sealed class SetCaptivityAction : GameAction
+    [PersistableObject(Name = "SetCaptureStatus")]
+    public sealed class SetCaptureStatusAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
@@ -33,30 +58,42 @@ namespace Rebellion.Game.Events
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            IEnumerable<Officer> officers = Selectors
-                .SelectMany(selector => selector.Select(game, context.Random, context.Activation))
-                .Cast<Officer>();
+            if (IsCaptured && string.IsNullOrWhiteSpace(CaptorFactionInstanceID))
+                throw new InvalidOperationException(
+                    "SetCaptureStatus requires CaptorFactionInstanceID when capturing officers."
+                );
+            if (!IsCaptured && !string.IsNullOrWhiteSpace(CaptorFactionInstanceID))
+                throw new InvalidOperationException(
+                    "SetCaptureStatus cannot specify CaptorFactionInstanceID when releasing officers."
+                );
+            IEnumerable<ISceneNode> selectedNodes = Selectors.SelectMany(selector =>
+                selector.Select(game, context.Random, context.Activation)
+            );
             if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
                 Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
                 if (officer == null)
                     throw new InvalidOperationException(
-                        $"SetCaptivity could not resolve officer '{OfficerInstanceID}'."
+                        $"SetCaptureStatus could not resolve officer '{OfficerInstanceID}'."
                     );
-                officers = new[] { officer }.Concat(officers);
+                selectedNodes = new ISceneNode[] { officer }.Concat(selectedNodes);
             }
-            List<Officer> selected = officers.Distinct().ToList();
+            List<ISceneNode> selected = selectedNodes.Distinct().ToList();
             if (selected.Count == 0)
                 throw new InvalidOperationException(
-                    "SetCaptivity requires an officer or at least one matching selector."
+                    "SetCaptureStatus requires an officer or at least one matching selector."
+                );
+            if (selected.Any(node => node is not Officer))
+                throw new InvalidOperationException(
+                    "SetCaptureStatus selectors may return only officers."
                 );
 
             List<GameResult> results = new List<GameResult>();
-            foreach (Officer officer in selected)
+            foreach (Officer officer in selected.Cast<Officer>())
             {
                 officer.IsCaptured = IsCaptured;
                 officer.CaptorInstanceID = IsCaptured ? CaptorFactionInstanceID : null;
-                officer.CanEscape = CanEscape;
+                officer.CanEscape = IsCaptured ? CanEscape : true;
                 results.Add(
                     new OfficerCaptureStateResult
                     {
@@ -72,109 +109,116 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Adjusts one stored officer rating using exactly one authored calculation.
+    /// Adjusts selected officers using one authored calculation.
     /// </summary>
-    [PersistableObject(Name = "AdjustOfficerRating")]
-    public sealed class AdjustOfficerRatingAction : GameAction
+    [PersistableObject(Name = "AdjustOfficerStat")]
+    public sealed class AdjustOfficerStatAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
 
         [PersistableAttribute]
-        public OfficerRating Rating { get; set; }
+        public OfficerStat Stat { get; set; }
 
         public int? Amount { get; set; }
-        public int? PercentOfBaseRating { get; set; }
-        public int? PercentOfCurrentRating { get; set; }
-        public int? PercentOfCurrentRank { get; set; }
-        public int? PercentOfPositiveRatingGap { get; set; }
+        public int? PercentOfBase { get; set; }
+        public int? PercentOfCurrent { get; set; }
+        public int? PercentOfPositiveGap { get; set; }
         public string ReferenceOfficerInstanceID { get; set; }
         public int MinimumAmount { get; set; }
+
+        [PersistableInlineCollection]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
-            if (officer == null)
-                throw new InvalidOperationException(
-                    $"AdjustOfficerRating could not resolve officer '{OfficerInstanceID}'."
-                );
-            if (Rating == OfficerRating.None)
-                throw new InvalidOperationException(
-                    "AdjustOfficerRating requires a concrete officer rating."
-                );
             int modeCount = new int?[]
             {
                 Amount,
-                PercentOfBaseRating,
-                PercentOfCurrentRating,
-                PercentOfCurrentRank,
-                PercentOfPositiveRatingGap,
+                PercentOfBase,
+                PercentOfCurrent,
+                PercentOfPositiveGap,
             }.Count(value => value.HasValue);
             if (modeCount != 1)
                 throw new InvalidOperationException(
-                    "AdjustOfficerRating requires exactly one adjustment value."
-                );
-            if (PercentOfCurrentRank.HasValue && Rating != OfficerRating.Force)
-                throw new InvalidOperationException(
-                    "PercentOfCurrentRank is only valid for the Force rating."
+                    "AdjustOfficerStat requires exactly one adjustment value."
                 );
             Officer referenceOfficer = null;
-            if (PercentOfPositiveRatingGap.HasValue)
+            if (PercentOfPositiveGap.HasValue)
             {
                 referenceOfficer = game.GetSceneNodeByInstanceID<Officer>(
                     ReferenceOfficerInstanceID
                 );
                 if (referenceOfficer == null)
                     throw new InvalidOperationException(
-                        $"AdjustOfficerRating could not resolve reference officer '{ReferenceOfficerInstanceID}'."
+                        $"AdjustOfficerStat could not resolve reference officer '{ReferenceOfficerInstanceID}'."
                     );
-                if (PercentOfPositiveRatingGap.Value < 0 || MinimumAmount < 0)
+                if (PercentOfPositiveGap.Value < 0 || MinimumAmount < 0)
                     throw new InvalidOperationException(
                         "Rating-gap adjustments require non-negative percentage and minimum values."
                     );
             }
 
-            int baseRating = officer.GetBaseRating(Rating);
-            int adjustment =
-                Amount
-                ?? (
-                    PercentOfBaseRating.HasValue
-                        ? checked(baseRating * PercentOfBaseRating.Value / 100)
-                    : PercentOfCurrentRating.HasValue
-                        ? checked(
-                            officer.GetEffectiveRating(Rating) * PercentOfCurrentRating.Value / 100
-                        )
-                    : PercentOfCurrentRank.HasValue
-                        ? checked(officer.ForceRank * PercentOfCurrentRank.Value / 100)
-                    : Math.Max(
-                        MinimumAmount,
-                        checked(
-                            Math.Max(
-                                0,
-                                referenceOfficer.GetEffectiveRating(Rating)
-                                    - officer.GetEffectiveRating(Rating)
-                            )
-                            * PercentOfPositiveRatingGap.Value
-                            / 100
-                        )
-                    )
-                );
-            officer.SetBaseRating(Rating, checked(baseRating + adjustment));
-            if (Rating != OfficerRating.Force)
-                return new List<GameResult>();
-            return new List<GameResult>
+            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
+                selector.Select(game, context.Random, context.Activation)
+            );
+            if (!string.IsNullOrWhiteSpace(OfficerInstanceID))
             {
-                new ForceExperienceResult
-                {
-                    Officer = officer,
-                    ExperienceGained = adjustment,
-                    PreviousForceRank = baseRating + officer.ForceTrainingAdjustment,
-                    CurrentForceRank = officer.ForceRank,
-                    SuppressRankChangeMessage = true,
-                    Tick = game.CurrentTick,
-                },
-            };
+                Officer explicitOfficer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
+                if (explicitOfficer == null)
+                    throw new InvalidOperationException(
+                        $"AdjustOfficerStat could not resolve officer '{OfficerInstanceID}'."
+                    );
+                selected = new ISceneNode[] { explicitOfficer }.Concat(selected);
+            }
+            List<ISceneNode> nodes = selected.Distinct().ToList();
+            if (nodes.Count == 0)
+                throw new InvalidOperationException(
+                    "AdjustOfficerStat requires an officer or a matching selector."
+                );
+            if (nodes.Any(node => node is not Officer))
+                throw new InvalidOperationException(
+                    "AdjustOfficerStat selectors may return only officers."
+                );
+
+            List<GameResult> results = new List<GameResult>();
+            foreach (Officer officer in nodes.Cast<Officer>())
+            {
+                int baseValue = officer.GetBaseStat(Stat);
+                int currentValue = officer.GetCurrentStat(Stat);
+                int adjustment =
+                    Amount
+                    ?? (
+                        PercentOfBase.HasValue ? checked(baseValue * PercentOfBase.Value / 100)
+                        : PercentOfCurrent.HasValue
+                            ? checked(currentValue * PercentOfCurrent.Value / 100)
+                        : Math.Max(
+                            MinimumAmount,
+                            checked(
+                                Math.Max(0, referenceOfficer.GetCurrentStat(Stat) - currentValue)
+                                * PercentOfPositiveGap.Value
+                                / 100
+                            )
+                        )
+                    );
+                int previousForceRank = officer.ForceRank;
+                officer.SetBaseStat(Stat, checked(baseValue + adjustment));
+                if (Stat != OfficerStat.Force)
+                    continue;
+                results.Add(
+                    new ForceExperienceResult
+                    {
+                        Officer = officer,
+                        ExperienceGained = adjustment,
+                        PreviousForceRank = previousForceRank,
+                        CurrentForceRank = officer.ForceRank,
+                        SuppressRankChangeMessage = true,
+                        Tick = game.CurrentTick,
+                    }
+                );
+            }
+            return results;
         }
     }
 

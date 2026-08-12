@@ -11,43 +11,28 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Groups maintenance losses and translates them into faction reports.
     /// </summary>
-    internal sealed class MaintenanceMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public MaintenanceMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddMessages(
+        private void AddMaintenanceMessages(
             IEnumerable<GameObjectAutoscrappedResult> results,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
         )
         {
-            MessageDefinition definition = _definitions.GetDefinition(
+            MessageDefinition definition = _definitionResolver.GetDefinition(
                 MessageResultType.MaintenanceAutoscrap
             );
             var reportItems = (results ?? Enumerable.Empty<GameObjectAutoscrappedResult>())
                 .Where(result => result != null)
                 .Select(result =>
                 {
-                    Planet location = GetPlanet(
+                    Planet location = GetMaintenancePlanet(
                         result.Context ?? result.Ref ?? result.DestroyedObject
                     );
                     Faction faction =
                         GetOwner(game, result.DestroyedObject)
                         ?? GetOwner(game, result.Ref)
-                        ?? GetFaction(game, location?.OwnerInstanceID);
+                        ?? GetMaintenanceFaction(game, location?.OwnerInstanceID);
                     return new
                     {
                         Result = result,
@@ -67,7 +52,7 @@ namespace Rebellion.Game.Messages
                 GameObjectAutoscrappedResult[] groupedResults = group
                     .Select(item => item.Result)
                     .ToArray();
-                Message message = _templates.Build(
+                Message message = _templateBuilder.Build(
                     definition,
                     first.Faction,
                     new Dictionary<string, string>
@@ -95,15 +80,20 @@ namespace Rebellion.Game.Messages
                         (groupedResults[0].DestroyedObject as ISceneNode)?.InstanceID
                         ?? first.Location?.InstanceID;
                 }
-                _deliveries.WithNotification(
+                _deliveryBuilder.WithNotification(
                     message,
                     AdvisorNotificationPolicy.GetDefault(definition.ResultType)
                 );
-                _deliveries.Add(deliveries, first.Faction, message);
+                _deliveryBuilder.Add(
+                    deliveries,
+                    first.Faction,
+                    message,
+                    groupedResults.Cast<GameResult>().ToArray()
+                );
             }
         }
 
-        private static Planet GetPlanet(IGameEntity entity)
+        private static Planet GetMaintenancePlanet(IGameEntity entity)
         {
             if (entity is Planet planet)
                 return planet;
@@ -113,9 +103,11 @@ namespace Rebellion.Game.Messages
         }
 
         private static Faction GetOwner(GameRoot game, IGameEntity entity) =>
-            entity is ISceneNode node ? GetFaction(game, node.GetOwnerInstanceID()) : null;
+            entity is ISceneNode node
+                ? GetMaintenanceFaction(game, node.GetOwnerInstanceID())
+                : null;
 
-        private static Faction GetFaction(GameRoot game, string instanceID) =>
+        private static Faction GetMaintenanceFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);

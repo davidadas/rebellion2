@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
             List<GameResult> secondResults = maintenanceSystem.ProcessTick();
 
-            Assert.IsTrue(game.UnitLifecycle.IsInVoid(regiment1));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment1.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Regiment>("r2"));
             Assert.IsFalse(firstResults.OfType<GameObjectAutoscrappedResult>().Any());
             Assert.IsTrue(secondResults.OfType<GameObjectAutoscrappedResult>().Any());
@@ -278,11 +278,7 @@ namespace Rebellion.Tests.Systems
 
             int remaining = Enumerable
                 .Range(0, 3)
-                .Count(index =>
-                    !game.UnitLifecycle.IsInVoid(
-                        game.GetSceneNodeByInstanceID<Regiment>($"r{index}")
-                    )
-                );
+                .Count(index => game.GetSceneNodeByInstanceID<Regiment>($"r{index}") != null);
 
             Assert.AreEqual(1, remaining);
         }
@@ -412,7 +408,7 @@ namespace Rebellion.Tests.Systems
 
             List<GameResult> results = maintenanceSystem.ProcessTick();
 
-            Assert.IsTrue(game.UnitLifecycle.IsInVoid(ship));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(ship.InstanceID));
             Assert.AreSame(
                 ship,
                 results.OfType<GameObjectAutoscrappedResult>().Single().DestroyedObject
@@ -513,7 +509,7 @@ namespace Rebellion.Tests.Systems
             game.CurrentTick = game.Config.Production.MaintenanceShortfallAutoscrapInterval;
             maintenanceSystem.ProcessTick();
 
-            Assert.IsTrue(game.UnitLifecycle.IsInVoid(defense));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(defense.InstanceID));
         }
 
         [Test]
@@ -554,7 +550,7 @@ namespace Rebellion.Tests.Systems
             maintenanceSystem.ProcessTick();
 
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Building>("mine1"));
-            Assert.IsTrue(game.UnitLifecycle.IsInVoid(regiment));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
         }
 
         [Test]
@@ -590,7 +586,7 @@ namespace Rebellion.Tests.Systems
             );
 
             Assert.IsTrue(scrapped);
-            Assert.IsTrue(game.UnitLifecycle.IsInVoid(regiment));
+            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             Assert.IsNull(regiment.GetParent());
             Assert.AreEqual(1, empire.RefinedMaterialStockpile);
             Assert.AreSame(planet, results.OfType<PlanetGarrisonChangedResult>().Single().Planet);

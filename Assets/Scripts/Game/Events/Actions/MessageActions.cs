@@ -95,10 +95,16 @@ namespace Rebellion.Game.Events
         public string SubjectInstanceID { get; set; }
 
         [PersistableAttribute]
+        public string SubjectBinding { get; set; }
+
+        [PersistableAttribute]
         public string RelatedSubjectInstanceID { get; set; }
 
         [PersistableAttribute]
         public string LocationInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string LocationBinding { get; set; }
 
         [PersistableAttribute(Name = "Type")]
         public MessageType MessageType { get; set; } = MessageType.Advice;
@@ -130,7 +136,9 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             GameResult triggerResult = context.Activation?.TriggerResult;
             IRandomNumberProvider provider = context.Random;
-            ISceneNode subject = game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
+            ISceneNode subject = !string.IsNullOrWhiteSpace(SubjectBinding)
+                ? context.Activation?.GetBindingReference<ISceneNode>(SubjectBinding)
+                : game.GetSceneNodeByInstanceID<ISceneNode>(SubjectInstanceID);
             ISceneNode relatedSubject = game.GetSceneNodeByInstanceID<ISceneNode>(
                 RelatedSubjectInstanceID
             );
@@ -147,7 +155,9 @@ namespace Rebellion.Game.Events
                 );
 
             Faction recipient = game.GetFactionByOwnerInstanceID(recipientId);
-            Planet location = game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
+            Planet location = !string.IsNullOrWhiteSpace(LocationBinding)
+                ? context.Activation?.GetBindingReference<Planet>(LocationBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID);
             if (location == null && subject != null)
                 location = subject as Planet ?? subject.GetParentOfType<Planet>();
 

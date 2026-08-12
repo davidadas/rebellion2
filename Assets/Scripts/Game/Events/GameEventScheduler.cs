@@ -117,6 +117,7 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public int DelayTicks { get; set; }
 
+        [PersistableInlineCollection]
         public List<EventDependency> Events { get; set; } = new List<EventDependency>();
     }
 

@@ -36,15 +36,6 @@ namespace Rebellion.Game.Events
             return state;
         }
 
-        public GameEventState GetState(string eventInstanceID, string targetInstanceID) =>
-            GetState(eventInstanceID).GetTargetState(targetInstanceID);
-
-        public bool TryGetState(
-            string eventInstanceID,
-            string targetInstanceID,
-            out GameEventState state
-        ) => GetState(eventInstanceID).TryGetTargetState(targetInstanceID, out state);
-
         public int GetVariable(string key)
         {
             if (string.IsNullOrWhiteSpace(key))

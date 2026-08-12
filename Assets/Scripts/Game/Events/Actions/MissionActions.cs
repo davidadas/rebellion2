@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -16,8 +17,10 @@ namespace Rebellion.Game.Events
         [PersistableAttribute]
         public string MissionDefinitionID { get; set; }
 
+        [PersistableAttribute]
+        public string LocationInstanceID { get; set; }
+
         public MissionUnitReference Target { get; set; }
-        public PlanetTarget Location { get; set; }
         public List<MissionUnitReference> Participants { get; set; } =
             new List<MissionUnitReference>();
         public List<MissionUnitReference> Decoys { get; set; } = new List<MissionUnitReference>();
@@ -28,9 +31,12 @@ namespace Rebellion.Game.Events
             if (Target == null || string.IsNullOrWhiteSpace(Target.UnitInstanceID))
                 throw new InvalidOperationException("CreateMission requires a target unit.");
             ResolveUnit(game, Target);
-            if (Location != null && Location.Resolve(game) == null)
+            if (
+                !string.IsNullOrWhiteSpace(LocationInstanceID)
+                && game.GetSceneNodeByInstanceID<Planet>(LocationInstanceID) == null
+            )
                 throw new InvalidOperationException(
-                    $"CreateMission could not resolve location '{Location.InstanceID}'."
+                    $"CreateMission could not resolve location '{LocationInstanceID}'."
                 );
             foreach (MissionUnitReference participant in Participants)
                 ResolveUnit(game, participant);
@@ -43,7 +49,7 @@ namespace Rebellion.Game.Events
                 {
                     MissionDefinitionID = MissionDefinitionID,
                     TargetInstanceID = Target.UnitInstanceID,
-                    LocationInstanceID = Location?.InstanceID,
+                    LocationInstanceID = LocationInstanceID,
                     MainParticipantInstanceIDs = Participants.ConvertAll(participant =>
                         participant.UnitInstanceID
                     ),

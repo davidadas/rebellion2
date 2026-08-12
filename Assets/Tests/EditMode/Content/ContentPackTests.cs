@@ -1,5 +1,7 @@
 using System.IO;
 using System.Linq;
+using System.Xml;
+using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game.Events;
 using Rebellion.Game.Messages;
@@ -105,8 +107,8 @@ namespace Rebellion.Tests.Content
                         condition is EvaluateBindingConditional binding
                         && binding.Binding == "$outcome"
                     ) as EvaluateBindingConditional;
-                SetCaptivityAction capture = gameEvent
-                    .Actions.OfType<SetCaptivityAction>()
+                SetCaptureStatusAction capture = gameEvent
+                    .Actions.OfType<SetCaptureStatusAction>()
                     .Single();
                 SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
 
@@ -148,7 +150,7 @@ namespace Rebellion.Tests.Content
             GameEvent reportPolicy = pack.GameData.GameEvents.Single(candidate =>
                 candidate.InstanceID == "PALACE_RESCUE_REPORT_POLICY"
             );
-            Assert.IsTrue(reportPolicy.Repeats);
+            Assert.IsTrue(reportPolicy.UnlimitedRuns);
             Assert.AreEqual("core:mission.completed", reportPolicy.Triggers.Single().Event);
             Assert.AreEqual(
                 MessageResultType.MissionReport,
@@ -287,7 +289,7 @@ namespace Rebellion.Tests.Content
                 .Conditionals.OfType<EvaluateBindingConditional>()
                 .ToArray();
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
-            Assert.IsTrue(gameEvent.Repeats);
+            Assert.IsTrue(gameEvent.UnlimitedRuns);
             Assert.AreEqual("core:unit.arrived", gameEvent.Triggers.Single().Event);
             Assert.AreEqual(
                 "EMPEROR_PALPATINE",
@@ -303,6 +305,34 @@ namespace Rebellion.Tests.Content
                 "Pack/Factions/Empire/Units/Officers/OFEM001/Voice/seat-of-power-01",
                 message.OfficerVoice.Path
             );
+        }
+
+        [Test]
+        public void OpenActive_StoryCaptures_ConfigureEscapeStateByCustody()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            SetCaptureStatusAction bountyCapture = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "HAN_CAPTURED_BY_BOUNTY_HUNTERS"
+                )
+                .Actions.OfType<SetCaptureStatusAction>()
+                .Single();
+            SetCaptureStatusAction transferToEmpire = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "JABBA_DELIVERS_PRISONERS"
+                )
+                .Actions.OfType<SetCaptureStatusAction>()
+                .Single(action => action.IsCaptured);
+            SetCaptureStatusAction finalBattleCapture = pack
+                .GameData.GameEvents.Single(gameEvent =>
+                    gameEvent.InstanceID == "LUKE_WINS_FINAL_BATTLE"
+                )
+                .Actions.OfType<SetCaptureStatusAction>()
+                .Single(action => action.OfficerInstanceID == "DARTH_VADER");
+
+            Assert.IsFalse(bountyCapture.CanEscape);
+            Assert.IsTrue(transferToEmpire.CanEscape);
+            Assert.IsTrue(finalBattleCapture.CanEscape);
         }
 
         [Test]
@@ -490,6 +520,65 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.AreEqual(Path.Combine(playerDirectory, "Content"), contentRoot);
+        }
+
+        [Test]
+        public void GameEventSchema_AdjustOfficerStatWithPlanetSelector_RejectsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>INVALID_OFFICER_SELECTOR</InstanceID>
+    <Actions>
+      <AdjustOfficerStat Stat=""Combat"">
+        <Amount>1</Amount>
+        <SelectPlanets InstanceID=""CORUSCANT""/>
+      </AdjustOfficerStat>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => ValidateGameEventsXml(xml));
+        }
+
+        [Test]
+        public void GameEventSchema_AdjustPlanetStatWithOfficerSelector_RejectsDocument()
+        {
+            const string xml =
+                @"
+<GameEvents>
+  <GameEvent>
+    <InstanceID>INVALID_PLANET_SELECTOR</InstanceID>
+    <Actions>
+      <AdjustPlanetStat Stat=""EnergyCapacity"">
+        <Amount>1</Amount>
+        <SelectOfficers InstanceID=""DARTH_VADER""/>
+      </AdjustPlanetStat>
+    </Actions>
+  </GameEvent>
+</GameEvents>";
+
+            Assert.Throws<XmlSchemaValidationException>(() => ValidateGameEventsXml(xml));
+        }
+
+        private static void ValidateGameEventsXml(string xml)
+        {
+            string schemaPath = Path.Combine(
+                Application.dataPath,
+                "Content",
+                "Application",
+                "Schemas",
+                "game-events.xsd"
+            );
+            XmlReaderSettings settings = new XmlReaderSettings
+            {
+                ValidationType = ValidationType.Schema,
+            };
+            settings.Schemas.Add(null, schemaPath);
+            using StringReader stringReader = new StringReader(xml);
+            using XmlReader reader = XmlReader.Create(stringReader, settings);
+            while (reader.Read()) { }
         }
     }
 }

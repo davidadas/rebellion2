@@ -9,24 +9,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates economic simulation results into faction message deliveries.
     /// </summary>
-    internal sealed class EconomyMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public EconomyMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddSmugglingMessages(
+        private void AddSmugglingMessages(
             IEnumerable<SmugglingChangedResult> results,
             ICollection<MessageDelivery> deliveries
         )
@@ -38,7 +23,7 @@ namespace Rebellion.Game.Messages
             }
         }
 
-        public void AddManufacturingMessages(
+        private void AddManufacturingMessages(
             IEnumerable<ManufacturingIdleResult> results,
             ICollection<MessageDelivery> deliveries
         )
@@ -48,8 +33,8 @@ namespace Rebellion.Game.Messages
                 if (result.ManufacturingType == ManufacturingType.None)
                     continue;
 
-                Message message = Build(
-                    _definitions.GetDefinition(
+                Message message = BuildEconomyMessage(
+                    _definitionResolver.GetDefinition(
                         MessageResultType.ManufacturingIdle,
                         manufacturingType: result.ManufacturingType
                     ),
@@ -64,8 +49,8 @@ namespace Rebellion.Game.Messages
                     message.EventLocationInstanceID = result.ProductionPlanet?.InstanceID;
                     message.NavigationTargetInstanceID = result.ProductionPlanet?.InstanceID;
                 }
-                _deliveries.WithNotification(message, AdvisorNotificationType.Manufacturing);
-                _deliveries.Add(deliveries, result.Faction, message);
+                _deliveryBuilder.WithNotification(message, AdvisorNotificationType.Manufacturing);
+                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
             }
         }
 
@@ -84,8 +69,8 @@ namespace Rebellion.Game.Messages
                 (true, true) => MessageResultType.SmugglingBenefits,
                 _ => MessageResultType.SmugglingBenefitsEnded,
             };
-            Message message = Build(
-                _definitions.GetDefinition(resultType),
+            Message message = BuildEconomyMessage(
+                _definitionResolver.GetDefinition(resultType),
                 recipient,
                 new Dictionary<string, string>
                 {
@@ -97,17 +82,17 @@ namespace Rebellion.Game.Messages
                 message.EventLocationInstanceID = result.Planet?.InstanceID;
                 message.NavigationTargetInstanceID = result.Planet?.InstanceID;
             }
-            _deliveries.Add(deliveries, recipient, message);
+            _deliveryBuilder.Add(deliveries, recipient, message, result);
         }
 
-        private Message Build(
+        private Message BuildEconomyMessage(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values
         )
         {
-            Message message = _templates.Build(definition, faction, values);
-            return _deliveries.WithNotification(
+            Message message = _templateBuilder.Build(definition, faction, values);
+            return _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );

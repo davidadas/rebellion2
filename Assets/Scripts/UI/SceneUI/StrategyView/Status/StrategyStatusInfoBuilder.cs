@@ -768,7 +768,7 @@ internal sealed class StrategyStatusInfoBuilder
         ISceneNode item
     )
     {
-        if (item?.GetParent() == null)
+        if (item?.GetParent() == null || item.GetParent() is VoidPool)
             return;
         string location = GetStatusLocationName(target, item);
         if (!string.IsNullOrWhiteSpace(location))
@@ -815,6 +815,8 @@ internal sealed class StrategyStatusInfoBuilder
     {
         if (officer.IsKilled)
             return "Killed";
+        if (officer.IsRetired)
+            return "Retired";
         if (officer.IsCaptured)
             return "Captured";
         if (officer.InjuryPoints > 0)
@@ -823,12 +825,8 @@ internal sealed class StrategyStatusInfoBuilder
             return "Enroute";
         if (officer.IsOnMission())
             return "On Mission";
-        if (officer.VoidState != null)
-            return string.IsNullOrWhiteSpace(officer.VoidState.DisplayText)
-                ? officer.VoidState.Status == VoidStatus.OnMission
-                    ? "On Mission"
-                    : officer.VoidState.Status?.ToString() ?? "Unavailable"
-                : officer.VoidState.DisplayText;
+        if (!string.IsNullOrWhiteSpace(officer.StatusText))
+            return officer.StatusText;
         return "Awaiting Orders";
     }
 

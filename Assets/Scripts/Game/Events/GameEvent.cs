@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Rebellion.Game.Results;
-using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
@@ -10,13 +9,58 @@ namespace Rebellion.Game.Events
     /// Represents a triggered game event: a set of conditions that, when met, execute a set of actions.
     /// Execute returns the results of those actions for notification and logging.
     /// </summary>
-    public sealed class GameEvent : BaseGameEntity
+    [PersistableObject]
+    public sealed class GameEvent
     {
-        [PersistableAttribute]
-        public bool RunsOnce { get; set; }
+        public string InstanceID { get; set; }
 
-        [PersistableIgnore]
-        public bool Repeats => !RunsOnce && Schedule?.IsOneShot != true;
+        [PersistableAttribute]
+        public int? MinimumRuns { get; set; }
+
+        [PersistableAttribute]
+        public int? MaximumRuns { get; set; }
+
+        [PersistableAttribute]
+        public bool UnlimitedRuns { get; set; }
+
+        public int GetMinimumRuns() => MinimumRuns ?? 1;
+
+        public int? GetMaximumRuns() => UnlimitedRuns ? null : MaximumRuns ?? MinimumRuns ?? 1;
+
+        public void ValidateRunLimits()
+        {
+            int minimum = GetMinimumRuns();
+            if (minimum < 1)
+                throw new System.InvalidOperationException(
+                    $"Event '{InstanceID}' MinimumRuns must be positive."
+                );
+            if (UnlimitedRuns && MaximumRuns.HasValue)
+                throw new System.InvalidOperationException(
+                    $"Event '{InstanceID}' cannot combine MaximumRuns with UnlimitedRuns."
+                );
+            if (MaximumRuns is < 1)
+                throw new System.InvalidOperationException(
+                    $"Event '{InstanceID}' MaximumRuns must be positive."
+                );
+            if (MaximumRuns.HasValue && minimum > MaximumRuns.Value)
+                throw new System.InvalidOperationException(
+                    $"Event '{InstanceID}' MinimumRuns cannot exceed MaximumRuns."
+                );
+        }
+
+        public bool CanExecute(int completedRuns)
+        {
+            ValidateRunLimits();
+            int? maximum = GetMaximumRuns();
+            return !maximum.HasValue || completedRuns < maximum.Value;
+        }
+
+        public bool IsComplete(int completedRuns)
+        {
+            ValidateRunLimits();
+            int? maximum = GetMaximumRuns();
+            return maximum.HasValue && completedRuns >= maximum.Value;
+        }
 
         // Result Triggers.
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();
@@ -24,7 +68,7 @@ namespace Rebellion.Game.Events
         // Schedule and Execution Pipeline.
         public GameEventScheduler Schedule { get; set; }
         public List<GameConditional> Conditionals { get; set; } = new List<GameConditional>();
-        public GameEventTarget Target { get; set; }
+        public GameEventForEach ForEach { get; set; }
         public List<GameAction> Actions { get; set; } = new List<GameAction>();
 
         /// <summary>

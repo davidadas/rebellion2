@@ -50,7 +50,6 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
-        public VoidState VoidState { get; set; }
 
         /// <summary>
         /// Default constructor used for deserialization.

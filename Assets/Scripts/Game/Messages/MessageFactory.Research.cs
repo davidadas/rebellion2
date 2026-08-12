@@ -9,24 +9,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates research results into faction message deliveries.
     /// </summary>
-    internal sealed class ResearchMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public ResearchMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddMessages(
+        private void AddResearchMessages(
             IEnumerable<ResearchOrderedResult> completedResults,
             IEnumerable<ResearchExhaustedResult> exhaustedResults,
             ICollection<MessageDelivery> deliveries
@@ -37,18 +22,18 @@ namespace Rebellion.Game.Messages
                 if (result?.Technology == null)
                     continue;
 
-                Message message = Build(
-                    _definitions.GetDefinition(
+                Message message = BuildResearchMessage(
+                    _definitionResolver.GetDefinition(
                         MessageResultType.ResearchComplete,
                         discipline: result.Discipline
                     ),
                     result.Faction,
                     new Dictionary<string, string>
                     {
-                        { "item", GetDisplayName(result.Technology.GetReference()) },
+                        { "item", GetResearchDisplayName(result.Technology.GetReference()) },
                     }
                 );
-                _deliveries.Add(deliveries, result.Faction, message);
+                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
             }
 
             foreach (ResearchExhaustedResult result in exhaustedResults)
@@ -56,32 +41,32 @@ namespace Rebellion.Game.Messages
                 if (result == null)
                     continue;
 
-                Message message = Build(
-                    _definitions.GetDefinition(
+                Message message = BuildResearchMessage(
+                    _definitionResolver.GetDefinition(
                         MessageResultType.ResearchExhausted,
                         discipline: result.Discipline
                     ),
                     result.Faction,
                     new Dictionary<string, string>()
                 );
-                _deliveries.Add(deliveries, result.Faction, message);
+                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
             }
         }
 
-        private Message Build(
+        private Message BuildResearchMessage(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values
         )
         {
-            Message message = _templates.Build(definition, faction, values);
-            return _deliveries.WithNotification(
+            Message message = _templateBuilder.Build(definition, faction, values);
+            return _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
         }
 
-        private static string GetDisplayName(IGameEntity entity) =>
+        private static string GetResearchDisplayName(IGameEntity entity) =>
             entity?.GetDisplayName() ?? string.Empty;
     }
 }

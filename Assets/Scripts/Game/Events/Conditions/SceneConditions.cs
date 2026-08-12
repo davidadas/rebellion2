@@ -9,35 +9,41 @@ using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    [PersistableObject(Name = "EvaluatePlanetResource")]
-    public sealed class EvaluatePlanetResourceConditional : GameConditional
+    [PersistableObject(Name = "ComparePlanetStat")]
+    public sealed class ComparePlanetStatConditional : GameConditional
     {
         [PersistableAttribute]
-        public PlanetResource Resource { get; set; }
+        public PlanetStat Stat { get; set; }
 
         [PersistableAttribute]
         public EventVariableComparison Comparison { get; set; }
 
         [PersistableAttribute]
-        public int ExpectedAmount { get; set; }
+        public int Value { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
 
         public override bool IsMet(GameConditionContext context)
         {
-            Planet planet = context.Activation?.GetTarget<Planet>();
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+            planet ??= context.Activation?.GetTarget<Planet>();
             if (planet == null)
                 return false;
-            int current =
-                Resource == PlanetResource.RawMaterials
-                    ? planet.NumRawResourceNodes
-                    : planet.EnergyCapacity;
+            int current = AdjustPlanetStatAction.GetValue(planet, Stat);
             return Comparison switch
             {
-                EventVariableComparison.Equal => current == ExpectedAmount,
-                EventVariableComparison.NotEqual => current != ExpectedAmount,
-                EventVariableComparison.GreaterThan => current > ExpectedAmount,
-                EventVariableComparison.GreaterThanOrEqual => current >= ExpectedAmount,
-                EventVariableComparison.LessThan => current < ExpectedAmount,
-                EventVariableComparison.LessThanOrEqual => current <= ExpectedAmount,
+                EventVariableComparison.Equal => current == Value,
+                EventVariableComparison.NotEqual => current != Value,
+                EventVariableComparison.GreaterThan => current > Value,
+                EventVariableComparison.GreaterThanOrEqual => current >= Value,
+                EventVariableComparison.LessThan => current < Value,
+                EventVariableComparison.LessThanOrEqual => current <= Value,
                 _ => false,
             };
         }
@@ -93,49 +99,116 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// A <see cref="GameConditional"/> that is met when all specified units are located on the same planet.
+    /// Rolls against one faction's current popular support at a planet.
     /// </summary>
-    [PersistableObject(Name = "AreOnSamePlanet")]
-    public sealed class AreOnSamePlanetConditional : GameConditional
+    [PersistableObject(Name = "RollAgainstPopularSupport")]
+    public sealed class RollAgainstPopularSupportConditional : GameConditional
     {
-        [PersistableMember(Name = "UnitInstanceIDs")]
-        public List<string> UnitInstanceIDs { get; set; }
+        [PersistableAttribute]
+        public string FactionInstanceID { get; set; }
 
-        public AreOnSamePlanetConditional()
-            : base() { }
+        [PersistableAttribute]
+        public string PlanetInstanceID { get; set; }
 
-        /// <summary>
-        /// Checks whether every referenced unit is parented to the same planet.
-        /// </summary>
-        /// <param name="context">The context used to resolve unit references.</param>
-        /// <returns>True if all referenced units share a planet parent; false if any are missing or on a different planet.</returns>
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
         public override bool IsMet(GameConditionContext context)
         {
-            GameRoot game = context.Game;
-            List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(UnitInstanceIDs);
-            if (sceneNodes.Count != UnitInstanceIDs.Count)
+            Planet planet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : context.Game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+            planet ??= context.Activation?.GetTarget<Planet>();
+            if (planet == null || string.IsNullOrWhiteSpace(FactionInstanceID))
                 return false;
 
-            Planet comparator = null;
+            int support = planet.GetPopularSupport(FactionInstanceID);
+            return context.Random.NextInt(0, 100) < support;
+        }
+    }
 
-            // Check if all units are on the same planet.
-            foreach (ISceneNode node in sceneNodes)
+    [PersistableObject(Name = "Unit")]
+    public sealed class EventUnitReference
+    {
+        [PersistableAttribute]
+        public string UnitInstanceID { get; set; }
+    }
+
+    public enum SceneAncestorType
+    {
+        Galaxy,
+        PlanetSystem,
+        Planet,
+        Fleet,
+        Mission,
+        CapitalShip,
+    }
+
+    [PersistableObject(Name = "ShareParent")]
+    public sealed class ShareParentConditional : GameConditional
+    {
+        [PersistableInlineCollection]
+        public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
+
+        public override bool IsMet(GameConditionContext context)
+        {
+            List<ISceneNode> nodes = ResolveDistinctUnits(context);
+            if (nodes == null)
+                return false;
+            ISceneNode parent = nodes[0].GetParent();
+            return parent != null && nodes.All(node => ReferenceEquals(node.GetParent(), parent));
+        }
+
+        private List<ISceneNode> ResolveDistinctUnits(GameConditionContext context) =>
+            SceneConditionUnits.ResolveDistinct(context.Game, Units);
+    }
+
+    [PersistableObject(Name = "ShareAncestor")]
+    public sealed class ShareAncestorConditional : GameConditional
+    {
+        [PersistableAttribute]
+        public SceneAncestorType Type { get; set; }
+
+        [PersistableInlineCollection]
+        public List<EventUnitReference> Units { get; set; } = new List<EventUnitReference>();
+
+        public override bool IsMet(GameConditionContext context)
+        {
+            List<ISceneNode> nodes = SceneConditionUnits.ResolveDistinct(context.Game, Units);
+            if (nodes == null)
+                return false;
+            List<ISceneNode> ancestors = nodes.ConvertAll(ResolveAncestor);
+            return ancestors[0] != null
+                && ancestors.All(ancestor => ReferenceEquals(ancestor, ancestors[0]));
+        }
+
+        private ISceneNode ResolveAncestor(ISceneNode node) =>
+            Type switch
             {
-                if (node == null)
-                {
-                    return false;
-                }
+                SceneAncestorType.Galaxy => node.GetParentOfType<GalaxyMap>(),
+                SceneAncestorType.PlanetSystem => node.GetParentOfType<PlanetSystem>(),
+                SceneAncestorType.Planet => node.GetParentOfType<Planet>(),
+                SceneAncestorType.Fleet => node.GetParentOfType<Fleet>(),
+                SceneAncestorType.Mission => node.GetParentOfType<Mission>(),
+                SceneAncestorType.CapitalShip => node.GetParentOfType<CapitalShip>(),
+                _ => null,
+            };
+    }
 
-                Planet planet = node.GetParentOfType<Planet>();
-                comparator ??= planet;
-
-                if (comparator != planet)
-                {
-                    return false;
-                }
-            }
-
-            return comparator != null;
+    internal static class SceneConditionUnits
+    {
+        public static List<ISceneNode> ResolveDistinct(
+            GameRoot game,
+            IReadOnlyCollection<EventUnitReference> references
+        )
+        {
+            if (references == null || references.Count < 2)
+                return null;
+            List<string> ids = references.Select(reference => reference.UnitInstanceID).ToList();
+            if (ids.Any(string.IsNullOrWhiteSpace) || ids.Distinct().Count() != ids.Count)
+                return null;
+            List<ISceneNode> nodes = game.GetSceneNodesByInstanceIDs(ids);
+            return nodes.Count == ids.Count ? nodes : null;
         }
     }
 
@@ -204,34 +277,6 @@ namespace Rebellion.Game.Events
         public override bool IsMet(GameConditionContext context) =>
             context.Game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID)
                 is IMovable { Movement: not null };
-    }
-
-    /// <summary>
-    /// A <see cref="GameConditional"/> that is met when all specified units are located on any planet.
-    /// </summary>
-    [PersistableObject(Name = "AreOnPlanet")]
-    public sealed class AreOnPlanetConditional : GameConditional
-    {
-        public List<string> UnitInstanceIDs { get; set; }
-
-        public AreOnPlanetConditional()
-            : base() { }
-
-        /// <summary>
-        /// Checks whether every referenced unit has a planet somewhere in its ancestry.
-        /// </summary>
-        /// <param name="context">The context used to resolve unit references.</param>
-        /// <returns>True if every referenced unit is on some planet; otherwise false.</returns>
-        public override bool IsMet(GameConditionContext context)
-        {
-            GameRoot game = context.Game;
-            // Get the instance IDs of the units to check.
-            List<ISceneNode> sceneNodes = game.GetSceneNodesByInstanceIDs(UnitInstanceIDs);
-
-            // Check if all units are on a planet.
-            return sceneNodes.Count == UnitInstanceIDs.Count
-                && sceneNodes.All(node => node.GetParentOfType<Planet>() != null);
-        }
     }
 
     /// <summary>

@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Results;
 using Rebellion.Presentation.Advisor;
 
 namespace Rebellion.Game.Messages
@@ -14,5 +16,6 @@ namespace Rebellion.Game.Messages
         public AdvisorSubjectNotification AdvisorSubjectNotification { get; set; }
         public string AdvisorSubjectTypeID { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
+        internal IReadOnlyCollection<GameResult> SourceResults { get; set; }
     }
 }

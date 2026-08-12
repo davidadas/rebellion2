@@ -15,22 +15,12 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Builds faction message deliveries from game results and configured message definitions.
     /// </summary>
-    public class MessageFactory
+    public partial class MessageFactory
     {
         private readonly MessageDefinition[] _definitions;
         private readonly MessageDefinitionResolver _definitionResolver;
         private readonly MessageTemplateBuilder _templateBuilder = new MessageTemplateBuilder();
         private readonly AuthoredMessageDeliveryFactory _authoredMessageFactory;
-        private readonly EconomyMessageFactory _economyMessageFactory;
-        private readonly ResearchMessageFactory _researchMessageFactory;
-        private readonly PoliticalMessageFactory _politicalMessageFactory;
-        private readonly RepairMessageFactory _repairMessageFactory;
-        private readonly MaintenanceMessageFactory _maintenanceMessageFactory;
-        private readonly BlockadeMessageFactory _blockadeMessageFactory;
-        private readonly StrategicMessageFactory _strategicMessageFactory;
-        private readonly CombatMessageFactory _combatMessageFactory;
-        private readonly DeploymentMessageFactory _deploymentMessageFactory;
-        private readonly ArrivalMessageFactory _arrivalMessageFactory;
         private readonly MessageDeliveryBuilder _deliveryBuilder;
 
         /// <summary>
@@ -38,71 +28,11 @@ namespace Rebellion.Game.Messages
         /// </summary>
         /// <param name="definitions">The message definitions used to select templates and images.</param>
         public MessageFactory(IEnumerable<MessageDefinition> definitions)
-            : this(definitions?.ToArray() ?? Array.Empty<MessageDefinition>(), null) { }
-
-        private MessageFactory(
-            MessageDefinition[] definitions,
-            MessageDeliveryBuilder deliveryBuilder
-        )
         {
-            _definitions = definitions;
-            _definitionResolver = new MessageDefinitionResolver(definitions);
-            _deliveryBuilder = deliveryBuilder;
+            _definitions = definitions?.ToArray() ?? Array.Empty<MessageDefinition>();
+            _definitionResolver = new MessageDefinitionResolver(_definitions);
+            _deliveryBuilder = new MessageDeliveryBuilder();
             _authoredMessageFactory = new AuthoredMessageDeliveryFactory(_templateBuilder);
-            if (deliveryBuilder != null)
-            {
-                _economyMessageFactory = new EconomyMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _researchMessageFactory = new ResearchMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _politicalMessageFactory = new PoliticalMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _repairMessageFactory = new RepairMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _maintenanceMessageFactory = new MaintenanceMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _blockadeMessageFactory = new BlockadeMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _strategicMessageFactory = new StrategicMessageFactory(
-                    definitions,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _combatMessageFactory = new CombatMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _deploymentMessageFactory = new DeploymentMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder
-                );
-                _arrivalMessageFactory = new ArrivalMessageFactory(
-                    _definitionResolver,
-                    _templateBuilder,
-                    deliveryBuilder,
-                    _deploymentMessageFactory
-                );
-            }
         }
 
         /// <summary>
@@ -113,14 +43,7 @@ namespace Rebellion.Game.Messages
         /// <returns>The messages to add to each recipient faction.</returns>
         public List<MessageDelivery> CreateMessages(IEnumerable<GameResult> results, GameRoot game)
         {
-            if (_deliveryBuilder == null)
-            {
-                return new MessageFactory(
-                    _definitions,
-                    new MessageDeliveryBuilder()
-                ).CreateMessages(results, game);
-            }
-
+            _deliveryBuilder.Clear();
             MessageResultBatch batch = MessageResultBatch.Create(results);
             MissionCompletedResult[] missionResults = batch
                 .OfType<MissionCompletedResult>()
@@ -132,21 +55,18 @@ namespace Rebellion.Game.Messages
             GameObjectSabotagedResult[] sabotageResults = batch
                 .OfType<GameObjectSabotagedResult>()
                 .ToArray();
-            MissionSystemIntelligenceResult[] systemIntelligenceResults = batch
-                .OfType<MissionSystemIntelligenceResult>()
+            SystemsRevealedResult[] systemIntelligenceResults = batch
+                .OfType<SystemsRevealedResult>()
                 .ToArray();
             List<MessageDelivery> deliveries = new List<MessageDelivery>();
 
-            _arrivalMessageFactory.AddMessages(batch.OfType<UnitArrivedResult>(), game, deliveries);
-            _deploymentMessageFactory.AddFacilityLossMessages(
+            AddArrivalMessages(batch.OfType<UnitArrivedResult>(), game, deliveries);
+            AddFacilityLossMessages(
                 batch.OfType<GameObjectDestroyedOnArrivalResult>(),
                 game,
                 deliveries
             );
-            _economyMessageFactory.AddSmugglingMessages(
-                batch.OfType<SmugglingChangedResult>(),
-                deliveries
-            );
+            AddSmugglingMessages(batch.OfType<SmugglingChangedResult>(), deliveries);
             AddMissionMessages(
                 missionResults,
                 killedResults,
@@ -173,72 +93,81 @@ namespace Rebellion.Game.Messages
                 deliveries
             );
             AddSabotageMessages(sabotageResults, game, deliveries);
-            _researchMessageFactory.AddMessages(
+            AddResearchMessages(
                 batch.OfType<ResearchOrderedResult>(),
                 batch.OfType<ResearchExhaustedResult>(),
                 deliveries
             );
-            _politicalMessageFactory.AddUprisingMessages(
+            AddUprisingMessages(
                 batch.OfType<PlanetNearUprisingResult>(),
                 batch.OfType<PlanetUprisingStartedResult>(),
                 batch.OfType<PlanetUprisingEndedResult>(),
                 game,
                 deliveries
             );
-            _politicalMessageFactory.AddOwnershipMessages(
-                batch.OfType<PlanetOwnershipChangedResult>(),
-                game,
-                deliveries
-            );
-            _strategicMessageFactory.AddObjectiveMessages(
+            AddOwnershipMessages(batch.OfType<PlanetOwnershipChangedResult>(), game, deliveries);
+            AddObjectiveMessages(
                 batch.OfType<PlanetOwnershipChangedResult>(),
                 batch.OfType<HeadquartersDestroyedResult>(),
                 game,
                 deliveries
             );
-            _strategicMessageFactory.AddIncidentMessages(
-                batch.OfType<PlanetIncidentResult>(),
-                game,
-                deliveries
-            );
-            _blockadeMessageFactory.AddMessages(
+            AddIncidentMessages(batch.OfType<PlanetIncidentResult>(), game, deliveries);
+            AddBlockadeMessages(
                 batch.OfType<BlockadeChangedResult>(),
                 batch.OfType<EvacuationLossesResult>(),
                 game,
                 deliveries
             );
-            _maintenanceMessageFactory.AddMessages(
-                batch.OfType<GameObjectAutoscrappedResult>(),
-                game,
-                deliveries
-            );
-            _repairMessageFactory.AddMessages(
+            AddMaintenanceMessages(batch.OfType<GameObjectAutoscrappedResult>(), game, deliveries);
+            AddRepairMessages(
                 batch.OfType<ShipHullDamageResult>(),
                 batch.OfType<FighterDamageResult>(),
                 game,
                 deliveries
             );
-            _combatMessageFactory.AddMessages(
+            AddCombatMessages(
                 batch.OfType<SpaceCombatResult>(),
                 batch.OfType<BombardmentResult>(),
                 batch.OfType<PlanetaryAssaultResult>(),
                 game,
                 deliveries
             );
-            _deploymentMessageFactory.AddDeploymentMessages(
-                batch.OfType<GameObjectDeployedResult>(),
-                game,
-                deliveries
-            );
-            _economyMessageFactory.AddManufacturingMessages(
-                batch.OfType<ManufacturingIdleResult>(),
-                deliveries
-            );
+            AddDeploymentMessages(batch.OfType<GameObjectDeployedResult>(), game, deliveries);
+            AddManufacturingMessages(batch.OfType<ManufacturingIdleResult>(), deliveries);
             AddSeatOfPowerMessages(batch.OfType<SeatOfPowerChangedResult>(), game, deliveries);
 
             deliveries.AddRange(_authoredMessageFactory.CreateDeliveries(batch.AuthoredRequests));
 
+            ApplyAutomaticMessageSuppressions(deliveries, batch.Suppressions);
+
             return deliveries;
+        }
+
+        private static void ApplyAutomaticMessageSuppressions(
+            List<MessageDelivery> deliveries,
+            IReadOnlyList<SuppressNextAutomaticMessageResult> suppressions
+        )
+        {
+            foreach (SuppressNextAutomaticMessageResult suppression in suppressions)
+            {
+                int index = deliveries.FindIndex(delivery =>
+                    delivery.SourceResults?.Any(source =>
+                        ReferenceEquals(source, suppression.TargetResult)
+                        || (
+                            !string.IsNullOrWhiteSpace(suppression.SourceEventInstanceID)
+                            && source.SourceEventInstanceID == suppression.SourceEventInstanceID
+                        )
+                    ) == true
+                    && delivery.Message?.ResultType == suppression.MessageType
+                    && (
+                        suppression.Recipient == null
+                        || delivery.Recipient?.InstanceID == suppression.Recipient.InstanceID
+                    )
+                );
+                if (index >= 0)
+                    deliveries.RemoveAt(index);
+            }
         }
 
         /// <summary>
@@ -288,7 +217,7 @@ namespace Rebellion.Game.Messages
                     AdvisorSubjectNotification.Report,
                     discoverer
                 );
-                AddDelivery(deliveries, faction, message);
+                AddDelivery(deliveries, faction, message, result);
             }
         }
 
@@ -337,7 +266,7 @@ namespace Rebellion.Game.Messages
             HashSet<string> killedOfficerIDs,
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
-            MissionSystemIntelligenceResult systemIntelligence
+            SystemsRevealedResult systemIntelligence
         )
         {
             if (result == null)
@@ -679,7 +608,7 @@ namespace Rebellion.Game.Messages
             IEnumerable<MissionCompletedResult> results,
             IEnumerable<OfficerKilledResult> killedResults,
             IEnumerable<GameObjectSabotagedResult> sabotageResults,
-            IEnumerable<MissionSystemIntelligenceResult> systemIntelligenceResults,
+            IEnumerable<SystemsRevealedResult> systemIntelligenceResults,
             GameRoot game,
             List<MessageDelivery> deliveries
         )
@@ -690,8 +619,8 @@ namespace Rebellion.Game.Messages
                 .Select(result => result.TargetOfficer?.InstanceID)
                 .Where(id => !string.IsNullOrEmpty(id))
                 .ToHashSet();
-            Dictionary<string, MissionSystemIntelligenceResult> systemIntelligenceByMission = (
-                systemIntelligenceResults ?? Array.Empty<MissionSystemIntelligenceResult>()
+            Dictionary<string, SystemsRevealedResult> systemIntelligenceByMission = (
+                systemIntelligenceResults ?? Array.Empty<SystemsRevealedResult>()
             )
                 .Where(result => !string.IsNullOrEmpty(result.MissionInstanceID))
                 .GroupBy(result => result.MissionInstanceID)
@@ -703,7 +632,7 @@ namespace Rebellion.Game.Messages
                 Faction actorFaction = GetFaction(game, result.Mission?.OwnerInstanceID);
                 systemIntelligenceByMission.TryGetValue(
                     result.MissionInstanceID ?? string.Empty,
-                    out MissionSystemIntelligenceResult systemIntelligence
+                    out SystemsRevealedResult systemIntelligence
                 );
                 AddDelivery(
                     deliveries,
@@ -717,7 +646,8 @@ namespace Rebellion.Game.Messages
                         killedArray,
                         sabotageResults,
                         systemIntelligence
-                    )
+                    ),
+                    result
                 );
 
                 Faction targetFaction = GetFaction(game, target?.OwnerInstanceID);
@@ -727,7 +657,8 @@ namespace Rebellion.Game.Messages
                 AddDelivery(
                     deliveries,
                     targetFaction,
-                    CreateEnemyMissionFoiled(targetFaction, result, target)
+                    CreateEnemyMissionFoiled(targetFaction, result, target),
+                    result
                 );
             }
         }
@@ -743,7 +674,7 @@ namespace Rebellion.Game.Messages
         )
         {
             foreach (RecruitmentExhaustedResult result in results)
-                AddDelivery(deliveries, result.Faction, CreateRecruitmentExhausted(result));
+                AddDelivery(deliveries, result.Faction, CreateRecruitmentExhausted(result), result);
         }
 
         /// <summary>
@@ -804,7 +735,8 @@ namespace Rebellion.Game.Messages
                         result.Officer,
                         planet,
                         game
-                    )
+                    ),
+                    result
                 );
             }
 
@@ -824,7 +756,8 @@ namespace Rebellion.Game.Messages
                         officer,
                         planet,
                         game
-                    )
+                    ),
+                    result
                 );
 
                 if (!result.IsCaptured)
@@ -843,7 +776,8 @@ namespace Rebellion.Game.Messages
                         officer,
                         planet,
                         game
-                    )
+                    ),
+                    result
                 );
             }
 
@@ -870,7 +804,8 @@ namespace Rebellion.Game.Messages
                         result.Officer,
                         planet,
                         game
-                    )
+                    ),
+                    result
                 );
             }
 
@@ -889,7 +824,8 @@ namespace Rebellion.Game.Messages
                         result.TargetOfficer,
                         planet,
                         game
-                    )
+                    ),
+                    result
                 );
             }
         }
@@ -924,7 +860,12 @@ namespace Rebellion.Game.Messages
             )
             {
                 Faction faction = GetOwnerFaction(game, result.Discoverer);
-                AddDelivery(deliveries, faction, CreateForceUserDiscovered(faction, result, game));
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateForceUserDiscovered(faction, result, game),
+                    result
+                );
             }
 
             foreach (ForceExperienceResult result in experienceResults)
@@ -936,7 +877,7 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Faction faction = GetOwnerFaction(game, result.Officer);
-                AddDelivery(deliveries, faction, CreateForceGrowth(faction, result, game));
+                AddDelivery(deliveries, faction, CreateForceGrowth(faction, result, game), result);
             }
         }
 
@@ -993,7 +934,8 @@ namespace Rebellion.Game.Messages
                         group.Select(item => item.Result),
                         first.Target,
                         first.Definition
-                    )
+                    ),
+                    group.Select(item => (GameResult)item.Result).ToArray()
                 );
             }
         }
@@ -1016,7 +958,12 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Faction faction = GetFaction(game, result.Officer?.GetOwnerInstanceID());
-                AddDelivery(deliveries, faction, CreateEmperorSeatOfPower(faction, result.Officer));
+                AddDelivery(
+                    deliveries,
+                    faction,
+                    CreateEmperorSeatOfPower(faction, result.Officer),
+                    result
+                );
             }
         }
 
@@ -1026,9 +973,15 @@ namespace Rebellion.Game.Messages
         /// <param name="deliveries">The delivery list to append to.</param>
         /// <param name="faction">The faction that should receive the message.</param>
         /// <param name="message">The message to deliver.</param>
-        private void AddDelivery(List<MessageDelivery> deliveries, Faction faction, Message message)
+        /// <param name="sourceResults">The simulation results that produced the automatic message.</param>
+        private void AddDelivery(
+            List<MessageDelivery> deliveries,
+            Faction faction,
+            Message message,
+            params GameResult[] sourceResults
+        )
         {
-            _deliveryBuilder.Add(deliveries, faction, message);
+            _deliveryBuilder.Add(deliveries, faction, message, sourceResults);
         }
 
         /// <summary>

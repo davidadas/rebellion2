@@ -31,12 +31,6 @@ namespace Rebellion.Game
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
-        private UnitLifecycleService _unitLifecycle;
-
-        [PersistableIgnore]
-        public UnitLifecycleService UnitLifecycle =>
-            _unitLifecycle ??= new UnitLifecycleService(this);
-
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -88,6 +82,7 @@ namespace Rebellion.Game
         // Game objects.
         public List<Faction> Factions = new List<Faction>();
         public List<Officer> UnrecruitedOfficers = new List<Officer>();
+        public List<VoidPool> VoidPools { get; set; } = new List<VoidPool>();
 
         // Root scene node.
         public GalaxyMap Galaxy
@@ -257,9 +252,83 @@ namespace Rebellion.Game
             return Galaxy;
         }
 
-        public void AddToVoid(ISceneNode node) => UnitLifecycle.AddToVoid(node);
+        public void AddToVoid(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (node.GetParent() == null)
+                throw new InvalidOperationException(
+                    $"Cannot move '{node.GetDisplayName()}' to void because it has no parent."
+                );
 
-        public bool RemoveFromVoid(ISceneNode node) => UnitLifecycle.RemoveFromVoid(node);
+            MoveNode(node, GetVoidPool(node.OwnerInstanceID));
+        }
+
+        public bool RemoveFromVoid(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (!IsInVoid(node))
+                throw new InvalidOperationException($"'{node.GetDisplayName()}' is not in void.");
+
+            HashSet<ISceneNode> visited = new HashSet<ISceneNode>();
+            for (
+                ISceneNode previous = ResolveLastParent(node);
+                previous != null && visited.Add(previous);
+                previous = ResolveLastParent(previous)
+            )
+            {
+                if (
+                    previous is ContainerNode destination
+                    && !IsInVoid(destination)
+                    && destination.CanAcceptChild(node)
+                )
+                {
+                    MoveNode(node, destination);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool IsInVoid(ISceneNode node)
+        {
+            return node?.GetParentOfType<VoidPool>() != null || node is VoidPool;
+        }
+
+        public void DeleteNode(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            if (node.GetParent() == null)
+                throw new InvalidOperationException(
+                    $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
+                );
+
+            node.GetParent().RemoveChild(node);
+            node.SetParent(null);
+            node.Traverse(child =>
+            {
+                DeregsiterOwnedUnit(child);
+                RemoveSceneNodeByInstanceID(child);
+            });
+        }
+
+        public void ChangeOwnership(ISceneNode node, string ownerInstanceId)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+
+            GetFactionByOwnerInstanceID(ownerInstanceId);
+            bool retained = IsInVoid(node);
+            DeregsiterOwnedUnit(node);
+            node.SetOwnerInstanceID(ownerInstanceId);
+            RegisterOwnedUnit(node);
+
+            if (retained)
+                MoveNode(node, GetVoidPool(ownerInstanceId));
+        }
 
         /// <summary>
         /// Attaches a node to a parent node.
@@ -341,17 +410,21 @@ namespace Rebellion.Game
                 return;
             }
 
-            DetachNode(node);
+            if (!newParent.CanAcceptChild(node))
+                throw new InvalidOperationException(
+                    $"Cannot move '{node.GetDisplayName()}' to '{newParent.GetDisplayName()}'."
+                );
 
+            oldParent.RemoveChild(node);
             try
             {
-                AttachNode(node, newParent);
-                if (node is IMovable movable)
-                    movable.VoidState = null;
+                newParent.AddChild(node);
+                node.SetParent(newParent);
             }
             catch
             {
-                AttachNode(node, oldParent);
+                oldParent.AddChild(node);
+                node.SetParent(oldParent);
                 throw;
             }
         }
@@ -406,10 +479,7 @@ namespace Rebellion.Game
         public List<T> GetSceneNodesByOwnerInstanceID<T>(string ownerInstanceId)
             where T : ISceneNode
         {
-            return NodesByInstanceID
-                .Values.OfType<T>() // Filter nodes by the specified type T
-                .Where(node => node.OwnerInstanceID == ownerInstanceId) // Match by OwnerInstanceID
-                .ToList();
+            return GetFactionByOwnerInstanceID(ownerInstanceId).GetOwnedUnitsByType<T>();
         }
 
         /// <summary>
@@ -551,35 +621,84 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Initializes the galaxy map by registering nodes and setting parents.
+        /// Rebuilds runtime parent links, node registration, and faction ownership indexes.
         /// </summary>
-        /// <param name="galaxy">The galaxy map to initialize.</param>
-        /// <returns>The initialized GalaxyMap.</returns>
+        public void RebuildSceneState()
+        {
+            NodesByInstanceID.Clear();
+            foreach (Faction faction in Factions)
+                faction.ClearOwnedUnits();
+
+            EnsureVoidPools();
+            InitializeSceneRoot(Galaxy);
+            foreach (VoidPool voidPool in VoidPools)
+                InitializeSceneRoot(voidPool);
+        }
+
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
-            galaxy.Traverse(
+            InitializeSceneRoot(galaxy);
+            return galaxy;
+        }
+
+        private void InitializeSceneRoot(ISceneNode root)
+        {
+            root.Traverse(
                 (ISceneNode node) =>
                 {
-                    // Register the node by its instance ID.
-                    AddSceneNodeByInstanceID(node);
+                    if (!NodesByInstanceID.ContainsKey(node.InstanceID))
+                        AddSceneNodeByInstanceID(node);
 
-                    // Set the parent of each child node.
                     foreach (ISceneNode child in node.GetChildren())
-                    {
                         child.SetParent(node);
-                    }
 
-                    // Register the node to the faction's list of owned units.
-                    if (node.OwnerInstanceID != null)
-                    {
+                    if (node.OwnerInstanceID != null && node is not VoidPool)
                         RegisterOwnedUnit(node);
-                    }
                 }
             );
+        }
 
-            UnitLifecycle.Initialize();
+        private void EnsureVoidPools()
+        {
+            VoidPools ??= new List<VoidPool>();
+            foreach (Faction faction in Factions)
+            {
+                if (VoidPools.Any(pool => pool.OwnerInstanceID == faction.InstanceID))
+                    continue;
 
-            return galaxy;
+                VoidPools.Add(
+                    new VoidPool
+                    {
+                        InstanceID = $"{faction.InstanceID}_VOID",
+                        DisplayName = $"{faction.DisplayName} Void",
+                        OwnerInstanceID = faction.InstanceID,
+                    }
+                );
+            }
+        }
+
+        private VoidPool GetVoidPool(string ownerInstanceId)
+        {
+            if (string.IsNullOrWhiteSpace(ownerInstanceId))
+                throw new InvalidOperationException("Only faction-owned nodes can enter void.");
+
+            GetFactionByOwnerInstanceID(ownerInstanceId);
+            EnsureVoidPools();
+            return VoidPools.Single(pool => pool.OwnerInstanceID == ownerInstanceId);
+        }
+
+        private ISceneNode ResolveLastParent(ISceneNode node)
+        {
+            if (!string.IsNullOrWhiteSpace(node.LastParentInstanceID))
+            {
+                ISceneNode registered = GetSceneNodeByInstanceID<ISceneNode>(
+                    node.LastParentInstanceID
+                );
+                if (registered != null)
+                    return registered;
+            }
+
+            return node.LastParentNode;
         }
     }
 }

@@ -334,6 +334,8 @@ namespace Rebellion.Tests.Game
             // Add nodes to the _game.
             _game.AddSceneNodeByInstanceID(_planet);
             _game.AddSceneNodeByInstanceID(_fleet);
+            _game.RegisterOwnedUnit(_planet);
+            _game.RegisterOwnedUnit(_fleet);
 
             // Retrieve nodes by owner ID.
             List<ISceneNode> retrievedNodes = _game.GetSceneNodesByOwnerInstanceID<ISceneNode>(
@@ -729,6 +731,98 @@ namespace Rebellion.Tests.Game
             // Next roll should match what a fresh provider at position 7 would yield.
             int expected = new SystemRandomProvider(12345, advanceTo: 7).NextInt(0, int.MaxValue);
             Assert.AreEqual(expected, game.Random.NextInt(0, int.MaxValue));
+        }
+
+        [Test]
+        public void AddToVoid_OwnedOfficer_ParentsOfficerToFactionVoidPool()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "VOID_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            _game.AddToVoid(officer);
+
+            Assert.IsInstanceOf<VoidPool>(officer.GetParent());
+            Assert.IsTrue(_game.IsInVoid(officer));
+            Assert.AreEqual(_planet.InstanceID, officer.LastParentInstanceID);
+            Assert.AreSame(officer, _game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.Contains(officer, _faction1.GetOwnedUnitsByType<Officer>().ToList());
+            Assert.Contains(
+                officer,
+                _game.GetSceneNodesByOwnerInstanceID<ISceneNode>(_faction1.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RemoveFromVoid_PreviousParentAcceptsOfficer_RestoresOfficer()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "RETURNING_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            bool returned = _game.RemoveFromVoid(officer);
+
+            Assert.IsTrue(returned);
+            Assert.AreSame(_planet, officer.GetParent());
+            Assert.IsFalse(_game.IsInVoid(officer));
+        }
+
+        [Test]
+        public void GetSceneNodesByType_RetainedOfficer_ExcludesOfficerFromActiveGalaxy()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "RETAINED_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            List<Officer> activeOfficers = _game.GetSceneNodesByType<Officer>();
+
+            CollectionAssert.DoesNotContain(activeOfficers, officer);
+        }
+
+        [Test]
+        public void ChangeOwnership_OfficerInVoid_MovesOfficerToNewFactionVoidPool()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "DEFECTING_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+            _game.AddToVoid(officer);
+
+            _game.ChangeOwnership(officer, _faction2.InstanceID);
+
+            Assert.AreEqual(_faction2.InstanceID, officer.OwnerInstanceID);
+            Assert.AreEqual(_faction2.InstanceID, officer.GetParent().OwnerInstanceID);
+            Assert.IsTrue(_game.IsInVoid(officer));
+        }
+
+        [Test]
+        public void DeleteNode_RegisteredOfficer_RemovesOfficerFromGameState()
+        {
+            Officer officer = new Officer
+            {
+                InstanceID = "DELETED_OFFICER",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(officer, _planet);
+
+            _game.DeleteNode(officer);
+
+            Assert.IsNull(officer.GetParent());
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(officer.InstanceID));
+            Assert.IsFalse(_faction1.GetOwnedUnitsByType<Officer>().Contains(officer));
         }
     }
 } // namespace Rebellion.Tests.Game

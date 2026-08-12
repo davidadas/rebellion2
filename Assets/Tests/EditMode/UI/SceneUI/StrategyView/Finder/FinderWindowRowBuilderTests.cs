@@ -23,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         private Planet _unexplored;
         private GalaxyMapPlanet _alphaMapPlanet;
         private GalaxyMapPlanet _betaMapPlanet;
+        private Faction _playerFaction;
         private FinderWindowRowBuilder _builder;
 
         [SetUp]
@@ -51,10 +52,11 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
                 new GalaxyMapSector(firstSystem, new[] { neutralMapPlanet, _alphaMapPlanet }),
                 new GalaxyMapSector(secondSystem, new[] { unexploredMapPlanet, _betaMapPlanet }),
             };
+            _playerFaction = new Faction { InstanceID = _playerFactionId, DisplayName = "Player" };
             Faction[] factions =
             {
                 new Faction { InstanceID = _opponentFactionId, DisplayName = "Opponent" },
-                new Faction { InstanceID = _playerFactionId, DisplayName = "Player" },
+                _playerFaction,
             };
             _builder = new FinderWindowRowBuilder(
                 sectors,
@@ -420,6 +422,27 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
             Assert.AreEqual(PlanetIcon.Fleet, rows[1].TargetIcon);
             Assert.AreSame(fleet, rows[1].Fleet);
             Assert.AreEqual(PlanetIcon.Defense, rows[2].TargetIcon);
+        }
+
+        [Test]
+        public void GetRows_PersonnelRetainedOutsideGalaxy_IncludesOwnedOfficer()
+        {
+            Officer retiredOfficer = new Officer
+            {
+                InstanceID = "retired-officer",
+                DisplayName = "Retired Officer",
+                OwnerInstanceID = _playerFactionId,
+                IsRetired = true,
+            };
+            _playerFaction.AddOwnedUnit(retiredOfficer);
+
+            List<FinderWindowRow> rows = _builder.GetRows(
+                FinderMode.Personnel,
+                false,
+                FinderWindowTab.Faction(_playerFactionId, "Player")
+            );
+
+            Assert.AreEqual("Retired Officer - Unknown ( Retired )", rows.Single().Name);
         }
 
         [Test]

@@ -26,7 +26,6 @@ namespace Rebellion.Game.Units
     {
         // Movement Info.
         public MovementState Movement { get; set; }
-        public VoidState VoidState { get; set; }
 
         /// <summary>
         /// Designates whether this fleet is a battle fleet or a patrol/presence fleet.

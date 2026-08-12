@@ -55,6 +55,235 @@ namespace Rebellion.Game.FogOfWar
         }
 
         /// <summary>
+        /// Records current information about explicitly selected scene objects.
+        /// </summary>
+        public void RecordSelectedObservations(
+            GameRoot game,
+            Faction faction,
+            IEnumerable<ISceneNode> observations,
+            int currentTick
+        )
+        {
+            if (game == null || faction == null || observations == null)
+                return;
+
+            foreach (ISceneNode observation in observations.Where(node => node != null).Distinct())
+            {
+                if (observation is PlanetSystem selectedSystem)
+                {
+                    foreach (Planet systemPlanet in selectedSystem.Planets)
+                        RecordSelectedObservation(game, faction, systemPlanet, currentTick);
+                    continue;
+                }
+
+                RecordSelectedObservation(game, faction, observation, currentTick);
+            }
+        }
+
+        private void RecordSelectedObservation(
+            GameRoot game,
+            Faction faction,
+            ISceneNode observation,
+            int currentTick
+        )
+        {
+            Planet planet = ResolveObservationPlanet(game, observation);
+            PlanetSystem system = planet?.GetParentOfType<PlanetSystem>();
+            if (planet == null || system == null)
+                return;
+
+            planet.AddVisitor(faction.InstanceID);
+            SystemSnapshot systemSnapshot = GetOrCreateSystemSnapshot(faction, system);
+            faction.Fog.PlanetToSystem[planet.InstanceID] = system.InstanceID;
+            if (!systemSnapshot.Planets.TryGetValue(planet.InstanceID, out PlanetSnapshot snapshot))
+            {
+                snapshot = new PlanetSnapshot();
+                systemSnapshot.Planets[planet.InstanceID] = snapshot;
+            }
+
+            snapshot.TickCaptured = currentTick;
+            if (observation is Planet)
+            {
+                UpdatePlanetState(snapshot, planet, currentTick);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(observation.InstanceID))
+            {
+                RemoveEntityFromSnapshotState(faction, observation.InstanceID);
+                InvalidateEntityFromOtherSnapshots(
+                    faction,
+                    observation.InstanceID,
+                    planet.InstanceID
+                );
+            }
+
+            if (
+                observation is IManufacturable queuedItem
+                && queuedItem.ManufacturingStatus == ManufacturingStatus.Building
+                && planet.ManufacturingQueue.Values.Any(queue => queue.Contains(queuedItem))
+            )
+            {
+                snapshot.HasManufacturingIntelligence = true;
+                Upsert(snapshot.ManufacturingQueueItems, CopyManufacturableForSnapshot(queuedItem));
+                return;
+            }
+
+            switch (observation)
+            {
+                case Officer officer:
+                    AddNestedObservation(snapshot, officer, CopyOfficerForSnapshot(officer));
+                    break;
+                case Fleet fleet:
+                    Upsert(snapshot.Fleets, CopyFleetForSnapshot(fleet));
+                    break;
+                case CapitalShip capitalShip:
+                    AddCapitalShipObservation(snapshot, capitalShip);
+                    break;
+                case Regiment regiment:
+                    AddNestedObservation(snapshot, regiment, CopyEntityForSnapshot(regiment));
+                    break;
+                case SpecialForces specialForces:
+                    AddNestedObservation(
+                        snapshot,
+                        specialForces,
+                        CopyEntityForSnapshot(specialForces)
+                    );
+                    break;
+                case Starfighter starfighter:
+                    AddNestedObservation(snapshot, starfighter, CopyEntityForSnapshot(starfighter));
+                    break;
+                case Building building:
+                    Upsert(snapshot.Buildings, CopyEntityForSnapshot(building));
+                    break;
+                case Mission mission:
+                    Upsert(snapshot.Missions, CopyEntityForSnapshot(mission));
+                    break;
+            }
+        }
+
+        private static Planet ResolveObservationPlanet(GameRoot game, ISceneNode observation)
+        {
+            if (observation is Planet planet)
+                return planet;
+
+            Planet ancestor = observation.GetParentOfType<Planet>();
+            if (ancestor != null)
+                return ancestor;
+
+            return observation is IManufacturable manufacturable
+                ? manufacturable.GetProducerPlanet(game)
+                : null;
+        }
+
+        private static void AddCapitalShipObservation(
+            PlanetSnapshot snapshot,
+            CapitalShip capitalShip
+        )
+        {
+            Fleet sourceFleet = capitalShip.GetParentOfType<Fleet>();
+            if (sourceFleet == null)
+                return;
+
+            Fleet fleet = GetOrCreateFleetShell(snapshot, sourceFleet);
+            CapitalShip copy = CopyCapitalShipForSnapshot(capitalShip);
+            ClearCapitalShipCargo(copy);
+            Upsert(fleet.CapitalShips, copy);
+            copy.SetParent(fleet);
+        }
+
+        private static void AddNestedObservation<T>(PlanetSnapshot snapshot, T source, T copy)
+            where T : class, ISceneNode
+        {
+            CapitalShip sourceShip = source.GetParentOfType<CapitalShip>();
+            if (sourceShip != null)
+            {
+                Fleet sourceFleet = sourceShip.GetParentOfType<Fleet>();
+                if (sourceFleet == null)
+                    return;
+
+                Fleet fleet = GetOrCreateFleetShell(snapshot, sourceFleet);
+                CapitalShip ship = GetOrCreateCapitalShipShell(fleet, sourceShip);
+                AddCapitalShipChild(ship, copy);
+                return;
+            }
+
+            if (copy is Officer officer)
+                Upsert(snapshot.Officers, officer);
+            else if (copy is Regiment regiment)
+                Upsert(snapshot.Regiments, regiment);
+            else if (copy is SpecialForces specialForces)
+                Upsert(snapshot.SpecialForces, specialForces);
+            else if (copy is Starfighter starfighter)
+                Upsert(snapshot.Starfighters, starfighter);
+        }
+
+        private static Fleet GetOrCreateFleetShell(PlanetSnapshot snapshot, Fleet source)
+        {
+            Fleet existing = snapshot.Fleets.FirstOrDefault(fleet =>
+                fleet.InstanceID == source.InstanceID
+            );
+            if (existing != null)
+                return existing;
+
+            Fleet shell = CopyFleetForSnapshot(source);
+            shell.CapitalShips.Clear();
+            snapshot.Fleets.Add(shell);
+            return shell;
+        }
+
+        private static CapitalShip GetOrCreateCapitalShipShell(Fleet fleet, CapitalShip source)
+        {
+            CapitalShip existing = fleet.CapitalShips.FirstOrDefault(ship =>
+                ship.InstanceID == source.InstanceID
+            );
+            if (existing != null)
+                return existing;
+
+            CapitalShip shell = CopyCapitalShipForSnapshot(source);
+            ClearCapitalShipCargo(shell);
+            fleet.CapitalShips.Add(shell);
+            shell.SetParent(fleet);
+            return shell;
+        }
+
+        private static void ClearCapitalShipCargo(CapitalShip ship)
+        {
+            ship.Officers.Clear();
+            ship.Regiments.Clear();
+            ship.SpecialForces.Clear();
+            ship.Starfighters.Clear();
+        }
+
+        private static void AddCapitalShipChild(CapitalShip ship, ISceneNode child)
+        {
+            switch (child)
+            {
+                case Officer officer:
+                    Upsert(ship.Officers, officer);
+                    break;
+                case Regiment regiment:
+                    Upsert(ship.Regiments, regiment);
+                    break;
+                case SpecialForces specialForces:
+                    Upsert(ship.SpecialForces, specialForces);
+                    break;
+                case Starfighter starfighter:
+                    Upsert(ship.Starfighters, starfighter);
+                    break;
+            }
+
+            child.SetParent(ship);
+        }
+
+        private static void Upsert<T>(List<T> items, T item)
+            where T : class, ISceneNode
+        {
+            items.RemoveAll(existing => existing.InstanceID == item.InstanceID);
+            items.Add(item);
+        }
+
+        /// <summary>
         /// Records current intelligence for only the requested planet categories.
         /// </summary>
         /// <param name="faction">The faction receiving intelligence.</param>

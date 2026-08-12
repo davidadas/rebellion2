@@ -28,14 +28,14 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void GetState_DifferentTargets_ReturnsIndependentStates()
+        public void GetState_SameEvent_ReturnsCanonicalState()
         {
             GameEventRuntimeState state = new GameEventRuntimeState();
 
-            GameEventState first = state.GetState("EVENT1", "PLANET1");
-            GameEventState second = state.GetState("EVENT1", "PLANET2");
+            GameEventState first = state.GetState("EVENT1");
+            GameEventState second = state.GetState("EVENT1");
 
-            Assert.AreNotSame(first, second);
+            Assert.AreSame(first, second);
         }
     }
 }

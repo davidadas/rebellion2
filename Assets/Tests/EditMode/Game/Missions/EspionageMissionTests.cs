@@ -227,9 +227,7 @@ namespace Rebellion.Tests.Game.Missions
 
             List<GameResult> results = mission.Execute(game, new FixedRNG(0.0));
 
-            MissionSystemIntelligenceResult intelligence = results
-                .OfType<MissionSystemIntelligenceResult>()
-                .Single();
+            SystemsRevealedResult intelligence = results.OfType<SystemsRevealedResult>().Single();
             Assert.AreEqual(mission.InstanceID, intelligence.MissionInstanceID);
             CollectionAssert.AreEquivalent(
                 new[] { "Corellia", "Sullust" },

@@ -6,10 +6,14 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Game.Events;
+using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
+using Rebellion.Game.Units;
 using Rebellion.Presentation.Advisor;
 using Rebellion.Util.Serialization;
 
@@ -252,7 +256,7 @@ namespace Rebellion.Tests.Util.Serialization
             GameSerializer serializer = new GameSerializer(typeof(GameEvent));
             string xmlInput =
                 @"<?xml version=""1.0"" encoding=""utf-8""?>
-<GameEvent RunsOnce=""true"">
+<GameEvent>
   <InstanceID>EVENT_TEST</InstanceID>
   <Conditionals>
     <TickCount Comparison=""GreaterThan"" Ticks=""30"">
@@ -407,10 +411,10 @@ namespace Rebellion.Tests.Util.Serialization
                         },
                     },
                     new AddToVoidAction { UnitInstanceID = "LUKE_SKYWALKER" },
-                    new AdjustOfficerRatingAction
+                    new AdjustOfficerStatAction
                     {
                         OfficerInstanceID = "LUKE_SKYWALKER",
-                        Rating = OfficerRating.Force,
+                        Stat = OfficerStat.Force,
                         Amount = 5,
                     },
                     new ApplyOfficerInjuryAction
@@ -467,8 +471,8 @@ namespace Rebellion.Tests.Util.Serialization
             AddToVoidAction addToVoid = deserialized.Actions[2] as AddToVoidAction;
             Assert.IsNotNull(addToVoid);
             Assert.AreEqual("LUKE_SKYWALKER", addToVoid.UnitInstanceID);
-            AdjustOfficerRatingAction forceAdjustment =
-                deserialized.Actions[3] as AdjustOfficerRatingAction;
+            AdjustOfficerStatAction forceAdjustment =
+                deserialized.Actions[3] as AdjustOfficerStatAction;
             Assert.IsNotNull(forceAdjustment);
             Assert.AreEqual(5, forceAdjustment.Amount);
             ApplyOfficerInjuryAction injury = deserialized.Actions[4] as ApplyOfficerInjuryAction;
@@ -492,6 +496,55 @@ namespace Rebellion.Tests.Util.Serialization
             );
 
             Assert.AreEqual("LUKE_SKYWALKER", action.UnitInstanceID);
+        }
+
+        [Test]
+        public void Serialize_GameEventRunLimits_RoundTripsAttributes()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEvent));
+            GameEvent gameEvent = new GameEvent
+            {
+                InstanceID = "LIMITED_EVENT",
+                MinimumRuns = 2,
+                MaximumRuns = 5,
+            };
+
+            string xml = SerializeToString(serializer, gameEvent);
+            GameEvent restored = (GameEvent)DeserializeFromString(serializer, xml);
+
+            Assert.AreEqual(2, restored.MinimumRuns);
+            Assert.AreEqual(5, restored.MaximumRuns);
+        }
+
+        [Test]
+        public void Serialize_AfterAllSchedule_RoundTripsInlineDependencies()
+        {
+            GameSerializer serializer = new GameSerializer(typeof(GameEventScheduler));
+            GameEventScheduler scheduler = new GameEventScheduler
+            {
+                AfterAll = new AfterEvents
+                {
+                    DelayTicks = 25,
+                    Events = new List<EventDependency>
+                    {
+                        new EventDependency { EventInstanceID = "FIRST" },
+                        new EventDependency { EventInstanceID = "SECOND" },
+                    },
+                },
+            };
+
+            string xml = SerializeToString(serializer, scheduler);
+            GameEventScheduler restored = (GameEventScheduler)DeserializeFromString(
+                serializer,
+                xml
+            );
+
+            StringAssert.Contains("<AfterAll DelayTicks=\"25\">", xml);
+            StringAssert.DoesNotContain("<Events>", xml);
+            CollectionAssert.AreEqual(
+                new[] { "FIRST", "SECOND" },
+                restored.AfterAll.Events.ConvertAll(dependency => dependency.EventInstanceID)
+            );
         }
 
         [Test]
@@ -1909,6 +1962,51 @@ namespace Rebellion.Tests.Util.Serialization
             XmlSchemaSet schemas = new XmlSchemaSet();
             schemas.Add(null, XmlReader.Create(new StringReader(schemaXml)));
             return schemas;
+        }
+
+        [Test]
+        public void Serialize_GameRootWithHeterogeneousVoidPool_RoundTripsRetainedHierarchy()
+        {
+            GameRoot game = new GameRoot(TestContent.Data.GameConfig);
+            Faction faction = new Faction { InstanceID = "FACTION" };
+            game.Factions.Add(faction);
+            PlanetSystem system = new PlanetSystem { InstanceID = "SYSTEM" };
+            Planet planet = new Planet
+            {
+                InstanceID = "PLANET",
+                OwnerInstanceID = faction.InstanceID,
+            };
+            Fleet fleet = new Fleet { InstanceID = "FLEET", OwnerInstanceID = faction.InstanceID };
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "SHIP",
+                OwnerInstanceID = faction.InstanceID,
+            };
+            game.AttachNode(system, game.Galaxy);
+            game.AttachNode(planet, system);
+            game.AttachNode(fleet, planet);
+            game.AttachNode(ship, fleet);
+            game.AddToVoid(fleet);
+            GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+
+            string xml = SerializeToString(serializer, game);
+            GameRoot restored = (GameRoot)DeserializeFromString(serializer, xml);
+            restored.RebuildSceneState();
+
+            Fleet restoredFleet = restored.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID);
+            CapitalShip restoredShip = restored.GetSceneNodeByInstanceID<CapitalShip>(
+                ship.InstanceID
+            );
+            Assert.IsTrue(restored.IsInVoid(restoredFleet));
+            Assert.AreSame(restoredFleet, restoredShip.GetParent());
+            Assert.AreEqual(faction.InstanceID, restoredFleet.GetParent().OwnerInstanceID);
+            Assert.Contains(
+                restoredFleet,
+                restored
+                    .GetFactionByOwnerInstanceID(faction.InstanceID)
+                    .GetOwnedUnitsByType<Fleet>()
+                    .ToList()
+            );
         }
 
         private string SerializeToString(GameSerializer serializer, object obj)

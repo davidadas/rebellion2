@@ -2311,8 +2311,8 @@ namespace Rebellion.Tests.Systems
             for (int i = 0; i < transit; i++)
                 allResults.AddRange(movement.ProcessTick());
 
-            Assert.IsTrue(
-                game.UnitLifecycle.IsInVoid(mine),
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Building>(mine.InstanceID),
                 "Building should be destroyed when destination changes sides during transit."
             );
             Assert.IsTrue(allResults.OfType<GameObjectDestroyedOnArrivalResult>().Any());
@@ -3084,7 +3084,7 @@ namespace Rebellion.Tests.Systems
             for (int tick = 0; tick < transitTicks; tick++)
                 results.AddRange(scene.movement.ProcessTick());
 
-            Assert.IsTrue(scene.game.UnitLifecycle.IsInVoid(building));
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
             GameObjectDestroyedOnArrivalResult destroyed = results
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();
@@ -3119,7 +3119,7 @@ namespace Rebellion.Tests.Systems
             for (int tick = 0; tick < transitTicks; tick++)
                 results.AddRange(scene.movement.ProcessTick());
 
-            Assert.IsTrue(scene.game.UnitLifecycle.IsInVoid(regiment));
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
             GameObjectDestroyedOnArrivalResult destroyed = results
                 .OfType<GameObjectDestroyedOnArrivalResult>()
                 .Single();
@@ -3350,7 +3350,7 @@ namespace Rebellion.Tests.Systems
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            Assert.IsTrue(scene.game.UnitLifecycle.IsInVoid(building));
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
             GameObjectDestroyedResult destroyed = results
                 .OfType<GameObjectDestroyedResult>()
                 .Single();
@@ -3373,7 +3373,7 @@ namespace Rebellion.Tests.Systems
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
             List<GameResult> results = ProcessBlockadeStart(scene.blockade, scene.resultProcessor);
 
-            Assert.IsTrue(scene.game.UnitLifecycle.IsInVoid(starfighter));
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Starfighter>(starfighter.InstanceID));
             GameObjectDestroyedResult destroyed = results
                 .OfType<GameObjectDestroyedResult>()
                 .Single();
@@ -3546,8 +3546,8 @@ namespace Rebellion.Tests.Systems
 
             movement.RequestMove(regiment, destination);
 
-            Assert.IsTrue(
-                game.UnitLifecycle.IsInVoid(regiment),
+            Assert.IsNull(
+                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID),
                 "Regiment should be destroyed running the blockade"
             );
         }

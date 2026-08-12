@@ -1,6 +1,7 @@
 using System;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -30,6 +31,7 @@ namespace Rebellion.Game.Events
         public GameRoot Game { get; }
         public GameEventExecutionContext Activation { get; }
         public GameResult TriggerResult { get; }
+        public IRandomNumberProvider Random { get; }
 
         public GameConditionContext(GameRoot game)
             : this(game, null, null) { }
@@ -49,6 +51,7 @@ namespace Rebellion.Game.Events
             Game = game ?? throw new ArgumentNullException(nameof(game));
             Activation = activation;
             TriggerResult = triggerResult;
+            Random = game.Random;
         }
     }
 }

@@ -247,6 +247,17 @@ public sealed class FinderWindowRowBuilder
             AddPersonnelRows(rows, seen, planet, PlanetIcon.Defense, planet.Planet.Officers);
         }
 
+        Faction ownedFaction = factions.FirstOrDefault(faction =>
+            string.Equals(faction.InstanceID, ownerId, StringComparison.Ordinal)
+        );
+        AddPersonnelRows(
+            rows,
+            seen,
+            null,
+            PlanetIcon.Defense,
+            ownedFaction?.GetOwnedUnitsByType<Officer>().Where(officer => !officer.IsKilled)
+        );
+
         return rows.Where(row =>
                 string.Equals(row.Node?.OwnerInstanceID, ownerId, StringComparison.Ordinal)
             )
@@ -469,6 +480,8 @@ public sealed class FinderWindowRowBuilder
     {
         if (personnel is Officer { IsKilled: true })
             return "Killed";
+        if (personnel is Officer { IsRetired: true })
+            return "Retired";
         if (personnel is Officer { IsCaptured: true })
             return "Captured";
         if (personnel is Officer { InjuryPoints: > 0 })
@@ -478,13 +491,9 @@ public sealed class FinderWindowRowBuilder
         if (personnel is Officer officerOnMission && officerOnMission.IsOnMission())
             return "On Mission";
 
-        if (personnel is IMovable { VoidState: not null } voidUnit)
-            return string.IsNullOrWhiteSpace(voidUnit.VoidState.DisplayText)
-                ? voidUnit.VoidState.Status == VoidStatus.OnMission
-                    ? "On Mission"
-                    : voidUnit.VoidState.Status?.ToString() ?? "Unavailable"
-                : voidUnit.VoidState.DisplayText;
-        else if (personnel is SpecialForces specialForces && specialForces.IsOnMission())
+        if (personnel is Officer officer && !string.IsNullOrWhiteSpace(officer.StatusText))
+            return officer.StatusText;
+        if (personnel is SpecialForces specialForces && specialForces.IsOnMission())
         {
             return "On Mission";
         }

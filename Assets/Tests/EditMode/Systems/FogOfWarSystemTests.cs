@@ -9,6 +9,7 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Movement;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using Rebellion.Systems;
 
 namespace Rebellion.Tests.Systems
@@ -1250,7 +1251,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_CategoryLimitedIntelligence_RevealsOnlyRequestedCategory()
+        public void HandleResults_SelectedObservation_RevealsOnlySelectedObject()
         {
             _coruscant.EnergyCapacity = 1;
             Building building = new Building
@@ -1264,24 +1265,112 @@ namespace Rebellion.Tests.Systems
             _game.AttachNode(officer, _coruscant);
 
             _fogSystem.HandleResults(
-                new List<PlanetIntelligenceResult>
+                new List<IntelligenceRevealedResult>
                 {
-                    new PlanetIntelligenceResult
+                    new IntelligenceRevealedResult
                     {
                         Tick = 42,
                         Recipient = _alliance,
-                        Planet = _coruscant,
-                        Categories = PlanetIntelligenceCategory.Buildings,
+                        Observations = new List<ISceneNode> { building },
                     },
                 }
             );
 
             PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
             Assert.AreEqual(42, snapshot.TickCaptured);
-            Assert.AreEqual(PlanetIntelligenceCategory.Buildings, snapshot.RevealedCategories);
+            Assert.AreEqual(PlanetIntelligenceCategory.None, snapshot.RevealedCategories);
             Assert.AreEqual("IMPERIAL_FACILITY", snapshot.Buildings.Single().InstanceID);
             Assert.IsEmpty(snapshot.Officers);
             Assert.AreNotEqual(PlanetIntelligenceCategory.All, snapshot.RevealedCategories);
+        }
+
+        [Test]
+        public void HandleResults_SelectedCapitalShip_RevealsFleetShellWithoutSiblingsOrCargo()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip selectedShip = AddCapitalShip(fleet, _empire, "SELECTED_SHIP");
+            AddCapitalShip(fleet, _empire, "HIDDEN_SHIP");
+            _game.AttachNode(CreateOfficer("HIDDEN_OFFICER", _empire), selectedShip);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { selectedShip },
+                    },
+                }
+            );
+
+            Fleet knownFleet = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single();
+            CapitalShip knownShip = knownFleet.CapitalShips.Single();
+            Assert.AreEqual("IMPERIAL_FLEET", knownFleet.InstanceID);
+            Assert.AreEqual("SELECTED_SHIP", knownShip.InstanceID);
+            Assert.IsEmpty(knownShip.Officers);
+        }
+
+        [Test]
+        public void HandleResults_SelectedNestedOfficer_RevealsAncestryWithoutSiblings()
+        {
+            Fleet fleet = CreateFleet("IMPERIAL_FLEET", _empire);
+            _game.AttachNode(fleet, _coruscant);
+            CapitalShip ship = AddCapitalShip(fleet, _empire, "STAR_DESTROYER");
+            Officer selectedOfficer = CreateOfficer("SELECTED_OFFICER", _empire);
+            _game.AttachNode(selectedOfficer, ship);
+            _game.AttachNode(CreateOfficer("HIDDEN_OFFICER", _empire), ship);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { selectedOfficer },
+                    },
+                }
+            );
+
+            Fleet knownFleet = _alliance
+                .Fog.Snapshots["CORESYS"]
+                .Planets["CORUSCANT"]
+                .Fleets.Single();
+            CapitalShip knownShip = knownFleet.CapitalShips.Single();
+            Assert.AreEqual("IMPERIAL_FLEET", knownFleet.InstanceID);
+            Assert.AreEqual("STAR_DESTROYER", knownShip.InstanceID);
+            Assert.AreEqual("SELECTED_OFFICER", knownShip.Officers.Single().InstanceID);
+        }
+
+        [Test]
+        public void HandleResults_SelectedManufacturingOrder_RevealsOnlySelectedOrder()
+        {
+            Building selected = AddQueuedBuilding(_coruscant, _empire, "SELECTED_ORDER", 25);
+            AddQueuedBuilding(_coruscant, _empire, "HIDDEN_ORDER", 10);
+
+            _fogSystem.HandleResults(
+                new List<IntelligenceRevealedResult>
+                {
+                    new IntelligenceRevealedResult
+                    {
+                        Tick = 42,
+                        Recipient = _alliance,
+                        Observations = new List<ISceneNode> { selected },
+                    },
+                }
+            );
+
+            PlanetSnapshot snapshot = _alliance.Fog.Snapshots["CORESYS"].Planets["CORUSCANT"];
+            Assert.IsTrue(snapshot.HasManufacturingIntelligence);
+            Assert.AreEqual("SELECTED_ORDER", snapshot.ManufacturingQueueItems.Single().InstanceID);
+            Assert.IsFalse(
+                snapshot.ManufacturingQueueItems.Any(item => item.InstanceID == "HIDDEN_ORDER")
+            );
         }
 
         [Test]

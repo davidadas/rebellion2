@@ -10,24 +10,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates blockade and evacuation results into faction reports.
     /// </summary>
-    internal sealed class BlockadeMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public BlockadeMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddMessages(
+        private void AddBlockadeMessages(
             IEnumerable<BlockadeChangedResult> blockadeResults,
             IEnumerable<EvacuationLossesResult> evacuationResults,
             GameRoot game,
@@ -38,12 +23,12 @@ namespace Rebellion.Game.Messages
             {
                 if (!result.Blockaded)
                     continue;
-                Faction blockadingFaction = GetFaction(
+                Faction blockadingFaction = GetBlockadeFaction(
                     game,
                     result.BlockadingFleet?.GetOwnerInstanceID()
                 );
-                Faction targetFaction = GetFaction(game, result.Planet?.OwnerInstanceID);
-                Add(
+                Faction targetFaction = GetBlockadeFaction(game, result.Planet?.OwnerInstanceID);
+                AddBlockadeDelivery(
                     deliveries,
                     blockadingFaction,
                     result,
@@ -52,7 +37,7 @@ namespace Rebellion.Game.Messages
                 );
                 if (targetFaction?.InstanceID != blockadingFaction?.InstanceID)
                 {
-                    Add(
+                    AddBlockadeDelivery(
                         deliveries,
                         targetFaction,
                         result,
@@ -66,10 +51,10 @@ namespace Rebellion.Game.Messages
             {
                 if (result == null)
                     continue;
-                MessageDefinition definition = _definitions.GetDefinition(
+                MessageDefinition definition = _definitionResolver.GetDefinition(
                     MessageResultType.EvacuationLosses
                 );
-                Message message = Build(
+                Message message = BuildBlockadeMessage(
                     definition,
                     result.Faction,
                     new Dictionary<string, string>
@@ -78,12 +63,12 @@ namespace Rebellion.Game.Messages
                         { "units", FormatLostUnits(result) },
                     }
                 );
-                SetLocation(message, result.Location, result.Location);
-                _deliveries.Add(deliveries, result.Faction, message);
+                SetBlockadeLocation(message, result.Location, result.Location);
+                _deliveryBuilder.Add(deliveries, result.Faction, message, result);
             }
         }
 
-        private void Add(
+        private void AddBlockadeDelivery(
             ICollection<MessageDelivery> deliveries,
             Faction recipient,
             BlockadeChangedResult result,
@@ -105,32 +90,36 @@ namespace Rebellion.Game.Messages
             if (resultType == MessageResultType.BlockadeInitiated)
                 values["target"] = otherFaction?.GetDisplayName() ?? string.Empty;
 
-            MessageDefinition definition = _definitions.GetDefinition(resultType);
-            Message message = Build(
+            MessageDefinition definition = _definitionResolver.GetDefinition(resultType);
+            Message message = BuildBlockadeMessage(
                 definition,
                 recipient,
                 values,
                 resultType == MessageResultType.BlockadeInitiated ? otherFaction : null
             );
-            SetLocation(message, result.Planet, result.BlockadingFleet);
-            _deliveries.Add(deliveries, recipient, message);
+            SetBlockadeLocation(message, result.Planet, result.BlockadingFleet);
+            _deliveryBuilder.Add(deliveries, recipient, message, result);
         }
 
-        private Message Build(
+        private Message BuildBlockadeMessage(
             MessageDefinition definition,
             Faction recipient,
             Dictionary<string, string> values,
             Faction imageFaction = null
         )
         {
-            Message message = _templates.Build(definition, recipient, values, imageFaction);
-            return _deliveries.WithNotification(
+            Message message = _templateBuilder.Build(definition, recipient, values, imageFaction);
+            return _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
         }
 
-        private static void SetLocation(Message message, ISceneNode planet, ISceneNode target)
+        private static void SetBlockadeLocation(
+            Message message,
+            ISceneNode planet,
+            ISceneNode target
+        )
         {
             if (message == null)
                 return;
@@ -152,7 +141,7 @@ namespace Rebellion.Game.Messages
             );
         }
 
-        private static Faction GetFaction(GameRoot game, string instanceID) =>
+        private static Faction GetBlockadeFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);

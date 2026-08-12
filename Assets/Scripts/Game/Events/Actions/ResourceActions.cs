@@ -4,86 +4,106 @@ using System.Linq;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Common;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
 {
-    public enum PlanetResource
+    public enum PlanetStat
     {
-        RawMaterials,
-        Energy,
+        RawResourceNodes,
+        EnergyCapacity,
     }
 
     /// <summary>
     /// Applies one explicit signed resource adjustment to the scoped planet.
     /// </summary>
-    [PersistableObject(Name = "AdjustPlanetResource")]
-    public sealed class AdjustPlanetResourceAction : GameAction
+    [PersistableObject(Name = "AdjustPlanetStat")]
+    public sealed class AdjustPlanetStatAction : GameAction
     {
         [PersistableAttribute]
-        public PlanetResource Resource { get; set; }
+        public PlanetStat Stat { get; set; }
 
         [PersistableAttribute]
-        public int Amount { get; set; }
+        public string PlanetInstanceID { get; set; }
+
+        [PersistableAttribute]
+        public string PlanetBinding { get; set; }
+
+        public int? Amount { get; set; }
+        public int? PercentOfCurrent { get; set; }
+
+        [PersistableInlineCollection]
+        public List<GameEventSelector> Selectors { get; set; } = new List<GameEventSelector>();
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
-            Planet planet = context.Activation?.GetTarget<Planet>();
-            if (planet == null)
+            if ((Amount.HasValue ? 1 : 0) + (PercentOfCurrent.HasValue ? 1 : 0) != 1)
                 throw new InvalidOperationException(
-                    "AdjustPlanetResource requires a planet target."
+                    "AdjustPlanetStat requires exactly one adjustment value."
+                );
+            IEnumerable<ISceneNode> selected = Selectors.SelectMany(selector =>
+                selector.Select(game, context.Random, context.Activation)
+            );
+            Planet explicitPlanet = !string.IsNullOrWhiteSpace(PlanetBinding)
+                ? context.Activation?.GetBindingReference<Planet>(PlanetBinding)
+                : game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID);
+            explicitPlanet ??= context.Activation?.GetTarget<Planet>();
+            if (explicitPlanet != null)
+                selected = new ISceneNode[] { explicitPlanet }.Concat(selected);
+            List<ISceneNode> nodes = selected.Distinct().ToList();
+            if (nodes.Count == 0)
+                throw new InvalidOperationException(
+                    "AdjustPlanetStat requires a planet, planet binding, target, or matching selector."
+                );
+            if (nodes.Any(node => node is not Planet))
+                throw new InvalidOperationException(
+                    "AdjustPlanetStat selectors may return only planets."
                 );
 
-            int oldValue;
-            int newValue;
-            PlanetStatType stat;
-            switch (Resource)
+            List<GameResult> results = new List<GameResult>();
+            foreach (Planet planet in nodes.Cast<Planet>())
             {
-                case PlanetResource.RawMaterials:
-                    stat = PlanetStatType.RawMaterial;
-                    oldValue = planet.NumRawResourceNodes;
-                    newValue = Math.Max(0, checked(oldValue + Amount));
+                int oldValue = GetValue(planet, Stat);
+                int adjustment = Amount ?? checked(oldValue * PercentOfCurrent.Value / 100);
+                int newValue = Math.Max(0, checked(oldValue + adjustment));
+                PlanetStatType resultStat;
+                if (Stat == PlanetStat.RawResourceNodes)
+                {
+                    resultStat = PlanetStatType.RawMaterial;
                     planet.NumRawResourceNodes = newValue;
-                    break;
-                case PlanetResource.Energy:
-                    stat = PlanetStatType.Energy;
-                    oldValue = planet.EnergyCapacity;
-                    newValue = Math.Max(0, checked(oldValue + Amount));
+                }
+                else
+                {
+                    resultStat = PlanetStatType.Energy;
                     planet.EnergyCapacity = newValue;
-                    break;
-                default:
-                    throw new InvalidOperationException(
-                        $"Unsupported planet resource '{Resource}'."
-                    );
+                }
+                Faction faction = FindOwner(game, planet);
+                results.Add(
+                    new PlanetStatChangedResult
+                    {
+                        Planet = planet,
+                        Faction = faction,
+                        Stat = resultStat,
+                        OldValue = oldValue,
+                        NewValue = newValue,
+                        Tick = game.CurrentTick,
+                    }
+                );
             }
-
-            Faction faction = FindOwner(game, planet);
-            return new List<GameResult>
-            {
-                new PlanetStatChangedResult
-                {
-                    Planet = planet,
-                    Faction = faction,
-                    Stat = stat,
-                    OldValue = oldValue,
-                    NewValue = newValue,
-                    Tick = game.CurrentTick,
-                },
-                new PlanetIncidentResult
-                {
-                    Planet = planet,
-                    IncidentType = IncidentType.Resource,
-                    ChangedStat = stat,
-                    OldValue = oldValue,
-                    NewValue = newValue,
-                    Severity = Math.Abs(newValue - oldValue),
-                    Tick = game.CurrentTick,
-                },
-            };
+            return results;
         }
+
+        internal static int GetValue(Planet planet, PlanetStat stat) =>
+            stat switch
+            {
+                PlanetStat.RawResourceNodes => planet.NumRawResourceNodes,
+                PlanetStat.EnergyCapacity => planet.EnergyCapacity,
+                _ => throw new InvalidOperationException($"Unsupported planet stat '{stat}'."),
+            };
 
         /// <summary>
         /// Resolves the faction that currently owns the planet.
@@ -94,10 +114,10 @@ namespace Rebellion.Game.Events
     }
 
     /// <summary>
-    /// Removes a probability-driven number of resource nodes from the selected planet.
+    /// Reduces selected planet stats by independently rolling once for each current point.
     /// </summary>
-    [PersistableObject(Name = "ReduceResources")]
-    public sealed class ReduceResourcesAction : GameAction
+    [PersistableObject(Name = "ReducePlanetStats")]
+    public sealed class ReducePlanetStatsAction : GameAction
     {
         [PersistableAttribute(Name = "LossProbabilityPerResource")]
         public double LossProbabilityPerResource { get; set; } = 0.05;
@@ -105,84 +125,79 @@ namespace Rebellion.Game.Events
         [PersistableAttribute(Name = "MinimumTotalLoss")]
         public int MinimumTotalLoss { get; set; } = 1;
 
+        [PersistableInlineCollection]
+        public List<PlanetStatReference> Stats { get; set; } = new List<PlanetStatReference>();
+
         /// <inheritdoc />
         public override List<GameResult> Execute(GameActionContext context)
         {
             GameRoot game = context.Game;
             Planet planet = context.Activation?.GetTarget<Planet>();
             if (planet == null)
-                throw new InvalidOperationException("ReduceResources requires a planet target.");
+                throw new InvalidOperationException("ReducePlanetStats requires a planet target.");
 
-            int oldRaw = planet.NumRawResourceNodes;
-            int oldEnergy = planet.EnergyCapacity;
-            if (oldRaw == 0 && oldEnergy == 0)
+            List<PlanetStat> selectedStats = Stats.Select(stat => stat.Stat).Distinct().ToList();
+            if (selectedStats.Count == 0)
+                throw new InvalidOperationException(
+                    "ReducePlanetStats requires at least one planet stat."
+                );
+            Dictionary<PlanetStat, int> oldValues = selectedStats.ToDictionary(
+                stat => stat,
+                stat => AdjustPlanetStatAction.GetValue(planet, stat)
+            );
+            if (oldValues.Values.Sum() == 0)
                 return new List<GameResult>();
 
-            int rawLoss = 0;
-            int energyLoss = 0;
             if (LossProbabilityPerResource < 0 || LossProbabilityPerResource > 1)
                 throw new InvalidOperationException(
-                    "ReduceResources.LossProbabilityPerResource must be between zero and one."
+                    "ReducePlanetStats.LossProbabilityPerResource must be between zero and one."
                 );
             if (MinimumTotalLoss < 0)
                 throw new InvalidOperationException(
-                    "ReduceResources.MinimumTotalLoss cannot be negative."
+                    "ReducePlanetStats.MinimumTotalLoss cannot be negative."
                 );
 
-            for (int iteration = 0; iteration < oldRaw; iteration++)
+            Dictionary<PlanetStat, int> losses = selectedStats.ToDictionary(stat => stat, _ => 0);
+            foreach (PlanetStat stat in selectedStats)
             {
-                if (RollProbability(context.Random, LossProbabilityPerResource))
-                    rawLoss++;
-            }
-            for (int iteration = 0; iteration < oldEnergy; iteration++)
-            {
-                if (RollProbability(context.Random, LossProbabilityPerResource))
-                    energyLoss++;
+                for (int iteration = 0; iteration < oldValues[stat]; iteration++)
+                {
+                    if (RollProbability(context.Random, LossProbabilityPerResource))
+                        losses[stat]++;
+                }
             }
 
-            int requiredLoss = Math.Min(MinimumTotalLoss, oldRaw + oldEnergy);
-            while (rawLoss + energyLoss < requiredLoss)
+            int requiredLoss = Math.Min(MinimumTotalLoss, oldValues.Values.Sum());
+            while (losses.Values.Sum() < requiredLoss)
             {
-                if (oldRaw - rawLoss > 0)
-                    rawLoss++;
-                else if (oldEnergy - energyLoss > 0)
-                    energyLoss++;
-                else
+                PlanetStat? available = selectedStats
+                    .Where(stat => oldValues[stat] - losses[stat] > 0)
+                    .Cast<PlanetStat?>()
+                    .FirstOrDefault();
+                if (!available.HasValue)
                     break;
+                losses[available.Value]++;
             }
-
-            planet.EnergyCapacity = oldEnergy - energyLoss;
-            planet.NumRawResourceNodes = oldRaw - rawLoss;
 
             List<GameResult> results = new List<GameResult>();
-            AddStatChange(
-                results,
-                game,
-                planet,
-                PlanetStatType.RawMaterial,
-                oldRaw,
-                planet.NumRawResourceNodes
-            );
-            AddStatChange(
-                results,
-                game,
-                planet,
-                PlanetStatType.Energy,
-                oldEnergy,
-                planet.EnergyCapacity
-            );
-            results.Add(
-                new PlanetIncidentResult
-                {
-                    Planet = planet,
-                    IncidentType = IncidentType.Disaster,
-                    Severity =
-                        oldRaw + oldEnergy - planet.NumRawResourceNodes - planet.EnergyCapacity,
-                    OldValue = oldRaw + oldEnergy,
-                    NewValue = planet.NumRawResourceNodes + planet.EnergyCapacity,
-                    Tick = game.CurrentTick,
-                }
-            );
+            foreach (PlanetStat stat in selectedStats)
+            {
+                int newValue = oldValues[stat] - losses[stat];
+                if (stat == PlanetStat.RawResourceNodes)
+                    planet.NumRawResourceNodes = newValue;
+                else
+                    planet.EnergyCapacity = newValue;
+                AddStatChange(
+                    results,
+                    game,
+                    planet,
+                    stat == PlanetStat.RawResourceNodes
+                        ? PlanetStatType.RawMaterial
+                        : PlanetStatType.Energy,
+                    oldValues[stat],
+                    newValue
+                );
+            }
             return results;
         }
 
@@ -218,6 +233,57 @@ namespace Rebellion.Game.Events
                     Tick = game.CurrentTick,
                 }
             );
+        }
+    }
+
+    [PersistableObject(Name = "Stat")]
+    public sealed class PlanetStatReference
+    {
+        [PersistableAttribute(Name = "Name")]
+        public PlanetStat Stat { get; set; }
+    }
+
+    [PersistableObject(Name = "RecordPlanetIncident")]
+    public sealed class RecordPlanetIncidentAction : GameAction
+    {
+        [PersistableAttribute(Name = "Type")]
+        public IncidentType IncidentType { get; set; }
+
+        public override List<GameResult> Execute(GameActionContext context)
+        {
+            Planet planet = context.Activation?.GetTarget<Planet>();
+            if (planet == null)
+                throw new InvalidOperationException(
+                    "RecordPlanetIncident requires a planet target."
+                );
+
+            List<PlanetStatChangedResult> statChanges = context
+                .Activation.Results.OfType<PlanetStatChangedResult>()
+                .Where(result => result.Planet == planet)
+                .ToList();
+            List<IGameEntity> destroyed = context
+                .Activation.Results.OfType<GameObjectDestroyedResult>()
+                .Where(result => result.Context == planet)
+                .Select(result => result.DestroyedObject)
+                .Where(result => result != null)
+                .ToList();
+            int severity =
+                statChanges.Sum(change => Math.Abs(change.NewValue - change.OldValue))
+                + destroyed.Count;
+            if (severity == 0)
+                return new List<GameResult>();
+
+            return new List<GameResult>
+            {
+                new PlanetIncidentResult
+                {
+                    Planet = planet,
+                    IncidentType = IncidentType,
+                    Severity = severity,
+                    DestroyedObjects = destroyed,
+                    Tick = context.Game.CurrentTick,
+                },
+            };
         }
     }
 }

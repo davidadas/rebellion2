@@ -13,32 +13,15 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Groups completed movement arrivals and translates them into faction reports.
     /// </summary>
-    internal sealed class ArrivalMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-        private readonly DeploymentMessageFactory _deployments;
-
-        public ArrivalMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries,
-            DeploymentMessageFactory deployments
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-            _deployments = deployments;
-        }
-
-        public void AddMessages(
+        private void AddArrivalMessages(
             IEnumerable<UnitArrivedResult> arrivals,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
         )
         {
+            UnitArrivedResult[] arrivalResults = arrivals.ToArray();
             var shipGroups =
                 new Dictionary<
                     (string Owner, string Destination, string Group),
@@ -61,12 +44,17 @@ namespace Rebellion.Game.Messages
             var unitDestinations =
                 new Dictionary<(string Owner, string Destination, string Group), Planet>();
 
-            foreach (UnitArrivedResult arrival in arrivals)
+            foreach (UnitArrivedResult arrival in arrivalResults)
             {
                 if (arrival.Unit is Fleet fleet)
                 {
-                    Faction faction = GetFaction(game, fleet.GetOwnerInstanceID());
-                    Add(deliveries, faction, CreateFleet(faction, fleet, arrival.Destination));
+                    Faction faction = GetArrivalFaction(game, fleet.GetOwnerInstanceID());
+                    AddArrivalDelivery(
+                        deliveries,
+                        faction,
+                        CreateFleet(faction, fleet, arrival.Destination),
+                        arrival
+                    );
                     continue;
                 }
                 if (arrival.Unit is CapitalShip ship)
@@ -97,51 +85,59 @@ namespace Rebellion.Game.Messages
                 }
                 if (arrival.Unit is Building building)
                 {
-                    Faction faction = GetFaction(game, building.GetOwnerInstanceID());
+                    Faction faction = GetArrivalFaction(game, building.GetOwnerInstanceID());
                     Message message =
                         building.BuildingType == BuildingType.Headquarters
                             ? CreateHeadquarters(faction, building, arrival.Destination)
-                            : _deployments.CreateFacilityMessage(
-                                faction,
-                                building,
-                                arrival.Destination
-                            );
-                    Add(deliveries, faction, message);
+                            : this.CreateFacilityMessage(faction, building, arrival.Destination);
+                    AddArrivalDelivery(deliveries, faction, message, arrival);
                 }
             }
 
             foreach (var group in shipGroups)
             {
-                Faction faction = GetFaction(game, group.Key.Owner);
-                Add(
+                Faction faction = GetArrivalFaction(game, group.Key.Owner);
+                AddArrivalDelivery(
                     deliveries,
                     faction,
-                    CreateShips(faction, group.Value, shipDestinations[group.Key])
+                    CreateShips(faction, group.Value, shipDestinations[group.Key]),
+                    arrivalResults
+                        .Where(result => group.Value.Contains(result.Unit as CapitalShip))
+                        .Cast<GameResult>()
+                        .ToArray()
                 );
             }
             foreach (var group in personnelGroups)
             {
-                Faction faction = GetFaction(game, group.Key.Owner);
-                Add(
+                Faction faction = GetArrivalFaction(game, group.Key.Owner);
+                AddArrivalDelivery(
                     deliveries,
                     faction,
-                    CreatePersonnel(faction, group.Value, personnelDestinations[group.Key], game)
+                    CreatePersonnel(faction, group.Value, personnelDestinations[group.Key], game),
+                    arrivalResults
+                        .Where(result => group.Value.Contains(result.Unit))
+                        .Cast<GameResult>()
+                        .ToArray()
                 );
             }
             foreach (var group in unitGroups)
             {
-                Faction faction = GetFaction(game, group.Key.Owner);
-                Add(
+                Faction faction = GetArrivalFaction(game, group.Key.Owner);
+                AddArrivalDelivery(
                     deliveries,
                     faction,
-                    CreateUnits(faction, group.Value, unitDestinations[group.Key])
+                    CreateUnits(faction, group.Value, unitDestinations[group.Key]),
+                    arrivalResults
+                        .Where(result => group.Value.Contains(result.Unit))
+                        .Cast<GameResult>()
+                        .ToArray()
                 );
             }
         }
 
         private Message CreateFleet(Faction faction, Fleet fleet, Planet destination)
         {
-            Message message = Build(
+            Message message = BuildArrivalMessage(
                 MessageResultType.FleetArrived,
                 faction,
                 new Dictionary<string, string>
@@ -150,8 +146,8 @@ namespace Rebellion.Game.Messages
                     { "system", destination?.GetDisplayName() ?? string.Empty },
                 }
             );
-            SetLocation(message, destination, fleet);
-            return _deliveries.WithNotification(message, AdvisorNotificationType.FleetArrived);
+            SetArrivalLocation(message, destination, fleet);
+            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.FleetArrived);
         }
 
         private Message CreateShips(
@@ -162,7 +158,7 @@ namespace Rebellion.Game.Messages
         {
             CapitalShip[] array =
                 ships?.Where(ship => ship != null).ToArray() ?? Array.Empty<CapitalShip>();
-            Message message = Build(
+            Message message = BuildArrivalMessage(
                 MessageResultType.ShipsArrived,
                 faction,
                 new Dictionary<string, string>
@@ -171,8 +167,8 @@ namespace Rebellion.Game.Messages
                     { "system", destination?.GetDisplayName() ?? string.Empty },
                 }
             );
-            SetLocation(message, destination, array.FirstOrDefault());
-            return _deliveries.WithNotification(message, AdvisorNotificationType.UnitsArrived);
+            SetArrivalLocation(message, destination, array.FirstOrDefault());
+            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
         private Message CreateUnits(
@@ -184,7 +180,7 @@ namespace Rebellion.Game.Messages
             IGameEntity[] array = units?.Where(unit => unit != null).ToArray();
             if (array == null || array.Length == 0)
                 return null;
-            Message message = Build(
+            Message message = BuildArrivalMessage(
                 MessageResultType.UnitsArrived,
                 faction,
                 new Dictionary<string, string>
@@ -193,8 +189,8 @@ namespace Rebellion.Game.Messages
                     { "system", destination?.GetDisplayName() ?? string.Empty },
                 }
             );
-            SetLocation(message, destination, array[0] as ISceneNode);
-            return _deliveries.WithNotification(message, AdvisorNotificationType.UnitsArrived);
+            SetArrivalLocation(message, destination, array[0] as ISceneNode);
+            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
         private Message CreatePersonnel(
@@ -219,7 +215,7 @@ namespace Rebellion.Game.Messages
                 reporter == null ? MessageResultType.PersonnelArrived
                 : listed.Length == 0 ? MessageResultType.PersonnelArrivedByOfficer
                 : MessageResultType.PersonnelArrivedByOfficerWithCompany;
-            Message message = Build(
+            Message message = BuildArrivalMessage(
                 resultType,
                 faction,
                 new Dictionary<string, string>
@@ -237,10 +233,14 @@ namespace Rebellion.Game.Messages
                     game.Random
                 )
             );
-            SetLocation(message, destination, reporter ?? array[0] as ISceneNode);
+            SetArrivalLocation(message, destination, reporter ?? array[0] as ISceneNode);
             return reporter == null
-                ? _deliveries.WithNotification(message, AdvisorNotificationType.FieldPersonnel)
-                : _deliveries.WithSubject(message, AdvisorSubjectNotification.Report, reporter);
+                ? _deliveryBuilder.WithNotification(message, AdvisorNotificationType.FieldPersonnel)
+                : _deliveryBuilder.WithSubject(
+                    message,
+                    AdvisorSubjectNotification.Report,
+                    reporter
+                );
         }
 
         private Message CreateHeadquarters(
@@ -249,11 +249,11 @@ namespace Rebellion.Game.Messages
             Planet destination
         )
         {
-            MessageDefinition definition = _definitions.GetDefinition(
+            MessageDefinition definition = _definitionResolver.GetDefinition(
                 MessageResultType.HeadquartersArrived,
                 factionInstanceId: faction?.InstanceID
             );
-            Message message = Build(
+            Message message = BuildArrivalMessage(
                 definition,
                 faction,
                 new Dictionary<string, string>
@@ -262,26 +262,26 @@ namespace Rebellion.Game.Messages
                 },
                 imageOverride: headquarters?.MessageImagePath
             );
-            SetLocation(message, destination, headquarters);
-            return _deliveries.WithNotification(message, AdvisorNotificationType.UnitsArrived);
+            SetArrivalLocation(message, destination, headquarters);
+            return _deliveryBuilder.WithNotification(message, AdvisorNotificationType.UnitsArrived);
         }
 
-        private Message Build(
+        private Message BuildArrivalMessage(
             MessageResultType resultType,
             Faction faction,
             Dictionary<string, string> values,
             string overlayImagePath = null,
             string officerVoicePath = null
         ) =>
-            Build(
-                _definitions.GetDefinition(resultType),
+            BuildArrivalMessage(
+                _definitionResolver.GetDefinition(resultType),
                 faction,
                 values,
                 overlayImagePath: overlayImagePath,
                 officerVoicePath: officerVoicePath
             );
 
-        private Message Build(
+        private Message BuildArrivalMessage(
             MessageDefinition definition,
             Faction faction,
             Dictionary<string, string> values,
@@ -290,7 +290,7 @@ namespace Rebellion.Game.Messages
             string officerVoicePath = null
         )
         {
-            Message message = _templates.Build(
+            Message message = _templateBuilder.Build(
                 definition,
                 faction,
                 values,
@@ -298,7 +298,7 @@ namespace Rebellion.Game.Messages
                 overlayImagePath: overlayImagePath,
                 officerVoicePath: officerVoicePath
             );
-            return _deliveries.WithNotification(
+            return _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
@@ -333,7 +333,7 @@ namespace Rebellion.Game.Messages
             items.Add(item);
         }
 
-        private static void SetLocation(Message message, Planet planet, ISceneNode target)
+        private static void SetArrivalLocation(Message message, Planet planet, ISceneNode target)
         {
             if (message == null)
                 return;
@@ -341,13 +341,14 @@ namespace Rebellion.Game.Messages
             message.NavigationTargetInstanceID = (target ?? planet)?.InstanceID;
         }
 
-        private void Add(
+        private void AddArrivalDelivery(
             ICollection<MessageDelivery> deliveries,
             Faction faction,
-            Message message
-        ) => _deliveries.Add(deliveries, faction, message);
+            Message message,
+            params GameResult[] sourceResults
+        ) => _deliveryBuilder.Add(deliveries, faction, message, sourceResults);
 
-        private static Faction GetFaction(GameRoot game, string ownerID) =>
+        private static Faction GetArrivalFaction(GameRoot game, string ownerID) =>
             string.IsNullOrEmpty(ownerID)
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == ownerID);

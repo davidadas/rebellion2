@@ -9,24 +9,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates uprising and popular-support ownership results into faction messages.
     /// </summary>
-    internal sealed class PoliticalMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinitionResolver _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public PoliticalMessageFactory(
-            MessageDefinitionResolver definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions;
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddUprisingMessages(
+        private void AddUprisingMessages(
             IEnumerable<PlanetNearUprisingResult> nearResults,
             IEnumerable<PlanetUprisingStartedResult> startedResults,
             IEnumerable<PlanetUprisingEndedResult> endedResults,
@@ -36,20 +21,31 @@ namespace Rebellion.Game.Messages
         {
             foreach (PlanetNearUprisingResult result in nearResults)
             {
-                Faction controller = GetFaction(game, result.Planet?.OwnerInstanceID);
-                Add(deliveries, controller, CreateNearUprising(controller, result));
+                Faction controller = GetPoliticalFaction(game, result.Planet?.OwnerInstanceID);
+                AddPoliticalDelivery(
+                    deliveries,
+                    controller,
+                    CreateNearUprising(controller, result),
+                    result
+                );
             }
 
             foreach (PlanetUprisingStartedResult result in startedResults)
             {
-                Faction controller = GetFaction(game, result.Planet?.OwnerInstanceID);
-                Add(deliveries, controller, CreateUprisingStarted(controller, result, controller));
+                Faction controller = GetPoliticalFaction(game, result.Planet?.OwnerInstanceID);
+                AddPoliticalDelivery(
+                    deliveries,
+                    controller,
+                    CreateUprisingStarted(controller, result, controller),
+                    result
+                );
                 if (result.InstigatorFaction?.InstanceID != controller?.InstanceID)
                 {
-                    Add(
+                    AddPoliticalDelivery(
                         deliveries,
                         result.InstigatorFaction,
-                        CreateUprisingStarted(result.InstigatorFaction, result, controller)
+                        CreateUprisingStarted(result.InstigatorFaction, result, controller),
+                        result
                     );
                 }
             }
@@ -57,12 +53,17 @@ namespace Rebellion.Game.Messages
             foreach (PlanetUprisingEndedResult result in endedResults)
             {
                 Faction controller =
-                    GetFaction(game, result.Planet?.OwnerInstanceID) ?? result.Faction;
-                Add(deliveries, controller, CreateUprisingEnded(controller, result, controller));
+                    GetPoliticalFaction(game, result.Planet?.OwnerInstanceID) ?? result.Faction;
+                AddPoliticalDelivery(
+                    deliveries,
+                    controller,
+                    CreateUprisingEnded(controller, result, controller),
+                    result
+                );
             }
         }
 
-        public void AddOwnershipMessages(
+        private void AddOwnershipMessages(
             IEnumerable<PlanetOwnershipChangedResult> results,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
@@ -79,7 +80,7 @@ namespace Rebellion.Game.Messages
                         recipient == result.NewOwner ? CreateJoined(result)
                         : result.NewOwner != null ? CreateJoinedEnemy(result, recipient)
                         : CreateNeutrality(result, recipient);
-                    Add(deliveries, recipient, message);
+                    AddPoliticalDelivery(deliveries, recipient, message, result);
                 }
             }
         }
@@ -88,7 +89,7 @@ namespace Rebellion.Game.Messages
         {
             if (result == null)
                 return null;
-            return Build(
+            return BuildPoliticalMessage(
                 MessageResultType.NearUprising,
                 faction,
                 new Dictionary<string, string>
@@ -112,7 +113,7 @@ namespace Rebellion.Game.Messages
                 faction?.InstanceID == controller?.InstanceID
                     ? AdvisorNotificationType.NegativePopularSupport
                     : AdvisorNotificationType.PositivePopularSupport;
-            return Build(
+            return BuildPoliticalMessage(
                 MessageResultType.UprisingStarted,
                 faction,
                 new Dictionary<string, string>
@@ -133,7 +134,7 @@ namespace Rebellion.Game.Messages
         {
             if (result == null)
                 return null;
-            return Build(
+            return BuildPoliticalMessage(
                 MessageResultType.UprisingEnded,
                 faction,
                 new Dictionary<string, string>
@@ -151,7 +152,7 @@ namespace Rebellion.Game.Messages
         {
             if (result?.NewOwner == null)
                 return null;
-            return Build(
+            return BuildPoliticalMessage(
                 MessageResultType.PlanetJoinedBySupport,
                 result.NewOwner,
                 Values(result.NewOwner, result.Planet?.GetDisplayName()),
@@ -168,7 +169,7 @@ namespace Rebellion.Game.Messages
                 || recipient.InstanceID == result.NewOwner.InstanceID
             )
                 return null;
-            return Build(
+            return BuildPoliticalMessage(
                 MessageResultType.PlanetJoinedEnemyBySupport,
                 recipient,
                 Values(result.NewOwner, result.Planet?.GetDisplayName()),
@@ -182,7 +183,7 @@ namespace Rebellion.Game.Messages
         {
             if (result?.PreviousOwner == null || result.NewOwner != null || recipient == null)
                 return null;
-            return Build(
+            return BuildPoliticalMessage(
                 MessageResultType.PlanetDeclaredNeutralityBySupport,
                 recipient,
                 Values(result.PreviousOwner, result.Planet?.GetDisplayName()),
@@ -191,7 +192,7 @@ namespace Rebellion.Game.Messages
             );
         }
 
-        private Message Build(
+        private Message BuildPoliticalMessage(
             MessageResultType resultType,
             Faction faction,
             Dictionary<string, string> values,
@@ -200,21 +201,22 @@ namespace Rebellion.Game.Messages
             Faction imageFaction = null
         )
         {
-            MessageDefinition definition = _definitions.GetDefinition(resultType);
-            Message message = _templates.Build(definition, faction, values, imageFaction);
+            MessageDefinition definition = _definitionResolver.GetDefinition(resultType);
+            Message message = _templateBuilder.Build(definition, faction, values, imageFaction);
             if (message != null)
             {
                 message.EventLocationInstanceID = planetInstanceID;
                 message.NavigationTargetInstanceID = planetInstanceID;
             }
-            return _deliveries.WithNotification(message, notification);
+            return _deliveryBuilder.WithNotification(message, notification);
         }
 
-        private void Add(
+        private void AddPoliticalDelivery(
             ICollection<MessageDelivery> deliveries,
             Faction faction,
-            Message message
-        ) => _deliveries.Add(deliveries, faction, message);
+            Message message,
+            GameResult sourceResult
+        ) => _deliveryBuilder.Add(deliveries, faction, message, sourceResult);
 
         private static Dictionary<string, string> Values(Faction faction, string system) =>
             new Dictionary<string, string>
@@ -238,7 +240,7 @@ namespace Rebellion.Game.Messages
             return game.GetFactions().Where(faction => recipientIds.Contains(faction.InstanceID));
         }
 
-        private static Faction GetFaction(GameRoot game, string instanceID) =>
+        private static Faction GetPoliticalFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);

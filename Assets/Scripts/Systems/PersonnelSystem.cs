@@ -53,7 +53,10 @@ namespace Rebellion.Systems
             foreach (ISceneNode person in live)
             {
                 _game.AddToVoid(person);
-                _game.UnitLifecycle.SetStatus(person, VoidStatus.Retired);
+                if (person is Officer officer)
+                    officer.IsRetired = true;
+                else if (person is SpecialForces specialForces)
+                    specialForces.IsRetired = true;
             }
 
             return true;

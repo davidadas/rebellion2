@@ -11,24 +11,9 @@ namespace Rebellion.Game.Messages
     /// <summary>
     /// Translates strategic objectives and planet incidents into faction reports.
     /// </summary>
-    internal sealed class StrategicMessageFactory
+    public partial class MessageFactory
     {
-        private readonly MessageDefinition[] _definitions;
-        private readonly MessageTemplateBuilder _templates;
-        private readonly MessageDeliveryBuilder _deliveries;
-
-        public StrategicMessageFactory(
-            IEnumerable<MessageDefinition> definitions,
-            MessageTemplateBuilder templates,
-            MessageDeliveryBuilder deliveries
-        )
-        {
-            _definitions = definitions?.ToArray() ?? Array.Empty<MessageDefinition>();
-            _templates = templates;
-            _deliveries = deliveries;
-        }
-
-        public void AddObjectiveMessages(
+        private void AddObjectiveMessages(
             IEnumerable<PlanetOwnershipChangedResult> ownershipResults,
             IEnumerable<HeadquartersDestroyedResult> headquartersResults,
             GameRoot game,
@@ -49,7 +34,7 @@ namespace Rebellion.Game.Messages
 
                 foreach (Faction recipient in GetOwnershipRecipients(result, game))
                 {
-                    Message message = Build(
+                    Message message = BuildStrategicMessage(
                         definition,
                         recipient,
                         new Dictionary<string, string>
@@ -63,8 +48,8 @@ namespace Rebellion.Game.Messages
                         },
                         result.NewOwner
                     );
-                    SetLocation(message, result.Planet, result.Planet);
-                    _deliveries.Add(deliveries, recipient, message);
+                    SetStrategicLocation(message, result.Planet, result.Planet);
+                    _deliveryBuilder.Add(deliveries, recipient, message, result);
                 }
             }
 
@@ -86,7 +71,7 @@ namespace Rebellion.Game.Messages
                         .Distinct()
                 )
                 {
-                    Message message = Build(
+                    Message message = BuildStrategicMessage(
                         definition,
                         recipient,
                         new Dictionary<string, string>
@@ -97,13 +82,13 @@ namespace Rebellion.Game.Messages
                         },
                         result.Attacker
                     );
-                    SetLocation(message, result.Planet, result.Headquarters);
-                    _deliveries.Add(deliveries, recipient, message);
+                    SetStrategicLocation(message, result.Planet, result.Headquarters);
+                    _deliveryBuilder.Add(deliveries, recipient, message, result);
                 }
             }
         }
 
-        public void AddIncidentMessages(
+        private void AddIncidentMessages(
             IEnumerable<PlanetIncidentResult> results,
             GameRoot game,
             ICollection<MessageDelivery> deliveries
@@ -111,7 +96,7 @@ namespace Rebellion.Game.Messages
         {
             foreach (PlanetIncidentResult result in results)
             {
-                Faction recipient = GetFaction(game, result.Planet?.OwnerInstanceID);
+                Faction recipient = GetStrategicFaction(game, result.Planet?.OwnerInstanceID);
                 if (recipient == null)
                     continue;
                 MessageResultType resultType = result.IncidentType switch
@@ -137,7 +122,7 @@ namespace Rebellion.Game.Messages
                 if (definition == null)
                     continue;
 
-                Message message = Build(
+                Message message = BuildStrategicMessage(
                     definition,
                     recipient,
                     new Dictionary<string, string>
@@ -153,12 +138,12 @@ namespace Rebellion.Game.Messages
                     },
                     recipient
                 );
-                SetLocation(
+                SetStrategicLocation(
                     message,
                     result.Planet,
                     result.DestroyedObjects.OfType<ISceneNode>().FirstOrDefault()
                 );
-                _deliveries.Add(deliveries, recipient, message);
+                _deliveryBuilder.Add(deliveries, recipient, message, result);
             }
         }
 
@@ -177,21 +162,25 @@ namespace Rebellion.Game.Messages
                 && Matches(definition.FactionInstanceID, factionInstanceID)
             );
 
-        private Message Build(
+        private Message BuildStrategicMessage(
             MessageDefinition definition,
             Faction recipient,
             Dictionary<string, string> values,
             Faction imageFaction
         )
         {
-            Message message = _templates.Build(definition, recipient, values, imageFaction);
-            return _deliveries.WithNotification(
+            Message message = _templateBuilder.Build(definition, recipient, values, imageFaction);
+            return _deliveryBuilder.WithNotification(
                 message,
                 AdvisorNotificationPolicy.GetDefault(definition?.ResultType)
             );
         }
 
-        private static void SetLocation(Message message, ISceneNode planet, ISceneNode target)
+        private static void SetStrategicLocation(
+            Message message,
+            ISceneNode planet,
+            ISceneNode target
+        )
         {
             if (message == null)
                 return;
@@ -218,7 +207,7 @@ namespace Rebellion.Game.Messages
             string.IsNullOrWhiteSpace(selector)
             || string.Equals(selector, value, StringComparison.Ordinal);
 
-        private static Faction GetFaction(GameRoot game, string instanceID) =>
+        private static Faction GetStrategicFaction(GameRoot game, string instanceID) =>
             string.IsNullOrEmpty(instanceID)
                 ? null
                 : game.GetFactions().FirstOrDefault(faction => faction.InstanceID == instanceID);

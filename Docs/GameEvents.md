@@ -1,15 +1,14 @@
 # Creating custom game events
 
-Game events combine four independent pieces of data:
+Game events compose a schedule or typed result triggers, optional iteration, conditions, and
+actions. The event catalog is referenced by `GameEventsPath` in a content pack's `pack.xml`; the
+standard pack stores it at `Shared/Data/game-events.xml`. Every event requires a stable, unique
+`InstanceID`. Player-facing names belong to messages, not event definitions.
 
-- A schedule or one or more typed result triggers decide when the event is evaluated.
-- Conditions decide whether the current game state permits execution.
-- An optional target supplies a planet to target-aware actions.
-- Actions change game state and emit ordinary game results.
-
-The event catalog is referenced by `GameEventsPath` in the content pack's `pack.xml`. The standard
-pack stores it at `Shared/Data/game-events.xml`. Every event needs a stable, unique `InstanceID`.
-`DisplayName` is for diagnostics and tooling; messages provide their own player-facing subject.
+An event executes once by default. Use `MinimumRuns` by itself for an exact number of runs,
+`MaximumRuns` for a bounded recurring event, or `UnlimitedRuns="true"` for an unbounded one. When
+both bounds are present, `MinimumRuns` declares the lower valid bound and must not exceed the
+maximum. Run counts advance only after at least one activation executes its actions.
 
 ## Scheduling
 
@@ -22,27 +21,25 @@ pack stores it at `Shared/Data/game-events.xml`. Every event needs a stable, uni
 <Schedule><After EventInstanceID="MOD_PREDECESSOR" DelayTicks="20"/></Schedule>
 <Schedule>
   <AfterAll DelayTicks="20">
-    <Events>
-      <Event EventInstanceID="MOD_FIRST_PREDECESSOR"/>
-      <Event EventInstanceID="MOD_SECOND_PREDECESSOR"/>
-    </Events>
+    <Event EventInstanceID="MOD_FIRST_PREDECESSOR"/>
+    <Event EventInstanceID="MOD_SECOND_PREDECESSOR"/>
   </AfterAll>
 </Schedule>
 ```
 
-`At` uses an absolute campaign tick. `After` starts after the named event completes. `AfterAll`
-starts its delay when its final dependency completes; `AfterAny` starts its delay when its first
-dependency completes. `Every` and `Random` repeat after each successful execution unless the event declares `RunsOnce="true"`.
-Events without a schedule are immediately eligible. Failed conditions leave an event pending.
+`At` is an absolute campaign tick. `After` begins after the named event first executes.
+`AfterAll` anchors to the last listed dependency to execute; `AfterAny` anchors to the first.
+`Every` and `Random` provide the next delay for recurring events. Events without a schedule are
+immediately eligible. Each event definition owns one persisted schedule and execution count,
+including events that iterate over multiple targets.
 
 ## Result triggers and bindings
 
-Use `Triggers` to react to simulation results. Each trigger declares which result values should be
-published and the binding name each value receives:
+`Triggers` reacts to simulation results. Each trigger exposes selected result arguments under
+event-local binding names:
 
 ```xml
-<GameEvent>
-  <DisplayName>Arrival Ceremony</DisplayName>
+<GameEvent UnlimitedRuns="true">
   <InstanceID>MOD_ARRIVAL_CEREMONY</InstanceID>
   <Triggers>
     <Trigger Event="core:unit.arrived">
@@ -57,8 +54,10 @@ published and the binding name each value receives:
     <EvaluateBinding Binding="$destination" Comparison="Equal" ExpectedValue="CHANDRILA"/>
   </Conditionals>
   <Actions>
-    <SendMessage RecipientFactionInstanceID="FNALL1" SubjectInstanceID="MON_MOTHMA"
-                 LocationInstanceID="CHANDRILA" Type="Mission">
+    <SendMessage RecipientFactionInstanceID="FNALL1"
+                 SubjectInstanceID="MON_MOTHMA"
+                 LocationInstanceID="CHANDRILA"
+                 Type="Mission">
       <Subject>Mon Mothma Arrives</Subject>
       <Body>Mon Mothma has arrived on Chandrila.</Body>
       <AdvisorNotification Preset="SubjectReport"/>
@@ -68,82 +67,90 @@ published and the binding name each value receives:
 ```
 
 Supported contracts include `core:unit.arrived`, `core:mission.completed`,
-`core:duel.completed`, `core:officer.capture-changed`, and `core:force.discovered`. An explicit,
-non-reflective registry maps each stable contract and argument to its simulation result. Binding
-references always use a `$` prefix. A result-triggered event reacts to every match unless it
-declares `RunsOnce="true"`.
+`core:duel.completed`, `core:officer.capture-changed`, and `core:force.discovered`. A typed,
+non-reflective registry defines each contract and its available arguments. Binding references use
+a `$` prefix. Multiple triggers are alternatives; each matching result can activate the event.
 
 ## Conditions
 
-Sibling conditions are an implicit AND. Composite conditions contain their children directly:
+Sibling conditions are an implicit AND. Composite conditions contain children directly:
 
 ```xml
 <Conditionals>
   <IsOwned PlanetInstanceID="NABOO" FactionInstanceID="FNALL1"/>
-  <Not><IsOnMission UnitInstanceID="LEIA_ORGANA"/></Not>
-  <Any>
-    <IsInjured OfficerInstanceID="LEIA_ORGANA"/>
-    <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
-  </Any>
+  <Not>
+    <Any>
+      <IsOnMission UnitInstanceID="LEIA_ORGANA"/>
+      <IsCaptured OfficerInstanceID="LEIA_ORGANA"/>
+      <IsInTransit UnitInstanceID="LEIA_ORGANA"/>
+    </Any>
+  </Not>
 </Conditionals>
 ```
 
-`IsOwned` requires the explicit planet or planet binding to have a non-neutral faction owner.
-Adding `FactionInstanceID` requires that specific owner. Other conditions include `All`, `Any`,
-`Not`, `Xor`, `AreOnSamePlanet`, `AreOnOpposingFactions`, `AreOnPlanet`, `IsAtLocation`,
-`IsOnMission`, `IsInTransit`, `IsCaptured`, `IsKilled`, `IsInjured`, `IsForceEligible`,
-`IsCapturedBy`, `HasForceRank`, `IsEventComplete`, `EvaluateEventVariable`, and
-`EvaluateBinding`.
+`IsOwned` always names a planet or planet binding; its optional faction restricts the owner.
+`ShareParent` compares immediate parents. `ShareAncestor Type="Planet"` compares the nearest
+ancestor of that type. Other conditions include `All`, `Any`, `Not`, `Xor`, `IsAtLocation`,
+`IsOnMission`, `IsInTransit`, `IsCaptured`, `IsCapturedBy`, `IsKilled`, `IsInjured`,
+`IsForceEligible`, `HasForceRank`, `CompareOfficerStat`, `ComparePlanetStat`,
+`IsEventComplete`, `EvaluateEventVariable`, and `EvaluateBinding`.
 
-## Targets and selectors
+## Iteration and selectors
 
-Targets establish the scope used by target-aware actions:
+`ForEach` selects activation targets and binds each one as `$target`:
 
 ```xml
-<Target><Planet InstanceID="NABOO"/></Target>
-<Target><RandomPlanets Count="1" SystemType="CoreSystem"/></Target>
-<Target><EachPlanet/></Target>
+<ForEach>
+  <SelectRandom Count="1">
+    <SelectPlanets SystemType="CoreSystem"/>
+  </SelectRandom>
+</ForEach>
 ```
 
-`EachPlanet` maintains independent persisted schedule state for every surviving planet.
-`RandomPlanets` currently requires `Count="1"`; the schema rejects unsupported counts instead of
-silently applying incomplete behavior.
-
-Unit actions use reusable selectors. `SelectUnits` returns every match, while
-`SelectRandomUnits` applies probability and count limits to the union of its queries:
+Typed selectors include planets, planet systems, fleets, missions, officers, special forces,
+capital ships, starfighters, regiments, buildings, manufacturing orders, and bindings.
+`SelectRandom` deduplicates the union of its children, uses deterministic instance-ID ordering,
+and applies its probability and count bounds. Actions accept only domain-compatible selectors;
+the schema rejects statically incompatible combinations and runtime bindings are type checked.
 
 ```xml
 <DestroyUnits>
-  <SelectRandomUnits ChancePercent="25" MinimumCount="1" MaximumCount="3">
-    <SelectUnits PlanetInstanceID="NABOO" UnitCategory="PlanetaryDefense"/>
-    <SelectUnits PlanetInstanceID="NABOO" UnitCategory="Regiment"/>
-  </SelectRandomUnits>
+  <SelectRandom ChancePercent="25" MinimumCount="1" MaximumCount="3">
+    <SelectBuildings PlanetBinding="$target" Category="PlanetaryDefense"/>
+    <SelectRegiments PlanetBinding="$target"/>
+  </SelectRandom>
 </DestroyUnits>
 ```
 
-Destroyed units enter their owning faction's void pool with a `Destroyed` status. They remain
-registered for save data and historical references but are no longer attached to active play.
+Destroyed objects are deleted from game state. `AddToVoid` instead retains a faction-owned node
+outside the active galaxy, and `RemoveFromVoid` attempts to restore it to its previous valid
+parent. A void pool records no status or reason.
 
 ## Actions
 
-Actions run in authored order. Later actions see state and results produced earlier in the same
-event activation. The principal actions are:
+Actions execute in authored order, and later actions can consume results produced earlier in the
+same activation. Principal actions include:
 
-- Composite: `If` and weighted `Random` outcomes.
+- Composite: `If` with `Conditions`, `Actions`, and `Else`; and weighted `Random` outcomes with
+  optional `When` guards.
 - Event state: `SetEventVariable`.
-- Units: `DestroyUnits`, `RequestMovement`, `AddToVoid`, `SetStatus`, and `RemoveFromVoid`.
-- Officers: `SetCaptivity`, `AdjustOfficerRating`, `SetOfficerJediState`,
-  `ApplyOfficerInjury`, `SetOfficerImageSet`, `SetOfficerVoiceSet`, and `TriggerDuel`.
-- Resources and intelligence: `AdjustPlanetResource`, `ReduceResources`, and
-  `GatherInformantIntelligence`.
+- Units: `DestroyUnits`, `RequestMovement`, `AddToVoid`, and `RemoveFromVoid`.
+- Officers: `SetCaptureStatus`, `SetOfficerStatus`, `AdjustOfficerStat`,
+  `SetOfficerJediState`, `ApplyOfficerInjury`, `SetOfficerImageSet`, `SetOfficerVoiceSet`, and
+  `TriggerDuel`.
+- Planets and intelligence: `AdjustPlanetStat`, `ReducePlanetStats`, `RecordPlanetIncident`, and
+  `RevealToFaction`.
 - Missions and messages: `CreateMission`, `SendMessage`, and
   `SuppressNextAutomaticMessage`.
 
-The schema is the authoritative list of required attributes, child elements, and allowed nesting.
+`AdjustOfficerStat` and `AdjustPlanetStat` each require exactly one signed calculation mode, such
+as `Amount`, `PercentOfBase`, or `PercentOfCurrent` where supported. Their matching comparators use
+the same closed stat vocabulary. The schema is authoritative for required attributes, children,
+and nesting.
 
 ## Messages
 
-`SendMessage` uses `Subject` and `Body`. Media is explicit and consistently structured:
+`SendMessage` keeps presentation payloads explicit:
 
 ```xml
 <SendMessage SubjectInstanceID="LUKE_SKYWALKER" Type="Mission">
@@ -157,15 +164,16 @@ The schema is the authoritative list of required attributes, child elements, and
 </SendMessage>
 ```
 
-`BackgroundImage` requires exactly one theme `Key`, explicit content `Path`, or runtime `Binding`.
-`OfficerVoice` similarly requires either an explicit `Path` or a voice-set `Preset`. Advisor animation overrides belong to the
-transient delivery presentation and are never persisted on `Message`.
+Media references accept the schema-defined `Key`, `Path`, `Binding`, or `Preset` forms. Advisor
+metadata remains transient delivery state rather than persisted message state.
+`SuppressNextAutomaticMessage` removes one automatic candidate matching its source result,
+message result type, and optional recipient; it never suppresses authored messages.
 
 ## Definition-backed missions
 
 Reusable event missions live in the catalog referenced by `MissionDefinitionsPath`. Definitions
-own duration, cancellation policy, and success rules. Events create an instance with the normal
-target, participant, and decoy collections:
+own duration, cancellation policy, and resolution. Events create concrete instances using the
+normal target and participant collections:
 
 ```xml
 <CreateMission MissionDefinitionID="MOD_OFFICER_CAPTURE">
@@ -176,13 +184,13 @@ target, participant, and decoy collections:
 </CreateMission>
 ```
 
-Mission instances persist their definition ID and concrete assignments, then reconnect to the
-content definition after loading. Mission completion emits a normal `MissionCompletedResult`; a
-separate result-triggered event applies story-specific consequences.
+Mission instances persist their definition ID and concrete assignments, then reconnect to content
+after loading. Mission completion emits the normal result; result-triggered events apply any
+story-specific consequences.
 
 ## Validation and compatibility
 
 `Content/Application/Schemas/game-events.xsd` validates the catalog while the pack loads. Run the
-content repository's `./build.sh` before distribution. Event instance IDs and variable keys become
-save-game state, so keep them stable after release and test both a new campaign and a save/load
-cycle when changing event content.
+content repository's `./build.sh` before distribution. Event IDs and variable keys become save
+state, so keep them stable after release and test both a new campaign and a save/load cycle when
+changing event content.

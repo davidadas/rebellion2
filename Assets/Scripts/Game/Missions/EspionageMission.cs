@@ -199,7 +199,7 @@ namespace Rebellion.Game.Missions
 
             return new List<GameResult>
             {
-                new MissionSystemIntelligenceResult
+                new SystemsRevealedResult
                 {
                     Tick = game.CurrentTick,
                     MissionInstanceID = InstanceID,

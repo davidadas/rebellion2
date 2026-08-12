@@ -33,22 +33,10 @@ namespace Rebellion.Game.Events
             foreach (ISceneNode root in destroyedRoots)
             {
                 root.Traverse(unit => destroyed.Add(unit));
-                game.AddToVoid(root);
+                game.DeleteNode(root);
             }
-            foreach (IMovable unit in destroyed.OfType<IMovable>())
-                game.UnitLifecycle.SetStatus(unit, VoidStatus.Destroyed);
 
             Planet planet = context.Activation?.GetTarget<Planet>();
-            PlanetIncidentResult incident = context
-                .Activation?.Results.OfType<PlanetIncidentResult>()
-                .LastOrDefault(result =>
-                    result.Planet == planet && result.IncidentType == IncidentType.Disaster
-                );
-            if (incident != null)
-            {
-                incident.DestroyedObjects.AddRange(destroyed.Cast<IGameEntity>());
-                incident.Severity += destroyed.Count;
-            }
 
             return destroyed.ConvertAll<GameResult>(unit => new GameObjectDestroyedResult
             {
@@ -135,21 +123,21 @@ namespace Rebellion.Game.Events
             if (!string.IsNullOrWhiteSpace(UnitInstanceID))
                 instanceIDs = new[] { UnitInstanceID }.Concat(instanceIDs);
 
-            List<IMovable> units = instanceIDs
+            List<ISceneNode> selected = instanceIDs
                 .Distinct(StringComparer.Ordinal)
-                .Select(game.GetSceneNodeByInstanceID<IMovable>)
-                .Concat(
-                    Selectors
-                        .SelectMany(selector => selector.Select(game, provider, context))
-                        .Cast<IMovable>()
-                )
+                .Select(game.GetSceneNodeByInstanceID<ISceneNode>)
+                .Concat(Selectors.SelectMany(selector => selector.Select(game, provider, context)))
                 .Distinct()
                 .ToList();
-            if (units.Count == 0 || units.Any(unit => unit == null))
+            if (selected.Count == 0 || selected.Any(unit => unit == null))
                 throw new InvalidOperationException(
                     "RequestMovement could not resolve every requested movable unit."
                 );
-            return units;
+            if (selected.Any(unit => unit is not IMovable))
+                throw new InvalidOperationException(
+                    "RequestMovement selectors may return only movable units."
+                );
+            return selected.Cast<IMovable>().ToList();
         }
 
         private ContainerNode ResolveDestination(GameRoot game, GameEventExecutionContext context)
@@ -193,34 +181,6 @@ namespace Rebellion.Game.Events
                     $"AddToVoid could not resolve unit '{UnitInstanceID}'."
                 );
             game.AddToVoid(unit);
-            return new List<GameResult>();
-        }
-    }
-
-    /// <summary>
-    /// Sets the reason an off-map unit is unavailable.
-    /// </summary>
-    [PersistableObject(Name = "SetStatus")]
-    public sealed class SetStatusAction : GameAction
-    {
-        [PersistableAttribute]
-        public string UnitInstanceID { get; set; }
-
-        [PersistableAttribute]
-        public VoidStatus? Status { get; set; }
-
-        [PersistableAttribute]
-        public string DisplayText { get; set; }
-
-        public override List<GameResult> Execute(GameActionContext context)
-        {
-            GameRoot game = context.Game;
-            ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
-            if (unit == null)
-                throw new InvalidOperationException(
-                    $"SetStatus could not resolve unit '{UnitInstanceID}'."
-                );
-            game.UnitLifecycle.SetStatus(unit, Status, DisplayText);
             return new List<GameResult>();
         }
     }

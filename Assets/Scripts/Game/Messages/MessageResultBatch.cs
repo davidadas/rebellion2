@@ -14,14 +14,17 @@ namespace Rebellion.Game.Messages
 
         private MessageResultBatch(
             GameResult[] automaticResults,
-            MessageRequestedResult[] authoredRequests
+            MessageRequestedResult[] authoredRequests,
+            SuppressNextAutomaticMessageResult[] suppressions
         )
         {
             _automaticResults = automaticResults;
             AuthoredRequests = authoredRequests;
+            Suppressions = suppressions;
         }
 
         public IReadOnlyList<MessageRequestedResult> AuthoredRequests { get; }
+        public IReadOnlyList<SuppressNextAutomaticMessageResult> Suppressions { get; }
 
         public IEnumerable<T> OfType<T>()
             where T : GameResult => _automaticResults.OfType<T>();
@@ -30,23 +33,15 @@ namespace Rebellion.Game.Messages
         {
             GameResult[] completeResults =
                 results?.Where(result => result != null).ToArray() ?? Array.Empty<GameResult>();
-            foreach (
-                SuppressNextAutomaticMessageResult suppression in completeResults.OfType<SuppressNextAutomaticMessageResult>()
-            )
-            {
-                if (suppression.TargetResult != null)
-                    suppression.TargetResult.SuppressDefaultMessage = true;
-            }
-
             return new MessageResultBatch(
                 completeResults
                     .Where(result =>
-                        result.SuppressDefaultMessage != true
-                        && result is not MessageRequestedResult
+                        result is not MessageRequestedResult
                         && result is not SuppressNextAutomaticMessageResult
                     )
                     .ToArray(),
-                completeResults.OfType<MessageRequestedResult>().ToArray()
+                completeResults.OfType<MessageRequestedResult>().ToArray(),
+                completeResults.OfType<SuppressNextAutomaticMessageResult>().ToArray()
             );
         }
     }

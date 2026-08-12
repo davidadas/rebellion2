@@ -382,13 +382,12 @@ namespace Rebellion.Tests.Managers
             GameEvent event1 = new GameEvent
             {
                 InstanceID = "EVENT1",
-                DisplayName = "Event1",
                 Schedule = new GameEventScheduler
                 {
                     Random = new RandomTickRange { MinimumTicks = 300, MaximumTicks = 400 },
                 },
             };
-            GameEvent event2 = new GameEvent { InstanceID = "EVENT2", DisplayName = "Event2" };
+            GameEvent event2 = new GameEvent { InstanceID = "EVENT2" };
 
             GameRoot game = new GameRoot
             {
@@ -711,7 +710,7 @@ namespace Rebellion.Tests.Managers
             List<GameEvent> events = new List<GameEvent>();
             for (int i = 0; i < 10; i++)
             {
-                events.Add(new GameEvent { InstanceID = $"EVENT{i}", DisplayName = $"Event {i}" });
+                events.Add(new GameEvent { InstanceID = $"EVENT{i}" });
             }
 
             GameRoot game = new GameRoot
@@ -729,7 +728,6 @@ namespace Rebellion.Tests.Managers
             for (int i = 0; i < 10; i++)
             {
                 Assert.AreEqual($"EVENT{i}", loadedGame.EventPool[i].InstanceID);
-                Assert.AreEqual($"Event {i}", loadedGame.EventPool[i].DisplayName);
             }
         }
 

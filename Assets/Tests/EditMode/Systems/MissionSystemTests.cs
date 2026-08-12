@@ -2905,7 +2905,7 @@ namespace Rebellion.Tests.Systems
             );
             Regiment target = CreateCompletedRegiment("target", "empire");
             game.AttachNode(target, planet);
-            game.UnitLifecycle.AddToVoid(target);
+            game.AddToVoid(target);
             CustomMissionDefinition definition = new CustomMissionDefinition
             {
                 InstanceID = "custom",
