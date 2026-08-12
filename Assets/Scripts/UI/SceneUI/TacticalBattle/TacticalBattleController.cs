@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Results;
 using Rebellion.Game.Tactical;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 using UnityEngine;
 
 /// <summary>
@@ -29,6 +31,8 @@ public sealed class TacticalBattleController : MonoBehaviour
     private bool selectingSuperlaserTarget;
     private bool leftShipHighlightsVisible;
     private bool rightShipHighlightsVisible;
+    private bool developmentPreview;
+    private string developmentPlayerFactionId;
     private readonly CancellationTokenSource shutdown = new CancellationTokenSource();
     private TacticalBattleSide playerSide;
     private TacticalBattleRenderer battleRenderer;
@@ -56,8 +60,22 @@ public sealed class TacticalBattleController : MonoBehaviour
     {
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
         GameManager gameManager = bootstrap.GetRuntime()?.GetActiveGameManager();
+
+#if UNITY_EDITOR
+        if (gameManager == null)
+        {
+            TacticalBattleDevelopmentEncounterResult preview =
+                TacticalBattleDevelopmentEncounter.Create(bootstrap.GetContentPack().GameData);
+            Session = TacticalBattleSession.Create(preview.Encounter, new SystemRandomProvider(0));
+            developmentPreview = true;
+            developmentPlayerFactionId = preview.PlayerFactionInstanceID;
+            ResolveSceneReferences();
+            return;
+        }
+#else
         if (gameManager == null)
             throw new InvalidOperationException("Tactical combat requires an active game.");
+#endif
 
         PendingCombatResult encounter = TacticalBattleLaunchContext.Encounter;
         if (encounter == null)
@@ -88,13 +106,23 @@ public sealed class TacticalBattleController : MonoBehaviour
                     )
                     : TacticalBattleSession.Create(encounter, game.Random)
             );
+        ResolveSceneReferences();
+    }
+
+    /// <summary>
+    /// Resolves the generated tactical scene components required by both gameplay and preview.
+    /// </summary>
+    private void ResolveSceneReferences()
+    {
         view = GetComponentInChildren<TacticalBattleView>(true);
         if (view == null)
             throw new MissingReferenceException("Tactical battle view is missing.");
         battleRenderer = GetComponentInChildren<TacticalBattleRenderer>(true);
         if (battleRenderer == null)
             throw new MissingReferenceException("Tactical battle renderer is missing.");
-        cameraRig = GetComponentInChildren<TacticalCameraRig>(true);
+        cameraRig =
+            GetComponentInChildren<TacticalCameraRig>(true)
+            ?? FindAnyObjectByType<TacticalCameraRig>();
         if (cameraRig == null)
             throw new MissingReferenceException("Tactical camera rig is missing.");
     }
@@ -105,14 +133,19 @@ public sealed class TacticalBattleController : MonoBehaviour
     private async void Start()
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
+        await bootstrap.InitializeStrategyContentAsync();
+
         GameManager gameManager = bootstrap.GetRuntime()?.GetActiveGameManager();
-        if (gameManager == null)
+        if (gameManager == null && !developmentPreview)
             throw new InvalidOperationException("Tactical combat requires an active game.");
 
         FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
             bootstrap.GetContentPack().GameData.FactionThemes
         );
-        FactionTheme theme = themeLibrary.GetTheme(gameManager.GetPlayerFaction().InstanceID);
+        string playerFactionId = developmentPreview
+            ? developmentPlayerFactionId
+            : gameManager.GetPlayerFaction().InstanceID;
+        FactionTheme theme = themeLibrary.GetTheme(playerFactionId);
         tacticalTheme =
             theme.TacticalBattle
             ?? throw new InvalidOperationException(
@@ -120,7 +153,6 @@ public sealed class TacticalBattleController : MonoBehaviour
             );
         view.InitializeContent(bootstrap.GetContentAssets(), tacticalTheme);
         cameraRig.Initialize(tacticalTheme.InitialCameraYaw);
-        string playerFactionId = gameManager.GetPlayerFaction().InstanceID;
         playerSide =
             Session.Encounter.AttackerOwnerInstanceID == playerFactionId
                 ? TacticalBattleSide.Attacker
@@ -137,12 +169,15 @@ public sealed class TacticalBattleController : MonoBehaviour
                     Session.Encounter.DefenderOwnerInstanceID
                 ),
             };
-        AudioManager audioManager = bootstrap.GetAudioManager();
-        IEnumerable<string> tacticalAudioPaths = tacticalThemes
+        string[] tacticalAudioPaths = tacticalThemes
             .Values.SelectMany(GetAudioPaths)
-            .Distinct(StringComparer.Ordinal);
-        audioManager.PreloadSfx(tacticalAudioPaths);
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         ContentAssets contentAssets = bootstrap.GetContentAssets();
+        await Task.WhenAll(tacticalAudioPaths.Select(contentAssets.LoadAudioAsync));
+
+        AudioManager audioManager = bootstrap.GetAudioManager();
+        audioManager.PreloadSfx(tacticalAudioPaths);
         battleAudio = new TacticalBattleAudio(
             tacticalThemes,
             audioManager.PlaySfx,
@@ -1258,6 +1293,13 @@ public sealed class TacticalBattleController : MonoBehaviour
             return;
         if (Session?.IsComplete != true)
             throw new InvalidOperationException("Tactical combat is still active.");
+
+        if (developmentPreview)
+        {
+            isCompleting = true;
+            playerPaused = true;
+            return;
+        }
 
         AppBootstrap bootstrap = AppBootstrap.Instance;
         GameManager gameManager = bootstrap.GetRuntime()?.GetActiveGameManager();

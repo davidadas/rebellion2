@@ -29,7 +29,7 @@ public static class TacticalBattleSceneBuilder
         ConfigureEnvironment();
         GameObject root = CreateSceneController();
         CreateBattleSpace(root.transform);
-        TacticalCameraRig cameraRig = CreateCamera();
+        TacticalCameraRig cameraRig = CreateCamera(root.transform);
         CreateLight();
         CreateHud(root.transform, cameraRig);
         CreateEventSystem();
@@ -1114,10 +1114,12 @@ public static class TacticalBattleSceneBuilder
     /// <summary>
     /// Creates the tactical presentation camera.
     /// </summary>
+    /// <param name="parent">The tactical scene root.</param>
     /// <returns>The generated camera rig.</returns>
-    private static TacticalCameraRig CreateCamera()
+    private static TacticalCameraRig CreateCamera(Transform parent)
     {
         GameObject cameraObject = new GameObject("TacticalCamera");
+        cameraObject.transform.SetParent(parent, false);
         cameraObject.tag = "MainCamera";
         Camera camera = cameraObject.AddComponent<Camera>();
         camera.clearFlags = CameraClearFlags.SolidColor;
