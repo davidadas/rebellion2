@@ -257,6 +257,12 @@ public static class MainMenuPrefabBuilder
             factionLaunches
         );
         WriteAudioCueBindings(serializedView.FindProperty("audioCueBindings"), audioCues);
+        serializedView.FindProperty("optionsOverlay").objectReferenceValue =
+            FindRequiredComponent<RectTransform>(root, "OptionsOverlayCanvas").gameObject;
+        serializedView.FindProperty("optionsWindowLayer").objectReferenceValue =
+            FindRequiredComponent<RectTransform>(root, "OptionsModalLayer");
+        serializedView.FindProperty("optionsWindowManager").objectReferenceValue =
+            FindRequiredComponent<UIWindowManager>(root, "OptionsOverlayCanvas");
         serializedView.ApplyModifiedPropertiesWithoutUndo();
     }
 
@@ -419,6 +425,54 @@ public static class MainMenuPrefabBuilder
         cockpit.raycastTarget = false;
 
         BuildControls(viewport.transform);
+        BuildOptionsOverlay(ui.transform);
+    }
+
+    /// <summary>
+    /// Authors the full-screen Options canvas, dimmer, modal layer, and window manager.
+    /// </summary>
+    /// <param name="parent">The Main Menu UI root.</param>
+    private static void BuildOptionsOverlay(Transform parent)
+    {
+        GameObject overlay = NewChild(
+            "OptionsOverlayCanvas",
+            parent,
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster),
+            typeof(UIWindowManager)
+        );
+        FillParent(overlay.GetComponent<RectTransform>());
+
+        Canvas canvas = overlay.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+
+        CanvasScaler scaler = overlay.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(853.33f, 480f);
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+
+        GameObject dimmer = NewChild(
+            "OptionsDimmer",
+            overlay.transform,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        FillParent(dimmer.GetComponent<RectTransform>());
+        Image dimmerImage = dimmer.GetComponent<Image>();
+        dimmerImage.color = new Color(0f, 0f, 0f, 0.8f);
+        dimmerImage.raycastTarget = true;
+
+        GameObject modalLayer = NewChild(
+            "OptionsModalLayer",
+            overlay.transform,
+            typeof(RectTransform)
+        );
+        FillParent(modalLayer.GetComponent<RectTransform>());
+        overlay.SetActive(false);
     }
 
     /// <summary>
@@ -883,7 +937,7 @@ public static class MainMenuPrefabBuilder
 
         ContentSpriteBinding destinationBinding =
             destination.gameObject.AddComponent<ContentSpriteBinding>();
-        destinationBinding.SetAddress(sourceBinding.Address);
+        destinationBinding.SetAddress(sourceBinding.Address, sourceBinding.Border);
         Object.DestroyImmediate(sourceBinding);
     }
 

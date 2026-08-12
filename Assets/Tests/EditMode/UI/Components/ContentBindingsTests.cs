@@ -60,6 +60,28 @@ public sealed class ContentBindingsTests
         Assert.AreEqual(expectedSprite, image.sprite);
     }
 
+    /// <summary>
+    /// Verifies a sprite binding forwards its explicit nine-slice border to the content source.
+    /// </summary>
+    [Test]
+    public void Apply_BorderedImageSprite_RequestsExplicitBorder()
+    {
+        Sprite expectedSprite = CreateSprite();
+        Vector4 expectedBorder = new Vector4(6f, 6f, 6f, 6f);
+        FakeContentAssetSource contentAssets = new FakeContentAssetSource();
+        contentAssets.AddSprite(_spriteAddress, expectedSprite);
+
+        Image image = CreateComponent<Image>("BorderedSpriteBinding");
+        image
+            .gameObject.AddComponent<ContentSpriteBinding>()
+            .SetAddress(_spriteAddress, expectedBorder);
+
+        ContentBindings.Apply(image.gameObject, contentAssets);
+
+        Assert.AreEqual(expectedSprite, image.sprite);
+        Assert.AreEqual(expectedBorder, contentAssets.LastSpriteBorder);
+    }
+
     [Test]
     public void Apply_StrippedPressVisual_RestoresReleasedTexture()
     {
@@ -197,6 +219,8 @@ public sealed class ContentBindingsTests
             StringComparer.Ordinal
         );
 
+        public Vector4 LastSpriteBorder { get; private set; }
+
         public void AddTexture(string address, Texture2D texture)
         {
             textures[address] = texture;
@@ -215,6 +239,18 @@ public sealed class ContentBindingsTests
         public Sprite GetSprite(string address)
         {
             return sprites.TryGetValue(address, out Sprite sprite) ? sprite : null;
+        }
+
+        /// <summary>
+        /// Resolves a test sprite while recording the requested border.
+        /// </summary>
+        /// <param name="address">The test content address.</param>
+        /// <param name="border">The requested sprite border.</param>
+        /// <returns>The configured test sprite.</returns>
+        public Sprite GetSprite(string address, Vector4 border)
+        {
+            LastSpriteBorder = border;
+            return GetSprite(address);
         }
     }
 

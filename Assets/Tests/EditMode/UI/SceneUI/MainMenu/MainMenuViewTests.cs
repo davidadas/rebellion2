@@ -73,6 +73,43 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             );
         }
 
+        /// <summary>
+        /// Verifies the generated Main Menu owns a complete full-screen Options overlay.
+        /// </summary>
+        [Test]
+        public void AuthoredPrefab_OptionsOverlay_IsFullScreenAndInitiallyHidden()
+        {
+            Transform overlay = _prefabRoot.transform.Find("UI/OptionsOverlayCanvas");
+            Assert.IsNotNull(overlay);
+            Assert.IsFalse(overlay.gameObject.activeSelf);
+            Assert.IsNotNull(overlay.GetComponent<UIWindowManager>());
+
+            RectTransform dimmer = (RectTransform)overlay.Find("OptionsDimmer");
+            RectTransform modalLayer = (RectTransform)overlay.Find("OptionsModalLayer");
+            Assert.AreEqual(Vector2.zero, dimmer.anchorMin);
+            Assert.AreEqual(Vector2.one, dimmer.anchorMax);
+            Assert.AreEqual(Vector2.zero, dimmer.offsetMin);
+            Assert.AreEqual(Vector2.zero, dimmer.offsetMax);
+            Assert.AreEqual(Vector2.zero, modalLayer.anchorMin);
+            Assert.AreEqual(Vector2.one, modalLayer.anchorMax);
+            Assert.AreEqual(new Color(0f, 0f, 0f, 0.8f), dimmer.GetComponent<Image>().color);
+        }
+
+        /// <summary>
+        /// Verifies the view exclusively controls Options overlay visibility.
+        /// </summary>
+        [Test]
+        public void RenderOptionsOverlay_ChangesAuthoredOverlayVisibility()
+        {
+            GameObject overlay = GetField<GameObject>("optionsOverlay");
+
+            _view.RenderOptionsOverlay(true);
+            Assert.IsTrue(overlay.activeSelf);
+
+            _view.RenderOptionsOverlay(false);
+            Assert.IsFalse(overlay.activeSelf);
+        }
+
         [Test]
         public void AuthoredPrefab_CockpitBackdropAndControlsShareFullCanvas()
         {

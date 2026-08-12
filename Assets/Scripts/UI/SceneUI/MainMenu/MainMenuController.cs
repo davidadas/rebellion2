@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Game;
@@ -6,7 +7,7 @@ using UnityEngine;
 /// <summary>
 /// Owns main-menu launch state, audio, cutscenes, and scene navigation.
 /// </summary>
-public sealed class MainMenuController : MonoBehaviour
+public sealed class MainMenuController : MonoBehaviour, IOptionsMenuActions
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
     private const string _menuMusicPath = "Application/MainMenu/Audio/battle-of-endor-1-medley";
@@ -23,7 +24,10 @@ public sealed class MainMenuController : MonoBehaviour
 
     private GameVictoryCondition currentVictoryCondition;
     private Canvas mainMenuCanvas;
-    private MainMenuOptionsHost _optionsHost;
+    private OptionsMenuController optionsMenuController;
+    private bool optionsDirty;
+    private FactionThemeLibrary factionThemeLibrary;
+    private ContentAssets contentAssets;
     private GameRuntime _settingsRuntime;
 
     /// <summary>
@@ -140,8 +144,12 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        _optionsHost?.Dispose();
-        _optionsHost = null;
+        if (optionsMenuController == null)
+            return;
+
+        AppBootstrap.Instance?.GetCancelStack()?.Unregister(optionsMenuController);
+        optionsMenuController.Dispose();
+        optionsMenuController = null;
     }
 
     /// <summary>
@@ -149,9 +157,14 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void HandleToggleSettingsMenu()
     {
-        EnsureOptionsHost();
-        if (_optionsHost?.IsOpen == false)
-            _optionsHost.Open();
+        EnsureOptionsController();
+        if (optionsMenuController == null)
+            return;
+
+        if (optionsMenuController.IsOpen)
+            optionsMenuController.TryCancel();
+        else
+            OpenOptions(OptionsMenuTab.Graphics);
     }
 
     /// <summary>
@@ -237,8 +250,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OpenLoadGameMenu()
     {
-        EnsureOptionsHost();
-        _optionsHost?.Open();
+        OpenOptions(OptionsMenuTab.SaveLoad);
     }
 
     /// <summary>
@@ -246,15 +258,21 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        _optionsHost?.Tick();
+        bool open = optionsMenuController?.IsOpen == true;
+        view?.RenderOptionsOverlay(open);
+        if (!open || !optionsDirty)
+            return;
+
+        optionsDirty = false;
+        optionsMenuController.RenderWindows();
     }
 
     /// <summary>
     /// Creates the Options menu when it is first opened.
     /// </summary>
-    private void EnsureOptionsHost()
+    private void EnsureOptionsController()
     {
-        if (_optionsHost != null)
+        if (optionsMenuController != null)
             return;
         if (_optionsMenuPrefab == null)
         {
@@ -265,20 +283,190 @@ public sealed class MainMenuController : MonoBehaviour
         }
 
         AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-        FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
+        factionThemeLibrary = new FactionThemeLibrary(
             bootstrap.GetContentPack().GameData.FactionThemes
         );
-        _optionsHost = new MainMenuOptionsHost(
-            mainMenuCanvas.transform,
+        contentAssets = bootstrap.GetContentAssets();
+        UIWindowManager windowManager = view.OptionsWindowManager;
+        windowManager.SetContentSource(contentAssets);
+        optionsMenuController = new OptionsMenuController(
             _optionsMenuPrefab,
-            bootstrap.GetContentAssets(),
-            themeLibrary,
+            view.OptionsWindowLayer,
+            windowManager,
+            () => view.GetOptionsWindowPosition(_optionsMenuPrefab),
+            windowManager.DestroyWindow,
             bootstrap.GetUserSettingsManager(),
             bootstrap.GetDisplayManager(),
             AudioManager.EnsureExists(),
             bootstrap.GetInputManager(),
-            bootstrap.GetCancelStack()
+            MarkOptionsDirty
         );
+        optionsMenuController.Initialize(this);
+        bootstrap.GetCancelStack()?.Register(optionsMenuController);
+    }
+
+    /// <summary>
+    /// Opens the requested Options page over the authored Main Menu dimmer.
+    /// </summary>
+    /// <param name="tab">The page to show initially.</param>
+    private void OpenOptions(OptionsMenuTab tab)
+    {
+        EnsureOptionsController();
+        if (optionsMenuController == null)
+            return;
+
+        view.RenderOptionsOverlay(true);
+        optionsMenuController.Open(tab);
+        optionsMenuController.RenderWindows();
+        optionsDirty = false;
+    }
+
+    /// <summary>
+    /// Gets whether the Main Menu Options overlay can return to a running game.
+    /// </summary>
+    bool IOptionsMenuActions.CanReturnToGame => false;
+
+    /// <summary>
+    /// Gets whether the Main Menu Options overlay needs a separate Main Menu command.
+    /// </summary>
+    bool IOptionsMenuActions.CanReturnToMainMenu => false;
+
+    /// <summary>
+    /// Gets whether a running game is available to create or overwrite saves.
+    /// </summary>
+    bool IOptionsMenuActions.CanWriteSaves => false;
+
+    /// <summary>
+    /// Leaves the already-paused Main Menu unchanged while Options is open.
+    /// </summary>
+    void IOptionsMenuActions.PauseForOptions() { }
+
+    /// <summary>
+    /// Leaves the Main Menu input context unchanged when Options closes.
+    /// </summary>
+    void IOptionsMenuActions.ResumeFromOptions() { }
+
+    /// <summary>
+    /// Builds the save rows available from the Main Menu.
+    /// </summary>
+    /// <returns>The saved games in manager order.</returns>
+    IReadOnlyList<OptionsSaveSlot> IOptionsMenuActions.GetSaveSlots()
+    {
+        List<OptionsSaveSlot> rows = new List<OptionsSaveSlot>();
+        foreach (SaveGameEntry entry in SaveGameManager.Instance.GetSavedGames())
+        {
+            string displayName = string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
+                ? entry.FileName
+                : entry.Metadata.SaveDisplayName;
+            string date =
+                entry.Metadata != null
+                    ? entry.Metadata.LastSavedUtc.ToLocalTime().ToString("g")
+                    : string.Empty;
+            rows.Add(
+                new OptionsSaveSlot(
+                    displayName,
+                    date,
+                    ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
+                    false,
+                    entry.FileName
+                )
+            );
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// Ignores save creation because the Main Menu has no running game state.
+    /// </summary>
+    /// <param name="displayName">The unused requested display name.</param>
+    void IOptionsMenuActions.CreateNamedSave(string displayName) { }
+
+    /// <summary>
+    /// Ignores save overwrites because the Main Menu has no running game state.
+    /// </summary>
+    /// <param name="fileName">The unused save identifier.</param>
+    /// <param name="displayName">The unused display name.</param>
+    void IOptionsMenuActions.OverwriteSave(string fileName, string displayName) { }
+
+    /// <summary>
+    /// Starts the selected saved game through the normal Main Menu launch context.
+    /// </summary>
+    /// <param name="fileName">The save identifier to load.</param>
+    /// <returns>True when the Strategy scene transition was requested.</returns>
+    bool IOptionsMenuActions.LoadSave(string fileName)
+    {
+        AppBootstrap bootstrap = AppBootstrap.Instance;
+        if (
+            bootstrap == null
+            || string.IsNullOrEmpty(fileName)
+            || !System.IO.File.Exists(SaveGameManager.Instance.GetSaveFilePath(fileName))
+        )
+            return false;
+
+        bootstrap.GetRuntime()?.EndGame();
+        GameLaunchContext.IsLoadGame = true;
+        GameLaunchContext.SaveFileName = fileName;
+        GameLaunchContext.PlayIntroCutscene = false;
+        bootstrap.LoadScene("StrategyView");
+        return true;
+    }
+
+    /// <summary>
+    /// Deletes a save selected from the Main Menu.
+    /// </summary>
+    /// <param name="fileName">The save identifier to delete.</param>
+    void IOptionsMenuActions.DeleteSave(string fileName)
+    {
+        SaveGameManager.Instance.DeleteSave(fileName);
+    }
+
+    /// <summary>
+    /// Renames a save selected from the Main Menu.
+    /// </summary>
+    /// <param name="fileName">The save identifier to update.</param>
+    /// <param name="displayName">The new display name.</param>
+    void IOptionsMenuActions.RenameSave(string fileName, string displayName)
+    {
+        SaveGameManager.Instance.SetSaveDisplayName(fileName, displayName);
+    }
+
+    /// <summary>
+    /// Closes the overlay because the owning scene is already the Main Menu.
+    /// </summary>
+    void IOptionsMenuActions.ReturnToMainMenu()
+    {
+        optionsMenuController?.Close();
+    }
+
+    /// <summary>
+    /// Exits the application from the Options overlay.
+    /// </summary>
+    void IOptionsMenuActions.QuitApplication()
+    {
+        ExitApplication();
+    }
+
+    /// <summary>
+    /// Resolves a save row's faction icon from installation content.
+    /// </summary>
+    /// <param name="factionId">The saved faction identifier.</param>
+    /// <returns>The faction slot texture, or null when none is configured.</returns>
+    private Texture2D ResolveSaveFactionIcon(string factionId)
+    {
+        if (string.IsNullOrEmpty(factionId) || factionThemeLibrary == null || contentAssets == null)
+            return null;
+
+        string path = factionThemeLibrary.GetTheme(factionId)?.SavedGameSlotIconImagePath;
+        return string.IsNullOrEmpty(path) ? null : contentAssets.GetTexture(path);
+    }
+
+    /// <summary>
+    /// Requests that the open Options window render its changed state.
+    /// </summary>
+    private void MarkOptionsDirty()
+    {
+        optionsDirty = true;
     }
 
     /// <summary>

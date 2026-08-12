@@ -13,18 +13,22 @@ public static class OptionsMenuPrefabBuilder
 {
     private const string _optionsMenuWindowPrefabPath =
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
-    private const string _optionsPanelSpritePath = "Assets/UI/OptionsMenu/optionsmenu_panel.png";
-    private const string _optionsRowSpritePath = "Assets/UI/OptionsMenu/optionsmenu_row.png";
-    private const string _optionsRowActiveSpritePath =
-        "Assets/UI/OptionsMenu/optionsmenu_row_active.png";
-    private const string _optionsBadgeSpritePath = "Assets/UI/OptionsMenu/optionsmenu_badge.png";
-    private const string _optionsFrameGlowSpritePath =
-        "Assets/UI/OptionsMenu/optionsmenu_frame_glow.png";
-    private const string _optionsToggleOnSpritePath =
-        "Assets/UI/OptionsMenu/optionsmenu_toggle_on.png";
-    private const string _optionsToggleOffSpritePath =
-        "Assets/UI/OptionsMenu/optionsmenu_toggle_off.png";
-    private const string _optionsKnobTexturePath = "Assets/UI/OptionsMenu/optionsmenu_knob.png";
+    private const string _optionsPanelAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_panel_background";
+    private const string _optionsRowAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_row_background";
+    private const string _optionsRowActiveAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_row_selected_background";
+    private const string _optionsBadgeAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_badge_background";
+    private const string _optionsFrameGlowAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_frame_overlay";
+    private const string _optionsToggleOnAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_toggle_selected_icon";
+    private const string _optionsToggleOffAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_toggle_icon";
+    private const string _optionsKnobAddress =
+        "Application/OptionsMenu/UI/ui_settingsmenu_slider_knob";
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _scrollUpAddress =
@@ -33,6 +37,9 @@ public static class OptionsMenuPrefabBuilder
         "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_pressed_2.png";
     private const string _scrollHandleAddress =
         "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_middle.png";
+
+    private static readonly Vector4 _panelBorder = new Vector4(7f, 7f, 7f, 7f);
+    private static readonly Vector4 _badgeBorder = new Vector4(6f, 6f, 6f, 6f);
 
     /// <summary>
     /// Rebuilds the generated Options menu prefab.
@@ -88,7 +95,8 @@ public static class OptionsMenuPrefabBuilder
         CreateSlicedImage(
             "FrameGlow",
             contentRoot,
-            _optionsFrameGlowSpritePath,
+            _optionsFrameGlowAddress,
+            _panelBorder,
             2,
             2,
             628,
@@ -99,7 +107,8 @@ public static class OptionsMenuPrefabBuilder
         CreateSlicedImage(
             "NavPanel",
             contentRoot,
-            _optionsPanelSpritePath,
+            _optionsPanelAddress,
+            _panelBorder,
             23,
             69,
             192,
@@ -109,7 +118,8 @@ public static class OptionsMenuPrefabBuilder
         CreateSlicedImage(
             "ContentPanel",
             contentRoot,
-            _optionsPanelSpritePath,
+            _optionsPanelAddress,
+            _panelBorder,
             228,
             69,
             382,
@@ -142,7 +152,8 @@ public static class OptionsMenuPrefabBuilder
             Button tabButton = CreateSlicedButton(
                 tabObjectNames[i],
                 contentRoot,
-                _optionsRowSpritePath,
+                _optionsRowAddress,
+                _panelBorder,
                 38,
                 82 + i * 36,
                 163,
@@ -171,6 +182,9 @@ public static class OptionsMenuPrefabBuilder
         SetSourceRect(audioPage, 228, 69, 382, 365);
         RectTransform saveLoadPage = CreateChildLayer("SaveLoadPage", contentRoot);
         SetSourceRect(saveLoadPage, 228, 69, 382, 365);
+        OptionsSaveListView saveListView = EnableRuntimeComponent(
+            saveLoadPage.gameObject.AddComponent<OptionsSaveListView>()
+        );
         RectTransform controlsPage = CreateChildLayer("ControlsPage", contentRoot);
         SetSourceRect(controlsPage, 228, 69, 382, 365);
 
@@ -368,7 +382,8 @@ public static class OptionsMenuPrefabBuilder
         Image slotRowTemplate = CreateSlicedImage(
             "SlotRowTemplate",
             slotContent,
-            _optionsRowSpritePath,
+            _optionsRowAddress,
+            _panelBorder,
             0,
             0,
             337,
@@ -491,7 +506,8 @@ public static class OptionsMenuPrefabBuilder
         Image bindingRowTemplate = CreateSlicedImage(
             "BindingRowTemplate",
             controlsContent,
-            _optionsRowSpritePath,
+            _optionsRowAddress,
+            _panelBorder,
             0,
             0,
             342,
@@ -523,7 +539,8 @@ public static class OptionsMenuPrefabBuilder
         Image bindingKeyBadgeTemplate = CreateSlicedImage(
             "BindingKeyBadgeTemplate",
             controlsContent,
-            _optionsBadgeSpritePath,
+            _optionsBadgeAddress,
+            _badgeBorder,
             266,
             3,
             61,
@@ -555,16 +572,14 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_backgroundImage", background);
         AssignReference(view, "_headerTextField", header);
         AssignReference(view, "_pageTitleTextField", pageTitle);
-        AssignReference(
-            view,
-            "_rowIdleSprite",
-            AssetDatabase.LoadAssetAtPath<Sprite>(_optionsRowSpritePath)
-        );
+        AssignReference(view, "_rowIdleSprite", LoadSprite(_optionsRowAddress, _panelBorder));
         AssignReference(
             view,
             "_rowActiveSprite",
-            AssetDatabase.LoadAssetAtPath<Sprite>(_optionsRowActiveSpritePath)
+            LoadSprite(_optionsRowActiveAddress, _panelBorder)
         );
+        AssignString(view, "_rowIdleSpriteAddress", _optionsRowAddress);
+        AssignString(view, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
         AssignReferenceArray(view, "_tabButtons", tabButtons);
         AssignReferenceArray(view, "_tabLabelFields", tabLabels);
         AssignReference(view, "_graphicsPage", graphicsPage.gameObject);
@@ -583,21 +598,34 @@ public static class OptionsMenuPrefabBuilder
         AssignReference(view, "_fullScreenNextButton", fullScreenNext);
         AssignReferenceArray(view, "_volumeSliders", volumeSliders);
         AssignReferenceArray(view, "_volumeValueFields", volumeValues);
-        AssignReference(view, "_saveButton", saveButton);
-        AssignReference(view, "_loadButton", loadButton);
-        AssignReference(view, "_saveDisabledImage", saveDisabledIcon);
-        AssignReference(view, "_loadDisabledImage", loadDisabledIcon);
+        AssignReference(view, "_saveListView", saveListView);
         AssignReference(view, "_settingsActions", settingsActions.gameObject);
         AssignReference(view, "_applyButton", applyButton);
         AssignReference(view, "_defaultsButton", defaultsButton);
         AssignReference(view, "_confirmDialog", confirmDialog);
-        AssignReference(view, "_saveSlotScrollArea", saveSlotScrollArea);
-        AssignReference(view, "_slotRowTemplate", slotRowTemplate);
-        AssignReference(view, "_slotIconTemplate", slotIconTemplate);
-        AssignReference(view, "_slotNameTemplate", slotNameTemplate);
-        AssignReference(view, "_slotMetaTemplate", slotMetaTemplate);
-        AssignReference(view, "_slotDeleteTemplate", slotDeleteTemplate);
-        AssignReference(view, "_slotRenameField", slotRenameField);
+        AssignReference(saveListView, "_saveButton", saveButton);
+        AssignReference(saveListView, "_loadButton", loadButton);
+        AssignReference(saveListView, "_saveDisabledImage", saveDisabledIcon);
+        AssignReference(saveListView, "_loadDisabledImage", loadDisabledIcon);
+        AssignReference(saveListView, "_scrollArea", saveSlotScrollArea);
+        AssignReference(saveListView, "_rowTemplate", slotRowTemplate);
+        AssignReference(saveListView, "_iconTemplate", slotIconTemplate);
+        AssignReference(saveListView, "_nameTemplate", slotNameTemplate);
+        AssignReference(saveListView, "_metaTemplate", slotMetaTemplate);
+        AssignReference(saveListView, "_deleteTemplate", slotDeleteTemplate);
+        AssignReference(saveListView, "_renameField", slotRenameField);
+        AssignReference(
+            saveListView,
+            "_rowIdleSprite",
+            LoadSprite(_optionsRowAddress, _panelBorder)
+        );
+        AssignReference(
+            saveListView,
+            "_rowActiveSprite",
+            LoadSprite(_optionsRowActiveAddress, _panelBorder)
+        );
+        AssignString(saveListView, "_rowIdleSpriteAddress", _optionsRowAddress);
+        AssignString(saveListView, "_rowActiveSpriteAddress", _optionsRowActiveAddress);
         AssignReference(view, "_controlsScrollArea", controlsScrollArea);
         AssignReference(view, "_bindingRowTemplate", bindingRowTemplate);
         AssignReference(view, "_bindingHeaderTemplate", bindingHeaderTemplate);
@@ -745,7 +773,8 @@ public static class OptionsMenuPrefabBuilder
         Button button = CreateSlicedButton(
             name,
             parent,
-            _optionsBadgeSpritePath,
+            _optionsBadgeAddress,
+            _badgeBorder,
             38,
             y,
             163,
@@ -820,7 +849,8 @@ public static class OptionsMenuPrefabBuilder
         Button button = CreateSlicedButton(
             name,
             parent,
-            _optionsBadgeSpritePath,
+            _optionsBadgeAddress,
+            _badgeBorder,
             x,
             408,
             76,
@@ -868,7 +898,8 @@ public static class OptionsMenuPrefabBuilder
         CreateSlicedImage(
             $"{name}Badge",
             parent,
-            _optionsBadgeSpritePath,
+            _optionsBadgeAddress,
+            _badgeBorder,
             194,
             y,
             155,
@@ -948,7 +979,7 @@ public static class OptionsMenuPrefabBuilder
         int width
     )
     {
-        Texture2D knobTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(_optionsKnobTexturePath);
+        Texture2D knobTexture = LoadTexture(_optionsKnobAddress);
         Vector2Int knobSize =
             knobTexture != null
                 ? UILayout.GetTextureSourceSize(knobTexture)
@@ -998,6 +1029,7 @@ public static class OptionsMenuPrefabBuilder
         RawImage thumbImage = thumb.GetComponent<RawImage>();
         thumbImage.texture = knobTexture;
         thumbImage.raycastTarget = true;
+        AttachTextureBinding(thumbImage, _optionsKnobAddress);
         SetSourceRect(thumbImage.rectTransform, 0, 0, knobSize.x, knobSize.y);
 
         Slider slider = root.GetComponent<Slider>();
@@ -1059,9 +1091,11 @@ public static class OptionsMenuPrefabBuilder
         );
         toggle.transform.SetParent(root, false);
         Image toggleImage = toggle.GetComponent<Image>();
-        toggleImage.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(_optionsToggleOffSpritePath);
+        toggleImage.sprite = LoadSprite(_optionsToggleOffAddress, Vector4.zero);
         toggleImage.type = Image.Type.Simple;
         toggleImage.raycastTarget = true;
+        ContentSpriteBinding toggleBinding = toggle.AddComponent<ContentSpriteBinding>();
+        toggleBinding.SetAddress(_optionsToggleOffAddress);
         SetSourceRect(toggle.GetComponent<RectTransform>(), 299, 0, 30, 14);
         Button button = toggle.AddComponent<Button>();
         button.targetGraphic = toggleImage;
@@ -1076,16 +1110,10 @@ public static class OptionsMenuPrefabBuilder
 
         AssignInt(view, "_option", (int)option);
         AssignReference(view, "_toggleImage", toggleImage);
-        AssignReference(
-            view,
-            "_offSprite",
-            AssetDatabase.LoadAssetAtPath<Sprite>(_optionsToggleOffSpritePath)
-        );
-        AssignReference(
-            view,
-            "_onSprite",
-            AssetDatabase.LoadAssetAtPath<Sprite>(_optionsToggleOnSpritePath)
-        );
+        AssignReference(view, "_offSprite", LoadSprite(_optionsToggleOffAddress, Vector4.zero));
+        AssignReference(view, "_onSprite", LoadSprite(_optionsToggleOnAddress, Vector4.zero));
+        AssignString(view, "_offSpriteAddress", _optionsToggleOffAddress);
+        AssignString(view, "_onSpriteAddress", _optionsToggleOnAddress);
         AssignReference(view, "_button", button);
         AssignReference(view, "_labelTextField", labelField);
         AssignReference(view, "_stateTextField", stateField);
@@ -1164,7 +1192,8 @@ public static class OptionsMenuPrefabBuilder
     /// </summary>
     /// <param name="name">The generated object name.</param>
     /// <param name="parent">The image's parent.</param>
-    /// <param name="spritePath">The project path of the sliced sprite.</param>
+    /// <param name="spriteAddress">The stable content address of the sliced sprite.</param>
+    /// <param name="border">The sprite's explicit nine-slice border.</param>
     /// <param name="x">The source-space left coordinate.</param>
     /// <param name="y">The source-space top coordinate.</param>
     /// <param name="width">The source-space width.</param>
@@ -1174,7 +1203,8 @@ public static class OptionsMenuPrefabBuilder
     private static Image CreateSlicedImage(
         string name,
         Transform parent,
-        string spritePath,
+        string spriteAddress,
+        Vector4 border,
         int x,
         int y,
         int width,
@@ -1190,10 +1220,12 @@ public static class OptionsMenuPrefabBuilder
         );
         imageObject.transform.SetParent(parent, false);
         Image image = imageObject.GetComponent<Image>();
-        image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+        image.sprite = LoadSprite(spriteAddress, border);
         image.type = Image.Type.Sliced;
         image.color = color;
         image.raycastTarget = false;
+        ContentSpriteBinding binding = imageObject.AddComponent<ContentSpriteBinding>();
+        binding.SetAddress(spriteAddress, border);
         SetSourceRect(image.rectTransform, x, y, width, height);
         return image;
     }
@@ -1203,7 +1235,8 @@ public static class OptionsMenuPrefabBuilder
     /// </summary>
     /// <param name="name">The generated object name.</param>
     /// <param name="parent">The button's parent.</param>
-    /// <param name="spritePath">The project path of the sliced sprite.</param>
+    /// <param name="spriteAddress">The stable content address of the sliced sprite.</param>
+    /// <param name="border">The sprite's explicit nine-slice border.</param>
     /// <param name="x">The source-space left coordinate.</param>
     /// <param name="y">The source-space top coordinate.</param>
     /// <param name="width">The source-space width.</param>
@@ -1213,7 +1246,8 @@ public static class OptionsMenuPrefabBuilder
     private static Button CreateSlicedButton(
         string name,
         Transform parent,
-        string spritePath,
+        string spriteAddress,
+        Vector4 border,
         int x,
         int y,
         int width,
@@ -1221,7 +1255,17 @@ public static class OptionsMenuPrefabBuilder
         Color color
     )
     {
-        Image image = CreateSlicedImage(name, parent, spritePath, x, y, width, height, color);
+        Image image = CreateSlicedImage(
+            name,
+            parent,
+            spriteAddress,
+            border,
+            x,
+            y,
+            width,
+            height,
+            color
+        );
         image.raycastTarget = true;
         Button button = image.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
@@ -1636,6 +1680,19 @@ public static class OptionsMenuPrefabBuilder
     }
 
     /// <summary>
+    /// Assigns a string to a serialized component field.
+    /// </summary>
+    /// <param name="target">The component containing the serialized field.</param>
+    /// <param name="propertyName">The serialized field name.</param>
+    /// <param name="value">The string to assign.</param>
+    private static void AssignString(UnityEngine.Object target, string propertyName, string value)
+    {
+        SerializedObject serializedObject = new SerializedObject(target);
+        FindRequiredProperty(target, serializedObject, propertyName).stringValue = value;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
     /// Saves a generated hierarchy as a prefab and rejects an unsuccessful write.
     /// </summary>
     /// <param name="root">The generated hierarchy root.</param>
@@ -1720,6 +1777,17 @@ public static class OptionsMenuPrefabBuilder
     private static Texture2D LoadTexture(string path)
     {
         return ContentPackEditor.Assets.GetTexture(path);
+    }
+
+    /// <summary>
+    /// Loads a sprite with an explicit border from the active development content pack.
+    /// </summary>
+    /// <param name="address">The content sprite address.</param>
+    /// <param name="border">The sprite's nine-slice border in pixels.</param>
+    /// <returns>The loaded sprite.</returns>
+    private static Sprite LoadSprite(string address, Vector4 border)
+    {
+        return ContentPackEditor.Assets.GetSprite(address, border);
     }
 
     /// <summary>

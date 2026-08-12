@@ -16,6 +16,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
         private GameObject _root;
         private OptionsMenuView _view;
+        private OptionsSaveListView _saveListView;
 
         /// <summary>
         /// Creates the generated Options menu view for each test.
@@ -25,6 +26,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         {
             _root = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
             _view = _root.GetComponent<OptionsMenuView>();
+            _saveListView = _root.GetComponentInChildren<OptionsSaveListView>(true);
+            UIComponentTestHelper.InvokeLifecycle(_saveListView, "Awake");
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
@@ -35,6 +38,95 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_root);
+        }
+
+        /// <summary>
+        /// Verifies Options artwork is authored with stable content bindings and explicit borders.
+        /// </summary>
+        [Test]
+        public void Artwork_GeneratedPrefab_UsesContentPipelineBindings()
+        {
+            string[] expectedBoundAddresses =
+            {
+                "Application/OptionsMenu/UI/ui_settingsmenu_badge_background",
+                "Application/OptionsMenu/UI/ui_settingsmenu_frame_overlay",
+                "Application/OptionsMenu/UI/ui_settingsmenu_panel_background",
+                "Application/OptionsMenu/UI/ui_settingsmenu_row_background",
+                "Application/OptionsMenu/UI/ui_settingsmenu_toggle_icon",
+            };
+            ContentSpriteBinding[] bindings = _root
+                .GetComponentsInChildren<ContentSpriteBinding>(true)
+                .Where(binding =>
+                    binding.Address.StartsWith(
+                        "Application/OptionsMenu/UI/ui_settingsmenu_",
+                        StringComparison.Ordinal
+                    )
+                )
+                .ToArray();
+
+            CollectionAssert.IsSubsetOf(
+                expectedBoundAddresses,
+                bindings.Select(binding => binding.Address).Distinct().ToArray()
+            );
+            foreach (ContentSpriteBinding binding in bindings)
+            {
+                Image image = binding.GetComponent<Image>();
+                Assert.IsNotNull(image.sprite, binding.Address);
+                Assert.AreEqual(binding.Border, image.sprite.border, binding.Address);
+            }
+
+            Assert.AreEqual(
+                "Application/OptionsMenu/UI/ui_settingsmenu_row_background",
+                GetField<string>("_rowIdleSpriteAddress")
+            );
+            Assert.AreEqual(
+                "Application/OptionsMenu/UI/ui_settingsmenu_row_selected_background",
+                GetField<string>("_rowActiveSpriteAddress")
+            );
+            foreach (
+                OptionsToggleRowView row in _root.GetComponentsInChildren<OptionsToggleRowView>(
+                    true
+                )
+            )
+            {
+                Assert.AreEqual(
+                    "Application/OptionsMenu/UI/ui_settingsmenu_toggle_icon",
+                    typeof(OptionsToggleRowView)
+                        .GetField(
+                            "_offSpriteAddress",
+                            BindingFlags.Instance | BindingFlags.NonPublic
+                        )
+                        .GetValue(row)
+                );
+                Assert.AreEqual(
+                    "Application/OptionsMenu/UI/ui_settingsmenu_toggle_selected_icon",
+                    typeof(OptionsToggleRowView)
+                        .GetField(
+                            "_onSpriteAddress",
+                            BindingFlags.Instance | BindingFlags.NonPublic
+                        )
+                        .GetValue(row)
+                );
+            }
+
+            Assert.IsTrue(
+                _root
+                    .GetComponentsInChildren<ContentTextureBinding>(true)
+                    .Any(binding =>
+                        binding.Address == "Application/OptionsMenu/UI/ui_settingsmenu_slider_knob"
+                    )
+            );
+        }
+
+        /// <summary>
+        /// Verifies save-list widget ownership belongs to an authored subview.
+        /// </summary>
+        [Test]
+        public void SaveLoadPage_UsesAuthoredSaveListSubview()
+        {
+            Assert.IsNotNull(_saveListView);
+            Assert.AreSame(_saveListView, GetField<OptionsSaveListView>("_saveListView"));
+            Assert.AreEqual("SaveLoadPage", _saveListView.name);
         }
 
         /// <summary>
@@ -84,9 +176,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         [Test]
         public void RenameInput_AlignmentConfiguresVisibleBlinkingCaret()
         {
-            _view.AlignRenameInput();
+            _saveListView.AlignRenameInput();
 
-            TMP_InputField input = GetField<TMP_InputField>("_slotRenameField");
+            TMP_InputField input = GetSaveListField<TMP_InputField>("_renameField");
             Assert.IsTrue(input.customCaretColor);
             Assert.AreEqual(Color.white, input.caretColor);
             Assert.AreEqual(2, input.caretWidth);
@@ -250,6 +342,17 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 typeof(OptionsMenuView)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_view);
+        }
+
+        /// <summary>
+        /// Reads a private authored reference from the save-list subview under test.
+        /// </summary>
+        private T GetSaveListField<T>(string fieldName)
+        {
+            return (T)
+                typeof(OptionsSaveListView)
+                    .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(_saveListView);
         }
 
         /// <summary>

@@ -39,9 +39,7 @@ public sealed class StrategyController
         IMessagesWindowActions,
         IStatusWindowActions,
         IBattleAlertWindowActions,
-        IOptionsMenuHostActions,
-        IOptionsSaveStore,
-        IOptionsSaveWriter
+        IOptionsMenuActions
 {
     [SerializeField]
     private CanvasGroup contentGroup;
@@ -398,7 +396,7 @@ public sealed class StrategyController
             AppBootstrap.Instance.GetInputManager(),
             MarkDirty
         );
-        _optionsMenuController.Initialize(this, this, this);
+        _optionsMenuController.Initialize(this);
         cancelStack?.Register(_optionsMenuController);
         GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
         if (settingsRuntime != null)
@@ -3042,17 +3040,22 @@ public sealed class StrategyController
     /// <summary>
     /// Gets whether the Options menu can return to the running game.
     /// </summary>
-    bool IOptionsMenuHostActions.CanReturnToGame => true;
+    bool IOptionsMenuActions.CanReturnToGame => true;
 
     /// <summary>
     /// Gets whether the Options menu can return to the Main Menu.
     /// </summary>
-    bool IOptionsMenuHostActions.CanReturnToMainMenu => true;
+    bool IOptionsMenuActions.CanReturnToMainMenu => true;
+
+    /// <summary>
+    /// Gets whether the running game can create and overwrite saves.
+    /// </summary>
+    bool IOptionsMenuActions.CanWriteSaves => true;
 
     /// <summary>
     /// Pauses the game while the Options menu is open.
     /// </summary>
-    void IOptionsMenuHostActions.PauseForOptions()
+    void IOptionsMenuActions.PauseForOptions()
     {
         AppBootstrap.Instance?.GetInputController()?.PushContext(InputContext.Menu);
         if (gameManager == null)
@@ -3065,7 +3068,7 @@ public sealed class StrategyController
     /// <summary>
     /// Restores the game speed when the Options menu closes.
     /// </summary>
-    void IOptionsMenuHostActions.ResumeFromOptions()
+    void IOptionsMenuActions.ResumeFromOptions()
     {
         AppBootstrap.Instance?.GetInputController()?.PopContext();
         gameManager?.SetGameSpeed(_speedBeforeOptions);
@@ -3075,7 +3078,7 @@ public sealed class StrategyController
     /// Returns the save games displayed in the Options menu.
     /// </summary>
     /// <returns>The save rows, newest save first.</returns>
-    IReadOnlyList<OptionsSaveSlot> IOptionsSaveStore.GetSaveSlots()
+    IReadOnlyList<OptionsSaveSlot> IOptionsMenuActions.GetSaveSlots()
     {
         List<OptionsSaveSlot> rows = new List<OptionsSaveSlot>
         {
@@ -3108,7 +3111,7 @@ public sealed class StrategyController
     /// Creates a save game with the given display name.
     /// </summary>
     /// <param name="displayName">The display name for the new save.</param>
-    void IOptionsSaveWriter.CreateNamedSave(string displayName)
+    void IOptionsMenuActions.CreateNamedSave(string displayName)
     {
         GameRoot game = gameManager?.GetGame();
         if (game == null)
@@ -3123,7 +3126,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="fileName">The save file to overwrite.</param>
     /// <param name="displayName">The display name to preserve or apply.</param>
-    void IOptionsSaveWriter.OverwriteSave(string fileName, string displayName)
+    void IOptionsMenuActions.OverwriteSave(string fileName, string displayName)
     {
         GameRoot game = gameManager?.GetGame();
         if (game == null || string.IsNullOrEmpty(fileName))
@@ -3137,7 +3140,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="fileName">The save file to load.</param>
     /// <returns>True when a game was loaded.</returns>
-    bool IOptionsSaveStore.LoadSave(string fileName)
+    bool IOptionsMenuActions.LoadSave(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))
             return false;
@@ -3150,7 +3153,7 @@ public sealed class StrategyController
     /// Deletes a save game.
     /// </summary>
     /// <param name="fileName">The save file to delete.</param>
-    void IOptionsSaveStore.DeleteSave(string fileName)
+    void IOptionsMenuActions.DeleteSave(string fileName)
     {
         SaveGameManager.Instance.DeleteSave(fileName);
     }
@@ -3160,7 +3163,7 @@ public sealed class StrategyController
     /// </summary>
     /// <param name="fileName">The save file to rename.</param>
     /// <param name="displayName">The new display name.</param>
-    void IOptionsSaveStore.RenameSave(string fileName, string displayName)
+    void IOptionsMenuActions.RenameSave(string fileName, string displayName)
     {
         SaveGameManager.Instance.SetSaveDisplayName(fileName, displayName);
     }
@@ -3187,7 +3190,7 @@ public sealed class StrategyController
     /// <summary>
     /// Returns to the Main Menu.
     /// </summary>
-    void IOptionsMenuHostActions.ReturnToMainMenu()
+    void IOptionsMenuActions.ReturnToMainMenu()
     {
         AppBootstrap.Instance.LoadScene("MainMenu");
     }
@@ -3195,7 +3198,7 @@ public sealed class StrategyController
     /// <summary>
     /// Quits the game.
     /// </summary>
-    void IOptionsMenuHostActions.QuitApplication()
+    void IOptionsMenuActions.QuitApplication()
     {
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;

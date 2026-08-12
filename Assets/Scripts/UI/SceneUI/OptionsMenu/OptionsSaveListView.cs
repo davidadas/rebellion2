@@ -5,37 +5,59 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Manages the save list in the Options menu.
+/// Displays and edits the save list in the Options menu.
 /// </summary>
-internal sealed class OptionsSaveListPresenter : IDisposable
+public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
 {
-    // Colors.
     private static readonly Color _accentColor = new Color(0.373f, 0.659f, 0.925f);
     private static readonly Color _metaColor = new Color(0.573f, 0.635f, 0.706f);
     private static readonly Color _textColor = new Color(0.875f, 0.910f, 0.941f);
 
-    // Controls.
-    private readonly Button _saveButton;
-    private readonly Button _loadButton;
-    private readonly RawImage _saveDisabledImage;
-    private readonly RawImage _loadDisabledImage;
-    private readonly ScrollAreaView _scrollArea;
-    private readonly Image _rowTemplate;
-    private readonly RawImage _iconTemplate;
-    private readonly TextMeshProUGUI _nameTemplate;
-    private readonly TextMeshProUGUI _metaTemplate;
-    private readonly Button _deleteTemplate;
-    private readonly TMP_InputField _renameField;
-    private readonly Sprite _rowIdleSprite;
-    private readonly Sprite _rowActiveSprite;
+    [SerializeField]
+    private Button _saveButton;
 
-    // Events.
-    private readonly Action<int> _slotSelected;
-    private readonly Action<int, string, bool> _slotRenamed;
-    private readonly Action<int> _slotDeleteRequested;
-    private readonly Action<bool> _renameEditingChanged;
+    [SerializeField]
+    private Button _loadButton;
 
-    // Save Rows.
+    [SerializeField]
+    private RawImage _saveDisabledImage;
+
+    [SerializeField]
+    private RawImage _loadDisabledImage;
+
+    [SerializeField]
+    private ScrollAreaView _scrollArea;
+
+    [SerializeField]
+    private Image _rowTemplate;
+
+    [SerializeField]
+    private RawImage _iconTemplate;
+
+    [SerializeField]
+    private TextMeshProUGUI _nameTemplate;
+
+    [SerializeField]
+    private TextMeshProUGUI _metaTemplate;
+
+    [SerializeField]
+    private Button _deleteTemplate;
+
+    [SerializeField]
+    private TMP_InputField _renameField;
+
+    [SerializeField]
+    private Sprite _rowIdleSprite;
+
+    [SerializeField]
+    private string _rowIdleSpriteAddress;
+
+    [SerializeField]
+    private Sprite _rowActiveSprite;
+
+    [SerializeField]
+    private string _rowActiveSpriteAddress;
+
     private readonly List<Image> _rowImages = new List<Image>();
     private readonly List<RawImage> _iconImages = new List<RawImage>();
     private readonly List<TextMeshProUGUI> _nameFields = new List<TextMeshProUGUI>();
@@ -45,7 +67,6 @@ internal sealed class OptionsSaveListPresenter : IDisposable
     private readonly List<int> _rowTops = new List<int>();
     private readonly List<OptionsSaveSlot> _slots = new List<OptionsSaveSlot>();
 
-    // Editing State.
     private int _rowWidth;
     private int _rowHeight;
     private int _renameRow = -1;
@@ -53,55 +74,91 @@ internal sealed class OptionsSaveListPresenter : IDisposable
     private bool _pendingRenameFocus;
 
     /// <summary>
-    /// Creates a presenter over the authored save-list controls and semantic callbacks.
+    /// Raised when the Save command is requested.
     /// </summary>
-    internal OptionsSaveListPresenter(
-        Button saveButton,
-        Button loadButton,
-        RawImage saveDisabledImage,
-        RawImage loadDisabledImage,
-        ScrollAreaView scrollArea,
-        Image rowTemplate,
-        RawImage iconTemplate,
-        TextMeshProUGUI nameTemplate,
-        TextMeshProUGUI metaTemplate,
-        Button deleteTemplate,
-        TMP_InputField renameField,
-        Sprite rowIdleSprite,
-        Sprite rowActiveSprite,
-        Action<int> slotSelected,
-        Action<int, string, bool> slotRenamed,
-        Action<int> slotDeleteRequested,
-        Action<bool> renameEditingChanged
-    )
-    {
-        _saveButton = saveButton;
-        _loadButton = loadButton;
-        _saveDisabledImage = saveDisabledImage;
-        _loadDisabledImage = loadDisabledImage;
-        _scrollArea = scrollArea;
-        _rowTemplate = rowTemplate;
-        _iconTemplate = iconTemplate;
-        _nameTemplate = nameTemplate;
-        _metaTemplate = metaTemplate;
-        _deleteTemplate = deleteTemplate;
-        _renameField = renameField;
-        _rowIdleSprite = rowIdleSprite;
-        _rowActiveSprite = rowActiveSprite;
-        _slotSelected = slotSelected;
-        _slotRenamed = slotRenamed;
-        _slotDeleteRequested = slotDeleteRequested;
-        _renameEditingChanged = renameEditingChanged;
+    public event Action SaveRequested;
 
-        renameField.onEndEdit.AddListener(HandleRenameEndEdit);
-        renameField.onSubmit.AddListener(HandleRenameSubmitted);
+    /// <summary>
+    /// Raised when the Load command is requested.
+    /// </summary>
+    public event Action LoadRequested;
+
+    /// <summary>
+    /// Raised when a save row is selected.
+    /// </summary>
+    public event Action<int> SlotSelected;
+
+    /// <summary>
+    /// Raised when a save name edit completes.
+    /// </summary>
+    public event Action<int, string, bool> SlotRenamed;
+
+    /// <summary>
+    /// Raised when a save row requests deletion.
+    /// </summary>
+    public event Action<int> SlotDeleteRequested;
+
+    /// <summary>
+    /// Raised when save-name text editing starts or stops.
+    /// </summary>
+    public event Action<bool> RenameEditingChanged;
+
+    /// <summary>
+    /// Loads content-backed row sprites.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        Vector4 border = new Vector4(7f, 7f, 7f, 7f);
+        _rowIdleSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _rowIdleSpriteAddress,
+            border
+        );
+        _rowActiveSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _rowActiveSpriteAddress,
+            border
+        );
+    }
+
+    /// <summary>
+    /// Verifies authored references and binds semantic control events.
+    /// </summary>
+    private void Awake()
+    {
+        VerifyReferences();
+        AlignRenameInput();
+        _saveButton.onClick.AddListener(HandleSaveRequested);
+        _loadButton.onClick.AddListener(HandleLoadRequested);
+        _renameField.onEndEdit.AddListener(HandleRenameEndEdit);
+        _renameField.onSubmit.AddListener(HandleRenameSubmitted);
+    }
+
+    /// <summary>
+    /// Applies deferred text-field focus after the layout pass.
+    /// </summary>
+    private void Update()
+    {
+        UpdateFocus();
+    }
+
+    /// <summary>
+    /// Removes listeners installed by this view.
+    /// </summary>
+    private void OnDestroy()
+    {
+        _saveButton.onClick.RemoveListener(HandleSaveRequested);
+        _loadButton.onClick.RemoveListener(HandleLoadRequested);
+        _renameField.onEndEdit.RemoveListener(HandleRenameEndEdit);
+        _renameField.onSubmit.RemoveListener(HandleRenameSubmitted);
     }
 
     /// <summary>
     /// Renders the current save slots, selection, and available save actions.
     /// </summary>
     /// <param name="data">The current Options menu render state.</param>
-    internal void Render(OptionsMenuRenderData data)
+    public void Render(OptionsMenuRenderData data)
     {
         int selected = data.SelectedSlot;
         bool existingSelected =
@@ -200,7 +257,7 @@ internal sealed class OptionsSaveListPresenter : IDisposable
     /// <summary>
     /// Applies deferred focus to an active rename field after layout completes.
     /// </summary>
-    internal void UpdateFocus()
+    private void UpdateFocus()
     {
         if (!_pendingRenameFocus)
             return;
@@ -219,7 +276,7 @@ internal sealed class OptionsSaveListPresenter : IDisposable
     /// <summary>
     /// Cancels the current rename without committing its text.
     /// </summary>
-    internal void CancelRename()
+    public void CancelRename()
     {
         if (_renameRow < 0)
             return;
@@ -228,7 +285,7 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _suppressRenameCommit = true;
         _pendingRenameFocus = false;
         _renameField.gameObject.SetActive(false);
-        _renameEditingChanged?.Invoke(false);
+        RenameEditingChanged?.Invoke(false);
     }
 
     /// <summary>
@@ -255,15 +312,6 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _renameField.characterLimit = SaveGameManager.MaxDisplayNameLength;
         _renameField.onFocusSelectAll = false;
         _renameField.ForceLabelUpdate();
-    }
-
-    /// <summary>
-    /// Detaches rename listeners owned by this presenter.
-    /// </summary>
-    public void Dispose()
-    {
-        _renameField.onEndEdit.RemoveListener(HandleRenameEndEdit);
-        _renameField.onSubmit.RemoveListener(HandleRenameSubmitted);
     }
 
     /// <summary>
@@ -346,7 +394,7 @@ internal sealed class OptionsSaveListPresenter : IDisposable
             button.name = $"SlotDelete{slotIndex}";
             button.gameObject.SetActive(true);
             button.transform.SetAsLastSibling();
-            button.onClick.AddListener(() => _slotDeleteRequested?.Invoke(slotIndex));
+            button.onClick.AddListener(() => SlotDeleteRequested?.Invoke(slotIndex));
             _deleteButtons.Add(button);
         }
 
@@ -369,14 +417,14 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         {
             _lastClickTimes[button] = 0f;
             CancelRename();
-            _slotSelected?.Invoke(index);
+            SlotSelected?.Invoke(index);
             BeginRename(index);
             return;
         }
 
         _lastClickTimes[button] = now;
         CancelRename();
-        _slotSelected?.Invoke(index);
+        SlotSelected?.Invoke(index);
         if (!existing)
             BeginRename(index);
     }
@@ -408,7 +456,7 @@ internal sealed class OptionsSaveListPresenter : IDisposable
             _slots[index].IsCreateNew ? string.Empty : _slots[index].Name
         );
         _pendingRenameFocus = true;
-        _renameEditingChanged?.Invoke(true);
+        RenameEditingChanged?.Invoke(true);
     }
 
     /// <summary>
@@ -435,14 +483,30 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         int row = _renameRow;
         _renameRow = -1;
         _pendingRenameFocus = false;
-        _renameEditingChanged?.Invoke(false);
+        RenameEditingChanged?.Invoke(false);
         _renameField.gameObject.SetActive(false);
         if (_suppressRenameCommit)
         {
             _suppressRenameCommit = false;
             return;
         }
-        _slotRenamed?.Invoke(row, value, submitted);
+        SlotRenamed?.Invoke(row, value, submitted);
+    }
+
+    /// <summary>
+    /// Forwards the authored Save button request.
+    /// </summary>
+    private void HandleSaveRequested()
+    {
+        SaveRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Forwards the authored Load button request.
+    /// </summary>
+    private void HandleLoadRequested()
+    {
+        LoadRequested?.Invoke();
     }
 
     /// <summary>
@@ -501,5 +565,40 @@ internal sealed class OptionsSaveListPresenter : IDisposable
     {
         for (int index = firstHiddenIndex; index < items.Count; index++)
             items[index].gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Verifies that the generated save-list subview contains every required reference.
+    /// </summary>
+    private void VerifyReferences()
+    {
+        if (_saveButton == null || _loadButton == null)
+            throw new MissingReferenceException($"{name} is missing a save command button.");
+        if (_saveDisabledImage == null || _loadDisabledImage == null)
+            throw new MissingReferenceException($"{name} is missing a disabled command image.");
+        if (
+            _scrollArea == null
+            || _rowTemplate == null
+            || _iconTemplate == null
+            || _nameTemplate == null
+            || _metaTemplate == null
+            || _deleteTemplate == null
+            || _renameField == null
+        )
+            throw new MissingReferenceException($"{name} is missing a save-row reference.");
+        if (_rowIdleSprite == null || _rowActiveSprite == null)
+            throw new MissingReferenceException($"{name} is missing a row sprite.");
+        if (
+            string.IsNullOrWhiteSpace(_rowIdleSpriteAddress)
+            || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
+        )
+            throw new MissingReferenceException($"{name} is missing a row sprite address.");
+
+        _rowTemplate.gameObject.SetActive(false);
+        _iconTemplate.gameObject.SetActive(false);
+        _nameTemplate.gameObject.SetActive(false);
+        _metaTemplate.gameObject.SetActive(false);
+        _deleteTemplate.gameObject.SetActive(false);
+        _renameField.gameObject.SetActive(false);
     }
 }

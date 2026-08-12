@@ -38,6 +38,28 @@ namespace Rebellion.Tests.Content
             Assert.IsNull(assets.GetTexture("Application/Common/UI/missing"));
         }
 
+        /// <summary>
+        /// Verifies sprite caching distinguishes explicit nine-slice borders.
+        /// </summary>
+        [Test]
+        public void GetSprite_DifferentBorders_CachesDistinctVariants()
+        {
+            ContentPack pack = ContentPackLoader.OpenActive();
+            using ContentAssets assets = CreateAssets(pack);
+            const string address = "Application/Common/UI/ui_common_confirmation_dialog";
+            Vector4 border = new Vector4(7f, 7f, 7f, 7f);
+
+            Sprite unbordered = assets.GetSprite(address);
+            Sprite bordered = assets.GetSprite(address, border);
+            Sprite borderedAgain = assets.GetSprite(address, border);
+
+            Assert.IsNotNull(unbordered);
+            Assert.IsNotNull(bordered);
+            Assert.AreNotSame(unbordered, bordered);
+            Assert.AreSame(bordered, borderedAgain);
+            Assert.AreEqual(border, bordered.border);
+        }
+
         [Test]
         public void GetReadableTexture_ApplicationCursor_RemainsReadableAndCached()
         {

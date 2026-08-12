@@ -14,20 +14,24 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 ## Setup
 
 1. Clone `rebellion2` and `rebellion2-media` beside one another.
-2. Copy `rebellion2-media/Content/` to `rebellion2/Assets/Content/`.
-3. Copy `rebellion2-media/Models/MainMenu/` to
-   `rebellion2/Assets/Art/Models/MainMenu/`.
-4. Copy `rebellion2-media/UI/` to `rebellion2/Assets/UI/`.
-5. Open `rebellion2` in Unity and allow the assets to import.
-6. Run **Rebellion > Build > Build All UI**.
+2. Run `./build.sh sync-media` from the `rebellion2` checkout.
+3. Open `rebellion2` in Unity and allow the assets to import.
+4. Run **Rebellion > Build > Build All UI**.
 
-The copied content and UI, generated UI prefabs, and generated scenes are local development
-artifacts and are ignored by Git. Repeat the copies when `rebellion2-media` changes and rebuild the
-UI after changing builder code or content used by a builder.
+The copied content and models, generated UI prefabs, and generated scenes are local development
+artifacts and are ignored by Git. Run `./build.sh sync-media` again when `rebellion2-media` changes,
+then rebuild the UI after changing builder code or content used by a builder.
+
+If the media checkout is not beside the project, provide its location explicitly:
+
+```bash
+MEDIA_PATH=/path/to/rebellion2-media ./build.sh sync-media
+```
 
 ## Commands
 
 ```bash
+./build.sh sync-media # Copy development content and Main Menu models
 ./build.sh format     # Check C# formatting
 ./build.sh xmlformat  # Format XML data
 ./build.sh lint       # Run static analysis

@@ -8,7 +8,6 @@ using UnityEngine.InputSystem;
 /// </summary>
 internal sealed class OptionsSettingsSession
 {
-    // Display Modes.
     private static readonly int[] _fullScreenModes =
     {
         (int)FullScreenMode.ExclusiveFullScreen,
@@ -16,17 +15,14 @@ internal sealed class OptionsSettingsSession
         (int)FullScreenMode.Windowed,
     };
 
-    // Settings.
     private readonly UserSettingsManager _userSettings;
     private readonly DisplayManager _displayManager;
     private readonly AudioManager _audioManager;
     private readonly InputManager _inputManager;
 
-    // Display Settings.
     private readonly List<Vector2Int> _resolutions = new List<Vector2Int>();
     private int _resolutionIndex;
 
-    // Original Settings.
     private readonly Dictionary<UserTacticalOption, bool> _snapshotTactical =
         new Dictionary<UserTacticalOption, bool>();
 
@@ -135,6 +131,10 @@ internal sealed class OptionsSettingsSession
         IsDirty = true;
     }
 
+    /// <summary>
+    /// Copies the staged tactical display toggles for presentation.
+    /// </summary>
+    /// <returns>The staged toggle state keyed by tactical option.</returns>
     internal Dictionary<UserTacticalOption, bool> GetTacticalStates()
     {
         Dictionary<UserTacticalOption, bool> states = new Dictionary<UserTacticalOption, bool>();

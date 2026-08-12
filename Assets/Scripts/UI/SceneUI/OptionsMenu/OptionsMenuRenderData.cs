@@ -3,6 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// Identifies the active Options menu page.
+/// </summary>
+public enum OptionsMenuTab
+{
+    Graphics,
+    Audio,
+    SaveLoad,
+    Controls,
+}
+
+/// <summary>
 /// Represents one binding row in the Controls menu.
 /// </summary>
 public sealed class OptionsBindingRow
@@ -27,7 +38,6 @@ public sealed class OptionsBindingRow
         IsHeader = isHeader;
     }
 
-    // Binding Info.
     public string Action { get; }
     public string Primary { get; }
     public string Secondary { get; }
@@ -62,7 +72,6 @@ public sealed class OptionsSaveSlot
         FileName = fileName ?? string.Empty;
     }
 
-    // Save Info.
     public string Name { get; }
     public string Date { get; }
     public Texture2D FactionIcon { get; }
@@ -131,29 +140,23 @@ public sealed class OptionsMenuRenderData
         ListeningSecondary = listeningSecondary;
     }
 
-    // Window Position.
     public int X { get; }
     public int Y { get; }
 
-    // Menu Selection.
     public OptionsMenuTab ActiveTab { get; }
     public int SelectedSlot { get; }
     public int ListeningRow { get; }
     public bool ListeningSecondary { get; }
 
-    // Display Settings.
     public string ResolutionLabel { get; }
     public string FullScreenLabel { get; }
     public IReadOnlyDictionary<UserTacticalOption, bool> TacticalStates { get; }
 
-    // Audio Settings.
     public IReadOnlyList<float> Volumes { get; }
 
-    // Menu Rows.
     public IReadOnlyList<OptionsBindingRow> Bindings { get; }
     public IReadOnlyList<OptionsSaveSlot> SaveSlots { get; }
 
-    // Available Actions.
     public bool CanSave { get; }
     public bool CanLoad { get; }
     public bool CanReturnToGame { get; }

@@ -13,6 +13,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class MainMenuView : MonoBehaviour
 {
+    private const float _optionsSurfaceWidth = 853.33f;
+    private const float _optionsSurfaceHeight = 480f;
     private const string _headquartersVictorySpriteAddress =
         "Application/MainMenu/UI/ui_mainmenu_hqonly_icon";
     private const string _standardVictorySpriteAddress =
@@ -191,6 +193,16 @@ public sealed class MainMenuView : MonoBehaviour
     [SerializeField]
     private AudioCueBinding[] audioCueBindings = Array.Empty<AudioCueBinding>();
 
+    [Header("Options overlay")]
+    [SerializeField]
+    private GameObject optionsOverlay;
+
+    [SerializeField]
+    private RectTransform optionsWindowLayer;
+
+    [SerializeField]
+    private UIWindowManager optionsWindowManager;
+
     private readonly List<Action> removeControlListeners = new List<Action>();
     private readonly List<Sprite> ownedFactionSprites = new List<Sprite>();
     private Sprite[] exitAnimationFrames = Array.Empty<Sprite>();
@@ -200,6 +212,16 @@ public sealed class MainMenuView : MonoBehaviour
     private float exitAnimationElapsedSeconds;
     private float loadAnimationElapsedSeconds;
     private bool controlsBound;
+
+    /// <summary>
+    /// Returns the authored layer that receives the Options window.
+    /// </summary>
+    internal Transform OptionsWindowLayer => optionsWindowLayer;
+
+    /// <summary>
+    /// Returns the authored manager for Main Menu modal windows.
+    /// </summary>
+    internal UIWindowManager OptionsWindowManager => optionsWindowManager;
 
     /// <summary>
     /// Occurs when the player selects a galaxy size.
@@ -356,6 +378,33 @@ public sealed class MainMenuView : MonoBehaviour
     }
 
     /// <summary>
+    /// Shows or hides the authored Options overlay and its full-screen dimmer.
+    /// </summary>
+    /// <param name="visible">Whether the overlay should receive input and render.</param>
+    internal void RenderOptionsOverlay(bool visible)
+    {
+        if (optionsOverlay != null && optionsOverlay.activeSelf != visible)
+            optionsOverlay.SetActive(visible);
+    }
+
+    /// <summary>
+    /// Centers an Options window in the overlay's source-coordinate surface.
+    /// </summary>
+    /// <param name="prefab">The Options window prefab being positioned.</param>
+    /// <returns>The centered source-coordinate position.</returns>
+    internal Vector2Int GetOptionsWindowPosition(OptionsMenuView prefab)
+    {
+        if (prefab == null)
+            throw new ArgumentNullException(nameof(prefab));
+
+        RectTransform rect = (RectTransform)prefab.transform;
+        return new Vector2Int(
+            Mathf.RoundToInt(_optionsSurfaceWidth / 2f - rect.sizeDelta.x / 2f),
+            Mathf.RoundToInt(_optionsSurfaceHeight / 2f - rect.sizeDelta.y / 2f)
+        );
+    }
+
+    /// <summary>
     /// Populates the authored launch positions from the active scenario's playable factions.
     /// </summary>
     /// <param name="factionIDs">The playable faction identifiers in display order.</param>
@@ -453,6 +502,9 @@ public sealed class MainMenuView : MonoBehaviour
             || victoryConditionText == null
             || victoryConditionSpinner == null
             || victoryConditionSelectionOverlay == null
+            || optionsOverlay == null
+            || optionsWindowLayer == null
+            || optionsWindowManager == null
         )
         {
             throw new MissingReferenceException($"{name} has incomplete main-menu references.");

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Displays a tactical option in the Options menu.
 /// </summary>
-public sealed class OptionsToggleRowView : MonoBehaviour
+public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
 {
     private static readonly Color _onTextColor = Color.white;
     private static readonly Color _offTextColor = new Color(0.55f, 0.63f, 0.73f);
@@ -21,7 +21,13 @@ public sealed class OptionsToggleRowView : MonoBehaviour
     private Sprite _offSprite;
 
     [SerializeField]
+    private string _offSpriteAddress;
+
+    [SerializeField]
     private Sprite _onSprite;
+
+    [SerializeField]
+    private string _onSpriteAddress;
 
     [SerializeField]
     private Button _button;
@@ -34,9 +40,18 @@ public sealed class OptionsToggleRowView : MonoBehaviour
 
     private bool _bound;
 
-    // Toggle Info.
     public UserTacticalOption Option => _option;
     public event Action<UserTacticalOption> ToggleRequested;
+
+    /// <summary>
+    /// Restores the state-swapped toggle sprites from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        _offSprite = ContentBindings.RequireSprite(contentAssets, _offSpriteAddress);
+        _onSprite = ContentBindings.RequireSprite(contentAssets, _onSpriteAddress);
+    }
 
     /// <summary>
     /// Renders the current option state.
@@ -61,6 +76,11 @@ public sealed class OptionsToggleRowView : MonoBehaviour
             throw new MissingReferenceException("ToggleImage is missing.");
         if (_offSprite == null || _onSprite == null)
             throw new MissingReferenceException("Toggle sprites are missing.");
+        if (
+            string.IsNullOrWhiteSpace(_offSpriteAddress)
+            || string.IsNullOrWhiteSpace(_onSpriteAddress)
+        )
+            throw new MissingReferenceException("Toggle sprite addresses are missing.");
         if (_button == null)
             throw new MissingReferenceException("Button is missing.");
         if (_labelTextField == null)

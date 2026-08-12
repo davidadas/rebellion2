@@ -3,11 +3,90 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// Supplies the scene-level capabilities and commands used by the Options menu.
+/// </summary>
+public interface IOptionsMenuActions
+{
+    /// <summary>
+    /// Gets whether the Options footer can return to a running game.
+    /// </summary>
+    bool CanReturnToGame { get; }
+
+    /// <summary>
+    /// Gets whether the Options footer can leave for the Main Menu.
+    /// </summary>
+    bool CanReturnToMainMenu { get; }
+
+    /// <summary>
+    /// Gets whether the current scene can create and overwrite saves.
+    /// </summary>
+    bool CanWriteSaves { get; }
+
+    /// <summary>
+    /// Suspends scene interaction while Options is open.
+    /// </summary>
+    void PauseForOptions();
+
+    /// <summary>
+    /// Restores scene interaction after Options closes.
+    /// </summary>
+    void ResumeFromOptions();
+
+    /// <summary>
+    /// Returns the save rows available in the current scene.
+    /// </summary>
+    /// <returns>The save rows in display order.</returns>
+    IReadOnlyList<OptionsSaveSlot> GetSaveSlots();
+
+    /// <summary>
+    /// Creates a save using a player-entered display name.
+    /// </summary>
+    /// <param name="displayName">The requested display name.</param>
+    void CreateNamedSave(string displayName);
+
+    /// <summary>
+    /// Overwrites an existing save using the current game state.
+    /// </summary>
+    /// <param name="fileName">The save identifier.</param>
+    /// <param name="displayName">The display name to preserve or apply.</param>
+    void OverwriteSave(string fileName, string displayName);
+
+    /// <summary>
+    /// Loads an existing save.
+    /// </summary>
+    /// <param name="fileName">The save identifier.</param>
+    /// <returns>True when loading or scene transition began.</returns>
+    bool LoadSave(string fileName);
+
+    /// <summary>
+    /// Deletes an existing save.
+    /// </summary>
+    /// <param name="fileName">The save identifier.</param>
+    void DeleteSave(string fileName);
+
+    /// <summary>
+    /// Changes an existing save's display name.
+    /// </summary>
+    /// <param name="fileName">The save identifier.</param>
+    /// <param name="displayName">The new display name.</param>
+    void RenameSave(string fileName, string displayName);
+
+    /// <summary>
+    /// Leaves the current scene for the Main Menu.
+    /// </summary>
+    void ReturnToMainMenu();
+
+    /// <summary>
+    /// Exits the application.
+    /// </summary>
+    void QuitApplication();
+}
+
+/// <summary>
 /// Manages the Options menu.
 /// </summary>
 public sealed class OptionsMenuController : ICancelable, IDisposable
 {
-    // Window.
     private readonly OptionsMenuView _prefab;
     private readonly Transform _windowParent;
     private readonly UIWindowManager _windowManager;
@@ -15,19 +94,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly Action<UIWindow> _closeWindow;
     private readonly Action _markDirty;
 
-    // Settings.
     private readonly OptionsSettingsSession _settingsSession;
     private readonly OptionsBindingEditor _bindingEditor;
 
-    // Save Games.
     private readonly List<OptionsSaveSlot> _saveSlots = new List<OptionsSaveSlot>();
-    private IOptionsSaveStore _saveStore;
-    private IOptionsSaveWriter _saveWriter;
     private int _selectedSlot = -1;
     private bool _saveSlotsLoaded;
 
-    // Menu State.
-    private IOptionsMenuHostActions _hostActions;
+    private IOptionsMenuActions _actions;
     private Action _pendingConfirmAction;
     private bool _pendingConfirmKeepsVisible;
     private OptionsMenuView _view;
@@ -88,26 +162,18 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     public bool IsOpen => _window != null;
 
     /// <summary>
-    /// Sets the game and save actions used by the Options menu.
+    /// Sets the scene-level actions used by the Options menu.
     /// </summary>
-    /// <param name="menuActions">The game actions.</param>
-    /// <param name="optionsSaveStore">The save game actions.</param>
-    /// <param name="optionsSaveWriter">The save writing actions.</param>
-    public void Initialize(
-        IOptionsMenuHostActions menuActions,
-        IOptionsSaveStore optionsSaveStore,
-        IOptionsSaveWriter optionsSaveWriter = null
-    )
+    /// <param name="actions">The owning scene's capabilities and commands.</param>
+    public void Initialize(IOptionsMenuActions actions)
     {
-        _hostActions = menuActions ?? throw new ArgumentNullException(nameof(menuActions));
-        _saveStore = optionsSaveStore ?? throw new ArgumentNullException(nameof(optionsSaveStore));
-        _saveWriter = optionsSaveWriter;
+        _actions = actions ?? throw new ArgumentNullException(nameof(actions));
     }
 
     /// <summary>
     /// Opens or focuses the Options menu.
     /// </summary>
-    public void Open()
+    public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Graphics)
     {
         EnsureInitialized();
         if (_window != null)
@@ -126,9 +192,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         _settingsSession.Begin();
         _bindingEditor.Rebuild();
-        _activeTab = OptionsMenuTab.Graphics;
+        _activeTab = initialTab;
         _selectedSlot = -1;
         _saveSlotsLoaded = false;
+        if (_activeTab == OptionsMenuTab.SaveLoad)
+        {
+            RefreshSaveSlots();
+            _saveSlotsLoaded = true;
+        }
 
         Vector2Int position = _getWindowPosition();
         _window = _windowManager.CreateWindow(
@@ -145,7 +216,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             out _view
         );
         BindView(_view);
-        _hostActions.PauseForOptions();
+        _actions.PauseForOptions();
         _markDirty();
     }
 
@@ -166,7 +237,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         UIWindow closing = _window;
         _window = null;
         _view = null;
-        _hostActions.ResumeFromOptions();
+        _actions.ResumeFromOptions();
         _closeWindow(closing);
         _markDirty();
     }
@@ -197,7 +268,17 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_window == null || _view == null)
             return;
 
-        _view.Render(BuildRenderData(_window));
+        _view.Render(
+            OptionsMenuProjector.Build(
+                _window,
+                _activeTab,
+                _settingsSession,
+                _bindingEditor,
+                _saveSlots,
+                _selectedSlot,
+                _actions
+            )
+        );
     }
 
     /// <summary>
@@ -209,7 +290,6 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_window == null)
             return false;
 
-        // Close the confirmation dialog first.
         if (_pendingConfirmAction != null || _bindingEditor.HasPendingConflict)
         {
             HandleConfirmDeclined();
@@ -218,33 +298,6 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         HandleBackToGame();
         return true;
-    }
-
-    /// <summary>
-    /// Creates the data displayed by the Options menu.
-    /// </summary>
-    /// <param name="shell">The Options menu window.</param>
-    /// <returns>The Options menu data.</returns>
-    private OptionsMenuRenderData BuildRenderData(UIWindow shell)
-    {
-        return new OptionsMenuRenderData(
-            shell.X,
-            shell.Y,
-            _activeTab,
-            _settingsSession.ResolutionLabel,
-            _settingsSession.FullScreenLabel,
-            _settingsSession.GetTacticalStates(),
-            _settingsSession.GetVolumes(),
-            _bindingEditor.Rows,
-            _saveSlots,
-            _selectedSlot,
-            _saveWriter != null,
-            _saveStore != null,
-            _hostActions.CanReturnToGame,
-            _hostActions.CanReturnToMainMenu,
-            _bindingEditor.ListeningRow,
-            _bindingEditor.ListeningSecondary
-        );
     }
 
     /// <summary>
@@ -343,16 +396,17 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         if (_saveSlots[slot].IsCreateNew)
         {
-            _saveWriter?.CreateNamedSave(newName);
+            if (_actions.CanWriteSaves)
+                _actions.CreateNamedSave(newName);
             _selectedSlot = -1;
         }
         else
         {
             string fileName = _saveSlots[slot].FileName;
-            if (submitted && _saveWriter != null)
-                _saveWriter.OverwriteSave(fileName, newName);
+            if (submitted && _actions.CanWriteSaves)
+                _actions.OverwriteSave(fileName, newName);
             else
-                _saveStore.RenameSave(fileName, newName);
+                _actions.RenameSave(fileName, newName);
             RefreshSaveSlots(fileName);
             _markDirty();
             return;
@@ -377,7 +431,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             $"Delete \"{label}\"?",
             () =>
             {
-                _saveStore.DeleteSave(fileName);
+                _actions.DeleteSave(fileName);
                 _selectedSlot = -1;
                 RefreshSaveSlots();
                 _markDirty();
@@ -390,11 +444,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleSaveRequested()
     {
-        if (_saveWriter == null || !IsSelectedExistingSave())
+        if (!_actions.CanWriteSaves || !IsSelectedExistingSave())
             return;
 
         string fileName = _saveSlots[_selectedSlot].FileName;
-        _saveWriter.OverwriteSave(fileName, _saveSlots[_selectedSlot].Name);
+        _actions.OverwriteSave(fileName, _saveSlots[_selectedSlot].Name);
         RefreshSaveSlots(fileName);
         _markDirty();
     }
@@ -404,10 +458,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleLoadRequested()
     {
-        if (_saveStore == null || !IsSelectedExistingSave())
+        if (!IsSelectedExistingSave())
             return;
 
-        if (_saveStore.LoadSave(_saveSlots[_selectedSlot].FileName))
+        if (_actions.LoadSave(_saveSlots[_selectedSlot].FileName))
             Close();
     }
 
@@ -437,7 +491,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void RefreshSaveSlots(string selectedFileName = null)
     {
         _saveSlots.Clear();
-        _saveSlots.AddRange(_saveStore.GetSaveSlots());
+        _saveSlots.AddRange(_actions.GetSaveSlots());
         _selectedSlot = -1;
         if (string.IsNullOrEmpty(selectedFileName))
             return;
@@ -527,7 +581,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _settingsSession.IsDirty
                 ? "Return to the Main Menu? Unsaved settings will be lost."
                 : "Return to the Main Menu?",
-            () => ExitWithoutSaving(_hostActions.ReturnToMainMenu),
+            () => ExitWithoutSaving(_actions.ReturnToMainMenu),
             true
         );
     }
@@ -541,7 +595,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _settingsSession.IsDirty
                 ? "Quit to desktop? Unsaved settings will be lost."
                 : "Quit to desktop?",
-            () => ExitWithoutSaving(_hostActions.QuitApplication),
+            () => ExitWithoutSaving(_actions.QuitApplication),
             true
         );
     }
@@ -706,7 +760,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _view = null;
             _window = null;
             if (wasOpen)
-                _hostActions?.ResumeFromOptions();
+                _actions?.ResumeFromOptions();
         }
     }
 
@@ -730,7 +784,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(OptionsMenuController));
-        if (_hostActions == null || _saveStore == null)
+        if (_actions == null)
             throw new InvalidOperationException(
                 $"{nameof(OptionsMenuController)} must be initialized before use."
             );

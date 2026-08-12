@@ -7,9 +7,8 @@ using UnityEngine.UI;
 /// <summary>
 /// Displays the Options menu.
 /// </summary>
-public sealed class OptionsMenuView : MonoBehaviour
+public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
 {
-    // Colors.
     private static readonly Color _activeTabColor = new Color(0.875f, 0.910f, 0.941f);
     private static readonly Color _inactiveTabColor = new Color(0.573f, 0.635f, 0.706f);
     private static readonly Color _accentColor = new Color(0.373f, 0.659f, 0.925f);
@@ -18,7 +17,6 @@ public sealed class OptionsMenuView : MonoBehaviour
     private static readonly Color _badgeColor = new Color(0.204f, 0.243f, 0.302f);
     private static readonly Color _badgeListeningColor = new Color(0.373f, 0.659f, 0.925f);
 
-    // Binding Rows.
     private readonly List<TextMeshProUGUI> _bindingHeaderFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> _bindingActionFields = new List<TextMeshProUGUI>();
     private readonly List<TextMeshProUGUI> _bindingKeyFields = new List<TextMeshProUGUI>();
@@ -43,7 +41,13 @@ public sealed class OptionsMenuView : MonoBehaviour
     private Sprite _rowIdleSprite;
 
     [SerializeField]
+    private string _rowIdleSpriteAddress;
+
+    [SerializeField]
     private Sprite _rowActiveSprite;
+
+    [SerializeField]
+    private string _rowActiveSpriteAddress;
 
     [SerializeField]
     private Button[] _tabButtons = Array.Empty<Button>();
@@ -117,37 +121,7 @@ public sealed class OptionsMenuView : MonoBehaviour
 
     [Header("Save/Load page")]
     [SerializeField]
-    private Button _saveButton;
-
-    [SerializeField]
-    private Button _loadButton;
-
-    [SerializeField]
-    private RawImage _saveDisabledImage;
-
-    [SerializeField]
-    private RawImage _loadDisabledImage;
-
-    [SerializeField]
-    private ScrollAreaView _saveSlotScrollArea;
-
-    [SerializeField]
-    private Image _slotRowTemplate;
-
-    [SerializeField]
-    private RawImage _slotIconTemplate;
-
-    [SerializeField]
-    private TextMeshProUGUI _slotNameTemplate;
-
-    [SerializeField]
-    private TextMeshProUGUI _slotMetaTemplate;
-
-    [SerializeField]
-    private Button _slotDeleteTemplate;
-
-    [SerializeField]
-    private TMP_InputField _slotRenameField;
+    private OptionsSaveListView _saveListView;
 
     [Header("Controls page")]
     [SerializeField]
@@ -168,11 +142,8 @@ public sealed class OptionsMenuView : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI _bindingKeyTemplate;
 
-    // Menu State.
-    private OptionsSaveListPresenter _saveListPresenter;
     private bool _bound;
 
-    // Events.
     public event Action<OptionsMenuTab> TabSelected;
     public event Action ResumeRequested;
     public event Action SaveRequested;
@@ -195,30 +166,30 @@ public sealed class OptionsMenuView : MonoBehaviour
     public event Action<OptionsMenuView> Destroyed;
 
     /// <summary>
+    /// Restores the state-swapped navigation sprites from installation content.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    public void InitializeContent(IContentAssetSource contentAssets)
+    {
+        Vector4 border = new Vector4(7f, 7f, 7f, 7f);
+        _rowIdleSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _rowIdleSpriteAddress,
+            border
+        );
+        _rowActiveSprite = ContentBindings.RequireSprite(
+            contentAssets,
+            _rowActiveSpriteAddress,
+            border
+        );
+    }
+
+    /// <summary>
     /// Checks the menu references and adds its listeners.
     /// </summary>
     private void Awake()
     {
         VerifyReferences();
-        _saveListPresenter = new OptionsSaveListPresenter(
-            _saveButton,
-            _loadButton,
-            _saveDisabledImage,
-            _loadDisabledImage,
-            _saveSlotScrollArea,
-            _slotRowTemplate,
-            _slotIconTemplate,
-            _slotNameTemplate,
-            _slotMetaTemplate,
-            _slotDeleteTemplate,
-            _slotRenameField,
-            _rowIdleSprite,
-            _rowActiveSprite,
-            index => SlotSelected?.Invoke(index),
-            (index, value, submitted) => SlotRenamed?.Invoke(index, value, submitted),
-            index => SlotDeleteRequested?.Invoke(index),
-            editing => RenameEditingChanged?.Invoke(editing)
-        );
         BindControls();
     }
 
@@ -228,7 +199,6 @@ public sealed class OptionsMenuView : MonoBehaviour
     private void OnDestroy()
     {
         UnbindControls();
-        _saveListPresenter?.Dispose();
         Destroyed?.Invoke(this);
     }
 
@@ -245,7 +215,7 @@ public sealed class OptionsMenuView : MonoBehaviour
         UILayout.SetTextContent(_headerTextField, "OPTIONS");
         UILayout.SetTextContent(_pageTitleTextField, GetTabTitle(data.ActiveTab));
         if (data.ActiveTab != OptionsMenuTab.SaveLoad)
-            _saveListPresenter.CancelRename();
+            _saveListView.CancelRename();
         RenderTabs(data.ActiveTab);
         RenderFooter(data);
         switch (data.ActiveTab)
@@ -348,7 +318,7 @@ public sealed class OptionsMenuView : MonoBehaviour
     /// <param name="data">The Options menu data.</param>
     private void RenderSaveLoadPage(OptionsMenuRenderData data)
     {
-        _saveListPresenter.Render(data);
+        _saveListView.Render(data);
     }
 
     /// <summary>
@@ -502,7 +472,6 @@ public sealed class OptionsMenuView : MonoBehaviour
             badgeButton.onClick.AddListener(() => HandleBadgeClick(bindingIndex, isSecondary));
         }
 
-        // Binding Key.
         badge.gameObject.SetActive(true);
         badge.color = listening ? _badgeListeningColor : _badgeColor;
         UILayout.SetSourceRect(
@@ -550,22 +519,6 @@ public sealed class OptionsMenuView : MonoBehaviour
         }
 
         return images[index];
-    }
-
-    /// <summary>
-    /// Aligns the save name field and caret.
-    /// </summary>
-    internal void AlignRenameInput()
-    {
-        _saveListPresenter.AlignRenameInput();
-    }
-
-    /// <summary>
-    /// Focuses the save name field after a row click.
-    /// </summary>
-    private void Update()
-    {
-        _saveListPresenter?.UpdateFocus();
     }
 
     /// <summary>
@@ -662,8 +615,12 @@ public sealed class OptionsMenuView : MonoBehaviour
         _backToGameButton.onClick.AddListener(() => ResumeRequested?.Invoke());
         _mainMenuButton.onClick.AddListener(() => MainMenuRequested?.Invoke());
         _quitButton.onClick.AddListener(() => QuitRequested?.Invoke());
-        _saveButton.onClick.AddListener(() => SaveRequested?.Invoke());
-        _loadButton.onClick.AddListener(() => LoadRequested?.Invoke());
+        _saveListView.SaveRequested += HandleSaveRequested;
+        _saveListView.LoadRequested += HandleLoadRequested;
+        _saveListView.SlotSelected += HandleSlotSelected;
+        _saveListView.SlotRenamed += HandleSlotRenamed;
+        _saveListView.SlotDeleteRequested += HandleSlotDeleteRequested;
+        _saveListView.RenameEditingChanged += HandleRenameEditingChanged;
         _applyButton.onClick.AddListener(() => ApplyRequested?.Invoke());
         _defaultsButton.onClick.AddListener(() => DefaultsRequested?.Invoke());
         _confirmDialog.Confirmed += HandleConfirmAccepted;
@@ -703,11 +660,72 @@ public sealed class OptionsMenuView : MonoBehaviour
     /// </summary>
     private void UnbindControls()
     {
+        _saveListView.SaveRequested -= HandleSaveRequested;
+        _saveListView.LoadRequested -= HandleLoadRequested;
+        _saveListView.SlotSelected -= HandleSlotSelected;
+        _saveListView.SlotRenamed -= HandleSlotRenamed;
+        _saveListView.SlotDeleteRequested -= HandleSlotDeleteRequested;
+        _saveListView.RenameEditingChanged -= HandleRenameEditingChanged;
+
         foreach (OptionsToggleRowView row in _tacticalRows)
         {
             if (row != null)
                 row.ToggleRequested -= HandleTacticalToggle;
         }
+    }
+
+    /// <summary>
+    /// Forwards a Save command from the save-list subview.
+    /// </summary>
+    private void HandleSaveRequested()
+    {
+        SaveRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Forwards a Load command from the save-list subview.
+    /// </summary>
+    private void HandleLoadRequested()
+    {
+        LoadRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Forwards save-row selection from the save-list subview.
+    /// </summary>
+    /// <param name="slot">The selected row index.</param>
+    private void HandleSlotSelected(int slot)
+    {
+        SlotSelected?.Invoke(slot);
+    }
+
+    /// <summary>
+    /// Forwards a completed save-name edit from the save-list subview.
+    /// </summary>
+    /// <param name="slot">The edited row index.</param>
+    /// <param name="name">The entered save name.</param>
+    /// <param name="submitted">Whether Return submitted the edit.</param>
+    private void HandleSlotRenamed(int slot, string name, bool submitted)
+    {
+        SlotRenamed?.Invoke(slot, name, submitted);
+    }
+
+    /// <summary>
+    /// Forwards a delete request from the save-list subview.
+    /// </summary>
+    /// <param name="slot">The row requested for deletion.</param>
+    private void HandleSlotDeleteRequested(int slot)
+    {
+        SlotDeleteRequested?.Invoke(slot);
+    }
+
+    /// <summary>
+    /// Forwards save-name editing state from the save-list subview.
+    /// </summary>
+    /// <param name="editing">Whether the text field currently owns input.</param>
+    private void HandleRenameEditingChanged(bool editing)
+    {
+        RenameEditingChanged?.Invoke(editing);
     }
 
     /// <summary>
@@ -763,6 +781,11 @@ public sealed class OptionsMenuView : MonoBehaviour
             throw new MissingReferenceException($"{name} is missing a title field.");
         if (_rowIdleSprite == null || _rowActiveSprite == null)
             throw new MissingReferenceException($"{name} is missing a row sprite.");
+        if (
+            string.IsNullOrWhiteSpace(_rowIdleSpriteAddress)
+            || string.IsNullOrWhiteSpace(_rowActiveSpriteAddress)
+        )
+            throw new MissingReferenceException($"{name} is missing a row sprite address.");
         if (_tabButtons.Length != 4 || _tabLabelFields.Length != 4)
             throw new MissingReferenceException($"{name} expects four tabs.");
         if (
@@ -787,18 +810,8 @@ public sealed class OptionsMenuView : MonoBehaviour
             || _fullScreenNextButton == null
         )
             throw new MissingReferenceException($"{name} is missing a Graphics step button.");
-        if (_saveButton == null || _loadButton == null)
-            throw new MissingReferenceException($"{name} is missing a Save/Load button.");
-        if (
-            _saveSlotScrollArea == null
-            || _slotRowTemplate == null
-            || _slotIconTemplate == null
-            || _slotNameTemplate == null
-            || _slotMetaTemplate == null
-            || _slotDeleteTemplate == null
-            || _slotRenameField == null
-        )
-            throw new MissingReferenceException($"{name} is missing a save-slot template.");
+        if (_saveListView == null)
+            throw new MissingReferenceException($"{name} is missing its save-list view.");
         if (
             _controlsScrollArea == null
             || _bindingRowTemplate == null
@@ -809,12 +822,6 @@ public sealed class OptionsMenuView : MonoBehaviour
         )
             throw new MissingReferenceException($"{name} is missing a binding template.");
 
-        _slotRowTemplate.gameObject.SetActive(false);
-        _slotIconTemplate.gameObject.SetActive(false);
-        _slotNameTemplate.gameObject.SetActive(false);
-        _slotMetaTemplate.gameObject.SetActive(false);
-        _slotDeleteTemplate.gameObject.SetActive(false);
-        // The rename field is controlled by the save list.
         _bindingRowTemplate.gameObject.SetActive(false);
         _bindingHeaderTemplate.gameObject.SetActive(false);
         _bindingActionTemplate.gameObject.SetActive(false);
