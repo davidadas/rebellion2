@@ -76,6 +76,59 @@ public sealed class StrategyContextMenuRouter : ICancelable
     }
 
     /// <summary>
+    /// Runs a context menu action at the pointer position.
+    /// </summary>
+    /// <param name="eventData">The current pointer raycast.</param>
+    /// <param name="x">The source-space horizontal pointer position.</param>
+    /// <param name="y">The source-space vertical pointer position.</param>
+    /// <param name="action">The shortcut action.</param>
+    /// <returns>True when a provider accepted and executed the command.</returns>
+    public bool TryExecuteShortcut(
+        PointerEventData eventData,
+        int x,
+        int y,
+        StrategyMenuAction action
+    )
+    {
+        contextMenuController.Cancel();
+        contextMenuPresenter.Reset();
+
+        UIWindow window = windowManager.GetWindow(eventData);
+        if (window == null)
+            return false;
+
+        StrategyContextMenuProviderContext context = new StrategyContextMenuProviderContext(
+            window,
+            contextMenuPresenter.Layout,
+            eventData,
+            x,
+            y
+        );
+        foreach (IStrategyContextMenuProvider provider in providers)
+        {
+            if (!provider.TryCreateContextMenu(context, out ContextMenuRequest request, out _))
+                continue;
+
+            for (int index = 0; index < request.Commands.Count; index++)
+            {
+                if (
+                    request.Commands[index] is StrategyMenuCommand command
+                    && command.Action == action
+                    && command.Enabled
+                )
+                {
+                    contextMenuController.Open(request);
+                    return contextMenuController.TrySelectCommand(command);
+                }
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Completes a selection owned by the runtime context-menu controller.
     /// </summary>
     /// <param name="command">The selected semantic command.</param>

@@ -326,6 +326,15 @@ public sealed class AppBootstrap : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the input context controller.
+    /// </summary>
+    /// <returns>The active application input controller.</returns>
+    public AppInputController GetInputController()
+    {
+        return inputController;
+    }
+
+    /// <summary>
     /// Returns the application cancel stack.
     /// </summary>
     /// <returns>The active cancel stack.</returns>

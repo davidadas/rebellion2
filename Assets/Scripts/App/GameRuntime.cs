@@ -174,7 +174,7 @@ public sealed class GameRuntime
         GameLaunchContext.IsLoadGame = true;
         GameLaunchContext.SaveFileName = fileName;
         GameLaunchContext.PlayIntroCutscene = false;
-        _loadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+        _loadScene(SceneNames.StrategyView);
     }
 
     /// <summary>

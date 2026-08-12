@@ -12,6 +12,7 @@ using Rebellion.SceneGraph;
 using Rebellion.Systems;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -37,7 +38,10 @@ public sealed class StrategyController
         IMissionCreateWindowActions,
         IMessagesWindowActions,
         IStatusWindowActions,
-        IBattleAlertWindowActions
+        IBattleAlertWindowActions,
+        IOptionsMenuHostActions,
+        IOptionsSaveStore,
+        IOptionsSaveWriter
 {
     [SerializeField]
     private CanvasGroup contentGroup;
@@ -86,6 +90,11 @@ public sealed class StrategyController
     private EventSystem briefingEventSystem;
     private bool briefingSkipConfirmationOpen;
     private UIContext uiContext;
+    private FactionThemeLibrary _saveFactionThemeLibrary;
+    private readonly List<(
+        InputAction action,
+        Action<InputAction.CallbackContext> callback
+    )> _boundInputActions = new List<(InputAction, Action<InputAction.CallbackContext>)>();
 
     private bool dirty = true;
     private bool contentReady;
@@ -121,6 +130,8 @@ public sealed class StrategyController
     private StrategyWindowPlacementController windowPlacementController;
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
+    private OptionsMenuController _optionsMenuController;
+    private TickSpeed _speedBeforeOptions = TickSpeed.Paused;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -148,6 +159,7 @@ public sealed class StrategyController
             throw new InvalidOperationException("StrategyController.Initialize called twice.");
 
         ValidateAuthoredViews();
+        AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         gameManager = manager;
         uiContext = context;
         PreloadStrategySfx();
@@ -374,6 +386,23 @@ public sealed class StrategyController
             CloseWindow,
             MarkDirty
         );
+        _optionsMenuController = new OptionsMenuController(
+            strategyWindowLayerView.OptionsMenuWindowPrefab,
+            strategyWindowLayerView.GetWindowParent(true),
+            strategyWindowManager,
+            windowPlacementController.GetOptionsWindowPosition,
+            CloseWindow,
+            AppBootstrap.Instance.GetUserSettingsManager(),
+            AudioManager.EnsureExists(),
+            AppBootstrap.Instance.GetInputManager(),
+            MarkDirty
+        );
+        _optionsMenuController.Initialize(this, this, this);
+        cancelStack?.Register(_optionsMenuController);
+        GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
+        if (settingsRuntime != null)
+            settingsRuntime.ToggleSettingsMenuRequested += HandleToggleOptions;
+        WireStrategyInputActions();
         battleAlertWindowController = new BattleAlertWindowController(
             () =>
                 gameManager.SpaceCombatSystem.TryGetPendingCombat(out PendingCombatResult pending)
@@ -662,8 +691,17 @@ public sealed class StrategyController
     private void OnDestroy()
     {
         SetBriefingInteractionEnabled(true);
+        UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
+        if (_optionsMenuController != null)
+        {
+            cancelStack?.Unregister(_optionsMenuController);
+            _optionsMenuController.Dispose();
+        }
+        GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
+        if (settingsRuntime != null)
+            settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleOptions;
         if (gameManager != null)
         {
             gameManager.GameSpeedChanged -= MarkDirty;
@@ -765,6 +803,7 @@ public sealed class StrategyController
         AudioManager.EnsureExists().PauseSfx();
         SetBriefingInteractionEnabled(true);
         briefingSkipConfirmation.Show("Do you wish to skip the tutorial?");
+        dirty = true;
     }
 
     /// <summary>
@@ -1101,6 +1140,7 @@ public sealed class StrategyController
         advisorReportWindowController.RenderWindows();
         statusWindowController.RenderWindows();
         encyclopediaWindowController.RenderWindows();
+        _optionsMenuController.RenderWindows();
         finderWindowController.RenderWindows();
         messagesWindowController.RenderWindows();
         battleAlertWindowController.RenderWindows();
@@ -1918,8 +1958,7 @@ public sealed class StrategyController
         switch (action)
         {
             case StrategyHudAction.Options:
-                SaveMenuLaunchContext.OpenFromStrategyView();
-                AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+                _optionsMenuController.Open();
                 break;
             case StrategyHudAction.SystemFinder:
                 finderWindowController.Open(FinderMode.Systems);
@@ -2740,6 +2779,428 @@ public sealed class StrategyController
     private void MarkDirty()
     {
         dirty = true;
+    }
+
+    /// <summary>
+    /// Adds the strategy key binding listeners.
+    /// </summary>
+    private void WireStrategyInputActions()
+    {
+        InputActionAsset asset = AppBootstrap.Instance?.GetInputManager()?.Asset;
+        if (asset == null)
+            return;
+
+        asset.FindActionMap("Strategy")?.Enable();
+
+        for (int slot = 0; slot < 12; slot++)
+        {
+            int index = slot;
+            BindInputAction(
+                asset,
+                $"Strategy/BookmarkSlot{slot + 1}",
+                () => HandleBookmarkRequested(index)
+            );
+        }
+
+        BindInputAction(
+            asset,
+            "Strategy/OpenSystemFinder",
+            () => finderWindowController.Open(FinderMode.Systems)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenFleetFinder",
+            () => finderWindowController.Open(FinderMode.Fleets)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenPersonnelFinder",
+            () => finderWindowController.Open(FinderMode.Personnel)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenPlanetFinder",
+            () => finderWindowController.Open(FinderMode.Troops)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenEncyclopedia",
+            () => encyclopediaWindowController.Open()
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenAllMessages",
+            () => messagesWindowController.Open(MessagesTab.All)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/OpenMissionSetup",
+            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.CreateMission)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/IssueMoveOrder",
+            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.Move)
+        );
+        BindInputAction(
+            asset,
+            "Strategy/ConfirmMoveOrder",
+            () => inputController.TryExecuteContextShortcut(StrategyMenuAction.MoveConfirm)
+        );
+        BindInputAction(asset, "Strategy/DecreaseGameSpeed", () => StepGameSpeed(false));
+        BindInputAction(asset, "Strategy/IncreaseGameSpeed", () => StepGameSpeed(true));
+
+        BindGalacticInformationAction(
+            asset,
+            "ShowPopularSupport",
+            GalacticInformationFilterMode.PopularSupport
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowUprisings",
+            GalacticInformationFilterMode.Uprisings
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleFleets",
+            GalacticInformationFilterMode.IdleFleets
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowFleetsEnroute",
+            GalacticInformationFilterMode.FleetsEnroute
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdlePersonnel",
+            GalacticInformationFilterMode.IdlePersonnel
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowActivePersonnel",
+            GalacticInformationFilterMode.ActivePersonnel
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowAvailableEnergy",
+            GalacticInformationFilterMode.AvailableEnergy
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowAvailableRawMaterial",
+            GalacticInformationFilterMode.AvailableRawMaterial
+        );
+        BindGalacticInformationAction(asset, "ShowMines", GalacticInformationFilterMode.Mines);
+        BindGalacticInformationAction(
+            asset,
+            "ShowRefineries",
+            GalacticInformationFilterMode.Refineries
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowShipyards",
+            GalacticInformationFilterMode.Shipyards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowTrainingFacilities",
+            GalacticInformationFilterMode.TrainingFacilities
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowConstructionYards",
+            GalacticInformationFilterMode.ConstructionYards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleShipyards",
+            GalacticInformationFilterMode.IdleShipyards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleTrainingFacilities",
+            GalacticInformationFilterMode.IdleTrainingFacilities
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowIdleConstructionYards",
+            GalacticInformationFilterMode.IdleConstructionYards
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowTroopers",
+            GalacticInformationFilterMode.Troopers
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowFighterSquadrons",
+            GalacticInformationFilterMode.FighterSquadrons
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowDeathStarShields",
+            GalacticInformationFilterMode.DeathStarShields
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowPlanetaryShieldGenerators",
+            GalacticInformationFilterMode.PlanetaryShieldGenerators
+        );
+        BindGalacticInformationAction(
+            asset,
+            "ShowPlanetaryDefenseBatteries",
+            GalacticInformationFilterMode.PlanetaryDefenseBatteries
+        );
+    }
+
+    /// <summary>
+    /// Applies the information filter selected by a keyboard shortcut.
+    /// </summary>
+    private void BindGalacticInformationAction(
+        InputActionAsset asset,
+        string actionName,
+        GalacticInformationFilterMode mode
+    )
+    {
+        BindInputAction(
+            asset,
+            $"Strategy/{actionName}",
+            () => galacticInformationDisplayController?.SelectFilterFromShortcut(mode)
+        );
+    }
+
+    /// <summary>
+    /// Adds a listener for an input action.
+    /// </summary>
+    /// <param name="asset">The input asset.</param>
+    /// <param name="actionPath">The map/action path.</param>
+    /// <param name="command">The command to run.</param>
+    private void BindInputAction(InputActionAsset asset, string actionPath, Action command)
+    {
+        InputAction action = asset.FindAction(actionPath, false);
+        if (action == null)
+            return;
+
+        void Callback(InputAction.CallbackContext context)
+        {
+            if (context.performed && !briefingActive && _optionsMenuController?.IsOpen != true)
+                command();
+        }
+
+        action.performed += Callback;
+        _boundInputActions.Add((action, Callback));
+    }
+
+    /// <summary>
+    /// Steps the game speed one step faster or slower.
+    /// </summary>
+    /// <param name="faster">Whether to speed up.</param>
+    private void StepGameSpeed(bool faster)
+    {
+        if (gameManager == null)
+            return;
+
+        TickSpeed current = gameManager.GetGameSpeed();
+        gameManager.SetGameSpeed(
+            faster
+                ? AppInputController.GetFasterGameSpeed(current)
+                : AppInputController.GetSlowerGameSpeed(current)
+        );
+    }
+
+    /// <summary>
+    /// Removes the strategy key binding listeners.
+    /// </summary>
+    private void UnwireStrategyInputActions()
+    {
+        foreach (
+            (InputAction action, Action<InputAction.CallbackContext> callback) in _boundInputActions
+        )
+            action.performed -= callback;
+        _boundInputActions.Clear();
+    }
+
+    /// <summary>
+    /// Toggles the Options menu.
+    /// </summary>
+    private void HandleToggleOptions()
+    {
+        if (_optionsMenuController == null)
+            return;
+
+        // The tutorial uses Escape to open its confirmation dialog.
+        if (briefingActive)
+            return;
+
+        if (_optionsMenuController.IsOpen)
+            _optionsMenuController.TryCancel();
+        else
+            _optionsMenuController.Open();
+    }
+
+    /// <summary>
+    /// Gets whether the Options menu can return to the running game.
+    /// </summary>
+    bool IOptionsMenuHostActions.CanReturnToGame => true;
+
+    /// <summary>
+    /// Gets whether the Options menu can return to the Main Menu.
+    /// </summary>
+    bool IOptionsMenuHostActions.CanReturnToMainMenu => true;
+
+    /// <summary>
+    /// Pauses the game while the Options menu is open.
+    /// </summary>
+    void IOptionsMenuHostActions.PauseForOptions()
+    {
+        AppBootstrap.Instance?.GetInputController()?.PushContext(InputContext.Menu);
+        if (gameManager == null)
+            return;
+
+        _speedBeforeOptions = gameManager.GetGameSpeed();
+        gameManager.SetGameSpeed(TickSpeed.Paused);
+    }
+
+    /// <summary>
+    /// Restores the game speed when the Options menu closes.
+    /// </summary>
+    void IOptionsMenuHostActions.ResumeFromOptions()
+    {
+        AppBootstrap.Instance?.GetInputController()?.PopContext();
+        gameManager?.SetGameSpeed(_speedBeforeOptions);
+    }
+
+    /// <summary>
+    /// Returns the save games displayed in the Options menu.
+    /// </summary>
+    /// <returns>The save rows, newest save first.</returns>
+    IReadOnlyList<OptionsSaveSlot> IOptionsSaveStore.GetSaveSlots()
+    {
+        List<OptionsSaveSlot> rows = new List<OptionsSaveSlot>
+        {
+            new OptionsSaveSlot("Create New Save", string.Empty, null, true, null),
+        };
+        foreach (SaveGameEntry entry in SaveGameManager.Instance.GetSavedGames())
+        {
+            string name = string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
+                ? entry.FileName
+                : entry.Metadata.SaveDisplayName;
+            string date =
+                entry.Metadata != null
+                    ? entry.Metadata.LastSavedUtc.ToLocalTime().ToString("g")
+                    : string.Empty;
+            rows.Add(
+                new OptionsSaveSlot(
+                    name,
+                    date,
+                    ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
+                    false,
+                    entry.FileName
+                )
+            );
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// Creates a save game with the given display name.
+    /// </summary>
+    /// <param name="displayName">The display name for the new save.</param>
+    void IOptionsSaveWriter.CreateNamedSave(string displayName)
+    {
+        GameRoot game = gameManager?.GetGame();
+        if (game == null)
+            return;
+
+        string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
+        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
+    }
+
+    /// <summary>
+    /// Overwrites an existing save game.
+    /// </summary>
+    /// <param name="fileName">The save file to overwrite.</param>
+    /// <param name="displayName">The display name to preserve or apply.</param>
+    void IOptionsSaveWriter.OverwriteSave(string fileName, string displayName)
+    {
+        GameRoot game = gameManager?.GetGame();
+        if (game == null || string.IsNullOrEmpty(fileName))
+            return;
+
+        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
+    }
+
+    /// <summary>
+    /// Loads a save game.
+    /// </summary>
+    /// <param name="fileName">The save file to load.</param>
+    /// <returns>True when a game was loaded.</returns>
+    bool IOptionsSaveStore.LoadSave(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return false;
+
+        GameRuntime runtime = AppBootstrap.Instance?.GetRuntime();
+        return runtime?.LoadGame(fileName) ?? false;
+    }
+
+    /// <summary>
+    /// Deletes a save game.
+    /// </summary>
+    /// <param name="fileName">The save file to delete.</param>
+    void IOptionsSaveStore.DeleteSave(string fileName)
+    {
+        SaveGameManager.Instance.DeleteSave(fileName);
+    }
+
+    /// <summary>
+    /// Renames a save game.
+    /// </summary>
+    /// <param name="fileName">The save file to rename.</param>
+    /// <param name="displayName">The new display name.</param>
+    void IOptionsSaveStore.RenameSave(string fileName, string displayName)
+    {
+        SaveGameManager.Instance.SetSaveDisplayName(fileName, displayName);
+    }
+
+    /// <summary>
+    /// Returns the faction icon for a save game.
+    /// </summary>
+    /// <param name="factionId">The saved faction id, or null.</param>
+    /// <returns>The faction icon texture, or null.</returns>
+    private Texture2D ResolveSaveFactionIcon(string factionId)
+    {
+        if (string.IsNullOrEmpty(factionId))
+            return null;
+
+        _saveFactionThemeLibrary ??= new FactionThemeLibrary(
+            AppBootstrap.Instance.GetContentPack().GameData.FactionThemes
+        );
+        string path = _saveFactionThemeLibrary.GetTheme(factionId)?.SaveMenuSlotIconImagePath;
+        return string.IsNullOrEmpty(path)
+            ? null
+            : AppBootstrap.Instance.GetContentAssets().GetTexture(path);
+    }
+
+    /// <summary>
+    /// Returns to the Main Menu.
+    /// </summary>
+    void IOptionsMenuHostActions.ReturnToMainMenu()
+    {
+        AppBootstrap.Instance.LoadScene(SceneNames.MainMenu);
+    }
+
+    /// <summary>
+    /// Quits the game.
+    /// </summary>
+    void IOptionsMenuHostActions.QuitApplication()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     /// <summary>

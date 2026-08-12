@@ -669,17 +669,35 @@ public static class SaveMenuPrefabBuilder
 
         TMP_InputField input = InstantiateNested<TMP_InputField>(prefab, parent, "NameInputField");
         SetSourceRect(input.transform as RectTransform, 86, 8, 150, 18);
-        input.textComponent.alignment = TextAlignmentOptions.BaselineLeft;
+        input.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
         input.textComponent.color = _whiteTextColor;
-        SetSourceRect(input.textComponent.rectTransform, 2, 0, 148, 18);
+        StretchSaveNameText(input.textComponent.rectTransform);
+        input.customCaretColor = true;
+        input.caretColor = _whiteTextColor;
+        input.caretWidth = 2;
+        input.caretBlinkRate = 0.85f;
+        input.onFocusSelectAll = false;
 
         if (input.placeholder is not TextMeshProUGUI placeholder)
             throw new MissingReferenceException("Save-slot text input placeholder is missing.");
         placeholder.text = "Empty Save Slot";
-        placeholder.alignment = TextAlignmentOptions.BaselineLeft;
+        placeholder.alignment = TextAlignmentOptions.MidlineLeft;
         placeholder.color = _whiteTextColor;
-        SetSourceRect(placeholder.rectTransform, 2, 0, 148, 18);
+        StretchSaveNameText(placeholder.rectTransform);
         return input;
+    }
+
+    /// <summary>
+    /// Positions the save name and cursor inside the input field.
+    /// </summary>
+    /// <param name="rect">The text or placeholder rectangle.</param>
+    private static void StretchSaveNameText(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.offsetMin = new Vector2(2f, 0f);
+        rect.offsetMax = new Vector2(-2f, 0f);
     }
 
     /// <summary>
@@ -702,7 +720,7 @@ public static class SaveMenuPrefabBuilder
         GameObject blockerObject = CreateRectObject("InputBlocker", root.transform);
         blockerObject.AddComponent<CanvasRenderer>();
         Image blocker = blockerObject.AddComponent<Image>();
-        blocker.color = Color.clear;
+        blocker.color = new Color(0f, 0f, 0f, 0.8f);
         blocker.raycastTarget = true;
         SetSourceRect(blocker.rectTransform, 0, 0, _windowWidth, _windowHeight);
 
@@ -749,14 +767,16 @@ public static class SaveMenuPrefabBuilder
             "MessageTextField",
             root.transform,
             "Are you sure you want to quit?",
-            114,
-            218,
-            412,
-            12,
-            12,
-            TextAlignmentOptions.Baseline
+            160,
+            172,
+            320,
+            100,
+            13,
+            TextAlignmentOptions.Center
         );
         message.color = _whiteTextColor;
+        message.textWrappingMode = TextWrappingModes.Normal;
+        message.overflowMode = TextOverflowModes.Overflow;
 
         AssignReference(view, "backgroundImage", background);
         AssignColor(view, "messageTextColor", _whiteTextColor);

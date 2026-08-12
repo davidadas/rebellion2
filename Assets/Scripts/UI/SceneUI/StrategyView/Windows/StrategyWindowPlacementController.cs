@@ -114,6 +114,20 @@ public sealed class StrategyWindowPlacementController
     }
 
     /// <summary>
+    /// Returns the centered Options menu position.
+    /// </summary>
+    /// <returns>The Options menu position.</returns>
+    public Vector2Int GetOptionsWindowPosition()
+    {
+        Vector2Int windowSize = windowLayer.GetWindowSize(windowLayer.OptionsMenuWindowPrefab);
+        Vector2Int surfaceSize = windowLayer.GetSurfaceSize();
+        return new Vector2Int(
+            Mathf.RoundToInt(surfaceSize.x / 2f - windowSize.x / 2f),
+            Mathf.RoundToInt(surfaceSize.y / 2f - windowSize.y / 2f)
+        );
+    }
+
+    /// <summary>
     /// Gets the centered confirmation-dialog position from its authored prefab geometry.
     /// </summary>
     /// <returns>The source-space confirmation-dialog position.</returns>

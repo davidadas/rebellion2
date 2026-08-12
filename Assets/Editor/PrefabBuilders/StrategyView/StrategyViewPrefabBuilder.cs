@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Authors the generated Strategy View and related window prefabs.
 /// </summary>
-public static class StrategyViewPrefabBuilder
+public static partial class StrategyViewPrefabBuilder
 {
     private const string _fallbackPreviewThemeId = "DEFAULT";
     private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
@@ -47,6 +47,20 @@ public static class StrategyViewPrefabBuilder
         "Assets/Prefabs/UI/StrategyView/MessagesWindow.prefab";
     private const string _encyclopediaWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/EncyclopediaWindow.prefab";
+    private const string _optionsMenuWindowPrefabPath =
+        "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
+    private const string _optionsPanelSpritePath = "Assets/UI/OptionsMenu/optionsmenu_panel.png";
+    private const string _optionsRowSpritePath = "Assets/UI/OptionsMenu/optionsmenu_row.png";
+    private const string _optionsRowActiveSpritePath =
+        "Assets/UI/OptionsMenu/optionsmenu_row_active.png";
+    private const string _optionsBadgeSpritePath = "Assets/UI/OptionsMenu/optionsmenu_badge.png";
+    private const string _optionsFrameGlowSpritePath =
+        "Assets/UI/OptionsMenu/optionsmenu_frame_glow.png";
+    private const string _optionsToggleOnSpritePath =
+        "Assets/UI/OptionsMenu/optionsmenu_toggle_on.png";
+    private const string _optionsToggleOffSpritePath =
+        "Assets/UI/OptionsMenu/optionsmenu_toggle_off.png";
+    private const string _optionsKnobTexturePath = "Assets/UI/OptionsMenu/optionsmenu_knob.png";
     private const string _planetSystemClusterPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSystemCluster.prefab";
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
@@ -254,7 +268,7 @@ public static class StrategyViewPrefabBuilder
     private const int _constructionCountButtonWidth = 13;
     private const int _constructionCountButtonHeight = 8;
     private static readonly Color32 _sectorWindowBackgroundOverlay = new Color32(57, 57, 57, 230);
-    private static readonly Color32 _modalBackgroundDimColor = new Color32(80, 80, 80, 160);
+    private static readonly Color32 _modalBackgroundDimColor = new Color32(0, 0, 0, 204);
 
     private static FactionThemes _previewThemes;
     private static string _previewThemeId;
@@ -613,6 +627,9 @@ public static class StrategyViewPrefabBuilder
         EncyclopediaWindowView encyclopediaWindowPrefab = LoadWindowPrefab<EncyclopediaWindowView>(
             _encyclopediaWindowPrefabPath
         );
+        OptionsMenuView optionsMenuWindowPrefab = LoadWindowPrefab<OptionsMenuView>(
+            _optionsMenuWindowPrefabPath
+        );
         PlanetSystemClusterView planetSystemClusterPrefab =
             LoadPrefabComponent<PlanetSystemClusterView>(_planetSystemClusterPrefabPath);
 
@@ -836,8 +853,13 @@ public static class StrategyViewPrefabBuilder
         float briefingHorizontalOffset = (_screenWidth - 640f) / 2f;
         foreach (RectTransform child in briefingConfirmationRect)
         {
-            if (child.name != "InputBlocker")
-                child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
+            if (child.name == "InputBlocker")
+            {
+                FillParent(child);
+                continue;
+            }
+
+            child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
         }
         briefingSkipConfirmation.transform.SetAsLastSibling();
 
@@ -874,7 +896,8 @@ public static class StrategyViewPrefabBuilder
             confirmDialogWindowPrefab,
             battleAlertWindowPrefab,
             finderWindowPrefab,
-            encyclopediaWindowPrefab
+            encyclopediaWindowPrefab,
+            optionsMenuWindowPrefab
         );
         AssignWindowLayerLayout(windowsView);
         AssignReference(hudView, "backgroundImage", hudBackgroundImage);
@@ -933,6 +956,7 @@ public static class StrategyViewPrefabBuilder
         BuildFinderWindowPrefab();
         BuildMessagesWindowPrefab();
         BuildEncyclopediaWindowPrefab();
+        BuildOptionsMenuPrefab();
         BuildStrategyViewRootPrefab();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -3592,7 +3616,8 @@ public static class StrategyViewPrefabBuilder
                 LoadWindowPrefab<ConfirmDialogWindowView>(_confirmDialogWindowPrefabPath),
                 LoadWindowPrefab<BattleAlertWindowView>(_battleAlertWindowPrefabPath),
                 LoadWindowPrefab<FinderWindowView>(_finderWindowPrefabPath),
-                LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath)
+                LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath),
+                LoadWindowPrefab<OptionsMenuView>(_optionsMenuWindowPrefabPath)
             );
 
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath, out bool success);
@@ -3858,6 +3883,76 @@ public static class StrategyViewPrefabBuilder
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         return saved.GetComponent<StatusWindowView>();
+    }
+
+    /// <summary>
+    /// Creates a sliced panel image.
+    /// </summary>
+    /// <param name="name">The image object name.</param>
+    /// <param name="parent">The parent transform.</param>
+    /// <param name="spritePath">The chrome sprite asset path.</param>
+    /// <param name="x">The source-space left.</param>
+    /// <param name="y">The source-space top.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="color">The image tint.</param>
+    /// <returns>The configured image.</returns>
+    private static Image CreateSlicedImage(
+        string name,
+        Transform parent,
+        string spritePath,
+        int x,
+        int y,
+        int width,
+        int height,
+        Color color
+    )
+    {
+        GameObject go = new GameObject(
+            name,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        go.transform.SetParent(parent, false);
+        Image image = go.GetComponent<Image>();
+        image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+        image.type = Image.Type.Sliced;
+        image.color = color;
+        image.raycastTarget = false;
+        SetSourceRect(go.GetComponent<RectTransform>(), x, y, width, height);
+        return image;
+    }
+
+    /// <summary>
+    /// Creates a sliced button.
+    /// </summary>
+    /// <param name="name">The button object name.</param>
+    /// <param name="parent">The parent transform.</param>
+    /// <param name="spritePath">The chrome sprite asset path.</param>
+    /// <param name="x">The source-space left.</param>
+    /// <param name="y">The source-space top.</param>
+    /// <param name="width">The source-space width.</param>
+    /// <param name="height">The source-space height.</param>
+    /// <param name="color">The image tint.</param>
+    /// <returns>The configured button.</returns>
+    private static Button CreateSlicedButton(
+        string name,
+        Transform parent,
+        string spritePath,
+        int x,
+        int y,
+        int width,
+        int height,
+        Color color
+    )
+    {
+        Image image = CreateSlicedImage(name, parent, spritePath, x, y, width, height, color);
+        image.raycastTarget = true;
+        Button button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        button.transition = Selectable.Transition.None;
+        return button;
     }
 
     /// <summary>
@@ -8577,6 +8672,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="battleAlertWindowPrefab">The battle-alert window prefab.</param>
     /// <param name="finderWindowPrefab">The Finder window prefab.</param>
     /// <param name="encyclopediaWindowPrefab">The encyclopedia window prefab.</param>
+    /// <param name="optionsMenuWindowPrefab">The shared Options window prefab.</param>
     private static void AssignWindowPrefabs(
         StrategyWindowLayerView target,
         PlanetSystemWindowView planetSystemWindowPrefab,
@@ -8592,7 +8688,8 @@ public static class StrategyViewPrefabBuilder
         ConfirmDialogWindowView confirmDialogWindowPrefab,
         BattleAlertWindowView battleAlertWindowPrefab,
         FinderWindowView finderWindowPrefab,
-        EncyclopediaWindowView encyclopediaWindowPrefab
+        EncyclopediaWindowView encyclopediaWindowPrefab,
+        OptionsMenuView optionsMenuWindowPrefab
     )
     {
         AssignWindowPrefab(target, "planetSystemWindowPrefab", planetSystemWindowPrefab);
@@ -8609,6 +8706,7 @@ public static class StrategyViewPrefabBuilder
         AssignWindowPrefab(target, "battleAlertWindowPrefab", battleAlertWindowPrefab);
         AssignWindowPrefab(target, "finderWindowPrefab", finderWindowPrefab);
         AssignWindowPrefab(target, "encyclopediaWindowPrefab", encyclopediaWindowPrefab);
+        AssignWindowPrefab(target, "_optionsMenuWindowPrefab", optionsMenuWindowPrefab);
     }
 
     /// <summary>

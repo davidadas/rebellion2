@@ -74,6 +74,29 @@ namespace Rebellion.Tests.UI.SceneUI.SaveMenu.Presentation
         }
 
         [Test]
+        public void Render_NameInput_AlignsTextPlaceholderAndCaretViewport()
+        {
+            _view.Render(new SaveSlotRenderData(0, "Campaign", true, false, null));
+
+            TMP_InputField input = GetField<TMP_InputField>("nameInputField");
+            TextMeshProUGUI text = (TextMeshProUGUI)input.textComponent;
+            TextMeshProUGUI placeholder = (TextMeshProUGUI)input.placeholder;
+
+            Assert.AreEqual(TextAlignmentOptions.MidlineLeft, text.alignment);
+            Assert.AreEqual(TextAlignmentOptions.MidlineLeft, placeholder.alignment);
+            Assert.AreEqual(Vector2.zero, text.rectTransform.anchorMin);
+            Assert.AreEqual(Vector2.one, text.rectTransform.anchorMax);
+            Assert.AreEqual(Vector2.zero, placeholder.rectTransform.anchorMin);
+            Assert.AreEqual(Vector2.one, placeholder.rectTransform.anchorMax);
+            Assert.AreSame(input.transform, input.textViewport);
+            Assert.IsTrue(input.customCaretColor);
+            Assert.AreEqual(Color.white, input.caretColor);
+            Assert.AreEqual(2, input.caretWidth);
+            Assert.AreEqual(SaveGameManager.MaxDisplayNameLength, input.characterLimit);
+            Assert.IsFalse(input.onFocusSelectAll);
+        }
+
+        [Test]
         public void Render_UpdatedSameSlot_PreservesInProgressDraft()
         {
             _view.Render(new SaveSlotRenderData(2, "Campaign", true, true, null));

@@ -81,12 +81,53 @@ public sealed class SaveMenuSlotRowView : MonoBehaviour, IContentInitializable
             throw new ArgumentNullException(nameof(data));
 
         VerifyReferences();
+        AlignNameInput();
         BindControls();
         bool slotChanged = slot != data.Slot;
         slot = data.Slot;
         RenderFaction(data.FactionIconTexture);
         RenderButtons(data.CanSave, data.CanLoad);
         RenderName(data.Label, data.CanSave, slotChanged);
+    }
+
+    /// <summary>
+    /// Aligns the save name and cursor in the input field.
+    /// </summary>
+    private void AlignNameInput()
+    {
+        if (nameInputField.textComponent is TextMeshProUGUI text)
+        {
+            text.alignment = TextAlignmentOptions.MidlineLeft;
+            StretchInputText(text.rectTransform);
+        }
+
+        if (nameInputField.placeholder is TextMeshProUGUI placeholder)
+        {
+            placeholder.alignment = TextAlignmentOptions.MidlineLeft;
+            StretchInputText(placeholder.rectTransform);
+        }
+
+        nameInputField.textViewport = nameInputField.transform as RectTransform;
+        nameInputField.customCaretColor = true;
+        nameInputField.caretColor = Color.white;
+        nameInputField.caretWidth = 2;
+        nameInputField.caretBlinkRate = 0.85f;
+        nameInputField.characterLimit = SaveGameManager.MaxDisplayNameLength;
+        nameInputField.onFocusSelectAll = false;
+        nameInputField.ForceLabelUpdate();
+    }
+
+    /// <summary>
+    /// Positions the save name inside the input field.
+    /// </summary>
+    /// <param name="rect">The label rectangle.</param>
+    private static void StretchInputText(RectTransform rect)
+    {
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.offsetMin = new Vector2(2f, 0f);
+        rect.offsetMax = new Vector2(-2f, 0f);
     }
 
     /// <summary>

@@ -81,6 +81,58 @@ namespace Rebellion.Tests.UserSettings
         }
 
         [Test]
+        public void Normalize_NonSixteenByNineResolution_ClearsLegacySelection()
+        {
+            UserVideoSettings settings = new UserVideoSettings
+            {
+                ResolutionWidth = 3840,
+                ResolutionHeight = 1600,
+            };
+
+            settings.Normalize();
+
+            Assert.AreEqual(0, settings.ResolutionWidth);
+            Assert.AreEqual(0, settings.ResolutionHeight);
+        }
+
+        [Test]
+        public void Resolve_UltrawideTarget_SelectsLargestFittingSixteenByNineMode()
+        {
+            Vector2Int[] supported =
+            {
+                new Vector2Int(1280, 720),
+                new Vector2Int(1920, 1080),
+                new Vector2Int(2560, 1440),
+                new Vector2Int(3840, 2160),
+            };
+
+            Vector2Int selected = DisplayResolutionPolicy.Resolve(
+                supported,
+                3840,
+                1600,
+                3840,
+                1600
+            );
+
+            Assert.AreEqual(new Vector2Int(2560, 1440), selected);
+            Assert.IsTrue(DisplayResolutionPolicy.IsSixteenByNine(selected.x, selected.y));
+        }
+
+        [TestCase(1920, 1080, true)]
+        [TestCase(2560, 1440, true)]
+        [TestCase(3840, 1600, false)]
+        [TestCase(1366, 768, true)]
+        [TestCase(1920, 1200, false)]
+        public void IsSixteenByNine_AcceptsOnlySixteenByNineModes(
+            int width,
+            int height,
+            bool expected
+        )
+        {
+            Assert.AreEqual(expected, DisplayResolutionPolicy.IsSixteenByNine(width, height));
+        }
+
+        [Test]
         public void JsonUtility_ExplicitTacticalOptions_RoundTripsState()
         {
             global::UserSettings settings = new global::UserSettings();
