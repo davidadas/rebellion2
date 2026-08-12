@@ -559,7 +559,7 @@ namespace Rebellion.Game.Results
         public string BackgroundImageKey { get; set; }
         public string BackgroundImagePath { get; set; }
         public string OverlayImagePath { get; set; }
-        public string AmbientAudioPath { get; set; }
+        public string BackgroundAudioPath { get; set; }
         public string OfficerVoicePath { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
     }
@@ -605,26 +605,6 @@ namespace Rebellion.Game.Results
         public IMovable Unit { get; set; }
         public List<IMovable> Units { get; set; } = new List<IMovable>();
         public ContainerNode Destination { get; set; }
-    }
-
-    /// <summary>
-    /// Requests activation of one retained off-map unit at an explicit destination.
-    /// </summary>
-    public sealed class UnitActivationRequestedResult : GameResult
-    {
-        public ISceneNode Unit { get; set; }
-        public ContainerNode Destination { get; set; }
-        public bool UseMissionReturnDestination { get; set; }
-    }
-
-    /// <summary>
-    /// Requests storage of the standard mission return anchors for one participant.
-    /// </summary>
-    public sealed class MissionReturnDestinationRequestedResult : GameResult
-    {
-        public IMissionParticipant Participant { get; set; }
-        public ContainerNode ReturnParent { get; set; }
-        public Planet ReturnLocation { get; set; }
     }
 
     /// <summary>

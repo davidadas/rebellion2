@@ -62,7 +62,7 @@ namespace Rebellion.Tests.Systems
         }
 
         [Test]
-        public void HandleResults_OfficersOnDifferentPlanets_DoesNothing()
+        public void HandleResults_OfficersOnDifferentPlanets_RejectsDuel()
         {
             (GameRoot game, Officer encountered, Officer opposing) = BuildEncounter();
             Planet other = new Planet
@@ -79,7 +79,10 @@ namespace Rebellion.Tests.Systems
                 new[] { Request(encountered, opposing) }
             );
 
-            Assert.IsEmpty(results);
+            DuelRejectedResult rejection = results.OfType<DuelRejectedResult>().Single();
+            Assert.AreSame(encountered, rejection.EncounteredOfficer);
+            Assert.AreSame(opposing, rejection.OpposingOfficer);
+            Assert.AreEqual("The officers are not at the same planet.", rejection.Reason);
         }
 
         private static (GameRoot game, Officer encountered, Officer opposing) BuildEncounter()
@@ -87,7 +90,10 @@ namespace Rebellion.Tests.Systems
             GameConfig config = TestConfig.Create();
             config.DuelResolution = new GameConfig.DuelResolutionConfig
             {
-                CaptureAvoidanceTable = new Dictionary<int, int> { { 0, 50 } },
+                CaptureAvoidancePercentByMinimumCombatAdvantage = new Dictionary<int, int>
+                {
+                    { 0, 50 },
+                },
                 CaptureEvasionInjuryBaseChance = 100,
                 MinimumInjuryChance = 1,
                 InjuryBase = 1,

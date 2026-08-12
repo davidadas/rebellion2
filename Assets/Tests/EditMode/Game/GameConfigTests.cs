@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Units;
 using Rebellion.Generation;
 
 namespace Rebellion.Tests.Game
@@ -250,6 +251,16 @@ namespace Rebellion.Tests.Game
                 0,
                 "SubdueUprising should have entries"
             );
+        }
+
+        [Test]
+        public void GetRankLabel_ConfiguredForceRank_ReturnsMatchingLabel()
+        {
+            GameConfig.JediConfig config = TestContent.Data.GameConfig.Jedi;
+
+            ForceRankLabel label = config.GetRankLabel(100);
+
+            Assert.AreEqual(ForceRankLabel.ForceKnight, label);
         }
 
         [Test]

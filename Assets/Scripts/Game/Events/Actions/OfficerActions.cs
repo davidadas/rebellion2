@@ -268,15 +268,12 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Replaces the authored image paths used for an officer.
     /// </summary>
-    [PersistableObject(Name = "SetOfficerImages")]
-    public sealed class SetOfficerImagesAction : GameAction
+    [PersistableObject(Name = "SetOfficerImageSet")]
+    public sealed class SetOfficerImageSetAction : GameAction
     {
         [PersistableAttribute]
         public string OfficerInstanceID { get; set; }
-        public string DisplayImagePath { get; set; }
-        public string SmallDisplayImagePath { get; set; }
-        public string MessageImagePath { get; set; }
-        public string EncyclopediaImagePath { get; set; }
+        public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
 
         /// <inheritdoc />
         public override List<GameResult> Execute(GameActionContext context)
@@ -285,17 +282,10 @@ namespace Rebellion.Game.Events
             Officer officer = game.GetSceneNodeByInstanceID<Officer>(OfficerInstanceID);
             if (officer == null)
                 throw new InvalidOperationException(
-                    $"SetOfficerImages could not resolve officer '{OfficerInstanceID}'."
+                    $"SetOfficerImageSet could not resolve officer '{OfficerInstanceID}'."
                 );
-
-            if (!string.IsNullOrWhiteSpace(DisplayImagePath))
-                officer.DisplayImagePath = DisplayImagePath;
-            if (!string.IsNullOrWhiteSpace(SmallDisplayImagePath))
-                officer.SmallDisplayImagePath = SmallDisplayImagePath;
-            if (!string.IsNullOrWhiteSpace(MessageImagePath))
-                officer.MessageImagePath = MessageImagePath;
-            if (!string.IsNullOrWhiteSpace(EncyclopediaImagePath))
-                officer.EncyclopediaImagePath = EncyclopediaImagePath;
+            officer.ImageSet.MergeFrom(ImageSet);
+            officer.ApplyImageSet();
             return new List<GameResult>();
         }
     }

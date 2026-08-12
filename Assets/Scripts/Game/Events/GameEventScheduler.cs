@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Events
@@ -13,6 +14,12 @@ namespace Rebellion.Game.Events
         public EveryTicks Every { get; set; }
         public RandomTickRange Random { get; set; }
         public AfterEvent After { get; set; }
+        public AfterEvents AfterAll { get; set; }
+        public AfterEvents AfterAny { get; set; }
+
+        [PersistableIgnore]
+        public bool IsOneShot =>
+            At != null || After != null || AfterAll != null || AfterAny != null;
 
         /// <summary>
         /// Gets the inclusive delay range for an event's first activation.
@@ -34,9 +41,9 @@ namespace Rebellion.Game.Events
                 return;
             }
 
-            if (After != null)
+            if (After != null || AfterAll != null || AfterAny != null)
             {
-                minimum = maximum = After.DelayTicks;
+                minimum = maximum = (AfterAll ?? AfterAny)?.DelayTicks ?? After.DelayTicks;
                 return;
             }
 
@@ -51,8 +58,8 @@ namespace Rebellion.Game.Events
         public void GetRepeatRange(out int minimum, out int maximum)
         {
             EnsureSingleMode();
-            if (At != null || After != null)
-                throw new InvalidOperationException("At and After schedules cannot repeat.");
+            if (IsOneShot)
+                throw new InvalidOperationException("One-shot schedules cannot repeat.");
 
             if (Every != null)
             {
@@ -78,10 +85,12 @@ namespace Rebellion.Game.Events
                 (At == null ? 0 : 1)
                 + (Every == null ? 0 : 1)
                 + (Random == null ? 0 : 1)
-                + (After == null ? 0 : 1);
+                + (After == null ? 0 : 1)
+                + (AfterAll == null ? 0 : 1)
+                + (AfterAny == null ? 0 : 1);
             if (configuredModes != 1)
                 throw new InvalidOperationException(
-                    "Schedule requires exactly one of At, Every, Random, or After."
+                    "Schedule requires exactly one of At, Every, Random, After, AfterAll, or AfterAny."
                 );
         }
     }
@@ -97,6 +106,25 @@ namespace Rebellion.Game.Events
 
         [PersistableAttribute]
         public int DelayTicks { get; set; }
+    }
+
+    /// <summary>
+    /// Schedules a one-shot event relative to either every or any listed predecessor.
+    /// </summary>
+    [PersistableObject]
+    public sealed class AfterEvents
+    {
+        [PersistableAttribute]
+        public int DelayTicks { get; set; }
+
+        public List<EventDependency> Events { get; set; } = new List<EventDependency>();
+    }
+
+    [PersistableObject(Name = "Event")]
+    public sealed class EventDependency
+    {
+        [PersistableAttribute]
+        public string EventInstanceID { get; set; }
     }
 
     /// <summary>

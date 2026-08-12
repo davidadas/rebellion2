@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Rebellion.Game.Results;
 using Rebellion.SceneGraph;
@@ -88,6 +89,28 @@ namespace Rebellion.Game.Events
         /// </summary>
         public bool TryGetBinding(string name, out object value) =>
             Bindings.TryGet(name, out value);
+
+        public bool TryGetBindingReference<T>(string reference, out T value)
+        {
+            return TryGetBinding(GetBindingName(reference), out value);
+        }
+
+        public bool TryGetBindingReference(string reference, out object value)
+        {
+            return TryGetBinding(GetBindingName(reference), out value);
+        }
+
+        public T GetBindingReference<T>(string reference)
+        {
+            return TryGetBindingReference(reference, out T value) ? value : default;
+        }
+
+        private static string GetBindingName(string reference)
+        {
+            if (string.IsNullOrWhiteSpace(reference) || reference[0] != '$')
+                throw new InvalidOperationException("Binding references must begin with '$'.");
+            return reference.Substring(1);
+        }
 
         /// <summary>
         /// Records a result emitted during this activation for later actions to inspect.

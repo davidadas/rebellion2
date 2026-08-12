@@ -108,7 +108,7 @@ namespace Rebellion.Game.Events
             new List<ConditionalMessageBody>();
         public MessageBackgroundImage BackgroundImage { get; set; }
         public MessageImage OverlayImage { get; set; }
-        public MessageAudio AmbientAudio { get; set; }
+        public MessageAudio BackgroundAudio { get; set; }
         public MessageOfficerVoice OfficerVoice { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
 
@@ -158,19 +158,8 @@ namespace Rebellion.Game.Events
             );
             foreach (ConditionalMessageBody segment in ConditionalBodies)
                 bodyTemplate += segment.Resolve(conditionContext) ?? string.Empty;
-            EnsureSingleBackgroundSource(BackgroundImage);
-            if (AmbientAudio != null)
-                EnsureSingleMediaSource(AmbientAudio.Path, AmbientAudio.Binding, "AmbientAudio");
-            string ambientAudioPath = ResolveMediaPath(
-                AmbientAudio?.Path,
-                AmbientAudio?.Binding,
-                context
-            );
-            string imagePath = ResolveMediaPath(
-                BackgroundImage?.Path,
-                BackgroundImage?.Binding,
-                context
-            );
+            string backgroundAudioPath = MessageMediaResolver.Resolve(BackgroundAudio, context);
+            string imagePath = MessageMediaResolver.Resolve(BackgroundImage, context);
 
             return new List<GameResult>
             {
@@ -186,35 +175,21 @@ namespace Rebellion.Game.Events
                     BackgroundImageKey = BackgroundImage?.Key,
                     BackgroundImagePath = imagePath,
                     OverlayImagePath = OverlayImage?.Path ?? (subject as Officer)?.MessageImagePath,
-                    AmbientAudioPath = ambientAudioPath,
+                    BackgroundAudioPath = backgroundAudioPath,
                     OfficerVoicePath = OfficerVoice?.Resolve(subject as Officer, provider),
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },
             };
         }
+    }
 
-        private static string ResolveMediaPath(
-            string path,
-            string binding,
-            GameActionContext context
-        )
-        {
-            if (!string.IsNullOrWhiteSpace(path))
-                return path;
-            if (string.IsNullOrWhiteSpace(binding))
-                return null;
-            if (context.Activation?.TryGetBinding(binding, out string boundPath) == true)
-                return boundPath;
-            throw new InvalidOperationException(
-                $"SendMessage could not resolve media binding '{binding}'."
-            );
-        }
-
-        private static void EnsureSingleBackgroundSource(MessageBackgroundImage image)
+    internal static class MessageMediaResolver
+    {
+        internal static string Resolve(MessageBackgroundImage image, GameActionContext context)
         {
             if (image == null)
-                return;
+                return null;
             int sourceCount =
                 (string.IsNullOrWhiteSpace(image.Key) ? 0 : 1)
                 + (string.IsNullOrWhiteSpace(image.Path) ? 0 : 1)
@@ -223,17 +198,32 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     "BackgroundImage requires exactly one of Key, Path, or Binding."
                 );
+            return ResolvePath(image.Path, image.Binding, context);
         }
 
-        private static void EnsureSingleMediaSource(string path, string binding, string name)
+        internal static string Resolve(MessageAudio audio, GameActionContext context)
         {
+            if (audio == null)
+                return null;
             int sourceCount =
-                (string.IsNullOrWhiteSpace(path) ? 0 : 1)
-                + (string.IsNullOrWhiteSpace(binding) ? 0 : 1);
+                (string.IsNullOrWhiteSpace(audio.Path) ? 0 : 1)
+                + (string.IsNullOrWhiteSpace(audio.Binding) ? 0 : 1);
             if (sourceCount != 1)
                 throw new InvalidOperationException(
-                    $"{name} requires exactly one of Path or Binding."
+                    "BackgroundAudio requires exactly one of Path or Binding."
                 );
+            return ResolvePath(audio.Path, audio.Binding, context);
+        }
+
+        private static string ResolvePath(string path, string binding, GameActionContext context)
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                return path;
+            if (context.Activation?.TryGetBindingReference(binding, out string boundPath) == true)
+                return boundPath;
+            throw new InvalidOperationException(
+                $"Message media could not resolve binding '{binding}'."
+            );
         }
     }
 }

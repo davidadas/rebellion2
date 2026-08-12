@@ -217,8 +217,9 @@ namespace Rebellion.Game.Messages
         public MessageBackgroundImage BackgroundImage { get; set; }
         public Dictionary<string, string> ImagePaths { get; set; } =
             new Dictionary<string, string>();
-        public string AmbientAudioPath { get; set; }
-        public Dictionary<string, string> AmbientAudioPaths { get; set; } =
+        public string BackgroundAudioPath { get; set; }
+        public Dictionary<string, string> BackgroundAudioPaths { get; set; } =
             new Dictionary<string, string>();
+        public string OfficerVoicePath { get; set; }
     }
 }

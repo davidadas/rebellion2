@@ -967,7 +967,7 @@ namespace Rebellion.Systems
             List<GameResult> results
         )
         {
-            _game.UnitLifecycle.AddToVoid(specialForces);
+            _game.AddToVoid(specialForces);
             _game.UnitLifecycle.SetStatus(specialForces, VoidStatus.Destroyed);
             results.Add(
                 new GameObjectDestroyedResult
@@ -1004,7 +1004,7 @@ namespace Rebellion.Systems
             else
             {
                 officer.IsKilled = true;
-                _game.UnitLifecycle.AddToVoid(officer);
+                _game.AddToVoid(officer);
                 _game.UnitLifecycle.SetStatus(officer, null);
                 results.Add(
                     new OfficerKilledResult

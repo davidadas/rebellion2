@@ -52,7 +52,7 @@ namespace Rebellion.Systems
 
             foreach (ISceneNode person in live)
             {
-                _game.UnitLifecycle.AddToVoid(person);
+                _game.AddToVoid(person);
                 _game.UnitLifecycle.SetStatus(person, VoidStatus.Retired);
             }
 

@@ -463,7 +463,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 DisplayName = "Commander Antilles",
                 OwnerInstanceID = _ownerId,
                 IsJedi = true,
-                ForceValue = _game.Config.Jedi.RankLabelForceMaster,
+                ForceValue = _game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceMaster),
                 ShipResearch = 1,
                 TroopResearch = 0,
                 FacilityResearch = 2,

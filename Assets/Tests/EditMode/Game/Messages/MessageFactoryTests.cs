@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Game.Messages
                         Body = "{subject} confronts {relatedSubject} for {faction}",
                         BackgroundImagePath = "Story/image",
                         OverlayImagePath = "Officers/luke",
-                        AmbientAudioPath = "Story/dialogue",
+                        BackgroundAudioPath = "Story/dialogue",
                         OfficerVoicePath = "Officers/luke/dialogue",
                         AdvisorNotification = new AdvisorNotification
                         {
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Story/image", message.DisplayImagePath);
             Assert.IsNull(message.BackgroundImageKey);
             Assert.AreEqual("Officers/luke", message.OverlayImagePath);
-            Assert.AreEqual("Story/dialogue", message.AmbientAudioPath);
+            Assert.AreEqual("Story/dialogue", message.BackgroundAudioPath);
             Assert.AreEqual("Officers/luke/dialogue", message.OfficerVoicePath);
             Assert.AreEqual(luke.InstanceID, message.NavigationTargetInstanceID);
             Assert.AreEqual(destination.InstanceID, message.EventLocationInstanceID);
@@ -201,7 +201,10 @@ namespace Rebellion.Tests.Game.Messages
                 alliance
             );
 
-            Assert.AreEqual("Audio/SFX/StrategyView/Messages/test_voice", message.AmbientAudioPath);
+            Assert.AreEqual(
+                "Audio/SFX/StrategyView/Messages/test_voice",
+                message.BackgroundAudioPath
+            );
         }
 
         [Test]
@@ -238,7 +241,7 @@ namespace Rebellion.Tests.Game.Messages
                 empire
             );
 
-            Assert.AreEqual("empire-voice", message.AmbientAudioPath);
+            Assert.AreEqual("empire-voice", message.BackgroundAudioPath);
         }
 
         [Test]
@@ -935,22 +938,21 @@ namespace Rebellion.Tests.Game.Messages
             {
                 TypeID = "OFEM001",
                 OwnerInstanceID = alliance.InstanceID,
-                VoiceSet = new OfficerVoiceSet { SeatOfPower = new List<string> { "seat-voice" } },
             };
+
+            MessageDefinition definition = Definition(
+                MessageResultType.EmperorSeatOfPower,
+                MessageType.Mission,
+                "seat",
+                "body",
+                DefaultImage("seat-image")
+            );
+            definition.OfficerVoicePath = "seat-voice";
 
             Message message = FirstMessageFor(
                 CreateMessages(
                     game,
-                    new[]
-                    {
-                        Definition(
-                            MessageResultType.EmperorSeatOfPower,
-                            MessageType.Mission,
-                            "seat",
-                            "body",
-                            DefaultImage("seat-image")
-                        ),
-                    },
+                    new[] { definition },
                     new SeatOfPowerChangedResult { Officer = officer, IsAtSeat = true }
                 ),
                 alliance
@@ -1139,7 +1141,7 @@ namespace Rebellion.Tests.Game.Messages
             );
             Assert.AreEqual("death-star-encyclopedia-image", messages[1].DisplayImagePath);
             Assert.AreEqual("X-wing Squadron Deployed at Coruscant", messages[2].Title);
-            Assert.AreEqual("fighter-voice", messages[2].AmbientAudioPath);
+            Assert.AreEqual("fighter-voice", messages[2].BackgroundAudioPath);
             Assert.AreEqual("fighter-encyclopedia-image", messages[2].DisplayImagePath);
             Assert.AreEqual("Mon Calamari Regiment Deployed to Coruscant", messages[3].Title);
             Assert.AreEqual(
@@ -1255,7 +1257,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Dissention among the population has allowed smugglers to begin operations on Yavin.  As a result, valuable resources are being lost.",
                 loss.Body
             );
-            Assert.AreEqual("empire-smuggling-voice", loss.AmbientAudioPath);
+            Assert.AreEqual("empire-smuggling-voice", loss.BackgroundAudioPath);
             Assert.AreEqual(target.InstanceID, loss.NavigationTargetInstanceID);
 
             Message benefit = FirstMessageFor(deliveries, alliance);
@@ -1264,7 +1266,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Smugglers from Yavin are providing us with additional resources.",
                 benefit.Body
             );
-            Assert.AreEqual("alliance-smuggling-voice", benefit.AmbientAudioPath);
+            Assert.AreEqual("alliance-smuggling-voice", benefit.BackgroundAudioPath);
             Assert.AreEqual(target.InstanceID, benefit.EventLocationInstanceID);
         }
 
@@ -1293,7 +1295,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Increasing support on Yavin has put an end to the smuggling losses there.",
                 lossEnd.Body
             );
-            Assert.IsNull(lossEnd.AmbientAudioPath);
+            Assert.IsNull(lossEnd.BackgroundAudioPath);
 
             Message benefitEnd = FirstMessageFor(deliveries, alliance);
             Assert.AreEqual("Smuggling Benefits End", benefitEnd.Title);
@@ -1301,7 +1303,7 @@ namespace Rebellion.Tests.Game.Messages
                 "Popular opinion on Yavin has caused smugglers from that system to withdraw their support.",
                 benefitEnd.Body
             );
-            Assert.IsNull(benefitEnd.AmbientAudioPath);
+            Assert.IsNull(benefitEnd.BackgroundAudioPath);
         }
 
         [Test]
@@ -2536,7 +2538,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Student",
                 OwnerInstanceID = alliance.InstanceID,
                 IsJedi = true,
-                ForceValue = game.Config.Jedi.RankLabelForceKnight,
+                ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
                 MessageImagePath = "student-card",
             };
             game.AttachNode(officer, origin);
@@ -2557,8 +2559,11 @@ namespace Rebellion.Tests.Game.Messages
                     {
                         Officer = officer,
                         ExperienceGained = 1,
-                        PreviousForceRank = game.Config.Jedi.RankLabelForceKnight - 1,
-                        CurrentForceRank = game.Config.Jedi.RankLabelForceKnight,
+                        PreviousForceRank =
+                            game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) - 1,
+                        CurrentForceRank = game.Config.Jedi.GetMinimumRank(
+                            ForceRankLabel.ForceKnight
+                        ),
                     }
                 ),
                 alliance
@@ -2579,7 +2584,7 @@ namespace Rebellion.Tests.Game.Messages
                 DisplayName = "Student",
                 OwnerInstanceID = alliance.InstanceID,
                 IsJedi = true,
-                ForceValue = game.Config.Jedi.RankLabelForceKnight + 1,
+                ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) + 1,
             };
             game.AttachNode(officer, origin);
 
@@ -2593,8 +2598,9 @@ namespace Rebellion.Tests.Game.Messages
                 {
                     Officer = officer,
                     ExperienceGained = 1,
-                    PreviousForceRank = game.Config.Jedi.RankLabelForceKnight,
-                    CurrentForceRank = game.Config.Jedi.RankLabelForceKnight + 1,
+                    PreviousForceRank = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
+                    CurrentForceRank =
+                        game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) + 1,
                 }
             );
 
@@ -2609,7 +2615,7 @@ namespace Rebellion.Tests.Game.Messages
             {
                 OwnerInstanceID = alliance.InstanceID,
                 IsJedi = true,
-                ForceValue = game.Config.Jedi.RankLabelForceKnight,
+                ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
             };
             game.AttachNode(officer, origin);
 
@@ -2622,8 +2628,9 @@ namespace Rebellion.Tests.Game.Messages
                 new ForceExperienceResult
                 {
                     Officer = officer,
-                    PreviousForceRank = game.Config.Jedi.RankLabelForceKnight - 1,
-                    CurrentForceRank = game.Config.Jedi.RankLabelForceKnight,
+                    PreviousForceRank =
+                        game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight) - 1,
+                    CurrentForceRank = game.Config.Jedi.GetMinimumRank(ForceRankLabel.ForceKnight),
                     SuppressRankChangeMessage = true,
                 }
             );
@@ -2658,7 +2665,7 @@ namespace Rebellion.Tests.Game.Messages
                 InstanceID = "student",
                 OwnerInstanceID = alliance.InstanceID,
                 IsJedi = true,
-                ForceValue = game.Config.Jedi.RankLabelTrainee,
+                ForceValue = game.Config.Jedi.GetMinimumRank(ForceRankLabel.Trainee),
                 MessageImagePath = "student-card",
             };
             game.AttachNode(discoverer, origin);
@@ -3121,7 +3128,7 @@ namespace Rebellion.Tests.Game.Messages
                 deliveries[0].Message.Body
             );
             Assert.AreEqual("empire-image", deliveries[0].Message.DisplayImagePath);
-            Assert.AreEqual("empire-unrest", deliveries[0].Message.AmbientAudioPath);
+            Assert.AreEqual("empire-unrest", deliveries[0].Message.BackgroundAudioPath);
             Assert.AreEqual(
                 AdvisorNotificationType.NegativePopularSupport,
                 deliveries[0].NotificationType
@@ -3319,7 +3326,7 @@ namespace Rebellion.Tests.Game.Messages
             Assert.AreEqual("Yavin neutral", message.Title);
             Assert.AreEqual("neutral:Yavin:Empire", message.Body);
             Assert.AreEqual("support-image", message.DisplayImagePath);
-            Assert.AreEqual("neutral-audio", message.AmbientAudioPath);
+            Assert.AreEqual("neutral-audio", message.BackgroundAudioPath);
         }
 
         [Test]
@@ -4039,8 +4046,8 @@ namespace Rebellion.Tests.Game.Messages
                         ? null
                         : new MessageBackgroundImage { Key = imageKey, Path = imagePath },
                 ImagePaths = imagePaths ?? new Dictionary<string, string>(),
-                AmbientAudioPath = voicePath,
-                AmbientAudioPaths = voicePaths ?? new Dictionary<string, string>(),
+                BackgroundAudioPath = voicePath,
+                BackgroundAudioPaths = voicePaths ?? new Dictionary<string, string>(),
                 PlanetDestroyed = planetDestroyed,
             };
 

@@ -115,7 +115,10 @@ namespace Rebellion.Systems
             if (incomingFaction == null)
                 return;
 
-            GameConfig.RandomRangeConfig range = _game.Config.OfficerLoyalty.IncomingControlShift;
+            GameConfig.RandomRangeConfig range = _game
+                .Config
+                .OfficerLoyalty
+                .PlanetAcquisitionLoyaltyShift;
             int minimum = Math.Max(0, range.Minimum);
             int maximum = Math.Max(minimum, range.Maximum);
             int loyaltyShift = _provider.NextInt(minimum, maximum + 1);

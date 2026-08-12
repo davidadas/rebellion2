@@ -372,8 +372,6 @@ public sealed class GameManager
         _resultProcessor.Subscribe<GameResult>(_eventSystem);
         _resultProcessor.Subscribe<BlockadeChangedResult>(_movementSystem);
         _resultProcessor.Subscribe<UnitMovementRequestedResult>(_movementSystem);
-        _resultProcessor.Subscribe<UnitActivationRequestedResult>(_movementSystem);
-        _resultProcessor.Subscribe<MissionReturnDestinationRequestedResult>(_movementSystem);
         _resultProcessor.Subscribe<DuelRequestedResult>(_duelSystem);
         _resultProcessor.Subscribe<UnitArrivedResult>(_headquartersSystem);
         _resultProcessor.Subscribe<PlanetOwnershipChangedResult>(_headquartersSystem);

@@ -42,7 +42,7 @@ namespace Rebellion.Game.Messages
                 Subject = result.Subject,
                 Body = result.Body,
                 BackgroundImage = CreateBackground(result),
-                AmbientAudioPath = result.AmbientAudioPath,
+                BackgroundAudioPath = result.BackgroundAudioPath,
             };
             Message message = _templateBuilder.Build(
                 definition,

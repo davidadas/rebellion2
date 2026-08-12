@@ -66,7 +66,7 @@ namespace Rebellion.Game.Events
             string planetInstanceID = PlanetInstanceID;
             if (
                 !string.IsNullOrWhiteSpace(PlanetBinding)
-                && context?.GetBinding<Planet>(PlanetBinding) is Planet boundPlanet
+                && context?.GetBindingReference<Planet>(PlanetBinding) is Planet boundPlanet
             )
                 planetInstanceID = boundPlanet.InstanceID;
 
@@ -191,7 +191,7 @@ namespace Rebellion.Game.Events
     public sealed class SelectBinding : GameEventSelector
     {
         [PersistableAttribute]
-        public string Name { get; set; }
+        public string Binding { get; set; }
 
         internal override IEnumerable<ISceneNode> Select(
             GameRoot game,
@@ -199,7 +199,7 @@ namespace Rebellion.Game.Events
             GameEventExecutionContext context
         )
         {
-            if (context?.TryGetBinding(Name, out object value) != true)
+            if (context?.TryGetBindingReference(Binding, out object value) != true)
                 return Enumerable.Empty<ISceneNode>();
             if (value is ISceneNode node)
                 return new[] { node };

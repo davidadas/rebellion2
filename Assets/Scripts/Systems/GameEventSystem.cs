@@ -283,12 +283,9 @@ namespace Rebellion.Systems
                 throw new InvalidOperationException(
                     $"Event '{gameEvent.InstanceID}' cannot combine result triggers with an EachPlanet target."
                 );
-            if (
-                !gameEvent.RunsOnce
-                && (gameEvent.Schedule?.At != null || gameEvent.Schedule?.After != null)
-            )
+            if (!gameEvent.RunsOnce && gameEvent.Schedule?.IsOneShot == true)
                 throw new InvalidOperationException(
-                    $"Event '{gameEvent.InstanceID}' must set RunsOnce when using At or After."
+                    $"Event '{gameEvent.InstanceID}' must set RunsOnce when using a one-shot schedule."
                 );
         }
 
@@ -321,6 +318,52 @@ namespace Rebellion.Systems
                     return false;
 
                 state.NextEligibleTick = checked(predecessor.LastExecutionTick + after.DelayTicks);
+                state.IsInitialized = true;
+                return true;
+            }
+
+            AfterEvents dependencies = gameEvent.Schedule?.AfterAll ?? gameEvent.Schedule?.AfterAny;
+            if (dependencies != null)
+            {
+                if (dependencies.DelayTicks < 0)
+                    throw new InvalidOperationException(
+                        "Dependent schedule delay cannot be negative."
+                    );
+                if (dependencies.Events == null || dependencies.Events.Count == 0)
+                    throw new InvalidOperationException(
+                        "AfterAll and AfterAny require at least one event dependency."
+                    );
+
+                List<GameEventState> predecessorStates = new List<GameEventState>();
+                HashSet<string> dependencyIDs = new HashSet<string>(StringComparer.Ordinal);
+                foreach (EventDependency dependency in dependencies.Events)
+                {
+                    if (string.IsNullOrWhiteSpace(dependency.EventInstanceID))
+                        throw new InvalidOperationException(
+                            "Event dependency instance ID is required."
+                        );
+                    if (!dependencyIDs.Add(dependency.EventInstanceID))
+                        throw new InvalidOperationException(
+                            $"Duplicate event dependency '{dependency.EventInstanceID}'."
+                        );
+                    predecessorStates.Add(_game.EventRuntime.GetState(dependency.EventInstanceID));
+                }
+                bool isAfterAll = gameEvent.Schedule.AfterAll != null;
+                if (
+                    isAfterAll
+                    && predecessorStates.Any(predecessor => predecessor.ExecutionCount == 0)
+                )
+                    return false;
+                List<GameEventState> completed = predecessorStates
+                    .Where(predecessor => predecessor.ExecutionCount > 0)
+                    .ToList();
+                if (completed.Count == 0)
+                    return false;
+
+                int dependencyTick = isAfterAll
+                    ? completed.Max(predecessor => predecessor.LastExecutionTick)
+                    : completed.Min(predecessor => predecessor.LastExecutionTick);
+                state.NextEligibleTick = checked(dependencyTick + dependencies.DelayTicks);
                 state.IsInitialized = true;
                 return true;
             }

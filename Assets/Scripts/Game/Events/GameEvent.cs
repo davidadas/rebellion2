@@ -16,7 +16,7 @@ namespace Rebellion.Game.Events
         public bool RunsOnce { get; set; }
 
         [PersistableIgnore]
-        public bool Repeats => !RunsOnce && Schedule?.At == null && Schedule?.After == null;
+        public bool Repeats => !RunsOnce && Schedule?.IsOneShot != true;
 
         // Result Triggers.
         public List<GameEventTrigger> Triggers { get; set; } = new List<GameEventTrigger>();

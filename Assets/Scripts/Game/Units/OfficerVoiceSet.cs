@@ -21,9 +21,6 @@ namespace Rebellion.Game.Units
         public List<string> ForceUserDiscovered { get; set; } = new List<string>();
         public List<string> TraitorDiscovered { get; set; } = new List<string>();
         public List<string> RescueAttempt { get; set; } = new List<string>();
-        public List<string> BountyAttack { get; set; } = new List<string>();
-        public List<string> DagobahCompleted { get; set; } = new List<string>();
-        public List<string> SeatOfPower { get; set; } = new List<string>();
 
         public IReadOnlyList<string> Get(OfficerVoiceLineType type)
         {
@@ -41,9 +38,6 @@ namespace Rebellion.Game.Units
                 OfficerVoiceLineType.ForceUserDiscovered => ForceUserDiscovered,
                 OfficerVoiceLineType.TraitorDiscovered => TraitorDiscovered,
                 OfficerVoiceLineType.RescueAttempt => RescueAttempt,
-                OfficerVoiceLineType.BountyAttack => BountyAttack,
-                OfficerVoiceLineType.DagobahCompleted => DagobahCompleted,
-                OfficerVoiceLineType.SeatOfPower => SeatOfPower,
                 _ => null,
             };
         }
@@ -65,9 +59,6 @@ namespace Rebellion.Game.Units
             ReplaceWhenAuthored(authored.ForceUserDiscovered, ForceUserDiscovered);
             ReplaceWhenAuthored(authored.TraitorDiscovered, TraitorDiscovered);
             ReplaceWhenAuthored(authored.RescueAttempt, RescueAttempt);
-            ReplaceWhenAuthored(authored.BountyAttack, BountyAttack);
-            ReplaceWhenAuthored(authored.DagobahCompleted, DagobahCompleted);
-            ReplaceWhenAuthored(authored.SeatOfPower, SeatOfPower);
         }
 
         private static void ReplaceWhenAuthored(List<string> authored, List<string> destination)

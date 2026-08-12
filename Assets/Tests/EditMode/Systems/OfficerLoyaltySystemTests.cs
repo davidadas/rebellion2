@@ -158,8 +158,8 @@ namespace Rebellion.Tests.Systems
         private static GameRoot BuildScene(out Planet planet, out Officer officer)
         {
             GameConfig config = TestConfig.Create();
-            config.OfficerLoyalty.IncomingControlShift.Minimum = 0;
-            config.OfficerLoyalty.IncomingControlShift.Maximum = 5;
+            config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Minimum = 0;
+            config.OfficerLoyalty.PlanetAcquisitionLoyaltyShift.Maximum = 5;
             GameRoot game = new GameRoot(config);
             game.Factions.Add(new Faction { InstanceID = "empire" });
             PlanetSystem system = new PlanetSystem { InstanceID = "system" };

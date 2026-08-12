@@ -130,6 +130,50 @@ namespace Rebellion.Game
             }
         }
 
+        public bool RemoveFromVoid(ISceneNode node)
+        {
+            if (node == null)
+                throw new ArgumentNullException(nameof(node));
+            Faction faction = _game.GetFactionByOwnerInstanceID(node.OwnerInstanceID);
+            if (faction.VoidPool?.Contains(node) != true)
+                throw new InvalidOperationException(
+                    $"{node.GetDisplayName()} is not a void-pool root."
+                );
+
+            HashSet<ISceneNode> visited = new HashSet<ISceneNode>();
+            for (
+                ISceneNode previous = ResolveLastParent(node);
+                previous != null && visited.Add(previous);
+                previous = ResolveLastParent(previous)
+            )
+            {
+                if (
+                    previous is ContainerNode destination
+                    && !IsInVoid(destination)
+                    && destination.CanAcceptChild(node)
+                )
+                {
+                    Activate(node, destination);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private ISceneNode ResolveLastParent(ISceneNode node)
+        {
+            if (!string.IsNullOrWhiteSpace(node.LastParentInstanceID))
+            {
+                ISceneNode registered = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                    node.LastParentInstanceID
+                );
+                if (registered != null)
+                    return registered;
+            }
+            return node.LastParentNode;
+        }
+
         public bool IsInVoid(ISceneNode node)
         {
             for (ISceneNode current = node; current != null; current = current.GetParent())

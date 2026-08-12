@@ -222,7 +222,7 @@ namespace Rebellion.Tests.Game.Events
                 MessageType = MessageType.Advice,
                 Subject = "A message for {subject}",
                 Body = "Report from {location}",
-                AmbientAudio = new MessageAudio { Path = "Audio/Luke/dialogue" },
+                BackgroundAudio = new MessageAudio { Path = "Audio/Luke/dialogue" },
             };
 
             MessageRequestedResult result = action
@@ -233,7 +233,7 @@ namespace Rebellion.Tests.Game.Events
             Assert.AreEqual("rebels", result.Recipient.InstanceID);
             Assert.AreSame(luke, result.SubjectNode);
             Assert.AreSame(rebelPlanet, result.Location);
-            Assert.AreEqual("Audio/Luke/dialogue", result.AmbientAudioPath);
+            Assert.AreEqual("Audio/Luke/dialogue", result.BackgroundAudioPath);
         }
 
         [Test]
@@ -278,7 +278,7 @@ namespace Rebellion.Tests.Game.Events
             SendMessageAction action = new SendMessageAction
             {
                 SubjectInstanceID = luke.InstanceID,
-                AmbientAudio = new MessageAudio { Binding = "audioPath" },
+                BackgroundAudio = new MessageAudio { Binding = "$audioPath" },
             };
             DuelResult encounter = new DuelResult
             {
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.Game.Events
                 new GameEventState(),
                 null,
                 encounter,
-                new DuelCompletedTrigger { AudioPath = "audioPath" }
+                new GameEventTrigger("core:duel.completed", ("AudioPath", "audioPath"))
             );
 
             MessageRequestedResult result = action
@@ -298,7 +298,7 @@ namespace Rebellion.Tests.Game.Events
                 .OfType<MessageRequestedResult>()
                 .Single();
 
-            Assert.AreEqual("selected-encounter-voice", result.AmbientAudioPath);
+            Assert.AreEqual("selected-encounter-voice", result.BackgroundAudioPath);
         }
 
         [Test]
@@ -439,38 +439,37 @@ namespace Rebellion.Tests.Game.Events
         }
 
         [Test]
-        public void ActivateFromVoid_OfficerInVoid_RequestsActivationUsingMissionReturnDestination()
+        public void RemoveFromVoid_OfficerInVoid_RestoresPreviousParent()
         {
             GameRoot game = BuildGame(out _, out Planet origin);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, origin);
             new AddToVoidAction { UnitInstanceID = luke.InstanceID }.Execute(game);
 
-            List<GameResult> results = new ActivateFromVoidAction
+            List<GameResult> results = new RemoveFromVoidAction
             {
                 UnitInstanceID = luke.InstanceID,
             }.Execute(game);
 
-            UnitActivationRequestedResult result = results
-                .OfType<UnitActivationRequestedResult>()
-                .Single();
-            Assert.AreSame(luke, result.Unit);
-            Assert.IsTrue(result.UseMissionReturnDestination);
-            Assert.IsNull(luke.GetParent());
+            Assert.IsEmpty(results);
+            Assert.AreSame(origin, luke.GetParent());
         }
 
         [Test]
-        public void SetOfficerImages_ConfiguredValues_UpdatesOfficer()
+        public void SetOfficerImageSet_ConfiguredValues_UpdatesOfficer()
         {
             GameRoot game = BuildGame(out _, out Planet rebelPlanet);
             Officer luke = EntityFactory.CreateOfficer("luke", "rebels");
             game.AttachNode(luke, rebelPlanet);
-            SetOfficerImagesAction action = new SetOfficerImagesAction
+            SetOfficerImageSetAction action = new SetOfficerImageSetAction
             {
                 OfficerInstanceID = luke.InstanceID,
-                DisplayImagePath = "jedi-display",
-                SmallDisplayImagePath = "jedi-small-display",
-                EncyclopediaImagePath = "jedi-encyclopedia",
+                ImageSet = new OfficerImageSet
+                {
+                    DisplayImagePath = "jedi-display",
+                    SmallDisplayImagePath = "jedi-small-display",
+                    EncyclopediaImagePath = "jedi-encyclopedia",
+                },
             };
 
             Assert.IsEmpty(action.Execute(game));

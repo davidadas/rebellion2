@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Util.Common;
 
 namespace Rebellion.Systems
 {
@@ -17,6 +18,7 @@ namespace Rebellion.Systems
         private const int _percentScale = 100;
 
         private readonly GameRoot _game;
+        private readonly ProbabilityTable _lossPercentByMinimumSupport;
         private readonly Dictionary<string, PlanetSmugglingState> _states = new Dictionary<
             string,
             PlanetSmugglingState
@@ -37,6 +39,9 @@ namespace Rebellion.Systems
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             EnsureConfigIsValid(_game.Config?.Smuggling);
+            _lossPercentByMinimumSupport = new ProbabilityTable(
+                _game.Config.Smuggling.LossPercentByMinimumSupport
+            );
             InitializeStates();
         }
 
@@ -45,18 +50,16 @@ namespace Rebellion.Systems
             if (config == null)
                 throw new InvalidOperationException("Smuggling configuration is required.");
             if (
-                config.SevereSupportMaximum < 0
-                || config.SevereSupportMaximum > config.MajorSupportMaximum
-                || config.MajorSupportMaximum > config.MaximumSupport
-                || config.MaximumSupport > _percentScale
+                config.LossPercentByMinimumSupport == null
+                || config.LossPercentByMinimumSupport.Count == 0
             )
                 throw new InvalidOperationException(
-                    "Smuggling support thresholds must be ordered between zero and 100."
+                    "Smuggling requires at least one support-loss threshold."
                 );
             if (
-                config.SevereLossPercent is < 0 or > _percentScale
-                || config.MajorLossPercent is < 0 or > _percentScale
-                || config.MinorLossPercent is < 0 or > _percentScale
+                config.LossPercentByMinimumSupport.Any(entry =>
+                    entry.Key is < 0 or > _percentScale || entry.Value is < 0 or > _percentScale
+                )
             )
                 throw new InvalidOperationException(
                     "Smuggling loss percentages must be between zero and 100."
@@ -165,8 +168,10 @@ namespace Rebellion.Systems
             int newPercent = CalculatePercent(planet, controller, beneficiary);
             if (
                 oldPercent != newPercent
-                || oldController != controller
-                || oldBeneficiary != beneficiary
+                || (
+                    (oldPercent > 0 || newPercent > 0)
+                    && (oldController != controller || oldBeneficiary != beneficiary)
+                )
             )
             {
                 bool beneficiaryChanged = oldPercent > 0 && oldBeneficiary != beneficiary;
@@ -261,9 +266,6 @@ namespace Rebellion.Systems
 
             GameConfig.SmugglingConfig config = _game.Config.Smuggling;
             int support = planet.GetPopularSupport(controller.InstanceID);
-            if (support > config.MaximumSupport)
-                return 0;
-
             Fleet[] fleets = planet
                 .Fleets.Where(fleet =>
                     fleet.OwnerInstanceID == controller.InstanceID && fleet.Movement == null
@@ -279,10 +281,7 @@ namespace Rebellion.Systems
             )
                 return 0;
 
-            int percent =
-                support <= config.SevereSupportMaximum ? config.SevereLossPercent
-                : support <= config.MajorSupportMaximum ? config.MajorLossPercent
-                : config.MinorLossPercent;
+            int percent = _lossPercentByMinimumSupport.Lookup(support);
             int capitalShips = fleets.Sum(fleet => fleet.GetOperationalCapitalShipCount());
             int starfighters =
                 planet.Starfighters.Count(starfighter =>

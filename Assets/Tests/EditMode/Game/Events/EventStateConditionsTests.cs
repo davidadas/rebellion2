@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Game.Events
             game.AttachNode(emperor, ship);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Name = "unit",
+                Binding = "$unit",
                 Comparison = EventVariableComparison.Equal,
                 ExpectedValue = emperor.InstanceID,
             };
@@ -44,7 +44,7 @@ namespace Rebellion.Tests.Game.Events
             GameRoot game = BuildGame(out Planet empirePlanet, out Planet rebelPlanet);
             EvaluateBindingConditional conditional = new EvaluateBindingConditional
             {
-                Name = "destination",
+                Binding = "$destination",
                 Comparison = EventVariableComparison.Equal,
                 ExpectedValue = empirePlanet.InstanceID,
             };

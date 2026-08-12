@@ -24,7 +24,7 @@ namespace Rebellion.Game.Messages
         public string Body;
         public string BackgroundImageKey;
         public string OverlayImagePath;
-        public string AmbientAudioPath;
+        public string BackgroundAudioPath;
         public string OfficerVoicePath;
         public string EventLocationInstanceID;
         public string NavigationTargetInstanceID;

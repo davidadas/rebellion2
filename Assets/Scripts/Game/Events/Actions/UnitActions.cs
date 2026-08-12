@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -34,7 +33,7 @@ namespace Rebellion.Game.Events
             foreach (ISceneNode root in destroyedRoots)
             {
                 root.Traverse(unit => destroyed.Add(unit));
-                game.UnitLifecycle.AddToVoid(root);
+                game.AddToVoid(root);
             }
             foreach (IMovable unit in destroyed.OfType<IMovable>())
                 game.UnitLifecycle.SetStatus(unit, VoidStatus.Destroyed);
@@ -160,7 +159,7 @@ namespace Rebellion.Game.Events
 
             if (
                 !string.IsNullOrWhiteSpace(DestinationBinding)
-                && context?.TryGetBinding(DestinationBinding, out object bound) == true
+                && context?.TryGetBindingReference(DestinationBinding, out object bound) == true
             )
             {
                 if (bound is ContainerNode container)
@@ -193,38 +192,8 @@ namespace Rebellion.Game.Events
                 throw new InvalidOperationException(
                     $"AddToVoid could not resolve unit '{UnitInstanceID}'."
                 );
-            game.UnitLifecycle.AddToVoid(unit);
+            game.AddToVoid(unit);
             return new List<GameResult>();
-        }
-    }
-
-    /// <summary>
-    /// Records a participant's current attachment through the standard mission-return fields.
-    /// </summary>
-    [PersistableObject(Name = "SetMissionReturnDestination")]
-    public sealed class SetMissionReturnDestinationAction : GameAction
-    {
-        [PersistableAttribute]
-        public string UnitInstanceID { get; set; }
-
-        public override List<GameResult> Execute(GameActionContext context)
-        {
-            IMissionParticipant participant =
-                context.Game.GetSceneNodeByInstanceID<IMissionParticipant>(UnitInstanceID);
-            if (participant == null)
-                throw new InvalidOperationException(
-                    $"SetMissionReturnDestination could not resolve participant '{UnitInstanceID}'."
-                );
-            return new List<GameResult>
-            {
-                new MissionReturnDestinationRequestedResult
-                {
-                    Participant = participant,
-                    ReturnParent = participant.GetParent() as ContainerNode,
-                    ReturnLocation = participant.GetParentOfType<Planet>(),
-                    Tick = context.Game.CurrentTick,
-                },
-            };
         }
     }
 
@@ -259,8 +228,8 @@ namespace Rebellion.Game.Events
     /// <summary>
     /// Requests activation of an off-map unit at an explicit destination.
     /// </summary>
-    [PersistableObject(Name = "ActivateFromVoid")]
-    public sealed class ActivateFromVoidAction : GameAction
+    [PersistableObject(Name = "RemoveFromVoid")]
+    public sealed class RemoveFromVoidAction : GameAction
     {
         [PersistableAttribute]
         public string UnitInstanceID { get; set; }
@@ -271,17 +240,13 @@ namespace Rebellion.Game.Events
             ISceneNode unit = game.GetSceneNodeByInstanceID<ISceneNode>(UnitInstanceID);
             if (unit == null)
                 throw new InvalidOperationException(
-                    $"ActivateFromVoid could not resolve unit '{UnitInstanceID}'."
+                    $"RemoveFromVoid could not resolve unit '{UnitInstanceID}'."
                 );
-            return new List<GameResult>
-            {
-                new UnitActivationRequestedResult
-                {
-                    Unit = unit,
-                    UseMissionReturnDestination = true,
-                    Tick = game.CurrentTick,
-                },
-            };
+            if (!game.RemoveFromVoid(unit))
+                throw new InvalidOperationException(
+                    $"RemoveFromVoid could not restore '{UnitInstanceID}' to a previous location."
+                );
+            return new List<GameResult>();
         }
     }
 }

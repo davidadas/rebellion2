@@ -906,17 +906,15 @@ internal sealed class StrategyStatusInfoBuilder
         if (jediConfig == null || !officer.IsJedi)
             return "None";
 
-        if (officer.ForceRank >= jediConfig.RankLabelForceMaster)
-            return "Jedi Master";
-        if (officer.ForceRank >= jediConfig.RankLabelForceKnight)
-            return "Jedi Knight";
-        if (officer.ForceRank >= jediConfig.RankLabelForceStudent)
-            return "Jedi Student";
-        if (officer.ForceRank >= jediConfig.RankLabelTrainee)
-            return "Trainee";
-        if (officer.ForceRank >= jediConfig.RankLabelNovice)
-            return "Novice";
-        return "None";
+        return jediConfig.GetRankLabel(officer.ForceRank) switch
+        {
+            ForceRankLabel.ForceMaster => "Jedi Master",
+            ForceRankLabel.ForceKnight => "Jedi Knight",
+            ForceRankLabel.ForceStudent => "Jedi Student",
+            ForceRankLabel.Trainee => "Trainee",
+            ForceRankLabel.Novice => "Novice",
+            _ => "None",
+        };
     }
 
     /// <summary>

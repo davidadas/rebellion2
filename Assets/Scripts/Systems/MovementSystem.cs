@@ -22,9 +22,7 @@ namespace Rebellion.Systems
     /// </summary>
     public class MovementSystem
         : IGameResultHandler<BlockadeChangedResult>,
-            IGameResultHandler<UnitMovementRequestedResult>,
-            IGameResultHandler<UnitActivationRequestedResult>,
-            IGameResultHandler<MissionReturnDestinationRequestedResult>
+            IGameResultHandler<UnitMovementRequestedResult>
     {
         private readonly GameRoot _game;
         private readonly FogOfWarSystem _fogOfWar;
@@ -137,45 +135,6 @@ namespace Rebellion.Systems
                     RequestMove(result.Units, result.Destination);
                 else if (result.Unit != null)
                     RequestMove(result.Unit, result.Destination);
-            }
-
-            return new List<GameResult>();
-        }
-
-        List<GameResult> IGameResultHandler<UnitActivationRequestedResult>.HandleResults(
-            IReadOnlyList<UnitActivationRequestedResult> results
-        )
-        {
-            foreach (UnitActivationRequestedResult result in results)
-            {
-                if (result?.Unit == null)
-                    continue;
-                ContainerNode destination = result.Destination;
-                if (
-                    destination == null
-                    && result.UseMissionReturnDestination
-                    && result.Unit is IMissionParticipant participant
-                )
-                    destination = ResolveReturnDestination(participant);
-                if (destination != null)
-                    _game.UnitLifecycle.Activate(result.Unit, destination);
-            }
-
-            return new List<GameResult>();
-        }
-
-        List<GameResult> IGameResultHandler<MissionReturnDestinationRequestedResult>.HandleResults(
-            IReadOnlyList<MissionReturnDestinationRequestedResult> results
-        )
-        {
-            foreach (MissionReturnDestinationRequestedResult result in results)
-            {
-                if (result?.Participant == null)
-                    continue;
-                result.Participant.MissionReturnParentInstanceID = result.ReturnParent?.InstanceID;
-                result.Participant.MissionReturnLocationInstanceID = result
-                    .ReturnLocation
-                    ?.InstanceID;
             }
 
             return new List<GameResult>();
@@ -479,26 +438,6 @@ namespace Rebellion.Systems
             }
 
             return null;
-        }
-
-        private ContainerNode ResolveReturnDestination(IMissionParticipant participant)
-        {
-            ContainerNode destination = ResolveMissionReturnDestination(participant);
-            if (destination != null)
-                return destination;
-
-            Planet priorLocation = _game.GetSceneNodeByInstanceID<Planet>(
-                participant.MissionReturnLocationInstanceID
-            );
-            return _game
-                .GetFactionByOwnerInstanceID(participant.OwnerInstanceID)
-                ?.GetOwnedColonizedPlanets()
-                .Where(planet => !planet.IsDestroyed && planet.CanAcceptChild(participant))
-                .OrderBy(planet =>
-                    priorLocation == null ? 0 : planet.GetRawDistanceTo(priorLocation)
-                )
-                .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .FirstOrDefault();
         }
 
         /// <summary>
@@ -1281,7 +1220,7 @@ namespace Rebellion.Systems
             if (!destinationPlanet.IsBlockadedFor(movableOwner))
                 return false;
 
-            _game.UnitLifecycle.AddToVoid(movable);
+            _game.AddToVoid(movable);
             _game.UnitLifecycle.SetStatus(movable, VoidStatus.Destroyed);
             GameLogger.Log(
                 $"{movable.GetDisplayName()} destroyed on arrival at blockaded {destinationPlanet.GetDisplayName()}."
@@ -1330,7 +1269,7 @@ namespace Rebellion.Systems
                 return;
             }
 
-            _game.UnitLifecycle.AddToVoid(movable);
+            _game.AddToVoid(movable);
             _game.UnitLifecycle.SetStatus(movable, VoidStatus.Destroyed);
             GameLogger.Log(
                 $"Building {movable.GetDisplayName()} destroyed: destination changed sides during transit."
@@ -1576,7 +1515,7 @@ namespace Rebellion.Systems
             ICollection<GameResult> reactions
         )
         {
-            _game.UnitLifecycle.AddToVoid(unit);
+            _game.AddToVoid(unit);
             _game.UnitLifecycle.SetStatus(unit, VoidStatus.Destroyed);
             reactions.Add(
                 new GameObjectDestroyedResult

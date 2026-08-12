@@ -257,6 +257,10 @@ namespace Rebellion.Game
             return Galaxy;
         }
 
+        public void AddToVoid(ISceneNode node) => UnitLifecycle.AddToVoid(node);
+
+        public bool RemoveFromVoid(ISceneNode node) => UnitLifecycle.RemoveFromVoid(node);
+
         /// <summary>
         /// Attaches a node to a parent node.
         /// </summary>

@@ -78,7 +78,7 @@ namespace Rebellion.Game.Events
             GameRoot game = context.Game;
             Planet planet = string.IsNullOrWhiteSpace(PlanetBinding)
                 ? game.GetSceneNodeByInstanceID<Planet>(PlanetInstanceID)
-                : context.Activation?.GetBinding<Planet>(PlanetBinding);
+                : context.Activation?.GetBindingReference<Planet>(PlanetBinding);
             if (planet?.IsDestroyed != false)
                 return false;
 

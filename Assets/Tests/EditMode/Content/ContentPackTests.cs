@@ -59,16 +59,16 @@ namespace Rebellion.Tests.Content
                 "LUKE_VISITS_YODA",
                 gameEvent.Conditionals.OfType<IsEventCompleteConditional>().Single().EventInstanceID
             );
-            Assert.IsTrue(gameEvent.Actions.OfType<ActivateFromVoidAction>().Any());
+            Assert.IsTrue(gameEvent.Actions.OfType<RemoveFromVoidAction>().Any());
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
             Assert.AreEqual("LUKE_SKYWALKER", message.SubjectInstanceID);
             Assert.AreEqual("Luke Leaves Dagobah", message.Subject);
             Assert.AreEqual("I have finished my training with Yoda.", message.Body);
-            SetOfficerImagesAction presentation = gameEvent
-                .Actions.OfType<SetOfficerImagesAction>()
+            SetOfficerImageSetAction presentation = gameEvent
+                .Actions.OfType<SetOfficerImageSetAction>()
                 .Single();
             Assert.AreEqual("LUKE_SKYWALKER", presentation.OfficerInstanceID);
-            StringAssert.EndsWith("/jedi-display", presentation.DisplayImagePath);
+            StringAssert.EndsWith("/jedi-display", presentation.ImageSet.DisplayImagePath);
             SetOfficerVoiceSetAction voiceSet = gameEvent
                 .Actions.OfType<SetOfficerVoiceSetAction>()
                 .Single();
@@ -98,18 +98,19 @@ namespace Rebellion.Tests.Content
                 EvaluateBindingConditional source =
                     gameEvent.Conditionals.Single(condition =>
                         condition is EvaluateBindingConditional binding
-                        && binding.Name == "sourceEvent"
+                        && binding.Binding == "$sourceEvent"
                     ) as EvaluateBindingConditional;
                 EvaluateBindingConditional outcome =
                     gameEvent.Conditionals.Single(condition =>
-                        condition is EvaluateBindingConditional binding && binding.Name == "outcome"
+                        condition is EvaluateBindingConditional binding
+                        && binding.Binding == "$outcome"
                     ) as EvaluateBindingConditional;
                 SetCaptivityAction capture = gameEvent
                     .Actions.OfType<SetCaptivityAction>()
                     .Single();
                 SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
 
-                Assert.IsInstanceOf<MissionCompletedTrigger>(gameEvent.Triggers.Single());
+                Assert.AreEqual("core:mission.completed", gameEvent.Triggers.Single().Event);
                 SuppressNextAutomaticMessageAction suppression = gameEvent
                     .Actions.OfType<SuppressNextAutomaticMessageAction>()
                     .Single();
@@ -140,7 +141,7 @@ namespace Rebellion.Tests.Content
                 "HAN_BOUNTY_HUNTERS",
                 hanCapture
                     .Conditionals.OfType<EvaluateBindingConditional>()
-                    .Single(binding => binding.Name == "sourceEvent")
+                    .Single(binding => binding.Binding == "$sourceEvent")
                     .ExpectedValue
             );
 
@@ -148,7 +149,7 @@ namespace Rebellion.Tests.Content
                 candidate.InstanceID == "PALACE_RESCUE_REPORT_POLICY"
             );
             Assert.IsTrue(reportPolicy.Repeats);
-            Assert.IsInstanceOf<MissionCompletedTrigger>(reportPolicy.Triggers.Single());
+            Assert.AreEqual("core:mission.completed", reportPolicy.Triggers.Single().Event);
             Assert.AreEqual(
                 MessageResultType.MissionReport,
                 reportPolicy
@@ -215,7 +216,7 @@ namespace Rebellion.Tests.Content
                 GameEvent gameEvent = pack.GameData.GameEvents.Single(candidate =>
                     candidate.InstanceID == effectsEventId
                 );
-                Assert.IsInstanceOf<DuelCompletedTrigger>(gameEvent.Triggers.Single());
+                Assert.AreEqual("core:duel.completed", gameEvent.Triggers.Single().Event);
                 Assert.IsEmpty(
                     gameEvent.Actions.OfType<SuppressNextAutomaticMessageAction>(),
                     effectsEventId
@@ -225,16 +226,16 @@ namespace Rebellion.Tests.Content
                     .ToArray();
                 Assert.AreEqual(
                     sourceEventId,
-                    bindings.Single(binding => binding.Name == "sourceEvent").ExpectedValue,
+                    bindings.Single(binding => binding.Binding == "$sourceEvent").ExpectedValue,
                     effectsEventId
                 );
                 Assert.AreEqual(
                     subjectId,
-                    bindings.Single(binding => binding.Name == "officer").ExpectedValue
+                    bindings.Single(binding => binding.Binding == "$officer").ExpectedValue
                 );
                 Assert.AreEqual(
                     opponentId,
-                    bindings.Single(binding => binding.Name == "opponent").ExpectedValue
+                    bindings.Single(binding => binding.Binding == "$opponent").ExpectedValue
                 );
                 SendMessageAction report = gameEvent.Actions.OfType<SendMessageAction>().Single();
                 Assert.AreEqual(subjectId, report.SubjectInstanceID);
@@ -287,14 +288,14 @@ namespace Rebellion.Tests.Content
                 .ToArray();
             SendMessageAction message = gameEvent.Actions.OfType<SendMessageAction>().Single();
             Assert.IsTrue(gameEvent.Repeats);
-            Assert.IsInstanceOf<UnitArrivedTrigger>(gameEvent.Triggers.Single());
+            Assert.AreEqual("core:unit.arrived", gameEvent.Triggers.Single().Event);
             Assert.AreEqual(
                 "EMPEROR_PALPATINE",
-                arrival.Single(binding => binding.Name == "unit").ExpectedValue
+                arrival.Single(binding => binding.Binding == "$unit").ExpectedValue
             );
             Assert.AreEqual(
                 "CORUSCANT",
-                arrival.Single(binding => binding.Name == "destination").ExpectedValue
+                arrival.Single(binding => binding.Binding == "$destination").ExpectedValue
             );
             Assert.AreEqual("Emperor Arrives at Coruscant", message.Subject);
             Assert.AreEqual("I have returned to the Seat of Power at Coruscant.", message.Body);

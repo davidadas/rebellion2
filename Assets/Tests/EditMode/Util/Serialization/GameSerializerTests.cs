@@ -280,13 +280,16 @@ namespace Rebellion.Tests.Util.Serialization
                 InstanceID = "JABBA_CAPTURES_LUKE",
                 Triggers = new List<GameEventTrigger>
                 {
-                    new OfficerCaptureChangedTrigger { SourceEvent = "sourceEvent" },
+                    new GameEventTrigger(
+                        "core:officer.capture-changed",
+                        ("SourceEvent", "sourceEvent")
+                    ),
                 },
                 Conditionals = new List<GameConditional>
                 {
                     new EvaluateBindingConditional
                     {
-                        Name = "sourceEvent",
+                        Binding = "$sourceEvent",
                         Comparison = EventVariableComparison.Equal,
                         ExpectedValue = "LUKE_RESCUES_HAN_FROM_JABBA",
                     },
@@ -309,7 +312,7 @@ namespace Rebellion.Tests.Util.Serialization
                 serializedXml
             );
             StringAssert.Contains(
-                "<EvaluateBinding Name=\"sourceEvent\" Comparison=\"Equal\" ExpectedValue=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
+                "<EvaluateBinding Binding=\"$sourceEvent\" Comparison=\"Equal\" ExpectedValue=\"LUKE_RESCUES_HAN_FROM_JABBA\"",
                 serializedXml
             );
             SuppressNextAutomaticMessageAction action =
@@ -363,7 +366,10 @@ namespace Rebellion.Tests.Util.Serialization
                                                 ElseBody = "Unharmed",
                                             },
                                         },
-                                        AmbientAudio = new MessageAudio { Path = "Story/dialogue" },
+                                        BackgroundAudio = new MessageAudio
+                                        {
+                                            Path = "Story/dialogue",
+                                        },
                                         AdvisorNotification = new AdvisorNotification
                                         {
                                             Preset = AdvisorNotificationPreset.SubjectReport,
@@ -436,7 +442,7 @@ namespace Rebellion.Tests.Util.Serialization
             Assert.AreEqual("LUKE", message.SubjectInstanceID);
             Assert.AreEqual("VADER", message.RelatedSubjectInstanceID);
             Assert.AreEqual(MessageType.Advice, message.MessageType);
-            Assert.AreEqual("Story/dialogue", message.AmbientAudio.Path);
+            Assert.AreEqual("Story/dialogue", message.BackgroundAudio.Path);
             Assert.AreEqual(
                 AdvisorNotificationPreset.SubjectReport,
                 message.AdvisorNotification.Preset

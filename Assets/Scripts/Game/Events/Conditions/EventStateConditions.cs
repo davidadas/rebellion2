@@ -114,7 +114,7 @@ namespace Rebellion.Game.Events
     public sealed class EvaluateBindingConditional : GameConditional
     {
         [PersistableAttribute]
-        public string Name { get; set; }
+        public string Binding { get; set; }
 
         [PersistableAttribute]
         public EventVariableComparison Comparison { get; set; }
@@ -126,7 +126,7 @@ namespace Rebellion.Game.Events
         {
             if (
                 context.Activation == null
-                || !context.Activation.TryGetBinding(Name, out object actual)
+                || !context.Activation.TryGetBindingReference(Binding, out object actual)
             )
                 return false;
 
@@ -154,7 +154,7 @@ namespace Rebellion.Game.Events
                 && actual is not int
             )
                 throw new InvalidOperationException(
-                    $"Binding '{Name}' supports ordered comparisons only when it contains an integer."
+                    $"Binding '{Binding}' supports ordered comparisons only when it contains an integer."
                 );
 
             int comparison = Compare(actual, ExpectedValue);

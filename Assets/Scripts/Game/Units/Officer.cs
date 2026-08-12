@@ -47,9 +47,6 @@ namespace Rebellion.Game.Units
         ForceUserDiscovered,
         TraitorDiscovered,
         RescueAttempt,
-        BountyAttack,
-        DagobahCompleted,
-        SeatOfPower,
     }
 
     /// <summary>
@@ -139,6 +136,15 @@ namespace Rebellion.Game.Units
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; } = new OfficerVoiceSet();
+        public OfficerImageSet ImageSet { get; set; } = new OfficerImageSet();
+
+        public void ApplyImageSet()
+        {
+            DisplayImagePath = ImageSet.DisplayImagePath ?? DisplayImagePath;
+            SmallDisplayImagePath = ImageSet.SmallDisplayImagePath ?? SmallDisplayImagePath;
+            MessageImagePath = ImageSet.MessageImagePath ?? MessageImagePath;
+            EncyclopediaImagePath = ImageSet.EncyclopediaImagePath ?? EncyclopediaImagePath;
+        }
 
         // Mission rating info.
         public Dictionary<OfficerRating, int> Ratings { get; set; } =

@@ -1876,10 +1876,10 @@ namespace Rebellion.Systems
                     _movement.EvacuateDestroyedCapitalShip(ship);
                     foreach (Regiment regiment in ship.Regiments.ToList())
                     {
-                        _game.UnitLifecycle.AddToVoid(regiment);
+                        _game.AddToVoid(regiment);
                         _game.UnitLifecycle.SetStatus(regiment, VoidStatus.Destroyed);
                     }
-                    _game.UnitLifecycle.AddToVoid(ship);
+                    _game.AddToVoid(ship);
                     _game.UnitLifecycle.SetStatus(ship, VoidStatus.Destroyed);
                     GameLogger.Log($"Ship destroyed: {ship.GetDisplayName()}");
                 }
@@ -1904,7 +1904,7 @@ namespace Rebellion.Systems
 
                 if (loss.SquadsAfter <= 0)
                 {
-                    _game.UnitLifecycle.AddToVoid(fighter);
+                    _game.AddToVoid(fighter);
                     _game.UnitLifecycle.SetStatus(fighter, VoidStatus.Destroyed);
                     GameLogger.Log($"Fighter squadron destroyed: {fighter.GetDisplayName()}");
                 }
@@ -1917,7 +1917,7 @@ namespace Rebellion.Systems
         /// <param name="fleet">Empty fleet to remove.</param>
         private void RemoveFleetFromScene(Fleet fleet)
         {
-            _game.UnitLifecycle.AddToVoid(fleet);
+            _game.AddToVoid(fleet);
             _game.UnitLifecycle.SetStatus(fleet, VoidStatus.Destroyed);
             GameLogger.Log($"Fleet destroyed: {fleet.GetDisplayName()}");
         }

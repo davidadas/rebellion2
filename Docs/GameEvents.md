@@ -20,13 +20,22 @@ pack stores it at `Shared/Data/game-events.xml`. Every event needs a stable, uni
 <Schedule><Every Ticks="50" InitialDelayTicks="10"/></Schedule>
 <Schedule><Random MinimumTicks="25" MaximumTicks="75"/></Schedule>
 <Schedule><After EventInstanceID="MOD_PREDECESSOR" DelayTicks="20"/></Schedule>
+<Schedule>
+  <AfterAll DelayTicks="20">
+    <Events>
+      <Event EventInstanceID="MOD_FIRST_PREDECESSOR"/>
+      <Event EventInstanceID="MOD_SECOND_PREDECESSOR"/>
+    </Events>
+  </AfterAll>
+</Schedule>
 ```
 
-`At` uses an absolute campaign tick. `After` starts after the named event completes. `Every` and
-`Random` repeat after each successful execution unless the event declares `RunsOnce="true"`.
+`At` uses an absolute campaign tick. `After` starts after the named event completes. `AfterAll`
+starts its delay when its final dependency completes; `AfterAny` starts its delay when its first
+dependency completes. `Every` and `Random` repeat after each successful execution unless the event declares `RunsOnce="true"`.
 Events without a schedule are immediately eligible. Failed conditions leave an event pending.
 
-## Typed result triggers and bindings
+## Result triggers and bindings
 
 Use `Triggers` to react to simulation results. Each trigger declares which result values should be
 published and the binding name each value receives:
@@ -36,11 +45,16 @@ published and the binding name each value receives:
   <DisplayName>Arrival Ceremony</DisplayName>
   <InstanceID>MOD_ARRIVAL_CEREMONY</InstanceID>
   <Triggers>
-    <UnitArrived Unit="unit" Destination="destination"/>
+    <Trigger Event="core:unit.arrived">
+      <Bindings>
+        <Bind Argument="Unit" As="unit"/>
+        <Bind Argument="Destination" As="destination"/>
+      </Bindings>
+    </Trigger>
   </Triggers>
   <Conditionals>
-    <EvaluateBinding Name="unit" Comparison="Equal" Value="MON_MOTHMA"/>
-    <EvaluateBinding Name="destination" Comparison="Equal" Value="CHANDRILA"/>
+    <EvaluateBinding Binding="$unit" Comparison="Equal" ExpectedValue="MON_MOTHMA"/>
+    <EvaluateBinding Binding="$destination" Comparison="Equal" ExpectedValue="CHANDRILA"/>
   </Conditionals>
   <Actions>
     <SendMessage RecipientFactionInstanceID="FNALL1" SubjectInstanceID="MON_MOTHMA"
@@ -53,10 +67,11 @@ published and the binding name each value receives:
 </GameEvent>
 ```
 
-Supported typed triggers are `UnitArrived`, `MissionCompleted`, `DuelCompleted`,
-`OfficerCaptureChanged`, and `ForceDiscovered`. Their allowed bindings are declared directly in
-`game-events.xsd`; no reflection or string event registry is involved. A result-triggered event
-reacts to every match unless it declares `RunsOnce="true"`.
+Supported contracts include `core:unit.arrived`, `core:mission.completed`,
+`core:duel.completed`, `core:officer.capture-changed`, and `core:force.discovered`. An explicit,
+non-reflective registry maps each stable contract and argument to its simulation result. Binding
+references always use a `$` prefix. A result-triggered event reacts to every match unless it
+declares `RunsOnce="true"`.
 
 ## Conditions
 
@@ -116,10 +131,9 @@ event activation. The principal actions are:
 
 - Composite: `If` and weighted `Random` outcomes.
 - Event state: `SetEventVariable`.
-- Units: `DestroyUnits`, `RequestMovement`, `AddToVoid`, `SetMissionReturnDestination`,
-  `SetStatus`, and `ActivateFromVoid`.
+- Units: `DestroyUnits`, `RequestMovement`, `AddToVoid`, `SetStatus`, and `RemoveFromVoid`.
 - Officers: `SetCaptivity`, `AdjustOfficerRating`, `SetOfficerJediState`,
-  `ApplyOfficerInjury`, `SetOfficerImages`, `SetOfficerVoiceSet`, and `TriggerDuel`.
+  `ApplyOfficerInjury`, `SetOfficerImageSet`, `SetOfficerVoiceSet`, and `TriggerDuel`.
 - Resources and intelligence: `AdjustPlanetResource`, `ReduceResources`, and
   `GatherInformantIntelligence`.
 - Missions and messages: `CreateMission`, `SendMessage`, and
@@ -137,15 +151,14 @@ The schema is the authoritative list of required attributes, child elements, and
   <Body>Luke has completed his training.</Body>
   <BackgroundImage Path="Pack/Shared/Events/MessageBackgrounds/luke-returns"/>
   <OverlayImage Path="Pack/Factions/Alliance/Units/Officers/OFAL003/message"/>
-  <AmbientAudio Path="Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report"/>
+  <BackgroundAudio Path="Pack/Factions/Alliance/Strategy/Audio/Messages/message-faction-report"/>
   <OfficerVoice Preset="MissionSuccess"/>
   <AdvisorNotification Preset="SubjectReport"/>
 </SendMessage>
 ```
 
-`BackgroundImage` accepts either a theme `Key` or an explicit content `Path`; an explicit path wins
-if both are supplied. `OfficerVoice` similarly accepts either an explicit `Path` or a voice-set
-`Preset`, with the explicit path taking precedence. Advisor animation overrides belong to the
+`BackgroundImage` requires exactly one theme `Key`, explicit content `Path`, or runtime `Binding`.
+`OfficerVoice` similarly requires either an explicit `Path` or a voice-set `Preset`. Advisor animation overrides belong to the
 transient delivery presentation and are never persisted on `Message`.
 
 ## Definition-backed missions

@@ -15,11 +15,11 @@ namespace Rebellion.Tests.Game.Events
         {
             Officer officer = new Officer { InstanceID = "officer" };
             Planet destination = new Planet { InstanceID = "planet" };
-            UnitArrivedTrigger trigger = new UnitArrivedTrigger
-            {
-                Unit = "unit",
-                Destination = "destination",
-            };
+            GameEventTrigger trigger = new GameEventTrigger(
+                "core:unit.arrived",
+                ("Unit", "unit"),
+                ("Destination", "destination")
+            );
 
             GameEventExecutionContext context = CreateContext(
                 trigger,
@@ -35,11 +35,11 @@ namespace Rebellion.Tests.Game.Events
         {
             Officer encountered = new Officer { InstanceID = "encountered" };
             Officer opponent = new Officer { InstanceID = "opponent" };
-            DuelCompletedTrigger trigger = new DuelCompletedTrigger
-            {
-                Officer = "officer",
-                Opponent = "opponent",
-            };
+            GameEventTrigger trigger = new GameEventTrigger(
+                "core:duel.completed",
+                ("Officer", "officer"),
+                ("Opponent", "opponent")
+            );
 
             GameEventExecutionContext context = CreateContext(
                 trigger,
@@ -56,12 +56,12 @@ namespace Rebellion.Tests.Game.Events
             Officer officer = new Officer { InstanceID = "officer" };
             Officer linkedOfficer = new Officer { InstanceID = "linked" };
             Planet planet = new Planet { InstanceID = "planet" };
-            OfficerCaptureChangedTrigger trigger = new OfficerCaptureChangedTrigger
-            {
-                Officer = "officer",
-                LinkedOfficer = "linkedOfficer",
-                Context = "context",
-            };
+            GameEventTrigger trigger = new GameEventTrigger(
+                "core:officer.capture-changed",
+                ("Officer", "officer"),
+                ("LinkedOfficer", "linkedOfficer"),
+                ("Context", "context")
+            );
 
             GameEventExecutionContext context = CreateContext(
                 trigger,
@@ -82,7 +82,10 @@ namespace Rebellion.Tests.Game.Events
         public void Bind_MissionCompletedTrigger_BindsAuthoredValues()
         {
             Mission mission = new StubMission();
-            MissionCompletedTrigger trigger = new MissionCompletedTrigger { Mission = "mission" };
+            GameEventTrigger trigger = new GameEventTrigger(
+                "core:mission.completed",
+                ("Mission", "mission")
+            );
 
             GameEventExecutionContext context = CreateContext(
                 trigger,

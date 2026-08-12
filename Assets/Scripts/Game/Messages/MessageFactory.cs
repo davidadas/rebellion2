@@ -297,9 +297,8 @@ namespace Rebellion.Game.Messages
         /// </summary>
         /// <param name="faction">The faction that owns the emperor.</param>
         /// <param name="officer">The officer returning to the seat of power.</param>
-        /// <param name="game">The game state used for voice selection randomness.</param>
         /// <returns>The seat-of-power message, or null when no matching definition exists.</returns>
-        private Message CreateEmperorSeatOfPower(Faction faction, Officer officer, GameRoot game)
+        private Message CreateEmperorSeatOfPower(Faction faction, Officer officer)
         {
             return WithAdvisorSubject(
                 WithEventLocation(
@@ -308,10 +307,7 @@ namespace Rebellion.Game.Messages
                         faction,
                         new Dictionary<string, string>(),
                         overlayImagePath: GetMessageImagePath(officer),
-                        officerVoicePath: officer?.GetVoicePath(
-                            OfficerVoiceLineType.SeatOfPower,
-                            game?.Random
-                        )
+                        officerVoicePath: null
                     ),
                     GetOfficerPlanet(officer),
                     officer
@@ -1020,11 +1016,7 @@ namespace Rebellion.Game.Messages
                     continue;
 
                 Faction faction = GetFaction(game, result.Officer?.GetOwnerInstanceID());
-                AddDelivery(
-                    deliveries,
-                    faction,
-                    CreateEmperorSeatOfPower(faction, result.Officer, game)
-                );
+                AddDelivery(deliveries, faction, CreateEmperorSeatOfPower(faction, result.Officer));
             }
         }
 
@@ -1510,17 +1502,15 @@ namespace Rebellion.Game.Messages
             if (config == null || !isJedi)
                 return "None";
 
-            if (forceRank >= config.RankLabelForceMaster)
-                return "Jedi Master";
-            if (forceRank >= config.RankLabelForceKnight)
-                return "Jedi Knight";
-            if (forceRank >= config.RankLabelForceStudent)
-                return "Jedi Student";
-            if (forceRank >= config.RankLabelTrainee)
-                return "Trainee";
-            if (forceRank >= config.RankLabelNovice)
-                return "Novice";
-            return "None";
+            return config.GetRankLabel(forceRank) switch
+            {
+                ForceRankLabel.ForceMaster => "Jedi Master",
+                ForceRankLabel.ForceKnight => "Jedi Knight",
+                ForceRankLabel.ForceStudent => "Jedi Student",
+                ForceRankLabel.Trainee => "Trainee",
+                ForceRankLabel.Novice => "Novice",
+                _ => "None",
+            };
         }
 
         /// <summary>

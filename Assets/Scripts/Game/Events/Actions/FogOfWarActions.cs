@@ -34,7 +34,7 @@ namespace Rebellion.Game.Events
         public string Body { get; set; }
         public MessageType MessageType { get; set; } = MessageType.Advice;
         public MessageBackgroundImage BackgroundImage { get; set; }
-        public MessageAudio AmbientAudio { get; set; }
+        public MessageAudio BackgroundAudio { get; set; }
         public AdvisorNotification AdvisorNotification { get; set; }
         public List<InformantFactionRoute> FactionRoutes { get; set; } =
             new List<InformantFactionRoute>();
@@ -69,6 +69,8 @@ namespace Rebellion.Game.Events
                 provider.NextInt(0, IntelligenceChoices.Count)
             ];
             Faction recipient = game.GetFactionByOwnerInstanceID(route.RecipientFactionInstanceID);
+            string backgroundImagePath = MessageMediaResolver.Resolve(BackgroundImage, context);
+            string backgroundAudioPath = MessageMediaResolver.Resolve(BackgroundAudio, context);
             return new List<GameResult>
             {
                 new PlanetIntelligenceResult
@@ -87,8 +89,8 @@ namespace Rebellion.Game.Events
                     Subject = Subject,
                     Body = Body,
                     BackgroundImageKey = BackgroundImage?.Key,
-                    BackgroundImagePath = BackgroundImage?.Path,
-                    AmbientAudioPath = AmbientAudio?.Path,
+                    BackgroundImagePath = backgroundImagePath,
+                    BackgroundAudioPath = backgroundAudioPath,
                     AdvisorNotification = AdvisorNotification,
                     Tick = game.CurrentTick,
                 },

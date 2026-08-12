@@ -68,12 +68,12 @@ namespace Rebellion.Game.Messages
                         (imageFaction ?? faction)?.InstanceID
                     ),
                 OverlayImagePath = overlayImagePath,
-                AmbientAudioPath = GetAssetPath(
-                    definition.AmbientAudioPath,
-                    definition.AmbientAudioPaths,
+                BackgroundAudioPath = GetAssetPath(
+                    definition.BackgroundAudioPath,
+                    definition.BackgroundAudioPaths,
                     faction?.InstanceID
                 ),
-                OfficerVoicePath = officerVoicePath,
+                OfficerVoicePath = officerVoicePath ?? definition.OfficerVoicePath,
             };
         }
 
