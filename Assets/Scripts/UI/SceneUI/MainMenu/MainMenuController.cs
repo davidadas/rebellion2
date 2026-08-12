@@ -274,6 +274,7 @@ public sealed class MainMenuController : MonoBehaviour
             bootstrap.GetContentAssets(),
             themeLibrary,
             bootstrap.GetUserSettingsManager(),
+            bootstrap.GetDisplayManager(),
             AudioManager.EnsureExists(),
             bootstrap.GetInputManager(),
             bootstrap.GetCancelStack()
@@ -313,6 +314,6 @@ public sealed class MainMenuController : MonoBehaviour
         AppBootstrap.Instance.GetRuntime()?.EndGame();
 
         AudioManager.EnsureExists().StopMusic();
-        AppBootstrap.Instance.LoadScene(SceneNames.StrategyView);
+        AppBootstrap.Instance.LoadScene("StrategyView");
     }
 }

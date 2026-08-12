@@ -144,6 +144,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
             Assert.AreEqual("Status", FindCommandText(rows[1]).text);
         }
 
+        /// <summary>
+        /// Verifies an enabled shortcut executes its matching command without opening a menu.
+        /// </summary>
         [Test]
         public void TryExecuteShortcut_EnabledMatchingCommand_ExecutesWithoutOpeningMenu()
         {

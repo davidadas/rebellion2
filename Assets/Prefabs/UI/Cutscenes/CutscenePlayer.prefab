@@ -279,6 +279,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ffc520a6d4b34461eb13b4e5be9ba170, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Screen: {fileID: 6624002145896525434}
-  VideoPlayer: {fileID: 782555376320853060}
-  AudioSource: {fileID: 8652249533085432437}
+  screen: {fileID: 6624002145896525434}
+  videoPlayer: {fileID: 782555376320853060}
+  audioSource: {fileID: 8652249533085432437}

@@ -44,6 +44,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="getWindowPosition">Returns the Options menu position.</param>
     /// <param name="closeWindow">Closes a registered window.</param>
     /// <param name="userSettings">The user-settings store.</param>
+    /// <param name="displayManager">The display manager.</param>
     /// <param name="audioManager">The audio manager.</param>
     /// <param name="inputManager">The input manager.</param>
     /// <param name="markDirty">Marks the menu data as changed.</param>
@@ -54,6 +55,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
         UserSettingsManager userSettings,
+        DisplayManager displayManager,
         AudioManager audioManager,
         InputManager inputManager,
         Action markDirty
@@ -68,7 +70,12 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
         InputManager bindings =
             inputManager ?? throw new ArgumentNullException(nameof(inputManager));
-        _settingsSession = new OptionsSettingsSession(userSettings, audioManager, bindings);
+        _settingsSession = new OptionsSettingsSession(
+            userSettings,
+            displayManager,
+            audioManager,
+            bindings
+        );
         _bindingEditor = new OptionsBindingEditor(bindings);
         _bindingEditor.Changed += _settingsSession.MarkInputChanged;
         _bindingEditor.PresentationChanged += _markDirty;
@@ -336,17 +343,16 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         if (_saveSlots[slot].IsCreateNew)
         {
-            _saveWriter?.CreateNamedSave(newName.Trim());
+            _saveWriter?.CreateNamedSave(newName);
             _selectedSlot = -1;
         }
         else
         {
-            string displayName = newName.Trim();
             string fileName = _saveSlots[slot].FileName;
             if (submitted && _saveWriter != null)
-                _saveWriter.OverwriteSave(fileName, displayName);
+                _saveWriter.OverwriteSave(fileName, newName);
             else
-                _saveStore.RenameSave(fileName, displayName);
+                _saveStore.RenameSave(fileName, newName);
             RefreshSaveSlots(fileName);
             _markDirty();
             return;
@@ -540,6 +546,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         );
     }
 
+    /// <summary>
+    /// Reverts pending settings before invoking a scene or application exit.
+    /// </summary>
+    /// <param name="exit">The exit operation to invoke.</param>
     private void ExitWithoutSaving(Action exit)
     {
         if (_settingsSession.IsDirty)
@@ -611,6 +621,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _bindingEditor.BeginRebind(row, secondary);
     }
 
+    /// <summary>
+    /// Displays the confirmation prompt for a conflicting binding assignment.
+    /// </summary>
+    /// <param name="message">The conflict prompt to display.</param>
     private void HandleBindingConflictRequested(string message)
     {
         _view?.ShowConfirm(message);

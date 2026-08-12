@@ -15,6 +15,9 @@ namespace Rebellion.Tests.UI.Components
         private GameObject _rootObject;
         private ConfirmationDialogView _view;
 
+        /// <summary>
+        /// Creates and initializes a confirmation dialog for each test.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -23,12 +26,18 @@ namespace Rebellion.Tests.UI.Components
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Destroys the confirmation dialog after each test.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies showing a prompt applies its text and authored presentation.
+        /// </summary>
         [Test]
         public void Show_Message_AppliesPresentationAndDisplaysDialog()
         {
@@ -53,6 +62,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsTrue(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies a null prompt is displayed as empty text.
+        /// </summary>
         [Test]
         public void Show_NullMessage_DisplaysEmptyText()
         {
@@ -61,22 +73,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(string.Empty, GetField<TextMeshProUGUI>("messageTextField").text);
         }
 
-        [Test]
-        public void Show_LegacyFixedBlocker_StretchesAcrossDialogRoot()
-        {
-            RectTransform blocker = _view.transform.Find("InputBlocker") as RectTransform;
-            blocker.anchorMin = new Vector2(0f, 1f);
-            blocker.anchorMax = new Vector2(0f, 1f);
-            blocker.sizeDelta = new Vector2(640f, 480f);
-
-            _view.Show("Confirm");
-
-            Assert.AreEqual(Vector2.zero, blocker.anchorMin);
-            Assert.AreEqual(Vector2.one, blocker.anchorMax);
-            Assert.AreEqual(Vector2.zero, blocker.sizeDelta);
-            Assert.AreEqual(Vector2.zero, blocker.anchoredPosition);
-        }
-
+        /// <summary>
+        /// Verifies hiding a prompt does not emit a response.
+        /// </summary>
         [Test]
         public void Hide_VisibleDialog_HidesWithoutResponse()
         {
@@ -91,6 +90,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, responseCount);
         }
 
+        /// <summary>
+        /// Verifies the confirm button closes the prompt and emits confirmation.
+        /// </summary>
         [Test]
         public void ConfirmButton_Click_HidesAndRaisesConfirmed()
         {
@@ -104,6 +106,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies the cancel button closes the prompt and emits cancellation.
+        /// </summary>
         [Test]
         public void CancelButton_Click_HidesAndRaisesCanceled()
         {
@@ -117,6 +122,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.IsFalse(_view.gameObject.activeSelf);
         }
 
+        /// <summary>
+        /// Verifies destruction removes button listeners owned by the dialog.
+        /// </summary>
         [Test]
         public void OnDestroy_BoundDialog_UnbindsButtons()
         {
@@ -132,6 +140,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, responseCount);
         }
 
+        /// <summary>
+        /// Reads a private authored reference from the dialog under test.
+        /// </summary>
         private T GetField<T>(string fieldName)
         {
             return (T)

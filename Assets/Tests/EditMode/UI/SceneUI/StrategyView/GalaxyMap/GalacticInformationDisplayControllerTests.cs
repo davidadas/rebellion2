@@ -150,6 +150,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies shortcut-driven filter changes play control audio and request rendering.
+        /// </summary>
         [Test]
         public void SelectFilterFromShortcut_ChangedFilter_PlaysControlSoundAndRequestsRender()
         {
@@ -163,6 +166,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.AreEqual(1, _actions.RenderRequestCount);
         }
 
+        /// <summary>
+        /// Verifies selecting the active shortcut filter does not replay control audio.
+        /// </summary>
         [Test]
         public void SelectFilterFromShortcut_ActiveFilter_DoesNotRepeatControlSound()
         {

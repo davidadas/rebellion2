@@ -4,6 +4,7 @@ using Rebellion.Generation;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -54,9 +55,6 @@ public static class StrategyViewPrefabBuilder
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _commonTextInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
     private const string _strategyScenePath = "Assets/Scenes/StrategyView.unity";
-    private const string _strategySceneTemplatePath =
-        "Assets/Editor/PrefabBuilders/Templates/StrategyView.unity";
-    private const string _strategySceneRootParentPath = "GameRoot/UI/Canvas";
     private const string _sceneInstanceName = "StrategyViewRoot";
     private const string _surfaceName = "Viewport";
     private const string _galaxyMapName = "GalaxyMap";
@@ -572,7 +570,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void BuildStrategyViewRootPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
         _previewThemes = null;
         _previewThemeId = null;
@@ -621,7 +618,20 @@ public static class StrategyViewPrefabBuilder
         PlanetSystemClusterView planetSystemClusterPrefab =
             LoadPrefabComponent<PlanetSystemClusterView>(_planetSystemClusterPrefabPath);
 
-        GameObject root = new GameObject(_sceneInstanceName, typeof(RectTransform));
+        GameObject sceneRoot = new GameObject(_sceneInstanceName);
+        BuildSceneInfrastructure(sceneRoot);
+        GameObject ui = new GameObject("UI");
+        ui.transform.SetParent(sceneRoot.transform, false);
+        GameObject canvasObject = CreateLayer("Canvas", ui.transform);
+        Canvas canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        CanvasScaler canvasScaler = canvasObject.AddComponent<CanvasScaler>();
+        canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        canvasScaler.referenceResolution = new Vector2(853.3333f, 480f);
+        canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        canvasObject.AddComponent<GraphicRaycaster>();
+
+        GameObject root = CreateLayer("StrategyView", canvasObject.transform);
         RectTransform rootRect = root.GetComponent<RectTransform>();
         FillParent(rootRect);
         AspectRatioFitter aspectRatio = root.AddComponent<AspectRatioFitter>();
@@ -830,7 +840,8 @@ public static class StrategyViewPrefabBuilder
 
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
         ConfirmationDialogView briefingSkipConfirmation =
-            CommonUIPrefabBuilder.CreateConfirmationDialog(root.transform);
+            CommonUIPrefabBuilder.InstantiateConfirmationDialog(root.transform);
+        briefingSkipConfirmation.gameObject.name = "ConfirmDialog";
         RectTransform briefingConfirmationRect =
             briefingSkipConfirmation.transform as RectTransform;
         briefingConfirmationRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -911,10 +922,43 @@ public static class StrategyViewPrefabBuilder
         AssignReference(galaxyMapView, "activeFilterLabel", activeFilterLabel);
         AssignReference(galaxyMapView, "planetSystemClusterPrefab", planetSystemClusterPrefab);
 
-        SaveGeneratedPrefabAsset(root, _prefabPath);
-        Object.DestroyImmediate(root);
+        SaveGeneratedPrefabAsset(sceneRoot, _prefabPath);
+        Object.DestroyImmediate(sceneRoot);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Authors the persistent services, camera, and event system required by the Strategy scene.
+    /// </summary>
+    private static void BuildSceneInfrastructure(GameObject sceneRoot)
+    {
+        GameObject services = new GameObject("Services");
+        services.transform.SetParent(sceneRoot.transform, false);
+        GameObject bootstrap = new GameObject("AppBootstrap");
+        bootstrap.transform.SetParent(services.transform, false);
+        bootstrap.AddComponent<AppBootstrap>();
+
+        GameObject audioObject = new GameObject("AudioManager");
+        audioObject.transform.SetParent(services.transform, false);
+        AudioSource music = audioObject.AddComponent<AudioSource>();
+        AudioSource sfx = audioObject.AddComponent<AudioSource>();
+        AudioSource ambience = audioObject.AddComponent<AudioSource>();
+        AudioManager audio = audioObject.AddComponent<AudioManager>();
+        AssignReference(audio, "musicSource", music);
+        AssignReference(audio, "sfxSource", sfx);
+        AssignReference(audio, "ambienceSource", ambience);
+
+        GameObject cameraObject = new GameObject("Main Camera");
+        cameraObject.transform.SetParent(sceneRoot.transform, false);
+        cameraObject.tag = "MainCamera";
+        cameraObject.AddComponent<Camera>();
+        cameraObject.AddComponent<AudioListener>();
+
+        GameObject eventSystemObject = new GameObject("EventSystem");
+        eventSystemObject.transform.SetParent(sceneRoot.transform, false);
+        eventSystemObject.AddComponent<EventSystem>();
+        eventSystemObject.AddComponent<StandaloneInputModule>();
     }
 
     /// <summary>
@@ -922,7 +966,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildAllStrategyViewPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         _previewThemes = null;
         _previewThemeId = null;
 
@@ -953,10 +996,6 @@ public static class StrategyViewPrefabBuilder
     public static void Rebuild()
     {
         RebuildAllStrategyViewPrefabs();
-        SceneRootPrefabInstaller.ResetSceneFromTemplate(
-            _strategySceneTemplatePath,
-            _strategyScenePath
-        );
         InstallStrategyViewRootPrefabInScene();
     }
 
@@ -965,7 +1004,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void BuildPlanetSystemPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         Directory.CreateDirectory(Path.GetDirectoryName(_planetSystemPlanetPrefabPath));
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
@@ -980,7 +1018,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildPlanetSystemClusterPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildPlanetSystemClusterPrefab();
     }
 
@@ -989,7 +1026,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RefreshStrategyViewRootWindowPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         RegisterWindowPrefabsInRoot();
     }
 
@@ -998,7 +1034,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildConfirmDialogWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildConfirmDialogWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1008,7 +1043,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildBattleAlertWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildBattleAlertWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1018,7 +1052,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildFacilityWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildFacilityWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1028,7 +1061,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildConstructionWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildConstructionWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1038,7 +1070,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildDefenseWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildDefenseWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1048,7 +1079,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildFleetWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildFleetWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1058,7 +1088,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildMissionsWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildMissionsWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1068,7 +1097,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildMissionCreateWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildMissionCreateWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1078,7 +1106,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildStatusWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildStatusWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1088,7 +1115,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildAdvisorReportWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildAdvisorReportWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1098,7 +1124,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildFinderWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildFinderWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1108,7 +1133,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildMessagesWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildMessagesWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -1118,7 +1142,6 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void RebuildEncyclopediaWindowPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildEncyclopediaWindowPrefab();
         RegisterWindowPrefabsInRoot();
     }
@@ -6667,16 +6690,10 @@ public static class StrategyViewPrefabBuilder
     /// </summary>
     public static void InstallStrategyViewRootPrefabInScene()
     {
-        UIAuthoringGuard.EnsureEditMode();
         if (AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath) == null)
             BuildStrategyViewRootPrefab();
 
-        SceneRootPrefabInstaller.InstallRootPrefabInScene(
-            _strategyScenePath,
-            _prefabPath,
-            _sceneInstanceName,
-            _strategySceneRootParentPath
-        );
+        SceneBuilder.Build(_strategyScenePath, _prefabPath, _sceneInstanceName);
     }
 
     /// <summary>

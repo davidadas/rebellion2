@@ -14,6 +14,9 @@ namespace Rebellion.Tests.UI.Components
         private GameObject _rootObject;
         private NormalizedSliderView _view;
 
+        /// <summary>
+        /// Creates the generated normalized slider for each test.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -22,12 +25,18 @@ namespace Rebellion.Tests.UI.Components
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>
+        /// Destroys the generated slider after each test.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_rootObject);
         }
 
+        /// <summary>
+        /// Verifies rendering clamps values and places the thumb consistently.
+        /// </summary>
         [TestCase(-1f, 0f)]
         [TestCase(0.5f, 0.5f)]
         [TestCase(2f, 1f)]
@@ -47,6 +56,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, thumbBounds.y);
         }
 
+        /// <summary>
+        /// Verifies slider input repositions the thumb and emits a normalized value.
+        /// </summary>
         [Test]
         public void Slider_ValueChanged_RepositionsThumbAndRaisesNormalizedValue()
         {
@@ -66,6 +78,9 @@ namespace Rebellion.Tests.UI.Components
             );
         }
 
+        /// <summary>
+        /// Verifies disabling the view removes its slider listener.
+        /// </summary>
         [Test]
         public void OnDisable_BoundSlider_UnbindsValueChanges()
         {
@@ -79,6 +94,9 @@ namespace Rebellion.Tests.UI.Components
             Assert.AreEqual(0, requestCount);
         }
 
+        /// <summary>
+        /// Reads a private authored reference from the slider under test.
+        /// </summary>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -87,6 +105,9 @@ namespace Rebellion.Tests.UI.Components
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Reads a transform in the source-pixel layout coordinate system.
+        /// </summary>
         private static RectInt GetSourceRect(Transform transform)
         {
             return UILayout.GetSourceRect(transform as RectTransform);

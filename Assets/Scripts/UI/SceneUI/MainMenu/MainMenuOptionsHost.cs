@@ -37,6 +37,7 @@ public sealed class MainMenuOptionsHost : IOptionsMenuHostActions, IOptionsSaveS
     /// <param name="contentAssets">The active content asset source.</param>
     /// <param name="themeLibrary">The faction-theme source for save icons.</param>
     /// <param name="userSettings">The user-settings store.</param>
+    /// <param name="displayManager">The display manager.</param>
     /// <param name="audioManager">The audio manager for live volume changes.</param>
     /// <param name="inputManager">The input manager exposing key bindings.</param>
     /// <param name="cancelStack">The cancel stack so Escape closes the overlay.</param>
@@ -46,6 +47,7 @@ public sealed class MainMenuOptionsHost : IOptionsMenuHostActions, IOptionsSaveS
         ContentAssets contentAssets,
         FactionThemeLibrary themeLibrary,
         UserSettingsManager userSettings,
+        DisplayManager displayManager,
         AudioManager audioManager,
         InputManager inputManager,
         CancelStack cancelStack
@@ -121,6 +123,7 @@ public sealed class MainMenuOptionsHost : IOptionsMenuHostActions, IOptionsSaveS
             GetOverlayPosition,
             _windowManager.DestroyWindow,
             userSettings,
+            displayManager,
             audioManager,
             inputManager,
             MarkDirty
@@ -232,13 +235,19 @@ public sealed class MainMenuOptionsHost : IOptionsMenuHostActions, IOptionsSaveS
         if (string.IsNullOrEmpty(fileName))
             return false;
 
-        GameRuntime runtime = AppBootstrap.Instance?.GetRuntime();
-        if (runtime == null)
+        AppBootstrap bootstrap = AppBootstrap.Instance;
+        if (
+            bootstrap == null
+            || !System.IO.File.Exists(SaveGameManager.Instance.GetSaveFilePath(fileName))
+        )
             return false;
 
-        // Start the saved game in a new session.
-        runtime.EndGame();
-        return runtime.LoadGame(fileName);
+        bootstrap.GetRuntime()?.EndGame();
+        GameLaunchContext.IsLoadGame = true;
+        GameLaunchContext.SaveFileName = fileName;
+        GameLaunchContext.PlayIntroCutscene = false;
+        bootstrap.LoadScene("StrategyView");
+        return true;
     }
 
     /// <summary>

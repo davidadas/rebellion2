@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Manages the controls list and keyboard rebinding.
+/// Manages the controls list and keyboard rebinding against authored binding slots.
 /// </summary>
 internal sealed class OptionsBindingEditor : IDisposable
 {
-    // Modifier Keys.
     private static readonly string[] _modifierControlPaths =
     {
         "<Keyboard>/ctrl",
@@ -23,48 +23,69 @@ internal sealed class OptionsBindingEditor : IDisposable
         "<Keyboard>/rightMeta",
     };
 
-    // Binding List.
     private readonly InputManager _inputManager;
     private readonly List<OptionsBindingRow> _rows = new List<OptionsBindingRow>();
-    private readonly List<(InputAction action, int primary, int secondary)> _targets =
-        new List<(InputAction, int, int)>();
+    private readonly List<BindingTarget> _targets = new List<BindingTarget>();
     private readonly Dictionary<InputAction, bool> _suppressedActionStates =
         new Dictionary<InputAction, bool>();
 
-    // Rebinding State.
     private InputActionRebindingExtensions.RebindingOperation _operation;
     private InputAction _listeningAction;
     private InputAction _reboundAction;
-    private InputBinding[] _previousActionOverrides;
+    private string[] _previousActionOverrides;
     private bool _reboundActionWasEnabled;
     private bool _rebindApplied;
-    private int _capturedModifiers;
-
-    // Binding Conflict.
     private InputAction _conflictOldAction;
     private int _conflictOldIndex;
     private InputAction _conflictNewAction;
-    private int _conflictNewIndex;
 
+    /// <summary>
+    /// Raised after a binding override changes.
+    /// </summary>
     internal event Action Changed;
 
+    /// <summary>
+    /// Raised when a new binding conflicts with an existing binding.
+    /// </summary>
     internal event Action<string> ConflictRequested;
 
+    /// <summary>
+    /// Raised when listening or rendered binding state changes.
+    /// </summary>
     internal event Action PresentationChanged;
 
+    /// <summary>
+    /// Creates a binding editor for the supplied input manager.
+    /// </summary>
+    /// <param name="inputManager">The application input manager.</param>
     internal OptionsBindingEditor(InputManager inputManager)
     {
         _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
     }
 
+    /// <summary>
+    /// Gets the current controls rows.
+    /// </summary>
     internal IReadOnlyList<OptionsBindingRow> Rows => _rows;
 
+    /// <summary>
+    /// Gets the row currently listening for input, or negative one when idle.
+    /// </summary>
     internal int ListeningRow { get; private set; } = -1;
 
+    /// <summary>
+    /// Gets whether the secondary slot is currently listening.
+    /// </summary>
     internal bool ListeningSecondary { get; private set; }
 
+    /// <summary>
+    /// Gets whether a binding conflict is awaiting a decision.
+    /// </summary>
     internal bool HasPendingConflict => _conflictNewAction != null;
 
+    /// <summary>
+    /// Rebuilds the controls rows from the authored Global and Strategy binding slots.
+    /// </summary>
     internal void Rebuild()
     {
         _rows.Clear();
@@ -75,50 +96,58 @@ internal sealed class OptionsBindingEditor : IDisposable
                 continue;
 
             List<OptionsBindingRow> mapRows = new List<OptionsBindingRow>();
-            List<(InputAction, int, int)> mapTargets = new List<(InputAction, int, int)>();
+            List<BindingTarget> mapTargets = new List<BindingTarget>();
             foreach (InputAction action in map.actions)
             {
                 if (!IsBindableAction(action.name))
                     continue;
 
-                (int primary, int secondary) = GetTopLevelBindingIndices(action);
-                (string primaryKey, string secondaryKey) = FormatKeys(action);
-                mapRows.Add(new OptionsBindingRow(Humanize(action.name), primaryKey, secondaryKey));
-                mapTargets.Add((action, primary, secondary));
+                (BindingSlot primary, BindingSlot secondary) = GetBindingSlots(action);
+                mapRows.Add(
+                    new OptionsBindingRow(
+                        Humanize(action.name),
+                        FormatSlot(action, primary),
+                        FormatSlot(action, secondary)
+                    )
+                );
+                mapTargets.Add(new BindingTarget(action, primary, secondary));
             }
 
             if (mapRows.Count == 0)
                 continue;
 
             _rows.Add(new OptionsBindingRow(Humanize(map.name), string.Empty, string.Empty, true));
-            _targets.Add((null, -1, -1));
+            _targets.Add(default);
             _rows.AddRange(mapRows);
             _targets.AddRange(mapTargets);
         }
     }
 
+    /// <summary>
+    /// Starts listening for a replacement for one authored slot.
+    /// </summary>
+    /// <param name="row">The controls row.</param>
+    /// <param name="secondary">Whether to edit the secondary slot.</param>
     internal void BeginRebind(int row, bool secondary)
     {
         if (_operation != null || HasPendingConflict || row < 0 || row >= _targets.Count)
             return;
 
-        (InputAction action, int primary, int secondaryIndex) = _targets[row];
-        if (action == null)
+        BindingTarget target = _targets[row];
+        if (target.Action == null)
             return;
-
-        int bindingIndex = secondary ? secondaryIndex : primary;
-        if (bindingIndex < 0)
-            throw new InvalidOperationException(
-                $"Bindable action '{action}' has no authored slot."
-            );
 
         ListeningRow = row;
         ListeningSecondary = secondary;
-        _previousActionOverrides = CaptureOverrides(action);
+        _previousActionOverrides = CaptureOverrides(target.Action);
         PresentationChanged?.Invoke();
-        StartRebind(action, bindingIndex);
+        StartRebind(target.Action, secondary ? target.Secondary : target.Primary);
     }
 
+    /// <summary>
+    /// Accepts or rejects moving a conflicting binding to the new action.
+    /// </summary>
+    /// <param name="clearOld">Whether to clear the old action's binding.</param>
     internal void ResolveConflict(bool clearOld)
     {
         if (!HasPendingConflict)
@@ -139,6 +168,10 @@ internal sealed class OptionsBindingEditor : IDisposable
         PresentationChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Suppresses bindable actions while a text field owns keyboard input.
+    /// </summary>
+    /// <param name="active">Whether text entry is active.</param>
     internal void SetTextEntryActive(bool active)
     {
         InputActionAsset asset = _inputManager.Asset;
@@ -170,11 +203,17 @@ internal sealed class OptionsBindingEditor : IDisposable
         _suppressedActionStates.Clear();
     }
 
+    /// <summary>
+    /// Cancels the active interactive rebind operation.
+    /// </summary>
     internal void CancelRebind()
     {
         _operation?.Cancel();
     }
 
+    /// <summary>
+    /// Releases the active rebind operation and restores suppressed input state.
+    /// </summary>
     public void Dispose()
     {
         _operation?.Dispose();
@@ -186,29 +225,19 @@ internal sealed class OptionsBindingEditor : IDisposable
         ClearConflict();
     }
 
-    private void StartRebind(InputAction action, int bindingIndex)
+    /// <summary>
+    /// Creates an unbound listening action so modifier presses are not committed as the base key.
+    /// </summary>
+    private void StartRebind(InputAction action, BindingSlot slot)
     {
-        KeyboardChordProcessor.EnsureRegistered();
-        _capturedModifiers = 0;
         _rebindApplied = false;
         _reboundAction = action;
         _reboundActionWasEnabled = action.enabled;
         action.Disable();
+        _listeningAction = new InputAction(type: InputActionType.Button);
 
-        bool isComposite = action.bindings[bindingIndex].isComposite;
-        InputAction rebindSource = action;
-        if (isComposite)
-        {
-            // Listen for both parts of a modifier key binding.
-            _listeningAction = new InputAction(type: InputActionType.Button);
-            rebindSource = _listeningAction;
-        }
-
-        InputActionRebindingExtensions.RebindingOperation candidate = (
-            isComposite
-                ? rebindSource.PerformInteractiveRebinding()
-                : rebindSource.PerformInteractiveRebinding(bindingIndex)
-        )
+        InputActionRebindingExtensions.RebindingOperation candidate = _listeningAction
+            .PerformInteractiveRebinding()
             .WithCancelingThrough("<Keyboard>/escape")
             .WithControlsExcluding("<Mouse>")
             .WithControlsExcluding("<Keyboard>/anyKey");
@@ -219,90 +248,36 @@ internal sealed class OptionsBindingEditor : IDisposable
         }
 
         _operation = candidate
-            .OnPotentialMatch(match => HandlePotentialMatch(match, action))
-            .OnApplyBinding((_, path) => ApplyRebindPath(action, bindingIndex, path))
-            .OnCancel(_ => FinishRebind(action, bindingIndex, false))
-            .OnComplete(_ => FinishRebind(action, bindingIndex, true))
+            .OnApplyBinding((_, path) => ApplyRebindPath(action, slot, path))
+            .OnCancel(_ => FinishRebind(action, slot, false))
+            .OnComplete(_ => FinishRebind(action, slot, true))
             .Start();
     }
 
-    private static void HandlePotentialMatch(
-        InputActionRebindingExtensions.RebindingOperation candidate,
-        InputAction action
-    )
+    /// <summary>
+    /// Applies a captured key to either the plain or modifier-composite alternative.
+    /// </summary>
+    private void ApplyRebindPath(InputAction action, BindingSlot slot, string path)
     {
-        InputControl control = candidate.selectedControl;
-        if (!IsModifierAction(action?.name))
+        string modifierPath = IsModifierAction(action.name) ? null : GetPressedModifierPath();
+        if (string.IsNullOrEmpty(modifierPath))
         {
-            while (KeyboardChordProcessor.IsModifier(control))
-            {
-                candidate.RemoveCandidate(control);
-                control = candidate.selectedControl;
-            }
-
-            if (control == null)
-                return;
+            action.ApplyBindingOverride(slot.PlainIndex, path);
+            ClearComposite(action, slot);
         }
-
-        candidate.Complete();
-    }
-
-    private void ApplyRebindPath(InputAction action, int bindingIndex, string path)
-    {
-        InputControl selectedControl = _operation?.selectedControl;
-        _capturedModifiers = KeyboardChordProcessor.IsModifier(selectedControl)
-            ? 0
-            : KeyboardChordProcessor.GetPressedModifiers(Keyboard.current);
-
-        if (action.bindings[bindingIndex].isComposite)
+        else
         {
-            _rebindApplied = TryApplyCompositeChord(action, bindingIndex, path);
-            if (!_rebindApplied)
-                RestoreOverrides(action, _previousActionOverrides);
-            return;
+            action.ApplyBindingOverride(slot.PlainIndex, string.Empty);
+            action.ApplyBindingOverride(slot.ModifierIndex, modifierPath);
+            action.ApplyBindingOverride(slot.BindingIndex, path);
         }
-
-        action.ApplyBindingOverride(
-            bindingIndex,
-            new InputBinding
-            {
-                overridePath = path,
-                overrideProcessors = KeyboardChordProcessor.GetProcessorOverride(
-                    _capturedModifiers
-                ),
-            }
-        );
         _rebindApplied = true;
     }
 
-    private bool TryApplyCompositeChord(InputAction action, int compositeIndex, string buttonPath)
-    {
-        string modifierPath = GetSingleModifierPath(_capturedModifiers);
-        if (string.IsNullOrEmpty(modifierPath))
-            return false;
-
-        int modifierIndex = -1;
-        int buttonIndex = -1;
-        for (int index = compositeIndex + 1; index < action.bindings.Count; index++)
-        {
-            InputBinding part = action.bindings[index];
-            if (!part.isPartOfComposite)
-                break;
-            if (string.Equals(part.name, "Modifier", StringComparison.OrdinalIgnoreCase))
-                modifierIndex = index;
-            else if (string.Equals(part.name, "Button", StringComparison.OrdinalIgnoreCase))
-                buttonIndex = index;
-        }
-
-        if (modifierIndex < 0 || buttonIndex < 0)
-            return false;
-
-        action.ApplyBindingOverride(modifierIndex, modifierPath);
-        action.ApplyBindingOverride(buttonIndex, buttonPath);
-        return true;
-    }
-
-    private void FinishRebind(InputAction action, int bindingIndex, bool completed)
+    /// <summary>
+    /// Finalizes a rebind and asks for confirmation when its active signature is duplicated.
+    /// </summary>
+    private void FinishRebind(InputAction action, BindingSlot slot, bool completed)
     {
         _operation?.Dispose();
         _operation = null;
@@ -321,13 +296,13 @@ internal sealed class OptionsBindingEditor : IDisposable
             return;
         }
 
-        (InputAction other, int otherIndex) = FindConflict(action, bindingIndex);
+        int activeIndex = GetActiveTopLevelIndex(action, slot);
+        (InputAction other, int otherIndex) = FindConflict(action, activeIndex);
         if (other != null)
         {
             _conflictOldAction = other;
             _conflictOldIndex = otherIndex;
             _conflictNewAction = action;
-            _conflictNewIndex = bindingIndex;
             ConflictRequested?.Invoke(
                 $"That input is already bound to \"{Humanize(other.name)}\". Move it here and clear the old binding?"
             );
@@ -340,6 +315,9 @@ internal sealed class OptionsBindingEditor : IDisposable
         PresentationChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Finds another active top-level binding with the same key and modifier signature.
+    /// </summary>
     private (InputAction action, int index) FindConflict(InputAction rebound, int reboundIndex)
     {
         string signature = GetBindingSignature(rebound, reboundIndex);
@@ -369,27 +347,24 @@ internal sealed class OptionsBindingEditor : IDisposable
                 }
             }
         }
-
         return (null, -1);
     }
 
-    private static InputBinding[] CaptureOverrides(InputAction action)
+    /// <summary>
+    /// Captures every binding override on an action for cancellation and conflict rejection.
+    /// </summary>
+    private static string[] CaptureOverrides(InputAction action)
     {
-        InputBinding[] result = new InputBinding[action.bindings.Count];
+        string[] result = new string[action.bindings.Count];
         for (int index = 0; index < action.bindings.Count; index++)
-        {
-            InputBinding binding = action.bindings[index];
-            result[index] = new InputBinding
-            {
-                overridePath = binding.overridePath,
-                overrideInteractions = binding.overrideInteractions,
-                overrideProcessors = binding.overrideProcessors,
-            };
-        }
+            result[index] = action.bindings[index].overridePath;
         return result;
     }
 
-    private static void RestoreOverrides(InputAction action, IReadOnlyList<InputBinding> overrides)
+    /// <summary>
+    /// Restores a previously captured set of binding overrides.
+    /// </summary>
+    private static void RestoreOverrides(InputAction action, IReadOnlyList<string> overrides)
     {
         if (action == null || overrides == null)
             return;
@@ -398,16 +373,15 @@ internal sealed class OptionsBindingEditor : IDisposable
         int count = Math.Min(action.bindings.Count, overrides.Count);
         for (int index = 0; index < count; index++)
         {
-            InputBinding binding = overrides[index];
-            if (
-                binding.overridePath != null
-                || binding.overrideInteractions != null
-                || binding.overrideProcessors != null
-            )
-                action.ApplyBindingOverride(index, binding);
+            string overridePath = overrides[index];
+            if (overridePath != null)
+                action.ApplyBindingOverride(index, overridePath);
         }
     }
 
+    /// <summary>
+    /// Clears one active top-level binding and any composite parts it owns.
+    /// </summary>
     private static void UnbindTopLevel(InputAction action, int index)
     {
         if (action == null || index < 0 || index >= action.bindings.Count)
@@ -416,7 +390,6 @@ internal sealed class OptionsBindingEditor : IDisposable
         action.ApplyBindingOverride(index, string.Empty);
         if (!action.bindings[index].isComposite)
             return;
-
         for (int partIndex = index + 1; partIndex < action.bindings.Count; partIndex++)
         {
             if (!action.bindings[partIndex].isPartOfComposite)
@@ -425,15 +398,29 @@ internal sealed class OptionsBindingEditor : IDisposable
         }
     }
 
+    /// <summary>
+    /// Clears the composite alternative belonging to an authored slot.
+    /// </summary>
+    private static void ClearComposite(InputAction action, BindingSlot slot)
+    {
+        action.ApplyBindingOverride(slot.ModifierIndex, string.Empty);
+        action.ApplyBindingOverride(slot.BindingIndex, string.Empty);
+    }
+
+    /// <summary>
+    /// Clears pending conflict state and its cancellation snapshot.
+    /// </summary>
     private void ClearConflict()
     {
         _conflictOldAction = null;
         _conflictNewAction = null;
         _conflictOldIndex = -1;
-        _conflictNewIndex = -1;
         _previousActionOverrides = null;
     }
 
+    /// <summary>
+    /// Restores the rebound action's enabled state.
+    /// </summary>
     private void RestoreReboundActionState()
     {
         if (_reboundActionWasEnabled)
@@ -442,65 +429,183 @@ internal sealed class OptionsBindingEditor : IDisposable
         _reboundActionWasEnabled = false;
     }
 
+    /// <summary>
+    /// Returns a normalized signature for a plain or modifier-composite binding.
+    /// </summary>
     internal static string GetBindingSignature(InputAction action, int bindingIndex)
     {
         InputBinding binding = action.bindings[bindingIndex];
-        if (binding.isComposite)
-        {
-            string modifierPath = null;
-            string buttonPath = null;
-            for (int index = bindingIndex + 1; index < action.bindings.Count; index++)
-            {
-                InputBinding part = action.bindings[index];
-                if (!part.isPartOfComposite)
-                    break;
-                if (string.Equals(part.name, "Modifier", StringComparison.OrdinalIgnoreCase))
-                    modifierPath = part.effectivePath;
-                else if (string.Equals(part.name, "Button", StringComparison.OrdinalIgnoreCase))
-                    buttonPath = part.effectivePath;
-            }
-            int modifierMask = GetModifierMask(modifierPath);
-            return modifierMask == 0 || string.IsNullOrEmpty(buttonPath)
+        if (!binding.isComposite)
+            return string.IsNullOrEmpty(binding.effectivePath)
                 ? string.Empty
-                : $"{buttonPath}|{modifierMask}";
+                : binding.effectivePath;
+
+        (string modifier, string key) = GetCompositePaths(action, bindingIndex);
+        return string.IsNullOrEmpty(modifier) || string.IsNullOrEmpty(key)
+            ? string.Empty
+            : $"{modifier}+{key}";
+    }
+
+    /// <summary>
+    /// Returns the modifier and key paths from a Unity OneModifier composite.
+    /// </summary>
+    private static (string modifier, string key) GetCompositePaths(
+        InputAction action,
+        int compositeIndex
+    )
+    {
+        string modifier = null;
+        string key = null;
+        for (int index = compositeIndex + 1; index < action.bindings.Count; index++)
+        {
+            InputBinding part = action.bindings[index];
+            if (!part.isPartOfComposite)
+                break;
+            if (string.Equals(part.name, "Modifier", StringComparison.OrdinalIgnoreCase))
+                modifier = part.effectivePath;
+            else if (
+                string.Equals(part.name, "Binding", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(part.name, "Button", StringComparison.OrdinalIgnoreCase)
+            )
+                key = part.effectivePath;
+        }
+        return (modifier, key);
+    }
+
+    /// <summary>
+    /// Returns the single held keyboard modifier path, or null when none or several are held.
+    /// </summary>
+    private static string GetPressedModifierPath()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+            return null;
+
+        string result = null;
+        int count = 0;
+        if (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed)
+        {
+            result = "<Keyboard>/ctrl";
+            count++;
+        }
+        if (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed)
+        {
+            result = "<Keyboard>/shift";
+            count++;
+        }
+        if (keyboard.leftAltKey.isPressed || keyboard.rightAltKey.isPressed)
+        {
+            result = "<Keyboard>/alt";
+            count++;
+        }
+        if (keyboard.leftMetaKey.isPressed || keyboard.rightMetaKey.isPressed)
+        {
+            result = "<Keyboard>/leftMeta";
+            count++;
+        }
+        return count == 1 ? result : null;
+    }
+
+    /// <summary>
+    /// Gets the two named binding slots authored for an action.
+    /// </summary>
+    private static (BindingSlot primary, BindingSlot secondary) GetBindingSlots(InputAction action)
+    {
+        return (GetBindingSlot(action, "Primary"), GetBindingSlot(action, "Secondary"));
+    }
+
+    /// <summary>
+    /// Resolves one plain/composite binding pair by its authored slot name.
+    /// </summary>
+    private static BindingSlot GetBindingSlot(InputAction action, string name)
+    {
+        int plain = -1;
+        int composite = -1;
+        int modifier = -1;
+        int key = -1;
+        for (int index = 0; index < action.bindings.Count; index++)
+        {
+            InputBinding binding = action.bindings[index];
+            if (!binding.isPartOfComposite && binding.name == name)
+                plain = index;
+            if (!binding.isPartOfComposite && binding.name == name + "Chord")
+            {
+                composite = index;
+                for (int part = index + 1; part < action.bindings.Count; part++)
+                {
+                    InputBinding compositePart = action.bindings[part];
+                    if (!compositePart.isPartOfComposite)
+                        break;
+                    if (compositePart.name == "Modifier")
+                        modifier = part;
+                    else if (compositePart.name == "Binding")
+                        key = part;
+                }
+            }
         }
 
-        if (string.IsNullOrEmpty(binding.effectivePath))
-            return string.Empty;
-        int modifiers = KeyboardChordProcessor.ParseModifierMask(binding.effectiveProcessors);
-        return $"{binding.effectivePath}|{modifiers}";
+        if (plain < 0 || composite < 0 || modifier < 0 || key < 0)
+            throw new InvalidOperationException($"Action '{action}' is missing its {name} slot.");
+        return new BindingSlot(plain, composite, modifier, key);
     }
 
-    private static int GetModifierMask(string modifierPath)
+    /// <summary>
+    /// Returns the active top-level alternative for a slot.
+    /// </summary>
+    private static int GetActiveTopLevelIndex(InputAction action, BindingSlot slot)
     {
-        if (string.IsNullOrEmpty(modifierPath))
-            return 0;
-        if (modifierPath.IndexOf("shift", StringComparison.OrdinalIgnoreCase) >= 0)
-            return KeyboardChordProcessor.Shift;
-        if (
-            modifierPath.IndexOf("ctrl", StringComparison.OrdinalIgnoreCase) >= 0
-            || modifierPath.IndexOf("control", StringComparison.OrdinalIgnoreCase) >= 0
-        )
-            return KeyboardChordProcessor.Control;
-        if (modifierPath.IndexOf("alt", StringComparison.OrdinalIgnoreCase) >= 0)
-            return KeyboardChordProcessor.Alt;
-        if (modifierPath.IndexOf("meta", StringComparison.OrdinalIgnoreCase) >= 0)
-            return KeyboardChordProcessor.Meta;
-        return 0;
+        return string.IsNullOrEmpty(action.bindings[slot.PlainIndex].effectivePath)
+            ? slot.CompositeIndex
+            : slot.PlainIndex;
     }
 
-    private static string GetSingleModifierPath(int modifiers)
+    /// <summary>
+    /// Formats the active alternative in one binding slot for the Options table.
+    /// </summary>
+    private static string FormatSlot(InputAction action, BindingSlot slot)
     {
-        return modifiers switch
-        {
-            KeyboardChordProcessor.Shift => "<Keyboard>/shift",
-            KeyboardChordProcessor.Control => "<Keyboard>/ctrl",
-            KeyboardChordProcessor.Alt => "<Keyboard>/alt",
-            KeyboardChordProcessor.Meta => "<Keyboard>/leftMeta",
-            _ => null,
-        };
+        InputBinding plain = action.bindings[slot.PlainIndex];
+        if (!string.IsNullOrEmpty(plain.effectivePath))
+            return ShortenKey(action.GetBindingDisplayString(slot.PlainIndex));
+
+        (string modifier, string key) = GetCompositePaths(action, slot.CompositeIndex);
+        if (string.IsNullOrEmpty(modifier) || string.IsNullOrEmpty(key))
+            return "UNBOUND";
+        return $"{ShortenPath(modifier)}+{ShortenPath(key)}";
     }
 
+    /// <summary>
+    /// Converts one control path to its compact human-readable display form.
+    /// </summary>
+    private static string ShortenPath(string path)
+    {
+        return ShortenKey(
+            InputControlPath.ToHumanReadableString(
+                path,
+                InputControlPath.HumanReadableStringOptions.OmitDevice
+            )
+        );
+    }
+
+    /// <summary>
+    /// Checks whether an action map is exposed by the Options controls page.
+    /// </summary>
+    private static bool IsBindableMap(string map)
+    {
+        return map is "Global" or "Strategy";
+    }
+
+    /// <summary>
+    /// Checks whether an action is exposed by the Options controls page.
+    /// </summary>
+    private static bool IsBindableAction(string action)
+    {
+        return action != "CancelOrSettings";
+    }
+
+    /// <summary>
+    /// Checks whether an action intentionally binds a modifier as its complete input.
+    /// </summary>
     private static bool IsModifierAction(string actionName)
     {
         return actionName
@@ -509,87 +614,9 @@ internal sealed class OptionsBindingEditor : IDisposable
                 or "AlternateSelectModifier";
     }
 
-    private static (int primary, int secondary) GetTopLevelBindingIndices(InputAction action)
-    {
-        int primary = -1;
-        int secondary = -1;
-        for (int index = 0; index < action.bindings.Count; index++)
-        {
-            if (action.bindings[index].isPartOfComposite)
-                continue;
-            if (primary < 0)
-                primary = index;
-            else
-            {
-                secondary = index;
-                break;
-            }
-        }
-        return (primary, secondary);
-    }
-
-    private static bool IsBindableMap(string map)
-    {
-        return map is "Global" or "Strategy";
-    }
-
-    private static bool IsBindableAction(string action)
-    {
-        return action != "CancelOrSettings";
-    }
-
-    private static (string primary, string secondary) FormatKeys(InputAction action)
-    {
-        List<string> keys = new List<string>();
-        for (int index = 0; index < action.bindings.Count; index++)
-        {
-            InputBinding binding = action.bindings[index];
-            if (binding.isPartOfComposite)
-                continue;
-
-            string display = binding.isComposite
-                ? GetCompositeDisplayString(action, index)
-                : action.GetBindingDisplayString(index);
-            if (string.IsNullOrWhiteSpace(display) && string.IsNullOrEmpty(binding.effectivePath))
-                display = "UNBOUND";
-            int modifiers = binding.isComposite
-                ? 0
-                : KeyboardChordProcessor.ParseModifierMask(binding.effectiveProcessors);
-            keys.Add(KeyboardChordProcessor.GetDisplayPrefix(modifiers) + ShortenKey(display));
-            if (keys.Count == 2)
-                break;
-        }
-
-        return (keys.Count > 0 ? keys[0] : "UNBOUND", keys.Count > 1 ? keys[1] : "UNBOUND");
-    }
-
-    private static string GetCompositeDisplayString(InputAction action, int compositeIndex)
-    {
-        string modifier = null;
-        string button = null;
-        for (int index = compositeIndex + 1; index < action.bindings.Count; index++)
-        {
-            InputBinding part = action.bindings[index];
-            if (!part.isPartOfComposite)
-                break;
-
-            string display = string.IsNullOrEmpty(part.effectivePath)
-                ? string.Empty
-                : InputControlPath.ToHumanReadableString(
-                    part.effectivePath,
-                    InputControlPath.HumanReadableStringOptions.OmitDevice
-                );
-            if (string.Equals(part.name, "Modifier", StringComparison.OrdinalIgnoreCase))
-                modifier = display;
-            else if (string.Equals(part.name, "Button", StringComparison.OrdinalIgnoreCase))
-                button = display;
-        }
-
-        return string.IsNullOrEmpty(modifier) || string.IsNullOrEmpty(button)
-            ? string.Empty
-            : $"{ShortenKey(modifier)}+{ShortenKey(button)}";
-    }
-
+    /// <summary>
+    /// Shortens a human-readable key name for the compact binding columns.
+    /// </summary>
     private static string ShortenKey(string display)
     {
         if (string.IsNullOrWhiteSpace(display))
@@ -607,12 +634,15 @@ internal sealed class OptionsBindingEditor : IDisposable
             .Replace("NUMPAD ", "NUM ");
     }
 
+    /// <summary>
+    /// Inserts spaces at semantic boundaries in an authored action name.
+    /// </summary>
     private static string Humanize(string name)
     {
         if (string.IsNullOrEmpty(name))
             return string.Empty;
 
-        System.Text.StringBuilder builder = new System.Text.StringBuilder(name.Length + 8);
+        StringBuilder builder = new StringBuilder(name.Length + 8);
         for (int index = 0; index < name.Length; index++)
         {
             char value = name[index];
@@ -629,5 +659,52 @@ internal sealed class OptionsBindingEditor : IDisposable
             builder.Append(value);
         }
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Identifies the authored plain and modifier-composite alternatives for one logical slot.
+    /// </summary>
+    private readonly struct BindingSlot
+    {
+        internal readonly int PlainIndex;
+        internal readonly int CompositeIndex;
+        internal readonly int ModifierIndex;
+        internal readonly int BindingIndex;
+
+        /// <summary>
+        /// Creates an authored binding-slot index set.
+        /// </summary>
+        internal BindingSlot(
+            int plainIndex,
+            int compositeIndex,
+            int modifierIndex,
+            int bindingIndex
+        )
+        {
+            PlainIndex = plainIndex;
+            CompositeIndex = compositeIndex;
+            ModifierIndex = modifierIndex;
+            BindingIndex = bindingIndex;
+        }
+    }
+
+    /// <summary>
+    /// Associates a controls row with its action and two logical slots.
+    /// </summary>
+    private readonly struct BindingTarget
+    {
+        internal readonly InputAction Action;
+        internal readonly BindingSlot Primary;
+        internal readonly BindingSlot Secondary;
+
+        /// <summary>
+        /// Creates a row binding target.
+        /// </summary>
+        internal BindingTarget(InputAction action, BindingSlot primary, BindingSlot secondary)
+        {
+            Action = action;
+            Primary = primary;
+            Secondary = secondary;
+        }
     }
 }

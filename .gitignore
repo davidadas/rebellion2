@@ -71,7 +71,7 @@ Assets/TextMesh Pro/
 # Installed content is supplied by rebellion2-media beside the project/player.
 /Content/
 
-# UI builders and committed base-scene templates are the source of truth for generated UI assets.
+# UI builders are the source of truth for generated UI assets and scenes.
 /Assets/Prefabs/UI/Common/*.prefab
 /Assets/Prefabs/UI/MainMenu/*.prefab
 /Assets/Prefabs/UI/OptionsMenu/*.prefab

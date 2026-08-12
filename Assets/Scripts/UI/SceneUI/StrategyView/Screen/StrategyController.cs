@@ -393,6 +393,7 @@ public sealed class StrategyController
             windowPlacementController.GetOptionsWindowPosition,
             CloseWindow,
             AppBootstrap.Instance.GetUserSettingsManager(),
+            AppBootstrap.Instance.GetDisplayManager(),
             AudioManager.EnsureExists(),
             AppBootstrap.Instance.GetInputManager(),
             MarkDirty
@@ -3188,7 +3189,7 @@ public sealed class StrategyController
     /// </summary>
     void IOptionsMenuHostActions.ReturnToMainMenu()
     {
-        AppBootstrap.Instance.LoadScene(SceneNames.MainMenu);
+        AppBootstrap.Instance.LoadScene("MainMenu");
     }
 
     /// <summary>

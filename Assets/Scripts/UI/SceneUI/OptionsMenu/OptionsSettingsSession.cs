@@ -18,6 +18,7 @@ internal sealed class OptionsSettingsSession
 
     // Settings.
     private readonly UserSettingsManager _userSettings;
+    private readonly DisplayManager _displayManager;
     private readonly AudioManager _audioManager;
     private readonly InputManager _inputManager;
 
@@ -35,13 +36,18 @@ internal sealed class OptionsSettingsSession
     private int _snapshotFullScreenMode;
     private string _snapshotBindingOverrides = string.Empty;
 
+    /// <summary>
+    /// Creates a pending settings session over the runtime service owners.
+    /// </summary>
     internal OptionsSettingsSession(
         UserSettingsManager userSettings,
+        DisplayManager displayManager,
         AudioManager audioManager,
         InputManager inputManager
     )
     {
         _userSettings = userSettings ?? throw new ArgumentNullException(nameof(userSettings));
+        _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
         _audioManager = audioManager ?? throw new ArgumentNullException(nameof(audioManager));
         _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
     }
@@ -56,6 +62,9 @@ internal sealed class OptionsSettingsSession
 
     internal string FullScreenLabel => GetFullScreenLabel(Video.FullScreenMode);
 
+    /// <summary>
+    /// Captures the current runtime settings as the session's revert point.
+    /// </summary>
     internal void Begin()
     {
         RebuildResolutions();
@@ -63,6 +72,9 @@ internal sealed class OptionsSettingsSession
         IsDirty = false;
     }
 
+    /// <summary>
+    /// Persists and applies pending settings, then establishes a new revert point.
+    /// </summary>
     internal void Commit()
     {
         _userSettings.Save();
@@ -72,6 +84,9 @@ internal sealed class OptionsSettingsSession
         IsDirty = false;
     }
 
+    /// <summary>
+    /// Restores the settings and input overrides captured when the session began.
+    /// </summary>
     internal void Revert()
     {
         for (int channel = 0; channel < _snapshotVolumes.Length; channel++)
@@ -90,6 +105,9 @@ internal sealed class OptionsSettingsSession
         IsDirty = false;
     }
 
+    /// <summary>
+    /// Restores defaults for one Options tab and applies its live effects.
+    /// </summary>
     internal void RestoreDefaults(OptionsMenuTab tab)
     {
         switch (tab)
@@ -125,6 +143,9 @@ internal sealed class OptionsSettingsSession
         return states;
     }
 
+    /// <summary>
+    /// Returns the five displayed audio-channel volumes in menu order.
+    /// </summary>
     internal float[] GetVolumes()
     {
         return new[]
@@ -137,12 +158,18 @@ internal sealed class OptionsSettingsSession
         };
     }
 
+    /// <summary>
+    /// Toggles a tactical display option and marks the session dirty.
+    /// </summary>
     internal void ToggleTactical(UserTacticalOption option)
     {
         Video.SetEnabled(option, !Video.IsEnabled(option));
         IsDirty = true;
     }
 
+    /// <summary>
+    /// Selects and immediately applies an adjacent supported resolution.
+    /// </summary>
     internal void StepResolution(int delta)
     {
         if (_resolutions.Count == 0)
@@ -154,10 +181,13 @@ internal sealed class OptionsSettingsSession
         Vector2Int resolution = _resolutions[_resolutionIndex];
         Video.ResolutionWidth = resolution.x;
         Video.ResolutionHeight = resolution.y;
-        Screen.SetResolution(resolution.x, resolution.y, (FullScreenMode)Video.FullScreenMode);
+        _displayManager.Apply(Video);
         IsDirty = true;
     }
 
+    /// <summary>
+    /// Selects and immediately applies an adjacent fullscreen mode.
+    /// </summary>
     internal void StepFullScreen(int delta)
     {
         int current = Array.IndexOf(_fullScreenModes, Video.FullScreenMode);
@@ -171,6 +201,9 @@ internal sealed class OptionsSettingsSession
         IsDirty = true;
     }
 
+    /// <summary>
+    /// Stores and immediately applies a normalized audio-channel volume.
+    /// </summary>
     internal void SetVolume(int channel, float value)
     {
         if (!SetVolumeValue(channel, value))
@@ -180,11 +213,17 @@ internal sealed class OptionsSettingsSession
         IsDirty = true;
     }
 
+    /// <summary>
+    /// Marks the session dirty after a binding override changes.
+    /// </summary>
     internal void MarkInputChanged()
     {
         IsDirty = true;
     }
 
+    /// <summary>
+    /// Captures every revertible setting and binding override.
+    /// </summary>
     private void CaptureSnapshot()
     {
         _snapshotVolumes = GetVolumes();
@@ -197,35 +236,38 @@ internal sealed class OptionsSettingsSession
             _snapshotTactical[option] = Video.IsEnabled(option);
     }
 
+    /// <summary>
+    /// Refreshes supported resolutions and aligns persisted values with the resolved mode.
+    /// </summary>
     private void RebuildResolutions()
     {
         _resolutions.Clear();
-        _resolutions.AddRange(DisplayResolutionPolicy.GetSupportedResolutions());
+        _resolutions.AddRange(_displayManager.GetSupportedResolutions());
         Vector2Int current = ResolveResolution();
         Video.ResolutionWidth = current.x;
         Video.ResolutionHeight = current.y;
         _resolutionIndex = _resolutions.IndexOf(current);
     }
 
+    /// <summary>
+    /// Delegates the current video settings to the display owner.
+    /// </summary>
     private void ApplyResolution()
     {
-        Vector2Int resolution = ResolveResolution();
-        Video.ResolutionWidth = resolution.x;
-        Video.ResolutionHeight = resolution.y;
-        Screen.SetResolution(resolution.x, resolution.y, (FullScreenMode)Video.FullScreenMode);
+        _displayManager.Apply(Video);
     }
 
+    /// <summary>
+    /// Resolves the persisted selection against currently supported display modes.
+    /// </summary>
     private Vector2Int ResolveResolution()
     {
-        return DisplayResolutionPolicy.Resolve(
-            _resolutions,
-            Video.ResolutionWidth,
-            Video.ResolutionHeight,
-            Display.main.systemWidth,
-            Display.main.systemHeight
-        );
+        return _displayManager.ResolveResolution(Video.ResolutionWidth, Video.ResolutionHeight);
     }
 
+    /// <summary>
+    /// Applies all persisted audio-channel volumes to the audio owner.
+    /// </summary>
     private void ApplyAllVolumes()
     {
         _audioManager.SetMasterVolume(Audio.MasterVolume);
@@ -235,6 +277,9 @@ internal sealed class OptionsSettingsSession
         _audioManager.SetVideoVolume(Audio.VideoVolume);
     }
 
+    /// <summary>
+    /// Applies one menu-indexed audio-channel volume.
+    /// </summary>
     private void ApplyVolume(int channel, float value)
     {
         switch (channel)
@@ -257,6 +302,9 @@ internal sealed class OptionsSettingsSession
         }
     }
 
+    /// <summary>
+    /// Stores one menu-indexed audio-channel volume when the index is valid.
+    /// </summary>
     private bool SetVolumeValue(int channel, float value)
     {
         value = Mathf.Clamp01(value);
@@ -282,6 +330,9 @@ internal sealed class OptionsSettingsSession
         }
     }
 
+    /// <summary>
+    /// Formats a serialized fullscreen mode for display in the Options menu.
+    /// </summary>
     private static string GetFullScreenLabel(int mode)
     {
         return (FullScreenMode)mode switch

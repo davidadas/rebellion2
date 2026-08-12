@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.UI;
 using UnityEngine.Video;
 
@@ -12,15 +11,12 @@ using UnityEngine.Video;
 public sealed class CutscenePlayer : MonoBehaviour
 {
     [SerializeField]
-    [FormerlySerializedAs("Screen")]
     private RawImage screen;
 
     [SerializeField]
-    [FormerlySerializedAs("VideoPlayer")]
     private VideoPlayer videoPlayer;
 
     [SerializeField]
-    [FormerlySerializedAs("AudioSource")]
     private AudioSource audioSource;
 
     private Action onFinished;

@@ -44,7 +44,7 @@ public sealed class BootController : MonoBehaviour
     {
         if (currentVideoIndex >= _bootVideoPaths.Length)
         {
-            AppBootstrap.Instance.LoadScene(SceneNames.MainMenu);
+            AppBootstrap.Instance.LoadScene("MainMenu");
             return;
         }
 

@@ -17,6 +17,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         private GameObject _root;
         private OptionsMenuView _view;
 
+        /// <summary>
+        /// Creates the generated Options menu view for each test.
+        /// </summary>
         [SetUp]
         public void SetUp()
         {
@@ -25,12 +28,18 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             UIComponentTestHelper.InvokeLifecycle(_view, "Awake");
         }
 
+        /// <summary>
+        /// Destroys the generated Options menu instance after each test.
+        /// </summary>
         [TearDown]
         public void TearDown()
         {
             UnityEngine.Object.DestroyImmediate(_root);
         }
 
+        /// <summary>
+        /// Verifies display arrows emit their semantic direction requests.
+        /// </summary>
         [Test]
         public void DisplaySteppers_Click_RaiseSemanticRequests()
         {
@@ -46,6 +55,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(-1, fullScreenDelta);
         }
 
+        /// <summary>
+        /// Verifies display stepper hit targets cover the complete value badge.
+        /// </summary>
         [Test]
         public void DisplaySteppers_Awake_ExpandAcrossCompleteValueBadge()
         {
@@ -66,6 +78,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(272f, fullScreenNext.anchoredPosition.x);
         }
 
+        /// <summary>
+        /// Verifies the rename input authors a visible, correctly aligned caret.
+        /// </summary>
         [Test]
         public void RenameInput_AlignmentConfiguresVisibleBlinkingCaret()
         {
@@ -85,11 +100,15 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
         }
 
+        /// <summary>
+        /// Verifies presentation renders stored metadata without silently normalizing it.
+        /// </summary>
         [Test]
-        public void SaveList_OverlongName_TruncatesRenderedText()
+        public void SaveList_OverlongStoredName_DoesNotRewriteDomainData()
         {
+            string storedName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
             OptionsSaveSlot savedGame = new OptionsSaveSlot(
-                new string('N', SaveGameManager.MaxDisplayNameLength + 10),
+                storedName,
                 "Today",
                 null,
                 false,
@@ -101,9 +120,12 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             TextMeshProUGUI renderedName = _root
                 .GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "SlotName0");
-            Assert.AreEqual(SaveGameManager.MaxDisplayNameLength, renderedName.text.Length);
+            Assert.AreEqual(storedName, renderedName.text);
         }
 
+        /// <summary>
+        /// Verifies pooled save rows reactivate faction icons when reused.
+        /// </summary>
         [Test]
         public void SaveList_AfterRowCountGrows_ReactivatesFactionIcon()
         {
@@ -142,6 +164,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             }
         }
 
+        /// <summary>
+        /// Verifies main-menu hosting removes unavailable in-game footer rows without gaps.
+        /// </summary>
         [Test]
         public void RenderFooter_MainMenuHost_HidesUnavailableRowsAndCollapsesQuitToTop()
         {
@@ -179,6 +204,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(226, UILayout.GetSourceRect((RectTransform)quit.transform).y);
         }
 
+        /// <summary>
+        /// Verifies binding-row clicks retain their model index after section headers.
+        /// </summary>
         [Test]
         public void Controls_FirstActionAfterHeader_RaisesModelBindingIndex()
         {
@@ -213,6 +241,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual(1, requestedRow);
         }
 
+        /// <summary>
+        /// Reads a private authored reference from the view under test.
+        /// </summary>
         private T GetField<T>(string fieldName)
         {
             return (T)
@@ -221,6 +252,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     .GetValue(_view);
         }
 
+        /// <summary>
+        /// Creates minimal render state for save-list presentation tests.
+        /// </summary>
         private static OptionsMenuRenderData CreateRenderData(params OptionsSaveSlot[] saveSlots)
         {
             return new OptionsMenuRenderData(

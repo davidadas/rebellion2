@@ -74,7 +74,7 @@ public sealed class SceneLoader : MonoBehaviour
     private static Task GetSceneInitializationAsync(string sceneName)
     {
         AppBootstrap bootstrap = AppBootstrap.Instance;
-        if (sceneName == SceneNames.StrategyView)
+        if (sceneName == "StrategyView")
             return bootstrap.InitializeStrategyContentAsync();
 
         return bootstrap.InitializeMainMenuSceneAsync();

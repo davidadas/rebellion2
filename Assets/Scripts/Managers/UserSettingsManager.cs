@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -11,6 +10,7 @@ public sealed class UserSettingsManager
     private const string _settingsFileName = "user-settings.json";
 
     private readonly AudioManager _audioManager;
+    private readonly DisplayManager _displayManager;
     private readonly InputManager _inputManager;
     private readonly string _settingsFilePathOverride;
 
@@ -23,23 +23,31 @@ public sealed class UserSettingsManager
     /// Creates a user settings manager for the supplied runtime systems.
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives video settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
-    public UserSettingsManager(AudioManager audioManager, InputManager inputManager)
-        : this(audioManager, inputManager, null) { }
+    public UserSettingsManager(
+        AudioManager audioManager,
+        DisplayManager displayManager,
+        InputManager inputManager
+    )
+        : this(audioManager, displayManager, inputManager, null) { }
 
     /// <summary>
     /// Creates a user settings manager that uses the given file path.
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="displayManager">The display manager that receives video settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
     /// <param name="settingsFilePath">The exact settings file path.</param>
     internal UserSettingsManager(
         AudioManager audioManager,
+        DisplayManager displayManager,
         InputManager inputManager,
         string settingsFilePath
     )
     {
         _audioManager = audioManager;
+        _displayManager = displayManager ?? throw new ArgumentNullException(nameof(displayManager));
         _inputManager = inputManager;
         _settingsFilePathOverride = settingsFilePath;
     }
@@ -75,7 +83,7 @@ public sealed class UserSettingsManager
 
         _audioManager?.ApplySettings(Settings.Audio);
         _inputManager?.LoadBindingOverrides(Settings.Input.BindingOverridesJson);
-        ApplyVideoSettings(Settings.Video);
+        _displayManager.Apply(Settings.Video);
     }
 
     /// <summary>
@@ -145,29 +153,6 @@ public sealed class UserSettingsManager
             Settings.Input.BindingOverridesJson = _inputManager.SaveBindingOverrides();
 
         Settings.Normalize();
-    }
-
-    /// <summary>
-    /// Applies the saved display settings when the game starts.
-    /// </summary>
-    /// <param name="video">The normalized video settings.</param>
-    private static void ApplyVideoSettings(UserVideoSettings video)
-    {
-        List<Vector2Int> supported = DisplayResolutionPolicy.GetSupportedResolutions();
-        Vector2Int resolution = DisplayResolutionPolicy.Resolve(
-            supported,
-            video.ResolutionWidth,
-            video.ResolutionHeight,
-            Display.main.systemWidth,
-            Display.main.systemHeight
-        );
-        video.ResolutionWidth = resolution.x;
-        video.ResolutionHeight = resolution.y;
-
-        if (Application.isEditor)
-            return;
-
-        Screen.SetResolution(resolution.x, resolution.y, (FullScreenMode)video.FullScreenMode);
     }
 
     /// <summary>

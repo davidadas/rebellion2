@@ -127,6 +127,9 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("Coruscant Campaign", loadedGame.Metadata.SaveDisplayName);
         }
 
+        /// <summary>
+        /// Verifies saving truncates an overlong display name at the domain boundary.
+        /// </summary>
         [Test]
         public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
         {
@@ -147,6 +150,9 @@ namespace Rebellion.Tests.Managers
             );
         }
 
+        /// <summary>
+        /// Verifies renaming truncates an overlong display name before metadata is persisted.
+        /// </summary>
         [Test]
         public void SetSaveDisplayName_OverlongName_TruncatesMetadataName()
         {
@@ -188,8 +194,11 @@ namespace Rebellion.Tests.Managers
             Assert.AreEqual("FNALL1", entry.Metadata.PlayerFactionID);
         }
 
+        /// <summary>
+        /// Verifies a missing derived metadata sidecar is rebuilt from its canonical save.
+        /// </summary>
         [Test]
-        public void GetSaveSlotEntries_LegacySaveWithoutSidecar_CreatesSidecar()
+        public void GetSaveSlotEntries_SaveWithoutSidecar_RecreatesSidecar()
         {
             GameRoot game = new GameRoot
             {
@@ -197,14 +206,14 @@ namespace Rebellion.Tests.Managers
                 Factions = _factions,
                 Galaxy = new GalaxyMap(),
             };
-            _saveGameManager.SaveSlotGameData(game, 1, "Legacy Slot");
+            _saveGameManager.SaveSlotGameData(game, 1, "Recovered Slot");
             string fileName = _saveGameManager.GetSaveSlotFileName(1);
             string metadataPath = _saveGameManager.GetSaveMetadataFilePath(fileName);
             File.Delete(metadataPath);
 
             SaveGameEntry entry = _saveGameManager.GetSaveSlotEntries().Single();
 
-            Assert.AreEqual("Legacy Slot", entry.Metadata.SaveDisplayName);
+            Assert.AreEqual("Recovered Slot", entry.Metadata.SaveDisplayName);
             Assert.IsTrue(File.Exists(metadataPath));
         }
 

@@ -52,6 +52,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
     private bool _suppressRenameCommit;
     private bool _pendingRenameFocus;
 
+    /// <summary>
+    /// Creates a presenter over the authored save-list controls and semantic callbacks.
+    /// </summary>
     internal OptionsSaveListPresenter(
         Button saveButton,
         Button loadButton,
@@ -94,6 +97,10 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         renameField.onSubmit.AddListener(HandleRenameSubmitted);
     }
 
+    /// <summary>
+    /// Renders the current save slots, selection, and available save actions.
+    /// </summary>
+    /// <param name="data">The current Options menu render state.</param>
     internal void Render(OptionsMenuRenderData data)
     {
         int selected = data.SelectedSlot;
@@ -190,6 +197,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         HideFrom(_deleteButtons, data.SaveSlots.Count);
     }
 
+    /// <summary>
+    /// Applies deferred focus to an active rename field after layout completes.
+    /// </summary>
     internal void UpdateFocus()
     {
         if (!_pendingRenameFocus)
@@ -206,6 +216,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _renameField.ForceLabelUpdate();
     }
 
+    /// <summary>
+    /// Cancels the current rename without committing its text.
+    /// </summary>
     internal void CancelRename()
     {
         if (_renameRow < 0)
@@ -218,6 +231,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _renameEditingChanged?.Invoke(false);
     }
 
+    /// <summary>
+    /// Aligns the rename text and caret within the authored input rectangle.
+    /// </summary>
     internal void AlignRenameInput()
     {
         if (_renameField.textComponent is TextMeshProUGUI text)
@@ -241,12 +257,18 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _renameField.ForceLabelUpdate();
     }
 
+    /// <summary>
+    /// Detaches rename listeners owned by this presenter.
+    /// </summary>
     public void Dispose()
     {
         _renameField.onEndEdit.RemoveListener(HandleRenameEndEdit);
         _renameField.onSubmit.RemoveListener(HandleRenameSubmitted);
     }
 
+    /// <summary>
+    /// Gets or creates the visual row for a save-list index.
+    /// </summary>
     private Image GetRow(int index)
     {
         while (_rowImages.Count <= index)
@@ -265,6 +287,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         return row;
     }
 
+    /// <summary>
+    /// Gets or creates the faction icon for a save-list index.
+    /// </summary>
     private RawImage GetIcon(int index)
     {
         while (_iconImages.Count <= index)
@@ -280,6 +305,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         return iconImage;
     }
 
+    /// <summary>
+    /// Gets or creates a text field from an authored row template.
+    /// </summary>
     private TextMeshProUGUI GetField(
         List<TextMeshProUGUI> fields,
         TextMeshProUGUI template,
@@ -303,6 +331,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         return textField;
     }
 
+    /// <summary>
+    /// Gets or creates the delete button for a save-list index.
+    /// </summary>
     private Button GetDelete(int index)
     {
         while (_deleteButtons.Count <= index)
@@ -324,6 +355,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         return deleteButton;
     }
 
+    /// <summary>
+    /// Selects a clicked slot and starts renaming on a qualifying double-click.
+    /// </summary>
     private void HandleSlotClick(Button button, int index)
     {
         if (index < 0 || index >= _slots.Count)
@@ -347,6 +381,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
             BeginRename(index);
     }
 
+    /// <summary>
+    /// Positions and opens the rename field for a save-list index.
+    /// </summary>
     private void BeginRename(int index)
     {
         if (index < 0 || index >= _slots.Count)
@@ -374,10 +411,19 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _renameEditingChanged?.Invoke(true);
     }
 
+    /// <summary>
+    /// Completes editing without treating focus loss as an explicit submission.
+    /// </summary>
     private void HandleRenameEndEdit(string value) => CompleteRename(value, false);
 
+    /// <summary>
+    /// Completes editing as an explicit keyboard submission.
+    /// </summary>
     private void HandleRenameSubmitted(string value) => CompleteRename(value, true);
 
+    /// <summary>
+    /// Closes the rename field and forwards a committed name to the controller.
+    /// </summary>
     private void CompleteRename(string value, bool submitted)
     {
         if (_renameRow < 0)
@@ -399,6 +445,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         _slotRenamed?.Invoke(row, value, submitted);
     }
 
+    /// <summary>
+    /// Stretches rename text within the input field while retaining horizontal padding.
+    /// </summary>
     private static void StretchRenameText(RectTransform rect)
     {
         rect.anchorMin = Vector2.zero;
@@ -408,6 +457,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         rect.offsetMax = new Vector2(-6f, 0f);
     }
 
+    /// <summary>
+    /// Switches a button between its enabled control and disabled artwork.
+    /// </summary>
     private static void SetButtonDisabledVisual(Button button, RawImage disabledImage, bool enabled)
     {
         if (disabledImage != null)
@@ -416,6 +468,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
             button.targetGraphic.enabled = enabled;
     }
 
+    /// <summary>
+    /// Fits a texture within a source rectangle without changing its aspect ratio.
+    /// </summary>
     private static RectInt FitPreservingAspect(Texture texture, RectInt box)
     {
         if (texture == null || texture.width <= 0 || texture.height <= 0)
@@ -438,6 +493,9 @@ internal sealed class OptionsSaveListPresenter : IDisposable
         );
     }
 
+    /// <summary>
+    /// Hides pooled row components after the last currently rendered item.
+    /// </summary>
     private static void HideFrom<T>(List<T> items, int firstHiddenIndex)
         where T : Component
     {

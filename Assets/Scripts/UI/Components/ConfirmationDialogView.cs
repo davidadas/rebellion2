@@ -95,30 +95,12 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
     {
         VerifyReferences();
         BindControls();
-        Image inputBlocker = transform.Find("InputBlocker")?.GetComponent<Image>();
-        if (inputBlocker != null)
-        {
-            StretchToDialog(inputBlocker.rectTransform);
-            inputBlocker.color = new Color(0f, 0f, 0f, 0.8f);
-        }
         backgroundImage.enabled = backgroundImage.texture != null;
         backgroundImage.raycastTarget = false;
         confirmButtonPressVisual.SetTextures(confirmButtonUpTexture, confirmButtonDownTexture);
         cancelButtonPressVisual.SetTextures(cancelButtonUpTexture, cancelButtonDownTexture);
         UILayout.SetTextContent(messageTextField, message ?? string.Empty, messageTextColor);
         gameObject.SetActive(true);
-    }
-
-    /// <summary>
-    /// Stretches the input blocker across the dialog.
-    /// </summary>
-    private static void StretchToDialog(RectTransform blocker)
-    {
-        blocker.anchorMin = Vector2.zero;
-        blocker.anchorMax = Vector2.one;
-        blocker.pivot = new Vector2(0.5f, 0.5f);
-        blocker.anchoredPosition = Vector2.zero;
-        blocker.sizeDelta = Vector2.zero;
     }
 
     /// <summary>

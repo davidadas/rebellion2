@@ -349,7 +349,7 @@ public class SaveGameManager
     /// </summary>
     /// <param name="displayName">The display name to normalize.</param>
     /// <returns>The normalized display name, or an empty string when no name was supplied.</returns>
-    public static string NormalizeDisplayName(string displayName)
+    private static string NormalizeDisplayName(string displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName))
             return string.Empty;

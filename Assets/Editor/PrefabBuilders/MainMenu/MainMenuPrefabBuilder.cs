@@ -22,8 +22,6 @@ public static class MainMenuPrefabBuilder
     private const string _scenePath = "Assets/Scenes/MainMenu.unity";
     private const string _optionsMenuPrefabPath =
         "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
-    private const string _sceneTemplatePath =
-        "Assets/Editor/PrefabBuilders/Templates/MainMenu.unity";
     private const string _sceneInstanceName = "MainMenuRoot";
 
     // Prefab + authored-asset paths.
@@ -159,8 +157,6 @@ public static class MainMenuPrefabBuilder
     /// </summary>
     public static void RebuildMainMenuPrefab()
     {
-        UIAuthoringGuard.EnsureEditMode();
-
         GameObject root = new GameObject("MainMenuRoot");
         try
         {
@@ -185,10 +181,21 @@ public static class MainMenuPrefabBuilder
     /// <param name="root">The freshly created prefab root.</param>
     private static void BuildBaseHierarchy(GameObject root)
     {
+        BuildEventSystem(root);
         BuildServices(root);
         MainMenuController controller = BuildController(root);
         BuildCanvas(root);
         PopulateViewBindings(root, controller.GetComponent<MainMenuView>());
+    }
+
+    /// <summary>
+    /// Authors the event system required by the self-contained Main Menu root.
+    /// </summary>
+    private static void BuildEventSystem(GameObject root)
+    {
+        GameObject eventSystem = NewChild("EventSystem", root.transform);
+        eventSystem.AddComponent<EventSystem>();
+        eventSystem.AddComponent<StandaloneInputModule>();
     }
 
     /// <summary>
@@ -449,7 +456,8 @@ public static class MainMenuPrefabBuilder
     /// </summary>
     private static void BuildExitConfirmationDialog(Transform parent)
     {
-        ConfirmationDialogView dialog = CommonUIPrefabBuilder.CreateConfirmationDialog(parent);
+        ConfirmationDialogView dialog = CommonUIPrefabBuilder.InstantiateConfirmationDialog(parent);
+        dialog.gameObject.name = "ConfirmDialog";
         RectTransform rect = dialog.transform as RectTransform;
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -2618,13 +2626,7 @@ public static class MainMenuPrefabBuilder
     public static void Rebuild()
     {
         RebuildMainMenuPrefab();
-        SceneRootPrefabInstaller.ResetSceneFromTemplate(_sceneTemplatePath, _scenePath);
-        SceneRootPrefabInstaller.InstallRootPrefabInScene(
-            _scenePath,
-            _prefabPath,
-            _sceneInstanceName,
-            null
-        );
+        SceneBuilder.Build(_scenePath, _prefabPath, _sceneInstanceName);
     }
 
     /// <summary>

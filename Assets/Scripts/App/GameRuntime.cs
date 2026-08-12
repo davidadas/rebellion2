@@ -4,13 +4,10 @@ using Rebellion.Game;
 using UnityEngine;
 
 /// <summary>
-/// Application-level runtime controller.
-/// Owns application state and decides execution strategy for global commands.
-/// Owns the GameManager lifecycle.
+/// Owns the active game-session lifecycle, hot loading, and content-identity validation.
 /// </summary>
 public sealed class GameRuntime
 {
-    private readonly Action<string> _loadScene;
     private readonly ContentPack _contentPack;
     private readonly SaveGameManager _saveGameManager;
     private GameManager _activeGameSession;
@@ -28,16 +25,10 @@ public sealed class GameRuntime
     /// <summary>
     /// Creates an application runtime backed by the active content pack.
     /// </summary>
-    /// <param name="loadScene">The application scene transition delegate.</param>
     /// <param name="contentPack">The active content pack.</param>
     /// <param name="saveGameManager">The save manager, or null to use the application singleton.</param>
-    internal GameRuntime(
-        Action<string> loadScene,
-        ContentPack contentPack,
-        SaveGameManager saveGameManager = null
-    )
+    internal GameRuntime(ContentPack contentPack, SaveGameManager saveGameManager = null)
     {
-        _loadScene = loadScene ?? throw new ArgumentNullException(nameof(loadScene));
         _contentPack = contentPack ?? throw new ArgumentNullException(nameof(contentPack));
         _saveGameManager = saveGameManager ?? SaveGameManager.Instance;
     }
@@ -112,8 +103,7 @@ public sealed class GameRuntime
 
     /// <summary>
     /// Quick load a game.
-    /// If active game exists: hot reload into current session.
-    /// If no active game: cold start from main menu.
+    /// Reloads the quick save into the active session.
     /// </summary>
     public void QuickLoad()
     {
@@ -124,7 +114,7 @@ public sealed class GameRuntime
     }
 
     /// <summary>
-    /// Loads a save file into the active game session or starts the strategy scene.
+    /// Loads a save file into the active game session.
     /// </summary>
     /// <param name="fileName">The save file name to load.</param>
     /// <returns>True if the save file exists and load started.</returns>
@@ -137,10 +127,10 @@ public sealed class GameRuntime
         if (!File.Exists(savePath))
             return false;
 
-        if (HasActiveGame)
-            HotReloadGame(fileName);
-        else
-            ColdStartFromSave(fileName);
+        if (!HasActiveGame)
+            return false;
+
+        HotReloadGame(fileName);
 
         return true;
     }
@@ -163,18 +153,6 @@ public sealed class GameRuntime
         GameRoot loadedGame = _saveGameManager.LoadGameData(fileName);
         ValidateGameContent(loadedGame);
         _activeGameSession.ReplaceGame(loadedGame);
-    }
-
-    /// <summary>
-    /// Loads the save by setting the launch context and transitioning to the strategy scene.
-    /// </summary>
-    /// <param name="fileName">The save file name to load.</param>
-    private void ColdStartFromSave(string fileName)
-    {
-        GameLaunchContext.IsLoadGame = true;
-        GameLaunchContext.SaveFileName = fileName;
-        GameLaunchContext.PlayIntroCutscene = false;
-        _loadScene(SceneNames.StrategyView);
     }
 
     /// <summary>

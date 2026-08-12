@@ -55,7 +55,7 @@ public sealed class OptionsSaveSlot
         string fileName
     )
     {
-        Name = SaveGameManager.NormalizeDisplayName(name);
+        Name = name ?? string.Empty;
         Date = date ?? string.Empty;
         FactionIcon = factionIcon;
         IsCreateNew = isCreateNew;

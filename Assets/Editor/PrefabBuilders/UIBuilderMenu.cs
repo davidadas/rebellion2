@@ -14,7 +14,6 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build All UI %#u", false, 0)]
     public static void BuildAll()
     {
-        UIAuthoringGuard.EnsureEditMode();
         RebuildOptionsMenuAndDependencies();
         MainMenuPrefabBuilder.Rebuild();
         StrategyViewPrefabBuilder.Rebuild();
@@ -53,7 +52,6 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build Main Menu UI", false, 20)]
     public static void BuildMainMenu()
     {
-        UIAuthoringGuard.EnsureEditMode();
         RebuildOptionsMenuAndDependencies();
         MainMenuPrefabBuilder.Rebuild();
         SaveAndRefresh();
@@ -65,7 +63,6 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build Options Menu UI", false, 21)]
     public static void BuildOptionsMenu()
     {
-        UIAuthoringGuard.EnsureEditMode();
         RebuildOptionsMenuAndDependencies();
         SaveAndRefresh();
     }
@@ -76,7 +73,6 @@ public static class UIBuilderMenu
     [MenuItem("Rebellion/Build/Build Strategy UI", false, 22)]
     public static void BuildStrategy()
     {
-        UIAuthoringGuard.EnsureEditMode();
         RebuildOptionsMenuAndDependencies();
         StrategyViewPrefabBuilder.Rebuild();
         SaveAndRefresh();

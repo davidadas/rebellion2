@@ -41,6 +41,7 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentModelCache _contentModelCache;
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
+    private DisplayManager _displayManager;
     private Task _mainMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
@@ -110,7 +111,7 @@ public sealed class AppBootstrap : MonoBehaviour
         Cursor.SetCursor(cursorTexture, Vector2.zero, CursorMode.Auto);
         _contentModelCache = new ContentModelCache(_contentAssets);
         GameLaunchContext.Reset(_contentPack);
-        _runtime = new GameRuntime(_sceneLoader.Load, _contentPack);
+        _runtime = new GameRuntime(_contentPack);
 
         if (audioManager == null)
             audioManager = AudioManager.EnsureExists(transform);
@@ -132,7 +133,8 @@ public sealed class AppBootstrap : MonoBehaviour
         if (inputManager == null)
             inputManager = CreateInputManager();
 
-        _userSettingsManager = new UserSettingsManager(audioManager, inputManager);
+        _displayManager = new DisplayManager();
+        _userSettingsManager = new UserSettingsManager(audioManager, _displayManager, inputManager);
         _userSettingsManager.Load();
 
         if (inputController == null)
@@ -303,6 +305,15 @@ public sealed class AppBootstrap : MonoBehaviour
     public InputManager GetInputManager()
     {
         return inputManager;
+    }
+
+    /// <summary>
+    /// Returns the application display manager.
+    /// </summary>
+    /// <returns>The active display manager.</returns>
+    public DisplayManager GetDisplayManager()
+    {
+        return _displayManager;
     }
 
     /// <summary>

@@ -8,10 +8,22 @@ using UnityEngine.UI;
 /// <summary>
 /// Authors reusable controls consumed by generated application UI.
 /// </summary>
-public static partial class CommonUIPrefabBuilder
+public static class CommonUIPrefabBuilder
 {
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";
+    private const string _confirmationDialogPrefabPath =
+        "Assets/Prefabs/UI/Common/ConfirmationDialog.prefab";
+    private const string _confirmationDialogTexturePath =
+        "Application/Common/UI/ui_common_confirmation_dialog.png";
+    private const string _confirmationYesTexturePath =
+        "Application/Common/UI/ui_common_confirmation_yes_button.png";
+    private const string _confirmationYesPressedTexturePath =
+        "Application/Common/UI/ui_common_confirmation_yes_button_pressed.png";
+    private const string _confirmationNoTexturePath =
+        "Application/Common/UI/ui_common_confirmation_no_button.png";
+    private const string _confirmationNoPressedTexturePath =
+        "Application/Common/UI/ui_common_confirmation_no_button_pressed.png";
     private const string _scrollUpTexturePath =
         "Application/Strategy/UI/Controls/ui_strategyview_scrollbar_arrow_up.png";
     private const string _scrollDownTexturePath =
@@ -22,15 +34,17 @@ public static partial class CommonUIPrefabBuilder
     private const int _defaultArrowHeight = 9;
     private const int _defaultInputWidth = 3;
     private const int _defaultControlHeight = 1;
+    private const int _confirmationSurfaceWidth = 640;
+    private const int _confirmationSurfaceHeight = 480;
 
     /// <summary>
     /// Rebuilds every reusable generated control prefab.
     /// </summary>
     public static void RebuildSharedControlPrefabs()
     {
-        UIAuthoringGuard.EnsureEditMode();
         BuildScrollAreaPrefab();
         BuildTextInputPrefab();
+        BuildConfirmationDialogPrefab();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
     }
@@ -362,5 +376,163 @@ public static partial class CommonUIPrefabBuilder
         if (!success || saved == null)
             throw new InvalidOperationException($"Failed to save prefab at {path}.");
         return saved;
+    }
+
+    /// <summary>
+    /// Creates a confirmation dialog under the supplied surface.
+    /// </summary>
+    /// <param name="parent">The surface that owns the modal dialog.</param>
+    /// <returns>The configured confirmation dialog.</returns>
+    internal static ConfirmationDialogView InstantiateConfirmationDialog(Transform parent)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            _confirmationDialogPrefabPath
+        );
+        if (prefab == null)
+            throw new MissingReferenceException(_confirmationDialogPrefabPath);
+
+        GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        ConfirmationDialogView view = instance.GetComponent<ConfirmationDialogView>();
+        if (view == null)
+            throw new MissingReferenceException("ConfirmationDialogView is missing.");
+        return view;
+    }
+
+    /// <summary>
+    /// Authors and saves the canonical confirmation dialog prefab.
+    /// </summary>
+    /// <returns>The saved confirmation dialog prefab root.</returns>
+    private static GameObject BuildConfirmationDialogPrefab()
+    {
+        GameObject root = new GameObject(
+            "ConfirmationDialog",
+            typeof(RectTransform),
+            typeof(ConfirmationDialogView)
+        );
+        SetSourceRect(
+            root.GetComponent<RectTransform>(),
+            0,
+            0,
+            _confirmationSurfaceWidth,
+            _confirmationSurfaceHeight
+        );
+        ConfirmationDialogView view = root.GetComponent<ConfirmationDialogView>();
+        view.enabled = true;
+
+        GameObject blockerObject = CreateRectObject("InputBlocker", root.transform);
+        blockerObject.AddComponent<CanvasRenderer>();
+        Image blocker = blockerObject.AddComponent<Image>();
+        blocker.color = new Color(0f, 0f, 0f, 0.8f);
+        blocker.raycastTarget = true;
+        FillParent(blocker.rectTransform);
+
+        RawImage background = CreateRawImage(
+            "BackgroundImage",
+            root.transform,
+            _confirmationDialogTexturePath
+        );
+        SetSourceRect(background.rectTransform, 114, 150, 412, 176);
+
+        RawImage confirmImage = CreateRawImage(
+            "ConfirmButtonImage",
+            root.transform,
+            _confirmationYesTexturePath
+        );
+        SetSourceRect(confirmImage.rectTransform, 252, 285, 57, 28);
+        Button confirmButton = CreateConfirmationButton(
+            confirmImage,
+            _confirmationYesPressedTexturePath,
+            out RawImagePressVisual confirmPressVisual
+        );
+
+        RawImage cancelImage = CreateRawImage(
+            "CancelButtonImage",
+            root.transform,
+            _confirmationNoTexturePath
+        );
+        SetSourceRect(cancelImage.rectTransform, 343, 285, 57, 28);
+        Button cancelButton = CreateConfirmationButton(
+            cancelImage,
+            _confirmationNoPressedTexturePath,
+            out RawImagePressVisual cancelPressVisual
+        );
+
+        TextMeshProUGUI message = CreateInputText(
+            "MessageTextField",
+            root.transform,
+            "Are you sure you want to quit?"
+        );
+        message.color = Color.white;
+        message.fontSize = 13;
+        message.alignment = TextAlignmentOptions.Center;
+        message.textWrappingMode = TextWrappingModes.Normal;
+        message.overflowMode = TextOverflowModes.Overflow;
+        SetSourceRect(message.rectTransform, 160, 172, 320, 100);
+
+        AssignReference(view, "backgroundImage", background);
+        AssignColor(view, "messageTextColor", Color.white);
+        AssignReference(view, "confirmButtonImage", confirmImage);
+        AssignReference(view, "confirmButton", confirmButton);
+        AssignReference(view, "confirmButtonPressVisual", confirmPressVisual);
+        AssignReference(view, "confirmButtonUpTexture", confirmImage.texture);
+        AssignReference(
+            view,
+            "confirmButtonDownTexture",
+            LoadRequiredTexture(_confirmationYesPressedTexturePath)
+        );
+        AssignReference(view, "cancelButtonImage", cancelImage);
+        AssignReference(view, "cancelButton", cancelButton);
+        AssignReference(view, "cancelButtonPressVisual", cancelPressVisual);
+        AssignReference(view, "cancelButtonUpTexture", cancelImage.texture);
+        AssignReference(
+            view,
+            "cancelButtonDownTexture",
+            LoadRequiredTexture(_confirmationNoPressedTexturePath)
+        );
+        AssignReference(view, "messageTextField", message);
+        root.SetActive(false);
+        return SavePrefab(root, _confirmationDialogPrefabPath);
+    }
+
+    /// <summary>
+    /// Adds the button and pressed-image behavior used by one confirmation choice.
+    /// </summary>
+    /// <param name="image">The authored image that receives pointer input.</param>
+    /// <param name="pressedTexturePath">The project path of the pressed-state texture.</param>
+    /// <param name="pressVisual">The configured pressed-image behavior.</param>
+    /// <returns>The configured Unity button.</returns>
+    private static Button CreateConfirmationButton(
+        RawImage image,
+        string pressedTexturePath,
+        out RawImagePressVisual pressVisual
+    )
+    {
+        image.raycastTarget = true;
+        Button button = image.gameObject.AddComponent<Button>();
+        button.targetGraphic = image;
+        button.transition = Selectable.Transition.None;
+
+        pressVisual = image.gameObject.AddComponent<RawImagePressVisual>();
+        pressVisual.enabled = true;
+        AssignReference(pressVisual, "image", image);
+        AssignReference(pressVisual, "button", button);
+        pressVisual.SetTextures(image.texture, LoadRequiredTexture(pressedTexturePath));
+        return button;
+    }
+
+    /// <summary>
+    /// Assigns a serialized color field while authoring a generated prefab.
+    /// </summary>
+    /// <param name="target">The component containing the serialized field.</param>
+    /// <param name="propertyName">The serialized field name.</param>
+    /// <param name="value">The color to assign.</param>
+    private static void AssignColor(UnityEngine.Object target, string propertyName, Color value)
+    {
+        UnityEditor.SerializedObject serializedObject = new UnityEditor.SerializedObject(target);
+        UnityEditor.SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null)
+            throw new System.MissingMemberException(target.GetType().Name, propertyName);
+        property.colorValue = value;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }
 }

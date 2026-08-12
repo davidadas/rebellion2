@@ -1,4 +1,3 @@
-using System;
 using Rebellion.Input;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -9,24 +8,13 @@ using UnityEngine.InputSystem;
 public sealed class InputManager : MonoBehaviour
 {
     private PlayerInputActions _actions;
-    private InputBindingStore _bindingStore;
 
     /// <summary>
     /// Gets the generated input action wrapper.
     /// </summary>
     public PlayerInputActions Actions
     {
-        get
-        {
-            KeyboardChordProcessor.EnsureRegistered();
-            if (_actions == null)
-            {
-                _actions = new PlayerInputActions();
-                _bindingStore = new InputBindingStore(_actions.asset);
-            }
-
-            return _actions;
-        }
+        get { return _actions ??= new PlayerInputActions(); }
     }
 
     /// <summary>
@@ -73,8 +61,7 @@ public sealed class InputManager : MonoBehaviour
     /// <returns>The serialized binding override data.</returns>
     public string SaveBindingOverrides()
     {
-        _ = Actions;
-        return _bindingStore.SaveOverrides();
+        return Actions.asset.SaveBindingOverridesAsJson();
     }
 
     /// <summary>
@@ -83,42 +70,9 @@ public sealed class InputManager : MonoBehaviour
     /// <param name="bindingOverrides">The serialized binding override data.</param>
     public void LoadBindingOverrides(string bindingOverrides)
     {
-        _ = Actions;
-        _bindingStore.LoadOverrides(bindingOverrides);
-    }
-
-    /// <summary>
-    /// Returns the identifier for a binding slot.
-    /// </summary>
-    internal Guid GetBindingSlotId(string actionPath, int slot)
-    {
-        _ = Actions;
-        return _bindingStore.GetSlotId(actionPath, slot);
-    }
-
-    /// <summary>
-    /// Changes the binding assigned to a slot.
-    /// </summary>
-    internal void ApplyBindingSlotOverride(string actionPath, int slot, string path)
-    {
-        _ = Actions;
-        _bindingStore.ApplySlotOverride(actionPath, slot, path);
-    }
-
-    /// <summary>
-    /// Returns the control path assigned to a binding slot.
-    /// </summary>
-    internal string GetEffectiveBindingSlotPath(string actionPath, int slot)
-    {
-        _ = Actions;
-        return _bindingStore.GetEffectiveSlotPath(actionPath, slot);
-    }
-
-    /// <summary>
-    /// Checks whether a control name represents a modifier key.
-    /// </summary>
-    internal static bool IsModifierControlName(string controlName)
-    {
-        return KeyboardChordProcessor.IsModifierControlName(controlName);
+        InputActionAsset asset = Actions.asset;
+        asset.RemoveAllBindingOverrides();
+        if (!string.IsNullOrWhiteSpace(bindingOverrides))
+            asset.LoadBindingOverridesFromJson(bindingOverrides);
     }
 }
