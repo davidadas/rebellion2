@@ -1,86 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game;
 using UnityEngine;
-
-/// <summary>
-/// Supplies the scene-level capabilities and commands used by the Options menu.
-/// </summary>
-public interface IOptionsMenuActions
-{
-    /// <summary>
-    /// Gets whether the Options footer can return to a running game.
-    /// </summary>
-    bool CanReturnToGame { get; }
-
-    /// <summary>
-    /// Gets whether the Options footer can leave for the Main Menu.
-    /// </summary>
-    bool CanReturnToMainMenu { get; }
-
-    /// <summary>
-    /// Gets whether the current scene can create and overwrite saves.
-    /// </summary>
-    bool CanWriteSaves { get; }
-
-    /// <summary>
-    /// Suspends scene interaction while Options is open.
-    /// </summary>
-    void PauseForOptions();
-
-    /// <summary>
-    /// Restores scene interaction after Options closes.
-    /// </summary>
-    void ResumeFromOptions();
-
-    /// <summary>
-    /// Returns the save rows available in the current scene.
-    /// </summary>
-    /// <returns>The save rows in display order.</returns>
-    IReadOnlyList<OptionsSaveSlot> GetSaveSlots();
-
-    /// <summary>
-    /// Creates a save using a player-entered display name.
-    /// </summary>
-    /// <param name="displayName">The requested display name.</param>
-    void CreateNamedSave(string displayName);
-
-    /// <summary>
-    /// Overwrites an existing save using the current game state.
-    /// </summary>
-    /// <param name="fileName">The save identifier.</param>
-    /// <param name="displayName">The display name to preserve or apply.</param>
-    void OverwriteSave(string fileName, string displayName);
-
-    /// <summary>
-    /// Loads an existing save.
-    /// </summary>
-    /// <param name="fileName">The save identifier.</param>
-    /// <returns>True when loading or scene transition began.</returns>
-    bool LoadSave(string fileName);
-
-    /// <summary>
-    /// Deletes an existing save.
-    /// </summary>
-    /// <param name="fileName">The save identifier.</param>
-    void DeleteSave(string fileName);
-
-    /// <summary>
-    /// Changes an existing save's display name.
-    /// </summary>
-    /// <param name="fileName">The save identifier.</param>
-    /// <param name="displayName">The new display name.</param>
-    void RenameSave(string fileName, string displayName);
-
-    /// <summary>
-    /// Leaves the current scene for the Main Menu.
-    /// </summary>
-    void ReturnToMainMenu();
-
-    /// <summary>
-    /// Exits the application.
-    /// </summary>
-    void QuitApplication();
-}
 
 /// <summary>
 /// Manages the Options menu.
@@ -93,20 +14,25 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private readonly Func<Vector2Int> _getWindowPosition;
     private readonly Action<UIWindow> _closeWindow;
     private readonly Action _markDirty;
+    private readonly AppBootstrap _bootstrap;
+    private readonly Func<string, bool> _loadSave;
+    private readonly IContentAssetSource _contentAssets;
+    private readonly FactionThemeLibrary _factionThemeLibrary;
 
     private readonly OptionsSettingsSession _settingsSession;
-    private readonly OptionsBindingEditor _bindingEditor;
+    private readonly OptionsBindingSession _bindingSession;
 
     private readonly List<OptionsSaveSlot> _saveSlots = new List<OptionsSaveSlot>();
     private int _selectedSlot = -1;
     private bool _saveSlotsLoaded;
 
-    private IOptionsMenuActions _actions;
     private Action _pendingConfirmAction;
     private bool _pendingConfirmKeepsVisible;
     private OptionsMenuView _view;
     private UIWindow _window;
     private OptionsMenuTab _activeTab = OptionsMenuTab.Graphics;
+    private TickSpeed _speedBeforeOptions;
+    private bool _gamePaused;
     private bool _disposed;
 
     /// <summary>
@@ -117,10 +43,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="windowManager">The window manager.</param>
     /// <param name="getWindowPosition">Returns the Options menu position.</param>
     /// <param name="closeWindow">Closes a registered window.</param>
-    /// <param name="userSettings">The user-settings store.</param>
-    /// <param name="displayManager">The display manager.</param>
-    /// <param name="audioManager">The audio manager.</param>
-    /// <param name="inputManager">The input manager.</param>
+    /// <param name="bootstrap">The application runtime and service owner.</param>
+    /// <param name="loadSave">Loads a save through the owning scene's hot- or cold-load flow.</param>
     /// <param name="markDirty">Marks the menu data as changed.</param>
     public OptionsMenuController(
         OptionsMenuView prefab,
@@ -128,10 +52,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        UserSettingsManager userSettings,
-        DisplayManager displayManager,
-        AudioManager audioManager,
-        InputManager inputManager,
+        AppBootstrap bootstrap,
+        Func<string, bool> loadSave,
         Action markDirty
     )
     {
@@ -142,18 +64,23 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         _closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         _markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
-        InputManager bindings =
-            inputManager ?? throw new ArgumentNullException(nameof(inputManager));
+        _bootstrap = bootstrap ?? throw new ArgumentNullException(nameof(bootstrap));
+        _loadSave = loadSave ?? throw new ArgumentNullException(nameof(loadSave));
+        _contentAssets = _bootstrap.GetContentAssets();
+        _factionThemeLibrary = new FactionThemeLibrary(
+            _bootstrap.GetContentPack().GameData.FactionThemes
+        );
+        InputManager bindings = _bootstrap.GetInputManager();
         _settingsSession = new OptionsSettingsSession(
-            userSettings,
-            displayManager,
-            audioManager,
+            _bootstrap.GetUserSettingsManager(),
+            _bootstrap.GetDisplayManager(),
+            _bootstrap.GetAudioManager(),
             bindings
         );
-        _bindingEditor = new OptionsBindingEditor(bindings);
-        _bindingEditor.Changed += _settingsSession.MarkInputChanged;
-        _bindingEditor.PresentationChanged += _markDirty;
-        _bindingEditor.ConflictRequested += HandleBindingConflictRequested;
+        _bindingSession = new OptionsBindingSession(bindings);
+        _bindingSession.Changed += _settingsSession.MarkInputChanged;
+        _bindingSession.PresentationChanged += _markDirty;
+        _bindingSession.ConflictRequested += HandleBindingConflictRequested;
     }
 
     /// <summary>
@@ -162,20 +89,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     public bool IsOpen => _window != null;
 
     /// <summary>
-    /// Sets the scene-level actions used by the Options menu.
-    /// </summary>
-    /// <param name="actions">The owning scene's capabilities and commands.</param>
-    public void Initialize(IOptionsMenuActions actions)
-    {
-        _actions = actions ?? throw new ArgumentNullException(nameof(actions));
-    }
-
-    /// <summary>
     /// Opens or focuses the Options menu.
     /// </summary>
     public void Open(OptionsMenuTab initialTab = OptionsMenuTab.Graphics)
     {
-        EnsureInitialized();
+        EnsureUsable();
         if (_window != null)
         {
             _windowManager.Focus(_window);
@@ -191,7 +109,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         }
 
         _settingsSession.Begin();
-        _bindingEditor.Rebuild();
+        _bindingSession.Rebuild();
         _activeTab = initialTab;
         _selectedSlot = -1;
         _saveSlotsLoaded = false;
@@ -216,7 +134,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             out _view
         );
         BindView(_view);
-        _actions.PauseForOptions();
+        PauseGame();
         _markDirty();
     }
 
@@ -230,14 +148,14 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         _pendingConfirmAction = null;
         _pendingConfirmKeepsVisible = false;
-        _bindingEditor.CancelRebind();
-        if (_bindingEditor.HasPendingConflict)
-            _bindingEditor.ResolveConflict(false);
-        _bindingEditor.SetTextEntryActive(false);
+        _bindingSession.CancelRebind();
+        if (_bindingSession.HasPendingConflict)
+            _bindingSession.ResolveConflict(false);
+        _bindingSession.SetTextEntryActive(false);
         UIWindow closing = _window;
         _window = null;
         _view = null;
-        _actions.ResumeFromOptions();
+        ResumeGame();
         _closeWindow(closing);
         _markDirty();
     }
@@ -253,10 +171,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_settingsSession.IsDirty)
             _settingsSession.Revert();
         Close();
-        _bindingEditor.Changed -= _settingsSession.MarkInputChanged;
-        _bindingEditor.PresentationChanged -= _markDirty;
-        _bindingEditor.ConflictRequested -= HandleBindingConflictRequested;
-        _bindingEditor.Dispose();
+        _bindingSession.Changed -= _settingsSession.MarkInputChanged;
+        _bindingSession.PresentationChanged -= _markDirty;
+        _bindingSession.ConflictRequested -= HandleBindingConflictRequested;
+        _bindingSession.Dispose();
         _disposed = true;
     }
 
@@ -273,10 +191,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _window,
                 _activeTab,
                 _settingsSession,
-                _bindingEditor,
+                _bindingSession,
                 _saveSlots,
                 _selectedSlot,
-                _actions
+                HasActiveGame()
             )
         );
     }
@@ -290,7 +208,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_window == null)
             return false;
 
-        if (_pendingConfirmAction != null || _bindingEditor.HasPendingConflict)
+        if (_pendingConfirmAction != null || _bindingSession.HasPendingConflict)
         {
             HandleConfirmDeclined();
             return true;
@@ -344,7 +262,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 () =>
                 {
                     _settingsSession.Revert();
-                    _bindingEditor.Rebuild();
+                    _bindingSession.Rebuild();
                     SwitchTab(tab);
                 }
             );
@@ -396,17 +314,16 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
 
         if (_saveSlots[slot].IsCreateNew)
         {
-            if (_actions.CanWriteSaves)
-                _actions.CreateNamedSave(newName);
+            CreateNamedSave(newName);
             _selectedSlot = -1;
         }
         else
         {
             string fileName = _saveSlots[slot].FileName;
-            if (submitted && _actions.CanWriteSaves)
-                _actions.OverwriteSave(fileName, newName);
+            if (submitted && HasActiveGame())
+                OverwriteSave(fileName, newName);
             else
-                _actions.RenameSave(fileName, newName);
+                SaveGameManager.Instance.SetSaveDisplayName(fileName, newName);
             RefreshSaveSlots(fileName);
             _markDirty();
             return;
@@ -431,7 +348,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             $"Delete \"{label}\"?",
             () =>
             {
-                _actions.DeleteSave(fileName);
+                SaveGameManager.Instance.DeleteSave(fileName);
                 _selectedSlot = -1;
                 RefreshSaveSlots();
                 _markDirty();
@@ -444,11 +361,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleSaveRequested()
     {
-        if (!_actions.CanWriteSaves || !IsSelectedExistingSave())
+        if (!HasActiveGame() || !IsSelectedExistingSave())
             return;
 
         string fileName = _saveSlots[_selectedSlot].FileName;
-        _actions.OverwriteSave(fileName, _saveSlots[_selectedSlot].Name);
+        OverwriteSave(fileName, _saveSlots[_selectedSlot].Name);
         RefreshSaveSlots(fileName);
         _markDirty();
     }
@@ -461,7 +378,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (!IsSelectedExistingSave())
             return;
 
-        if (_actions.LoadSave(_saveSlots[_selectedSlot].FileName))
+        if (_loadSave(_saveSlots[_selectedSlot].FileName))
             Close();
     }
 
@@ -482,16 +399,38 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="editing">True while a text field is focused for editing.</param>
     private void HandleRenameEditingChanged(bool editing)
     {
-        _bindingEditor.SetTextEntryActive(editing);
+        _bindingSession.SetTextEntryActive(editing);
     }
 
     /// <summary>
-    /// Rebuilds the cached save-slot list from the host.
+    /// Rebuilds the cached save-slot list from the shared save manager.
     /// </summary>
     private void RefreshSaveSlots(string selectedFileName = null)
     {
         _saveSlots.Clear();
-        _saveSlots.AddRange(_actions.GetSaveSlots());
+        if (HasActiveGame())
+            _saveSlots.Add(new OptionsSaveSlot("Create New Save", string.Empty, null, true, null));
+
+        foreach (SaveGameEntry entry in SaveGameManager.Instance.GetSavedGames())
+        {
+            string displayName = string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
+                ? entry.FileName
+                : entry.Metadata.SaveDisplayName;
+            string date =
+                entry.Metadata != null
+                    ? entry.Metadata.LastSavedUtc.ToLocalTime().ToString("g")
+                    : string.Empty;
+            _saveSlots.Add(
+                new OptionsSaveSlot(
+                    displayName,
+                    date,
+                    ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
+                    false,
+                    entry.FileName
+                )
+            );
+        }
+
         _selectedSlot = -1;
         if (string.IsNullOrEmpty(selectedFileName))
             return;
@@ -510,6 +449,48 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 return;
             }
         }
+    }
+
+    /// <summary>
+    /// Creates a named save from the active game.
+    /// </summary>
+    /// <param name="displayName">The requested display name.</param>
+    private void CreateNamedSave(string displayName)
+    {
+        GameRoot game = GetActiveGame();
+        if (game == null)
+            return;
+
+        string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
+        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
+    }
+
+    /// <summary>
+    /// Replaces an existing save with the active game.
+    /// </summary>
+    /// <param name="fileName">The save identifier.</param>
+    /// <param name="displayName">The display name to persist.</param>
+    private void OverwriteSave(string fileName, string displayName)
+    {
+        GameRoot game = GetActiveGame();
+        if (game == null || string.IsNullOrEmpty(fileName))
+            return;
+
+        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
+    }
+
+    /// <summary>
+    /// Resolves the faction icon displayed beside a saved game.
+    /// </summary>
+    /// <param name="factionId">The saved player-faction identifier.</param>
+    /// <returns>The configured faction icon, or null when none is available.</returns>
+    private Texture2D ResolveSaveFactionIcon(string factionId)
+    {
+        if (string.IsNullOrEmpty(factionId))
+            return null;
+
+        string path = _factionThemeLibrary.GetTheme(factionId)?.SavedGameSlotIconImagePath;
+        return string.IsNullOrEmpty(path) ? null : _contentAssets.GetTexture(path);
     }
 
     /// <summary>
@@ -546,7 +527,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void ApplyActiveDefaults()
     {
         _settingsSession.RestoreDefaults(_activeTab);
-        _bindingEditor.Rebuild();
+        _bindingSession.Rebuild();
         _markDirty();
     }
 
@@ -566,7 +547,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             () =>
             {
                 _settingsSession.Revert();
-                _bindingEditor.Rebuild();
+                _bindingSession.Rebuild();
                 Close();
             }
         );
@@ -581,7 +562,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _settingsSession.IsDirty
                 ? "Return to the Main Menu? Unsaved settings will be lost."
                 : "Return to the Main Menu?",
-            () => ExitWithoutSaving(_actions.ReturnToMainMenu),
+            () => ExitWithoutSaving(ReturnToMainMenu),
             true
         );
     }
@@ -595,7 +576,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _settingsSession.IsDirty
                 ? "Quit to desktop? Unsaved settings will be lost."
                 : "Quit to desktop?",
-            () => ExitWithoutSaving(_actions.QuitApplication),
+            () => ExitWithoutSaving(QuitApplication),
             true
         );
     }
@@ -633,10 +614,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// </summary>
     private void HandleConfirmAccepted()
     {
-        if (_bindingEditor.HasPendingConflict)
+        if (_bindingSession.HasPendingConflict)
         {
             _view?.HideConfirm();
-            _bindingEditor.ResolveConflict(true);
+            _bindingSession.ResolveConflict(true);
             return;
         }
 
@@ -655,9 +636,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void HandleConfirmDeclined()
     {
         _view?.HideConfirm();
-        if (_bindingEditor.HasPendingConflict)
+        if (_bindingSession.HasPendingConflict)
         {
-            _bindingEditor.ResolveConflict(false);
+            _bindingSession.ResolveConflict(false);
             return;
         }
 
@@ -672,7 +653,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="secondary">Whether the secondary column was clicked.</param>
     private void HandleRebindRequested(int row, bool secondary)
     {
-        _bindingEditor.BeginRebind(row, secondary);
+        _bindingSession.BeginRebind(row, secondary);
     }
 
     /// <summary>
@@ -760,8 +741,75 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _view = null;
             _window = null;
             if (wasOpen)
-                _actions?.ResumeFromOptions();
+                ResumeGame();
         }
+    }
+
+    /// <summary>
+    /// Gets the game currently owned by the application runtime.
+    /// </summary>
+    /// <returns>The active game, or null from the Main Menu.</returns>
+    private GameRoot GetActiveGame()
+    {
+        return _bootstrap.GetRuntime()?.GetActiveGame();
+    }
+
+    /// <summary>
+    /// Checks whether Options is running over an active game.
+    /// </summary>
+    /// <returns>True when saving and in-game navigation are available.</returns>
+    private bool HasActiveGame()
+    {
+        return GetActiveGame() != null;
+    }
+
+    /// <summary>
+    /// Pauses the active game and switches global input to the menu context.
+    /// </summary>
+    private void PauseGame()
+    {
+        GameManager gameManager = _bootstrap.GetRuntime()?.GetActiveGameManager();
+        if (gameManager == null || _gamePaused)
+            return;
+
+        _bootstrap.GetInputController()?.PushContext(InputContext.Menu);
+        _speedBeforeOptions = gameManager.GetGameSpeed();
+        gameManager.SetGameSpeed(TickSpeed.Paused);
+        _gamePaused = true;
+    }
+
+    /// <summary>
+    /// Restores the game and input state captured when Options opened.
+    /// </summary>
+    private void ResumeGame()
+    {
+        if (!_gamePaused)
+            return;
+
+        _bootstrap.GetInputController()?.PopContext();
+        _bootstrap.GetRuntime()?.GetActiveGameManager()?.SetGameSpeed(_speedBeforeOptions);
+        _gamePaused = false;
+    }
+
+    /// <summary>
+    /// Leaves the active game for the Main Menu scene.
+    /// </summary>
+    private void ReturnToMainMenu()
+    {
+        _bootstrap.GetRuntime()?.EndGame();
+        _bootstrap.LoadScene("MainMenu");
+    }
+
+    /// <summary>
+    /// Exits the player, or stops Play Mode in the Unity Editor.
+    /// </summary>
+    private static void QuitApplication()
+    {
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
     }
 
     /// <summary>
@@ -778,15 +826,11 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Checks that the Options menu has been initialized.
+    /// Checks that the Options menu has not been disposed.
     /// </summary>
-    private void EnsureInitialized()
+    private void EnsureUsable()
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(OptionsMenuController));
-        if (_actions == null)
-            throw new InvalidOperationException(
-                $"{nameof(OptionsMenuController)} must be initialized before use."
-            );
     }
 }

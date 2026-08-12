@@ -15,16 +15,16 @@ internal static class OptionsMenuProjector
     /// <param name="bindings">The staged binding transaction.</param>
     /// <param name="saveSlots">The save rows available in the current scene.</param>
     /// <param name="selectedSlot">The selected save-row index, or -1.</param>
-    /// <param name="actions">The capabilities supplied by the owning scene.</param>
+    /// <param name="hasActiveGame">Whether Options is open over an active game.</param>
     /// <returns>The immutable state rendered by the Options view.</returns>
     internal static OptionsMenuRenderData Build(
         UIWindow window,
         OptionsMenuTab activeTab,
         OptionsSettingsSession settings,
-        OptionsBindingEditor bindings,
+        OptionsBindingSession bindings,
         IReadOnlyList<OptionsSaveSlot> saveSlots,
         int selectedSlot,
-        IOptionsMenuActions actions
+        bool hasActiveGame
     )
     {
         if (window == null)
@@ -33,9 +33,6 @@ internal static class OptionsMenuProjector
             throw new ArgumentNullException(nameof(settings));
         if (bindings == null)
             throw new ArgumentNullException(nameof(bindings));
-        if (actions == null)
-            throw new ArgumentNullException(nameof(actions));
-
         return new OptionsMenuRenderData(
             window.X,
             window.Y,
@@ -47,10 +44,10 @@ internal static class OptionsMenuProjector
             bindings.Rows,
             saveSlots,
             selectedSlot,
-            actions.CanWriteSaves,
+            hasActiveGame,
             true,
-            actions.CanReturnToGame,
-            actions.CanReturnToMainMenu,
+            hasActiveGame,
+            hasActiveGame,
             bindings.ListeningRow,
             bindings.ListeningSecondary
         );

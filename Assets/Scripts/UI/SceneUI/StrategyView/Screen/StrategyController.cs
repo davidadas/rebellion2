@@ -38,8 +38,7 @@ public sealed class StrategyController
         IMissionCreateWindowActions,
         IMessagesWindowActions,
         IStatusWindowActions,
-        IBattleAlertWindowActions,
-        IOptionsMenuActions
+        IBattleAlertWindowActions
 {
     [SerializeField]
     private CanvasGroup contentGroup;
@@ -88,7 +87,6 @@ public sealed class StrategyController
     private EventSystem briefingEventSystem;
     private bool briefingSkipConfirmationOpen;
     private UIContext uiContext;
-    private FactionThemeLibrary _saveFactionThemeLibrary;
     private readonly List<(
         InputAction action,
         Action<InputAction.CallbackContext> callback
@@ -129,7 +127,6 @@ public sealed class StrategyController
     private StrategyWindowCommandController windowCommandController;
     private StrategyScreenInputController inputController;
     private OptionsMenuController _optionsMenuController;
-    private TickSpeed _speedBeforeOptions = TickSpeed.Paused;
 
     private IReadOnlyList<GalaxyMapSector> Sectors =>
         galaxyMapController?.Sectors ?? Array.Empty<GalaxyMapSector>();
@@ -384,21 +381,19 @@ public sealed class StrategyController
             CloseWindow,
             MarkDirty
         );
+        AppBootstrap bootstrap = AppBootstrap.Instance;
+        GameRuntime settingsRuntime = bootstrap.GetRuntime();
         _optionsMenuController = new OptionsMenuController(
             strategyWindowLayerView.OptionsMenuWindowPrefab,
             strategyWindowLayerView.GetWindowParent(true),
             strategyWindowManager,
             windowPlacementController.GetOptionsWindowPosition,
             CloseWindow,
-            AppBootstrap.Instance.GetUserSettingsManager(),
-            AppBootstrap.Instance.GetDisplayManager(),
-            AudioManager.EnsureExists(),
-            AppBootstrap.Instance.GetInputManager(),
+            bootstrap,
+            settingsRuntime.LoadGame,
             MarkDirty
         );
-        _optionsMenuController.Initialize(this);
         cancelStack?.Register(_optionsMenuController);
-        GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
         if (settingsRuntime != null)
             settingsRuntime.ToggleSettingsMenuRequested += HandleToggleOptions;
         WireStrategyInputActions();
@@ -3035,176 +3030,6 @@ public sealed class StrategyController
             _optionsMenuController.TryCancel();
         else
             _optionsMenuController.Open();
-    }
-
-    /// <summary>
-    /// Gets whether the Options menu can return to the running game.
-    /// </summary>
-    bool IOptionsMenuActions.CanReturnToGame => true;
-
-    /// <summary>
-    /// Gets whether the Options menu can return to the Main Menu.
-    /// </summary>
-    bool IOptionsMenuActions.CanReturnToMainMenu => true;
-
-    /// <summary>
-    /// Gets whether the running game can create and overwrite saves.
-    /// </summary>
-    bool IOptionsMenuActions.CanWriteSaves => true;
-
-    /// <summary>
-    /// Pauses the game while the Options menu is open.
-    /// </summary>
-    void IOptionsMenuActions.PauseForOptions()
-    {
-        AppBootstrap.Instance?.GetInputController()?.PushContext(InputContext.Menu);
-        if (gameManager == null)
-            return;
-
-        _speedBeforeOptions = gameManager.GetGameSpeed();
-        gameManager.SetGameSpeed(TickSpeed.Paused);
-    }
-
-    /// <summary>
-    /// Restores the game speed when the Options menu closes.
-    /// </summary>
-    void IOptionsMenuActions.ResumeFromOptions()
-    {
-        AppBootstrap.Instance?.GetInputController()?.PopContext();
-        gameManager?.SetGameSpeed(_speedBeforeOptions);
-    }
-
-    /// <summary>
-    /// Returns the save games displayed in the Options menu.
-    /// </summary>
-    /// <returns>The save rows, newest save first.</returns>
-    IReadOnlyList<OptionsSaveSlot> IOptionsMenuActions.GetSaveSlots()
-    {
-        List<OptionsSaveSlot> rows = new List<OptionsSaveSlot>
-        {
-            new OptionsSaveSlot("Create New Save", string.Empty, null, true, null),
-        };
-        foreach (SaveGameEntry entry in SaveGameManager.Instance.GetSavedGames())
-        {
-            string name = string.IsNullOrEmpty(entry.Metadata?.SaveDisplayName)
-                ? entry.FileName
-                : entry.Metadata.SaveDisplayName;
-            string date =
-                entry.Metadata != null
-                    ? entry.Metadata.LastSavedUtc.ToLocalTime().ToString("g")
-                    : string.Empty;
-            rows.Add(
-                new OptionsSaveSlot(
-                    name,
-                    date,
-                    ResolveSaveFactionIcon(entry.Metadata?.PlayerFactionID),
-                    false,
-                    entry.FileName
-                )
-            );
-        }
-
-        return rows;
-    }
-
-    /// <summary>
-    /// Creates a save game with the given display name.
-    /// </summary>
-    /// <param name="displayName">The display name for the new save.</param>
-    void IOptionsMenuActions.CreateNamedSave(string displayName)
-    {
-        GameRoot game = gameManager?.GetGame();
-        if (game == null)
-            return;
-
-        string fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
-        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
-    }
-
-    /// <summary>
-    /// Overwrites an existing save game.
-    /// </summary>
-    /// <param name="fileName">The save file to overwrite.</param>
-    /// <param name="displayName">The display name to preserve or apply.</param>
-    void IOptionsMenuActions.OverwriteSave(string fileName, string displayName)
-    {
-        GameRoot game = gameManager?.GetGame();
-        if (game == null || string.IsNullOrEmpty(fileName))
-            return;
-
-        SaveGameManager.Instance.SaveGameData(game, fileName, displayName);
-    }
-
-    /// <summary>
-    /// Loads a save game.
-    /// </summary>
-    /// <param name="fileName">The save file to load.</param>
-    /// <returns>True when a game was loaded.</returns>
-    bool IOptionsMenuActions.LoadSave(string fileName)
-    {
-        if (string.IsNullOrEmpty(fileName))
-            return false;
-
-        GameRuntime runtime = AppBootstrap.Instance?.GetRuntime();
-        return runtime?.LoadGame(fileName) ?? false;
-    }
-
-    /// <summary>
-    /// Deletes a save game.
-    /// </summary>
-    /// <param name="fileName">The save file to delete.</param>
-    void IOptionsMenuActions.DeleteSave(string fileName)
-    {
-        SaveGameManager.Instance.DeleteSave(fileName);
-    }
-
-    /// <summary>
-    /// Renames a save game.
-    /// </summary>
-    /// <param name="fileName">The save file to rename.</param>
-    /// <param name="displayName">The new display name.</param>
-    void IOptionsMenuActions.RenameSave(string fileName, string displayName)
-    {
-        SaveGameManager.Instance.SetSaveDisplayName(fileName, displayName);
-    }
-
-    /// <summary>
-    /// Returns the faction icon for a save game.
-    /// </summary>
-    /// <param name="factionId">The saved faction id, or null.</param>
-    /// <returns>The faction icon texture, or null.</returns>
-    private Texture2D ResolveSaveFactionIcon(string factionId)
-    {
-        if (string.IsNullOrEmpty(factionId))
-            return null;
-
-        _saveFactionThemeLibrary ??= new FactionThemeLibrary(
-            AppBootstrap.Instance.GetContentPack().GameData.FactionThemes
-        );
-        string path = _saveFactionThemeLibrary.GetTheme(factionId)?.SavedGameSlotIconImagePath;
-        return string.IsNullOrEmpty(path)
-            ? null
-            : AppBootstrap.Instance.GetContentAssets().GetTexture(path);
-    }
-
-    /// <summary>
-    /// Returns to the Main Menu.
-    /// </summary>
-    void IOptionsMenuActions.ReturnToMainMenu()
-    {
-        AppBootstrap.Instance.LoadScene("MainMenu");
-    }
-
-    /// <summary>
-    /// Quits the game.
-    /// </summary>
-    void IOptionsMenuActions.QuitApplication()
-    {
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
     }
 
     /// <summary>

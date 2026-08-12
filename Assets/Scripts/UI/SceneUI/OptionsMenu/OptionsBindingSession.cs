@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Manages the controls list and keyboard rebinding against authored binding slots.
 /// </summary>
-internal sealed class OptionsBindingEditor : IDisposable
+internal sealed class OptionsBindingSession : IDisposable
 {
     private static readonly string[] _modifierControlPaths =
     {
@@ -58,7 +58,7 @@ internal sealed class OptionsBindingEditor : IDisposable
     /// Creates a binding editor for the supplied input manager.
     /// </summary>
     /// <param name="inputManager">The application input manager.</param>
-    internal OptionsBindingEditor(InputManager inputManager)
+    internal OptionsBindingSession(InputManager inputManager)
     {
         _inputManager = inputManager ?? throw new ArgumentNullException(nameof(inputManager));
     }

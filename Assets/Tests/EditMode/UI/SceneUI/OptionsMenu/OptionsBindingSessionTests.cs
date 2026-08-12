@@ -6,7 +6,7 @@ using UnityEngine.InputSystem.LowLevel;
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 {
     [TestFixture]
-    public sealed class OptionsBindingEditorTests
+    public sealed class OptionsBindingSessionTests
     {
         private GameObject _root;
         private InputManager _inputManager;
@@ -45,11 +45,11 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 true
             );
 
-            string decreaseSignature = OptionsBindingEditor.GetBindingSignature(
+            string decreaseSignature = OptionsBindingSession.GetBindingSignature(
                 decrease,
                 FindBinding(decrease, "PrimaryChord")
             );
-            string increaseSignature = OptionsBindingEditor.GetBindingSignature(
+            string increaseSignature = OptionsBindingSession.GetBindingSignature(
                 increase,
                 FindBinding(increase, "PrimaryChord")
             );
@@ -82,8 +82,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
 
             Assert.AreEqual(
-                OptionsBindingEditor.GetBindingSignature(expected, expectedChord),
-                OptionsBindingEditor.GetBindingSignature(rebound, reboundChord)
+                OptionsBindingSession.GetBindingSignature(expected, expectedChord),
+                OptionsBindingSession.GetBindingSignature(rebound, reboundChord)
             );
         }
 
@@ -105,8 +105,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             chord.ApplyBindingOverride(FindPart(chord, chordIndex, "Binding"), "<Keyboard>/b");
 
             Assert.AreNotEqual(
-                OptionsBindingEditor.GetBindingSignature(plain, plainIndex),
-                OptionsBindingEditor.GetBindingSignature(chord, chordIndex)
+                OptionsBindingSession.GetBindingSignature(plain, plainIndex),
+                OptionsBindingSession.GetBindingSignature(chord, chordIndex)
             );
         }
 
