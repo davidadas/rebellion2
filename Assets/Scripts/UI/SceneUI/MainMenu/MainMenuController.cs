@@ -15,11 +15,16 @@ public sealed class MainMenuController : MonoBehaviour
     private MainMenuView view;
 
     [SerializeField]
+    private OptionsMenuView _optionsMenuPrefab;
+
+    [SerializeField]
     [Min(0f)]
     private float creditsMusicFadeDuration = 0.5f;
 
     private GameVictoryCondition currentVictoryCondition;
     private Canvas mainMenuCanvas;
+    private MainMenuOptionsHost _optionsHost;
+    private GameRuntime _settingsRuntime;
 
     /// <summary>
     /// Resets launch state and renders the authored initial selections.
@@ -34,7 +39,6 @@ public sealed class MainMenuController : MonoBehaviour
 
         ContentPack contentPack = AppBootstrap.EnsureExists().GetContentPack();
         GameLaunchContext.Reset(contentPack);
-        SaveMenuLaunchContext.Reset();
         currentVictoryCondition = GameLaunchContext.Summary.VictoryCondition;
 
         if (view == null)
@@ -57,6 +61,8 @@ public sealed class MainMenuController : MonoBehaviour
         if (view == null)
             return;
 
+        AppBootstrap.EnsureExists().GetInputController()?.SetContext(InputContext.Menu);
+
         view.GalaxySizeSelected += SelectGalaxySize;
         view.DifficultySelected += SelectGameDifficulty;
         view.StartGameRequested += HandleStartGameRequested;
@@ -65,6 +71,11 @@ public sealed class MainMenuController : MonoBehaviour
         view.ExitRequested += ExitApplication;
         view.CreditsRequested += ShowCredits;
         view.AudioCueRequested += PlayAudioCue;
+
+        // Options Menu.
+        _settingsRuntime = AppBootstrap.EnsureExists().GetRuntime();
+        if (_settingsRuntime != null)
+            _settingsRuntime.ToggleSettingsMenuRequested += HandleToggleSettingsMenu;
     }
 
     /// <summary>
@@ -119,6 +130,28 @@ public sealed class MainMenuController : MonoBehaviour
         view.ExitRequested -= ExitApplication;
         view.CreditsRequested -= ShowCredits;
         view.AudioCueRequested -= PlayAudioCue;
+
+        if (_settingsRuntime != null)
+            _settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleSettingsMenu;
+    }
+
+    /// <summary>
+    /// Destroys the Options menu.
+    /// </summary>
+    private void OnDestroy()
+    {
+        _optionsHost?.Dispose();
+        _optionsHost = null;
+    }
+
+    /// <summary>
+    /// Opens the Options menu from its keyboard shortcut.
+    /// </summary>
+    private void HandleToggleSettingsMenu()
+    {
+        EnsureOptionsHost();
+        if (_optionsHost?.IsOpen == false)
+            _optionsHost.Open();
     }
 
     /// <summary>
@@ -200,12 +233,51 @@ public sealed class MainMenuController : MonoBehaviour
     }
 
     /// <summary>
-    /// Opens the save-menu scene in load mode.
+    /// Opens the Options menu.
     /// </summary>
     private void OpenLoadGameMenu()
     {
-        SaveMenuLaunchContext.OpenFromMainMenu();
-        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.SaveMenuSceneName);
+        EnsureOptionsHost();
+        _optionsHost?.Open();
+    }
+
+    /// <summary>
+    /// Updates the Options menu.
+    /// </summary>
+    private void Update()
+    {
+        _optionsHost?.Tick();
+    }
+
+    /// <summary>
+    /// Creates the Options menu when it is first opened.
+    /// </summary>
+    private void EnsureOptionsHost()
+    {
+        if (_optionsHost != null)
+            return;
+        if (_optionsMenuPrefab == null)
+        {
+            Debug.LogWarning(
+                "MainMenu options prefab is not assigned; run Build Main Menu UI to wire it."
+            );
+            return;
+        }
+
+        AppBootstrap bootstrap = AppBootstrap.EnsureExists();
+        FactionThemeLibrary themeLibrary = new FactionThemeLibrary(
+            bootstrap.GetContentPack().GameData.FactionThemes
+        );
+        _optionsHost = new MainMenuOptionsHost(
+            mainMenuCanvas.transform,
+            _optionsMenuPrefab,
+            bootstrap.GetContentAssets(),
+            themeLibrary,
+            bootstrap.GetUserSettingsManager(),
+            AudioManager.EnsureExists(),
+            bootstrap.GetInputManager(),
+            bootstrap.GetCancelStack()
+        );
     }
 
     /// <summary>
@@ -237,7 +309,10 @@ public sealed class MainMenuController : MonoBehaviour
         GameLaunchContext.SaveFileName = null;
         GameLaunchContext.PlayIntroCutscene = true;
 
+        // Start a new game session.
+        AppBootstrap.Instance.GetRuntime()?.EndGame();
+
         AudioManager.EnsureExists().StopMusic();
-        AppBootstrap.Instance.LoadScene(SaveMenuLaunchContext.StrategyViewSceneName);
+        AppBootstrap.Instance.LoadScene(SceneNames.StrategyView);
     }
 }

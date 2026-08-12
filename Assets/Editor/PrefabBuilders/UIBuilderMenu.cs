@@ -15,8 +15,8 @@ public static class UIBuilderMenu
     public static void BuildAll()
     {
         UIAuthoringGuard.EnsureEditMode();
+        RebuildOptionsMenuAndDependencies();
         MainMenuPrefabBuilder.Rebuild();
-        SaveMenuPrefabBuilder.Rebuild();
         StrategyViewPrefabBuilder.Rebuild();
         SaveAndRefresh();
     }
@@ -37,7 +37,7 @@ public static class UIBuilderMenu
             {
                 "Assets/Prefabs/UI/Common",
                 "Assets/Prefabs/UI/MainMenu",
-                "Assets/Prefabs/UI/SaveMenu",
+                "Assets/Prefabs/UI/OptionsMenu",
                 "Assets/Prefabs/UI/StrategyView",
             }
         );
@@ -54,18 +54,19 @@ public static class UIBuilderMenu
     public static void BuildMainMenu()
     {
         UIAuthoringGuard.EnsureEditMode();
+        RebuildOptionsMenuAndDependencies();
         MainMenuPrefabBuilder.Rebuild();
         SaveAndRefresh();
     }
 
     /// <summary>
-    /// Rebuilds the generated save-game UI.
+    /// Rebuilds the generated Options menu UI.
     /// </summary>
-    [MenuItem("Rebellion/Build/Build Save Game UI", false, 21)]
-    public static void BuildSaveGame()
+    [MenuItem("Rebellion/Build/Build Options Menu UI", false, 21)]
+    public static void BuildOptionsMenu()
     {
         UIAuthoringGuard.EnsureEditMode();
-        SaveMenuPrefabBuilder.Rebuild();
+        RebuildOptionsMenuAndDependencies();
         SaveAndRefresh();
     }
 
@@ -76,8 +77,18 @@ public static class UIBuilderMenu
     public static void BuildStrategy()
     {
         UIAuthoringGuard.EnsureEditMode();
+        RebuildOptionsMenuAndDependencies();
         StrategyViewPrefabBuilder.Rebuild();
         SaveAndRefresh();
+    }
+
+    /// <summary>
+    /// Rebuilds the shared controls before the Options menu that consumes them.
+    /// </summary>
+    private static void RebuildOptionsMenuAndDependencies()
+    {
+        CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
+        OptionsMenuPrefabBuilder.Rebuild();
     }
 
     /// <summary>

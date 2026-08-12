@@ -156,6 +156,18 @@ public sealed class GalacticInformationDisplayController : ICancelable
     }
 
     /// <summary>
+    /// Selects an information filter from a keyboard shortcut.
+    /// </summary>
+    /// <param name="mode">The selected filter mode.</param>
+    internal void SelectFilterFromShortcut(GalacticInformationFilterMode mode)
+    {
+        if (filterMode != mode)
+            playSfx(StrategyUISoundPaths.GalacticInformationControl);
+
+        SelectFilter(mode);
+    }
+
+    /// <summary>
     /// Opens one category submenu and clears competing hover state.
     /// </summary>
     /// <param name="categoryIndex">The requested category index.</param>

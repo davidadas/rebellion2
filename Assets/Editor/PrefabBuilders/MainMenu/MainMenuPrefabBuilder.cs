@@ -20,6 +20,8 @@ using Object = UnityEngine.Object;
 public static class MainMenuPrefabBuilder
 {
     private const string _scenePath = "Assets/Scenes/MainMenu.unity";
+    private const string _optionsMenuPrefabPath =
+        "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _sceneTemplatePath =
         "Assets/Editor/PrefabBuilders/Templates/MainMenu.unity";
     private const string _sceneInstanceName = "MainMenuRoot";
@@ -39,6 +41,7 @@ public static class MainMenuPrefabBuilder
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
     private const string _exitSelectSfxPath = "Application/MainMenu/Audio/exit-select";
     private const string _galaxySizeSelectSfxPath = "Application/MainMenu/Audio/galaxysize-select";
+    private const string _factionSelectSfxPath = "Application/MainMenu/Audio/faction-select";
 
     // Icon turntable speed: one full revolution per second (matched the original 2D flipbook loop).
     private const float _iconTurnDegreesPerSecond = 360f;
@@ -227,7 +230,7 @@ public static class MainMenuPrefabBuilder
                 .transform.Find("PressedImage")
                 .gameObject;
         serializedView.FindProperty("exitConfirmationDialog").objectReferenceValue =
-            FindRequiredComponent<SaveMenuConfirmDialogView>(root, "ConfirmDialog");
+            FindRequiredComponent<ConfirmationDialogView>(root, "ConfirmDialog");
         serializedView.FindProperty("creditsButton").objectReferenceValue =
             FindRequiredComponent<Button>(root, "CreditsButton");
         serializedView.FindProperty("victoryConditionButton").objectReferenceValue =
@@ -267,14 +270,14 @@ public static class MainMenuPrefabBuilder
             ("EasyDifficultyToggle", _selectSfxPath),
             ("MediumDifficultyToggle", _selectSfxPath),
             ("HardDifficultyToggle", _selectSfxPath),
-            ("SmallGalaxyToggle", _selectSfxPath),
-            ("MediumGalaxyToggle", _selectSfxPath),
-            ("LargeGalaxyToggle", _selectSfxPath),
+            ("SmallGalaxyToggle", _galaxySizeSelectSfxPath),
+            ("MediumGalaxyToggle", _galaxySizeSelectSfxPath),
+            ("LargeGalaxyToggle", _galaxySizeSelectSfxPath),
             ("ExitButton", _exitSelectSfxPath),
             ("CreditsButton", _selectSfxPath),
             ("LoadGameButton", _selectSfxPath),
-            ("LeftFactionLaunchButton", _galaxySizeSelectSfxPath),
-            ("RightFactionLaunchButton", _galaxySizeSelectSfxPath),
+            ("LeftFactionLaunchButton", _factionSelectSfxPath),
+            ("RightFactionLaunchButton", _factionSelectSfxPath),
             ("VictoryConditionButton", _selectSfxPath),
             ("VictoryConditionIcon", _selectSfxPath),
         };
@@ -342,6 +345,11 @@ public static class MainMenuPrefabBuilder
         MainMenuController controller = controllerObject.AddComponent<MainMenuController>();
         MainMenuView view = controllerObject.AddComponent<MainMenuView>();
         AssignReference(controller, "view", view);
+        AssignReference(
+            controller,
+            "_optionsMenuPrefab",
+            AssetDatabase.LoadAssetAtPath<OptionsMenuView>(_optionsMenuPrefabPath)
+        );
         AssignFloat(controller, "creditsMusicFadeDuration", 0.5f);
         return controller;
     }
@@ -437,11 +445,11 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Authors the same modal exit confirmation used by the save menu.
+    /// Authors the shared modal exit confirmation.
     /// </summary>
     private static void BuildExitConfirmationDialog(Transform parent)
     {
-        SaveMenuConfirmDialogView dialog = SaveMenuPrefabBuilder.CreateConfirmDialog(parent);
+        ConfirmationDialogView dialog = CommonUIPrefabBuilder.CreateConfirmationDialog(parent);
         RectTransform rect = dialog.transform as RectTransform;
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1223,7 +1231,7 @@ public static class MainMenuPrefabBuilder
             .transform.Find("PressedImage")
             .gameObject;
         serializedView.FindProperty("exitConfirmationDialog").objectReferenceValue =
-            FindRequiredComponent<SaveMenuConfirmDialogView>(root, "ConfirmDialog");
+            FindRequiredComponent<ConfirmationDialogView>(root, "ConfirmDialog");
         serializedView.ApplyModifiedPropertiesWithoutUndo();
         AssignReference(controller, "view", view);
         RemoveControllerPersistentCalls(root, controller);

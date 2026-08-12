@@ -151,6 +151,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
         }
 
         [Test]
+        public void SelectFilterFromShortcut_ChangedFilter_PlaysControlSoundAndRequestsRender()
+        {
+            _controller.SelectFilterFromShortcut(GalacticInformationFilterMode.Troopers);
+
+            Assert.AreEqual(GalacticInformationFilterMode.Troopers, _controller.FilterMode);
+            CollectionAssert.AreEqual(
+                new[] { StrategyUISoundPaths.GalacticInformationControl },
+                _playedSounds
+            );
+            Assert.AreEqual(1, _actions.RenderRequestCount);
+        }
+
+        [Test]
+        public void SelectFilterFromShortcut_ActiveFilter_DoesNotRepeatControlSound()
+        {
+            _controller.SelectFilter(GalacticInformationFilterMode.Troopers);
+            _actions.RenderRequestCount = 0;
+
+            _controller.SelectFilterFromShortcut(GalacticInformationFilterMode.Troopers);
+
+            Assert.IsEmpty(_playedSounds);
+            Assert.AreEqual(1, _actions.RenderRequestCount);
+        }
+
+        [Test]
         public void SelectorControls_FilterSelection_RouteSemanticControllerAction()
         {
             _controller.Show();

@@ -128,6 +128,47 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void SaveGameData_OverlongDisplayName_TruncatesStoredName()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SaveGameData(game, _saveFileName, overlongName);
+
+            GameRoot loadedGame = _saveGameManager.LoadGameData(_saveFileName);
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                loadedGame.Metadata.SaveDisplayName.Length
+            );
+        }
+
+        [Test]
+        public void SetSaveDisplayName_OverlongName_TruncatesMetadataName()
+        {
+            GameRoot game = new GameRoot
+            {
+                Summary = new GameSummary(),
+                Factions = _factions,
+                Galaxy = new GalaxyMap(),
+            };
+            _saveGameManager.SaveGameData(game, _saveFileName, "Initial Name");
+            string overlongName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
+
+            _saveGameManager.SetSaveDisplayName(_saveFileName, overlongName);
+
+            SaveGameEntry entry = _saveGameManager.GetSavedGames().Single();
+            Assert.AreEqual(
+                SaveGameManager.MaxDisplayNameLength,
+                entry.Metadata.SaveDisplayName.Length
+            );
+        }
+
+        [Test]
         public void SaveSlotGameData_ValidGame_WritesMetadataSidecar()
         {
             GameRoot game = new GameRoot

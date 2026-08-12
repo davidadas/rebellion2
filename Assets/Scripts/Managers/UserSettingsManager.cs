@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -11,6 +12,7 @@ public sealed class UserSettingsManager
 
     private readonly AudioManager _audioManager;
     private readonly InputManager _inputManager;
+    private readonly string _settingsFilePathOverride;
 
     /// <summary>
     /// Gets the active user settings.
@@ -23,9 +25,23 @@ public sealed class UserSettingsManager
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
     public UserSettingsManager(AudioManager audioManager, InputManager inputManager)
+        : this(audioManager, inputManager, null) { }
+
+    /// <summary>
+    /// Creates a user settings manager that uses the given file path.
+    /// </summary>
+    /// <param name="audioManager">The audio manager that receives audio settings.</param>
+    /// <param name="inputManager">The input manager that receives binding overrides.</param>
+    /// <param name="settingsFilePath">The exact settings file path.</param>
+    internal UserSettingsManager(
+        AudioManager audioManager,
+        InputManager inputManager,
+        string settingsFilePath
+    )
     {
         _audioManager = audioManager;
         _inputManager = inputManager;
+        _settingsFilePathOverride = settingsFilePath;
     }
 
     /// <summary>
@@ -34,7 +50,8 @@ public sealed class UserSettingsManager
     /// <returns>The absolute user settings file path.</returns>
     public string GetSettingsFilePath()
     {
-        return Path.Combine(Application.persistentDataPath, _settingsFileName);
+        return _settingsFilePathOverride
+            ?? Path.Combine(Application.persistentDataPath, _settingsFileName);
     }
 
     /// <summary>
@@ -108,7 +125,12 @@ public sealed class UserSettingsManager
 
         string path = GetSettingsFilePath();
         Directory.CreateDirectory(Path.GetDirectoryName(path));
-        File.WriteAllText(path, JsonUtility.ToJson(settings, true));
+        string temporaryPath = path + ".tmp";
+        File.WriteAllText(temporaryPath, JsonUtility.ToJson(settings, true));
+        if (File.Exists(path))
+            File.Replace(temporaryPath, path, null);
+        else
+            File.Move(temporaryPath, path);
     }
 
     /// <summary>
@@ -126,19 +148,26 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Applies the saved display mode once during startup. Zero dimensions select the
-    /// current display's native resolution.
+    /// Applies the saved display settings when the game starts.
     /// </summary>
     /// <param name="video">The normalized video settings.</param>
     private static void ApplyVideoSettings(UserVideoSettings video)
     {
+        List<Vector2Int> supported = DisplayResolutionPolicy.GetSupportedResolutions();
+        Vector2Int resolution = DisplayResolutionPolicy.Resolve(
+            supported,
+            video.ResolutionWidth,
+            video.ResolutionHeight,
+            Display.main.systemWidth,
+            Display.main.systemHeight
+        );
+        video.ResolutionWidth = resolution.x;
+        video.ResolutionHeight = resolution.y;
+
         if (Application.isEditor)
             return;
 
-        int width = video.ResolutionWidth > 0 ? video.ResolutionWidth : Display.main.systemWidth;
-        int height =
-            video.ResolutionHeight > 0 ? video.ResolutionHeight : Display.main.systemHeight;
-        Screen.SetResolution(width, height, (FullScreenMode)video.FullScreenMode);
+        Screen.SetResolution(resolution.x, resolution.y, (FullScreenMode)video.FullScreenMode);
     }
 
     /// <summary>

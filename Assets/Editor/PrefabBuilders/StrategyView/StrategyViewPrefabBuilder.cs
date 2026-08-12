@@ -47,6 +47,8 @@ public static class StrategyViewPrefabBuilder
         "Assets/Prefabs/UI/StrategyView/MessagesWindow.prefab";
     private const string _encyclopediaWindowPrefabPath =
         "Assets/Prefabs/UI/StrategyView/EncyclopediaWindow.prefab";
+    private const string _optionsMenuWindowPrefabPath =
+        "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
     private const string _planetSystemClusterPrefabPath =
         "Assets/Prefabs/UI/StrategyView/PlanetSystemCluster.prefab";
     private const string _commonScrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
@@ -254,7 +256,7 @@ public static class StrategyViewPrefabBuilder
     private const int _constructionCountButtonWidth = 13;
     private const int _constructionCountButtonHeight = 8;
     private static readonly Color32 _sectorWindowBackgroundOverlay = new Color32(57, 57, 57, 230);
-    private static readonly Color32 _modalBackgroundDimColor = new Color32(80, 80, 80, 160);
+    private static readonly Color32 _modalBackgroundDimColor = new Color32(0, 0, 0, 204);
 
     private static FactionThemes _previewThemes;
     private static string _previewThemeId;
@@ -613,6 +615,9 @@ public static class StrategyViewPrefabBuilder
         EncyclopediaWindowView encyclopediaWindowPrefab = LoadWindowPrefab<EncyclopediaWindowView>(
             _encyclopediaWindowPrefabPath
         );
+        OptionsMenuView optionsMenuWindowPrefab = LoadWindowPrefab<OptionsMenuView>(
+            _optionsMenuWindowPrefabPath
+        );
         PlanetSystemClusterView planetSystemClusterPrefab =
             LoadPrefabComponent<PlanetSystemClusterView>(_planetSystemClusterPrefabPath);
 
@@ -824,8 +829,8 @@ public static class StrategyViewPrefabBuilder
             CreateGalacticInformationDisplayView(root.transform);
 
         StrategyContextMenuPresenter contextMenu = CreateContextMenu(root.transform);
-        SaveMenuConfirmDialogView briefingSkipConfirmation =
-            SaveMenuPrefabBuilder.CreateConfirmDialog(root.transform);
+        ConfirmationDialogView briefingSkipConfirmation =
+            CommonUIPrefabBuilder.CreateConfirmationDialog(root.transform);
         RectTransform briefingConfirmationRect =
             briefingSkipConfirmation.transform as RectTransform;
         briefingConfirmationRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -836,8 +841,13 @@ public static class StrategyViewPrefabBuilder
         float briefingHorizontalOffset = (_screenWidth - 640f) / 2f;
         foreach (RectTransform child in briefingConfirmationRect)
         {
-            if (child.name != "InputBlocker")
-                child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
+            if (child.name == "InputBlocker")
+            {
+                FillParent(child);
+                continue;
+            }
+
+            child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
         }
         briefingSkipConfirmation.transform.SetAsLastSibling();
 
@@ -874,7 +884,8 @@ public static class StrategyViewPrefabBuilder
             confirmDialogWindowPrefab,
             battleAlertWindowPrefab,
             finderWindowPrefab,
-            encyclopediaWindowPrefab
+            encyclopediaWindowPrefab,
+            optionsMenuWindowPrefab
         );
         AssignWindowLayerLayout(windowsView);
         AssignReference(hudView, "backgroundImage", hudBackgroundImage);
@@ -907,15 +918,13 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
-    /// Rebuilds shared controls, every Strategy window, and the Strategy View root in dependency
-    /// order.
+    /// Rebuilds every Strategy window and the Strategy View root in dependency order.
     /// </summary>
     public static void RebuildAllStrategyViewPrefabs()
     {
         UIAuthoringGuard.EnsureEditMode();
         _previewThemes = null;
         _previewThemeId = null;
-        CommonUIPrefabBuilder.RebuildSharedControlPrefabs();
 
         PlanetSystemPlanetView planetPrefab = BuildPlanetSystemPlanetPrefab();
         BuildPlanetSystemWindowPrefab(planetPrefab);
@@ -3592,7 +3601,8 @@ public static class StrategyViewPrefabBuilder
                 LoadWindowPrefab<ConfirmDialogWindowView>(_confirmDialogWindowPrefabPath),
                 LoadWindowPrefab<BattleAlertWindowView>(_battleAlertWindowPrefabPath),
                 LoadWindowPrefab<FinderWindowView>(_finderWindowPrefabPath),
-                LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath)
+                LoadWindowPrefab<EncyclopediaWindowView>(_encyclopediaWindowPrefabPath),
+                LoadWindowPrefab<OptionsMenuView>(_optionsMenuWindowPrefabPath)
             );
 
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath, out bool success);
@@ -8577,6 +8587,7 @@ public static class StrategyViewPrefabBuilder
     /// <param name="battleAlertWindowPrefab">The battle-alert window prefab.</param>
     /// <param name="finderWindowPrefab">The Finder window prefab.</param>
     /// <param name="encyclopediaWindowPrefab">The encyclopedia window prefab.</param>
+    /// <param name="optionsMenuWindowPrefab">The shared Options window prefab.</param>
     private static void AssignWindowPrefabs(
         StrategyWindowLayerView target,
         PlanetSystemWindowView planetSystemWindowPrefab,
@@ -8592,7 +8603,8 @@ public static class StrategyViewPrefabBuilder
         ConfirmDialogWindowView confirmDialogWindowPrefab,
         BattleAlertWindowView battleAlertWindowPrefab,
         FinderWindowView finderWindowPrefab,
-        EncyclopediaWindowView encyclopediaWindowPrefab
+        EncyclopediaWindowView encyclopediaWindowPrefab,
+        OptionsMenuView optionsMenuWindowPrefab
     )
     {
         AssignWindowPrefab(target, "planetSystemWindowPrefab", planetSystemWindowPrefab);
@@ -8609,6 +8621,7 @@ public static class StrategyViewPrefabBuilder
         AssignWindowPrefab(target, "battleAlertWindowPrefab", battleAlertWindowPrefab);
         AssignWindowPrefab(target, "finderWindowPrefab", finderWindowPrefab);
         AssignWindowPrefab(target, "encyclopediaWindowPrefab", encyclopediaWindowPrefab);
+        AssignWindowPrefab(target, "_optionsMenuWindowPrefab", optionsMenuWindowPrefab);
     }
 
     /// <summary>

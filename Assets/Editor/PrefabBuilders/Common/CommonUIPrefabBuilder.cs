@@ -6,9 +6,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Authors the reusable UI control prefabs consumed by generated Strategy and Save Menu prefabs.
+/// Authors reusable controls consumed by generated application UI.
 /// </summary>
-public static class CommonUIPrefabBuilder
+public static partial class CommonUIPrefabBuilder
 {
     private const string _scrollAreaPrefabPath = "Assets/Prefabs/UI/Common/ScrollArea.prefab";
     private const string _textInputPrefabPath = "Assets/Prefabs/UI/Common/TextInput.prefab";

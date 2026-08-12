@@ -150,7 +150,7 @@ public sealed class MainMenuView : MonoBehaviour
     private GameObject exitPressedImage;
 
     [SerializeField]
-    private SaveMenuConfirmDialogView exitConfirmationDialog;
+    private ConfirmationDialogView exitConfirmationDialog;
 
     [SerializeField]
     private Button creditsButton;

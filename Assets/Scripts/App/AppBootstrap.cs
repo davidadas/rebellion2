@@ -14,7 +14,6 @@ public sealed class AppBootstrap : MonoBehaviour
     private const string _defaultCursorAddress =
         "Application/Common/UI/ui_common_cursor_default_outlined";
     private const string _mainMenuPreloadID = "main-menu";
-    private const string _saveMenuPreloadID = "save-menu";
     private const string _strategyPreloadID = "strategy";
 
 #if UNITY_EDITOR
@@ -43,11 +42,9 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentPack _contentPack;
     private CutsceneManager _cutsceneManager;
     private Task _mainMenuContentTask;
-    private Task _saveMenuContentTask;
     private Task _strategyContentTask;
     private GameRuntime _runtime;
     private SceneLoader _sceneLoader;
-    private ContentPreloadManifest _saveMenuApplicationPreload;
     private ContentPreloadManifest _strategyApplicationPreload;
     private UserSettingsManager _userSettingsManager;
 
@@ -99,10 +96,6 @@ public sealed class AppBootstrap : MonoBehaviour
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.ContentRootPath,
             _mainMenuPreloadID
-        );
-        _saveMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
-            _contentPack.ContentRootPath,
-            _saveMenuPreloadID
         );
         _strategyApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
             _contentPack.ContentRootPath,
@@ -165,19 +158,6 @@ public sealed class AppBootstrap : MonoBehaviour
     internal Task InitializeMainMenuSceneAsync()
     {
         return InitializeMainMenuContentAsync();
-    }
-
-    /// <summary>
-    /// Loads all content required by the save-menu scene.
-    /// </summary>
-    /// <returns>The shared save-menu preload task.</returns>
-    internal Task InitializeSaveMenuContentAsync()
-    {
-        _saveMenuContentTask ??= Task.WhenAll(
-            _contentAssets.PreloadAsync(_saveMenuApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_saveMenuPreloadID))
-        );
-        return _saveMenuContentTask;
     }
 
     /// <summary>
@@ -323,6 +303,15 @@ public sealed class AppBootstrap : MonoBehaviour
     public InputManager GetInputManager()
     {
         return inputManager;
+    }
+
+    /// <summary>
+    /// Returns the input context controller.
+    /// </summary>
+    /// <returns>The active application input controller.</returns>
+    public AppInputController GetInputController()
+    {
+        return inputController;
     }
 
     /// <summary>

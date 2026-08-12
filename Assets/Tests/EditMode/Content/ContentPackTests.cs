@@ -25,7 +25,6 @@ namespace Rebellion.Tests.Content
         }
 
         [TestCase("main-menu")]
-        [TestCase("save-menu")]
         [TestCase("strategy")]
         public void PreloadManifests_ConfiguredScope_MatchesContentOwner(string preloadID)
         {

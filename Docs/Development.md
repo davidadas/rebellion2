@@ -17,12 +17,13 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or any copyright
 2. Copy `rebellion2-media/Content/` to `rebellion2/Assets/Content/`.
 3. Copy `rebellion2-media/Models/MainMenu/` to
    `rebellion2/Assets/Art/Models/MainMenu/`.
-4. Open `rebellion2` in Unity and allow the assets to import.
-5. Run **Rebellion > UI > Build All**.
+4. Copy `rebellion2-media/UI/` to `rebellion2/Assets/UI/`.
+5. Open `rebellion2` in Unity and allow the assets to import.
+6. Run **Rebellion > UI > Build All**.
 
-The copied content, generated UI prefabs, and generated scenes are local development artifacts and
-are ignored by Git. Repeat the copies when `rebellion2-media` changes and rebuild the UI after
-changing builder code or content used by a builder.
+The copied content and UI, generated UI prefabs, and generated scenes are local development
+artifacts and are ignored by Git. Repeat the copies when `rebellion2-media` changes and rebuild the
+UI after changing builder code or content used by a builder.
 
 ## Commands
 

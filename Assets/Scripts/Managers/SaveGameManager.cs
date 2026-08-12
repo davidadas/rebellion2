@@ -30,6 +30,7 @@ public sealed class SaveGameEntry
 /// </summary>
 public class SaveGameManager
 {
+    public const int MaxDisplayNameLength = 64;
     public const string QuickSaveFileName = "quicksave";
     private const int _saveSlotCount = 6;
     private const string _quickSaveDisplayName = "Quicksave";
@@ -198,6 +199,43 @@ public class SaveGameManager
     }
 
     /// <summary>
+    /// Deletes a save file and its metadata sidecar, if present.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    public void DeleteSave(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return;
+
+        string savePath = GetSaveFilePath(fileName);
+        if (File.Exists(savePath))
+            File.Delete(savePath);
+
+        string metadataPath = GetSaveMetadataFilePath(fileName);
+        if (File.Exists(metadataPath))
+            File.Delete(metadataPath);
+    }
+
+    /// <summary>
+    /// Renames a save's stored display name, rewriting its metadata sidecar.
+    /// </summary>
+    /// <param name="fileName">The save file name without its extension.</param>
+    /// <param name="displayName">The new display name.</param>
+    public void SetSaveDisplayName(string fileName, string displayName)
+    {
+        string normalizedDisplayName = NormalizeDisplayName(displayName);
+        if (string.IsNullOrWhiteSpace(fileName) || normalizedDisplayName.Length == 0)
+            return;
+
+        SaveGameEntry entry = TryReadSaveEntry(fileName);
+        if (entry?.Metadata == null)
+            return;
+
+        entry.Metadata.SaveDisplayName = normalizedDisplayName;
+        TryWriteSaveMetadata(fileName, entry.Metadata);
+    }
+
+    /// <summary>
     /// Save game data to file using XML serialization.
     /// Stamps the current schema version and save timestamp onto the metadata.
     /// </summary>
@@ -223,8 +261,9 @@ public class SaveGameManager
         game.Metadata.PackID = game.Summary?.PackID;
         game.Metadata.PackVersion = game.Summary?.PackVersion;
         game.Metadata.ScenarioID = game.Summary?.ScenarioID;
-        if (!string.IsNullOrEmpty(displayName))
-            game.Metadata.SaveDisplayName = displayName;
+        string normalizedDisplayName = NormalizeDisplayName(displayName);
+        if (normalizedDisplayName.Length > 0)
+            game.Metadata.SaveDisplayName = normalizedDisplayName;
         else if (fileName == QuickSaveFileName)
             game.Metadata.SaveDisplayName = _quickSaveDisplayName;
 
@@ -303,6 +342,22 @@ public class SaveGameManager
             ? GetSaveSlotDisplayName(slot)
             : displayName.Trim();
         SaveGameData(game, GetSaveSlotFileName(slot), resolvedDisplayName);
+    }
+
+    /// <summary>
+    /// Trims a save display name and constrains it to the supported length.
+    /// </summary>
+    /// <param name="displayName">The display name to normalize.</param>
+    /// <returns>The normalized display name, or an empty string when no name was supplied.</returns>
+    public static string NormalizeDisplayName(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+            return string.Empty;
+
+        string normalized = displayName.Trim();
+        return normalized.Length <= MaxDisplayNameLength
+            ? normalized
+            : normalized.Substring(0, MaxDisplayNameLength).TrimEnd();
     }
 
     /// <summary>

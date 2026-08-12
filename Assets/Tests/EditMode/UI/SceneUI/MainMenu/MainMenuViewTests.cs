@@ -141,7 +141,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             Assert.AreEqual(1, loadCount);
             Assert.AreEqual(0, exitCount);
-            SaveMenuConfirmDialogView confirmation = GetField<SaveMenuConfirmDialogView>(
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
                 "exitConfirmationDialog"
             );
             Assert.IsTrue(confirmation.gameObject.activeSelf);
@@ -269,6 +269,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     "Application/MainMenu/Audio/select",
                     "Application/MainMenu/Audio/galaxysize-select",
                     "Application/MainMenu/Audio/exit-select",
+                    "Application/MainMenu/Audio/faction-select",
                 },
                 _view.GetAudioCuePaths()
             );
