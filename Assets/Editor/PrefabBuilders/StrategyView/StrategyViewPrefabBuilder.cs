@@ -844,22 +844,7 @@ public static class StrategyViewPrefabBuilder
         briefingSkipConfirmation.gameObject.name = "ConfirmDialog";
         RectTransform briefingConfirmationRect =
             briefingSkipConfirmation.transform as RectTransform;
-        briefingConfirmationRect.anchorMin = new Vector2(0.5f, 0.5f);
-        briefingConfirmationRect.anchorMax = new Vector2(0.5f, 0.5f);
-        briefingConfirmationRect.pivot = new Vector2(0.5f, 0.5f);
-        briefingConfirmationRect.sizeDelta = new Vector2(_screenWidth, _screenHeight);
-        briefingConfirmationRect.anchoredPosition = Vector2.zero;
-        float briefingHorizontalOffset = (_screenWidth - 640f) / 2f;
-        foreach (RectTransform child in briefingConfirmationRect)
-        {
-            if (child.name == "InputBlocker")
-            {
-                FillParent(child);
-                continue;
-            }
-
-            child.anchoredPosition += Vector2.right * briefingHorizontalOffset;
-        }
+        FillParent(briefingConfirmationRect);
         briefingSkipConfirmation.transform.SetAsLastSibling();
 
         AssignReference(controller, "contentGroup", rootContentGroup);

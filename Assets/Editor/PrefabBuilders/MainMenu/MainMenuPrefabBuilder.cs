@@ -288,7 +288,6 @@ public static class MainMenuPrefabBuilder
             ("LargeGalaxyToggle", _galaxySizeSelectSfxPath),
             ("ExitButton", _exitSelectSfxPath),
             ("CreditsButton", _selectSfxPath),
-            ("LoadGameButton", _selectSfxPath),
             ("LeftFactionLaunchButton", _factionSelectSfxPath),
             ("RightFactionLaunchButton", _factionSelectSfxPath),
             ("VictoryConditionButton", _selectSfxPath),
@@ -513,11 +512,11 @@ public static class MainMenuPrefabBuilder
         ConfirmationDialogView dialog = CommonUIPrefabBuilder.InstantiateConfirmationDialog(parent);
         dialog.gameObject.name = "ConfirmDialog";
         RectTransform rect = dialog.transform as RectTransform;
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.localScale = Vector3.one * 3f;
+        FillParent(rect);
+        RectTransform dialogSurface = dialog.transform.Find("DialogSurface") as RectTransform;
+        if (dialogSurface == null)
+            throw new MissingReferenceException("Confirmation dialog has no DialogSurface.");
+        dialogSurface.localScale = Vector3.one * 3f;
     }
 
     /// <summary>

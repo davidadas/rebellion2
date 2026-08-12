@@ -409,13 +409,7 @@ public static class CommonUIPrefabBuilder
             typeof(RectTransform),
             typeof(ConfirmationDialogView)
         );
-        SetSourceRect(
-            root.GetComponent<RectTransform>(),
-            0,
-            0,
-            _confirmationSurfaceWidth,
-            _confirmationSurfaceHeight
-        );
+        FillParent(root.GetComponent<RectTransform>());
         ConfirmationDialogView view = root.GetComponent<ConfirmationDialogView>();
         view.enabled = true;
 
@@ -426,16 +420,27 @@ public static class CommonUIPrefabBuilder
         blocker.raycastTarget = true;
         FillParent(blocker.rectTransform);
 
+        GameObject dialogSurface = CreateRectObject("DialogSurface", root.transform);
+        RectTransform dialogSurfaceRect = dialogSurface.GetComponent<RectTransform>();
+        dialogSurfaceRect.anchorMin = new Vector2(0.5f, 0.5f);
+        dialogSurfaceRect.anchorMax = new Vector2(0.5f, 0.5f);
+        dialogSurfaceRect.pivot = new Vector2(0.5f, 0.5f);
+        dialogSurfaceRect.anchoredPosition = Vector2.zero;
+        dialogSurfaceRect.sizeDelta = new Vector2(
+            _confirmationSurfaceWidth,
+            _confirmationSurfaceHeight
+        );
+
         RawImage background = CreateRawImage(
             "BackgroundImage",
-            root.transform,
+            dialogSurface.transform,
             _confirmationDialogTexturePath
         );
         SetSourceRect(background.rectTransform, 114, 150, 412, 176);
 
         RawImage confirmImage = CreateRawImage(
             "ConfirmButtonImage",
-            root.transform,
+            dialogSurface.transform,
             _confirmationYesTexturePath
         );
         SetSourceRect(confirmImage.rectTransform, 252, 285, 57, 28);
@@ -447,7 +452,7 @@ public static class CommonUIPrefabBuilder
 
         RawImage cancelImage = CreateRawImage(
             "CancelButtonImage",
-            root.transform,
+            dialogSurface.transform,
             _confirmationNoTexturePath
         );
         SetSourceRect(cancelImage.rectTransform, 343, 285, 57, 28);
@@ -459,7 +464,7 @@ public static class CommonUIPrefabBuilder
 
         TextMeshProUGUI message = CreateInputText(
             "MessageTextField",
-            root.transform,
+            dialogSurface.transform,
             "Are you sure you want to quit?"
         );
         message.color = Color.white;

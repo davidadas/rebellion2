@@ -96,6 +96,30 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         /// <summary>
+        /// Verifies exit confirmation blocks the entire menu independently of the Options overlay.
+        /// </summary>
+        [Test]
+        public void AuthoredPrefab_ExitConfirmation_BlockerFillsMainMenu()
+        {
+            ConfirmationDialogView confirmation = GetField<ConfirmationDialogView>(
+                "exitConfirmationDialog"
+            );
+            RectTransform root = (RectTransform)confirmation.transform;
+            RectTransform blocker = (RectTransform)root.Find("InputBlocker");
+            RectTransform dialogSurface = (RectTransform)root.Find("DialogSurface");
+
+            Assert.AreEqual(Vector2.zero, root.anchorMin);
+            Assert.AreEqual(Vector2.one, root.anchorMax);
+            Assert.AreEqual(Vector2.zero, root.offsetMin);
+            Assert.AreEqual(Vector2.zero, root.offsetMax);
+            Assert.AreEqual(Vector2.zero, blocker.anchorMin);
+            Assert.AreEqual(Vector2.one, blocker.anchorMax);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMin);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMax);
+            Assert.AreEqual(Vector3.one * 3f, dialogSurface.localScale);
+        }
+
+        /// <summary>
         /// Verifies the view exclusively controls Options overlay visibility.
         /// </summary>
         [Test]
@@ -264,6 +288,25 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             InvokeTrigger(trigger, eventType);
 
             Assert.AreEqual(expectedPath, requestedPath);
+        }
+
+        /// <summary>
+        /// Verifies Load Game sound is owned by its semantic command instead of a pointer binding.
+        /// </summary>
+        [Test]
+        public void AudioCue_LoadGameButton_HasNoGenericPointerBinding()
+        {
+            EventTrigger loadTrigger = GetField<Button>("loadGameButton")
+                .GetComponent<EventTrigger>();
+            Array bindings = GetBindings("audioCueBindings");
+
+            bool hasLoadBinding = bindings
+                .Cast<object>()
+                .Any(binding =>
+                    ReferenceEquals(loadTrigger, GetBindingValue<EventTrigger>(binding, "Trigger"))
+                );
+
+            Assert.IsFalse(hasLoadBinding);
         }
 
         [Test]

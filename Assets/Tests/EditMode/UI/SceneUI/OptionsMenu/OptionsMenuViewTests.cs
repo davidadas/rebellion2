@@ -193,10 +193,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
-        /// Verifies presentation renders stored metadata without silently normalizing it.
+        /// Verifies presentation clips stored metadata without silently normalizing it.
         /// </summary>
         [Test]
-        public void SaveList_OverlongStoredName_DoesNotRewriteDomainData()
+        public void SaveList_OverlongStoredName_UsesEllipsisWithoutRewritingDomainData()
         {
             string storedName = new string('N', SaveGameManager.MaxDisplayNameLength + 10);
             OptionsSaveSlot savedGame = new OptionsSaveSlot(
@@ -213,6 +213,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 .GetComponentsInChildren<TextMeshProUGUI>(true)
                 .Single(text => text.name == "SlotName0");
             Assert.AreEqual(storedName, renderedName.text);
+            Assert.AreEqual(TextWrappingModes.NoWrap, renderedName.textWrappingMode);
+            Assert.AreEqual(TextOverflowModes.Ellipsis, renderedName.overflowMode);
         }
 
         /// <summary>

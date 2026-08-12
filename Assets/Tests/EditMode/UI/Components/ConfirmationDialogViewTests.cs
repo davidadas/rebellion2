@@ -36,6 +36,30 @@ namespace Rebellion.Tests.UI.Components
         }
 
         /// <summary>
+        /// Verifies the blocker fills its host while the fixed-size dialog art remains centered.
+        /// </summary>
+        [Test]
+        public void AuthoredPrefab_BlockerFillsHostAndDialogSurfaceRemainsCentered()
+        {
+            RectTransform root = (RectTransform)_view.transform;
+            RectTransform blocker = (RectTransform)root.Find("InputBlocker");
+            RectTransform dialogSurface = (RectTransform)root.Find("DialogSurface");
+
+            Assert.AreEqual(Vector2.zero, root.anchorMin);
+            Assert.AreEqual(Vector2.one, root.anchorMax);
+            Assert.AreEqual(Vector2.zero, root.offsetMin);
+            Assert.AreEqual(Vector2.zero, root.offsetMax);
+            Assert.AreEqual(Vector2.zero, blocker.anchorMin);
+            Assert.AreEqual(Vector2.one, blocker.anchorMax);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMin);
+            Assert.AreEqual(Vector2.zero, blocker.offsetMax);
+            Assert.AreEqual(new Vector2(0.5f, 0.5f), dialogSurface.anchorMin);
+            Assert.AreEqual(new Vector2(0.5f, 0.5f), dialogSurface.anchorMax);
+            Assert.AreEqual(new Vector2(640f, 480f), dialogSurface.sizeDelta);
+            Assert.AreEqual(Vector2.zero, dialogSurface.anchoredPosition);
+        }
+
+        /// <summary>
         /// Verifies showing a prompt applies its text and authored presentation.
         /// </summary>
         [Test]

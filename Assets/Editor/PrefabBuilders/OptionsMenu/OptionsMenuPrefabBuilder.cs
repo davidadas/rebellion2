@@ -404,6 +404,8 @@ public static class OptionsMenuPrefabBuilder
         slotNameTemplate.color = textColor;
         slotNameTemplate.fontSize = 12;
         slotNameTemplate.alignment = TextAlignmentOptions.TopLeft;
+        slotNameTemplate.textWrappingMode = TextWrappingModes.NoWrap;
+        slotNameTemplate.overflowMode = TextOverflowModes.Ellipsis;
         slotNameTemplate.raycastTarget = false;
         ApplyOptionsDisplayFont(slotNameTemplate);
         SetSourceRect(slotNameTemplate.rectTransform, 34, 2, 300, 13);
