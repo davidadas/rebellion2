@@ -393,7 +393,6 @@ public sealed class StrategyController
             settingsRuntime.LoadGame,
             MarkDirty
         );
-        cancelStack?.Register(_optionsMenuController);
         if (settingsRuntime != null)
             settingsRuntime.ToggleSettingsMenuRequested += HandleToggleOptions;
         WireStrategyInputActions();
@@ -688,11 +687,7 @@ public sealed class StrategyController
         UnwireStrategyInputActions();
         UnregisterCancelHandlers();
         UnsubscribeViewEvents();
-        if (_optionsMenuController != null)
-        {
-            cancelStack?.Unregister(_optionsMenuController);
-            _optionsMenuController.Dispose();
-        }
+        _optionsMenuController?.Dispose();
         GameRuntime settingsRuntime = AppBootstrap.Instance?.GetRuntime();
         if (settingsRuntime != null)
             settingsRuntime.ToggleSettingsMenuRequested -= HandleToggleOptions;
@@ -2977,7 +2972,12 @@ public sealed class StrategyController
 
         void Callback(InputAction.CallbackContext context)
         {
-            if (context.performed && !briefingActive && _optionsMenuController?.IsOpen != true)
+            if (
+                context.performed
+                && !briefingActive
+                && _optionsMenuController?.IsOpen != true
+                && !UIInputFocus.IsTextEntryActive()
+            )
                 command();
         }
 

@@ -49,6 +49,7 @@ public static class SceneBuilder
 
             instance.name = instanceName;
             ResetRootTransform(instance.transform);
+            RemoveOtherRoots(scene, instance);
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene, scenePath))
                 throw new IOException($"Could not generate scene: {scenePath}");
@@ -64,6 +65,20 @@ public static class SceneBuilder
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+    }
+
+    /// <summary>
+    /// Removes stale scene roots because generated scenes are owned entirely by one root prefab.
+    /// </summary>
+    /// <param name="scene">The generated scene being updated.</param>
+    /// <param name="instance">The scene-root prefab instance to retain.</param>
+    private static void RemoveOtherRoots(Scene scene, GameObject instance)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            if (root != instance)
+                Object.DestroyImmediate(root);
+        }
     }
 
     /// <summary>

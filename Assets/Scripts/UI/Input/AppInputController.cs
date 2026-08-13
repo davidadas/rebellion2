@@ -225,9 +225,12 @@ public sealed class AppInputController : MonoBehaviour, PlayerInputActions.IGlob
     /// <returns>True when gameplay shortcuts can run; otherwise false.</returns>
     private bool CanUseGameplayShortcuts()
     {
-        return CurrentContext == InputContext.Strategy
-            || CurrentContext == InputContext.Tactical
-            || CurrentContext == InputContext.None;
+        return !UIInputFocus.IsTextEntryActive()
+            && (
+                CurrentContext == InputContext.Strategy
+                || CurrentContext == InputContext.Tactical
+                || CurrentContext == InputContext.None
+            );
     }
 
     /// <summary>

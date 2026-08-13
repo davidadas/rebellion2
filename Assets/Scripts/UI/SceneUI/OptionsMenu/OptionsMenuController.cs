@@ -81,6 +81,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _bindingSession.Changed += _settingsSession.MarkInputChanged;
         _bindingSession.PresentationChanged += _markDirty;
         _bindingSession.ConflictRequested += HandleBindingConflictRequested;
+        _bootstrap.GetCancelStack()?.Register(this);
     }
 
     /// <summary>
@@ -134,6 +135,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             out _view
         );
         BindView(_view);
+        _bootstrap.GetCancelStack()?.Register(this);
         PauseGame();
         _markDirty();
     }
@@ -175,6 +177,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         _bindingSession.PresentationChanged -= _markDirty;
         _bindingSession.ConflictRequested -= HandleBindingConflictRequested;
         _bindingSession.Dispose();
+        _bootstrap.GetCancelStack()?.Unregister(this);
         _disposed = true;
     }
 

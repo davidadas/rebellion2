@@ -10,7 +10,6 @@ public sealed class MainMenuController : MonoBehaviour
 {
     private const string _creditsVideoPath = "Application/Credits/Videos/credits";
     private const string _menuMusicPath = "Application/MainMenu/Audio/battle-of-endor-1-medley";
-    private const string _selectSfxPath = "Application/MainMenu/Audio/select";
 
     [SerializeField]
     private MainMenuView view;
@@ -145,7 +144,6 @@ public sealed class MainMenuController : MonoBehaviour
         if (optionsMenuController == null)
             return;
 
-        AppBootstrap.Instance?.GetCancelStack()?.Unregister(optionsMenuController);
         optionsMenuController.Dispose();
         optionsMenuController = null;
     }
@@ -209,6 +207,7 @@ public sealed class MainMenuController : MonoBehaviour
     /// <param name="factionId">The configured faction identifier.</param>
     private void HandleStartGameRequested(string factionId)
     {
+        GameStartupTrace.Begin($"Faction button accepted for '{factionId}'.");
         SelectFaction(factionId);
         StartGame();
     }
@@ -248,7 +247,6 @@ public sealed class MainMenuController : MonoBehaviour
     /// </summary>
     private void OpenLoadGameMenu()
     {
-        PlayAudioCue(_selectSfxPath);
         OpenOptions(OptionsMenuTab.SaveLoad);
     }
 
@@ -294,7 +292,6 @@ public sealed class MainMenuController : MonoBehaviour
             LoadSaveFromMainMenu,
             MarkOptionsDirty
         );
-        bootstrap.GetCancelStack()?.Register(optionsMenuController);
     }
 
     /// <summary>
@@ -377,6 +374,7 @@ public sealed class MainMenuController : MonoBehaviour
         AppBootstrap.Instance.GetRuntime()?.EndGame();
 
         AudioManager.EnsureExists().StopMusic();
+        GameStartupTrace.Log("Launch state prepared; requesting StrategyView scene.");
         AppBootstrap.Instance.LoadScene("StrategyView");
     }
 }

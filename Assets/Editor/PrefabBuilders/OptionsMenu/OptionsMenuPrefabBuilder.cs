@@ -405,10 +405,10 @@ public static class OptionsMenuPrefabBuilder
         slotNameTemplate.fontSize = 12;
         slotNameTemplate.alignment = TextAlignmentOptions.TopLeft;
         slotNameTemplate.textWrappingMode = TextWrappingModes.NoWrap;
-        slotNameTemplate.overflowMode = TextOverflowModes.Ellipsis;
+        slotNameTemplate.overflowMode = TextOverflowModes.Truncate;
         slotNameTemplate.raycastTarget = false;
         ApplyOptionsDisplayFont(slotNameTemplate);
-        SetSourceRect(slotNameTemplate.rectTransform, 34, 2, 300, 13);
+        SetSourceRect(slotNameTemplate.rectTransform, 34, 0, 300, 20);
         slotNameTemplate.gameObject.SetActive(false);
         TextMeshProUGUI slotMetaTemplate = CreateTextLabel("SlotDateTemplate", slotContent);
         slotMetaTemplate.text = "Date";

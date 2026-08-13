@@ -25,9 +25,13 @@ public sealed class SceneLoader : MonoBehaviour
         if (string.IsNullOrWhiteSpace(sceneName))
             throw new ArgumentException("Scene name cannot be empty.", nameof(sceneName));
         if (_loadCoroutine != null)
+        {
+            GameStartupTrace.Log($"Ignored duplicate scene request for '{sceneName}'.");
             return;
+        }
 
         AudioManager.Instance?.StopSfx();
+        GameStartupTrace.Log($"SceneLoader accepted '{sceneName}'.");
         _loadCoroutine = StartCoroutine(LoadScene(sceneName));
     }
 
@@ -38,6 +42,7 @@ public sealed class SceneLoader : MonoBehaviour
     /// <returns>The transition coroutine.</returns>
     private IEnumerator LoadScene(string sceneName)
     {
+        GameStartupTrace.Log($"Waiting for '{sceneName}' content preload.");
         Task initialization = GetSceneInitializationAsync(sceneName);
         while (!initialization.IsCompleted)
             yield return null;
@@ -45,6 +50,7 @@ public sealed class SceneLoader : MonoBehaviour
         if (initialization.IsFaulted)
         {
             _loadCoroutine = null;
+            GameStartupTrace.Complete($"Content initialization for '{sceneName}' failed.");
             Debug.LogException(
                 initialization.Exception?.GetBaseException()
                     ?? new InvalidOperationException(
@@ -54,15 +60,18 @@ public sealed class SceneLoader : MonoBehaviour
             yield break;
         }
 
+        GameStartupTrace.Log($"Content preload complete; loading '{sceneName}' scene asset.");
         AsyncOperation operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
         if (operation == null)
         {
             _loadCoroutine = null;
+            GameStartupTrace.Complete($"Unity could not start loading '{sceneName}'.");
             Debug.LogException(new InvalidOperationException($"Scene was not found: {sceneName}"));
             yield break;
         }
 
         yield return operation;
+        GameStartupTrace.Log($"Unity activated '{sceneName}'.");
         _loadCoroutine = null;
     }
 

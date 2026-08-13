@@ -937,7 +937,9 @@ public static class StrategyViewPrefabBuilder
         GameObject cameraObject = new GameObject("Main Camera");
         cameraObject.transform.SetParent(sceneRoot.transform, false);
         cameraObject.tag = "MainCamera";
-        cameraObject.AddComponent<Camera>();
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.black;
         cameraObject.AddComponent<AudioListener>();
 
         GameObject eventSystemObject = new GameObject("EventSystem");

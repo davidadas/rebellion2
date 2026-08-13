@@ -181,11 +181,26 @@ public static class MainMenuPrefabBuilder
     /// <param name="root">The freshly created prefab root.</param>
     private static void BuildBaseHierarchy(GameObject root)
     {
+        BuildMainCamera(root);
         BuildEventSystem(root);
         BuildServices(root);
         MainMenuController controller = BuildController(root);
         BuildCanvas(root);
         PopulateViewBindings(root, controller.GetComponent<MainMenuView>());
+    }
+
+    /// <summary>
+    /// Authors the camera and audio listener owned by the Main Menu scene root.
+    /// </summary>
+    /// <param name="root">The scene-root prefab receiving the infrastructure.</param>
+    private static void BuildMainCamera(GameObject root)
+    {
+        GameObject cameraObject = NewChild("Main Camera", root.transform);
+        cameraObject.tag = "MainCamera";
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.black;
+        cameraObject.AddComponent<AudioListener>();
     }
 
     /// <summary>

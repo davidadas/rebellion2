@@ -30,7 +30,7 @@ public sealed class SaveGameEntry
 /// </summary>
 public class SaveGameManager
 {
-    public const int MaxDisplayNameLength = 64;
+    public const int MaxDisplayNameLength = 32;
     public const string QuickSaveFileName = "quicksave";
     private const int _saveSlotCount = 6;
     private const string _quickSaveDisplayName = "Quicksave";

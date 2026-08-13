@@ -169,6 +169,7 @@ public sealed class AppBootstrap : MonoBehaviour
     internal Task InitializeStrategyContentAsync()
     {
         StartStrategyContentPreload();
+        GameStartupTrace.Log($"Strategy content task status: {_strategyContentTask.Status}.");
         return _strategyContentTask;
     }
 
@@ -226,9 +227,29 @@ public sealed class AppBootstrap : MonoBehaviour
     private void StartStrategyContentPreload()
     {
         _strategyContentTask ??= Task.WhenAll(
-            _contentAssets.PreloadAsync(_strategyApplicationPreload),
-            _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+            TracePreloadAsync(
+                "Strategy application preload",
+                _contentAssets.PreloadAsync(_strategyApplicationPreload)
+            ),
+            TracePreloadAsync(
+                "Strategy pack preload",
+                _contentAssets.PreloadAsync(_contentPack.GetPreloadManifest(_strategyPreloadID))
+            )
         );
+    }
+
+    /// <summary>
+    /// Reports completion of one content preload when a game-startup trace is active.
+    /// </summary>
+    /// <param name="description">The preload phase being measured.</param>
+    /// <param name="preload">The underlying content preload.</param>
+    /// <returns>A task that completes with the underlying preload.</returns>
+    private static async Task TracePreloadAsync(string description, Task preload)
+    {
+        if (GameStartupTrace.IsActive)
+            GameStartupTrace.Log($"{description} pending.");
+        await preload;
+        GameStartupTrace.Log($"{description} complete.");
     }
 
     /// <summary>
