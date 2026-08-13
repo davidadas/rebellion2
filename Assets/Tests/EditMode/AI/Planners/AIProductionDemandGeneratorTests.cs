@@ -17,6 +17,53 @@ namespace Rebellion.Tests.AI.Planners
     public class AIProductionDemandGeneratorTests
     {
         [Test]
+        public void Generate_WithClaimedUncolonizedPlanet_AddsColonyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "claimed-world",
+                empire.InstanceID,
+                rawResourceNodes: 2
+            );
+            planet.IsColonized = false;
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("garrison", empire.InstanceID),
+                planet
+            );
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIProductionDemand demand = new AIProductionDemandGenerator()
+                .Generate(context)
+                .Single(item => item.Kind == AIProductionDemandKind.Colony);
+
+            Assert.AreSame(planet, demand.DestinationPlanet);
+            Assert.AreEqual(BuildingType.Mine, demand.BuildingType);
+            Assert.AreEqual(1, demand.QuantityNeeded);
+        }
+
+        [Test]
+        public void Generate_WithAbandonedUncolonizedPlanet_DoesNotAddColonyDemand()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet planet = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "abandoned-world",
+                empire.InstanceID
+            );
+            planet.IsColonized = false;
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            List<AIProductionDemand> demands = new AIProductionDemandGenerator().Generate(context);
+
+            Assert.IsFalse(demands.Any(item => item.Kind == AIProductionDemandKind.Colony));
+        }
+
+        [Test]
         public void Generate_WithUnminedResourcesAndBalancedEconomy_AddsMineAndRefineryDemand()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

@@ -17,6 +17,57 @@ namespace Rebellion.Tests.AI.Planners
     public class AIProductionPlannerTests
     {
         [Test]
+        public void Plan_WithClaimedUncolonizedPlanet_AddsColonyManufactureProposal()
+        {
+            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            PlanetSystem system = AITestSceneBuilder.AddSystem(game, "sys1");
+            Planet producer = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "producer",
+                empire.InstanceID,
+                rawResourceNodes: 2
+            );
+            AITestSceneBuilder.AddProductionFacility(
+                game,
+                producer,
+                "construction-yard",
+                BuildingType.ConstructionFacility,
+                ManufacturingType.Building
+            );
+            Planet colony = AITestSceneBuilder.AddPlanet(
+                game,
+                system,
+                "colony",
+                empire.InstanceID,
+                rawResourceNodes: 2
+            );
+            colony.IsColonized = false;
+            game.AttachNode(
+                AITestSceneBuilder.CreateRegiment("garrison", empire.InstanceID),
+                colony
+            );
+            Building mine = AITestSceneBuilder.CreateBuildingTemplate(
+                "mine-template",
+                BuildingType.Mine
+            );
+            empire.ResearchQueue[ManufacturingType.Building] = new List<Technology>
+            {
+                new Technology(mine),
+            };
+            AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
+
+            AIManufactureProposal proposal = new AIProductionPlanner()
+                .Plan(context)
+                .OfType<AIManufactureProposal>()
+                .Single(item => item.Demand.Kind == AIProductionDemandKind.Colony);
+
+            Assert.AreSame(producer, proposal.ProducerPlanet);
+            Assert.AreSame(colony, proposal.Destination);
+            Assert.AreSame(mine, proposal.Product.GetReference());
+        }
+
+        [Test]
         public void Plan_WithMineDemandAndUnlockedMine_AddsManufactureProposal()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

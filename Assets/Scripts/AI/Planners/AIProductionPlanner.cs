@@ -136,7 +136,8 @@ namespace Rebellion.AI.Planners
 
             return demand.Kind switch
             {
-                AIProductionDemandKind.Mine
+                AIProductionDemandKind.Colony
+                or AIProductionDemandKind.Mine
                 or AIProductionDemandKind.Refinery
                 or AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard

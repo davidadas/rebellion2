@@ -343,8 +343,9 @@ namespace Rebellion.AI.Proposals
 
             return Demand.Kind switch
             {
-                AIProductionDemandKind.Mine or AIProductionDemandKind.Refinery =>
-                    CanManufactureBuilding(context),
+                AIProductionDemandKind.Colony
+                or AIProductionDemandKind.Mine
+                or AIProductionDemandKind.Refinery => CanManufactureBuilding(context),
                 AIProductionDemandKind.ConstructionFacility
                 or AIProductionDemandKind.Shipyard
                 or AIProductionDemandKind.TrainingFacility

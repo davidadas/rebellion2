@@ -26,6 +26,7 @@ namespace Rebellion.AI.Planners
             if (context?.Game == null || context.Faction == null || context.Assessment == null)
                 return demands;
 
+            AddColonyDemands(context, demands);
             AddResourceBalanceDemand(context, demands);
             AddPlanetaryDefenseDemands(context, demands);
             AddPlanetaryStarfighterDemands(context, demands);
@@ -37,6 +38,57 @@ namespace Rebellion.AI.Planners
             AddProductionFacilityUpgradeDemands(context, demands);
 
             return demands;
+        }
+
+        /// <summary>
+        /// Adds a first-facility demand for each claimed but uncolonized planet.
+        /// </summary>
+        /// <param name="context">The current AI turn context.</param>
+        /// <param name="demands">The demand list to update.</param>
+        private void AddColonyDemands(AITurnContext context, List<AIProductionDemand> demands)
+        {
+            foreach (
+                Planet planet in context
+                    .Assessment.OwnedPlanets.Where(IsClaimedUncolonizedPlanet)
+                    .OrderByDescending(planet => planet.GetUnminedResourceNodeCount())
+                    .ThenBy(planet => planet.InstanceID, StringComparer.Ordinal)
+            )
+            {
+                BuildingType buildingType =
+                    planet.GetUnminedResourceNodeCount() > 0
+                        ? BuildingType.Mine
+                        : BuildingType.Refinery;
+                demands.Add(
+                    new AIProductionDemand(
+                        $"production:{context.Faction.InstanceID}:{AIProductionDemandKind.Colony}:{planet.InstanceID}",
+                        AIProductionDemandKind.Colony,
+                        ManufacturingType.Building,
+                        buildingType,
+                        planet,
+                        1,
+                        context.Game.Config.AI.Infrastructure.EconomySevereDemandPercent
+                    )
+                );
+            }
+        }
+
+        /// <summary>
+        /// Returns whether a planet is a live military claim awaiting its first facility.
+        /// </summary>
+        /// <param name="planet">The planet to inspect.</param>
+        /// <returns>True when the planet requires a founding facility.</returns>
+        private static bool IsClaimedUncolonizedPlanet(Planet planet)
+        {
+            return planet?.IsColonized == false
+                && !planet.IsDestroyed
+                && planet.GetAvailableEnergy() > 0
+                && planet
+                    .GetAllRegiments()
+                    .Any(regiment =>
+                        regiment.ManufacturingStatus == ManufacturingStatus.Complete
+                        && regiment.Movement == null
+                        && regiment.GetOwnerInstanceID() == planet.GetOwnerInstanceID()
+                    );
         }
 
         private void AddPlanetaryDefenseDemands(

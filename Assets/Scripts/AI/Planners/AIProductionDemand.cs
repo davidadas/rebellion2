@@ -10,6 +10,7 @@ namespace Rebellion.AI.Planners
     public enum AIProductionDemandKind
     {
         None,
+        Colony,
         Mine,
         Refinery,
         ConstructionFacility,
