@@ -41,6 +41,7 @@ public sealed class CutscenePlayer : MonoBehaviour
 
         videoPlayer.playOnAwake = false;
         videoPlayer.isLooping = false;
+        videoPlayer.errorReceived += HandlePlaybackError;
         audioSource.playOnAwake = false;
         authoredScreenColor = screen.color;
         BlankScreen();
@@ -52,7 +53,10 @@ public sealed class CutscenePlayer : MonoBehaviour
     private void OnDestroy()
     {
         if (videoPlayer != null)
+        {
+            videoPlayer.errorReceived -= HandlePlaybackError;
             videoPlayer.loopPointReached -= HandleFinished;
+        }
 
         BlankScreen();
         onFinished = null;
@@ -153,6 +157,18 @@ public sealed class CutscenePlayer : MonoBehaviour
     }
 
     /// <summary>
+    /// Reports decoder failures and releases a cutscene that cannot begin playback.
+    /// </summary>
+    /// <param name="source">The video player that reported the failure.</param>
+    /// <param name="message">The platform decoder's error message.</param>
+    private void HandlePlaybackError(VideoPlayer source, string message)
+    {
+        Debug.LogError($"Cutscene playback failed: {message}", source);
+        GameStartupTrace.Log($"Faction introduction decoder failed: {message}");
+        EndCutscene();
+    }
+
+    /// <summary>
     /// Reveals the cutscene surface when the current clip produces its first frame.
     /// </summary>
     /// <param name="source">The video player that produced the frame.</param>
@@ -162,6 +178,7 @@ public sealed class CutscenePlayer : MonoBehaviour
         videoPlayer.frameReady -= HandleFirstFrameReady;
         videoPlayer.sendFrameReadyEvents = false;
         screen.color = authoredScreenColor;
+        GameStartupTrace.Log($"Faction introduction first frame displayed (frame {frameIndex}).");
     }
 
     /// <summary>

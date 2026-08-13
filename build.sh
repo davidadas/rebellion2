@@ -124,6 +124,14 @@ copy_media_tree() {
     cp -a "$source_path/." "$destination_path/"
 }
 
+copy_media_file() {
+    local source_path="$1"
+    local destination_path="$2"
+
+    mkdir -p "$(dirname "$destination_path")"
+    cp "$source_path" "$destination_path"
+}
+
 do_sync_media() {
     local project_root
     local media_root
@@ -151,10 +159,17 @@ do_sync_media() {
         echo "FAIL: rebellion2-media Main Menu models not found at '$media_root/Models/MainMenu'."
         exit 1
     fi
+    if [ ! -f "$media_root/Content/Application/Common/UI/ui_common_cursor_default_outlined.png" ]; then
+        echo "FAIL: default cursor asset not found in rebellion2-media."
+        exit 1
+    fi
 
     echo "=== Sync Media ==="
     copy_media_tree "$media_root/Content" "$project_root/Assets/Content"
     copy_media_tree "$media_root/Models/MainMenu" "$project_root/Assets/Art/Models/MainMenu"
+    copy_media_file \
+        "$media_root/Content/Application/Common/UI/ui_common_cursor_default_outlined.png" \
+        "$project_root/Assets/Resources/UI/DefaultCursor.png"
     echo "Development media copied from: $media_root"
     echo "Destination-only files were preserved."
 }

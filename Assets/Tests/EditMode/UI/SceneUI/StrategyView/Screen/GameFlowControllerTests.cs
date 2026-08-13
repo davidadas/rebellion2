@@ -61,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void StartNewGame_MissingSummary_ThrowsInvalidOperationException()
+        public void StartNewGameAsync_MissingSummary_ThrowsInvalidOperationException()
         {
             FieldInfo summaryField = typeof(GameLaunchContext).GetField(
                 "<Summary>k__BackingField",
@@ -72,11 +72,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             {
                 summaryField.SetValue(null, null);
 
-                TargetInvocationException exception = Assert.Throws<TargetInvocationException>(() =>
-                    InvokePrivate("StartNewGame")
-                );
+                Task startup = (Task)InvokePrivate("StartNewGameAsync");
 
-                Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
+                Assert.ThrowsAsync<InvalidOperationException>(async () => await startup);
             }
             finally
             {
@@ -105,25 +103,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         }
 
         [Test]
-        public void PlayFactionIntro_NullFaction_ThrowsInvalidOperationException()
+        public void PlayFactionIntroAsync_NullFaction_ThrowsInvalidOperationException()
         {
             TargetInvocationException exception = Assert.Throws<TargetInvocationException>(() =>
-                InvokePrivate("PlayFactionIntro", new object[] { null })
+                InvokePrivate("PlayFactionIntroAsync", new object[] { null })
             );
 
             Assert.IsInstanceOf<InvalidOperationException>(exception.InnerException);
         }
 
+        /// <summary>
+        /// Verifies disabled introductions have no asynchronous presentation gate.
+        /// </summary>
         [Test]
-        public void PreloadBriefingContentAsync_NullBriefing_ReturnsCompletedTask()
+        public void PlayFactionIntroAsync_IntroDisabled_ReturnsCompletedTask()
         {
-            Task task = (Task)
-                typeof(GameFlowController)
-                    .GetMethod(
-                        "PreloadBriefingContentAsync",
-                        BindingFlags.Static | BindingFlags.NonPublic
-                    )
-                    .Invoke(null, new object[] { null });
+            bool original = GameLaunchContext.PlayIntroCutscene;
+            GameLaunchContext.PlayIntroCutscene = false;
+            Task task;
+            try
+            {
+                task = (Task)InvokePrivate(
+                    "PlayFactionIntroAsync",
+                    new object[] { new Rebellion.Game.Factions.Faction() }
+                );
+            }
+            finally
+            {
+                GameLaunchContext.PlayIntroCutscene = original;
+            }
 
             Assert.IsTrue(task.IsCompletedSuccessfully);
         }
@@ -146,7 +154,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private object InvokePrivate(string methodName, params object[] arguments)
         {
             return typeof(GameFlowController)
-                .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetMethod(
+                    methodName,
+                    BindingFlags.Instance | BindingFlags.Static | BindingFlags.NonPublic
+                )
                 .Invoke(_controller, arguments);
         }
     }

@@ -211,6 +211,15 @@ public sealed class ScrollAreaView : MonoBehaviour
     }
 
     /// <summary>
+    /// Moves overflowing content to its bottom edge.
+    /// </summary>
+    public void ScrollToBottom()
+    {
+        VerifyRequiredReferences();
+        SetNormalizedScrollPosition(0f);
+    }
+
+    /// <summary>
     /// Validates the authored control graph before runtime use.
     /// </summary>
     private void Awake()

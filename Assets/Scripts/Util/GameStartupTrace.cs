@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using UnityEngine;
 
 /// <summary>
 /// Emits one correlated timing trace for a requested game startup.

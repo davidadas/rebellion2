@@ -158,7 +158,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// Renders the current save slots, selection, and available save actions.
     /// </summary>
     /// <param name="data">The current Options menu render state.</param>
-    public void Render(OptionsMenuRenderData data)
+    /// <param name="scrollToBottom">Whether to show the bottom of the rebuilt list.</param>
+    public void Render(OptionsMenuRenderData data, bool scrollToBottom)
     {
         int selected = data.SelectedSlot;
         bool existingSelected =
@@ -247,6 +248,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         }
 
         _scrollArea.SetContentHeight(contentHeight, rowRect.height + gap, false);
+        if (scrollToBottom)
+            _scrollArea.ScrollToBottom();
         HideFrom(_rowImages, data.SaveSlots.Count);
         HideFrom(_iconImages, data.SaveSlots.Count);
         HideFrom(_nameFields, data.SaveSlots.Count);

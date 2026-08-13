@@ -143,6 +143,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private TextMeshProUGUI _bindingKeyTemplate;
 
     private bool _bound;
+    private OptionsMenuTab? _previousTab;
 
     public event Action<OptionsMenuTab> TabSelected;
     public event Action ResumeRequested;
@@ -211,6 +212,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
+        bool enteredSaveLoad =
+            data.ActiveTab == OptionsMenuTab.SaveLoad && _previousTab != OptionsMenuTab.SaveLoad;
         UILayout.SetSourcePosition(transform as RectTransform, data.X, data.Y);
         UILayout.SetTextContent(_headerTextField, "OPTIONS");
         UILayout.SetTextContent(_pageTitleTextField, GetTabTitle(data.ActiveTab));
@@ -227,12 +230,13 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
                 RenderAudioPage(data);
                 break;
             case OptionsMenuTab.SaveLoad:
-                RenderSaveLoadPage(data);
+                RenderSaveLoadPage(data, enteredSaveLoad);
                 break;
             case OptionsMenuTab.Controls:
                 RenderControlsPage(data);
                 break;
         }
+        _previousTab = data.ActiveTab;
         gameObject.SetActive(true);
     }
 
@@ -316,9 +320,10 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     /// Rebuilds the save-slot list and applies action availability.
     /// </summary>
     /// <param name="data">The Options menu data.</param>
-    private void RenderSaveLoadPage(OptionsMenuRenderData data)
+    /// <param name="scrollToBottom">Whether the page was just entered.</param>
+    private void RenderSaveLoadPage(OptionsMenuRenderData data, bool scrollToBottom)
     {
-        _saveListView.Render(data);
+        _saveListView.Render(data, scrollToBottom);
     }
 
     /// <summary>

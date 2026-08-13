@@ -118,6 +118,22 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.IsFalse(_videoPlayer.sendFrameReadyEvents);
         }
 
+        /// <summary>
+        /// Verifies a platform decoder failure releases playback through the normal completion path.
+        /// </summary>
+        [Test]
+        public void HandlePlaybackError_ActivePlayback_InvokesCompletionOnce()
+        {
+            int completedCount = 0;
+            _player.Play(_clip, () => completedCount++);
+
+            Invoke("HandlePlaybackError", _videoPlayer, "decoder failed");
+            Invoke("EndCutscene");
+
+            Assert.AreEqual(1, completedCount);
+            Assert.AreEqual(Color.black, _screen.color);
+        }
+
         [Test]
         public void OnDestroy_ActivePlayback_BlanksScreenAndReleasesFrameEvents()
         {

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -18,14 +20,76 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         private const string _playerFactionID = "PLAYER";
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
 
+        /// <summary>
+        /// Verifies the briefing owner prepares its opening segment and skip response.
+        /// </summary>
         [Test]
-        public void Play_MultipleSegments_PlaysInOrderAndCompletes()
+        public async Task PrepareAsync_Briefing_LoadsOpeningMediaAndRegistersAudioAsync()
         {
             GameRoot game = CreateGame();
             StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
             StrategyBriefingTheme briefing = CreateBriefing();
-            briefing.Segments.Add(CreateSegment("First"));
-            briefing.Segments.Add(CreateSegment("Second"));
+            StrategyBriefingSegmentTheme first = CreateSegment("First");
+            first.Audio = "FirstVoice";
+            StrategyBriefingSegmentTheme second = CreateSegment("Second");
+            second.Audio = "SecondVoice";
+            StrategyBriefingSegmentTheme skip = CreateSegment("Skip");
+            skip.Audio = "SkipVoice";
+            briefing.Segments.Add(first);
+            briefing.Segments.Add(second);
+            briefing.Skip = skip;
+            Texture2D idle = new Texture2D(1, 1);
+            ContentPreloadManifest loadedManifest = null;
+            string[] registeredAudio = null;
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    CreateTextures(advisorTheme, idle),
+                    rootObject,
+                    manifest =>
+                    {
+                        loadedManifest = manifest;
+                        return Task.CompletedTask;
+                    },
+                    paths => registeredAudio = paths.ToArray()
+                );
+
+                await controller.PrepareAsync(briefing);
+
+                CollectionAssert.AreEquivalent(
+                    new[]
+                    {
+                        $"{briefing.AnimationImageRoot}/{first.Animation}",
+                        $"{briefing.AnimationImageRoot}/{skip.Animation}",
+                    },
+                    loadedManifest.TextureDirectories
+                );
+                CollectionAssert.AreEquivalent(
+                    new[] { briefing.GetAudioPath(first.Audio), briefing.GetAudioPath(skip.Audio) },
+                    registeredAudio
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        [Test]
+        public async Task Play_MultipleSegments_PlaysInOrderAndCompletesAsync()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            StrategyBriefingTheme briefing = CreateBriefing();
+            StrategyBriefingSegmentTheme firstSegment = CreateSegment("First");
+            StrategyBriefingSegmentTheme secondSegment = CreateSegment("Second");
+            secondSegment.Audio = "SecondVoice";
+            briefing.Segments.Add(firstSegment);
+            briefing.Segments.Add(secondSegment);
             Texture2D idle = new Texture2D(1, 1);
             Texture2D first = new Texture2D(1, 1);
             Texture2D second = new Texture2D(1, 1);
@@ -49,10 +113,146 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 
                 Assert.AreSame(first, GetProtocolImage(rootObject).texture);
                 advisorView.AdvanceAnimation(0.5f);
+                await WaitUntilAsync(() => GetProtocolImage(rootObject).texture == second);
                 Assert.AreSame(second, GetProtocolImage(rootObject).texture);
                 Assert.IsNull(skipped);
                 advisorView.AdvanceAnimation(0.5f);
                 Assert.IsFalse(skipped);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(second);
+                UnityEngine.Object.DestroyImmediate(first);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        /// <summary>
+        /// Verifies the next segment starts loading only after the current segment completes.
+        /// </summary>
+        [Test]
+        public async Task Play_OpeningSegment_DoesNotLoadOrPlayNextUntilReadyAsync()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            StrategyBriefingTheme briefing = CreateBriefing();
+            StrategyBriefingSegmentTheme firstSegment = CreateSegment("First");
+            StrategyBriefingSegmentTheme secondSegment = CreateSegment("Second");
+            secondSegment.Audio = "SecondVoice";
+            briefing.Segments.Add(firstSegment);
+            briefing.Segments.Add(secondSegment);
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D first = new Texture2D(1, 1);
+            Texture2D second = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = CreateTextures(advisorTheme, idle);
+            textures[briefing.GetFramePath("First", 0)] = first;
+            textures[briefing.GetFramePath("Second", 0)] = second;
+            List<ContentPreloadManifest> preloadRequests = new List<ContentPreloadManifest>();
+            string preloadedSfx = null;
+            TaskCompletionSource<bool> secondSegmentReady = new TaskCompletionSource<bool>();
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    textures,
+                    rootObject,
+                    manifest =>
+                    {
+                        preloadRequests.Add(manifest);
+                        return secondSegmentReady.Task;
+                    },
+                    paths => preloadedSfx = paths.Single()
+                );
+                StrategyAdvisorView advisorView =
+                    rootObject.GetComponentInChildren<StrategyAdvisorView>();
+
+                controller.Play(briefing, null);
+
+                Assert.IsEmpty(preloadRequests);
+                Assert.AreSame(first, GetProtocolImage(rootObject).texture);
+
+                advisorView.AdvanceAnimation(0.5f);
+
+                Assert.IsEmpty(preloadRequests);
+                await WaitUntilAsync(() => preloadRequests.Count == 1);
+
+                Assert.AreEqual(1, preloadRequests.Count);
+                CollectionAssert.AreEqual(
+                    new[] { $"{briefing.AnimationImageRoot}/{secondSegment.Animation}" },
+                    preloadRequests[0].TextureDirectories
+                );
+                Assert.AreSame(first, GetProtocolImage(rootObject).texture);
+
+                secondSegmentReady.SetResult(true);
+                await WaitUntilAsync(() => GetProtocolImage(rootObject).texture == second);
+
+                Assert.AreSame(second, GetProtocolImage(rootObject).texture);
+                Assert.AreEqual(briefing.GetAudioPath(secondSegment.Audio), preloadedSfx);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(second);
+                UnityEngine.Object.DestroyImmediate(first);
+                UnityEngine.Object.DestroyImmediate(idle);
+                UnityEngine.Object.DestroyImmediate(rootObject);
+            }
+        }
+
+        /// <summary>
+        /// Verifies skipping abandons a segment transition that is still loading.
+        /// </summary>
+        [Test]
+        public async Task Skip_SegmentLoading_DoesNotStartAbandonedSegmentAsync()
+        {
+            GameRoot game = CreateGame();
+            StrategyAdvisorTheme advisorTheme = CreateAdvisorTheme();
+            StrategyBriefingTheme briefing = CreateBriefing();
+            StrategyBriefingSegmentTheme firstSegment = CreateSegment("First");
+            StrategyBriefingSegmentTheme secondSegment = CreateSegment("Second");
+            secondSegment.Audio = "SecondVoice";
+            briefing.Segments.Add(firstSegment);
+            briefing.Segments.Add(secondSegment);
+            Texture2D idle = new Texture2D(1, 1);
+            Texture2D first = new Texture2D(1, 1);
+            Texture2D second = new Texture2D(1, 1);
+            Dictionary<string, Texture2D> textures = CreateTextures(advisorTheme, idle);
+            textures[briefing.GetFramePath("First", 0)] = first;
+            textures[briefing.GetFramePath("Second", 0)] = second;
+            TaskCompletionSource<bool> segmentReady = new TaskCompletionSource<bool>();
+            bool loadRequested = false;
+            bool sfxPreloaded = false;
+            GameObject rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
+            try
+            {
+                StrategyBriefingController controller = CreateController(
+                    game,
+                    advisorTheme,
+                    textures,
+                    rootObject,
+                    _ =>
+                    {
+                        loadRequested = true;
+                        return segmentReady.Task;
+                    },
+                    _ => sfxPreloaded = true
+                );
+                StrategyAdvisorView advisorView =
+                    rootObject.GetComponentInChildren<StrategyAdvisorView>();
+                bool? skipped = null;
+                controller.Play(briefing, wasSkipped => skipped = wasSkipped);
+                advisorView.AdvanceAnimation(0.5f);
+                await WaitUntilAsync(() => loadRequested);
+
+                controller.Skip();
+                segmentReady.SetResult(true);
+                await Task.Yield();
+
+                Assert.IsTrue(skipped);
+                Assert.AreNotSame(second, GetProtocolImage(rootObject).texture);
+                Assert.IsFalse(sfxPreloaded);
             }
             finally
             {
@@ -310,7 +510,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
             GameRoot game,
             StrategyAdvisorTheme advisorTheme,
             IReadOnlyDictionary<string, Texture2D> textures,
-            GameObject rootObject
+            GameObject rootObject,
+            Func<ContentPreloadManifest, Task> preloadContent = null,
+            Action<IEnumerable<string>> preloadSfx = null
         )
         {
             FactionTheme factionTheme = new FactionTheme { StrategyAdvisor = advisorTheme };
@@ -330,6 +532,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 game,
                 path => textures.TryGetValue(path, out Texture2D texture) ? texture : null,
                 _ => 0f,
+                preloadContent ?? (_ => Task.CompletedTask),
+                preloadSfx ?? (_ => { }),
                 hudController,
                 mapController,
                 () => { }
@@ -388,6 +592,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
                 rootObject.GetComponentsInChildren<UnityEngine.UI.RawImage>(true),
                 image => image.name == "ProtocolImage"
             );
+        }
+
+        /// <summary>
+        /// Advances asynchronous test continuations until a condition is satisfied.
+        /// </summary>
+        /// <param name="condition">The condition expected to become true.</param>
+        /// <returns>A task that completes when the condition is satisfied.</returns>
+        private static async Task WaitUntilAsync(Func<bool> condition)
+        {
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                if (condition())
+                    return;
+                await Task.Yield();
+            }
+
+            Assert.Fail("The asynchronous briefing condition was not satisfied.");
         }
 
         private sealed class TestGalaxyMapActions : IGalaxyMapActions

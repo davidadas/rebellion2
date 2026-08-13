@@ -130,6 +130,40 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         /// <summary>
+        /// Verifies entering Save/Load starts at the bottom without pinning later renders there.
+        /// </summary>
+        [Test]
+        public void SaveLoadPage_Entered_ScrollsToBottomOnce()
+        {
+            OptionsSaveSlot[] slots = Enumerable
+                .Range(0, 12)
+                .Select(index => new OptionsSaveSlot(
+                    $"Save {index}",
+                    "Today",
+                    null,
+                    false,
+                    $"save_{index}"
+                ))
+                .ToArray();
+            ScrollRect scrollRect = _saveListView.GetComponentInChildren<ScrollRect>(true);
+
+            _view.Render(CreateRenderData(slots));
+
+            Assert.AreEqual(0f, scrollRect.verticalNormalizedPosition, 0.01f);
+
+            scrollRect.verticalNormalizedPosition = 0.5f;
+            _view.Render(CreateRenderData(slots));
+
+            Assert.AreEqual(0.5f, scrollRect.verticalNormalizedPosition, 0.01f);
+
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics, slots));
+            scrollRect.verticalNormalizedPosition = 0.5f;
+            _view.Render(CreateRenderData(slots));
+
+            Assert.AreEqual(0f, scrollRect.verticalNormalizedPosition, 0.01f);
+        }
+
+        /// <summary>
         /// Verifies display arrows emit their semantic direction requests.
         /// </summary>
         [Test]
@@ -367,10 +401,21 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         /// </summary>
         private static OptionsMenuRenderData CreateRenderData(params OptionsSaveSlot[] saveSlots)
         {
+            return CreateRenderDataForTab(OptionsMenuTab.SaveLoad, saveSlots);
+        }
+
+        /// <summary>
+        /// Creates minimal render state for a selected Options menu page.
+        /// </summary>
+        private static OptionsMenuRenderData CreateRenderDataForTab(
+            OptionsMenuTab activeTab,
+            params OptionsSaveSlot[] saveSlots
+        )
+        {
             return new OptionsMenuRenderData(
                 0,
                 0,
-                OptionsMenuTab.SaveLoad,
+                activeTab,
                 string.Empty,
                 string.Empty,
                 new Dictionary<UserTacticalOption, bool>(),

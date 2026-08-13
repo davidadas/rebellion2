@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
@@ -96,6 +97,7 @@ public sealed class StrategyController
     private bool contentReady;
     private bool initialized;
     private bool cancelHandlersRegistered;
+    private bool presentationActive;
     private RectInt windowMovePreviewBounds;
     private bool windowMovePreviewVisible;
 
@@ -154,7 +156,6 @@ public sealed class StrategyController
             throw new InvalidOperationException("StrategyController.Initialize called twice.");
 
         ValidateAuthoredViews();
-        AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         gameManager = manager;
         uiContext = context;
         PreloadStrategySfx();
@@ -166,14 +167,43 @@ public sealed class StrategyController
         BindMessageSystem(gameManager.MessageSystem);
 
         InitializeScreenControllers();
-        InitializeWindowControllers();
-        InitializeInteractionControllers();
-        BindWindowControllerActions();
-        SubscribeViewEvents();
         IContentAssetSource contentAssets = AppBootstrap.Instance.GetContentAssets();
         ContentBindings.Apply(transform.root.gameObject, contentAssets);
         strategyWindowManager.SetContentSource(contentAssets);
         initialized = true;
+    }
+
+    /// <summary>
+    /// Loads the faction briefing's opening media through the briefing owner.
+    /// </summary>
+    /// <returns>A task that completes when opening briefing playback is ready.</returns>
+    public Task PrepareBriefingAsync()
+    {
+        if (!initialized)
+            throw new InvalidOperationException("StrategyController has not been initialized.");
+
+        StrategyBriefingTheme briefing = uiContext?.GetPlayerFactionTheme()?.StrategyBriefing;
+        return briefing == null || briefing.Segments.Count == 0
+            ? Task.CompletedTask
+            : briefingController.PrepareAsync(briefing);
+    }
+
+    /// <summary>
+    /// Reveals the initialized strategy presentation and starts its ambient behavior.
+    /// </summary>
+    public void ActivatePresentation()
+    {
+        if (!initialized)
+            throw new InvalidOperationException("StrategyController has not been initialized.");
+        if (presentationActive)
+            throw new InvalidOperationException("StrategyController is already active.");
+
+        InitializeWindowControllers();
+        InitializeInteractionControllers();
+        BindWindowControllerActions();
+        SubscribeViewEvents();
+        presentationActive = true;
+        AppBootstrap.Instance?.GetInputController()?.SetContext(InputContext.Strategy);
         RegisterCancelHandlers();
         OnGameReady();
         LoadInitialContent();
@@ -194,6 +224,7 @@ public sealed class StrategyController
     private void InitializeScreenControllers()
     {
         AudioManager audioManager = AudioManager.EnsureExists();
+        ContentAssets contentAssets = AppBootstrap.Instance.GetContentAssets();
         System.Random musicRandom = new System.Random();
         strategyMusicController = new StrategyMusicController(
             () => gameManager.GetGame(),
@@ -217,7 +248,9 @@ public sealed class StrategyController
         briefingController = new StrategyBriefingController(
             gameManager.GetGame(),
             path => uiContext?.GetTexture(path),
-            path => AppBootstrap.Instance.GetContentAssets().GetPreloadedAudio(path).length,
+            path => contentAssets.GetPreloadedAudio(path).length,
+            contentAssets.PreloadAsync,
+            audioManager.PreloadSfx,
             strategyHudController,
             galaxyMapController,
             () => PlaySfx(StrategyUISoundPaths.GalacticInformationControl)
@@ -657,11 +690,11 @@ public sealed class StrategyController
     }
 
     /// <summary>
-    /// Restores cancellation routing when an initialized strategy screen is re-enabled.
+    /// Restores cancellation routing when an active strategy screen is re-enabled.
     /// </summary>
     private void OnEnable()
     {
-        if (initialized)
+        if (presentationActive)
             RegisterCancelHandlers();
     }
 
@@ -754,11 +787,6 @@ public sealed class StrategyController
             return;
         }
 
-        AudioManager
-            .EnsureExists()
-            .PreloadSfx(
-                StrategyUISoundPaths.GetBriefingPreloadPaths(uiContext.GetPlayerFactionTheme())
-            );
         briefingActive = true;
         briefingSkipConfirmationOpen = false;
         briefingEventSystem = EventSystem.current;
@@ -3046,7 +3074,12 @@ public sealed class StrategyController
     /// </summary>
     private void RegisterCancelHandlers()
     {
-        if (!initialized || !isActiveAndEnabled || cancelHandlersRegistered || cancelStack == null)
+        if (
+            !presentationActive
+            || !isActiveAndEnabled
+            || cancelHandlersRegistered
+            || cancelStack == null
+        )
             return;
 
         cancelStack.Register(strategyWindowManager);
